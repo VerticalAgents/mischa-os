@@ -13,7 +13,7 @@ export default function Precificacao() {
     <>
       <PageHeader 
         title="Precificação"
-        subtitle="Gerenciamento de insumos, receitas e produtos"
+        description="Gerenciamento de insumos, receitas e produtos"
       />
       
       <div className="mt-8">

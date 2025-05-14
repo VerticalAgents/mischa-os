@@ -90,7 +90,14 @@ export default function InsumosTab() {
     if (editingInsumo) {
       atualizarInsumo(editingInsumo.id, values);
     } else {
-      adicionarInsumo(values);
+      // Ensure all required properties are provided to adicionarInsumo
+      adicionarInsumo({
+        nome: values.nome,
+        categoria: values.categoria,
+        volumeBruto: values.volumeBruto,
+        unidadeMedida: values.unidadeMedida,
+        custoMedio: values.custoMedio,
+      });
     }
     setIsDialogOpen(false);
   };
