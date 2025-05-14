@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
+import Clientes from "@/pages/Clientes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,11 @@ const App = () => (
           <Route path="/" element={
             <AppLayout>
               <Dashboard />
+            </AppLayout>
+          } />
+          <Route path="/clientes" element={
+            <AppLayout>
+              <Clientes />
             </AppLayout>
           } />
           {/* ADD CUSTOM ROUTES HERE */}
