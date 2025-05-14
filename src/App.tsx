@@ -8,6 +8,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import Clientes from "@/pages/Clientes";
 import Precificacao from "@/pages/Precificacao";
+import Agendamento from "@/pages/Agendamento";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,11 @@ const App = () => (
           <Route path="/precificacao" element={
             <AppLayout>
               <Precificacao />
+            </AppLayout>
+          } />
+          <Route path="/agendamento" element={
+            <AppLayout>
+              <Agendamento />
             </AppLayout>
           } />
           {/* ADD CUSTOM ROUTES HERE */}
