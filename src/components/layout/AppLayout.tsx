@@ -9,7 +9,7 @@ import {
   SidebarProvider, 
   SidebarTrigger 
 } from "@/components/ui/sidebar";
-import { Bell, BarChart3, Users, List, CupSoda, Clipboard, ShoppingBag, Settings, Menu } from "lucide-react";
+import { Bell, BarChart3, Users, List, Tag, Clipboard, ShoppingBag, Settings, Menu } from "lucide-react";
 import { useAlertaStore } from "@/hooks/useAlertaStore";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,13 +33,13 @@ const mainMenuItems: MenuItem[] = [
     icon: <Users className="h-5 w-5" />,
   },
   {
-    label: "Sabores",
-    path: "/sabores",
-    icon: <CupSoda className="h-5 w-5" />,
+    label: "Precificação",
+    path: "/precificacao",
+    icon: <Tag className="h-5 w-5" />,
   },
   {
-    label: "Pedidos",
-    path: "/pedidos",
+    label: "Agendamento",
+    path: "/agendamento",
     icon: <Clipboard className="h-5 w-5" />,
   },
   {

@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import Clientes from "@/pages/Clientes";
+import Precificacao from "@/pages/Precificacao";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,11 @@ const App = () => (
           <Route path="/clientes" element={
             <AppLayout>
               <Clientes />
+            </AppLayout>
+          } />
+          <Route path="/precificacao" element={
+            <AppLayout>
+              <Precificacao />
             </AppLayout>
           } />
           {/* ADD CUSTOM ROUTES HERE */}

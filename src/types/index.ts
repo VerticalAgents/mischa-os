@@ -91,3 +91,57 @@ export interface PlanejamentoProducao {
   totalUnidadesAgendadas: number;
   formasNecessarias: number;
 }
+
+// Insumo model
+export interface Insumo {
+  id: number;
+  nome: string;
+  categoria: CategoriaInsumo;
+  volumeBruto: number;
+  unidadeMedida: UnidadeMedida;
+  custoMedio: number;
+  custoUnitario: number; // Calculado: custoMedio / volumeBruto
+}
+
+export type CategoriaInsumo = "Matéria Prima" | "Embalagem";
+export type UnidadeMedida = "g" | "un";
+
+// ReceitaBase model
+export interface ReceitaBase {
+  id: number;
+  nome: string;
+  itensReceita: ItemReceita[];
+  pesoTotal: number; // Soma dos pesos dos ingredientes
+  custoTotal: number; // Soma dos custos dos ingredientes
+}
+
+export interface ItemReceita {
+  id: number;
+  idReceita: number;
+  idInsumo: number;
+  insumo?: Insumo; // Para relações
+  quantidade: number;
+  custo: number; // Calculado: quantidade * insumo.custoUnitario
+}
+
+// Produto model
+export interface Produto {
+  id: number;
+  nome: string;
+  descricao?: string;
+  componentes: ComponenteProduto[];
+  unidadesProducao: number; // Quantas unidades são produzidas
+  pesoUnitario: number; // Peso de cada unidade
+  custoTotal: number; // Soma dos custos dos componentes
+  custoUnitario: number; // Calculado: custoTotal / unidadesProducao
+}
+
+export interface ComponenteProduto {
+  id: number;
+  idProduto: number;
+  tipo: "Receita" | "Insumo";
+  idItem: number; // ID da receita ou insumo
+  nome: string; // Nome da receita ou insumo
+  quantidade: number;
+  custo: number; // Calculado baseado no tipo e quantidade
+}
