@@ -1,4 +1,3 @@
-
 // Cliente (PDV) model
 export interface Cliente {
   id: number;
@@ -43,7 +42,7 @@ export interface Pedido {
   itensPedido: ItemPedido[];
 }
 
-export type StatusPedido = "Agendado" | "Em Separação" | "Despachado" | "Entregue" | "Cancelado";
+export type StatusPedido = "Previsto" | "Agendado" | "Em Separação" | "Despachado" | "Entregue" | "Cancelado";
 
 // Item do Pedido model
 export interface ItemPedido {
