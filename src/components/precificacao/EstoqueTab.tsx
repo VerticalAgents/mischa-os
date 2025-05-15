@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Boxes, PackageCheck, AlertTriangle } from "lucide-react";
+import { Boxes, PackageCheck, AlertTriangle, ExternalLink } from "lucide-react";
 
 export default function EstoqueTab() {
   const { produtos } = useProdutoStore();
@@ -70,6 +71,12 @@ export default function EstoqueTab() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-[300px]"
           />
+          <Button variant="outline" asChild>
+            <Link to="/estoque">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Ver página completa
+            </Link>
+          </Button>
         </div>
       </div>
 

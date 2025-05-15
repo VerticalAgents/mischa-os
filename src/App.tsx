@@ -9,7 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import Clientes from "@/pages/Clientes";
 import Precificacao from "@/pages/Precificacao";
 import Agendamento from "@/pages/Agendamento";
-import Relatorios from "@/pages/Relatorios";
+import Estoque from "@/pages/Estoque";
 import Configuracoes from "@/pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 
@@ -42,9 +42,9 @@ const App = () => (
               <Agendamento />
             </AppLayout>
           } />
-          <Route path="/relatorios" element={
+          <Route path="/estoque" element={
             <AppLayout>
-              <Relatorios />
+              <Estoque />
             </AppLayout>
           } />
           <Route path="/configuracoes" element={
