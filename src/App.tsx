@@ -9,6 +9,8 @@ import Dashboard from "@/pages/Dashboard";
 import Clientes from "@/pages/Clientes";
 import Precificacao from "@/pages/Precificacao";
 import Agendamento from "@/pages/Agendamento";
+import Relatorios from "@/pages/Relatorios";
+import Configuracoes from "@/pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,7 +42,16 @@ const App = () => (
               <Agendamento />
             </AppLayout>
           } />
-          {/* ADD CUSTOM ROUTES HERE */}
+          <Route path="/relatorios" element={
+            <AppLayout>
+              <Relatorios />
+            </AppLayout>
+          } />
+          <Route path="/configuracoes" element={
+            <AppLayout>
+              <Configuracoes />
+            </AppLayout>
+          } />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
