@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { format, parseISO, startOfMonth, endOfMonth, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -55,13 +56,13 @@ export default function Relatorios() {
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
   
-  const { getAllPedidos } = usePedidoStore();
-  const { getAllClientes } = useClienteStore();
-  const { getAllProdutos } = useProdutoStore();
+  const pedidoStore = usePedidoStore();
+  const clienteStore = useClienteStore();
+  const produtoStore = useProdutoStore();
   
-  const pedidos = getAllPedidos();
-  const clientes = getAllClientes();
-  const produtos = getAllProdutos();
+  const pedidos = pedidoStore.getPedidosFiltrados();
+  const clientes = clienteStore.getClientesFiltrados();
+  const produtos = produtoStore.getAll();
   
   // Filter orders by date range
   const filteredPedidos = pedidos.filter(pedido => {
