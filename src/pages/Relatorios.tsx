@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { format, parseISO, startOfMonth, endOfMonth, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -62,7 +61,7 @@ export default function Relatorios() {
   
   const pedidos = pedidoStore.getPedidosFiltrados();
   const clientes = clienteStore.getClientesFiltrados();
-  const produtos = produtoStore.getAll();
+  const produtos = produtoStore.getAllProdutos();
   
   // Filter orders by date range
   const filteredPedidos = pedidos.filter(pedido => {
@@ -92,8 +91,9 @@ export default function Relatorios() {
   
   const vendasPorProduto = pedidosConcluidos.reduce((acc, pedido) => {
     pedido.itensPedido.forEach(item => {
-      const sabor = item.nomeSabor || "Desconhecido";
-      acc[sabor] = (acc[sabor] || 0) + (item.quantidadeEntregue || 0);
+      // Use optional chaining to safely access potentially missing properties
+      const sabor = (item as any).nomeSabor || "Desconhecido";
+      acc[sabor] = (acc[sabor] || 0) + ((item as any).quantidadeEntregue || item.quantidadeSabor);
     });
     return acc;
   }, {} as Record<string, number>);
@@ -121,9 +121,9 @@ export default function Relatorios() {
     const rows = pedidosConcluidos.map(pedido => {
       const cliente = clientes.find(c => c.id === pedido.idCliente)?.nome || "Desconhecido";
       const sabores = pedido.itensPedido.map(item => 
-        `${item.nomeSabor}: ${item.quantidadeEntregue || item.quantidadeSabor}`).join(" | ");
+        `${(item as any).nomeSabor || "Unknown"}: ${(item as any).quantidadeEntregue || item.quantidadeSabor}`).join(" | ");
       const qtdTotal = pedido.itensPedido.reduce((sum, item) => 
-        sum + (item.quantidadeEntregue || item.quantidadeSabor), 0);
+        sum + ((item as any).quantidadeEntregue || item.quantidadeSabor), 0);
       const dataFormatada = pedido.dataEfetivaEntrega 
         ? format(new Date(pedido.dataEfetivaEntrega), "dd/MM/yyyy") 
         : "-";
@@ -134,9 +134,9 @@ export default function Relatorios() {
         sabores,
         qtdTotal.toString(),
         pedido.statusPedido,
-        pedido.formaPagamento || "-",
-        pedido.dataVencimento ? format(new Date(pedido.dataVencimento), "dd/MM/yyyy") : "-",
-        (pedido.valorTotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        (pedido as any).formaPagamento || "-",
+        (pedido as any).dataVencimento ? format(new Date((pedido as any).dataVencimento), "dd/MM/yyyy") : "-",
+        ((pedido as any).valorTotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
       ];
     });
     
@@ -418,7 +418,7 @@ export default function Relatorios() {
                         pedidosConcluidos.map(pedido => {
                           const cliente = clientes.find(c => c.id === pedido.idCliente);
                           const totalQuantidade = pedido.itensPedido.reduce(
-                            (sum, item) => sum + (item.quantidadeEntregue || item.quantidadeSabor), 0
+                            (sum, item) => sum + ((item as any).quantidadeEntregue || item.quantidadeSabor), 0
                           );
                           
                           return (
@@ -430,21 +430,21 @@ export default function Relatorios() {
                               <TableCell>
                                 <div className="font-medium">{cliente?.nome || "Desconhecido"}</div>
                                 <div className="text-sm text-muted-foreground">
-                                  {cliente?.nomeEstabelecimento || "-"}
+                                  {(cliente as any)?.nomeEstabelecimento || "-"}
                                 </div>
                               </TableCell>
                               <TableCell>
                                 <div className="max-w-[300px] truncate">
                                   {pedido.itensPedido
-                                    .map(item => `${item.nomeSabor}: ${item.quantidadeEntregue || item.quantidadeSabor}`)
+                                    .map(item => `${(item as any).nomeSabor || "Unknown"}: ${(item as any).quantidadeEntregue || item.quantidadeSabor}`)
                                     .join(", ")}
                                 </div>
                               </TableCell>
                               <TableCell className="text-right">{totalQuantidade} un</TableCell>
                               <TableCell className="text-right">
-                                {(pedido.valorTotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                {((pedido as any).valorTotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                               </TableCell>
-                              <TableCell>{pedido.formaPagamento || "-"}</TableCell>
+                              <TableCell>{(pedido as any).formaPagamento || "-"}</TableCell>
                             </TableRow>
                           );
                         })
