@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "@/hooks/use-toast";
@@ -20,7 +19,7 @@ interface PedidoStore {
   
   // Ações
   setPedidos: (pedidos: Pedido[]) => void;
-  criarNovoPedido: (idCliente: number) => void;
+  criarNovoPedido: (idCliente: number) => Pedido | null; // Explicitly define return type
   adicionarPedido: (pedido: Omit<Pedido, 'id' | 'dataPedido'>) => void;
   atualizarPedido: (id: number, dadosPedido: Partial<Pedido>) => void;
   atualizarItensPedido: (idPedido: number, itens: Omit<ItemPedido, 'id' | 'idPedido'>[]) => void;
@@ -67,7 +66,7 @@ export const usePedidoStore = create<PedidoStore>()(
             description: "Cliente não encontrado",
             variant: "destructive"
           });
-          return;
+          return null; // Explicitly return null when client is not found
         }
         
         // Calcular a data prevista de entrega
@@ -117,7 +116,7 @@ export const usePedidoStore = create<PedidoStore>()(
           description: `Pedido padrão criado para ${cliente.nome}`
         });
         
-        return pedidoCompleto;
+        return pedidoCompleto; // Explicitly return the new order
       },
       
       adicionarPedido: (pedido) => {

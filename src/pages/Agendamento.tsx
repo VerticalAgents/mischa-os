@@ -138,6 +138,8 @@ export default function Agendamento() {
     
     // Create new order with "Previsto" status
     const novoPedido = criarNovoPedido(pedidoSelecionado.idCliente);
+    
+    // Fixed code: Check if novoPedido exists before accessing its properties
     if (novoPedido) {
       atualizarPedido(novoPedido.id, {
         statusPedido: "Agendado",
