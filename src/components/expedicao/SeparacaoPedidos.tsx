@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import StatusBadge from "@/components/common/StatusBadge";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useToast } from "@/hooks/use-toast";
-import { Printer, FileText } from "lucide-react";
+import { Printer, FileText, Check } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const SeparacaoPedidos = () => {
@@ -17,6 +17,7 @@ export const SeparacaoPedidos = () => {
   
   // Fix: Use individual selectors instead of calling the function directly
   const pedidos = usePedidoStore(state => state.pedidos);
+  const updatePedidoStatus = usePedidoStore(state => state.atualizarPedido);
   
   // Filtrar pedidos em separação/agendados e separá-los por tipo
   const pedidosPadrao = pedidos.filter(p => 
@@ -32,6 +33,15 @@ export const SeparacaoPedidos = () => {
   // Ordenar pedidos pelo tamanho do pacote (total de unidades)
   const pedidosPadraoOrdenados = [...pedidosPadrao].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
   const pedidosAlteradosOrdenados = [...pedidosAlterados].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
+
+  // Nova função para confirmar separação
+  const confirmarSeparacaoPedido = (idPedido: number) => {
+    updatePedidoStatus(idPedido, { statusPedido: "Em Separação" });
+    toast({
+      title: "Separação confirmada",
+      description: "O pedido foi movido para a fila de despacho.",
+    });
+  };
 
   // Função para imprimir lista de separação
   const imprimirListaSeparacao = () => {
@@ -239,6 +249,7 @@ export const SeparacaoPedidos = () => {
                     <TableHead>Total Unidades</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Sabores</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -252,6 +263,18 @@ export const SeparacaoPedidos = () => {
                       </TableCell>
                       <TableCell className="max-w-[300px] truncate">
                         {pedido.itensPedido.map(item => `${item.sabor?.nome}: ${item.quantidadeSabor}`).join(", ")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => confirmarSeparacaoPedido(pedido.id)}
+                          className="flex items-center gap-1"
+                          disabled={pedido.statusPedido === "Em Separação"}
+                        >
+                          <Check className="h-4 w-4" />
+                          {pedido.statusPedido === "Em Separação" ? "Separado" : "Confirmar Separação"}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -274,6 +297,7 @@ export const SeparacaoPedidos = () => {
                     <TableHead>Total Unidades</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Sabores</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -287,6 +311,18 @@ export const SeparacaoPedidos = () => {
                       </TableCell>
                       <TableCell className="max-w-[300px] truncate">
                         {pedido.itensPedido.map(item => `${item.sabor?.nome}: ${item.quantidadeSabor}`).join(", ")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => confirmarSeparacaoPedido(pedido.id)}
+                          className="flex items-center gap-1"
+                          disabled={pedido.statusPedido === "Em Separação"}
+                        >
+                          <Check className="h-4 w-4" />
+                          {pedido.statusPedido === "Em Separação" ? "Separado" : "Confirmar Separação"}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

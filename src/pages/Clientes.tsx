@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import StatusBadge from "@/components/common/StatusBadge";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
+import { Badge } from "@/components/ui/badge";
 
 export default function Clientes() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -23,6 +24,31 @@ export default function Clientes() {
 
   const handleCloseForm = () => {
     setIsFormOpen(false);
+  };
+
+  // Helper para formatar a periodicidade em texto
+  const formatPeriodicidade = (dias: number): string => {
+    if (dias % 7 === 0) {
+      const semanas = dias / 7;
+      return semanas === 1 ? "1 semana" : `${semanas} semanas`;
+    } else if (dias === 3) {
+      return "3x semana";
+    } else {
+      return `${dias} dias`;
+    }
+  };
+
+  // Calcular o giro semanal com base na quantidade padrão e periodicidade
+  const calcularGiroSemanal = (qtdPadrao: number, periodicidadeDias: number): number => {
+    // Para periodicidade em dias, converter para semanas
+    if (periodicidadeDias === 3) {
+      // Caso especial: 3x por semana
+      return qtdPadrao * 3;
+    }
+    
+    // Para outros casos, calcular giro semanal
+    const periodicidadeSemanas = periodicidadeDias / 7;
+    return Math.round(qtdPadrao / periodicidadeSemanas);
   };
 
   return (
@@ -70,7 +96,8 @@ export default function Clientes() {
                 <TableHead>Endereço</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Qtde. Padrão</TableHead>
-                <TableHead>Period. (dias)</TableHead>
+                <TableHead>Period.</TableHead>
+                <TableHead>Giro Semanal</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -78,42 +105,50 @@ export default function Clientes() {
             <TableBody>
               {clientes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                  <TableCell colSpan={9} className="h-24 text-center">
                     Nenhum cliente encontrado.
                   </TableCell>
                 </TableRow>
               ) : (
-                clientes.map((cliente) => (
-                  <TableRow key={cliente.id}>
-                    <TableCell className="font-medium">{cliente.nome}</TableCell>
-                    <TableCell>{cliente.cnpjCpf || "-"}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {cliente.enderecoEntrega || "-"}
-                    </TableCell>
-                    <TableCell>
-                      {cliente.contatoNome || "-"}
-                      {cliente.contatoTelefone && <div className="text-xs text-muted-foreground">{cliente.contatoTelefone}</div>}
-                    </TableCell>
-                    <TableCell>{cliente.quantidadePadrao}</TableCell>
-                    <TableCell>{cliente.periodicidadePadrao}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={cliente.statusCliente} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          // Implementar ação para visualizar/editar
-                          console.log("Visualizar/editar cliente:", cliente.id);
-                        }}
-                      >
-                        <Plus className="h-4 w-4" />
-                        <span className="sr-only">Ações</span>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                clientes.map((cliente) => {
+                  const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
+                  return (
+                    <TableRow key={cliente.id}>
+                      <TableCell className="font-medium">{cliente.nome}</TableCell>
+                      <TableCell>{cliente.cnpjCpf || "-"}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {cliente.enderecoEntrega || "-"}
+                      </TableCell>
+                      <TableCell>
+                        {cliente.contatoNome || "-"}
+                        {cliente.contatoTelefone && <div className="text-xs text-muted-foreground">{cliente.contatoTelefone}</div>}
+                      </TableCell>
+                      <TableCell>{cliente.quantidadePadrao}</TableCell>
+                      <TableCell>{formatPeriodicidade(cliente.periodicidadePadrao)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-semibold bg-blue-50">
+                          {giroSemanal}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={cliente.statusCliente} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            // Implementar ação para visualizar/editar
+                            console.log("Visualizar/editar cliente:", cliente.id);
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                          <span className="sr-only">Ações</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

@@ -26,6 +26,7 @@ import { Boxes, PackageCheck, AlertTriangle, ExternalLink } from "lucide-react";
 export default function EstoqueTab() {
   const { produtos } = useProdutoStore();
   const [searchTerm, setSearchTerm] = useState("");
+  const [unidadesPorForma, setUnidadesPorForma] = useState(6); // Valor padrão de unidades por forma
   const [estoque, setEstoque] = useState<Record<number, number>>(() => {
     // Initialize with mock data or load from localStorage
     const savedEstoque = localStorage.getItem("produtosEstoque");
@@ -65,6 +66,16 @@ export default function EstoqueTab() {
           <p className="text-muted-foreground">Gerencie as quantidades disponíveis em estoque</p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex flex-col">
+            <label className="text-sm text-muted-foreground">Unidades por forma:</label>
+            <Input
+              type="number"
+              value={unidadesPorForma}
+              onChange={(e) => setUnidadesPorForma(Math.max(1, parseInt(e.target.value) || 1))}
+              className="max-w-[100px]"
+              min="1"
+            />
+          </div>
           <Input
             placeholder="Buscar produtos..."
             value={searchTerm}
@@ -171,6 +182,14 @@ export default function EstoqueTab() {
                           <Button 
                             variant="outline" 
                             size="sm"
+                            title={`Remover ${unidadesPorForma} unidades`}
+                            onClick={() => updateEstoque(produto.id, Math.max(0, quantidade - unidadesPorForma))}
+                          >
+                            --
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
                             onClick={() => updateEstoque(produto.id, Math.max(0, quantidade - 1))}
                           >
                             -
@@ -193,6 +212,14 @@ export default function EstoqueTab() {
                             onClick={() => updateEstoque(produto.id, quantidade + 1)}
                           >
                             +
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            title={`Adicionar ${unidadesPorForma} unidades`}
+                            onClick={() => updateEstoque(produto.id, quantidade + unidadesPorForma)}
+                          >
+                            ++
                           </Button>
                         </div>
                       </TableCell>
