@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { PageHeader } from "@/components/common/PageHeader";
+import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SeparacaoPedidos } from "@/components/expedicao/SeparacaoPedidos";
 import { Despacho } from "@/components/expedicao/Despacho";

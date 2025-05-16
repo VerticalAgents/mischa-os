@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { StatusBadge } from "@/components/common/StatusBadge";
+import StatusBadge from "@/components/common/StatusBadge";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/utils";
@@ -27,8 +27,8 @@ export const Despacho = () => {
   // Função para copiar informações para o WhatsApp
   const copiarInfoEntrega = (pedido) => {
     const cliente = pedido.cliente?.nome || "Pedido Único";
-    const endereco = pedido.cliente?.endereco || "Endereço não disponível";
-    const telefone = pedido.cliente?.telefone || "Telefone não disponível";
+    const endereco = pedido.cliente?.enderecoEntrega || "Endereço não disponível";
+    const telefone = pedido.cliente?.contatoTelefone || "Telefone não disponível";
     const data = formatDate(new Date(pedido.dataPrevistaEntrega));
     const totalUnidades = pedido.totalPedidoUnidades;
     
@@ -63,11 +63,11 @@ export const Despacho = () => {
     try {
       // Preparar os dados dos pedidos
       const pedidosComEndereco = pedidosParaDespacho
-        .filter(p => p.cliente?.endereco)
+        .filter(p => p.cliente?.enderecoEntrega)
         .map((p, index) => ({
           id: p.id,
           cliente: p.cliente?.nome,
-          endereco: p.cliente?.endereco,
+          endereco: p.cliente?.enderecoEntrega,
           ordem: index + 1
         }));
       
@@ -140,7 +140,7 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
                     <TableRow key={pedido.id}>
                       <TableCell>{pedido.cliente?.nome || "Pedido Único"}</TableCell>
                       <TableCell className="max-w-[200px] truncate">
-                        {pedido.cliente?.endereco || "Endereço não disponível"}
+                        {pedido.cliente?.enderecoEntrega || "Endereço não disponível"}
                       </TableCell>
                       <TableCell>{formatDate(new Date(pedido.dataPrevistaEntrega))}</TableCell>
                       <TableCell>
@@ -233,7 +233,7 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
                           <div>
                             <div className="font-medium">{pedido.cliente?.nome || "Pedido Único"}</div>
                             <div className="text-sm text-muted-foreground">
-                              {pedido.cliente?.endereco || "Endereço não disponível"}
+                              {pedido.cliente?.enderecoEntrega || "Endereço não disponível"}
                             </div>
                           </div>
                         </div>

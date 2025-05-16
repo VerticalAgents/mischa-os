@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { StatusBadge } from "@/components/common/StatusBadge";
+import StatusBadge from "@/components/common/StatusBadge";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useToast } from "@/hooks/use-toast";
-import { Printer, Label } from "lucide-react";
+import { Printer, FileText } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const SeparacaoPedidos = () => {
@@ -212,7 +212,7 @@ export const SeparacaoPedidos = () => {
               <Printer className="h-4 w-4" /> Imprimir Lista
             </Button>
             <Button onClick={imprimirEtiquetas} size="sm" variant="outline" className="flex items-center gap-1">
-              <Label className="h-4 w-4" /> Imprimir Etiquetas
+              <FileText className="h-4 w-4" /> Imprimir Etiquetas
             </Button>
           </div>
         </div>
