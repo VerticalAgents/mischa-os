@@ -11,6 +11,7 @@ import Precificacao from "@/pages/Precificacao";
 import Agendamento from "@/pages/Agendamento";
 import Estoque from "@/pages/Estoque";
 import Configuracoes from "@/pages/Configuracoes";
+import PCP from "@/pages/PCP";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,11 @@ const App = () => (
           <Route path="/configuracoes" element={
             <AppLayout>
               <Configuracoes />
+            </AppLayout>
+          } />
+          <Route path="/pcp" element={
+            <AppLayout>
+              <PCP />
             </AppLayout>
           } />
           <Route path="*" element={<NotFound />} />

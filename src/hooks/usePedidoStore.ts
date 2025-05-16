@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "@/hooks/use-toast";
@@ -20,7 +21,7 @@ interface PedidoStore {
   // Ações
   setPedidos: (pedidos: Pedido[]) => void;
   criarNovoPedido: (idCliente: number) => Pedido | null; // Explicitly define return type
-  adicionarPedido: (pedido: Omit<Pedido, 'id' | 'dataPedido'>) => void;
+  adicionarPedido: (pedido: Omit<Pedido, 'id' | 'dataPedido'>) => Pedido;
   atualizarPedido: (id: number, dadosPedido: Partial<Pedido>) => void;
   atualizarItensPedido: (idPedido: number, itens: Omit<ItemPedido, 'id' | 'idPedido'>[]) => void;
   removerPedido: (id: number) => void;
@@ -44,6 +45,7 @@ interface PedidoStore {
   getPedidosPorCliente: (idCliente: number) => Pedido[];
   getPedidosPorStatus: (status: StatusPedido) => Pedido[];
   getPedidosFuturos: () => Pedido[];
+  getPedidosUnicos: () => Pedido[];
 }
 
 export const usePedidoStore = create<PedidoStore>()(
@@ -122,19 +124,30 @@ export const usePedidoStore = create<PedidoStore>()(
       adicionarPedido: (pedido) => {
         const novoId = Math.max(0, ...get().pedidos.map(p => p.id)) + 1;
         
-        // Buscar cliente para relacionamento
-        const cliente = useClienteStore.getState().getClientePorId(pedido.idCliente);
+        // Buscar cliente para relacionamento (se idCliente > 0)
+        let cliente = undefined;
+        if (pedido.idCliente > 0) {
+          cliente = useClienteStore.getState().getClientePorId(pedido.idCliente);
+        }
         
         const novoPedido = {
           ...pedido,
           id: novoId,
           dataPedido: new Date(),
-          cliente
+          cliente,
+          itensPedido: [] // Inicializa o array vazio para ser preenchido depois
         };
         
         set(state => ({
           pedidos: [...state.pedidos, novoPedido]
         }));
+        
+        toast({
+          title: cliente ? "Pedido criado" : "Pedido único criado",
+          description: cliente 
+            ? `Pedido criado para ${cliente.nome}` 
+            : "Pedido único criado com sucesso"
+        });
         
         return novoPedido;
       },
@@ -213,7 +226,7 @@ export const usePedidoStore = create<PedidoStore>()(
       
       confirmarEntrega: (idPedido, dataEfetiva, itensEntregues) => {
         const pedido = get().pedidos.find(p => p.id === idPedido);
-        if (!pedido || !pedido.cliente) return;
+        if (!pedido) return;
         
         // Atualizar o status do pedido
         set(state => ({
@@ -241,34 +254,37 @@ export const usePedidoStore = create<PedidoStore>()(
         // Calcular o total entregue
         const totalEntregue = itensEntregues.reduce((sum, item) => sum + item.quantidadeEntregue, 0);
         
-        // 1. Atualizar a última data de reposição do cliente
-        const clienteState = useClienteStore.getState();
-        const ultimaDataReposicao = pedido.cliente.ultimaDataReposicaoEfetiva;
-        
-        clienteState.atualizarCliente(pedido.cliente.id, {
-          ultimaDataReposicaoEfetiva: dataEfetiva
-        });
-        
-        // 2. Verificar Delta e recalcular Qp se necessário
-        if (ultimaDataReposicao) {
-          const deltaEfetivo = calcularDeltaEfetivo(dataEfetiva, ultimaDataReposicao);
+        // Só atualiza cliente se for um pedido de PDV (não for pedido único)
+        if (pedido.cliente) {
+          // 1. Atualizar a última data de reposição do cliente
+          const clienteState = useClienteStore.getState();
+          const ultimaDataReposicao = pedido.cliente.ultimaDataReposicaoEfetiva;
           
-          if (deltaForaTolerancia(deltaEfetivo, pedido.cliente.periodicidadePadrao)) {
-            // Calcular o giro semanal e o novo Qp
-            const giroSemanal = calcularGiroSemanalPDV(totalEntregue, deltaEfetivo);
-            const novoQp = calcularNovoQp(giroSemanal, pedido.cliente.periodicidadePadrao);
+          clienteState.atualizarCliente(pedido.cliente.id, {
+            ultimaDataReposicaoEfetiva: dataEfetiva
+          });
+          
+          // 2. Verificar Delta e recalcular Qp se necessário
+          if (ultimaDataReposicao) {
+            const deltaEfetivo = calcularDeltaEfetivo(dataEfetiva, ultimaDataReposicao);
             
-            // Atualizar o Qp do cliente
-            clienteState.atualizarCliente(pedido.cliente.id, {
-              quantidadePadrao: novoQp
-            });
-            
-            // Notificar o usuário
-            toast({
-              title: "Qp recalculado",
-              description: `Qp de ${pedido.cliente.nome} atualizado de ${pedido.cliente.quantidadePadrao} para ${novoQp} (Δ=${deltaEfetivo})`,
-              variant: "default"
-            });
+            if (deltaForaTolerancia(deltaEfetivo, pedido.cliente.periodicidadePadrao)) {
+              // Calcular o giro semanal e o novo Qp
+              const giroSemanal = calcularGiroSemanalPDV(totalEntregue, deltaEfetivo);
+              const novoQp = calcularNovoQp(giroSemanal, pedido.cliente.periodicidadePadrao);
+              
+              // Atualizar o Qp do cliente
+              clienteState.atualizarCliente(pedido.cliente.id, {
+                quantidadePadrao: novoQp
+              });
+              
+              // Notificar o usuário
+              toast({
+                title: "Qp recalculado",
+                description: `Qp de ${pedido.cliente.nome} atualizado de ${pedido.cliente.quantidadePadrao} para ${novoQp} (Δ=${deltaEfetivo})`,
+                variant: "default"
+              });
+            }
           }
         }
         
@@ -279,9 +295,15 @@ export const usePedidoStore = create<PedidoStore>()(
           saborState.atualizarSaldoEstoque(item.idSabor, item.quantidadeEntregue, false);
         });
         
+        // Mensagem personalizada baseada no tipo de pedido
+        const clienteNome = pedido.cliente?.nome || 
+          (pedido.observacoes?.includes("PEDIDO ÚNICO") 
+            ? pedido.observacoes?.match(/Nome: (.*?)(?:\n|$)/)?.[1] 
+            : `Pedido #${pedido.id}`);
+        
         toast({
           title: "Entrega confirmada",
-          description: `Pedido #${idPedido} entregue com sucesso.`
+          description: `Pedido para ${clienteNome} entregue com sucesso.`
         });
       },
       
@@ -433,6 +455,13 @@ export const usePedidoStore = create<PedidoStore>()(
           new Date(p.dataPrevistaEntrega) >= hoje
         ).sort((a, b) => 
           new Date(a.dataPrevistaEntrega).getTime() - new Date(b.dataPrevistaEntrega).getTime()
+        );
+      },
+      
+      getPedidosUnicos: () => {
+        return get().pedidos.filter(p => 
+          p.idCliente === 0 || // Cliente ID = 0 para pedidos únicos
+          !p.cliente // Sem relação com cliente
         );
       }
     }),

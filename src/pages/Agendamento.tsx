@@ -1,7 +1,7 @@
 
 import { useState } from "react";
-import { format, isWeekend, getDay } from "date-fns";
-import { CalendarClock, CheckCircle, RefreshCw } from "lucide-react";
+import { format, isWeekend, getDay, addDays, parseISO } from "date-fns";
+import { CalendarClock, CheckCircle, RefreshCw, Plus } from "lucide-react";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSaborStore } from "@/hooks/useSaborStore";
@@ -21,9 +21,10 @@ import { Toggle } from "@/components/ui/toggle";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Agendamento() {
-  const { pedidos, getPedidosFiltrados, confirmarEntrega, criarNovoPedido, atualizarPedido, atualizarItensPedido } = usePedidoStore();
+  const { pedidos, getPedidosFiltrados, confirmarEntrega, criarNovoPedido, atualizarPedido, atualizarItensPedido, adicionarPedido } = usePedidoStore();
   const { clientes, getClientePorId } = useClienteStore();
   const { sabores } = useSaborStore();
   const [tabValue, setTabValue] = useState("previstos");
@@ -36,6 +37,16 @@ export default function Agendamento() {
   const [itensTroca, setItensTroca] = useState<{idSabor: number, quantidade: number}[]>([]);
   const [itensEntrega, setItensEntrega] = useState<{idSabor: number, quantidade: number}[]>([]);
   const [observacoes, setObservacoes] = useState("");
+  
+  // Estados para pedidos únicos
+  const [pedidoUnicoDialogOpen, setPedidoUnicoDialogOpen] = useState(false);
+  const [novoPedidoUnico, setNovoPedidoUnico] = useState({
+    nome: "",
+    telefone: "",
+    dataEntrega: new Date(new Date().setDate(new Date().getDate() + 2)),
+    observacoes: "",
+    itens: [] as {idSabor: number, quantidade: number}[]
+  });
   
   // Calculate day of the week
   const getDayOfWeek = (date: Date): string => {
@@ -177,6 +188,15 @@ export default function Agendamento() {
     }
   };
   
+  // Get unique orders (orders without a PDV client)
+  const getPedidosUnicos = () => {
+    return pedidos.filter(pedido => 
+      !pedido.cliente && // No associated client
+      (pedido.statusPedido === "Agendado" || pedido.statusPedido === "Despachado") &&
+      !pedido.dataEfetivaEntrega
+    );
+  };
+  
   // Additional filter by selected date if any
   const filtrarPedidosPorData = (pedidos: Pedido[]) => {
     if (!selectedDate) return pedidos;
@@ -187,10 +207,96 @@ export default function Agendamento() {
     });
   };
 
+  // Handle adding a new unique order
+  const handleAdicionarPedidoUnico = () => {
+    // Reset the form
+    setNovoPedidoUnico({
+      nome: "",
+      telefone: "",
+      dataEntrega: addDays(new Date(), 2),
+      observacoes: "",
+      itens: sabores.filter(s => s.ativo).map(sabor => ({ idSabor: sabor.id, quantidade: 0 }))
+    });
+    
+    // Open dialog
+    setPedidoUnicoDialogOpen(true);
+  };
+
+  // Handle saving a unique order
+  const handleSalvarPedidoUnico = () => {
+    // Validate form
+    if (!novoPedidoUnico.nome.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome do cliente é obrigatório",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Filter only items with quantity > 0
+    const itensValidos = novoPedidoUnico.itens.filter(item => item.quantidade > 0);
+    
+    if (itensValidos.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Adicione pelo menos um item ao pedido",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Calculate total units
+    const totalUnidades = itensValidos.reduce((sum, item) => sum + item.quantidade, 0);
+    
+    // Create the order
+    const pedido: Omit<Pedido, 'id' | 'dataPedido'> = {
+      idCliente: 0, // No client ID for unique orders
+      dataPrevistaEntrega: novoPedidoUnico.dataEntrega,
+      totalPedidoUnidades: totalUnidades,
+      tipoPedido: "Alterado",
+      statusPedido: "Agendado",
+      observacoes: `PEDIDO ÚNICO\nNome: ${novoPedidoUnico.nome}\nTelefone: ${novoPedidoUnico.telefone}\n${novoPedidoUnico.observacoes}`,
+      itensPedido: []
+    };
+    
+    // Add the order
+    const novoPedido = adicionarPedido(pedido);
+    
+    // Add items to the order
+    if (novoPedido) {
+      const itensFormatados = itensValidos.map(item => ({
+        idSabor: item.idSabor,
+        quantidadeSabor: item.quantidade
+      }));
+      
+      atualizarItensPedido(novoPedido.id, itensFormatados);
+      
+      toast({
+        title: "Pedido único criado",
+        description: `Pedido único para ${novoPedidoUnico.nome} agendado para ${format(novoPedidoUnico.dataEntrega, "dd/MM/yyyy")}`,
+      });
+    }
+    
+    // Close dialog
+    setPedidoUnicoDialogOpen(false);
+  };
+
+  // Handle quantity change for unique order items
+  const handleQuantidadeChange = (idSabor: number, quantidade: number) => {
+    setNovoPedidoUnico(prev => ({
+      ...prev,
+      itens: prev.itens.map(item => 
+        item.idSabor === idSabor ? { ...item, quantidade } : item
+      )
+    }));
+  };
+
   // Get pedidos based on current tab
   const pedidosPrevistos = filtrarPedidosPorData(getPedidosPorStatus("Previsto"));
   const pedidosAgendados = filtrarPedidosPorData(getPedidosPorStatus("Agendado"));
   const pedidosConcluidos = filtrarPedidosPorData(getPedidosPorStatus("Entregue"));
+  const pedidosUnicos = filtrarPedidosPorData(getPedidosUnicos());
 
   return (
     <div className="container mx-auto py-6">
@@ -198,33 +304,41 @@ export default function Agendamento() {
         title="Agendamento" 
         description="Controle de reposições nos pontos de venda"
       >
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="flex items-center gap-2">
-              <CalendarClock className="h-4 w-4" />
-              {selectedDate ? (
-                format(selectedDate, "dd/MM/yyyy")
-              ) : (
-                "Selecionar Data"
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              initialFocus
-              className="p-3 pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <CalendarClock className="h-4 w-4" />
+                {selectedDate ? (
+                  format(selectedDate, "dd/MM/yyyy")
+                ) : (
+                  "Selecionar Data"
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                initialFocus
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          
+          <Button variant="default" onClick={handleAdicionarPedidoUnico} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Pedido Único
+          </Button>
+        </div>
       </PageHeader>
 
       <Tabs defaultValue="previstos" value={tabValue} onValueChange={setTabValue} className="w-full mt-6">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList className="grid w-full max-w-md grid-cols-4">
           <TabsTrigger value="previstos">Previstos</TabsTrigger>
           <TabsTrigger value="agendados">Agendados</TabsTrigger>
+          <TabsTrigger value="unicos">Pedidos Únicos</TabsTrigger>
           <TabsTrigger value="concluidos">Concluídos</TabsTrigger>
         </TabsList>
         
@@ -318,6 +432,66 @@ export default function Agendamento() {
           </Card>
         </TabsContent>
         
+        {/* Tab para pedidos únicos */}
+        <TabsContent value="unicos" className="mt-4">
+          <Card>
+            <CardContent className="pt-6">
+              {pedidosUnicos.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Data Entrega</TableHead>
+                      <TableHead>Dia da Semana</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Qtd. Total</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pedidosUnicos.map((pedido) => {
+                      // Extract client name from observations
+                      const nomeMatch = pedido.observacoes?.match(/Nome: (.*?)(?:\n|$)/);
+                      const nome = nomeMatch ? nomeMatch[1] : "Cliente sem nome";
+                      
+                      return (
+                        <TableRow key={pedido.id}>
+                          <TableCell className="font-medium">{nome}</TableCell>
+                          <TableCell>{format(new Date(pedido.dataPrevistaEntrega), "dd/MM/yyyy")}</TableCell>
+                          <TableCell>{getDayOfWeek(new Date(pedido.dataPrevistaEntrega))}</TableCell>
+                          <TableCell>
+                            <Badge variant={pedido.statusPedido === "Agendado" ? "outline" : "default"}>
+                              {pedido.statusPedido}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{pedido.totalPedidoUnidades}</TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex items-center gap-1"
+                              onClick={() => handleConfirmarEntrega(pedido)}
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                              Confirmar Entrega
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  {selectedDate 
+                    ? `Nenhum pedido único para ${format(selectedDate, "dd/MM/yyyy")}`
+                    : "Nenhum pedido único encontrado"}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
         {/* Tab para pedidos concluídos */}
         <TabsContent value="concluidos" className="mt-4">
           <Card>
@@ -338,9 +512,18 @@ export default function Agendamento() {
                     {pedidosConcluidos.map((pedido) => {
                       const proximaData = calcularProximaDataReposicao(pedido);
                       
+                      // Extract client name for unique orders
+                      let clienteDisplay = pedido.cliente?.nome;
+                      if (!clienteDisplay && pedido.observacoes?.includes("PEDIDO ÚNICO")) {
+                        const nomeMatch = pedido.observacoes?.match(/Nome: (.*?)(?:\n|$)/);
+                        clienteDisplay = nomeMatch ? nomeMatch[1] : "Cliente único";
+                      } else if (!clienteDisplay) {
+                        clienteDisplay = `Cliente #${pedido.idCliente}`;
+                      }
+                      
                       return (
                         <TableRow key={pedido.id}>
-                          <TableCell className="font-medium">{pedido.cliente?.nome || `Cliente #${pedido.idCliente}`}</TableCell>
+                          <TableCell className="font-medium">{clienteDisplay}</TableCell>
                           <TableCell>{format(new Date(pedido.dataPrevistaEntrega), "dd/MM/yyyy")}</TableCell>
                           <TableCell>
                             {pedido.dataEfetivaEntrega 
@@ -351,20 +534,22 @@ export default function Agendamento() {
                             {pedido.itensPedido.reduce((total, item) => total + (item.quantidadeEntregue || 0), 0)}
                           </TableCell>
                           <TableCell>
-                            {proximaData 
+                            {proximaData && pedido.cliente // Only show for regular PDV clients, not for unique orders
                               ? `${format(proximaData, "dd/MM/yyyy")} (${getDayOfWeek(proximaData)})`
                               : "-"}
                           </TableCell>
                           <TableCell>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="flex items-center gap-1"
-                              onClick={() => handleGerarNovoPedido(pedido)}
-                            >
-                              <RefreshCw className="h-4 w-4" />
-                              Agendar Próxima
-                            </Button>
+                            {pedido.cliente && ( // Only show for regular PDV clients
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="flex items-center gap-1"
+                                onClick={() => handleGerarNovoPedido(pedido)}
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                                Agendar Próxima
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
@@ -420,7 +605,13 @@ export default function Agendamento() {
           </DialogHeader>
           <div className="py-4 space-y-4">
             <div>
-              <p className="font-medium mb-2">PDV: {pedidoSelecionado?.cliente?.nome}</p>
+              {pedidoSelecionado?.cliente ? (
+                <p className="font-medium mb-2">PDV: {pedidoSelecionado?.cliente?.nome}</p>
+              ) : (
+                <p className="font-medium mb-2">
+                  Cliente: {pedidoSelecionado?.observacoes?.match(/Nome: (.*?)(?:\n|$)/)?.[1] || "Cliente único"}
+                </p>
+              )}
               <p>Data prevista: {pedidoSelecionado ? format(new Date(pedidoSelecionado.dataPrevistaEntrega), "dd/MM/yyyy") : "-"}</p>
             </div>
             
@@ -521,6 +712,104 @@ export default function Agendamento() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEntregaDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleSalvarConfirmacaoEntrega}>Confirmar Entrega</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog para criar pedido único */}
+      <Dialog open={pedidoUnicoDialogOpen} onOpenChange={setPedidoUnicoDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Novo Pedido Único</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="nome">Nome do Cliente:</Label>
+                <Input 
+                  id="nome"
+                  value={novoPedidoUnico.nome}
+                  onChange={(e) => setNovoPedidoUnico(prev => ({ ...prev, nome: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="telefone">Telefone:</Label>
+                <Input 
+                  id="telefone"
+                  value={novoPedidoUnico.telefone}
+                  onChange={(e) => setNovoPedidoUnico(prev => ({ ...prev, telefone: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="dataEntrega">Data de Entrega:</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="dataEntrega"
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal mt-1",
+                      !novoPedidoUnico.dataEntrega && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarClock className="mr-2 h-4 w-4" />
+                    {novoPedidoUnico.dataEntrega ? (
+                      format(novoPedidoUnico.dataEntrega, "dd/MM/yyyy")
+                    ) : (
+                      <span>Selecione uma data</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={novoPedidoUnico.dataEntrega}
+                    onSelect={(date) => date && setNovoPedidoUnico(prev => ({ ...prev, dataEntrega: date }))}
+                    initialFocus
+                    disabled={(date) => date < new Date()}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            <div>
+              <Label htmlFor="itens" className="mb-2 block">Itens do Pedido:</Label>
+              <div className="border rounded-md p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {sabores.filter(s => s.ativo).map(sabor => (
+                    <div key={sabor.id} className="flex items-center space-x-2">
+                      <Label className="w-32">{sabor.nome}:</Label>
+                      <Input 
+                        type="number" 
+                        min="0"
+                        value={novoPedidoUnico.itens.find(i => i.idSabor === sabor.id)?.quantidade || 0}
+                        onChange={(e) => handleQuantidadeChange(sabor.id, parseInt(e.target.value) || 0)}
+                        className="w-24"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="observacoesUnico">Observações:</Label>
+              <Textarea 
+                id="observacoesUnico"
+                value={novoPedidoUnico.observacoes}
+                onChange={(e) => setNovoPedidoUnico(prev => ({ ...prev, observacoes: e.target.value }))}
+                className="mt-1"
+                placeholder="Instruções especiais, informações de pagamento, etc."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPedidoUnicoDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSalvarPedidoUnico}>Salvar Pedido</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
