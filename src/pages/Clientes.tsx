@@ -67,6 +67,7 @@ export default function Clientes() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>CNPJ/CPF</TableHead>
+                <TableHead>Endereço</TableHead>
                 <TableHead>Contato</TableHead>
                 <TableHead>Qtde. Padrão</TableHead>
                 <TableHead>Period. (dias)</TableHead>
@@ -77,7 +78,7 @@ export default function Clientes() {
             <TableBody>
               {clientes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={8} className="h-24 text-center">
                     Nenhum cliente encontrado.
                   </TableCell>
                 </TableRow>
@@ -86,6 +87,9 @@ export default function Clientes() {
                   <TableRow key={cliente.id}>
                     <TableCell className="font-medium">{cliente.nome}</TableCell>
                     <TableCell>{cliente.cnpjCpf || "-"}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">
+                      {cliente.enderecoEntrega || "-"}
+                    </TableCell>
                     <TableCell>
                       {cliente.contatoNome || "-"}
                       {cliente.contatoTelefone && <div className="text-xs text-muted-foreground">{cliente.contatoTelefone}</div>}

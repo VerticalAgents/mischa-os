@@ -142,7 +142,7 @@ export default function ClienteFormDialog({
                 <FormItem>
                   <FormLabel>Endereço de Entrega</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} placeholder="Rua, número, bairro, cidade, UF" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
