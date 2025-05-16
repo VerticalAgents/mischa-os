@@ -12,6 +12,7 @@ import Agendamento from "@/pages/Agendamento";
 import Estoque from "@/pages/Estoque";
 import Configuracoes from "@/pages/Configuracoes";
 import PCP from "@/pages/PCP";
+import Expedicao from "@/pages/Expedicao";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,11 @@ const App = () => (
           <Route path="/agendamento" element={
             <AppLayout>
               <Agendamento />
+            </AppLayout>
+          } />
+          <Route path="/expedicao" element={
+            <AppLayout>
+              <Expedicao />
             </AppLayout>
           } />
           <Route path="/estoque" element={
