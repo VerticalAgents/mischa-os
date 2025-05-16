@@ -14,7 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 
 export const Despacho = () => {
   const { toast } = useToast();
-  const pedidos = usePedidoStore(state => state.getPedidosFiltrados());
+  // Fix: Use the pedidos array directly from the store instead of calling a function
+  const pedidos = usePedidoStore(state => state.pedidos);
   const [perplexityApiKey, setPerplexityApiKey] = useState("");
   const [isGeneratingRoute, setIsGeneratingRoute] = useState(false);
   const [rotaGerada, setRotaGerada] = useState("");

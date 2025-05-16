@@ -15,7 +15,8 @@ export const SeparacaoPedidos = () => {
   const [activeSubTab, setActiveSubTab] = useState<string>("padrao");
   const printFrameRef = useRef<HTMLIFrameElement>(null);
   
-  const pedidos = usePedidoStore(state => state.getPedidosFiltrados());
+  // Fix: Use individual selectors instead of calling the function directly
+  const pedidos = usePedidoStore(state => state.pedidos);
   
   // Filtrar pedidos em separação/agendados e separá-los por tipo
   const pedidosPadrao = pedidos.filter(p => 
