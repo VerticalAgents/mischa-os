@@ -324,7 +324,7 @@ export const itensPedidoMock: ItemPedido[] = [
   { id: 22, idPedido: 5, idSabor: 2, nomeSabor: "Choco Duo", quantidadeSabor: 22, quantidadeEntregue: 22 },
   { id: 23, idPedido: 5, idSabor: 3, nomeSabor: "Meio Amargo", quantidadeSabor: 10, quantidadeEntregue: 10 },
   { id: 24, idPedido: 5, idSabor: 4, nomeSabor: "Stikadinho", quantidadeSabor: 16, quantidadeEntregue: 16 },
-  { id: 25, idPedido: 5, nomeSabor: "Avelã", quantidadeSabor: 18, quantidadeEntregue: 18 }
+  { id: 25, idPedido: 5, idSabor: 5, nomeSabor: "Avelã", quantidadeSabor: 18, quantidadeEntregue: 18 }
 ];
 
 // Alertas mockados

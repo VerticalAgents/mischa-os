@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "@/hooks/use-toast";
-import { ReceitaBase, ItemReceita } from '@/types';
+import { ReceitaBase, ItemReceita, Insumo, UnidadeMedida } from '@/types';
 import { useInsumoStore } from './useInsumoStore';
 
 // Mock data for receitas
@@ -10,11 +10,51 @@ const receitasMock: ReceitaBase[] = [
   {
     id: 1,
     nome: "Brownie Tradicional",
+    descricao: "Receita padrão de brownie tradicional",
+    rendimento: 30,
+    unidadeRendimento: "unidades",
+    custoUnitario: 0.57,
     itensReceita: [
-      { id: 1, idReceita: 1, idInsumo: 1, quantidade: 300, custo: 9.00 },
-      { id: 2, idReceita: 1, idInsumo: 2, quantidade: 150, custo: 6.375 },
-      { id: 3, idReceita: 1, idInsumo: 3, quantidade: 200, custo: 1.20 },
-      { id: 4, idReceita: 1, idInsumo: 4, quantidade: 100, custo: 0.45 }
+      { 
+        id: 1, 
+        idReceita: 1, 
+        idInsumo: 1, 
+        nomeInsumo: "Chocolate em pó", 
+        quantidade: 300, 
+        unidadeMedida: "g", 
+        custoParcial: 9.00, 
+        custo: 9.00 
+      },
+      { 
+        id: 2, 
+        idReceita: 1, 
+        idInsumo: 2, 
+        nomeInsumo: "Manteiga", 
+        quantidade: 150, 
+        unidadeMedida: "g", 
+        custoParcial: 6.375, 
+        custo: 6.375 
+      },
+      { 
+        id: 3, 
+        idReceita: 1, 
+        idInsumo: 3, 
+        nomeInsumo: "Açúcar", 
+        quantidade: 200, 
+        unidadeMedida: "g", 
+        custoParcial: 1.20, 
+        custo: 1.20 
+      },
+      { 
+        id: 4, 
+        idReceita: 1, 
+        idInsumo: 4, 
+        nomeInsumo: "Farinha", 
+        quantidade: 100, 
+        unidadeMedida: "g", 
+        custoParcial: 0.45, 
+        custo: 0.45 
+      }
     ],
     pesoTotal: 750, // soma das quantidades
     custoTotal: 17.025 // soma dos custos
@@ -22,10 +62,41 @@ const receitasMock: ReceitaBase[] = [
   {
     id: 2,
     nome: "Brownie Blondie",
+    descricao: "Receita de brownie branco",
+    rendimento: 28,
+    unidadeRendimento: "unidades",
+    custoUnitario: 0.31,
     itensReceita: [
-      { id: 5, idReceita: 2, idInsumo: 2, quantidade: 150, custo: 6.375 },
-      { id: 6, idReceita: 2, idInsumo: 3, quantidade: 250, custo: 1.50 },
-      { id: 7, idReceita: 2, idInsumo: 4, quantidade: 150, custo: 0.675 }
+      { 
+        id: 5, 
+        idReceita: 2, 
+        idInsumo: 2, 
+        nomeInsumo: "Manteiga", 
+        quantidade: 150, 
+        unidadeMedida: "g", 
+        custoParcial: 6.375, 
+        custo: 6.375 
+      },
+      { 
+        id: 6, 
+        idReceita: 2, 
+        idInsumo: 3, 
+        nomeInsumo: "Açúcar", 
+        quantidade: 250, 
+        unidadeMedida: "g", 
+        custoParcial: 1.50, 
+        custo: 1.50 
+      },
+      { 
+        id: 7, 
+        idReceita: 2, 
+        idInsumo: 4, 
+        nomeInsumo: "Farinha", 
+        quantidade: 150, 
+        unidadeMedida: "g", 
+        custoParcial: 0.675, 
+        custo: 0.675 
+      }
     ],
     pesoTotal: 550, // soma das quantidades
     custoTotal: 8.55 // soma dos custos
@@ -61,9 +132,13 @@ export const useReceitaStore = create<ReceitaStore>()(
         const novaReceita: ReceitaBase = {
           id: novoId,
           nome,
+          descricao: '',
+          rendimento: 1,
+          unidadeRendimento: 'unidades',
           itensReceita: [],
           pesoTotal: 0,
-          custoTotal: 0
+          custoTotal: 0,
+          custoUnitario: 0
         };
         
         set(state => ({
@@ -106,9 +181,12 @@ export const useReceitaStore = create<ReceitaStore>()(
           id: novoIdItem,
           idReceita,
           idInsumo,
-          insumo,
+          nomeInsumo: insumo.nome,
           quantidade,
-          custo
+          unidadeMedida: insumo.unidadeMedida,
+          custoParcial: custo,
+          custo,
+          insumo
         };
         
         set(state => ({
@@ -117,12 +195,14 @@ export const useReceitaStore = create<ReceitaStore>()(
               const novosItens = [...r.itensReceita, novoItem];
               const novoPesoTotal = novosItens.reduce((sum, item) => sum + item.quantidade, 0);
               const novoCustoTotal = novosItens.reduce((sum, item) => sum + item.custo, 0);
+              const novoCustoUnitario = r.rendimento > 0 ? Number((novoCustoTotal / r.rendimento).toFixed(2)) : 0;
               
               return {
                 ...r,
                 itensReceita: novosItens,
                 pesoTotal: novoPesoTotal,
-                custoTotal: Number(novoCustoTotal.toFixed(2))
+                custoTotal: Number(novoCustoTotal.toFixed(2)),
+                custoUnitario: novoCustoUnitario
               };
             }
             return r;

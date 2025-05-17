@@ -1,8 +1,7 @@
-
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { produce } from "immer";
-import { PlanejamentoProducao } from "../types";
+import { PlanejamentoProducao, Pedido, Sabor, ItemPedido } from "../types";
 
 // Interface for expanded PlanejamentoProducaoStore state
 interface PlanejamentoProducaoState {
@@ -12,11 +11,20 @@ interface PlanejamentoProducaoState {
   removerPlanejamento: (id: number) => void;
   calcularNecessidadeFormas: (totalUnidades: number) => number;
   calcularTempoProducao: (totalUnidades: number) => { horas: number; minutos: number };
+  
+  // Additional properties used in PCP.tsx
+  setPeriodo: (inicio: Date, fim: Date) => void;
+  calcularPlanejamento: (pedidos: Pedido[], sabores: Sabor[]) => void;
+  getPlanejamento: () => any[];
+  getTotalFormasNecessarias: () => number;
+  getTotalUnidadesAgendadas: () => number;
+  setCapacidadeForma: (capacidade: number) => void;
+  capacidadeForma: number;
 }
 
 // Create the store
 export const usePlanejamentoProducaoStore = create<PlanejamentoProducaoState>()(
-  immer((set) => ({
+  immer((set, get) => ({
     planejamentos: [
       {
         id: 1,
@@ -87,6 +95,38 @@ export const usePlanejamentoProducaoStore = create<PlanejamentoProducaoState>()(
       const horas = Math.floor(minutosTotais / 60);
       const minutos = minutosTotais % 60;
       return { horas, minutos };
-    }
+    },
+    
+    // Implementações necessárias para o PCP.tsx
+    capacidadeForma: 30,
+    
+    setPeriodo: (inicio, fim) => {
+      // Implementação simples para resolver o erro
+      console.log(`Período definido: ${inicio.toLocaleDateString()} - ${fim.toLocaleDateString()}`);
+    },
+    
+    calcularPlanejamento: (pedidos, sabores) => {
+      console.log(`Calculando planejamento para ${pedidos.length} pedidos`);
+    },
+    
+    getPlanejamento: () => {
+      return get().planejamentos[0]?.itensPlanejamento.map(item => ({
+        ...item,
+        totalUnidadesAgendadas: item.quantidadePlanejada,
+        formasNecessarias: Math.ceil(item.quantidadePlanejada / get().capacidadeForma)
+      })) || [];
+    },
+    
+    getTotalFormasNecessarias: () => {
+      return get().planejamentos[0]?.formasNecessarias || 0;
+    },
+    
+    getTotalUnidadesAgendadas: () => {
+      return get().planejamentos[0]?.totalUnidadesAgendadas || 0;
+    },
+    
+    setCapacidadeForma: (capacidade) => set(state => {
+      state.capacidadeForma = capacidade;
+    })
   }))
 );
