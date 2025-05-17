@@ -27,6 +27,9 @@ export interface ItemPedido {
   quantidadeSabor: number;
   quantidadeSeparada?: number;
   quantidadeEntregue?: number;
+  sabor?: {
+    nome: string;
+  };
 }
 
 export interface Pedido {
@@ -42,6 +45,7 @@ export interface Pedido {
   totalPedidoUnidades: number;
   valorTotal?: number;
   separado?: boolean;
+  tipoPedido?: 'Padrão' | 'Alterado' | 'Único';
 }
 
 export type CategoriaInsumo = 'Matéria Prima' | 'Embalagem' | 'Outros';
@@ -65,6 +69,8 @@ export interface ItemReceita {
   quantidade: number;
   unidadeMedida: UnidadeMedida;
   custoParcial: number;
+  custo?: number;
+  insumo?: Insumo;
 }
 
 export interface ReceitaBase {
@@ -76,6 +82,7 @@ export interface ReceitaBase {
   itensReceita: ItemReceita[];
   custoTotal: number;
   custoUnitario: number;
+  pesoTotal?: number;
 }
 
 export interface ComponenteProduto {
@@ -85,6 +92,10 @@ export interface ComponenteProduto {
   nomeReceita: string;
   quantidade: number;
   custoParcial: number;
+  tipo?: string;
+  idItem?: number;
+  nome?: string;
+  custo?: number;
 }
 
 export interface Produto {
@@ -96,6 +107,9 @@ export interface Produto {
   margemLucro: number; // em porcentagem
   componentes: ComponenteProduto[];
   ativo: boolean;
+  pesoUnitario?: number;
+  custoUnitario?: number;
+  unidadesProducao?: number;
 }
 
 export interface Sabor {
@@ -111,6 +125,7 @@ export interface Sabor {
   emProducao: number;
   idReceitaBase?: number;
   nomeReceitaBase?: string;
+  percentualPadraoDist?: number;
 }
 
 export interface PlanejamentoProducao {

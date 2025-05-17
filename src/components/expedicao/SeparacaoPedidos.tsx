@@ -88,7 +88,9 @@ export const SeparacaoPedidos = () => {
     `;
     
     listaAtual.forEach(pedido => {
-      const sabores = pedido.itensPedido.map(item => `${item.sabor?.nome}: ${item.quantidadeSabor}`).join(", ");
+      const sabores = pedido.itensPedido.map(item => 
+        `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
+      ).join(", ");
       
       printContent += `
         <tr>
@@ -171,14 +173,16 @@ export const SeparacaoPedidos = () => {
     `;
     
     listaAtual.forEach(pedido => {
-      const sabores = pedido.itensPedido.map(item => `${item.sabor?.nome}: ${item.quantidadeSabor}`).join(", ");
+      const sabores = pedido.itensPedido.map(item => 
+        `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
+      ).join(", ");
       
       printContent += `
         <div class="etiqueta">
           <div class="cliente">${pedido.cliente?.nome || "Pedido Único"}</div>
           <div class="data">Entrega: ${formatDate(new Date(pedido.dataPrevistaEntrega))}</div>
           <div class="unidades">Total: ${pedido.totalPedidoUnidades} unidades</div>
-          <div class="detalhes">Pedido #${pedido.id} - ${pedido.tipoPedido}</div>
+          <div class="detalhes">Pedido #${pedido.id} - ${pedido.tipoPedido || "Padrão"}</div>
           <div class="sabores">${sabores}</div>
         </div>
       `;
@@ -262,7 +266,9 @@ export const SeparacaoPedidos = () => {
                         <StatusBadge status={pedido.statusPedido} />
                       </TableCell>
                       <TableCell className="max-w-[300px] truncate">
-                        {pedido.itensPedido.map(item => `${item.sabor?.nome}: ${item.quantidadeSabor}`).join(", ")}
+                        {pedido.itensPedido.map(item => 
+                          `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
+                        ).join(", ")}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -310,7 +316,9 @@ export const SeparacaoPedidos = () => {
                         <StatusBadge status={pedido.statusPedido} />
                       </TableCell>
                       <TableCell className="max-w-[300px] truncate">
-                        {pedido.itensPedido.map(item => `${item.sabor?.nome}: ${item.quantidadeSabor}`).join(", ")}
+                        {pedido.itensPedido.map(item => 
+                          `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
+                        ).join(", ")}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
