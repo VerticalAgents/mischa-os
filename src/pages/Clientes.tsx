@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, ExternalLink } from "lucide-react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { StatusCliente } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import StatusBadge from "@/components/common/StatusBadge";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AnaliseGiro from "@/components/clientes/AnaliseGiro";
 
 export default function Clientes() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { filtros, setFiltroTermo, setFiltroStatus, getClientesFiltrados } = useClienteStore();
+  const { filtros, setFiltroTermo, setFiltroStatus, getClientesFiltrados, clienteAtual, selecionarCliente } = useClienteStore();
   
   const clientes = getClientesFiltrados();
 
@@ -24,6 +26,14 @@ export default function Clientes() {
 
   const handleCloseForm = () => {
     setIsFormOpen(false);
+  };
+
+  const handleSelectCliente = (id: number) => {
+    selecionarCliente(id);
+  };
+
+  const handleBackToList = () => {
+    selecionarCliente(null);
   };
 
   // Helper para formatar a periodicidade em texto
@@ -50,6 +60,122 @@ export default function Clientes() {
     const periodicidadeSemanas = periodicidadeDias / 7;
     return Math.round(qtdPadrao / periodicidadeSemanas);
   };
+
+  // Renderizar a tela de detalhes do cliente quando um cliente for selecionado
+  if (clienteAtual) {
+    const giroSemanal = calcularGiroSemanal(clienteAtual.quantidadePadrao, clienteAtual.periodicidadePadrao);
+
+    return (
+      <>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <Button variant="outline" onClick={handleBackToList} className="mb-4">
+              ← Voltar para lista
+            </Button>
+            <h1 className="text-2xl font-bold tracking-tight">{clienteAtual.nome}</h1>
+            <p className="text-muted-foreground">
+              {clienteAtual.cnpjCpf}
+              <StatusBadge status={clienteAtual.statusCliente} className="ml-2" />
+            </p>
+          </div>
+          <Button onClick={() => setIsFormOpen(true)}>Editar Cliente</Button>
+        </div>
+
+        <Tabs defaultValue="info" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="info">Informações</TabsTrigger>
+            <TabsTrigger value="analise-giro">Análise de Giro</TabsTrigger>
+            <TabsTrigger value="historico">Histórico</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="info" className="space-y-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="font-medium text-foreground mb-2">Dados do Cliente</h3>
+                    <dl className="space-y-2">
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Status:</dt>
+                        <dd><StatusBadge status={clienteAtual.statusCliente} /></dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">CNPJ/CPF:</dt>
+                        <dd>{clienteAtual.cnpjCpf || "-"}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Endereço:</dt>
+                        <dd className="text-right">{clienteAtual.enderecoEntrega || "-"}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Data de cadastro:</dt>
+                        <dd>{clienteAtual.dataCadastro.toLocaleDateString()}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-medium text-foreground mb-2">Dados de Contato</h3>
+                    <dl className="space-y-2">
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Nome:</dt>
+                        <dd>{clienteAtual.contatoNome || "-"}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Telefone:</dt>
+                        <dd>{clienteAtual.contatoTelefone || "-"}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Email:</dt>
+                        <dd>{clienteAtual.contatoEmail || "-"}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-medium text-foreground mb-2">Dados de Reposição</h3>
+                    <dl className="space-y-2">
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Quantidade padrão:</dt>
+                        <dd>{clienteAtual.quantidadePadrao}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Periodicidade:</dt>
+                        <dd>{formatPeriodicidade(clienteAtual.periodicidadePadrao)}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Giro semanal estimado:</dt>
+                        <dd>
+                          <Badge variant="outline" className="font-semibold bg-blue-50">
+                            {giroSemanal}
+                          </Badge>
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="analise-giro" className="space-y-4">
+            <AnaliseGiro cliente={clienteAtual} />
+          </TabsContent>
+          
+          <TabsContent value="historico" className="space-y-4">
+            <Card>
+              <CardContent className="pt-6">
+                <h3 className="text-lg font-medium mb-4">Histórico de Pedidos</h3>
+                <p className="text-muted-foreground">O histórico de pedidos será implementado em breve.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <ClienteFormDialog open={isFormOpen} onOpenChange={setIsFormOpen} clienteId={clienteAtual.id} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -113,7 +239,7 @@ export default function Clientes() {
                 clientes.map((cliente) => {
                   const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
                   return (
-                    <TableRow key={cliente.id}>
+                    <TableRow key={cliente.id} className="cursor-pointer" onClick={() => handleSelectCliente(cliente.id)}>
                       <TableCell className="font-medium">{cliente.nome}</TableCell>
                       <TableCell>{cliente.cnpjCpf || "-"}</TableCell>
                       <TableCell className="max-w-[200px] truncate">
@@ -137,13 +263,13 @@ export default function Clientes() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            // Implementar ação para visualizar/editar
-                            console.log("Visualizar/editar cliente:", cliente.id);
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectCliente(cliente.id);
                           }}
                         >
-                          <Plus className="h-4 w-4" />
-                          <span className="sr-only">Ações</span>
+                          <ExternalLink className="h-4 w-4" />
+                          <span className="sr-only">Ver detalhes</span>
                         </Button>
                       </TableCell>
                     </TableRow>

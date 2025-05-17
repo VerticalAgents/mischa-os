@@ -35,21 +35,36 @@ const clientesComDados: Partial<Cliente>[] = [
   { nome: "EWF Luta Livre", quantidadePadrao: 12, periodicidadePadrao: 28, statusCliente: "Ativo", enderecoEntrega: "R. Mostardeiro, 780 - Moinhos de Vento, Porto Alegre - RS" },
   { nome: "Giulia - Distribuidor", quantidadePadrao: 150, periodicidadePadrao: 3, statusCliente: "Ativo", enderecoEntrega: "Av. Borges de Medeiros, 2500 - Praia de Belas, Porto Alegre - RS" },
   { nome: "GL Assados", quantidadePadrao: 10, periodicidadePadrao: 28, statusCliente: "Standby", enderecoEntrega: "Av. Otto Niemeyer, 2500 - Cavalhada, Porto Alegre - RS" },
-  { nome: "Guadalajara Formaturas", quantidadePadrao: 100, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "Av. Ipiranga, 5200 - Azenha, Porto Alegre - RS" }
+  { nome: "Guadalajara Formaturas", quantidadePadrao: 100, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "Av. Ipiranga, 5200 - Azenha, Porto Alegre - RS" },
+  { nome: "La Mafia (João Wallig)", quantidadePadrao: 10, periodicidadePadrao: 14, statusCliente: "Ativo", enderecoEntrega: "Av. Dr. João Wallig, 1800 - Passo da Areia, Porto Alegre - RS" },
+  { nome: "La Mafia (Petrópolis)", quantidadePadrao: 7, periodicidadePadrao: 21, statusCliente: "Ativo", enderecoEntrega: "R. Lavras, 400 - Petrópolis, Porto Alegre - RS" },
+  { nome: "Limas Bar", quantidadePadrao: 10, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "R. Fernandes Vieira, 466 - Bom Fim, Porto Alegre - RS" },
+  { nome: "Madri Padaria e Confeitaria", quantidadePadrao: 10, periodicidadePadrao: 21, statusCliente: "Ativo", enderecoEntrega: "Av. Cristóvão Colombo, 545 - Floresta, Porto Alegre - RS" },
+  { nome: "MedCafé Fleming", quantidadePadrao: 15, periodicidadePadrao: 14, statusCliente: "Ativo", enderecoEntrega: "R. Prof. Annes Dias, 295 - Centro Histórico, Porto Alegre - RS" },
+  { nome: "Mercado Pinheiro", quantidadePadrao: 40, periodicidadePadrao: 7, statusCliente: "Ativo", enderecoEntrega: "Av. Venâncio Aires, 1060 - Azenha, Porto Alegre - RS" },
+  { nome: "Mercado Santiago", quantidadePadrao: 20, periodicidadePadrao: 7, statusCliente: "Ativo", enderecoEntrega: "R. Santiago, 725 - São Geraldo, Porto Alegre - RS" },
+  { nome: "Moita", quantidadePadrao: 30, periodicidadePadrao: 7, statusCliente: "Ativo", enderecoEntrega: "R. Padre Chagas, 314 - Moinhos de Vento, Porto Alegre - RS" },
+  { nome: "Onii Soluções Autônomas", quantidadePadrao: 15, periodicidadePadrao: 28, statusCliente: "Ativo", enderecoEntrega: "Av. Ipiranga, 6681 - Partenon, Porto Alegre - RS" },
+  { nome: "Panetteria", quantidadePadrao: 40, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "Av. Otto Niemeyer, 2565 - Camaquã, Porto Alegre - RS" },
+  { nome: "Pé na Areia 1", quantidadePadrao: 20, periodicidadePadrao: 14, statusCliente: "Ativo", enderecoEntrega: "Av. Guaíba, 10435 - Ipanema, Porto Alegre - RS" },
+  { nome: "REDEVIP24H (Aeroporto)", quantidadePadrao: 15, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "Av. Severo Dullius, 90010 - Anchieta, Porto Alegre - RS" },
+  { nome: "REDEVIP24H (Anita)", quantidadePadrao: 18, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "Av. Anita Garibaldi, 1300 - Mont'Serrat, Porto Alegre - RS" },
+  { nome: "REDEVIP24H (Bela Vista)", quantidadePadrao: 40, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "R. Dr. Timóteo, 602 - Bela Vista, Porto Alegre - RS" },
+  { nome: "REDEVIP24H (Bento/Intercap)", quantidadePadrao: 15, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "Av. Bento Gonçalves, 8000 - Agronomia, Porto Alegre - RS" },
+  { nome: "REDEVIP24H (Brino)", quantidadePadrao: 15, periodicidadePadrao: 14, statusCliente: "Ativo", enderecoEntrega: "Av. Otto Niemeyer, 2500 - Cavalhada, Porto Alegre - RS" },
+  { nome: "REDEVIP24H (Carlos Gomes)", quantidadePadrao: 20, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "Av. Carlos Gomes, 281 - Auxiliadora, Porto Alegre - RS" },
+  { nome: "REDEVIP24H (Forte/Via Porto)", quantidadePadrao: 15, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "Av. Mauá, 1050 - Centro Histórico, Porto Alegre - RS" },
+  { nome: "REDEVIP24H (Moinhos)", quantidadePadrao: 15, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "R. Dinarte Ribeiro, 50 - Moinhos de Vento, Porto Alegre - RS" },
+  { nome: "REDEVIP24H (Painera)", quantidadePadrao: 20, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "Av. Protásio Alves, 1090 - Alto Petrópolis, Porto Alegre - RS" },
+  { nome: "REDEVIP24H (Planetário)", quantidadePadrao: 10, periodicidadePadrao: 14, statusCliente: "Ativo", enderecoEntrega: "Av. Ipiranga, 6000 - Partenon, Porto Alegre - RS" },
+  { nome: "REDEVIP24H (Ramiro)", quantidadePadrao: 30, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "R. Ramiro Barcelos, 1954 - Rio Branco, Porto Alegre - RS" },
+  { nome: "Refugios Bar e Restaurante", quantidadePadrao: 15, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "Av. Protásio Alves, 6999 - Alto Petrópolis, Porto Alegre - RS" },
+  { nome: "Silva Lanches", quantidadePadrao: 10, periodicidadePadrao: 21, statusCliente: "Ativo", enderecoEntrega: "R. 24 de Outubro, 1222 - Moinhos de Vento, Porto Alegre - RS" },
+  { nome: "Sirene Fish n Chips", quantidadePadrao: 15, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "Av. Dr. Nilo Peçanha, 1851 - Três Figueiras, Porto Alegre - RS" },
+  { nome: "Temperandus", quantidadePadrao: 10, periodicidadePadrao: 14, statusCliente: "Ativo", enderecoEntrega: "R. Padre Chagas, 400 - Moinhos de Vento, Porto Alegre - RS" },
+  { nome: "The Brothers Distribuidora", quantidadePadrao: 0, periodicidadePadrao: 7, statusCliente: "Em análise", enderecoEntrega: "R. Padre Chagas, 342 - Moinhos de Vento, Porto Alegre - RS" },
+  { nome: "Xirú Beer", quantidadePadrao: 8, periodicidadePadrao: 14, statusCliente: "Ativo", enderecoEntrega: "Av. Dr. Nilo Peçanha, 2000 - Boa Vista, Porto Alegre - RS" }
 ];
-
-// Convert periodicidade text to number of days
-const convertPeriodicidade = (periodicidade: string): number => {
-  if (periodicidade.includes('semana')) {
-    const num = parseInt(periodicidade.split(' ')[0]);
-    return num * 7; // semanas para dias
-  } else if (periodicidade.includes('dia')) {
-    return parseInt(periodicidade.split(' ')[0]);
-  } else if (periodicidade.includes('3x semana')) {
-    return 3; // 3 vezes por semana (aproximadamente a cada 3 dias)
-  }
-  return 7; // default é uma semana
-};
 
 interface ClienteStore {
   clientes: Cliente[];
@@ -67,6 +82,7 @@ interface ClienteStore {
   selecionarCliente: (id: number | null) => void;
   setFiltroTermo: (termo: string) => void;
   setFiltroStatus: (status: StatusCliente | 'Todos') => void;
+  setMetaGiro: (idCliente: number, metaSemanal: number) => void;
   
   // Getters
   getClientesFiltrados: () => Cliente[];
@@ -89,7 +105,9 @@ export const useClienteStore = create<ClienteStore>()(
           quantidadePadrao: cliente.quantidadePadrao || 0,
           periodicidadePadrao: cliente.periodicidadePadrao || 7,
           statusCliente: cliente.statusCliente || "Ativo",
-          dataCadastro: new Date(Date.now() - Math.floor(Math.random() * 10000000000))
+          dataCadastro: new Date(Date.now() - Math.floor(Math.random() * 10000000000)),
+          metaGiroSemanal: Math.round((cliente.quantidadePadrao || 0) * 1.2), // Meta inicial: 20% acima do giro atual
+          ultimaDataReposicaoEfetiva: new Date(Date.now() - Math.floor(Math.random() * 1000000000))
         }))
       ],
       clienteAtual: null,
@@ -109,7 +127,8 @@ export const useClienteStore = create<ClienteStore>()(
             {
               ...cliente,
               id: novoId,
-              dataCadastro: new Date()
+              dataCadastro: new Date(),
+              metaGiroSemanal: Math.round(calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao) * 1.2)
             }
           ]
         }));
@@ -119,7 +138,8 @@ export const useClienteStore = create<ClienteStore>()(
         set(state => ({
           clientes: state.clientes.map(cliente => 
             cliente.id === id ? { ...cliente, ...dadosCliente } : cliente
-          )
+          ),
+          clienteAtual: state.clienteAtual?.id === id ? { ...state.clienteAtual, ...dadosCliente } : state.clienteAtual
         }));
       },
       
@@ -158,6 +178,15 @@ export const useClienteStore = create<ClienteStore>()(
         }));
       },
       
+      setMetaGiro: (idCliente, metaSemanal) => {
+        set(state => ({
+          clientes: state.clientes.map(cliente => 
+            cliente.id === idCliente ? { ...cliente, metaGiroSemanal: metaSemanal } : cliente
+          ),
+          clienteAtual: state.clienteAtual?.id === idCliente ? { ...state.clienteAtual, metaGiroSemanal: metaSemanal } : state.clienteAtual
+        }));
+      },
+      
       getClientesFiltrados: () => {
         const { clientes, filtros } = get();
         
@@ -181,3 +210,16 @@ export const useClienteStore = create<ClienteStore>()(
     { name: 'cliente-store' }
   )
 );
+
+// Helper para calcular giro semanal
+function calcularGiroSemanal(qtdPadrao: number, periodicidadeDias: number): number {
+  // Para periodicidade em dias, converter para semanas
+  if (periodicidadeDias === 3) {
+    // Caso especial: 3x por semana
+    return qtdPadrao * 3;
+  }
+  
+  // Para outros casos, calcular giro semanal
+  const periodicidadeSemanas = periodicidadeDias / 7;
+  return Math.round(qtdPadrao / periodicidadeSemanas);
+}
