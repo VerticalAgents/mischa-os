@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useInsumoStore } from "@/hooks/useInsumoStore";
 import { Insumo, CategoriaInsumo, UnidadeMedida } from "@/types";
@@ -35,11 +34,12 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Plus, Pencil, Trash } from "lucide-react";
 
+// Update the form schema to match CategoriaInsumo and UnidadeMedida types
 const formSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
-  categoria: z.enum(["Matéria Prima", "Embalagem"]),
+  categoria: z.enum(["Matéria Prima", "Embalagem", "Outros"]),
   volumeBruto: z.number().positive("Volume deve ser positivo"),
-  unidadeMedida: z.enum(["g", "un"]),
+  unidadeMedida: z.enum(["g", "kg", "ml", "l", "un", "pct"]),
   custoMedio: z.number().positive("Custo deve ser positivo"),
 });
 
@@ -47,9 +47,6 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function InsumosTab() {
   const { insumos, adicionarInsumo, atualizarInsumo, removerInsumo } = useInsumoStore();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingInsumo, setEditingInsumo] = useState<Insumo | null>(null);
-  const [filterCategoria, setFilterCategoria] = useState<CategoriaInsumo | "Todas">("Todas");
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -108,10 +105,15 @@ export default function InsumosTab() {
     }
   };
   
+  // Update the filterCategoria state to include 'Outros'
+  const [filterCategoria, setFilterCategoria] = useState<CategoriaInsumo | "Todas">("Todas");
+  
   // Filtrar insumos por categoria
   const filteredInsumos = filterCategoria === "Todas"
     ? insumos
     : insumos.filter(insumo => insumo.categoria === filterCategoria);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingInsumo, setEditingInsumo] = useState<Insumo | null>(null);
 
   return (
     <div>
@@ -144,6 +146,12 @@ export default function InsumosTab() {
             onClick={() => setFilterCategoria("Embalagem")}
           >
             Embalagem
+          </Button>
+          <Button 
+            variant={filterCategoria === "Outros" ? "default" : "outline"} 
+            onClick={() => setFilterCategoria("Outros")}
+          >
+            Outros
           </Button>
         </div>
       </div>
@@ -239,6 +247,7 @@ export default function InsumosTab() {
                       >
                         <option value="Matéria Prima">Matéria Prima</option>
                         <option value="Embalagem">Embalagem</option>
+                        <option value="Outros">Outros</option>
                       </select>
                     </FormControl>
                     <FormMessage />
@@ -279,7 +288,11 @@ export default function InsumosTab() {
                           {...field}
                         >
                           <option value="g">Gramas (g)</option>
+                          <option value="kg">Kilos (kg)</option>
+                          <option value="ml">Mililitros (ml)</option>
+                          <option value="l">Litros (l)</option>
                           <option value="un">Unidades (un)</option>
+                          <option value="pct">Pacotes (pct)</option>
                         </select>
                       </FormControl>
                       <FormMessage />

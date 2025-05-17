@@ -1,121 +1,92 @@
 
-import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
-import { PlanejamentoProducao, Pedido, Sabor, ItemPedido } from '../types';
-import { calcularFormasNecessarias } from '../utils/calculations';
+import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
+import { produce } from "immer";
+import { PlanejamentoProducao } from "../types";
 
-interface PlanejamentoProducaoStore {
-  planejamento: PlanejamentoProducao[];
-  periodoSelecionado: {
-    dataInicio: Date;
-    dataFim: Date;
-  };
-  capacidadeForma: number;
-  
-  // Ações
-  setPeriodo: (dataInicio: Date, dataFim: Date) => void;
-  setCapacidadeForma: (capacidade: number) => void;
-  calcularPlanejamento: (pedidos: Pedido[], sabores: Sabor[]) => void;
-  registrarProducao: (idSabor: number, quantidadeProduzida: number) => void;
-  
-  // Getters
-  getPlanejamento: () => PlanejamentoProducao[];
-  getTotalUnidadesAgendadas: () => number;
-  getTotalFormasNecessarias: () => number;
+// Interface for expanded PlanejamentoProducaoStore state
+interface PlanejamentoProducaoState {
+  planejamentos: PlanejamentoProducao[];
+  adicionarPlanejamento: (planejamento: Omit<PlanejamentoProducao, "id">) => void;
+  atualizarPlanejamento: (id: number, status: 'Pendente' | 'Em Produção' | 'Concluído' | 'Cancelado', quantidades?: Record<number, number>) => void;
+  removerPlanejamento: (id: number) => void;
+  calcularNecessidadeFormas: (totalUnidades: number) => number;
+  calcularTempoProducao: (totalUnidades: number) => { horas: number; minutos: number };
 }
 
-export const usePlanejamentoProducaoStore = create<PlanejamentoProducaoStore>()(
-  devtools(
-    (set, get) => ({
-      planejamento: [],
-      periodoSelecionado: {
-        dataInicio: new Date(),
-        dataFim: new Date(new Date().setDate(new Date().getDate() + 7))
-      },
-      capacidadeForma: 40,
+// Create the store
+export const usePlanejamentoProducaoStore = create<PlanejamentoProducaoState>()(
+  immer((set) => ({
+    planejamentos: [
+      {
+        id: 1,
+        dataPlanejamento: new Date(),
+        dataProducao: new Date(new Date().setDate(new Date().getDate() + 1)),
+        status: 'Pendente',
+        itensPlanejamento: [
+          { idSabor: 1, nomeSabor: 'Tradicional', quantidadePlanejada: 100 },
+          { idSabor: 2, nomeSabor: 'Choco Duo', quantidadePlanejada: 150 },
+          { idSabor: 5, nomeSabor: 'Avelã', quantidadePlanejada: 80 }
+        ],
+        observacoes: 'Planejamento para o fim de semana',
+        totalUnidades: 330,
+        // Additional properties
+        totalUnidadesAgendadas: 330,
+        formasNecessarias: 11
+      }
+    ],
+    
+    adicionarPlanejamento: (planejamento) => set(state => {
+      const novoId = state.planejamentos.length > 0 
+        ? Math.max(...state.planejamentos.map(p => p.id)) + 1 
+        : 1;
       
-      setPeriodo: (dataInicio, dataFim) => {
-        set({
-          periodoSelecionado: {
-            dataInicio,
-            dataFim
-          }
-        });
-      },
+      const totalUnidades = planejamento.itensPlanejamento.reduce(
+        (total, item) => total + item.quantidadePlanejada, 0);
       
-      setCapacidadeForma: (capacidade) => {
-        set({ capacidadeForma: capacidade });
-      },
+      const formasNecessarias = state.calcularNecessidadeFormas(totalUnidades);
       
-      calcularPlanejamento: (pedidos, sabores) => {
-        const { periodoSelecionado, capacidadeForma } = get();
+      state.planejamentos.push({
+        ...planejamento,
+        id: novoId,
+        totalUnidades,
+        totalUnidadesAgendadas: totalUnidades,
+        formasNecessarias
+      });
+    }),
+    
+    atualizarPlanejamento: (id, status, quantidades) => set(state => {
+      const index = state.planejamentos.findIndex(p => p.id === id);
+      if (index !== -1) {
+        state.planejamentos[index].status = status;
         
-        // Filtrar pedidos no período e com status "Agendado" ou "Em Separação"
-        const pedidosFiltrados = pedidos.filter(pedido => {
-          const dataPedido = new Date(pedido.dataPrevistaEntrega);
-          return (
-            (pedido.statusPedido === "Agendado" || pedido.statusPedido === "Em Separação") &&
-            dataPedido >= periodoSelecionado.dataInicio &&
-            dataPedido <= periodoSelecionado.dataFim
-          );
-        });
-        
-        // Inicializar o mapa de totais por sabor
-        const totaisPorSabor = new Map<number, number>();
-        
-        // Para cada sabor, inicializar com 0
-        sabores.forEach(sabor => {
-          if (sabor.ativo) {
-            totaisPorSabor.set(sabor.id, 0);
-          }
-        });
-        
-        // Somar as quantidades de cada sabor nos pedidos filtrados
-        pedidosFiltrados.forEach(pedido => {
-          pedido.itensPedido.forEach(item => {
-            const totalAtual = totaisPorSabor.get(item.idSabor) || 0;
-            totaisPorSabor.set(item.idSabor, totalAtual + item.quantidadeSabor);
-          });
-        });
-        
-        // Criar o planejamento
-        const novoPlanejamento: PlanejamentoProducao[] = [];
-        
-        sabores.forEach(sabor => {
-          if (sabor.ativo) {
-            const totalUnidades = totaisPorSabor.get(sabor.id) || 0;
-            
-            if (totalUnidades > 0) {
-              novoPlanejamento.push({
-                idSabor: sabor.id,
-                nomeSabor: sabor.nome,
-                totalUnidadesAgendadas: totalUnidades,
-                formasNecessarias: calcularFormasNecessarias(totalUnidades, capacidadeForma)
-              });
+        // Se temos quantidades produzidas, atualizamos os itens do planejamento
+        if (quantidades) {
+          state.planejamentos[index].itensPlanejamento.forEach(item => {
+            if (quantidades[item.idSabor] !== undefined) {
+              item.quantidadeProduzida = quantidades[item.idSabor];
             }
-          }
-        });
-        
-        // Ordenar por total de unidades (decrescente)
-        novoPlanejamento.sort((a, b) => b.totalUnidadesAgendadas - a.totalUnidadesAgendadas);
-        
-        set({ planejamento: novoPlanejamento });
-      },
-      
-      registrarProducao: (idSabor, quantidadeProduzida) => {
-        // Esta função é apenas para o estado local, seria chamada pela useSaborStore para atualizar o estoque real
-      },
-      
-      getPlanejamento: () => get().planejamento,
-      
-      getTotalUnidadesAgendadas: () => {
-        return get().planejamento.reduce((total, item) => total + item.totalUnidadesAgendadas, 0);
-      },
-      
-      getTotalFormasNecessarias: () => {
-        return get().planejamento.reduce((total, item) => total + item.formasNecessarias, 0);
+          });
+        }
       }
     }),
-    { name: 'planejamento-producao-store' }
-  )
+    
+    removerPlanejamento: (id) => set(state => {
+      state.planejamentos = state.planejamentos.filter(p => p.id !== id);
+    }),
+    
+    calcularNecessidadeFormas: (totalUnidades) => {
+      // Cada forma comporta 30 unidades
+      const CAPACIDADE_FORMA = 30;
+      return Math.ceil(totalUnidades / CAPACIDADE_FORMA);
+    },
+    
+    calcularTempoProducao: (totalUnidades) => {
+      // Estimativa: 1 minuto por unidade + 30 minutos de setup
+      const minutosTotais = totalUnidades + 30;
+      const horas = Math.floor(minutosTotais / 60);
+      const minutos = minutosTotais % 60;
+      return { horas, minutos };
+    }
+  }))
 );

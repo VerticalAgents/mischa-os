@@ -18,12 +18,13 @@ export interface Cliente {
 }
 
 export type StatusPedido = 'Agendado' | 'Em Separação' | 'Despachado' | 'Entregue' | 'Cancelado';
+export type TipoPedido = 'Padrão' | 'Alterado' | 'Único';
 
 export interface ItemPedido {
   id: number;
   idPedido: number;
   idSabor: number;
-  nomeSabor: string;
+  nomeSabor?: string; // Make nomeSabor optional to match mockData
   quantidadeSabor: number;
   quantidadeSeparada?: number;
   quantidadeEntregue?: number;
@@ -45,7 +46,7 @@ export interface Pedido {
   totalPedidoUnidades: number;
   valorTotal?: number;
   separado?: boolean;
-  tipoPedido?: 'Padrão' | 'Alterado' | 'Único';
+  tipoPedido?: TipoPedido;
 }
 
 export type CategoriaInsumo = 'Matéria Prima' | 'Embalagem' | 'Outros';
@@ -85,6 +86,8 @@ export interface ReceitaBase {
   pesoTotal?: number;
 }
 
+export type TipoComponente = 'Receita' | 'Insumo';
+
 export interface ComponenteProduto {
   id: number;
   idProduto: number;
@@ -92,7 +95,7 @@ export interface ComponenteProduto {
   nomeReceita: string;
   quantidade: number;
   custoParcial: number;
-  tipo?: string;
+  tipo?: TipoComponente;
   idItem?: number;
   nome?: string;
   custo?: number;
@@ -141,6 +144,9 @@ export interface PlanejamentoProducao {
   }[];
   observacoes?: string;
   totalUnidades: number;
+  // Additional properties needed for usePlanejamentoProducaoStore
+  totalUnidadesAgendadas?: number;
+  formasNecessarias?: number;
 }
 
 export type TipoAlerta = 

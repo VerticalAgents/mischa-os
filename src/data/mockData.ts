@@ -1,4 +1,3 @@
-
 import { 
   Cliente, 
   Sabor, 
@@ -107,7 +106,7 @@ export const clientesMock: Cliente[] = [
   }
 ];
 
-// Sabores mockados
+// Sabores mockados com todos os campos obrigatórios
 export const saboresMock: Sabor[] = [
   {
     id: 1,
@@ -115,7 +114,12 @@ export const saboresMock: Sabor[] = [
     percentualPadraoDist: 18,
     ativo: true,
     estoqueMinimo: 30,
-    saldoAtual: 45
+    saldoAtual: 45,
+    // Adicionando campos obrigatórios faltantes
+    custoUnitario: 2.50,
+    precoVenda: 5.00,
+    estoqueIdeal: 50,
+    emProducao: 0
   },
   {
     id: 2,
@@ -123,7 +127,11 @@ export const saboresMock: Sabor[] = [
     percentualPadraoDist: 28,
     ativo: true,
     estoqueMinimo: 50,
-    saldoAtual: 38
+    saldoAtual: 38,
+    custoUnitario: 3.00,
+    precoVenda: 5.50,
+    estoqueIdeal: 60,
+    emProducao: 0
   },
   {
     id: 3,
@@ -131,7 +139,11 @@ export const saboresMock: Sabor[] = [
     percentualPadraoDist: 13,
     ativo: true,
     estoqueMinimo: 25,
-    saldoAtual: 30
+    saldoAtual: 30,
+    custoUnitario: 2.75,
+    precoVenda: 5.25,
+    estoqueIdeal: 40,
+    emProducao: 0
   },
   {
     id: 4,
@@ -139,7 +151,11 @@ export const saboresMock: Sabor[] = [
     percentualPadraoDist: 20,
     ativo: true,
     estoqueMinimo: 40,
-    saldoAtual: 55
+    saldoAtual: 55,
+    custoUnitario: 2.90,
+    precoVenda: 5.40,
+    estoqueIdeal: 60,
+    emProducao: 0
   },
   {
     id: 5,
@@ -147,7 +163,11 @@ export const saboresMock: Sabor[] = [
     percentualPadraoDist: 20,
     ativo: true,
     estoqueMinimo: 40,
-    saldoAtual: 22
+    saldoAtual: 22,
+    custoUnitario: 3.50,
+    precoVenda: 6.00,
+    estoqueIdeal: 50,
+    emProducao: 0
   },
   {
     id: 6,
@@ -155,7 +175,11 @@ export const saboresMock: Sabor[] = [
     percentualPadraoDist: 0,
     ativo: true,
     estoqueMinimo: 15,
-    saldoAtual: 12
+    saldoAtual: 12,
+    custoUnitario: 3.20,
+    precoVenda: 5.80,
+    estoqueIdeal: 30,
+    emProducao: 0
   },
   {
     id: 7,
@@ -163,7 +187,11 @@ export const saboresMock: Sabor[] = [
     percentualPadraoDist: 1,
     ativo: true,
     estoqueMinimo: 15,
-    saldoAtual: 18
+    saldoAtual: 18,
+    custoUnitario: 2.80,
+    precoVenda: 5.30,
+    estoqueIdeal: 30,
+    emProducao: 0
   },
   {
     id: 8,
@@ -171,7 +199,11 @@ export const saboresMock: Sabor[] = [
     percentualPadraoDist: 0,
     ativo: true,
     estoqueMinimo: 15,
-    saldoAtual: 10
+    saldoAtual: 10,
+    custoUnitario: 2.60,
+    precoVenda: 5.20,
+    estoqueIdeal: 25,
+    emProducao: 0
   },
   {
     id: 9,
@@ -179,7 +211,11 @@ export const saboresMock: Sabor[] = [
     percentualPadraoDist: 0,
     ativo: true,
     estoqueMinimo: 15,
-    saldoAtual: 25
+    saldoAtual: 25,
+    custoUnitario: 3.30,
+    precoVenda: 5.90,
+    estoqueIdeal: 35,
+    emProducao: 0
   },
   {
     id: 10,
@@ -187,7 +223,11 @@ export const saboresMock: Sabor[] = [
     percentualPadraoDist: 0,
     ativo: true,
     estoqueMinimo: 10,
-    saldoAtual: 8
+    saldoAtual: 8,
+    custoUnitario: 4.00,
+    precoVenda: 7.00,
+    estoqueIdeal: 20,
+    emProducao: 0
   }
 ];
 
@@ -249,42 +289,42 @@ export const pedidosMock: Pedido[] = [
   }
 ];
 
-// Itens de pedido mockados
+// Itens de pedido mockados com nomeSabor adicionado
 export const itensPedidoMock: ItemPedido[] = [
   // Pedido 1 (Padrão para Café Central)
-  { id: 1, idPedido: 1, idSabor: 1, quantidadeSabor: 18 },
-  { id: 2, idPedido: 1, idSabor: 2, quantidadeSabor: 28 },
-  { id: 3, idPedido: 1, idSabor: 3, quantidadeSabor: 13 },
-  { id: 4, idPedido: 1, idSabor: 4, quantidadeSabor: 20 },
-  { id: 5, idPedido: 1, idSabor: 5, quantidadeSabor: 21 },
+  { id: 1, idPedido: 1, idSabor: 1, nomeSabor: "Tradicional", quantidadeSabor: 18 },
+  { id: 2, idPedido: 1, idSabor: 2, nomeSabor: "Choco Duo", quantidadeSabor: 28 },
+  { id: 3, idPedido: 1, idSabor: 3, nomeSabor: "Meio Amargo", quantidadeSabor: 13 },
+  { id: 4, idPedido: 1, idSabor: 4, nomeSabor: "Stikadinho", quantidadeSabor: 20 },
+  { id: 5, idPedido: 1, idSabor: 5, nomeSabor: "Avelã", quantidadeSabor: 21 },
   
   // Pedido 2 (Alterado para Bom Pão)
-  { id: 6, idPedido: 2, idSabor: 1, quantidadeSabor: 10 },
-  { id: 7, idPedido: 2, idSabor: 2, quantidadeSabor: 20 },
-  { id: 8, idPedido: 2, idSabor: 3, quantidadeSabor: 10 },
-  { id: 9, idPedido: 2, idSabor: 4, quantidadeSabor: 15 },
-  { id: 10, idPedido: 2, idSabor: 5, quantidadeSabor: 25 },
+  { id: 6, idPedido: 2, idSabor: 1, nomeSabor: "Tradicional", quantidadeSabor: 10 },
+  { id: 7, idPedido: 2, idSabor: 2, nomeSabor: "Choco Duo", quantidadeSabor: 20 },
+  { id: 8, idPedido: 2, idSabor: 3, nomeSabor: "Meio Amargo", quantidadeSabor: 10 },
+  { id: 9, idPedido: 2, idSabor: 4, nomeSabor: "Stikadinho", quantidadeSabor: 15 },
+  { id: 10, idPedido: 2, idSabor: 5, nomeSabor: "Avelã", quantidadeSabor: 25 },
   
   // Pedido 3 (Padrão para Empório)
-  { id: 11, idPedido: 3, idSabor: 1, quantidadeSabor: 11 },
-  { id: 12, idPedido: 3, idSabor: 2, quantidadeSabor: 17 },
-  { id: 13, idPedido: 3, idSabor: 3, quantidadeSabor: 8 },
-  { id: 14, idPedido: 3, idSabor: 4, quantidadeSabor: 12 },
-  { id: 15, idPedido: 3, idSabor: 5, quantidadeSabor: 12 },
+  { id: 11, idPedido: 3, idSabor: 1, nomeSabor: "Tradicional", quantidadeSabor: 11 },
+  { id: 12, idPedido: 3, idSabor: 2, nomeSabor: "Choco Duo", quantidadeSabor: 17 },
+  { id: 13, idPedido: 3, idSabor: 3, nomeSabor: "Meio Amargo", quantidadeSabor: 8 },
+  { id: 14, idPedido: 3, idSabor: 4, nomeSabor: "Stikadinho", quantidadeSabor: 12 },
+  { id: 15, idPedido: 3, idSabor: 5, nomeSabor: "Avelã", quantidadeSabor: 12 },
   
   // Pedido 4 (Entregue para Café Central)
-  { id: 16, idPedido: 4, idSabor: 1, quantidadeSabor: 18, quantidadeEntregue: 18 },
-  { id: 17, idPedido: 4, idSabor: 2, quantidadeSabor: 28, quantidadeEntregue: 28 },
-  { id: 18, idPedido: 4, idSabor: 3, quantidadeSabor: 13, quantidadeEntregue: 13 },
-  { id: 19, idPedido: 4, idSabor: 4, quantidadeSabor: 20, quantidadeEntregue: 20 },
-  { id: 20, idPedido: 4, idSabor: 5, quantidadeSabor: 21, quantidadeEntregue: 21 },
+  { id: 16, idPedido: 4, idSabor: 1, nomeSabor: "Tradicional", quantidadeSabor: 18, quantidadeEntregue: 18 },
+  { id: 17, idPedido: 4, idSabor: 2, nomeSabor: "Choco Duo", quantidadeSabor: 28, quantidadeEntregue: 28 },
+  { id: 18, idPedido: 4, idSabor: 3, nomeSabor: "Meio Amargo", quantidadeSabor: 13, quantidadeEntregue: 13 },
+  { id: 19, idPedido: 4, idSabor: 4, nomeSabor: "Stikadinho", quantidadeSabor: 20, quantidadeEntregue: 20 },
+  { id: 20, idPedido: 4, idSabor: 5, nomeSabor: "Avelã", quantidadeSabor: 21, quantidadeEntregue: 21 },
   
   // Pedido 5 (Entregue para Bom Pão)
-  { id: 21, idPedido: 5, idSabor: 1, quantidadeSabor: 14, quantidadeEntregue: 14 },
-  { id: 22, idPedido: 5, idSabor: 2, quantidadeSabor: 22, quantidadeEntregue: 22 },
-  { id: 23, idPedido: 5, idSabor: 3, quantidadeSabor: 10, quantidadeEntregue: 10 },
-  { id: 24, idPedido: 5, idSabor: 4, quantidadeSabor: 16, quantidadeEntregue: 16 },
-  { id: 25, idPedido: 5, idSabor: 5, quantidadeSabor: 18, quantidadeEntregue: 18 }
+  { id: 21, idPedido: 5, idSabor: 1, nomeSabor: "Tradicional", quantidadeSabor: 14, quantidadeEntregue: 14 },
+  { id: 22, idPedido: 5, idSabor: 2, nomeSabor: "Choco Duo", quantidadeSabor: 22, quantidadeEntregue: 22 },
+  { id: 23, idPedido: 5, idSabor: 3, nomeSabor: "Meio Amargo", quantidadeSabor: 10, quantidadeEntregue: 10 },
+  { id: 24, idPedido: 5, idSabor: 4, nomeSabor: "Stikadinho", quantidadeSabor: 16, quantidadeEntregue: 16 },
+  { id: 25, idPedido: 5, nomeSabor: "Avelã", quantidadeSabor: 18, quantidadeEntregue: 18 }
 ];
 
 // Alertas mockados

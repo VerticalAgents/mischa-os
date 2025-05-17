@@ -1,9 +1,8 @@
-
 import { useState } from "react";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
 import { useReceitaStore } from "@/hooks/useReceitaStore";
 import { useInsumoStore } from "@/hooks/useInsumoStore";
-import { Produto, ComponenteProduto } from "@/types";
+import { Produto, ComponenteProduto, TipoComponente } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -44,9 +43,9 @@ const novoProdutoSchema = z.object({
   unidadesProducao: z.number().positive("Número de unidades deve ser positivo"),
 });
 
-// Schema for adding a component to a produto
+// Schema for adding a component to a produto, with strict typing for tipo
 const componenteSchema = z.object({
-  tipo: z.enum(["Receita", "Insumo"]),
+  tipo: z.enum(["Receita", "Insumo"] as const),
   idItem: z.number().positive("Selecione um item válido"),
   quantidade: z.number().positive("Quantidade deve ser positiva"),
 });
@@ -75,7 +74,7 @@ export default function ProdutosTab() {
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
   const [expandedProduto, setExpandedProduto] = useState<number | null>(null);
   const [editingComponente, setEditingComponente] = useState<ComponenteProduto | null>(null);
-  const [componenteTipo, setComponenteTipo] = useState<"Receita" | "Insumo">("Receita");
+  const [componenteTipo, setComponenteTipo] = useState<TipoComponente>("Receita");
   
   // Form for new produto
   const produtoForm = useForm<NovoProdutoValues>({
@@ -87,7 +86,7 @@ export default function ProdutosTab() {
     },
   });
   
-  // Form for adding component
+  // Form for adding component with proper typing
   const componenteForm = useForm<ComponenteValues>({
     resolver: zodResolver(componenteSchema),
     defaultValues: {
@@ -441,7 +440,7 @@ export default function ProdutosTab() {
                           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                           {...field}
                           onChange={e => {
-                            const value = e.target.value as "Receita" | "Insumo";
+                            const value = e.target.value as TipoComponente;
                             field.onChange(value);
                             setComponenteTipo(value);
                             // Resetar o ID do item ao trocar o tipo
