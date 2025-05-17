@@ -20,7 +20,13 @@ export const clientesMock: Cliente[] = [
     periodicidadePadrao: 7,
     statusCliente: "Ativo",
     dataCadastro: new Date("2023-01-15"),
-    ultimaDataReposicaoEfetiva: new Date("2024-05-07")
+    ultimaDataReposicaoEfetiva: new Date("2024-05-07"),
+    // Adicionando os campos obrigatórios faltantes
+    contabilizarGiroMedio: true,
+    tipoLogistica: "Própria",
+    emiteNotaFiscal: true,
+    tipoCobranca: "À vista",
+    formaPagamento: "Boleto"
   },
   {
     id: 2,
@@ -34,7 +40,13 @@ export const clientesMock: Cliente[] = [
     periodicidadePadrao: 5,
     statusCliente: "Ativo",
     dataCadastro: new Date("2023-02-20"),
-    ultimaDataReposicaoEfetiva: new Date("2024-05-09")
+    ultimaDataReposicaoEfetiva: new Date("2024-05-09"),
+    // Adicionando os campos obrigatórios faltantes
+    contabilizarGiroMedio: true,
+    tipoLogistica: "Própria",
+    emiteNotaFiscal: true,
+    tipoCobranca: "Consignado",
+    formaPagamento: "PIX"
   },
   {
     id: 3,
@@ -48,7 +60,13 @@ export const clientesMock: Cliente[] = [
     periodicidadePadrao: 7,
     statusCliente: "Ativo",
     dataCadastro: new Date("2023-03-10"),
-    ultimaDataReposicaoEfetiva: new Date("2024-05-08")
+    ultimaDataReposicaoEfetiva: new Date("2024-05-08"),
+    // Adicionando os campos obrigatórios faltantes
+    contabilizarGiroMedio: true,
+    tipoLogistica: "Distribuição",
+    emiteNotaFiscal: false,
+    tipoCobranca: "À vista",
+    formaPagamento: "Dinheiro"
   },
   {
     id: 4,
@@ -61,7 +79,13 @@ export const clientesMock: Cliente[] = [
     quantidadePadrao: 50,
     periodicidadePadrao: 5,
     statusCliente: "Em análise",
-    dataCadastro: new Date("2024-04-05")
+    dataCadastro: new Date("2024-04-05"),
+    // Adicionando os campos obrigatórios faltantes
+    contabilizarGiroMedio: false,
+    tipoLogistica: "Própria",
+    emiteNotaFiscal: true,
+    tipoCobranca: "À vista",
+    formaPagamento: "PIX"
   },
   {
     id: 5,
@@ -75,7 +99,13 @@ export const clientesMock: Cliente[] = [
     periodicidadePadrao: 7,
     statusCliente: "Standby",
     dataCadastro: new Date("2023-05-15"),
-    ultimaDataReposicaoEfetiva: new Date("2024-04-25")
+    ultimaDataReposicaoEfetiva: new Date("2024-04-25"),
+    // Adicionando os campos obrigatórios faltantes
+    contabilizarGiroMedio: true,
+    tipoLogistica: "Distribuição",
+    emiteNotaFiscal: true,
+    tipoCobranca: "Consignado",
+    formaPagamento: "Boleto"
   },
   {
     id: 6,
@@ -88,7 +118,13 @@ export const clientesMock: Cliente[] = [
     quantidadePadrao: 40,
     periodicidadePadrao: 3,
     statusCliente: "A ativar",
-    dataCadastro: new Date("2024-05-01")
+    dataCadastro: new Date("2024-05-01"),
+    // Adicionando os campos obrigatórios faltantes
+    contabilizarGiroMedio: false,
+    tipoLogistica: "Própria",
+    emiteNotaFiscal: false,
+    tipoCobranca: "À vista",
+    formaPagamento: "Dinheiro"
   },
   {
     id: 7,
@@ -102,7 +138,13 @@ export const clientesMock: Cliente[] = [
     periodicidadePadrao: 7,
     statusCliente: "Inativo",
     dataCadastro: new Date("2023-06-25"),
-    ultimaDataReposicaoEfetiva: new Date("2024-03-15")
+    ultimaDataReposicaoEfetiva: new Date("2024-03-15"),
+    // Adicionando os campos obrigatórios faltantes
+    contabilizarGiroMedio: false,
+    tipoLogistica: "Própria",
+    emiteNotaFiscal: true,
+    tipoCobranca: "Consignado",
+    formaPagamento: "PIX"
   }
 ];
 
