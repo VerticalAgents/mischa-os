@@ -1,6 +1,12 @@
 
 export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby';
 
+// Adding new types for client configuration
+export type DiaSemana = 'Dom' | 'Seg' | 'Ter' | 'Qua' | 'Qui' | 'Sex' | 'Sáb';
+export type TipoLogistica = 'Própria' | 'Distribuição';
+export type TipoCobranca = 'À vista' | 'Consignado';
+export type FormaPagamento = 'Boleto' | 'PIX' | 'Dinheiro';
+
 export interface Cliente {
   id: number;
   nome: string;
@@ -15,6 +21,43 @@ export interface Cliente {
   dataCadastro: Date;
   metaGiroSemanal?: number; // Meta de giro semanal
   ultimaDataReposicaoEfetiva?: Date; // Data da última reposição efetiva
+  
+  // Novos campos para configuração avançada
+  janelasEntrega?: DiaSemana[];
+  representanteId?: number;
+  rotaEntregaId?: number;
+  categoriaEstabelecimentoId?: number;
+  instrucoesEntrega?: string;
+  contabilizarGiroMedio: boolean;
+  tipoLogistica: TipoLogistica;
+  emiteNotaFiscal: boolean;
+  tipoCobranca: TipoCobranca;
+  formaPagamento: FormaPagamento;
+  observacoes?: string;
+}
+
+// Representantes, Rotas e Categorias para configuração
+
+export interface Representante {
+  id: number;
+  nome: string;
+  email?: string;
+  telefone?: string;
+  ativo: boolean;
+}
+
+export interface RotaEntrega {
+  id: number;
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
+}
+
+export interface CategoriaEstabelecimento {
+  id: number;
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
 }
 
 export type StatusPedido = 'Agendado' | 'Em Separação' | 'Despachado' | 'Entregue' | 'Cancelado';

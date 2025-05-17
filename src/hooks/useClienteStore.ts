@@ -107,7 +107,19 @@ export const useClienteStore = create<ClienteStore>()(
           statusCliente: cliente.statusCliente || "Ativo",
           dataCadastro: new Date(Date.now() - Math.floor(Math.random() * 10000000000)),
           metaGiroSemanal: Math.round((cliente.quantidadePadrao || 0) * 1.2), // Meta inicial: 20% acima do giro atual
-          ultimaDataReposicaoEfetiva: new Date(Date.now() - Math.floor(Math.random() * 1000000000))
+          ultimaDataReposicaoEfetiva: new Date(Date.now() - Math.floor(Math.random() * 1000000000)),
+          // Novos campos
+          janelasEntrega: ['Seg', 'Qua', 'Sex'],
+          representanteId: Math.ceil(Math.random() * 3),
+          rotaEntregaId: Math.ceil(Math.random() * 3),
+          categoriaEstabelecimentoId: Math.ceil(Math.random() * 6),
+          instrucoesEntrega: Math.random() > 0.7 ? `Instruções de entrega para ${cliente.nome}` : undefined,
+          contabilizarGiroMedio: Math.random() > 0.1, // 90% dos clientes contabilizam
+          tipoLogistica: Math.random() > 0.3 ? 'Própria' : 'Distribuição',
+          emiteNotaFiscal: Math.random() > 0.2,
+          tipoCobranca: Math.random() > 0.5 ? 'À vista' : 'Consignado',
+          formaPagamento: ['Boleto', 'PIX', 'Dinheiro'][Math.floor(Math.random() * 3)] as 'Boleto' | 'PIX' | 'Dinheiro',
+          observacoes: Math.random() > 0.8 ? `Observações para ${cliente.nome}` : undefined
         }))
       ],
       clienteAtual: null,

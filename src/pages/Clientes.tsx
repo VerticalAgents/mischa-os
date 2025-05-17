@@ -1,18 +1,17 @@
 
 import { useState } from "react";
-import { Plus, Search, ExternalLink } from "lucide-react";
-import { useClienteStore } from "@/hooks/useClienteStore";
-import { StatusCliente } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Search, ExternalLink } from "lucide-react";
+import { useClienteStore } from "@/hooks/useClienteStore";
+import { StatusCliente } from "@/types";
 import PageHeader from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import StatusBadge from "@/components/common/StatusBadge";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AnaliseGiro from "@/components/clientes/AnaliseGiro";
+import ClienteDetalhesTabs from "@/components/clientes/ClienteDetalhesTabs";
 
 export default function Clientes() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -63,8 +62,6 @@ export default function Clientes() {
 
   // Renderizar a tela de detalhes do cliente quando um cliente for selecionado
   if (clienteAtual) {
-    const giroSemanal = calcularGiroSemanal(clienteAtual.quantidadePadrao, clienteAtual.periodicidadePadrao);
-
     return (
       <>
         <div className="flex items-center justify-between mb-6">
@@ -81,96 +78,7 @@ export default function Clientes() {
           <Button onClick={() => setIsFormOpen(true)}>Editar Cliente</Button>
         </div>
 
-        <Tabs defaultValue="info" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="info">Informações</TabsTrigger>
-            <TabsTrigger value="analise-giro">Análise de Giro</TabsTrigger>
-            <TabsTrigger value="historico">Histórico</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="info" className="space-y-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="font-medium text-foreground mb-2">Dados do Cliente</h3>
-                    <dl className="space-y-2">
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Status:</dt>
-                        <dd><StatusBadge status={clienteAtual.statusCliente} /></dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">CNPJ/CPF:</dt>
-                        <dd>{clienteAtual.cnpjCpf || "-"}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Endereço:</dt>
-                        <dd className="text-right">{clienteAtual.enderecoEntrega || "-"}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Data de cadastro:</dt>
-                        <dd>{clienteAtual.dataCadastro.toLocaleDateString()}</dd>
-                      </div>
-                    </dl>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-medium text-foreground mb-2">Dados de Contato</h3>
-                    <dl className="space-y-2">
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Nome:</dt>
-                        <dd>{clienteAtual.contatoNome || "-"}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Telefone:</dt>
-                        <dd>{clienteAtual.contatoTelefone || "-"}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Email:</dt>
-                        <dd>{clienteAtual.contatoEmail || "-"}</dd>
-                      </div>
-                    </dl>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-medium text-foreground mb-2">Dados de Reposição</h3>
-                    <dl className="space-y-2">
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Quantidade padrão:</dt>
-                        <dd>{clienteAtual.quantidadePadrao}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Periodicidade:</dt>
-                        <dd>{formatPeriodicidade(clienteAtual.periodicidadePadrao)}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Giro semanal estimado:</dt>
-                        <dd>
-                          <Badge variant="outline" className="font-semibold bg-blue-50">
-                            {giroSemanal}
-                          </Badge>
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="analise-giro" className="space-y-4">
-            <AnaliseGiro cliente={clienteAtual} />
-          </TabsContent>
-          
-          <TabsContent value="historico" className="space-y-4">
-            <Card>
-              <CardContent className="pt-6">
-                <h3 className="text-lg font-medium mb-4">Histórico de Pedidos</h3>
-                <p className="text-muted-foreground">O histórico de pedidos será implementado em breve.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <ClienteDetalhesTabs cliente={clienteAtual} onEdit={handleOpenForm} />
 
         <ClienteFormDialog open={isFormOpen} onOpenChange={setIsFormOpen} clienteId={clienteAtual.id} />
       </>
