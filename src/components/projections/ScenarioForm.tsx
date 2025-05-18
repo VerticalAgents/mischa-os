@@ -149,6 +149,15 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
     // Calculate payback
     const paybackMonths = operationalResult > 0 ? totalInvestment / operationalResult : 0;
     
+    // Create properly typed channel growth factors
+    const channelGrowthFactors: Record<Channel, { type: 'percentage' | 'absolute', value: number }> = {
+      'B2B-Revenda': data.channelGrowth['B2B-Revenda'] || { type: 'percentage', value: 0 },
+      'B2B-FoodService': data.channelGrowth['B2B-FoodService'] || { type: 'percentage', value: 0 },
+      'B2C-UFCSPA': data.channelGrowth['B2C-UFCSPA'] || { type: 'percentage', value: 0 },
+      'B2C-Personalizados': data.channelGrowth['B2C-Personalizados'] || { type: 'percentage', value: 0 },
+      'B2C-Outros': data.channelGrowth['B2C-Outros'] || { type: 'percentage', value: 0 }
+    };
+    
     // Create a properly typed updated scenario
     const updatedScenario: Partial<DREData> = {
       name: data.name,
@@ -171,7 +180,7 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
       ebitdaMargin,
       breakEvenPoint,
       paybackMonths,
-      channelGrowthFactors: data.channelGrowth
+      channelGrowthFactors
     };
     
     return updatedScenario;
