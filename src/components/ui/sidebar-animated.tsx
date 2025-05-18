@@ -175,8 +175,7 @@ export const SidebarLink = ({
 } & Omit<LinkProps, "to">) => {
   const { open, animate } = useSidebar();
   
-  // Create a regular boolean for conditional rendering
-  const showLabel = animate ? Boolean(open) : true;
+  const showLabel = animate ? open : true;
   
   return (
     <Link
@@ -189,9 +188,10 @@ export const SidebarLink = ({
       onClick={onClick}
       {...props}
     >
-      <span className="flex-shrink-0">{link.icon}</span>
+      <span className="flex-shrink-0 flex items-center justify-center w-6">
+        {link.icon}
+      </span>
       
-      {/* Only render the label text when showLabel is true */}
       {showLabel && (
         <span className="text-current text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre">
           {link.label}
