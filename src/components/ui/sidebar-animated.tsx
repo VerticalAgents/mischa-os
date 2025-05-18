@@ -175,8 +175,8 @@ export const SidebarLink = ({
 } & Omit<LinkProps, "to">) => {
   const { open, animate } = useSidebar();
   
-  // Define a boolean to control visibility instead of using a direct expression
-  const showLabel = animate ? open : true;
+  // Create a boolean to control visibility instead of using a direct expression in JSX
+  const isLabelVisible = animate ? open : true;
   
   return (
     <Link
@@ -184,7 +184,7 @@ export const SidebarLink = ({
       className={cn(
         "flex items-center justify-start gap-2 group/sidebar py-2",
         active ? "text-sidebar-accent-foreground" : "text-sidebar-foreground",
-        !showLabel && "justify-center px-1", // Center icons when minimized
+        !isLabelVisible && "justify-center px-1",
         className
       )}
       onClick={onClick}
@@ -194,8 +194,8 @@ export const SidebarLink = ({
         {link.icon}
       </span>
       
-      {/* Use the boolean to conditionally render the label */}
-      {showLabel && (
+      {/* Use boolean for conditional rendering instead of the expression directly */}
+      {isLabelVisible && (
         <span className="text-current text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre">
           {link.label}
         </span>
