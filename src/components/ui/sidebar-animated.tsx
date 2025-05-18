@@ -186,11 +186,10 @@ export const SidebarLink = ({
       onClick={onClick}
       {...props}
     >
-      {link.icon}
+      <span className="flex-shrink-0">{link.icon}</span>
       
-      {/* Only render label text when sidebar is open (if animate) or always (if !animate) */}
       {(animate ? open : true) && (
-        <span className="text-current text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0">
+        <span className="text-current text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre">
           {link.label}
         </span>
       )}
