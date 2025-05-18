@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -5,9 +6,9 @@ import { useConfigStore } from "@/hooks/useConfigStore";
 import { 
   StatusCliente, 
   DiaSemana, 
-  TipoLogistica, 
+  TipoLogisticaNome, 
   TipoCobranca, 
-  FormaPagamento 
+  FormaPagamentoNome 
 } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,10 +52,10 @@ type ClienteFormValues = {
   categoriaEstabelecimentoId?: number;
   instrucoesEntrega?: string;
   contabilizarGiroMedio: boolean;
-  tipoLogistica: TipoLogistica;
+  tipoLogistica: TipoLogisticaNome;  // Changed to TipoLogisticaNome
   emiteNotaFiscal: boolean;
   tipoCobranca: TipoCobranca;
-  formaPagamento: FormaPagamento;
+  formaPagamento: FormaPagamentoNome;  // Changed to FormaPagamentoNome
 };
 
 interface ClienteFormDialogProps {
@@ -131,10 +132,10 @@ export default function ClienteFormDialog({
           categoriaEstabelecimentoId: cliente.categoriaEstabelecimentoId,
           instrucoesEntrega: cliente.instrucoesEntrega || "",
           contabilizarGiroMedio: cliente.contabilizarGiroMedio ?? true,
-          tipoLogistica: cliente.tipoLogistica || "Própria",
+          tipoLogistica: cliente.tipoLogistica,
           emiteNotaFiscal: cliente.emiteNotaFiscal ?? true,
           tipoCobranca: cliente.tipoCobranca || "À vista",
-          formaPagamento: cliente.formaPagamento || "Boleto",
+          formaPagamento: cliente.formaPagamento,
         });
       }
     }
