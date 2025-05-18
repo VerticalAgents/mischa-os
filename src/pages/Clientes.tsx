@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +23,7 @@ interface ColumnOption {
   label: string;
   canToggle: boolean;
 }
+
 export default function Clientes() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const {
@@ -154,6 +154,7 @@ export default function Clientes() {
         <ClienteFormDialog open={isFormOpen} onOpenChange={setIsFormOpen} clienteId={clienteAtual.id} />
       </>;
   }
+  
   return <>
       <PageHeader title="Clientes" description="Gerencie os pontos de venda dos seus produtos" action={{
       label: "Novo Cliente",
@@ -235,8 +236,8 @@ export default function Clientes() {
                         </TableCell>}
                       {visibleColumns.includes("statusAgendamento") && <TableCell>
                           <Badge variant={
-                            cliente.statusAgendamento === "Agendado" ? "success" : 
-                            cliente.statusAgendamento === "Pendente" ? "warning" : "outline"
+                            cliente.statusAgendamento === "Agendado" ? "default" : 
+                            cliente.statusAgendamento === "Pendente" ? "secondary" : "outline"
                           }>
                             {cliente.statusAgendamento || "Não Agendado"}
                           </Badge>
