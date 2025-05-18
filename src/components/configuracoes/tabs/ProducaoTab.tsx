@@ -1,4 +1,3 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -292,7 +291,7 @@ export default function ProducaoTab() {
                       produtos.map((produto) => (
                         <TableRow key={produto.id}>
                           <TableCell>{produto.nome}</TableCell>
-                          <TableCell>{produto.categoria}</TableCell>
+                          <TableCell>{produto.categoria || "Não categorizado"}</TableCell>
                           <TableCell>
                             <Input
                               type="number"

@@ -15,6 +15,7 @@ interface ProdutoStore {
   removerProduto: (id: number) => void;
   calcularCustoProduto: (produto: Produto) => number;
   getAllProdutos: () => Produto[];
+  atualizarEstoqueMinimo: (id: number, estoqueMinimo: number) => void; // Added missing method
 }
 
 export const useProdutoStore = create<ProdutoStore>()(
@@ -56,7 +57,9 @@ export const useProdutoStore = create<ProdutoStore>()(
         ativo: true,
         pesoUnitario: 35,
         custoUnitario: 2.85,
-        unidadesProducao: 100
+        unidadesProducao: 100,
+        categoria: "Doces", // Added default category
+        estoqueMinimo: 10 // Added default estoqueMinimo
       }
     ],
     
@@ -73,7 +76,9 @@ export const useProdutoStore = create<ProdutoStore>()(
         ativo: true,
         unidadesProducao,
         pesoUnitario: 0,
-        custoUnitario: 0
+        custoUnitario: 0,
+        categoria: "Não categorizado",
+        estoqueMinimo: 0
       });
     }),
     
@@ -199,6 +204,13 @@ export const useProdutoStore = create<ProdutoStore>()(
     
     removerProduto: (id) => set(state => {
       state.produtos = state.produtos.filter(p => p.id !== id);
+    }),
+    
+    atualizarEstoqueMinimo: (id, estoqueMinimo) => set(state => {
+      const produtoIndex = state.produtos.findIndex(p => p.id === id);
+      if (produtoIndex !== -1) {
+        state.produtos[produtoIndex].estoqueMinimo = estoqueMinimo;
+      }
     }),
     
     calcularCustoProduto: (produto) => {
