@@ -70,11 +70,19 @@ export const Sidebar = ({
   );
 };
 
-export const SidebarBody = (props: React.ComponentProps<typeof motion.div>) => {
+export const SidebarBody = ({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof motion.div>) => {
   return (
     <>
-      <DesktopSidebar {...props} />
-      <MobileSidebar {...props} />
+      <DesktopSidebar {...props} className={className}>
+        {children}
+      </DesktopSidebar>
+      <MobileSidebar {...props} className={className}>
+        {children}
+      </MobileSidebar>
     </>
   );
 };
@@ -180,7 +188,7 @@ export const SidebarLink = ({
     >
       {link.icon}
       
-      {/* Fixed approach: Only render this element when needed */}
+      {/* Only render label text when sidebar is open (if animate) or always (if !animate) */}
       {(animate ? open : true) && (
         <span className="text-current text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0">
           {link.label}
