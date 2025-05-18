@@ -25,14 +25,10 @@ const SidebarContent = () => {
     <>
       {/* Sidebar Header */}
       <div className="flex h-14 items-center border-b px-6">
-        <Link to="/" className="flex items-center space-x-2">
-          {showFullContent ? (
-            <>
-              <img src="/logo.svg" alt="Mischa's Bakery Logo" className="h-8 w-8" />
-              <span className="font-bold text-lg text-sidebar-foreground">Mischa's Bakery</span>
-            </>
-          ) : (
-            <img src="/logo.svg" alt="Mischa's Bakery Logo" className="h-8 w-8 mx-auto" />
+        <Link to="/" className={cn("flex items-center", showFullContent ? "space-x-2" : "justify-center w-full")}>
+          <img src="/logo.svg" alt="Mischa's Bakery Logo" className="h-8 w-8" />
+          {showFullContent && (
+            <span className="font-bold text-lg text-sidebar-foreground">Mischa's Bakery</span>
           )}
         </Link>
       </div>
@@ -103,14 +99,15 @@ const SidebarContent = () => {
           </div>
         ) : (
           <div className="flex justify-center">
-            <Avatar className="h-8 w-8 bg-primary">
-              <AvatarFallback>A</AvatarFallback>
-            </Avatar>
+            {/* When sidebar is minimized, don't show anything in the footer */}
           </div>
         )}
       </div>
     </>
   );
 };
+
+// Import cn function from utils
+import { cn } from "@/lib/utils";
 
 export default SidebarContent;

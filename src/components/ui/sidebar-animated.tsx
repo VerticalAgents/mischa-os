@@ -100,7 +100,7 @@ export const DesktopSidebar = ({
         className
       )}
       animate={{
-        width: animate ? (open ? "300px" : "60px") : "300px",
+        width: animate ? (open ? "300px" : "80px") : "300px",
       }}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
@@ -184,6 +184,7 @@ export const SidebarLink = ({
       className={cn(
         "flex items-center justify-start gap-2 group/sidebar py-2",
         active ? "text-sidebar-accent-foreground" : "text-sidebar-foreground",
+        !showLabel && "justify-center px-1", // Center icons when minimized
         className
       )}
       onClick={onClick}
