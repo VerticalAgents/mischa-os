@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
-import Dashboard from "@/pages/Dashboard";
+import DashboardAnalytics from "@/pages/DashboardAnalytics";
 import Clientes from "@/pages/Clientes";
 import Precificacao from "@/pages/Precificacao";
 import Agendamento from "@/pages/Agendamento";
@@ -14,7 +14,6 @@ import Configuracoes from "@/pages/Configuracoes";
 import PCP from "@/pages/PCP";
 import Expedicao from "@/pages/Expedicao";
 import Projections from "@/pages/Projections";
-import Analytics from "@/pages/Analytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,7 +27,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={
             <AppLayout>
-              <Dashboard />
+              <DashboardAnalytics />
             </AppLayout>
           } />
           <Route path="/clientes" element={
@@ -73,7 +72,7 @@ const App = () => (
           } />
           <Route path="/analytics" element={
             <AppLayout>
-              <Analytics />
+              <DashboardAnalytics />
             </AppLayout>
           } />
           <Route path="*" element={<NotFound />} />

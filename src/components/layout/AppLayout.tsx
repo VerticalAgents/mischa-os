@@ -1,3 +1,4 @@
+
 import { ReactNode, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { 
@@ -8,7 +9,7 @@ import {
   SidebarProvider, 
   SidebarTrigger 
 } from "@/components/ui/sidebar";
-import { Bell, BarChart3, Users, List, Tag, Clipboard, ShoppingBag, Settings, Menu, Layers, Truck, FileText, PieChart } from "lucide-react";
+import { Bell, BarChart3, Users, List, Tag, Clipboard, ShoppingBag, Settings, Menu, Layers, Truck, FileText } from "lucide-react";
 import { useAlertaStore } from "@/hooks/useAlertaStore";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,7 +23,7 @@ type MenuItem = {
 
 const mainMenuItems: MenuItem[] = [
   {
-    label: "Dashboard",
+    label: "Dashboard & Analytics",
     path: "/",
     icon: <BarChart3 className="h-5 w-5" />,
   },
@@ -60,11 +61,6 @@ const mainMenuItems: MenuItem[] = [
     label: "Projeções",
     path: "/projecoes",
     icon: <FileText className="h-5 w-5" />,
-  },
-  {
-    label: "Analytics",
-    path: "/analytics",
-    icon: <PieChart className="h-5 w-5" />,
   },
 ];
 
