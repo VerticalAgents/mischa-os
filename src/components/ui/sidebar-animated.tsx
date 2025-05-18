@@ -175,7 +175,7 @@ export const SidebarLink = ({
 } & Omit<LinkProps, "to">) => {
   const { open, animate } = useSidebar();
   
-  // Fix: Create a regular boolean for conditional rendering
+  // Create a regular boolean for conditional rendering
   const showLabel = animate ? Boolean(open) : true;
   
   return (
