@@ -166,6 +166,10 @@ export const SidebarLink = ({
   onClick?: () => void;
 } & Omit<LinkProps, "to">) => {
   const { open, animate } = useSidebar();
+  
+  // The key fix: Only render the label conditionally based on sidebar state
+  const showLabel = animate ? open : true;
+  
   return (
     <Link
       to={link.href}
@@ -178,12 +182,11 @@ export const SidebarLink = ({
       {...props}
     >
       {link.icon}
-      {/* Fix: Use conditional rendering instead of motion values for display */}
-      {(animate ? open : true) && (
+      {showLabel && (
         <motion.span
-          animate={{
-            opacity: animate ? (open ? 1 : 0) : 1,
-          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           className="text-current text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
         >
           {link.label}
