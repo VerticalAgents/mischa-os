@@ -45,6 +45,15 @@ export default function OperationalSummary({
     .sort((a, b) => b.giroSemanal - a.giroSemanal)
     .slice(0, 5);
     
+  // Prepare data for pie chart
+  const dadosGraficoPDVsPorStatus = [
+    { name: 'Ativos', value: dashboardData.contadoresStatus.ativos },
+    { name: 'Em análise', value: dashboardData.contadoresStatus.emAnalise },
+    { name: 'A ativar', value: dashboardData.contadoresStatus.aAtivar },
+    { name: 'Standby', value: dashboardData.contadoresStatus.standby },
+    { name: 'Inativos', value: dashboardData.contadoresStatus.inativos }
+  ];
+    
   return (
     <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -85,7 +94,7 @@ export default function OperationalSummary({
             <StatsPieChart 
               title="Distribuição de PDVs por Status"
               description="Visão geral dos pontos de venda por status"
-              data={dashboardData.getDadosGraficoPDVsPorStatus()}
+              data={dadosGraficoPDVsPorStatus}
               colors={['#4ade80', '#60a5fa', '#facc15', '#c084fc', '#f87171']}
             />
             <div className="flex justify-end mt-2">

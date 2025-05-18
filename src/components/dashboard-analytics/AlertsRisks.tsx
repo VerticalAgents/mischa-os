@@ -222,7 +222,7 @@ export default function AlertsRisks({
         </Card>
       </div>
       
-      <Alert variant="warning">
+      <Alert>
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Atenção</AlertTitle>
         <AlertDescription>

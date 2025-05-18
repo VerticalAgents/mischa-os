@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, Download } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -27,13 +27,17 @@ export default function DashboardAnalytics() {
   const { clientes } = useClienteStore();
   const { pedidos } = usePedidoStore();
   const { baseDRE } = useProjectionStore();
-  const { registrosProducao, planejamentoProducao } = usePlanejamentoProducaoStore();
+  const planejamentoProducaoStore = usePlanejamentoProducaoStore();
   const { atualizarDashboard, dashboardData } = useDashboardStore();
 
   // Update dashboard data when the component mounts or data changes
-  useState(() => {
+  useEffect(() => {
     atualizarDashboard(clientes, pedidos);
   }, [atualizarDashboard, clientes, pedidos]);
+
+  // Get mock production data
+  const registrosProducao: any[] = [];
+  const planejamentoProducao: any[] = [];
 
   // Export dashboard as PDF
   const exportToPDF = async () => {
