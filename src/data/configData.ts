@@ -1,5 +1,12 @@
 
-import { Representante, RotaEntrega, CategoriaEstabelecimento } from '@/types';
+import { 
+  Representante, 
+  RotaEntrega, 
+  CategoriaEstabelecimento, 
+  TipoLogistica, 
+  FormaPagamento,
+  ConfiguracoesProducao
+} from '@/types';
 
 // Mock data for representantes
 export const representantesMock: Representante[] = [
@@ -26,3 +33,32 @@ export const categoriasEstabelecimentoMock: CategoriaEstabelecimento[] = [
   { id: 5, nome: 'Hotel', descricao: 'Hotéis e pousadas', ativo: true },
   { id: 6, nome: 'Padaria', descricao: 'Padarias e confeitarias', ativo: true },
 ];
+
+// Mock data for tipos de logística
+export const tiposLogisticaMock: TipoLogistica[] = [
+  { id: 1, nome: 'Própria', percentualLogistico: 8.5, ativo: true },
+  { id: 2, nome: 'Distribuição', percentualLogistico: 12.0, ativo: true },
+  { id: 3, nome: 'Terceirizada', percentualLogistico: 15.0, ativo: true },
+  { id: 4, nome: 'Retirada pelo cliente', percentualLogistico: 0, ativo: true },
+];
+
+// Mock data for formas de pagamento
+export const formasPagamentoMock: FormaPagamento[] = [
+  { id: 1, nome: 'Dinheiro', ativo: true },
+  { id: 2, nome: 'Cartão de Crédito', ativo: true },
+  { id: 3, nome: 'Cartão de Débito', ativo: true },
+  { id: 4, nome: 'PIX', ativo: true },
+  { id: 5, nome: 'Boleto Bancário', ativo: true },
+  { id: 6, nome: 'Transferência', ativo: true },
+];
+
+// Mock data for configurações de produção
+export const configuracoesProducaoMock: ConfiguracoesProducao = {
+  unidadesPorForma: 24,
+  formasPorLote: 4,
+  incluirPedidosPrevistos: true,
+  percentualPedidosPrevistos: 15,
+  tempoMedioPorFornada: 45,
+  unidadesBrowniePorForma: 16,
+  formasPorFornada: 2
+};

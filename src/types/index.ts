@@ -1,4 +1,3 @@
-
 export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby';
 
 // Adding new types for client configuration
@@ -37,7 +36,6 @@ export interface Cliente {
 }
 
 // Representantes, Rotas e Categorias para configuração
-
 export interface Representante {
   id: number;
   nome: string;
@@ -58,6 +56,29 @@ export interface CategoriaEstabelecimento {
   nome: string;
   descricao?: string;
   ativo: boolean;
+}
+
+export interface TipoLogistica {
+  id: number;
+  nome: string;
+  percentualLogistico: number; // em porcentagem
+  ativo: boolean;
+}
+
+export interface FormaPagamento {
+  id: number;
+  nome: string;
+  ativo: boolean;
+}
+
+export interface ConfiguracoesProducao {
+  unidadesPorForma: number;
+  formasPorLote: number;
+  incluirPedidosPrevistos: boolean;
+  percentualPedidosPrevistos: number;
+  tempoMedioPorFornada: number; // em minutos
+  unidadesBrowniePorForma: number;
+  formasPorFornada: number;
 }
 
 export type StatusPedido = 'Agendado' | 'Em Separação' | 'Despachado' | 'Entregue' | 'Cancelado';
