@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { PageHeader } from '@/components/common/PageHeader';
+import PageHeader from '@/components/common/PageHeader';
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { useDashboardStore } from '@/hooks/useDashboardStore';
 import { useProjectionStore } from '@/hooks/useProjectionStore';

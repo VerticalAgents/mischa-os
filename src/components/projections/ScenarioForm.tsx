@@ -149,12 +149,13 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
     // Calculate payback
     const paybackMonths = operationalResult > 0 ? totalInvestment / operationalResult : 0;
     
-    return {
+    // Create a properly typed updated scenario
+    const updatedScenario: Partial<DREData> = {
       name: data.name,
       channelsData: updatedChannelsData,
-      fixedCosts: data.fixedCosts,
-      administrativeCosts: data.administrativeCosts,
-      investments: data.investments,
+      fixedCosts: data.fixedCosts as CostItem[], // Ensure the correct type
+      administrativeCosts: data.administrativeCosts as CostItem[], // Ensure the correct type
+      investments: data.investments as InvestmentItem[], // Ensure the correct type
       totalRevenue,
       totalVariableCosts,
       totalFixedCosts,
@@ -172,6 +173,8 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
       paybackMonths,
       channelGrowthFactors: data.channelGrowth
     };
+    
+    return updatedScenario;
   };
   
   const updateScenarioName = (name: string) => {
