@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
 import { Settings } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 // Schema for form validation
 const sistemaSchema = z.object({
@@ -221,6 +222,22 @@ export default function SistemaTab() {
                   </FormItem>
                 )}
               />
+            </div>
+            
+            <Separator />
+            
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Aparência</h3>
+              
+              <div className="flex flex-row items-center justify-between">
+                <div>
+                  <FormLabel>Modo de tema</FormLabel>
+                  <FormDescription>
+                    Alternar entre tema claro e escuro
+                  </FormDescription>
+                </div>
+                <ThemeToggle />
+              </div>
             </div>
           </form>
         </Form>
