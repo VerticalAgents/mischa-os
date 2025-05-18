@@ -1,7 +1,8 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, ExternalLink, SlidersHorizontal } from "lucide-react";
+import { Search, ExternalLink, SlidersHorizontal, Calendar } from "lucide-react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { StatusCliente } from "@/types";
 import PageHeader from "@/components/common/PageHeader";
@@ -14,6 +15,8 @@ import ClienteDetalhesTabs from "@/components/clientes/ClienteDetalhesTabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 // Define the available columns for the table
 interface ColumnOption {
@@ -33,7 +36,7 @@ export default function Clientes() {
   } = useClienteStore();
 
   // Column visibility state
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(["nome", "cnpjCpf", "enderecoEntrega", "contato", "quantidadePadrao", "periodicidade", "giroSemanal", "status", "acoes"]);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(["nome", "cnpjCpf", "enderecoEntrega", "contato", "quantidadePadrao", "periodicidade", "giroSemanal", "status", "statusAgendamento", "proximaDataReposicao", "acoes"]);
 
   // Available columns for the table
   const columnOptions: ColumnOption[] = [{
@@ -55,11 +58,11 @@ export default function Clientes() {
   }, {
     id: "quantidadePadrao",
     label: "Qtde. Padrão",
-    canToggle: false
+    canToggle: true
   }, {
     id: "periodicidade",
     label: "Period.",
-    canToggle: false
+    canToggle: true
   }, {
     id: "giroSemanal",
     label: "Giro Semanal",
@@ -69,9 +72,17 @@ export default function Clientes() {
     label: "Status",
     canToggle: true
   }, {
+    id: "statusAgendamento",
+    label: "Status Agendamento",
+    canToggle: true
+  }, {
+    id: "proximaDataReposicao",
+    label: "Próx. Reposição",
+    canToggle: true
+  }, {
     id: "acoes",
     label: "Ações",
-    canToggle: true
+    canToggle: false
   }];
   const clientes = getClientesFiltrados();
   const handleOpenForm = () => {
@@ -221,6 +232,22 @@ export default function Clientes() {
                         </TableCell>}
                       {visibleColumns.includes("status") && <TableCell>
                           <StatusBadge status={cliente.statusCliente} />
+                        </TableCell>}
+                      {visibleColumns.includes("statusAgendamento") && <TableCell>
+                          <Badge variant={
+                            cliente.statusAgendamento === "Agendado" ? "success" : 
+                            cliente.statusAgendamento === "Pendente" ? "warning" : "outline"
+                          }>
+                            {cliente.statusAgendamento || "Não Agendado"}
+                          </Badge>
+                        </TableCell>}
+                      {visibleColumns.includes("proximaDataReposicao") && <TableCell>
+                          {cliente.proximaDataReposicao ? (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span>{format(cliente.proximaDataReposicao, "dd/MM/yyyy", { locale: ptBR })}</span>
+                            </div>
+                          ) : "-"}
                         </TableCell>}
                       {visibleColumns.includes("acoes") && <TableCell className="text-right">
                           <Button variant="ghost" size="icon" onClick={e => {

@@ -1,205 +1,269 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, ExternalLink, SlidersHorizontal, Calendar } from "lucide-react";
+import { useClienteStore } from "@/hooks/useClienteStore";
+import { StatusCliente } from "@/types";
+import PageHeader from "@/components/common/PageHeader";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import StatusBadge from "@/components/common/StatusBadge";
+import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
+import { Badge } from "@/components/ui/badge";
+import ClienteDetalhesTabs from "@/components/clientes/ClienteDetalhesTabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-import { cn } from "@/lib/utils";
-import { Link, LinkProps } from "react-router-dom";
-import React, { useState, createContext, useContext } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Menu, X } from "lucide-react";
-
-interface Links {
+// Define the available columns for the table
+interface ColumnOption {
+  id: string;
   label: string;
-  href: string;
-  icon: React.JSX.Element | React.ReactNode;
+  canToggle: boolean;
 }
+export default function Clientes() {
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const {
+    filtros,
+    setFiltroTermo,
+    setFiltroStatus,
+    getClientesFiltrados,
+    clienteAtual,
+    selecionarCliente
+  } = useClienteStore();
 
-interface SidebarContextProps {
-  open: boolean;
-  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  animate: boolean;
-}
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(["nome", "cnpjCpf", "enderecoEntrega", "contato", "quantidadePadrao", "periodicidade", "giroSemanal", "status", "statusAgendamento", "proximaDataReposicao", "acoes"]);
 
-const SidebarContext = createContext<SidebarContextProps | undefined>(
-  undefined
-);
+  // Available columns for the table
+  const columnOptions: ColumnOption[] = [{
+    id: "nome",
+    label: "Nome",
+    canToggle: false
+  }, {
+    id: "cnpjCpf",
+    label: "CNPJ/CPF",
+    canToggle: true
+  }, {
+    id: "enderecoEntrega",
+    label: "Endereço",
+    canToggle: true
+  }, {
+    id: "contato",
+    label: "Contato",
+    canToggle: true
+  }, {
+    id: "quantidadePadrao",
+    label: "Qtde. Padrão",
+    canToggle: true
+  }, {
+    id: "periodicidade",
+    label: "Period.",
+    canToggle: true
+  }, {
+    id: "giroSemanal",
+    label: "Giro Semanal",
+    canToggle: false
+  }, {
+    id: "status",
+    label: "Status",
+    canToggle: true
+  }, {
+    id: "statusAgendamento",
+    label: "Status Agendamento",
+    canToggle: true
+  }, {
+    id: "proximaDataReposicao",
+    label: "Próx. Reposição",
+    canToggle: true
+  }, {
+    id: "acoes",
+    label: "Ações",
+    canToggle: false
+  }];
+  const clientes = getClientesFiltrados();
+  const handleOpenForm = () => {
+    setIsFormOpen(true);
+  };
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+  };
+  const handleSelectCliente = (id: number) => {
+    selecionarCliente(id);
+  };
+  const handleBackToList = () => {
+    selecionarCliente(null);
+  };
 
-export const useSidebar = () => {
-  const context = useContext(SidebarContext);
-  if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider");
-  }
-  return context;
-};
+  // Toggle column visibility
+  const toggleColumn = (columnId: string, isVisible: boolean) => {
+    if (!isVisible) {
+      setVisibleColumns(visibleColumns.filter(id => id !== columnId));
+    } else {
+      setVisibleColumns([...visibleColumns, columnId]);
+    }
+  };
 
-export const SidebarProvider = ({
-  children,
-  open: openProp,
-  setOpen: setOpenProp,
-  animate = true,
-}: {
-  children: React.ReactNode;
-  open?: boolean;
-  setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
-  animate?: boolean;
-}) => {
-  const [openState, setOpenState] = useState(false);
+  // Helper para formatar a periodicidade em texto
+  const formatPeriodicidade = (dias: number): string => {
+    if (dias % 7 === 0) {
+      const semanas = dias / 7;
+      return semanas === 1 ? "1 semana" : `${semanas} semanas`;
+    } else if (dias === 3) {
+      return "3x semana";
+    } else {
+      return `${dias} dias`;
+    }
+  };
 
-  const open = openProp !== undefined ? openProp : openState;
-  const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
+  // Calcular o giro semanal com base na quantidade padrão e periodicidade
+  const calcularGiroSemanal = (qtdPadrao: number, periodicidadeDias: number): number => {
+    // Para periodicidade em dias, converter para semanas
+    if (periodicidadeDias === 3) {
+      // Caso especial: 3x por semana
+      return qtdPadrao * 3;
+    }
 
-  return (
-    <SidebarContext.Provider value={{ open, setOpen, animate }}>
-      {children}
-    </SidebarContext.Provider>
-  );
-};
+    // Para outros casos, calcular giro semanal
+    const periodicidadeSemanas = periodicidadeDias / 7;
+    return Math.round(qtdPadrao / periodicidadeSemanas);
+  };
 
-export const Sidebar = ({
-  children,
-  open,
-  setOpen,
-  animate,
-}: {
-  children: React.ReactNode;
-  open?: boolean;
-  setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
-  animate?: boolean;
-}) => {
-  return (
-    <SidebarProvider open={open} setOpen={setOpen} animate={animate}>
-      {children}
-    </SidebarProvider>
-  );
-};
-
-export const SidebarBody = ({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<typeof motion.div>) => {
-  return (
-    <>
-      <DesktopSidebar {...props} className={className}>
-        {children}
-      </DesktopSidebar>
-      <MobileSidebar {...props} className={className}>
-        {children}
-      </MobileSidebar>
-    </>
-  );
-};
-
-export const DesktopSidebar = ({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<typeof motion.div>) => {
-  const { open, setOpen, animate } = useSidebar();
-  return (
-    <motion.div
-      className={cn(
-        "h-full px-4 py-4 hidden md:flex md:flex-col bg-sidebar w-[300px] flex-shrink-0 border-r border-sidebar-border",
-        className
-      )}
-      animate={{
-        width: animate ? (open ? "300px" : "80px") : "300px",
-      }}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      {...props}
-    >
-      {children}
-    </motion.div>
-  );
-};
-
-export const MobileSidebar = ({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<typeof motion.div>) => {
-  const { open, setOpen } = useSidebar();
-  return (
-    <>
-      <div
-        className={cn(
-          "h-10 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-sidebar w-full"
-        )}
-      >
-        <div className="flex justify-end z-20 w-full">
-          <Menu
-            className="text-sidebar-foreground cursor-pointer"
-            onClick={() => setOpen(!open)}
-          />
+  // Renderizar a tela de detalhes do cliente quando um cliente for selecionado
+  if (clienteAtual) {
+    return <>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <Button variant="outline" onClick={handleBackToList} className="mb-4">
+              ← Voltar para lista
+            </Button>
+            <h1 className="text-2xl font-bold tracking-tight">{clienteAtual.nome}</h1>
+            <p className="text-muted-foreground">
+              {clienteAtual.cnpjCpf}
+              <StatusBadge status={clienteAtual.statusCliente} className="ml-2" />
+            </p>
+          </div>
+          <Button onClick={() => setIsFormOpen(true)}>Editar Cliente</Button>
         </div>
-        <AnimatePresence>
-          {open && (
-            <motion.div
-              initial={{ x: "-100%", opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: "-100%", opacity: 0 }}
-              transition={{
-                duration: 0.3,
-                ease: "easeInOut",
-              }}
-              className={cn(
-                "fixed h-full w-full inset-0 bg-sidebar p-10 z-[100] flex flex-col justify-between",
-                className
-              )}
-              {...props}
-            >
-              <div
-                className="absolute right-10 top-10 z-50 text-sidebar-foreground cursor-pointer"
-                onClick={() => setOpen(!open)}
-              >
-                <X />
-              </div>
-              {children}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </>
-  );
-};
 
-export const SidebarLink = ({
-  link,
-  className,
-  active,
-  onClick,
-  ...props
-}: {
-  link: Links;
-  className?: string;
-  active?: boolean;
-  onClick?: () => void;
-} & Omit<LinkProps, "to">) => {
-  const { open, animate } = useSidebar();
-  
-  // Create a boolean to control visibility instead of using a direct expression in JSX
-  const isLabelVisible = animate ? open : true;
-  
-  return (
-    <Link
-      to={link.href}
-      className={cn(
-        "flex items-center justify-start gap-2 group/sidebar py-2",
-        active ? "text-sidebar-accent-foreground" : "text-sidebar-foreground",
-        !isLabelVisible && "justify-center px-1",
-        className
-      )}
-      onClick={onClick}
-      {...props}
-    >
-      <span className="flex-shrink-0 flex items-center justify-center w-6">
-        {link.icon}
-      </span>
-      
-      {/* Use boolean for conditional rendering instead of the expression directly */}
-      {isLabelVisible && (
-        <span className="text-current text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre">
-          {link.label}
-        </span>
-      )}
-    </Link>
-  );
-};
+        <ClienteDetalhesTabs cliente={clienteAtual} onEdit={handleOpenForm} />
+
+        <ClienteFormDialog open={isFormOpen} onOpenChange={setIsFormOpen} clienteId={clienteAtual.id} />
+      </>;
+  }
+  return <>
+      <PageHeader title="Clientes" description="Gerencie os pontos de venda dos seus produtos" action={{
+      label: "Novo Cliente",
+      onClick: handleOpenForm
+    }} />
+
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Buscar por nome ou CNPJ/CPF..." className="pl-8" value={filtros.termo} onChange={e => setFiltroTermo(e.target.value)} />
+        </div>
+        <select className="h-10 rounded-md border border-input bg-background px-3 py-2" value={filtros.status} onChange={e => setFiltroStatus(e.target.value as StatusCliente | 'Todos')}>
+          <option value="Todos">Todos os status</option>
+          <option value="Ativo">Ativo</option>
+          <option value="Em análise">Em análise</option>
+          <option value="Inativo">Inativo</option>
+          <option value="A ativar">A ativar</option>
+          <option value="Standby">Standby</option>
+        </select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4" />
+              <span>Colunas</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-60">
+            <div className="space-y-4">
+              <h4 className="font-medium">Propriedades Visíveis</h4>
+              <div className="grid gap-2">
+                {columnOptions.map(column => <div key={column.id} className="flex items-center gap-2">
+                    <Checkbox id={`column-${column.id}`} checked={visibleColumns.includes(column.id)} onCheckedChange={checked => {
+                  if (column.canToggle) {
+                    toggleColumn(column.id, !!checked);
+                  }
+                }} disabled={!column.canToggle} />
+                    <Label htmlFor={`column-${column.id}`}>{column.label}</Label>
+                  </div>)}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {columnOptions.map(column => visibleColumns.includes(column.id) && <TableHead key={column.id}>{column.label}</TableHead>)}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {clientes.length === 0 ? <TableRow>
+                  <TableCell colSpan={visibleColumns.length} className="h-24 text-center">
+                    Nenhum cliente encontrado.
+                  </TableCell>
+                </TableRow> : clientes.map(cliente => {
+              const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
+              return <TableRow key={cliente.id} className="cursor-pointer" onClick={() => handleSelectCliente(cliente.id)}>
+                      {visibleColumns.includes("nome") && <TableCell className="font-medium">{cliente.nome}</TableCell>}
+                      {visibleColumns.includes("cnpjCpf") && <TableCell>{cliente.cnpjCpf || "-"}</TableCell>}
+                      {visibleColumns.includes("enderecoEntrega") && <TableCell className="max-w-[200px] truncate">
+                          {cliente.enderecoEntrega || "-"}
+                        </TableCell>}
+                      {visibleColumns.includes("contato") && <TableCell>
+                          {cliente.contatoNome || "-"}
+                          {cliente.contatoTelefone && <div className="text-xs text-muted-foreground">{cliente.contatoTelefone}</div>}
+                        </TableCell>}
+                      {visibleColumns.includes("quantidadePadrao") && <TableCell>{cliente.quantidadePadrao}</TableCell>}
+                      {visibleColumns.includes("periodicidade") && <TableCell>{formatPeriodicidade(cliente.periodicidadePadrao)}</TableCell>}
+                      {visibleColumns.includes("giroSemanal") && <TableCell>
+                          <Badge variant="outline" className="font-semibold bg-gray-800">
+                            {giroSemanal}
+                          </Badge>
+                        </TableCell>}
+                      {visibleColumns.includes("status") && <TableCell>
+                          <StatusBadge status={cliente.statusCliente} />
+                        </TableCell>}
+                      {visibleColumns.includes("statusAgendamento") && <TableCell>
+                          <Badge variant={
+                            cliente.statusAgendamento === "Agendado" ? "success" : 
+                            cliente.statusAgendamento === "Pendente" ? "warning" : "outline"
+                          }>
+                            {cliente.statusAgendamento || "Não Agendado"}
+                          </Badge>
+                        </TableCell>}
+                      {visibleColumns.includes("proximaDataReposicao") && <TableCell>
+                          {cliente.proximaDataReposicao ? (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span>{format(cliente.proximaDataReposicao, "dd/MM/yyyy", { locale: ptBR })}</span>
+                            </div>
+                          ) : "-"}
+                        </TableCell>}
+                      {visibleColumns.includes("acoes") && <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={e => {
+                    e.stopPropagation();
+                    handleSelectCliente(cliente.id);
+                  }}>
+                            <ExternalLink className="h-4 w-4" />
+                            <span className="sr-only">Ver detalhes</span>
+                          </Button>
+                        </TableCell>}
+                    </TableRow>;
+            })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <ClienteFormDialog open={isFormOpen} onOpenChange={setIsFormOpen} />
+    </>;
+}
