@@ -13,6 +13,7 @@ import Estoque from "@/pages/Estoque";
 import Configuracoes from "@/pages/Configuracoes";
 import PCP from "@/pages/PCP";
 import Expedicao from "@/pages/Expedicao";
+import Projections from "@/pages/Projections";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,11 @@ const App = () => (
           <Route path="/pcp" element={
             <AppLayout>
               <PCP />
+            </AppLayout>
+          } />
+          <Route path="/projecoes" element={
+            <AppLayout>
+              <Projections />
             </AppLayout>
           } />
           <Route path="*" element={<NotFound />} />
