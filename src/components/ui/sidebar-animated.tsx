@@ -175,6 +175,7 @@ export const SidebarLink = ({
 } & Omit<LinkProps, "to">) => {
   const { open, animate } = useSidebar();
   
+  // Define a boolean to control visibility instead of using a direct expression
   const showLabel = animate ? open : true;
   
   return (
@@ -192,6 +193,7 @@ export const SidebarLink = ({
         {link.icon}
       </span>
       
+      {/* Use the boolean to conditionally render the label */}
       {showLabel && (
         <span className="text-current text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre">
           {link.label}
