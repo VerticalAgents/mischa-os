@@ -22,7 +22,7 @@ export const clientesMock: Cliente[] = [
     statusCliente: "Ativo",
     dataCadastro: new Date("2023-01-15"),
     ultimaDataReposicaoEfetiva: new Date("2024-05-07"),
-    // Adicionando os campos obrigatórios faltantes
+    // Adding required fields
     contabilizarGiroMedio: true,
     tipoLogistica: "Própria",
     emiteNotaFiscal: true,
@@ -42,7 +42,7 @@ export const clientesMock: Cliente[] = [
     statusCliente: "Ativo",
     dataCadastro: new Date("2023-02-20"),
     ultimaDataReposicaoEfetiva: new Date("2024-05-09"),
-    // Adicionando os campos obrigatórios faltantes
+    // Adding required fields
     contabilizarGiroMedio: true,
     tipoLogistica: "Própria",
     emiteNotaFiscal: true,
@@ -62,7 +62,7 @@ export const clientesMock: Cliente[] = [
     statusCliente: "Ativo",
     dataCadastro: new Date("2023-03-10"),
     ultimaDataReposicaoEfetiva: new Date("2024-05-08"),
-    // Adicionando os campos obrigatórios faltantes
+    // Adding required fields
     contabilizarGiroMedio: true,
     tipoLogistica: "Distribuição",
     emiteNotaFiscal: false,
@@ -81,7 +81,7 @@ export const clientesMock: Cliente[] = [
     periodicidadePadrao: 5,
     statusCliente: "Em análise",
     dataCadastro: new Date("2024-04-05"),
-    // Adicionando os campos obrigatórios faltantes
+    // Adding required fields
     contabilizarGiroMedio: false,
     tipoLogistica: "Própria",
     emiteNotaFiscal: true,
@@ -101,7 +101,7 @@ export const clientesMock: Cliente[] = [
     statusCliente: "Standby",
     dataCadastro: new Date("2023-05-15"),
     ultimaDataReposicaoEfetiva: new Date("2024-04-25"),
-    // Adicionando os campos obrigatórios faltantes
+    // Adding required fields
     contabilizarGiroMedio: true,
     tipoLogistica: "Distribuição",
     emiteNotaFiscal: true,
@@ -120,7 +120,7 @@ export const clientesMock: Cliente[] = [
     periodicidadePadrao: 3,
     statusCliente: "A ativar",
     dataCadastro: new Date("2024-05-01"),
-    // Adicionando os campos obrigatórios faltantes
+    // Adding required fields
     contabilizarGiroMedio: false,
     tipoLogistica: "Própria",
     emiteNotaFiscal: false,
@@ -140,7 +140,7 @@ export const clientesMock: Cliente[] = [
     statusCliente: "Inativo",
     dataCadastro: new Date("2023-06-25"),
     ultimaDataReposicaoEfetiva: new Date("2024-03-15"),
-    // Adicionando os campos obrigatórios faltantes
+    // Adding required fields
     contabilizarGiroMedio: false,
     tipoLogistica: "Própria",
     emiteNotaFiscal: true,
