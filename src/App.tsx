@@ -14,6 +14,7 @@ import Configuracoes from "@/pages/Configuracoes";
 import PCP from "@/pages/PCP";
 import Expedicao from "@/pages/Expedicao";
 import Projections from "@/pages/Projections";
+import Analytics from "@/pages/Analytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,11 @@ const App = () => (
           <Route path="/projecoes" element={
             <AppLayout>
               <Projections />
+            </AppLayout>
+          } />
+          <Route path="/analytics" element={
+            <AppLayout>
+              <Analytics />
             </AppLayout>
           } />
           <Route path="*" element={<NotFound />} />
