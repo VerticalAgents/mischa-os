@@ -178,15 +178,17 @@ export const SidebarLink = ({
       {...props}
     >
       {link.icon}
-      <motion.span
-        animate={{
-          display: animate ? (open ? "inline-block" : "none") : "inline-block",
-          opacity: animate ? (open ? 1 : 0) : 1,
-        }}
-        className="text-current text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
-      >
-        {link.label}
-      </motion.span>
+      {/* Fix: Use conditional rendering instead of motion values for display */}
+      {(animate ? open : true) && (
+        <motion.span
+          animate={{
+            opacity: animate ? (open ? 1 : 0) : 1,
+          }}
+          className="text-current text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+        >
+          {link.label}
+        </motion.span>
+      )}
     </Link>
   );
 };
