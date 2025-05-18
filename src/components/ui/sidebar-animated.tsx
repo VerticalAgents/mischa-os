@@ -175,9 +175,6 @@ export const SidebarLink = ({
 } & Omit<LinkProps, "to">) => {
   const { open, animate } = useSidebar();
   
-  // Fix: Use a conditional to determine whether to render the label text
-  const shouldShowLabel = animate ? open : true;
-  
   return (
     <Link
       to={link.href}
@@ -191,7 +188,8 @@ export const SidebarLink = ({
     >
       <span className="flex-shrink-0">{link.icon}</span>
       
-      {shouldShowLabel && (
+      {/* Fix: Use boolean expression to determine whether to render the text */}
+      {Boolean(animate ? open : true) && (
         <span className="text-current text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre">
           {link.label}
         </span>
