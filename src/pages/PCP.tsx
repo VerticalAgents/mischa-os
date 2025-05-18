@@ -14,6 +14,9 @@ import OrdersList from "@/components/pcp/OrdersList";
 import FlavorPlanningTable from "@/components/pcp/FlavorPlanningTable";
 import DailyNeedsTab from "@/components/pcp/DailyNeedsTab";
 import RetrospectiveTab from "@/components/pcp/RetrospectiveTab";
+import PlanejamentoProducao from "@/components/pcp/PlanejamentoProducao";
+import RegistroManualProducao from "@/components/pcp/RegistroManualProducao";
+import HistoricoProducao from "@/components/pcp/HistoricoProducao";
 
 export default function PCP() {
   const { sabores } = useSaborStore();
@@ -24,11 +27,8 @@ export default function PCP() {
     getPlanejamento, 
     getTotalFormasNecessarias, 
     getTotalUnidadesAgendadas,
-    getTotalLotesNecessarios,
     setCapacidadeForma,
     capacidadeForma,
-    setFormasPorLote,
-    formasPorLote,
     setIncluirPedidosPrevistos,
     incluirPedidosPrevistos,
   } = usePlanejamentoProducaoStore();
@@ -84,11 +84,6 @@ export default function PCP() {
   const atualizarCapacidadeForma = (capacidade: number) => {
     setCapacidadeForma(capacidade);
     calcularPlanejamentoProducao();
-  };
-
-  // Atualiza o número de formas por lote
-  const atualizarFormasPorLote = (formas: number) => {
-    setFormasPorLote(formas);
   };
 
   // Atualiza o estoque atual de um sabor
@@ -210,6 +205,9 @@ export default function PCP() {
           <TabsTrigger value="planejamento">Planejamento</TabsTrigger>
           <TabsTrigger value="necessidade-diaria">Necessidade Diária</TabsTrigger>
           <TabsTrigger value="retrospectiva">Retrospectiva 30 Dias</TabsTrigger>
+          <TabsTrigger value="planejar-producao">Planejar Produção</TabsTrigger>
+          <TabsTrigger value="registro-manual">Registrar Produção</TabsTrigger>
+          <TabsTrigger value="historico">Histórico</TabsTrigger>
         </TabsList>
       
         <TabsContent value="planejamento" className="space-y-6">
@@ -217,8 +215,6 @@ export default function PCP() {
             <ProductionParams
               capacidadeForma={capacidadeForma}
               atualizarCapacidadeForma={atualizarCapacidadeForma}
-              formasPorLote={formasPorLote}
-              atualizarFormasPorLote={atualizarFormasPorLote}
               mostrarPedidosPrevistos={mostrarPedidosPrevistos}
               setMostrarPedidosPrevistos={setMostrarPedidosPrevistos}
             />
@@ -226,7 +222,6 @@ export default function PCP() {
             <ProductionSummary
               getTotalUnidadesAgendadas={getTotalUnidadesAgendadas}
               getTotalFormasNecessarias={getTotalFormasNecessarias}
-              getTotalLotesNecessarios={getTotalLotesNecessarios}
             />
 
             <OrdersList 
@@ -257,6 +252,18 @@ export default function PCP() {
           <RetrospectiveTab 
             retrospectiva={retrospectiva} 
           />
+        </TabsContent>
+
+        <TabsContent value="planejar-producao" className="space-y-6">
+          <PlanejamentoProducao />
+        </TabsContent>
+
+        <TabsContent value="registro-manual" className="space-y-6">
+          <RegistroManualProducao />
+        </TabsContent>
+
+        <TabsContent value="historico" className="space-y-6">
+          <HistoricoProducao />
         </TabsContent>
       </Tabs>
     </div>
