@@ -44,7 +44,7 @@ type RegistroProducaoForm = {
 export default function RegistroManualProducao() {
   const { produtos } = useProdutoStore();
   const configStore = useConfigStore();
-  const unidadesPorForma = configStore.producao?.unidadesPorForma || 30; // Safe access with fallback
+  const unidadesPorForma = configStore.configuracoesProducao?.unidadesPorForma || 30; // Updated access path
   const [registrando, setRegistrando] = useState(false);
   const { toast } = useToast();
 
@@ -65,11 +65,11 @@ export default function RegistroManualProducao() {
     setTimeout(() => {
       // Aqui seria a integração com o back-end
       const produtoNome = produtos.find(p => p.id === data.produtoId)?.nome;
-      const unidadesProduzidas = data.formasProduzidas * unidadesPorForma;
+      const unidadesProduzidas = data.formasProducidas * unidadesPorForma;
       
       toast({
         title: 'Produção registrada com sucesso!',
-        description: `${data.formasProduzidas} formas (${unidadesProduzidas} unidades) de ${produtoNome} em ${format(data.dataProducao, 'dd/MM/yyyy')}`,
+        description: `${data.formasProducidas} formas (${unidadesProduzidas} unidades) de ${produtoNome} em ${format(data.dataProducao, 'dd/MM/yyyy')}`,
       });
       
       form.reset();
@@ -79,7 +79,7 @@ export default function RegistroManualProducao() {
 
   // Calcular unidades produzidas com base nas formas e unidades por forma
   const calcularUnidades = () => {
-    const formas = form.watch('formasProduzidas') || 0;
+    const formas = form.watch('formasProducidas') || 0;
     return formas * unidadesPorForma;
   };
 
@@ -123,7 +123,7 @@ export default function RegistroManualProducao() {
 
               <FormField
                 control={form.control}
-                name="formasProduzidas"
+                name="formasProducidas"
                 rules={{ 
                   required: "Informe a quantidade de formas",
                   min: { value: 1, message: "Mínimo de 1 forma" }
