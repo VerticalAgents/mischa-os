@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format, addDays, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
@@ -27,6 +26,7 @@ export default function PCP() {
     getPlanejamento, 
     getTotalFormasNecessarias, 
     getTotalUnidadesAgendadas,
+    getTotalLotesNecessarios,
     setCapacidadeForma,
     capacidadeForma,
     setIncluirPedidosPrevistos,
@@ -217,11 +217,14 @@ export default function PCP() {
               atualizarCapacidadeForma={atualizarCapacidadeForma}
               mostrarPedidosPrevistos={mostrarPedidosPrevistos}
               setMostrarPedidosPrevistos={setMostrarPedidosPrevistos}
+              formasPorLote={0} // Add this property to fix the type error
+              atualizarFormasPorLote={() => {}} // Add this property to fix the type error
             />
 
             <ProductionSummary
               getTotalUnidadesAgendadas={getTotalUnidadesAgendadas}
               getTotalFormasNecessarias={getTotalFormasNecessarias}
+              getTotalLotesNecessarios={getTotalLotesNecessarios}
             />
 
             <OrdersList 

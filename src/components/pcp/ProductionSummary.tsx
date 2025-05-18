@@ -5,13 +5,13 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 interface ProductionSummaryProps {
   getTotalUnidadesAgendadas: () => number;
   getTotalFormasNecessarias: () => number;
-  getTotalLotesNecessarios: () => number;
+  getTotalLotesNecessarios?: () => number;
 }
 
 export default function ProductionSummary({
   getTotalUnidadesAgendadas,
   getTotalFormasNecessarias,
-  getTotalLotesNecessarios
+  getTotalLotesNecessarios = () => 0 // Default implementation if not provided
 }: ProductionSummaryProps) {
   return (
     <Card>
@@ -28,14 +28,10 @@ export default function ProductionSummary({
             <span className="text-sm font-medium block text-muted-foreground">Total de formas:</span>
             <span className="text-2xl font-semibold">{getTotalFormasNecessarias()}</span>
           </div>
-          <div>
-            <span className="text-sm font-medium block text-muted-foreground">Lotes necessários:</span>
-            <span className="text-2xl font-semibold">{getTotalLotesNecessarios()}</span>
-          </div>
           <Alert className="mt-4">
             <AlertTitle>Próxima produção</AlertTitle>
             <AlertDescription>
-              Você precisa agendar {getTotalLotesNecessarios()} {getTotalLotesNecessarios() === 1 ? 'lote' : 'lotes'} de produção para atender a demanda semanal.
+              Você precisa agendar {getTotalFormasNecessarias()} {getTotalFormasNecessarias() === 1 ? 'forma' : 'formas'} para atender a demanda semanal.
             </AlertDescription>
           </Alert>
         </div>

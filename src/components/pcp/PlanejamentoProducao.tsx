@@ -43,7 +43,8 @@ type ProducaoForm = {
 
 export default function PlanejamentoProducao() {
   const { produtos } = useProdutoStore();
-  const { unidadesPorForma } = useConfigStore(state => state.parametrosProducao);
+  const configStore = useConfigStore();
+  const unidadesPorForma = configStore.producao?.unidadesPorForma || 30; // Safe access with fallback
   const [agendando, setAgendando] = useState(false);
   const { toast } = useToast();
 

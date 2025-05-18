@@ -28,31 +28,32 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
-import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type RegistroProducaoForm = {
   produtoId: number;
-  formasProduzidas: number;
+  formasProducidas: number;
   dataProducao: Date;
-  turno?: string;
+  turno: string;
   observacoes?: string;
 };
 
 export default function RegistroManualProducao() {
   const { produtos } = useProdutoStore();
-  const { unidadesPorForma } = useConfigStore(state => state.parametrosProducao);
+  const configStore = useConfigStore();
+  const unidadesPorForma = configStore.producao?.unidadesPorForma || 30; // Safe access with fallback
   const [registrando, setRegistrando] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<RegistroProducaoForm>({
     defaultValues: {
       produtoId: 0,
-      formasProduzidas: 1,
+      formasProducidas: 1,
       dataProducao: new Date(),
-      turno: '',
+      turno: 'Matutino',
       observacoes: '',
     },
   });
