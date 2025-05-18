@@ -62,17 +62,20 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
   const { clientes } = useClienteStore();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   
+  // Ensure channelGrowthFactors has all required properties
+  const defaultChannelGrowth: Record<Channel, { type: 'percentage' | 'absolute', value: number }> = {
+    'B2B-Revenda': { type: 'percentage', value: 0 },
+    'B2B-FoodService': { type: 'percentage', value: 0 },
+    'B2C-UFCSPA': { type: 'percentage', value: 0 },
+    'B2C-Personalizados': { type: 'percentage', value: 0 },
+    'B2C-Outros': { type: 'percentage', value: 0 }
+  };
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: scenario.name,
-      channelGrowth: scenario.channelGrowthFactors || {
-        'B2B-Revenda': { type: 'percentage', value: 0 },
-        'B2B-FoodService': { type: 'percentage', value: 0 },
-        'B2C-UFCSPA': { type: 'percentage', value: 0 },
-        'B2C-Personalizados': { type: 'percentage', value: 0 },
-        'B2C-Outros': { type: 'percentage', value: 0 }
-      },
+      channelGrowth: scenario.channelGrowthFactors || defaultChannelGrowth,
       fixedCosts: scenario.fixedCosts,
       administrativeCosts: scenario.administrativeCosts,
       investments: scenario.investments
@@ -151,20 +154,20 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
     
     // Create properly typed channel growth factors
     const channelGrowthFactors: Record<Channel, { type: 'percentage' | 'absolute', value: number }> = {
-      'B2B-Revenda': data.channelGrowth['B2B-Revenda'] || { type: 'percentage', value: 0 },
-      'B2B-FoodService': data.channelGrowth['B2B-FoodService'] || { type: 'percentage', value: 0 },
-      'B2C-UFCSPA': data.channelGrowth['B2C-UFCSPA'] || { type: 'percentage', value: 0 },
-      'B2C-Personalizados': data.channelGrowth['B2C-Personalizados'] || { type: 'percentage', value: 0 },
-      'B2C-Outros': data.channelGrowth['B2C-Outros'] || { type: 'percentage', value: 0 }
+      'B2B-Revenda': { type: data.channelGrowth['B2B-Revenda']?.type || 'percentage', value: data.channelGrowth['B2B-Revenda']?.value || 0 },
+      'B2B-FoodService': { type: data.channelGrowth['B2B-FoodService']?.type || 'percentage', value: data.channelGrowth['B2B-FoodService']?.value || 0 },
+      'B2C-UFCSPA': { type: data.channelGrowth['B2C-UFCSPA']?.type || 'percentage', value: data.channelGrowth['B2C-UFCSPA']?.value || 0 },
+      'B2C-Personalizados': { type: data.channelGrowth['B2C-Personalizados']?.type || 'percentage', value: data.channelGrowth['B2C-Personalizados']?.value || 0 },
+      'B2C-Outros': { type: data.channelGrowth['B2C-Outros']?.type || 'percentage', value: data.channelGrowth['B2C-Outros']?.value || 0 }
     };
     
     // Create a properly typed updated scenario
     const updatedScenario: Partial<DREData> = {
       name: data.name,
       channelsData: updatedChannelsData,
-      fixedCosts: data.fixedCosts as CostItem[], // Ensure the correct type
-      administrativeCosts: data.administrativeCosts as CostItem[], // Ensure the correct type
-      investments: data.investments as InvestmentItem[], // Ensure the correct type
+      fixedCosts: data.fixedCosts as CostItem[],
+      administrativeCosts: data.administrativeCosts as CostItem[],
+      investments: data.investments as InvestmentItem[],
       totalRevenue,
       totalVariableCosts,
       totalFixedCosts,
