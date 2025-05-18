@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, ExternalLink } from "lucide-react";
+import { Search, ExternalLink, SlidersHorizontal } from "lucide-react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { StatusCliente } from "@/types";
 import PageHeader from "@/components/common/PageHeader";
@@ -12,10 +12,43 @@ import StatusBadge from "@/components/common/StatusBadge";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import { Badge } from "@/components/ui/badge";
 import ClienteDetalhesTabs from "@/components/clientes/ClienteDetalhesTabs";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+
+// Define the available columns for the table
+interface ColumnOption {
+  id: string;
+  label: string;
+  canToggle: boolean;
+}
 
 export default function Clientes() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const { filtros, setFiltroTermo, setFiltroStatus, getClientesFiltrados, clienteAtual, selecionarCliente } = useClienteStore();
+  
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([
+    "nome", "cnpjCpf", "enderecoEntrega", "contato", 
+    "quantidadePadrao", "periodicidade", "giroSemanal", "status", "acoes"
+  ]);
+
+  // Available columns for the table
+  const columnOptions: ColumnOption[] = [
+    { id: "nome", label: "Nome", canToggle: false },
+    { id: "cnpjCpf", label: "CNPJ/CPF", canToggle: true },
+    { id: "enderecoEntrega", label: "Endereço", canToggle: true },
+    { id: "contato", label: "Contato", canToggle: true },
+    { id: "quantidadePadrao", label: "Qtde. Padrão", canToggle: false },
+    { id: "periodicidade", label: "Period.", canToggle: false },
+    { id: "giroSemanal", label: "Giro Semanal", canToggle: false },
+    { id: "status", label: "Status", canToggle: true },
+    { id: "acoes", label: "Ações", canToggle: true }
+  ];
   
   const clientes = getClientesFiltrados();
 
@@ -33,6 +66,15 @@ export default function Clientes() {
 
   const handleBackToList = () => {
     selecionarCliente(null);
+  };
+
+  // Toggle column visibility
+  const toggleColumn = (columnId: string, isVisible: boolean) => {
+    if (!isVisible) {
+      setVisibleColumns(visibleColumns.filter(id => id !== columnId));
+    } else {
+      setVisibleColumns([...visibleColumns, columnId]);
+    }
   };
 
   // Helper para formatar a periodicidade em texto
@@ -118,6 +160,36 @@ export default function Clientes() {
           <option value="A ativar">A ativar</option>
           <option value="Standby">Standby</option>
         </select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4" />
+              <span>Colunas</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-60">
+            <div className="space-y-4">
+              <h4 className="font-medium">Propriedades Visíveis</h4>
+              <div className="grid gap-2">
+                {columnOptions.map((column) => (
+                  <div key={column.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`column-${column.id}`}
+                      checked={visibleColumns.includes(column.id)}
+                      onCheckedChange={(checked) => {
+                        if (column.canToggle) {
+                          toggleColumn(column.id, !!checked);
+                        }
+                      }}
+                      disabled={!column.canToggle}
+                    />
+                    <Label htmlFor={`column-${column.id}`}>{column.label}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <Card>
@@ -125,21 +197,17 @@ export default function Clientes() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>CNPJ/CPF</TableHead>
-                <TableHead>Endereço</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Qtde. Padrão</TableHead>
-                <TableHead>Period.</TableHead>
-                <TableHead>Giro Semanal</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                {columnOptions.map(column => (
+                  visibleColumns.includes(column.id) && (
+                    <TableHead key={column.id}>{column.label}</TableHead>
+                  )
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
               {clientes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center">
+                  <TableCell colSpan={visibleColumns.length} className="h-24 text-center">
                     Nenhum cliente encontrado.
                   </TableCell>
                 </TableRow>
@@ -148,38 +216,56 @@ export default function Clientes() {
                   const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
                   return (
                     <TableRow key={cliente.id} className="cursor-pointer" onClick={() => handleSelectCliente(cliente.id)}>
-                      <TableCell className="font-medium">{cliente.nome}</TableCell>
-                      <TableCell>{cliente.cnpjCpf || "-"}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {cliente.enderecoEntrega || "-"}
-                      </TableCell>
-                      <TableCell>
-                        {cliente.contatoNome || "-"}
-                        {cliente.contatoTelefone && <div className="text-xs text-muted-foreground">{cliente.contatoTelefone}</div>}
-                      </TableCell>
-                      <TableCell>{cliente.quantidadePadrao}</TableCell>
-                      <TableCell>{formatPeriodicidade(cliente.periodicidadePadrao)}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="font-semibold bg-blue-50">
-                          {giroSemanal}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={cliente.statusCliente} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectCliente(cliente.id);
-                          }}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          <span className="sr-only">Ver detalhes</span>
-                        </Button>
-                      </TableCell>
+                      {visibleColumns.includes("nome") && (
+                        <TableCell className="font-medium">{cliente.nome}</TableCell>
+                      )}
+                      {visibleColumns.includes("cnpjCpf") && (
+                        <TableCell>{cliente.cnpjCpf || "-"}</TableCell>
+                      )}
+                      {visibleColumns.includes("enderecoEntrega") && (
+                        <TableCell className="max-w-[200px] truncate">
+                          {cliente.enderecoEntrega || "-"}
+                        </TableCell>
+                      )}
+                      {visibleColumns.includes("contato") && (
+                        <TableCell>
+                          {cliente.contatoNome || "-"}
+                          {cliente.contatoTelefone && <div className="text-xs text-muted-foreground">{cliente.contatoTelefone}</div>}
+                        </TableCell>
+                      )}
+                      {visibleColumns.includes("quantidadePadrao") && (
+                        <TableCell>{cliente.quantidadePadrao}</TableCell>
+                      )}
+                      {visibleColumns.includes("periodicidade") && (
+                        <TableCell>{formatPeriodicidade(cliente.periodicidadePadrao)}</TableCell>
+                      )}
+                      {visibleColumns.includes("giroSemanal") && (
+                        <TableCell>
+                          <Badge variant="outline" className="font-semibold bg-blue-50">
+                            {giroSemanal}
+                          </Badge>
+                        </TableCell>
+                      )}
+                      {visibleColumns.includes("status") && (
+                        <TableCell>
+                          <StatusBadge status={cliente.statusCliente} />
+                        </TableCell>
+                      )}
+                      {visibleColumns.includes("acoes") && (
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectCliente(cliente.id);
+                            }}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            <span className="sr-only">Ver detalhes</span>
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })
