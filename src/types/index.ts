@@ -1,10 +1,26 @@
+
 export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby';
 
 // Adding new types for client configuration
 export type DiaSemana = 'Dom' | 'Seg' | 'Ter' | 'Qua' | 'Qui' | 'Sex' | 'Sáb';
-export type TipoLogistica = 'Própria' | 'Distribuição';
+
+// Updated interfaces for configuration
+export interface TipoLogistica {
+  id: number;
+  nome: string;
+  percentualLogistico: number; // em porcentagem
+  ativo: boolean;
+}
+
+export interface FormaPagamento {
+  id: number;
+  nome: string;
+  ativo: boolean;
+}
+
+export type TipoLogisticaNome = 'Própria' | 'Distribuição';
 export type TipoCobranca = 'À vista' | 'Consignado';
-export type FormaPagamento = 'Boleto' | 'PIX' | 'Dinheiro';
+export type FormaPagamentoNome = 'Boleto' | 'PIX' | 'Dinheiro';
 
 export interface Cliente {
   id: number;
@@ -28,10 +44,10 @@ export interface Cliente {
   categoriaEstabelecimentoId?: number;
   instrucoesEntrega?: string;
   contabilizarGiroMedio: boolean;
-  tipoLogistica: TipoLogistica;
+  tipoLogistica: TipoLogisticaNome;
   emiteNotaFiscal: boolean;
   tipoCobranca: TipoCobranca;
-  formaPagamento: FormaPagamento;
+  formaPagamento: FormaPagamentoNome;
   observacoes?: string;
 }
 
@@ -55,19 +71,6 @@ export interface CategoriaEstabelecimento {
   id: number;
   nome: string;
   descricao?: string;
-  ativo: boolean;
-}
-
-export interface TipoLogistica {
-  id: number;
-  nome: string;
-  percentualLogistico: number; // em porcentagem
-  ativo: boolean;
-}
-
-export interface FormaPagamento {
-  id: number;
-  nome: string;
   ativo: boolean;
 }
 
