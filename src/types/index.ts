@@ -186,6 +186,23 @@ export interface ComponenteProduto {
   custo?: number;
 }
 
+// Product category types
+export interface ProdutoSubcategoria {
+  id: number;
+  nome: string;
+  categoriaId: number;
+  quantidadeProdutos: number;
+}
+
+export interface ProdutoCategoria {
+  id: number;
+  nome: string;
+  descricao?: string;
+  subcategorias: ProdutoSubcategoria[];
+  quantidadeProdutos: number;
+}
+
+// Update Produto interface to include category and subcategory
 export interface Produto {
   id: number;
   nome: string;
@@ -200,6 +217,8 @@ export interface Produto {
   unidadesProducao?: number;
   categoria?: string; // Added category field
   estoqueMinimo?: number; // Added estoqueMinimo field
+  categoriaId: number;
+  subcategoriaId: number;
 }
 
 export interface Sabor {

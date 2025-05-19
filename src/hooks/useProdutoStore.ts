@@ -11,11 +11,11 @@ interface ProdutoStore {
   adicionarComponenteInsumo: (idProduto: number, idInsumo: number, quantidade: number) => void;
   atualizarComponente: (idProduto: number, idComponente: number, quantidade: number) => void;
   removerComponente: (idProduto: number, idComponente: number) => void;
-  atualizarProduto: (id: number, produto: ProdutoEdit) => void;
+  atualizarProduto: (id: number, produto: Partial<ProdutoEdit>) => void;
   removerProduto: (id: number) => void;
   calcularCustoProduto: (produto: Produto) => number;
   getAllProdutos: () => Produto[];
-  atualizarEstoqueMinimo: (id: number, estoqueMinimo: number) => void; // Added missing method
+  atualizarEstoqueMinimo: (id: number, estoqueMinimo: number) => void;
 }
 
 export const useProdutoStore = create<ProdutoStore>()(
@@ -58,8 +58,10 @@ export const useProdutoStore = create<ProdutoStore>()(
         pesoUnitario: 35,
         custoUnitario: 2.85,
         unidadesProducao: 100,
-        categoria: "Doces", // Added default category
-        estoqueMinimo: 10 // Added default estoqueMinimo
+        categoria: "Doces",
+        estoqueMinimo: 10,
+        categoriaId: 1,
+        subcategoriaId: 1
       }
     ],
     
@@ -78,7 +80,9 @@ export const useProdutoStore = create<ProdutoStore>()(
         pesoUnitario: 0,
         custoUnitario: 0,
         categoria: "Não categorizado",
-        estoqueMinimo: 0
+        estoqueMinimo: 0,
+        categoriaId: 0,
+        subcategoriaId: 0
       });
     }),
     
@@ -199,6 +203,19 @@ export const useProdutoStore = create<ProdutoStore>()(
       const produtoIndex = state.produtos.findIndex(p => p.id === id);
       if (produtoIndex !== -1) {
         state.produtos[produtoIndex] = { ...state.produtos[produtoIndex], ...produto };
+        
+        // Update categoria field if categoriaId was changed
+        if (produto.categoriaId) {
+          // This is a simplified approach - in a real app, you'd fetch the category name from the category store
+          const categoriaId = produto.categoriaId;
+          if (categoriaId === 1) {
+            state.produtos[produtoIndex].categoria = "Doces";
+          } else if (categoriaId === 2) {
+            state.produtos[produtoIndex].categoria = "Food Service";
+          } else {
+            state.produtos[produtoIndex].categoria = "Não categorizado";
+          }
+        }
       }
     }),
     
