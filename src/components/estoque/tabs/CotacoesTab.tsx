@@ -312,19 +312,6 @@ export default function CotacoesTab() {
     document.body.removeChild(link);
   };
   
-  const calcularTotalProposta = (proposta: PropostaFornecedor, cotacao: Cotacao) => {
-    let total = proposta.frete;
-    
-    proposta.itens.forEach(itemProposta => {
-      const cotacaoItem = cotacao.itens.find(i => i.id === itemProposta.itemId);
-      if (cotacaoItem) {
-        total += itemProposta.precoUnitario * cotacaoItem.quantidade;
-      }
-    });
-    
-    return total;
-  };
-
   const getPropostaStatusBadge = (status: string) => {
     switch (status) {
       case "Aberta":
@@ -915,13 +902,6 @@ export default function CotacoesTab() {
                         </TableBody>
                       </Table>
                     </div>
-                    
-                    {cotacao.observacoes && (
-                      <div className="mt-4">
-                        <h3 className="text-sm font-medium mb-1">Observações</h3>
-                        <p className="text-sm text-muted-foreground">{cotacao.observacoes}</p>
-                      </div>
-                    )}
                     
                     <DialogFooter className="mt-6">
                       <div className="flex justify-between w-full">
