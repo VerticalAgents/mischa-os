@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   Form,
@@ -23,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { DREData, Channel, CostItem, InvestmentItem } from '@/types/projections';
+import { DREData, Channel, CostItem, InvestmentItem } from '@/types';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { DRETable } from './DRETable';
@@ -62,8 +61,11 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
   const { clientes } = useClienteStore();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   
-  // Ensure channelGrowthFactors has all required properties
   const defaultChannelGrowth: Record<Channel, { type: 'percentage' | 'absolute', value: number }> = {
+    'Delivery': { type: 'percentage', value: 0 },
+    'B2B': { type: 'percentage', value: 0 },
+    'Eventos': { type: 'percentage', value: 0 },
+    'Varejo': { type: 'percentage', value: 0 },
     'B2B-Revenda': { type: 'percentage', value: 0 },
     'B2B-FoodService': { type: 'percentage', value: 0 },
     'B2C-UFCSPA': { type: 'percentage', value: 0 },
@@ -83,30 +85,25 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
   });
   
   const onSubmit = (data: z.infer<typeof formSchema>) => {
-    // Recalculate the DRE based on form data
     const updatedScenario = calculateUpdatedDRE(data);
     updateScenario(scenario.id, updatedScenario);
   };
   
   const calculateUpdatedDRE = (data: z.infer<typeof formSchema>) => {
-    // Start with the original channel data
     const updatedChannelsData = [...scenario.channelsData];
     
-    // Apply growth factors
     Object.entries(data.channelGrowth).forEach(([channel, growth]) => {
       const channelIndex = updatedChannelsData.findIndex(c => c.channel === channel);
       if (channelIndex >= 0) {
         const originalData = updatedChannelsData[channelIndex];
         let newVolume = originalData.volume;
         
-        // Apply growth factor
         if (growth.type === 'percentage') {
           newVolume = originalData.volume * (1 + growth.value / 100);
         } else {
           newVolume = originalData.volume + growth.value;
         }
         
-        // Calculate new revenue and costs based on volume
         const unitPrice = originalData.revenue / originalData.volume;
         const unitCost = originalData.variableCosts / originalData.volume;
         
@@ -126,15 +123,12 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
       }
     });
     
-    // Calculate updated costs
     const totalFixedCosts = data.fixedCosts.reduce((sum, cost) => sum + cost.value, 0);
     const totalAdministrativeCosts = data.administrativeCosts.reduce((sum, cost) => sum + cost.value, 0);
     
-    // Calculate investment and depreciation
     const totalInvestment = data.investments.reduce((sum, inv) => sum + inv.value, 0);
     const monthlyDepreciation = data.investments.reduce((sum, inv) => sum + (inv.value / (inv.depreciationYears * 12)), 0);
     
-    // Calculate totals
     const totalRevenue = updatedChannelsData.reduce((sum, c) => sum + c.revenue, 0);
     const totalVariableCosts = updatedChannelsData.reduce((sum, c) => sum + c.variableCosts, 0);
     const totalCosts = totalVariableCosts + totalFixedCosts + totalAdministrativeCosts;
@@ -145,15 +139,16 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
     const ebitda = operationalResult + monthlyDepreciation;
     const ebitdaMargin = ebitda / totalRevenue * 100;
     
-    // Calculate break-even point
     const contributionMarginPercent = grossMargin / 100;
     const breakEvenPoint = (totalFixedCosts + totalAdministrativeCosts) / contributionMarginPercent;
     
-    // Calculate payback
     const paybackMonths = operationalResult > 0 ? totalInvestment / operationalResult : 0;
     
-    // Create properly typed channel growth factors
     const channelGrowthFactors: Record<Channel, { type: 'percentage' | 'absolute', value: number }> = {
+      'Delivery': { type: data.channelGrowth['Delivery']?.type || 'percentage', value: data.channelGrowth['Delivery']?.value || 0 },
+      'B2B': { type: data.channelGrowth['B2B']?.type || 'percentage', value: data.channelGrowth['B2B']?.value || 0 },
+      'Eventos': { type: data.channelGrowth['Eventos']?.type || 'percentage', value: data.channelGrowth['Eventos']?.value || 0 },
+      'Varejo': { type: data.channelGrowth['Varejo']?.type || 'percentage', value: data.channelGrowth['Varejo']?.value || 0 },
       'B2B-Revenda': { type: data.channelGrowth['B2B-Revenda']?.type || 'percentage', value: data.channelGrowth['B2B-Revenda']?.value || 0 },
       'B2B-FoodService': { type: data.channelGrowth['B2B-FoodService']?.type || 'percentage', value: data.channelGrowth['B2B-FoodService']?.value || 0 },
       'B2C-UFCSPA': { type: data.channelGrowth['B2C-UFCSPA']?.type || 'percentage', value: data.channelGrowth['B2C-UFCSPA']?.value || 0 },
@@ -161,7 +156,6 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
       'B2C-Outros': { type: data.channelGrowth['B2C-Outros']?.type || 'percentage', value: data.channelGrowth['B2C-Outros']?.value || 0 }
     };
     
-    // Create a properly typed updated scenario
     const updatedScenario: Partial<DREData> = {
       name: data.name,
       channelsData: updatedChannelsData,
@@ -172,7 +166,7 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
       totalVariableCosts,
       totalFixedCosts,
       totalAdministrativeCosts,
-      totalCosts,
+      totalCosts: totalVariableCosts + totalFixedCosts + totalAdministrativeCosts,
       grossProfit,
       grossMargin,
       operationalResult,
@@ -199,7 +193,6 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
     channelGrowth[channel] = { type, value };
     form.setValue('channelGrowth', channelGrowth);
     
-    // Recalculate and update
     const updatedScenario = calculateUpdatedDRE(form.getValues());
     updateScenario(scenario.id, updatedScenario);
   };
@@ -209,7 +202,6 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
     costs[index].value = value;
     form.setValue(type, costs);
     
-    // Recalculate and update
     const updatedScenario = calculateUpdatedDRE(form.getValues());
     updateScenario(scenario.id, updatedScenario);
   };
@@ -222,13 +214,11 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
     const investments = [...form.getValues('investments')];
     investments[index][field] = value;
     
-    // Recalculate monthly depreciation
     investments[index].monthlyDepreciation = 
       investments[index].value / (investments[index].depreciationYears * 12);
     
     form.setValue('investments', investments);
     
-    // Recalculate and update
     const updatedScenario = calculateUpdatedDRE(form.getValues());
     updateScenario(scenario.id, updatedScenario);
   };
@@ -238,7 +228,6 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left column - DRE Table */}
             <Card>
               <CardHeader>
                 <FormField
@@ -264,9 +253,7 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
               </CardContent>
             </Card>
 
-            {/* Right column - Parameters */}
             <div className="space-y-6">
-              {/* Channels Growth */}
               <Card>
                 <CardHeader>
                   <CardTitle>Projeção por Canal</CardTitle>
@@ -314,7 +301,6 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
                 </CardContent>
               </Card>
               
-              {/* Accordion panels for costs */}
               <Accordion
                 type="single" 
                 collapsible

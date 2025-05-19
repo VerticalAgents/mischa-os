@@ -31,8 +31,8 @@ export const SeparacaoPedidos = () => {
   );
   
   // Ordenar pedidos pelo tamanho do pacote (total de unidades)
-  const pedidosPadraoOrdenados = [...pedidosPadrao].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
-  const pedidosAlteradosOrdenados = [...pedidosAlterados].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
+  const pedidosPadraoOrdenados = [...pedidosPadrao].sort((a, b) => (a.totalPedidoUnidades || 0) - (b.totalPedidoUnidades || 0));
+  const pedidosAlteradosOrdenados = [...pedidosAlterados].sort((a, b) => (a.totalPedidoUnidades || 0) - (b.totalPedidoUnidades || 0));
   
   // Nova lista combinada para a subaba "Todos os Pedidos"
   const todosPedidos = [
@@ -150,14 +150,15 @@ export const SeparacaoPedidos = () => {
     `;
     
     listaAtual.forEach(pedido => {
-      const sabores = pedido.itensPedido.map(item => 
+      const itensPedidoArray = pedido.itensPedido || [];
+      const sabores = itensPedidoArray.map((item: any) => 
         `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
       ).join(", ");
       
       printContent += `
         <tr>
           <td>${pedido.cliente?.nome || "Pedido Único"}</td>
-          <td>${pedido.totalPedidoUnidades}</td>
+          <td>${pedido.totalPedidoUnidades || 0}</td>
           <td>${formatDate(new Date(pedido.dataPrevistaEntrega))}</td>
           <td>${sabores}</td>
         </tr>
@@ -248,7 +249,8 @@ export const SeparacaoPedidos = () => {
     `;
     
     listaAtual.forEach(pedido => {
-      const sabores = pedido.itensPedido.map(item => 
+      const itensPedidoArray = pedido.itensPedido || [];
+      const sabores = itensPedidoArray.map((item: any) => 
         `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
       ).join(", ");
       
@@ -256,7 +258,7 @@ export const SeparacaoPedidos = () => {
         <div class="etiqueta">
           <div class="cliente">${pedido.cliente?.nome || "Pedido Único"}</div>
           <div class="data">Entrega: ${formatDate(new Date(pedido.dataPrevistaEntrega))}</div>
-          <div class="unidades">Total: ${pedido.totalPedidoUnidades} unidades</div>
+          <div class="unidades">Total: ${pedido.totalPedidoUnidades || 0} unidades</div>
           <div class="detalhes">Pedido #${pedido.id} - ${pedido.tipoPedido || "Padrão"}</div>
           <div class="sabores">${sabores}</div>
         </div>

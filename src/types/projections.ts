@@ -1,5 +1,5 @@
 
-export type Channel = 'Delivery' | 'B2B' | 'Eventos' | 'Varejo';
+export type Channel = 'Delivery' | 'B2B' | 'Eventos' | 'Varejo' | 'B2B-Revenda' | 'B2B-FoodService' | 'B2C-UFCSPA' | 'B2C-Personalizados' | 'B2C-Outros';
 
 export interface ProjectionParams {
   startDate: Date;
@@ -43,11 +43,13 @@ export interface DREData {
     volume?: number;
     variableCosts?: number;
     margin?: number;
+    marginPercent?: number; // Added for ScenarioForm.tsx
   }[];
   grossProfit?: number;
   grossMargin?: number;
   totalVariableCosts?: number;
   totalFixedCosts?: number;
+  totalCosts?: number; // Added for ScenarioForm.tsx
   fixedCosts?: Array<{name: string, value: number}>;
   totalAdministrativeCosts?: number;
   administrativeCosts?: Array<{name: string, value: number}>;
@@ -72,4 +74,6 @@ export interface InvestmentItem {
   name: string;
   value: number;
   depreciationMonths: number;
+  depreciationYears?: number; // Added for ScenarioForm.tsx
+  monthlyDepreciation?: number; // Added for ScenarioForm.tsx
 }

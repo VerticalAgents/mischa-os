@@ -1,3 +1,4 @@
+
 import { 
   Representante, 
   RotaEntrega, 
@@ -42,6 +43,7 @@ export const rotasEntregaMock: RotaEntrega[] = [
     diasSemana: ["Segunda", "Quarta", "Sexta"],
     horarioInicio: "08:00",
     horarioFim: "12:00",
+    descricao: "Rota do centro da cidade",
     ativo: true
   },
   {
@@ -50,6 +52,7 @@ export const rotasEntregaMock: RotaEntrega[] = [
     diasSemana: ["Terça", "Quinta", "Sábado"],
     horarioInicio: "13:00",
     horarioFim: "17:00",
+    descricao: "Rota da zona norte",
     ativo: true
   },
   {
@@ -58,6 +61,7 @@ export const rotasEntregaMock: RotaEntrega[] = [
     diasSemana: ["Segunda", "Quarta", "Sexta"],
     horarioInicio: "14:00",
     horarioFim: "18:00",
+    descricao: "Rota da zona sul",
     ativo: false
   }
 ];
@@ -88,18 +92,21 @@ export const tiposLogisticaMock: TipoLogistica[] = [
     id: 1,
     nome: "Entrega Própria",
     descricao: "Entrega realizada pela própria empresa",
+    percentualLogistico: 5.0,
     ativo: true
   },
   {
     id: 2,
     nome: "Transportadora",
     descricao: "Entrega realizada por uma transportadora terceirizada",
+    percentualLogistico: 8.0,
     ativo: true
   },
   {
     id: 3,
     nome: "Retirada no Local",
     descricao: "Cliente retira o produto no local",
+    percentualLogistico: 0.0,
     ativo: false
   }
 ];
@@ -128,6 +135,7 @@ export const formasPagamentoMock: FormaPagamento[] = [
 export const configuracoesProducaoMock: ConfiguracoesProducao = {
   tempoPreparoPadrao: 30,
   custoHoraProducao: 15.00,
+  margemLucroDesejada: 0.30,
   margemLucroPadrao: 0.30
 };
 

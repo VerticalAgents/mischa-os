@@ -5,6 +5,7 @@ export type Representante = {
   email: string;
   telefone: string;
   ativo: boolean;
+  comissao?: number; // Added missing property
 };
 
 export type RotaEntrega = {
@@ -12,6 +13,9 @@ export type RotaEntrega = {
   nome: string;
   descricao: string;
   ativo: boolean;
+  diasSemana?: string[]; // Added missing property
+  horarioInicio?: string; // Added for config data
+  horarioFim?: string; // Added for config data
 };
 
 export type CategoriaEstabelecimento = {
@@ -25,7 +29,7 @@ export type TipoLogistica = {
   id: number;
   nome: string;
   descricao?: string;  // Optional to match usage in TiposLogisticaList
-  percentualLogistico: number;
+  percentualLogistico: number; // Added missing property
   ativo: boolean;
 };
 
@@ -40,6 +44,7 @@ export type ConfiguracoesProducao = {
   tempoPreparoPadrao: number;
   custoHoraProducao: number;
   margemLucroDesejada: number;
+  margemLucroPadrao?: number; // Added for configData.ts
   incluirPedidosPrevistos?: boolean;
   formasPorLote?: number;
   unidadesPorForma?: number;
@@ -89,12 +94,21 @@ export interface Cliente {
   statusAgendamento?: string;
   proximaDataReposicao?: Date;
   metaGiroSemanal?: number;
-  observacoes?: string; // Added to match ClienteFormDialog
+  observacoes?: string; // Added for ClienteFormDialog
+  ultimaDataReposicaoEfetiva?: Date; // Added missing property
 }
 
 // Pedido types
 export type StatusPedido = 'Agendado' | 'Em Separação' | 'Despachado' | 'Entregue' | 'Cancelado';
 export type SubstatusPedidoAgendado = 'Agendado' | 'Separado' | 'Despachado' | 'Entregue' | 'Retorno';
+export type TipoPedido = 'Padrão' | 'Alterado'; // Added type for tipoPedido
+
+export interface PedidoItem {
+  id: number;
+  produtoId: number;
+  quantidade: number;
+  valorUnitario: number;
+}
 
 export interface Pedido {
   id: number;
@@ -109,17 +123,32 @@ export interface Pedido {
   substatus?: SubstatusPedidoAgendado;
   substatusPedido?: SubstatusPedidoAgendado; // Added to match legacy references
   itens: PedidoItem[];
+  itensPedido?: ItemPedido[]; // Added for legacy references
   valorTotal: number;
   observacoes?: string;
   totalPedidoUnidades?: number; // Added to match references
   idCliente?: number; // Added to support legacy usage
+  tipoPedido?: TipoPedido; // Added for SeparacaoPedidos.tsx
 }
 
-export interface PedidoItem {
+// Add missing ItemPedido and AlteracaoStatusPedido types 
+export interface ItemPedido {
   id: number;
-  produtoId: number;
-  quantidade: number;
-  valorUnitario: number;
+  idPedido: number;
+  idSabor: number;
+  nomeSabor?: string;
+  sabor?: { nome: string };
+  quantidadeSabor: number;
+  quantidadeEntregue?: number;
+}
+
+export interface AlteracaoStatusPedido {
+  dataAlteracao: Date;
+  statusAnterior: StatusPedido;
+  statusNovo: StatusPedido;
+  substatusAnterior?: SubstatusPedidoAgendado;
+  substatusNovo?: SubstatusPedidoAgendado;
+  observacao?: string;
 }
 
 // Produto categories
@@ -129,6 +158,7 @@ export interface ProdutoCategoria {
   descricao?: string; // Made optional to match usage in components
   ativo: boolean;
   subcategorias: ProdutoSubcategoria[];
+  quantidadeProdutos?: number; // Added for categoria store
 }
 
 export interface ProdutoSubcategoria {
@@ -136,6 +166,7 @@ export interface ProdutoSubcategoria {
   categoriaId: number;
   nome: string;
   ativo: boolean;
+  quantidadeProdutos?: number; // Added for categoria store
 }
 
 // Dashboard data
@@ -156,6 +187,58 @@ export interface DashboardData {
     nomeCliente: string;
     giroSemanal: number;
   }[];
+  giroMedioSemanalGeral?: number;
+  previsaoGiroTotalSemanal?: number;
+  previsaoGiroTotalMensal?: number;
+}
+
+// Add missing types for Sabor, Produto, etc.
+export interface Sabor {
+  id: number;
+  nome: string;
+  ativo: boolean;
+  saldoAtual?: number;
+}
+
+export interface Produto {
+  id: number;
+  nome: string;
+  categoriaId: number;
+  subcategoriaId: number;
+  componentes: ComponenteProduto[];
+  ativo: boolean;
+}
+
+export interface ComponenteProduto {
+  id: number;
+  nome: string;
+  tipo: TipoComponente;
+  quantidade: number;
+}
+
+export type TipoComponente = 'Insumo' | 'Outro';
+
+export interface ReceitaBase {
+  id: number;
+  nome: string;
+  rendimento: number;
+  itens: ItemReceita[];
+}
+
+export interface ItemReceita {
+  id: number;
+  insumoId: number;
+  quantidade: number;
+}
+
+export interface Alerta {
+  id: number;
+  titulo: string;
+  mensagem: string;
+  tipo: string;
+  data: Date;
+  lido: boolean;
+  link?: string;
 }
 
 // Add types from insumos.ts - to fix import errors
@@ -179,7 +262,8 @@ export type {
   ProjectionParams,
   ProjectionScenario, 
   ProjectionData,
-  DREData, // Export DREData so it can be imported from @/types
-  Channel  // Export Channel so it can be imported from @/types
+  DREData,
+  Channel,  // Make sure to export Channel directly
+  CostItem,
+  InvestmentItem  
 } from './projections';
-
