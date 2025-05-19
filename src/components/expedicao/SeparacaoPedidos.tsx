@@ -33,6 +33,12 @@ export const SeparacaoPedidos = () => {
   // Ordenar pedidos pelo tamanho do pacote (total de unidades)
   const pedidosPadraoOrdenados = [...pedidosPadrao].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
   const pedidosAlteradosOrdenados = [...pedidosAlterados].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
+  
+  // Nova lista combinada para a subaba "Todos os Pedidos"
+  const todosPedidos = [
+    ...pedidosPadraoOrdenados,
+    ...pedidosAlteradosOrdenados
+  ];
 
   // Nova função para confirmar separação - Atualiza diretamente para "Separado" conforme requisito
   const confirmarSeparacaoPedido = (idPedido: number) => {
@@ -54,7 +60,15 @@ export const SeparacaoPedidos = () => {
   
   // Nova função para marcar todos como separados
   const marcarTodosSeparados = () => {
-    const listaAtual = activeSubTab === "padrao" ? pedidosPadraoOrdenados : pedidosAlteradosOrdenados;
+    let listaAtual: Array<any> = [];
+    
+    if (activeSubTab === "padrao") {
+      listaAtual = pedidosPadraoOrdenados;
+    } else if (activeSubTab === "alterados") {
+      listaAtual = pedidosAlteradosOrdenados;
+    } else {
+      listaAtual = todosPedidos;
+    }
     
     if (listaAtual.length === 0) {
       toast({
@@ -80,7 +94,20 @@ export const SeparacaoPedidos = () => {
 
   // Função para imprimir lista de separação
   const imprimirListaSeparacao = () => {
-    const listaAtual = activeSubTab === "padrao" ? pedidosPadraoOrdenados : pedidosAlteradosOrdenados;
+    let listaAtual: Array<any> = [];
+    let tipoLista = "";
+    
+    if (activeSubTab === "padrao") {
+      listaAtual = pedidosPadraoOrdenados;
+      tipoLista = "Pedidos Padrão";
+    } else if (activeSubTab === "alterados") {
+      listaAtual = pedidosAlteradosOrdenados;
+      tipoLista = "Pedidos Alterados";
+    } else {
+      listaAtual = todosPedidos;
+      tipoLista = "Todos os Pedidos";
+    }
+    
     if (listaAtual.length === 0) {
       toast({
         title: "Sem pedidos para separação",
@@ -94,7 +121,7 @@ export const SeparacaoPedidos = () => {
     let printContent = `
       <html>
         <head>
-          <title>Lista de Separação - ${activeSubTab === "padrao" ? "Pedidos Padrão" : "Pedidos Alterados"}</title>
+          <title>Lista de Separação - ${tipoLista}</title>
           <style>
             body { font-family: Arial, sans-serif; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -107,7 +134,7 @@ export const SeparacaoPedidos = () => {
         </head>
         <body>
           <div class="header">
-            <h1>Lista de Separação - ${activeSubTab === "padrao" ? "Pedidos Padrão" : "Pedidos Alterados"}</h1>
+            <h1>Lista de Separação - ${tipoLista}</h1>
             <p>Data de impressão: ${new Date().toLocaleDateString()}</p>
           </div>
           <table>
@@ -170,7 +197,20 @@ export const SeparacaoPedidos = () => {
   
   // Função para imprimir etiquetas
   const imprimirEtiquetas = () => {
-    const listaAtual = activeSubTab === "padrao" ? pedidosPadraoOrdenados : pedidosAlteradosOrdenados;
+    let listaAtual: Array<any> = [];
+    let tipoLista = "";
+    
+    if (activeSubTab === "padrao") {
+      listaAtual = pedidosPadraoOrdenados;
+      tipoLista = "Pedidos Padrão";
+    } else if (activeSubTab === "alterados") {
+      listaAtual = pedidosAlteradosOrdenados;
+      tipoLista = "Pedidos Alterados";
+    } else {
+      listaAtual = todosPedidos;
+      tipoLista = "Todos os Pedidos";
+    }
+    
     if (listaAtual.length === 0) {
       toast({
         title: "Sem pedidos para etiquetagem",
@@ -283,6 +323,7 @@ export const SeparacaoPedidos = () => {
           <TabsList className="mb-4">
             <TabsTrigger value="padrao">Pedidos Padrão</TabsTrigger>
             <TabsTrigger value="alterados">Pedidos Alterados</TabsTrigger>
+            <TabsTrigger value="todos">Todos os Pedidos</TabsTrigger>
           </TabsList>
           
           <TabsContent value="padrao">
@@ -417,6 +458,83 @@ export const SeparacaoPedidos = () => {
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 Não há pedidos alterados para separação.
+              </div>
+            )}
+          </TabsContent>
+          
+          {/* Nova subaba "Todos os Pedidos" */}
+          <TabsContent value="todos">
+            {todosPedidos.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Total Unidades</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Sabores</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {todosPedidos.map((pedido) => (
+                    <TableRow key={pedido.id}>
+                      <TableCell>{pedido.cliente?.nome || "Pedido Único"}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          pedido.tipoPedido === "Padrão" 
+                            ? "bg-blue-100 text-blue-800" 
+                            : "bg-amber-100 text-amber-800"
+                        }`}>
+                          {pedido.tipoPedido}
+                        </span>
+                      </TableCell>
+                      <TableCell>{pedido.totalPedidoUnidades}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={pedido.statusPedido} />
+                        {pedido.substatusPedido && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({pedido.substatusPedido})
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-[300px] truncate">
+                        {pedido.itensPedido.map(item => 
+                          `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
+                        ).join(", ")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          {pedido.substatusPedido === "Separado" ? (
+                            <Button
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => desfazerSeparacao(pedido.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <Undo className="h-4 w-4" />
+                              Desfazer
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => confirmarSeparacaoPedido(pedido.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <Check className="h-4 w-4" />
+                              Confirmar Separação
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-6 text-muted-foreground">
+                Não há pedidos para separação.
               </div>
             )}
           </TabsContent>

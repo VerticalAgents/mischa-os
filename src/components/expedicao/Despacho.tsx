@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,11 +17,9 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useCallback } from "react";
+
 export const Despacho = () => {
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const pedidos = usePedidoStore(state => state.pedidos);
   const atualizarSubstatusPedido = usePedidoStore(state => state.atualizarSubstatusPedido);
   const [perplexityApiKey, setPerplexityApiKey] = useState("");
@@ -32,12 +31,12 @@ export const Despacho = () => {
   const [pedidosSelecionados, setPedidosSelecionados] = useState<Record<number, boolean>>({});
   const [arrastando, setArrastando] = useState<number | null>(null);
   const [pedidosRoteirizacao, setPedidosRoteirizacao] = useState<Pedido[]>([]);
+  const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({});
 
-  // Filtrar pedidos com status "Agendado"
-  const pedidosAgendados = pedidos.filter(p => p.statusPedido === "Agendado").sort((a, b) => new Date(a.dataPrevistaEntrega).getTime() - new Date(b.dataPrevistaEntrega).getTime());
-
-  // Filtrar pedidos com substatus "Separado" para roteirização
-  const pedidosSeparados = pedidos.filter(p => p.substatusPedido === "Separado");
+  // Filtrar apenas pedidos com substatus "Separado" para despacho
+  const pedidosSeparados = pedidos.filter(p => 
+    p.statusPedido === "Agendado" && p.substatusPedido === "Separado"
+  ).sort((a, b) => new Date(a.dataPrevistaEntrega).getTime() - new Date(b.dataPrevistaEntrega).getTime());
 
   // Inicializar pedidosRoteirizacao se estiver vazio
   const inicializarPedidosRoteirizacao = useCallback(() => {
@@ -55,7 +54,7 @@ export const Despacho = () => {
       setPedidosSelecionados({});
     } else {
       const todos = {};
-      pedidosAgendados.forEach(p => {
+      pedidosSeparados.forEach(p => {
         todos[p.id] = true;
       });
       setPedidosSelecionados(todos);
@@ -83,9 +82,21 @@ export const Despacho = () => {
     });
   };
 
+  // Função para retornar à separação
+  const retornarParaSeparacao = (idPedido: number) => {
+    atualizarSubstatusPedido(idPedido, "Agendado", "Retornado para separação manualmente");
+    toast({
+      title: "Pedido retornado para separação",
+      description: "O pedido voltou para a etapa de separação."
+    });
+  };
+
   // Função para despacho em massa
-  const confirmarDespachoEmMassa = () => {
-    const pedidosSelecionadosIds = Object.entries(pedidosSelecionados).filter(([_, selected]) => selected).map(([id]) => parseInt(id));
+  const confirmarDespachoEmMassa = async () => {
+    const pedidosSelecionadosIds = Object.entries(pedidosSelecionados)
+      .filter(([_, selected]) => selected)
+      .map(([id]) => parseInt(id));
+    
     if (pedidosSelecionadosIds.length === 0) {
       toast({
         title: "Nenhum pedido selecionado",
@@ -95,25 +106,56 @@ export const Despacho = () => {
       return;
     }
 
-    // Confirmar o despacho de todos os pedidos selecionados
-    pedidosSelecionadosIds.forEach(id => {
+    // Verificar se todos os pedidos estão com substatus "Separado"
+    const pedidosInvalidos = pedidosSelecionadosIds.filter(id => {
       const pedido = pedidos.find(p => p.id === id);
-      if (pedido && pedido.substatusPedido === "Separado") {
-        atualizarSubstatusPedido(id, "Despachado", "Despacho confirmado em massa");
-      }
-    });
-    toast({
-      title: "Despacho em massa confirmado",
-      description: `${pedidosSelecionadosIds.length} pedidos foram marcados como despachados.`
+      return pedido && pedido.substatusPedido !== "Separado";
     });
 
-    // Limpar seleção após a operação
-    setPedidosSelecionados({});
+    if (pedidosInvalidos.length > 0) {
+      toast({
+        title: "Pedidos com status inválido",
+        description: `${pedidosInvalidos.length} pedidos não podem ser despachados pois não estão separados.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Ativar loading
+    setIsLoading({...isLoading, despachoMassa: true});
+
+    try {
+      // Confirmar o despacho de todos os pedidos selecionados
+      for (const id of pedidosSelecionadosIds) {
+        await new Promise(resolve => setTimeout(resolve, 100)); // Simular processamento
+        atualizarSubstatusPedido(id, "Despachado", "Despacho confirmado em massa");
+      }
+      
+      toast({
+        title: "Despacho em massa confirmado",
+        description: `${pedidosSelecionadosIds.length} pedidos foram marcados como despachados.`
+      });
+
+      // Limpar seleção após a operação
+      setPedidosSelecionados({});
+    } catch (error) {
+      console.error("Erro ao confirmar despacho em massa:", error);
+      toast({
+        title: "Erro ao despachar",
+        description: "Ocorreu um erro ao processar os pedidos.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading({...isLoading, despachoMassa: false});
+    }
   };
 
   // Função para confirmar entrega em massa
-  const confirmarEntregaEmMassa = () => {
-    const pedidosSelecionadosIds = Object.entries(pedidosSelecionados).filter(([_, selected]) => selected).map(([id]) => parseInt(id));
+  const confirmarEntregaEmMassa = async () => {
+    const pedidosSelecionadosIds = Object.entries(pedidosSelecionados)
+      .filter(([_, selected]) => selected)
+      .map(([id]) => parseInt(id));
+    
     if (pedidosSelecionadosIds.length === 0) {
       toast({
         title: "Nenhum pedido selecionado",
@@ -123,22 +165,55 @@ export const Despacho = () => {
       return;
     }
 
-    // Confirmar a entrega de todos os pedidos selecionados
-    let contadorAtualizados = 0;
-    pedidosSelecionadosIds.forEach(id => {
+    // Verificar se os pedidos estão com substatus "Despachado"
+    const pedidosValidosIds = pedidosSelecionadosIds.filter(id => {
       const pedido = pedidos.find(p => p.id === id);
-      if (pedido && pedido.substatusPedido === "Despachado") {
-        atualizarSubstatusPedido(id, "Entregue", "Entrega confirmada em massa");
-        contadorAtualizados++;
-      }
-    });
-    toast({
-      title: "Entrega em massa confirmada",
-      description: `${contadorAtualizados} pedidos foram marcados como entregues.`
+      return pedido && pedido.substatusPedido === "Despachado";
     });
 
-    // Limpar seleção após a operação
-    setPedidosSelecionados({});
+    if (pedidosValidosIds.length === 0) {
+      toast({
+        title: "Nenhum pedido válido selecionado",
+        description: "Os pedidos selecionados não possuem status 'Despachado' e não podem ser entregues.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (pedidosValidosIds.length < pedidosSelecionadosIds.length) {
+      toast({
+        title: "Alguns pedidos não podem ser entregues",
+        description: `${pedidosSelecionadosIds.length - pedidosValidosIds.length} pedidos não estão despachados e serão ignorados.`,
+      });
+    }
+
+    // Ativar loading
+    setIsLoading({...isLoading, entregaMassa: true});
+
+    try {
+      // Confirmar a entrega dos pedidos válidos
+      for (const id of pedidosValidosIds) {
+        await new Promise(resolve => setTimeout(resolve, 100)); // Simular processamento
+        atualizarSubstatusPedido(id, "Entregue", "Entrega confirmada em massa");
+      }
+      
+      toast({
+        title: "Entrega em massa confirmada",
+        description: `${pedidosValidosIds.length} pedidos foram marcados como entregues.`
+      });
+
+      // Limpar seleção após a operação
+      setPedidosSelecionados({});
+    } catch (error) {
+      console.error("Erro ao confirmar entrega em massa:", error);
+      toast({
+        title: "Erro ao entregar",
+        description: "Ocorreu um erro ao processar os pedidos.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading({...isLoading, entregaMassa: false});
+    }
   };
 
   // Função para gerar a rota usando IA
@@ -154,7 +229,7 @@ export const Despacho = () => {
     setIsGeneratingRoute(true);
     try {
       // Preparar os dados dos pedidos
-      const pedidosComEndereco = pedidosAgendados.filter(p => p.cliente?.enderecoEntrega).map((p, index) => ({
+      const pedidosComEndereco = pedidosSeparados.filter(p => p.cliente?.enderecoEntrega).map((p, index) => ({
         id: p.id,
         cliente: p.cliente?.nome,
         endereco: p.cliente?.enderecoEntrega,
@@ -369,27 +444,49 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
           </TabsList>
           
           <TabsContent value="pedidos">
-            {pedidosAgendados.length > 0 ? <div className="space-y-4">
+            {pedidosSeparados.length > 0 ? <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="selectAll" checked={temPedidosSelecionados && Object.keys(pedidosSelecionados).length === pedidosAgendados.length} onCheckedChange={toggleSelecionarTodos} />
+                    <Checkbox id="selectAll" checked={temPedidosSelecionados && Object.keys(pedidosSelecionados).length === pedidosSeparados.length} onCheckedChange={toggleSelecionarTodos} />
                     <label htmlFor="selectAll" className="text-sm">
                       {temPedidosSelecionados ? "Desmarcar todos" : "Selecionar todos"}
                     </label>
                   </div>
                   
                   <div className="flex flex-wrap gap-2">
-                    <Button onClick={confirmarDespachoEmMassa} disabled={!temPedidosSelecionados} size="sm" className="flex items-center gap-1">
-                      <Check className="h-4 w-4" /> Confirmar Despacho em Massa
+                    <Button 
+                      onClick={confirmarDespachoEmMassa} 
+                      disabled={!temPedidosSelecionados || isLoading.despachoMassa}
+                      size="sm" 
+                      className="flex items-center gap-1"
+                    >
+                      {isLoading.despachoMassa ? (
+                        <>Processando...</>
+                      ) : (
+                        <>
+                          <Check className="h-4 w-4" /> Confirmar Despacho em Massa
+                        </>
+                      )}
                     </Button>
-                    <Button onClick={confirmarEntregaEmMassa} disabled={!temPedidosSelecionados} size="sm" className="flex items-center gap-1">
-                      <Check className="h-4 w-4" /> Confirmar Entrega em Massa
+                    <Button 
+                      onClick={confirmarEntregaEmMassa}
+                      disabled={!temPedidosSelecionados || isLoading.entregaMassa}
+                      size="sm" 
+                      className="flex items-center gap-1"
+                    >
+                      {isLoading.entregaMassa ? (
+                        <>Processando...</>
+                      ) : (
+                        <>
+                          <Check className="h-4 w-4" /> Confirmar Entrega em Massa
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
               
                 <div className="space-y-6">
-                  {pedidosAgendados.map(pedido => <Card key={pedido.id} className="p-4">
+                  {pedidosSeparados.map(pedido => <Card key={pedido.id} className="p-4">
                       <div className="flex flex-col md:flex-row md:items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <Checkbox id={`select-${pedido.id}`} checked={!!pedidosSelecionados[pedido.id]} onCheckedChange={checked => {
@@ -418,8 +515,18 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
                             <MapPin className="h-4 w-4" /> Info
                           </Button>
                           
+                          {/* Botão para retornar à separação */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => retornarParaSeparacao(pedido.id)}
+                            className="flex items-center gap-1"
+                          >
+                            <Undo className="h-4 w-4" /> Retornar à Separação
+                          </Button>
+                          
                           {/* Botão desfazer - apenas para Separado e Despachado */}
-                          {(pedido.substatusPedido === "Separado" || pedido.substatusPedido === "Despachado") && <Button variant="outline" size="sm" onClick={() => desfazerAlteracao(pedido)} className="flex items-center gap-1">
+                          {(pedido.substatusPedido === "Despachado") && <Button variant="outline" size="sm" onClick={() => desfazerAlteracao(pedido)} className="flex items-center gap-1">
                               <Undo className="h-4 w-4" /> Desfazer
                             </Button>}
                         </div>
@@ -436,8 +543,7 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
                           <Progress value={getProgressValue(pedido.substatusPedido)} className={`h-2 ${getSubstatusColor(pedido.substatusPedido)}`} />
                           <div className="flex justify-between gap-2 mt-2 flex-wrap">
                             <Dialog>
-                              {renderBotaoSubstatus(pedido.substatusPedido, "Agendado", pedido.id, "Agendado")}
-                              {renderBotaoSubstatus(pedido.substatusPedido, "Separado", pedido.id, "Separado")}
+                              {/* Removido o botão de Separado, pois estamos filtrando apenas pedidos já separados */}
                               {renderBotaoSubstatus(pedido.substatusPedido, "Despachado", pedido.id, "Despachado")}
                               {renderBotaoSubstatus(pedido.substatusPedido, "Entregue", pedido.id, "Entregue")}
                               {renderBotaoSubstatus(pedido.substatusPedido, "Retorno", pedido.id, "Retorno")}
@@ -484,7 +590,7 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
                     </Card>)}
                 </div>
               </div> : <div className="text-center py-6 text-muted-foreground">
-                Não há pedidos agendados para despacho.
+                Não há pedidos separados para despacho.
               </div>}
           </TabsContent>
           
@@ -564,7 +670,7 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
                   </p>
                 </div>
                 
-                <Button onClick={gerarRota} disabled={isGeneratingRoute || pedidosAgendados.length === 0} className="flex items-center gap-1 max-w-xs">
+                <Button onClick={gerarRota} disabled={isGeneratingRoute || pedidosSeparados.length === 0} className="flex items-center gap-1 max-w-xs">
                   <Map className="h-4 w-4" />
                   {isGeneratingRoute ? "Gerando rota..." : "Gerar Rota com IA"}
                 </Button>
