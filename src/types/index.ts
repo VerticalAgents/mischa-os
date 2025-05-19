@@ -1,4 +1,3 @@
-
 export type Representante = {
   id: number;
   nome: string;
@@ -129,6 +128,7 @@ export interface Pedido {
   totalPedidoUnidades?: number; // Added to match references
   idCliente?: number; // Added to support legacy usage
   tipoPedido?: TipoPedido; // Added for SeparacaoPedidos.tsx
+  historicoAlteracoesStatus?: AlteracaoStatusPedido[];
 }
 
 // Add missing ItemPedido and AlteracaoStatusPedido types 
