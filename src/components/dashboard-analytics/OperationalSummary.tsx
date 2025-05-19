@@ -18,8 +18,13 @@ interface OperationalSummaryProps {
 }
 
 export default function OperationalSummary({ dashboardData, baseDRE, clientes }: OperationalSummaryProps) {
-  // Use a stable reference to confirmacaoStats
-  const confirmacaoStats = useConfirmacaoReposicaoStore(state => state.getConfirmacaoStats());
+  // Use a stable reference to confirmacaoStats by extracting only what we need
+  const confirmacaoStats = useConfirmacaoReposicaoStore(state => ({
+    contatarHoje: state.getConfirmacaoStats().contatarHoje,
+    contatoPendente: state.getConfirmacaoStats().contatoPendente,
+    semResposta1: state.getConfirmacaoStats().semResposta1,
+    semResposta2: state.getConfirmacaoStats().semResposta2
+  }));
   
   // Memoize derived data to prevent recalculations
   const statusData = useMemo(() => {

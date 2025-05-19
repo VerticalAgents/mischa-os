@@ -15,6 +15,7 @@ import PCP from "@/pages/PCP";
 import Expedicao from "@/pages/Expedicao";
 import Projections from "@/pages/Projections";
 import NotFound from "./pages/NotFound";
+import Index from "./pages/Index";
 import { useEffect } from "react";
 import { useThemeStore, applyTheme } from "./lib/theme";
 
@@ -42,7 +43,8 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={
+            <Route path="/" element={<Index />} />
+            <Route path="/analytics" element={
               <AppLayout>
                 <DashboardAnalytics />
               </AppLayout>
@@ -85,11 +87,6 @@ const App = () => {
             <Route path="/projecoes" element={
               <AppLayout>
                 <Projections />
-              </AppLayout>
-            } />
-            <Route path="/analytics" element={
-              <AppLayout>
-                <DashboardAnalytics />
               </AppLayout>
             } />
             <Route path="*" element={<NotFound />} />

@@ -159,7 +159,7 @@ export const useDashboardStore = create<DashboardStore>()(
         console.log("Dashboard data calculated, updating store...");
         
         // Update the store with a single, atomic operation
-        set({ dashboardData: newDashboardData });
+        set(() => ({ dashboardData: newDashboardData }));
       },
       
       // Keep getters the same

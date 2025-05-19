@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { ArrowRight, Download } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -30,19 +30,19 @@ export default function DashboardAnalytics() {
   const planejamentoProducaoStore = usePlanejamentoProducaoStore();
   const { dashboardData, atualizarDashboard } = useDashboardStore();
 
-  // Update dashboard data only when component mounts
+  // Memoize the update function to prevent recreating it on each render
+  const updateDashboardIfNeeded = useCallback(() => {
+    // Only update if we have clients and the dashboard hasn't been initialized yet
+    if (clientes.length > 0 && !dashboardData.contadoresStatus.ativos) {
+      console.log("Updating dashboard data");
+      atualizarDashboard(clientes, pedidos);
+    }
+  }, [clientes, pedidos, dashboardData.contadoresStatus.ativos, atualizarDashboard]);
+
+  // Update dashboard data only when component mounts or dependencies change
   useEffect(() => {
-    const updateDashboardIfNeeded = () => {
-      // Only update if we need to and have the required data
-      if (!dashboardData.contadoresStatus.ativos && clientes.length > 0) {
-        console.log("Updating dashboard data");
-        atualizarDashboard(clientes, pedidos);
-      }
-    };
-    
-    // Call the function
     updateDashboardIfNeeded();
-  }, []); // Empty dependency array to only run once on mount
+  }, [updateDashboardIfNeeded]); 
 
   // Get mock production data
   const registrosProducao = [];
