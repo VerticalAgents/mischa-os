@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,13 +33,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Cliente, StatusCliente } from "@/types";
+import { Cliente, StatusCliente, DiaSemana } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import DiasSemanaPicker from "./DiasSemanaPicker";
 
 interface ClienteFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  clienteId?: number;
   clienteParaEditar?: Cliente;
 }
 
@@ -52,7 +55,7 @@ const formSchema = z.object({
   quantidadePadrao: z.coerce.number().min(1, "Quantidade deve ser maior que zero"),
   periodicidadePadrao: z.coerce.number().min(1, "Periodicidade deve ser maior que zero"),
   statusCliente: z.enum(["Ativo", "Em análise", "Inativo", "A ativar", "Standby"]),
-  janelasEntrega: z.array(z.string()).optional(),
+  janelasEntrega: z.array(z.enum(["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"])).default([]),
   representanteId: z.coerce.number().optional(),
   rotaEntregaId: z.coerce.number().optional(),
   categoriaEstabelecimentoId: z.coerce.number().optional(),
@@ -68,11 +71,16 @@ const formSchema = z.object({
 export default function ClienteFormDialog({
   open,
   onOpenChange,
+  clienteId,
   clienteParaEditar,
 }: ClienteFormDialogProps) {
-  const { adicionarCliente, atualizarCliente } = useClienteStore();
+  const { adicionarCliente, atualizarCliente, getClientePorId } = useClienteStore();
   const [activeTab, setActiveTab] = useState("dados-basicos");
-  const isEditMode = !!clienteParaEditar;
+  
+  // If clienteId is provided, use it to get the cliente from the store
+  const clienteFromStore = clienteId ? getClientePorId(clienteId) : undefined;
+  const clienteToEdit = clienteParaEditar || clienteFromStore;
+  const isEditMode = !!clienteToEdit;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -86,7 +94,7 @@ export default function ClienteFormDialog({
       quantidadePadrao: 0,
       periodicidadePadrao: 7,
       statusCliente: "Em análise" as StatusCliente,
-      janelasEntrega: [],
+      janelasEntrega: [] as DiaSemana[],
       representanteId: undefined,
       rotaEntregaId: undefined,
       categoriaEstabelecimentoId: undefined,
@@ -102,28 +110,28 @@ export default function ClienteFormDialog({
 
   // Preencher o formulário com os dados do cliente quando estiver em modo de edição
   useEffect(() => {
-    if (clienteParaEditar) {
+    if (clienteToEdit) {
       form.reset({
-        nome: clienteParaEditar.nome,
-        cnpjCpf: clienteParaEditar.cnpjCpf || "",
-        enderecoEntrega: clienteParaEditar.enderecoEntrega,
-        contatoNome: clienteParaEditar.contatoNome,
-        contatoTelefone: clienteParaEditar.contatoTelefone,
-        contatoEmail: clienteParaEditar.contatoEmail || "",
-        quantidadePadrao: clienteParaEditar.quantidadePadrao,
-        periodicidadePadrao: clienteParaEditar.periodicidadePadrao,
-        statusCliente: clienteParaEditar.statusCliente,
-        janelasEntrega: clienteParaEditar.janelasEntrega || [],
-        representanteId: clienteParaEditar.representanteId,
-        rotaEntregaId: clienteParaEditar.rotaEntregaId,
-        categoriaEstabelecimentoId: clienteParaEditar.categoriaEstabelecimentoId,
-        instrucoesEntrega: clienteParaEditar.instrucoesEntrega || "",
-        contabilizarGiroMedio: clienteParaEditar.contabilizarGiroMedio,
-        tipoLogistica: clienteParaEditar.tipoLogistica,
-        emiteNotaFiscal: clienteParaEditar.emiteNotaFiscal,
-        tipoCobranca: clienteParaEditar.tipoCobranca,
-        formaPagamento: clienteParaEditar.formaPagamento,
-        observacoes: clienteParaEditar.observacoes || "",
+        nome: clienteToEdit.nome,
+        cnpjCpf: clienteToEdit.cnpjCpf || "",
+        enderecoEntrega: clienteToEdit.enderecoEntrega || "",
+        contatoNome: clienteToEdit.contatoNome || "",
+        contatoTelefone: clienteToEdit.contatoTelefone || "",
+        contatoEmail: clienteToEdit.contatoEmail || "",
+        quantidadePadrao: clienteToEdit.quantidadePadrao,
+        periodicidadePadrao: clienteToEdit.periodicidadePadrao,
+        statusCliente: clienteToEdit.statusCliente,
+        janelasEntrega: clienteToEdit.janelasEntrega || [] as DiaSemana[],
+        representanteId: clienteToEdit.representanteId,
+        rotaEntregaId: clienteToEdit.rotaEntregaId,
+        categoriaEstabelecimentoId: clienteToEdit.categoriaEstabelecimentoId,
+        instrucoesEntrega: clienteToEdit.instrucoesEntrega || "",
+        contabilizarGiroMedio: clienteToEdit.contabilizarGiroMedio,
+        tipoLogistica: clienteToEdit.tipoLogistica,
+        emiteNotaFiscal: clienteToEdit.emiteNotaFiscal,
+        tipoCobranca: clienteToEdit.tipoCobranca,
+        formaPagamento: clienteToEdit.formaPagamento,
+        observacoes: clienteToEdit.observacoes || "",
       });
     } else {
       form.reset({
@@ -136,7 +144,7 @@ export default function ClienteFormDialog({
         quantidadePadrao: 0,
         periodicidadePadrao: 7,
         statusCliente: "Em análise" as StatusCliente,
-        janelasEntrega: [],
+        janelasEntrega: [] as DiaSemana[],
         representanteId: undefined,
         rotaEntregaId: undefined,
         categoriaEstabelecimentoId: undefined,
@@ -149,14 +157,14 @@ export default function ClienteFormDialog({
         observacoes: "",
       });
     }
-  }, [clienteParaEditar, form]);
+  }, [clienteToEdit, form]);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    if (isEditMode && clienteParaEditar) {
-      atualizarCliente(clienteParaEditar.id, values);
+    if (isEditMode && clienteToEdit) {
+      atualizarCliente(clienteToEdit.id, values as Partial<Cliente>);
       toast.success(`Cliente ${values.nome} atualizado com sucesso!`);
     } else {
-      adicionarCliente(values);
+      adicionarCliente(values as Omit<Cliente, 'id' | 'dataCadastro'>);
       toast.success(`Cliente ${values.nome} adicionado com sucesso!`);
     }
     onOpenChange(false);
@@ -563,6 +571,27 @@ export default function ClienteFormDialog({
 
                 <FormField
                   control={form.control}
+                  name="janelasEntrega"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1">
+                      <FormLabel>Janelas de Entrega</FormLabel>
+                      <FormDescription>
+                        Selecione os dias da semana para entrega
+                      </FormDescription>
+                      <FormControl>
+                        <DiasSemanaPicker 
+                          value={field.value as DiaSemana[]} 
+                          onChange={field.onChange}
+                          className="mt-2"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="instrucoesEntrega"
                   render={({ field }) => (
                     <FormItem>
@@ -599,3 +628,4 @@ export default function ClienteFormDialog({
     </Dialog>
   );
 }
+

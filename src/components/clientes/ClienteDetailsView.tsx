@@ -84,7 +84,7 @@ export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsVi
       <ClienteFormDialog 
         open={isFormOpen} 
         onOpenChange={setIsFormOpen} 
-        clienteId={cliente.id} 
+        clienteParaEditar={cliente} 
       />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

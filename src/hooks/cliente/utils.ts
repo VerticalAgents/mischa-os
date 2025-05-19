@@ -1,4 +1,5 @@
-import { Cliente } from '../../types';
+
+import { Cliente, DiaSemana } from '../../types';
 import { clientesMock } from '../../data/mockData';
 import { clientesComDados } from './clienteMockData';
 
@@ -31,6 +32,9 @@ export function generateInitialClientes(): Cliente[] {
         ? 'Agendado' 
         : (randomDays <= 15 ? 'Pendente' : 'Não Agendado');
 
+      // Converter os dias da semana para o tipo DiaSemana
+      const diasSemanaRandom: DiaSemana[] = ['Seg', 'Qua', 'Sex'];
+
       return {
         id: 1000 + index,
         nome: cliente.nome || `Cliente ${1000 + index}`,
@@ -48,7 +52,7 @@ export function generateInitialClientes(): Cliente[] {
         proximaDataReposicao: Math.random() > 0.1 ? proximaDataReposicao : undefined,
         statusAgendamento: Math.random() > 0.1 ? statusAgendamento : undefined,
         // Novos campos
-        janelasEntrega: ['Seg', 'Qua', 'Sex'],
+        janelasEntrega: diasSemanaRandom,
         representanteId: Math.ceil(Math.random() * 3),
         rotaEntregaId: Math.ceil(Math.random() * 3),
         categoriaEstabelecimentoId: Math.ceil(Math.random() * 6),
