@@ -33,8 +33,14 @@ export default function DashboardAnalytics() {
 
   // Update dashboard data when the component mounts or data changes
   useEffect(() => {
-    dashboardStore.atualizarDashboard(clientes, pedidos);
-  }, [dashboardStore, clientes, pedidos]);
+    // Using a function to prevent potential state updates during render
+    const updateDashboard = () => {
+      dashboardStore.atualizarDashboard(clientes, pedidos);
+    };
+    
+    updateDashboard();
+    // Add specific dependencies instead of the whole dashboardStore
+  }, [clientes, pedidos]); // Remove dashboardStore from dependencies
 
   // Get mock production data
   const registrosProducao: any[] = [];
