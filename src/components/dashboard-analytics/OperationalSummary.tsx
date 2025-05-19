@@ -14,6 +14,9 @@ export default function OperationalSummary({ dashboardData, baseDRE, clientes }:
   const confirmacaoStats = useConfirmacaoReposicaoStore(state => state.getConfirmacaoStats());
   const { getDadosGraficoPDVsPorStatus } = useDashboardStore();
   
+  // Get the data once, not on every render
+  const statusData = getDadosGraficoPDVsPorStatus();
+  
   // Status colors
   const getStatusColor = (count: number, threshold1: number, threshold2: number) => {
     if (count === 0) return "bg-gray-100 text-gray-800 hover:bg-gray-200";
@@ -103,7 +106,7 @@ export default function OperationalSummary({ dashboardData, baseDRE, clientes }:
           <StatsPieChart 
             title="Distribuição de PDVs por Status"
             description="Visão geral dos pontos de venda por status"
-            data={getDadosGraficoPDVsPorStatus()}
+            data={statusData}
             colors={['#4ade80', '#60a5fa', '#facc15', '#c084fc', '#f87171']}
           />
         </div>
