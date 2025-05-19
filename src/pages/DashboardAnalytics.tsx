@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback } from "react";
 import { ArrowRight, Download } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
@@ -31,15 +32,21 @@ export default function DashboardAnalytics() {
 
   // Update dashboard data only when component mounts
   useEffect(() => {
-    // Only update if we need to
-    if (!dashboardData.contadoresStatus.ativos && clientes.length > 0) {
-      atualizarDashboard(clientes, pedidos);
-    }
+    const updateDashboardIfNeeded = () => {
+      // Only update if we need to and have the required data
+      if (!dashboardData.contadoresStatus.ativos && clientes.length > 0) {
+        console.log("Updating dashboard data");
+        atualizarDashboard(clientes, pedidos);
+      }
+    };
+    
+    // Call the function
+    updateDashboardIfNeeded();
   }, []); // Empty dependency array to only run once on mount
 
   // Get mock production data
-  const registrosProducao: any[] = [];
-  const planejamentoProducao: any[] = [];
+  const registrosProducao = [];
+  const planejamentoProducao = [];
 
   // Export dashboard as PDF
   const exportToPDF = async () => {

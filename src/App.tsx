@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import DashboardAnalytics from "@/pages/DashboardAnalytics";
 import Clientes from "@/pages/Clientes";
@@ -18,7 +18,14 @@ import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 import { useThemeStore, applyTheme } from "./lib/theme";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false, // Prevent unnecessary refetches
+      retry: 1, // Limit retries
+    },
+  },
+});
 
 const App = () => {
   const { isDark } = useThemeStore();

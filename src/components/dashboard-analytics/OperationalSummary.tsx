@@ -9,14 +9,24 @@ import StatsPieChart from "@/components/dashboard/StatsPieChart";
 import StatsTable from "@/components/dashboard/StatsTable";
 import { useConfirmacaoReposicaoStore } from "@/hooks/useConfirmacaoReposicaoStore";
 import { useMemo } from "react";
+import { DashboardData } from "@/types";
 
-export default function OperationalSummary({ dashboardData, baseDRE, clientes }: any) {
+interface OperationalSummaryProps {
+  dashboardData: DashboardData;
+  baseDRE: any;
+  clientes: any[];
+}
+
+export default function OperationalSummary({ dashboardData, baseDRE, clientes }: OperationalSummaryProps) {
   // Use a stable reference to confirmacaoStats
   const confirmacaoStats = useConfirmacaoReposicaoStore(state => state.getConfirmacaoStats());
   
   // Memoize derived data to prevent recalculations
   const statusData = useMemo(() => {
-    if (!dashboardData || !dashboardData.contadoresStatus) return [];
+    if (!dashboardData?.contadoresStatus) {
+      console.log("No dashboard data available for status chart");
+      return [];
+    }
     
     return [
       { name: 'Ativos', value: dashboardData.contadoresStatus.ativos },
@@ -29,7 +39,8 @@ export default function OperationalSummary({ dashboardData, baseDRE, clientes }:
   
   // Memoize top PDVs data
   const topPDVsData = useMemo(() => {
-    if (!dashboardData.giroMedioSemanalPorPDV || !dashboardData.giroMedioSemanalPorPDV.length) {
+    if (!dashboardData?.giroMedioSemanalPorPDV || !dashboardData.giroMedioSemanalPorPDV.length) {
+      console.log("No PDV data available for top PDVs chart");
       return [];
     }
     
@@ -42,6 +53,17 @@ export default function OperationalSummary({ dashboardData, baseDRE, clientes }:
       }));
   }, [dashboardData.giroMedioSemanalPorPDV]);
   
+  // Memoize top PDVs for table
+  const topPDVsTable = useMemo(() => {
+    if (!dashboardData?.giroMedioSemanalPorPDV || !dashboardData.giroMedioSemanalPorPDV.length) {
+      return [];
+    }
+    
+    return [...dashboardData.giroMedioSemanalPorPDV]
+      .sort((a, b) => b.giroSemanal - a.giroSemanal)
+      .slice(0, 5);
+  }, [dashboardData.giroMedioSemanalPorPDV]);
+  
   // Status colors - extract outside the render function
   const getStatusColor = (count: number, threshold1: number, threshold2: number) => {
     if (count === 0) return "bg-gray-100 text-gray-800 hover:bg-gray-200";
@@ -49,6 +71,12 @@ export default function OperationalSummary({ dashboardData, baseDRE, clientes }:
     if (count <= threshold2) return "bg-amber-100 text-amber-800 hover:bg-amber-200";
     return "bg-red-100 text-red-800 hover:bg-red-200";
   };
+
+  // Return null if we don't have valid dashboard data to prevent errors
+  if (!dashboardData || typeof dashboardData.contadoresStatus?.ativos !== 'number') {
+    console.log("Waiting for dashboard data to load...");
+    return <div>Carregando dados do dashboard...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -152,9 +180,7 @@ export default function OperationalSummary({ dashboardData, baseDRE, clientes }:
         <StatsTable 
           title="Top PDVs por Volume"
           description="Pontos de venda com maior giro semanal"
-          data={dashboardData.giroMedioSemanalPorPDV
-            .sort((a: any, b: any) => b.giroSemanal - a.giroSemanal)
-            .slice(0, 5)}
+          data={topPDVsTable}
           columns={[
             {
               header: "Cliente",

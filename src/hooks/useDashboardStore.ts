@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { DashboardData, Cliente, Pedido } from '../types';
@@ -39,14 +40,20 @@ export const useDashboardStore = create<DashboardStore>()(
       dashboardData: initialDashboardData,
       
       atualizarDashboard: (clientes, pedidos) => {
-        // Guard against empty data
-        if (!clientes.length) return;
+        // Prevent executing if no data
+        if (!clientes || clientes.length === 0) {
+          console.log("No client data to update dashboard");
+          return;
+        }
         
         // Prevent unnecessary updates - check if we have the data filled already
         const currentData = get().dashboardData;
         if (currentData.contadoresStatus.ativos > 0 && currentData.giroMedioSemanalPorPDV.length > 0) {
+          console.log("Dashboard data already loaded, skipping update");
           return; // Data already loaded, skip update
         }
+        
+        console.log("Calculating dashboard data...");
         
         // 1. Calcular contadores de status
         const contadoresStatus = {
@@ -66,7 +73,7 @@ export const useDashboardStore = create<DashboardStore>()(
           .filter(cliente => cliente.ultimaDataReposicaoEfetiva)
           .map(cliente => {
             // Encontrar o último pedido entregue para este cliente
-            const ultimoPedidoEntregue = [...pedidos]
+            const ultimoPedidoEntregue = pedidos
               .filter(p => 
                 p.idCliente === cliente.id && 
                 p.statusPedido === "Entregue" &&
@@ -85,7 +92,7 @@ export const useDashboardStore = create<DashboardStore>()(
             }
             
             // Encontrar o penúltimo pedido entregue (para calcular o delta)
-            const penultimoPedidoEntregue = [...pedidos]
+            const penultimoPedidoEntregue = pedidos
               .filter(p => 
                 p.idCliente === cliente.id && 
                 p.statusPedido === "Entregue" &&
@@ -148,6 +155,8 @@ export const useDashboardStore = create<DashboardStore>()(
           previsaoGiroTotalSemanal,
           previsaoGiroTotalMensal
         };
+        
+        console.log("Dashboard data calculated, updating store...");
         
         // Update the store with a single, atomic operation
         set({ dashboardData: newDashboardData });
