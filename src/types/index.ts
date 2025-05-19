@@ -186,6 +186,26 @@ export interface ComponenteProduto {
   custo?: number;
 }
 
+// Product categories and subcategories
+export interface ProdutoSubcategoria {
+  id: number;
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
+  idCategoria: number;
+}
+
+export interface ProdutoCategoria {
+  id: number;
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
+  subcategorias: ProdutoSubcategoria[];
+}
+
+export type ClassificacaoProduto = 'Food Service' | 'Personalizado' | 'Outros';
+
+// Update Produto interface to include category and classification
 export interface Produto {
   id: number;
   nome: string;
@@ -198,8 +218,36 @@ export interface Produto {
   pesoUnitario?: number;
   custoUnitario?: number;
   unidadesProducao?: number;
-  categoria?: string; // Added category field
-  estoqueMinimo?: number; // Added estoqueMinimo field
+  categoria?: string; // Keep for backward compatibility
+  estoqueMinimo?: number;
+  idCategoria?: number;
+  idSubcategoria?: number;
+  classificacao: ClassificacaoProduto;
+}
+
+// Status for reposition confirmation
+export type StatusConfirmacaoReposicao = 
+  | 'Pendente'
+  | 'Contatado'
+  | 'Respondido'
+  | 'RecontatorNecessario'
+  | 'SemResposta'
+  | 'ConferenciaPresencial'
+  | 'NaoSeraReposto'
+  | 'Reagendado';
+
+// Interface for reposition confirmation
+export interface ConfirmacaoReposicao {
+  id: number;
+  idCliente: number;
+  nomeCliente: string;
+  dataPrevisaoReposicao: Date;
+  dataContato?: Date;
+  dataResposta?: Date;
+  statusConfirmacao: StatusConfirmacaoReposicao;
+  observacoes?: string;
+  telefoneContato?: string;
+  dataReagendamento?: Date;
 }
 
 export interface Sabor {
