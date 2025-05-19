@@ -28,12 +28,13 @@ export default function DashboardAnalytics() {
   const { pedidos } = usePedidoStore();
   const { baseDRE } = useProjectionStore();
   const planejamentoProducaoStore = usePlanejamentoProducaoStore();
-  const { atualizarDashboard, dashboardData } = useDashboardStore();
+  const dashboardStore = useDashboardStore();
+  const { dashboardData } = dashboardStore;
 
   // Update dashboard data when the component mounts or data changes
   useEffect(() => {
-    atualizarDashboard(clientes, pedidos);
-  }, [atualizarDashboard, clientes, pedidos]);
+    dashboardStore.atualizarDashboard(clientes, pedidos);
+  }, [dashboardStore, clientes, pedidos]);
 
   // Get mock production data
   const registrosProducao: any[] = [];

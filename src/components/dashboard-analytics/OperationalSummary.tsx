@@ -11,11 +11,21 @@ import { useConfirmacaoReposicaoStore } from "@/hooks/useConfirmacaoReposicaoSto
 import { useDashboardStore } from "@/hooks/useDashboardStore";
 
 export default function OperationalSummary({ dashboardData, baseDRE, clientes }: any) {
+  // Call the hooks outside of render paths and get data once
   const confirmacaoStats = useConfirmacaoReposicaoStore(state => state.getConfirmacaoStats());
   const { getDadosGraficoPDVsPorStatus } = useDashboardStore();
   
   // Get the data once, not on every render
   const statusData = getDadosGraficoPDVsPorStatus();
+  
+  // Format top PDVs data once, not on every render
+  const topPDVsData = dashboardData.giroMedioSemanalPorPDV
+    .sort((a: any, b: any) => b.giroSemanal - a.giroSemanal)
+    .slice(0, 5)
+    .map((pdv: any) => ({
+      name: pdv.nomeCliente,
+      value: Math.round(pdv.giroSemanal)
+    }));
   
   // Status colors
   const getStatusColor = (count: number, threshold1: number, threshold2: number) => {
@@ -115,13 +125,7 @@ export default function OperationalSummary({ dashboardData, baseDRE, clientes }:
           <StatsBarChart 
             title="Top 5 PDVs por Giro Semanal"
             description="Maiores volumes de venda por semana"
-            data={dashboardData.giroMedioSemanalPorPDV
-              .sort((a: any, b: any) => b.giroSemanal - a.giroSemanal)
-              .slice(0, 5)
-              .map((pdv: any) => ({
-                name: pdv.nomeCliente,
-                value: Math.round(pdv.giroSemanal)
-              }))}
+            data={topPDVsData}
             bars={[
               { dataKey: 'value', name: 'Brownies/Semana', color: '#8b5cf6' }
             ]}
