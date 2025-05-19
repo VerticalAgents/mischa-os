@@ -1,499 +1,389 @@
-
-import { useState } from "react";
-import { useCategoriaStore } from "@/hooks/useCategoriaStore";
-import { ProdutoCategoria, ProdutoSubcategoria } from "@/types";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { useProdutoCategoriaStore } from "@/hooks/useProdutoCategoriaStore";
+import { useProdutoSubcategoriaStore } from "@/hooks/useProdutoSubcategoriaStore";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash, ChevronDown, ChevronUp } from "lucide-react";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription 
-} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import { ProdutoCategoria, ProdutoSubcategoria } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage
-} from "@/components/ui/form";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "@/components/ui/alert-dialog";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useToast } from "@/components/ui/use-toast";
-
-// Schemas for form validation
-const categoriaSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
-  descricao: z.string().optional()
-});
-
-const subcategoriaSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório")
-});
-
-type CategoriaFormValues = z.infer<typeof categoriaSchema>;
-type SubcategoriaFormValues = z.infer<typeof subcategoriaSchema>;
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 
 export default function CategoriasProdutoTab() {
-  const { 
-    categorias, 
-    adicionarCategoria, 
-    atualizarCategoria, 
-    removerCategoria,
-    adicionarSubcategoria,
-    atualizarSubcategoria,
-    removerSubcategoria,
-    categoriaTemProdutos,
-    subcategoriaTemProdutos
-  } = useCategoriaStore();
-  
+  const { categorias, adicionarCategoria, atualizarCategoria, removerCategoria } = useProdutoCategoriaStore();
+  const { subcategorias, adicionarSubcategoria, atualizarSubcategoria, removerSubcategoria } = useProdutoSubcategoriaStore();
   const { toast } = useToast();
-  
-  // State for dialogs
-  const [isCategoriaDialogOpen, setIsCategoriaDialogOpen] = useState(false);
-  const [isSubcategoriaDialogOpen, setIsSubcategoriaDialogOpen] = useState(false);
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
-  const [alertMessage, setAlertMessage] = useState("");
-  
-  // State for editing
-  const [editingCategoria, setEditingCategoria] = useState<ProdutoCategoria | null>(null);
-  const [editingSubcategoria, setEditingSubcategoria] = useState<ProdutoSubcategoria | null>(null);
-  const [selectedCategoriaId, setSelectedCategoriaId] = useState<number | null>(null);
-  
-  // State for confirmation dialog
-  const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
-  const [confirmTitle, setConfirmTitle] = useState("");
-  const [confirmDescription, setConfirmDescription] = useState("");
-  
-  // State for expanded categories
-  const [expandedCategories, setExpandedCategories] = useState<number[]>([]);
-  
-  // Forms
-  const categoriaForm = useForm<CategoriaFormValues>({
-    resolver: zodResolver(categoriaSchema),
-    defaultValues: {
+
+  const [open, setOpen] = useState(false);
+  const [currentCategoria, setCurrentCategoria] = useState<ProdutoCategoria>({
+    id: 0,
+    nome: "",
+    descricao: "",
+    ativo: true,
+    subcategorias: [],
+  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [newSubcategoria, setNewSubcategoria] = useState("");
+  const [editingSubcategoriaId, setEditingSubcategoriaId] = useState<number | null>(null);
+  const [editedSubcategoriaName, setEditedSubcategoriaName] = useState("");
+
+  const filteredCategorias = categorias.filter((categoria) =>
+    categoria.nome.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleAddNew = () => {
+    setCurrentCategoria({
+      id: 0,
       nome: "",
-      descricao: ""
-    }
-  });
-  
-  const subcategoriaForm = useForm<SubcategoriaFormValues>({
-    resolver: zodResolver(subcategoriaSchema),
-    defaultValues: {
-      nome: ""
-    }
-  });
-  
-  // Handlers
-  const handleCreateCategoria = (data: CategoriaFormValues) => {
-    if (editingCategoria) {
-      // Show confirmation dialog for editing
-      setConfirmTitle("Confirmar Alteração");
-      setConfirmDescription("Deseja realmente alterar o nome desta categoria? Isso impactará todos os produtos vinculados.");
-      setConfirmAction(() => () => {
-        atualizarCategoria(editingCategoria.id, data.nome, data.descricao);
-        setIsCategoriaDialogOpen(false);
-        setEditingCategoria(null);
-        toast({
-          title: "Categoria atualizada",
-          description: `A categoria "${data.nome}" foi atualizada com sucesso.`
-        });
-      });
-      setIsConfirmDialogOpen(true);
-    } else {
-      adicionarCategoria(data.nome, data.descricao);
-      setIsCategoriaDialogOpen(false);
-      toast({
-        title: "Categoria criada",
-        description: `A categoria "${data.nome}" foi criada com sucesso.`
-      });
-    }
+      descricao: "",
+      ativo: true,
+      subcategorias: [],
+    });
+    setOpen(true);
   };
-  
-  const handleCreateSubcategoria = (data: SubcategoriaFormValues) => {
-    if (selectedCategoriaId === null) return;
-    
-    if (editingSubcategoria) {
-      // Show confirmation dialog for editing
-      setConfirmTitle("Confirmar Alteração");
-      setConfirmDescription("Deseja realmente alterar o nome desta subcategoria? Isso impactará todos os produtos vinculados.");
-      setConfirmAction(() => () => {
-        atualizarSubcategoria(editingSubcategoria.id, selectedCategoriaId, data.nome);
-        setIsSubcategoriaDialogOpen(false);
-        setEditingSubcategoria(null);
-        toast({
-          title: "Subcategoria atualizada",
-          description: `A subcategoria "${data.nome}" foi atualizada com sucesso.`
-        });
-      });
-      setIsConfirmDialogOpen(true);
-    } else {
-      adicionarSubcategoria(selectedCategoriaId, data.nome);
-      setIsSubcategoriaDialogOpen(false);
-      toast({
-        title: "Subcategoria criada",
-        description: `A subcategoria "${data.nome}" foi criada com sucesso.`
-      });
-    }
+
+  const handleEditCategoria = (categoria: ProdutoCategoria) => {
+    setCurrentCategoria({
+      id: categoria.id,
+      nome: categoria.nome,
+      descricao: categoria.descricao || "",
+      ativo: categoria.ativo,
+      subcategorias: categoria.subcategorias,
+    });
+    setOpen(true);
   };
-  
-  const handleDeleteCategoria = (categoria: ProdutoCategoria) => {
-    if (categoriaTemProdutos(categoria.id)) {
-      setAlertMessage("Esta categoria contém produtos ativos. Mova ou exclua os produtos antes de remover a categoria.");
-      setIsAlertDialogOpen(true);
+
+  const handleSaveCategoria = () => {
+    if (!currentCategoria.nome.trim()) {
+      toast({
+        title: "Erro",
+        description: "O nome da categoria é obrigatório.",
+        variant: "destructive",
+      });
       return;
     }
-    
-    setConfirmTitle("Confirmar Exclusão");
-    setConfirmDescription(`Deseja realmente excluir a categoria "${categoria.nome}"?`);
-    setConfirmAction(() => () => {
-      const success = removerCategoria(categoria.id);
-      if (success) {
-        toast({
-          title: "Categoria removida",
-          description: `A categoria "${categoria.nome}" foi removida com sucesso.`
-        });
-      }
-    });
-    setIsConfirmDialogOpen(true);
+
+    if (currentCategoria.id === 0) {
+      adicionarCategoria({
+        nome: currentCategoria.nome,
+        descricao: currentCategoria.descricao,
+        ativo: currentCategoria.ativo,
+        subcategorias: [],
+      });
+      toast({
+        title: "Categoria adicionada",
+        description: "Categoria adicionada com sucesso.",
+      });
+    } else {
+      atualizarCategoria(currentCategoria.id, {
+        nome: currentCategoria.nome,
+        descricao: currentCategoria.descricao,
+        ativo: currentCategoria.ativo,
+        subcategorias: currentCategoria.subcategorias,
+      });
+      toast({
+        title: "Categoria atualizada",
+        description: "Categoria atualizada com sucesso.",
+      });
+    }
+
+    setOpen(false);
   };
-  
-  const handleDeleteSubcategoria = (categoriaId: number, subcategoria: ProdutoSubcategoria) => {
-    if (subcategoriaTemProdutos(subcategoria.id)) {
-      setAlertMessage("Esta subcategoria contém produtos ativos. Mova ou exclua os produtos antes de remover a subcategoria.");
-      setIsAlertDialogOpen(true);
+
+  const handleDeleteCategoria = (categoriaId: number) => {
+    const categoria = categorias.find((c) => c.id === categoriaId);
+    if (categoria && categoria.subcategorias && categoria.subcategorias.length > 0) {
+      toast({
+        title: "Erro",
+        description: "Não é possível excluir uma categoria com subcategorias vinculadas.",
+        variant: "destructive",
+      });
       return;
     }
-    
-    setConfirmTitle("Confirmar Exclusão");
-    setConfirmDescription(`Deseja realmente excluir a subcategoria "${subcategoria.nome}"?`);
-    setConfirmAction(() => () => {
-      const success = removerSubcategoria(categoriaId, subcategoria.id);
-      if (success) {
-        toast({
-          title: "Subcategoria removida",
-          description: `A subcategoria "${subcategoria.nome}" foi removida com sucesso.`
-        });
-      }
+
+    removerCategoria(categoriaId);
+    toast({
+      title: "Categoria excluída",
+      description: "Categoria excluída com sucesso.",
     });
-    setIsConfirmDialogOpen(true);
   };
-  
-  const toggleCategoryExpansion = (id: number) => {
-    setExpandedCategories(prev => 
-      prev.includes(id)
-        ? prev.filter(catId => catId !== id)
-        : [...prev, id]
-    );
-  };
-  
-  // Dialog opening handlers
-  const openNewCategoriaDialog = () => {
-    categoriaForm.reset({ nome: "", descricao: "" });
-    setEditingCategoria(null);
-    setIsCategoriaDialogOpen(true);
-  };
-  
-  const openEditCategoriaDialog = (categoria: ProdutoCategoria) => {
-    categoriaForm.reset({ 
-      nome: categoria.nome, 
-      descricao: categoria.descricao 
+
+  const handleAddSubcategoria = (categoriaId: number) => {
+    if (!newSubcategoria.trim()) {
+      toast({
+        title: "Erro",
+        description: "O nome da subcategoria é obrigatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    adicionarSubcategoria({
+      categoriaId: categoriaId,
+      nome: newSubcategoria,
+      ativo: true,
     });
-    setEditingCategoria(categoria);
-    setIsCategoriaDialogOpen(true);
+
+    const categoria = categorias.find((c) => c.id === categoriaId);
+    if (categoria) {
+      atualizarCategoria(categoriaId, {
+        ...categoria,
+        subcategorias: [...categoria.subcategorias, {
+          id: subcategorias.length + 1,
+          categoriaId: categoriaId,
+          nome: newSubcategoria,
+          ativo: true,
+        }],
+      });
+    }
+
+    setNewSubcategoria("");
+    toast({
+      title: "Subcategoria adicionada",
+      description: "Subcategoria adicionada com sucesso.",
+    });
   };
-  
-  const openNewSubcategoriaDialog = (categoriaId: number) => {
-    subcategoriaForm.reset({ nome: "" });
-    setEditingSubcategoria(null);
-    setSelectedCategoriaId(categoriaId);
-    setIsSubcategoriaDialogOpen(true);
+
+  const handleEditSubcategoria = (subcategoria: ProdutoSubcategoria) => {
+    setEditingSubcategoriaId(subcategoria.id);
+    setEditedSubcategoriaName(subcategoria.nome);
   };
-  
-  const openEditSubcategoriaDialog = (categoriaId: number, subcategoria: ProdutoSubcategoria) => {
-    subcategoriaForm.reset({ nome: subcategoria.nome });
-    setEditingSubcategoria(subcategoria);
-    setSelectedCategoriaId(categoriaId);
-    setIsSubcategoriaDialogOpen(true);
+
+  const handleUpdateSubcategoria = (subcategoriaId: number) => {
+    if (!editedSubcategoriaName.trim()) {
+      toast({
+        title: "Erro",
+        description: "O nome da subcategoria é obrigatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    atualizarSubcategoria(subcategoriaId, {
+      nome: editedSubcategoriaName,
+      ativo: true,
+    });
+
+    setEditingSubcategoriaId(null);
+    setEditedSubcategoriaName("");
+    toast({
+      title: "Subcategoria atualizada",
+      description: "Subcategoria atualizada com sucesso.",
+    });
   };
-  
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-2xl font-semibold">Categorias de Produtos</h2>
-          <p className="text-muted-foreground">Organize seus produtos em categorias e subcategorias</p>
-        </div>
-        <Button onClick={openNewCategoriaDialog}>
-          <Plus className="mr-2 h-4 w-4" /> Nova Categoria
-        </Button>
-      </div>
-      
-      <div className="space-y-4">
-        {categorias.length === 0 ? (
-          <div className="text-center py-10">
-            <p className="text-muted-foreground">Nenhuma categoria cadastrada.</p>
-            <Button className="mt-4" onClick={openNewCategoriaDialog}>
-              <Plus className="mr-2 h-4 w-4" /> Adicionar Categoria
+
+  const handleDeleteSubcategoria = (subcategoriaId: number, categoriaId: number) => {
+    removerSubcategoria(subcategoriaId);
+
+    const categoria = categorias.find((c) => c.id === categoriaId);
+    if (categoria) {
+      atualizarCategoria(categoriaId, {
+        ...categoria,
+        subcategorias: categoria.subcategorias.filter((sub) => sub.id !== subcategoriaId),
+      });
+    }
+
+    toast({
+      title: "Subcategoria excluída",
+      description: "Subcategoria excluída com sucesso.",
+    });
+  };
+
+  const renderCategorias = () => {
+    return filteredCategorias.map((categoria) => (
+      <div key={categoria.id} className="space-y-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-medium">{categoria.nome}</h3>
+            <p className="text-sm text-muted-foreground">{categoria.descricao || ""}</p>
+          </div>
+
+          <div className="flex gap-2">
+            <Button variant="ghost" size="icon" onClick={() => handleEditCategoria(categoria)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => handleDeleteCategoria(categoria.id)}>
+              <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           </div>
-        ) : (
-          categorias.map(categoria => (
-            <Card key={categoria.id} className="w-full">
-              <CardHeader className="cursor-pointer" onClick={() => toggleCategoryExpansion(categoria.id)}>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>{categoria.nome}</CardTitle>
-                    {categoria.descricao && (
-                      <CardDescription>{categoria.descricao}</CardDescription>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="text-primary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEditCategoriaDialog(categoria);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteCategoria(categoria);
-                      }}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                    {expandedCategories.includes(categoria.id) ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              
-              {expandedCategories.includes(categoria.id) && (
-                <CardContent>
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-medium">Subcategorias</h3>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openNewSubcategoriaDialog(categoria.id)}
-                      >
-                        <Plus className="mr-2 h-3 w-3" /> Adicionar
-                      </Button>
-                    </div>
-                    
-                    {categoria.subcategorias.length === 0 ? (
-                      <p className="text-muted-foreground text-sm">
-                        Nenhuma subcategoria cadastrada.
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {categoria.subcategorias.map(subcategoria => (
-                          <div
-                            key={subcategoria.id}
-                            className="flex justify-between items-center p-2 rounded-md border"
+        </div>
+
+        <div>
+          <h4 className="text-md font-medium">Subcategorias</h4>
+          <div className="flex items-center space-x-2 mt-2">
+            <Input
+              type="text"
+              placeholder="Nova subcategoria"
+              value={newSubcategoria}
+              onChange={(e) => setNewSubcategoria(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={() => handleAddSubcategoria(categoria.id)}>Adicionar</Button>
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {subcategorias
+                .filter((subcategoria) => subcategoria.categoriaId === categoria.id)
+                .map((subcategoria) => (
+                  <TableRow key={subcategoria.id}>
+                    <TableCell>
+                      {editingSubcategoriaId === subcategoria.id ? (
+                        <Input
+                          type="text"
+                          value={editedSubcategoriaName}
+                          onChange={(e) => setEditedSubcategoriaName(e.target.value)}
+                        />
+                      ) : (
+                        subcategoria.nome
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {editingSubcategoriaId === subcategoria.id ? (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleUpdateSubcategoria(subcategoria.id)}
                           >
-                            <span>{subcategoria.nome}</span>
-                            <div className="flex space-x-1">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => openEditSubcategoriaDialog(categoria.id, subcategoria)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => handleDeleteSubcategoria(categoria.id, subcategoria)}
-                              >
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              )}
-            </Card>
-          ))
+                            Salvar
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setEditingSubcategoriaId(null)}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditSubcategoria(subcategoria)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteSubcategoria(subcategoria.id, categoria.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    ));
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">Categorias de Produto</h2>
+        <div className="flex items-center space-x-2">
+          <Input
+            placeholder="Buscar categoria..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-xs"
+          />
+          <Button onClick={handleAddNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova categoria
+          </Button>
+        </div>
+      </div>
+
+      <div className="divide-y divide-border rounded-md border">
+        {filteredCategorias.length > 0 ? (
+          renderCategorias()
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            Nenhuma categoria encontrada.
+          </div>
         )}
       </div>
-      
-      {/* Dialog for creating/editing categoria */}
-      <Dialog open={isCategoriaDialogOpen} onOpenChange={setIsCategoriaDialogOpen}>
+
+      {/* Modal para Adicionar/Editar Categoria */}
+      <Dialog open={open} onOpenChange={() => setOpen(false)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {editingCategoria ? 'Editar Categoria' : 'Nova Categoria'}
-            </DialogTitle>
+            <DialogTitle>{currentCategoria.id === 0 ? "Nova Categoria" : "Editar Categoria"}</DialogTitle>
             <DialogDescription>
-              {editingCategoria
-                ? 'Edite os detalhes da categoria de produtos'
-                : 'Crie uma nova categoria para organizar seus produtos'
-              }
+              Preencha os campos abaixo para {currentCategoria.id === 0 ? "criar" : "editar"} a categoria.
             </DialogDescription>
           </DialogHeader>
-          
-          <Form {...categoriaForm}>
-            <form onSubmit={categoriaForm.handleSubmit(handleCreateCategoria)} className="space-y-4">
-              <FormField
-                control={categoriaForm.control}
-                name="nome"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome da Categoria</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Ex: Doces, Food Service" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="nome" className="text-right">
+                Nome
+              </Label>
+              <Input
+                id="nome"
+                value={currentCategoria.nome}
+                onChange={(e) => setCurrentCategoria({ ...currentCategoria, nome: e.target.value })}
+                className="col-span-3"
               />
-              
-              <FormField
-                control={categoriaForm.control}
-                name="descricao"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrição (opcional)</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Breve descrição da categoria" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="descricao" className="text-right">
+                Descrição
+              </Label>
+              <Textarea
+                id="descricao"
+                value={currentCategoria.descricao || ""}
+                onChange={(e) => setCurrentCategoria({ ...currentCategoria, descricao: e.target.value })}
+                className="col-span-3"
               />
-              
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsCategoriaDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingCategoria ? 'Salvar Alterações' : 'Criar Categoria'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="ativo" className="text-right">
+                Ativo
+              </Label>
+              <Switch
+                id="ativo"
+                checked={currentCategoria.ativo}
+                onCheckedChange={(checked) => setCurrentCategoria({ ...currentCategoria, ativo: checked })}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleSaveCategoria}>
+              Salvar
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
-      
-      {/* Dialog for creating/editing subcategoria */}
-      <Dialog open={isSubcategoriaDialogOpen} onOpenChange={setIsSubcategoriaDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingSubcategoria ? 'Editar Subcategoria' : 'Nova Subcategoria'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingSubcategoria
-                ? 'Edite os detalhes da subcategoria de produtos'
-                : 'Crie uma nova subcategoria para organizar seus produtos'
-              }
-            </DialogDescription>
-          </DialogHeader>
-          
-          <Form {...subcategoriaForm}>
-            <form onSubmit={subcategoriaForm.handleSubmit(handleCreateSubcategoria)} className="space-y-4">
-              <FormField
-                control={subcategoriaForm.control}
-                name="nome"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome da Subcategoria</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Ex: Brownie 38g, Kits" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsSubcategoriaDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingSubcategoria ? 'Salvar Alterações' : 'Criar Subcategoria'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Confirmation dialog for edits */}
-      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
-            <AlertDialogDescription>{confirmDescription}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              confirmAction();
-              setIsConfirmDialogOpen(false);
-            }}>
-              Confirmar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      {/* Alert dialog for blocked actions */}
-      <AlertDialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Ação Bloqueada</AlertDialogTitle>
-            <AlertDialogDescription>{alertMessage}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setIsAlertDialogOpen(false)}>
-              Entendi
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

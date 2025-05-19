@@ -24,7 +24,7 @@ export type CategoriaEstabelecimento = {
 export type TipoLogistica = {
   id: number;
   nome: string;
-  descricao: string;
+  descricao: string;  // Make it optional to match usage in TiposLogisticaList
   percentualLogistico: number;
   ativo: boolean;
 };
@@ -32,7 +32,7 @@ export type TipoLogistica = {
 export type FormaPagamento = {
   id: number;
   nome: string;
-  descricao?: string; // Made optional to fix FormasPagamentoList issues
+  descricao?: string;
   ativo: boolean;
 };
 
@@ -89,6 +89,7 @@ export interface Cliente {
   statusAgendamento?: string;
   proximaDataReposicao?: Date;
   metaGiroSemanal?: number;
+  observacoes?: string; // Added to match ClienteFormDialog
 }
 
 // Pedido types
@@ -98,13 +99,20 @@ export type SubstatusPedidoAgendado = 'Agendado' | 'Separado' | 'Despachado' | '
 export interface Pedido {
   id: number;
   clienteId: number;
+  cliente?: Cliente; // Added to match references in components
   dataPedido: Date;
   dataEntrega: Date;
+  dataPrevistaEntrega?: Date; // Added to match references
+  dataEfetivaEntrega?: Date; // Added to match references
   status: StatusPedido;
+  statusPedido?: StatusPedido; // Added to match legacy references
   substatus?: SubstatusPedidoAgendado;
+  substatusPedido?: SubstatusPedidoAgendado; // Added to match legacy references
   itens: PedidoItem[];
   valorTotal: number;
   observacoes?: string;
+  totalPedidoUnidades?: number; // Added to match references
+  idCliente?: number; // Added to support legacy usage
 }
 
 export interface PedidoItem {
@@ -118,6 +126,7 @@ export interface PedidoItem {
 export interface ProdutoCategoria {
   id: number;
   nome: string;
+  descricao?: string; // Made optional to match usage in components
   ativo: boolean;
   subcategorias: ProdutoSubcategoria[];
 }
@@ -136,17 +145,16 @@ export interface DashboardData {
   ticketMedio: number;
   taxaCrescimento: number;
   pedidosPendentes: number;
-}
-
-// Dashboard analytics types
-export type Channel = 'Delivery' | 'B2B' | 'Eventos' | 'Varejo';
-
-export interface DREData {
-  totalRevenue: number;
-  channelsData: {
-    channel: Channel;
-    revenue: number;
-    percentage: number;
+  contadoresStatus: {
+    ativos: number;
+    emAnalise: number;
+    aAtivar: number;
+    standby: number;
+    inativos: number;
+  };
+  giroMedioSemanalPorPDV: {
+    nomeCliente: string;
+    giroSemanal: number;
   }[];
 }
 
@@ -170,5 +178,8 @@ export type { AnaliseGiroData } from './giro';
 export type { 
   ProjectionParams,
   ProjectionScenario, 
-  ProjectionData
+  ProjectionData,
+  DREData, // Export DREData so it can be imported from @/types
+  Channel  // Export Channel so it can be imported from @/types
 } from './projections';
+

@@ -1,5 +1,5 @@
 
-import { Channel } from './index';
+export type Channel = 'Delivery' | 'B2B' | 'Eventos' | 'Varejo';
 
 export interface ProjectionParams {
   startDate: Date;
@@ -29,5 +29,16 @@ export interface ProjectionData {
   channelRevenues: {
     channel: Channel;
     revenue: number;
+  }[];
+}
+
+export interface DREData {
+  id: string;
+  name: string;
+  totalRevenue: number;
+  channelsData: {
+    channel: Channel;
+    revenue: number;
+    percentage: number;
   }[];
 }
