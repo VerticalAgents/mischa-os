@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
 import { useReceitaStore } from "@/hooks/useReceitaStore";
@@ -132,28 +131,33 @@ export default function ProdutosTab() {
   };
   
   const handleCreateProduto = (data: NovoProdutoValues) => {
-    const novoProduto = {
-      nome: data.nome,
-      descricao: data.descricao || '',
-      unidadesProducao: data.unidadesProducao,
-      classificacao: data.classificacao,
-      idCategoria: data.idCategoria,
-      idSubcategoria: data.idSubcategoria
-    };
-    
-    adicionarProduto(novoProduto.nome, novoProduto.descricao, novoProduto.unidadesProducao);
-    
-    // Need to update the newly created product with classification and categories
-    const lastProduct = produtos[produtos.length - 1];
-    if (lastProduct) {
-      atualizarProduto(lastProduct.id, {
-        classificacao: novoProduto.classificacao,
-        idCategoria: novoProduto.idCategoria,
-        idSubcategoria: novoProduto.idSubcategoria
+    if (selectedProduto) {
+      // Editing existing product
+      atualizarProduto(selectedProduto.id, {
+        nome: data.nome,
+        descricao: data.descricao || '',
+        unidadesProducao: data.unidadesProducao,
+        classificacao: data.classificacao,
+        idCategoria: data.idCategoria,
+        idSubcategoria: data.idSubcategoria
       });
+    } else {
+      // Creating new product
+      adicionarProduto(data.nome, data.descricao, data.unidadesProducao);
+      
+      // Need to update the newly created product with classification and categories
+      const lastProduct = produtos[produtos.length - 1];
+      if (lastProduct) {
+        atualizarProduto(lastProduct.id, {
+          classificacao: data.classificacao,
+          idCategoria: data.idCategoria,
+          idSubcategoria: data.idSubcategoria
+        });
+      }
     }
     
     setIsProdutoDialogOpen(false);
+    setSelectedProduto(null);
   };
   
   const handleAddComponente = (data: ComponenteValues) => {

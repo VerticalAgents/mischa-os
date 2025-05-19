@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format, addBusinessDays, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Phone, MessageCircleQuestion, Clock, AlertCircle, CalendarCheck2, PhoneX, MessageCircleAlert, AlertTriangle, MessageCircleDashed } from "lucide-react";
+import { CalendarIcon, Phone, MessageCircleQuestion, Clock, AlertCircle, CalendarCheck2, MessageCircleHeart, AlertTriangle, MessageCircleDashed } from "lucide-react";
 import { useConfirmacaoReposicaoStore } from "@/hooks/useConfirmacaoReposicaoStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { cn } from "@/lib/utils";

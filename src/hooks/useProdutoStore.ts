@@ -1,8 +1,9 @@
+
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { Produto, ComponenteProduto, TipoComponente } from "@/types";
 
-type ProdutoEdit = Omit<Produto, "id" | "custoTotal" | "margemLucro" | "componentes" | "ativo">;
+type ProdutoEdit = Partial<Omit<Produto, "id" | "custoTotal" | "margemLucro" | "componentes" | "ativo">>;
 
 interface ProdutoStore {
   produtos: Produto[];
@@ -59,7 +60,8 @@ export const useProdutoStore = create<ProdutoStore>()(
         custoUnitario: 2.85,
         unidadesProducao: 100,
         categoria: "Doces", // Added default category
-        estoqueMinimo: 10 // Added default estoqueMinimo
+        estoqueMinimo: 10, // Added default estoqueMinimo
+        classificacao: "Food Service" // Added default classification
       }
     ],
     
@@ -78,7 +80,8 @@ export const useProdutoStore = create<ProdutoStore>()(
         pesoUnitario: 0,
         custoUnitario: 0,
         categoria: "Não categorizado",
-        estoqueMinimo: 0
+        estoqueMinimo: 0,
+        classificacao: "Food Service" // Default classification
       });
     }),
     
