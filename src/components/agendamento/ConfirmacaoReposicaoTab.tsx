@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { format, addBusinessDays, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Phone, MessageCircleQuestion, Clock, AlertCircle, CalendarCheck2, MessageCircleHeart, AlertTriangle, MessageCircleDashed } from "lucide-react";
 import { useConfirmacaoReposicaoStore } from "@/hooks/useConfirmacaoReposicaoStore";
-import { useClienteStore } from "@/hooks/useClienteStore";
+import { useClienteStore } from "@/hooks/cliente";
 import { cn } from "@/lib/utils";
 import { useSearchParams, useNavigate } from "react-router-dom";
 

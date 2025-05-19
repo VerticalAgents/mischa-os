@@ -1,10 +1,11 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "@/hooks/use-toast";
 import { Pedido, StatusPedido, ItemPedido, Cliente, SubstatusPedidoAgendado, AlteracaoStatusPedido } from '../types';
 import { pedidosMock, relacionarItensPedidos, relacionarClientesPedidos } from '../data/mockData';
 import { calcularDistribuicaoSabores, calcularDeltaEfetivo, deltaForaTolerancia, calcularGiroSemanalPDV, calcularNovoQp } from '../utils/calculations';
-import { useClienteStore } from './useClienteStore';
+import { useClienteStore } from './cliente';
 import { useSaborStore } from './useSaborStore';
 import { addDays, isWeekend } from 'date-fns';
 

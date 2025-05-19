@@ -6,7 +6,7 @@ import StatusCard from "@/components/dashboard/StatusCard";
 import StatsPieChart from "@/components/dashboard/StatsPieChart";
 import StatsBarChart from "@/components/dashboard/StatsBarChart";
 import StatsTable from "@/components/dashboard/StatsTable";
-import { useClienteStore } from "@/hooks/useClienteStore";
+import { useClienteStore } from "@/hooks/cliente";
 import { useDashboardStore } from "@/hooks/useDashboardStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 

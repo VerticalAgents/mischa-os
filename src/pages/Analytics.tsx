@@ -1,7 +1,7 @@
 
 import { useEffect } from "react";
 import PageHeader from "@/components/common/PageHeader";
-import { useClienteStore } from "@/hooks/useClienteStore";
+import { useClienteStore } from "@/hooks/cliente";
 import { useProjectionStore } from "@/hooks/useProjectionStore";
 import { PDVCategoryTable } from "@/components/analytics/PDVCategoryTable";
 import { PaymentTypeChart } from "@/components/analytics/PaymentTypeChart";

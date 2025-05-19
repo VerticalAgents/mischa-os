@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
-import { useClienteStore } from "@/hooks/useClienteStore";
+import { useClienteStore } from "@/hooks/cliente";
 import { Calendar, ClipboardList, PhoneCall } from "lucide-react";
 import ConfirmacaoReposicaoTab from "@/components/agendamento/ConfirmacaoReposicaoTab";
 

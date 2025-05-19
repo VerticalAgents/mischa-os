@@ -1,6 +1,5 @@
-
 import { Cliente } from '../../types';
-import { clienteMock } from '../../data/mockData';
+import { clientesMock } from '../../data/mockData';
 import { clientesComDados } from './clienteMockData';
 
 // Helper para calcular giro semanal
@@ -19,7 +18,7 @@ export function calcularGiroSemanal(qtdPadrao: number, periodicidadeDias: number
 // Generate initial clientes data with mock data
 export function generateInitialClientes(): Cliente[] {
   return [
-    ...clienteMock,
+    ...clientesMock,
     ...clientesComDados.map((cliente, index) => {
       // Gerar datas aleatórias para próxima reposição (entre hoje e 30 dias à frente)
       const today = new Date();

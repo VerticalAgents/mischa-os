@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { Cliente, StatusCliente } from '../../types';
-import { clienteMock } from '../../data/mockData';
+import { clientesMock } from '../../data/mockData';
 import { generateInitialClientes } from './utils';
 import clienteActions from './clienteActions';
 import { getClientesFiltrados, getClientePorId } from './clienteSelectors';

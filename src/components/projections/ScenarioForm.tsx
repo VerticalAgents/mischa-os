@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   Form,
@@ -25,7 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { DREData, Channel, CostItem, InvestmentItem } from '@/types/projections';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
-import { useClienteStore } from '@/hooks/useClienteStore';
+import { useClienteStore } from '@/hooks/cliente';
 import { DRETable } from './DRETable';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
