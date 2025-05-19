@@ -41,16 +41,16 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { Cotacao, PropostaFornecedor } from "@/types/insumos";
 import {
+  FileDown,
+  Search,
   FilePlus,
   Pencil,
   Trash,
   ShoppingCart,
-  FileDown,
   Plus,
   Check,
   X,
   AlignJustify,
-  Search,
 } from "lucide-react";
 
 // Form schemas
@@ -221,8 +221,12 @@ export default function CotacoesTab() {
       criarCotacao({
         titulo: values.titulo,
         dataValidade: values.dataValidade,
-        itens: values.itens,
-        status: "Aberta"
+        status: "Aberta",
+        itens: values.itens.map((item, index) => ({
+          id: index + 1, // Temporary IDs that will be replaced in the store
+          insumoId: item.insumoId, 
+          quantidade: item.quantidade
+        }))
       });
       
       toast({
@@ -398,13 +402,15 @@ export default function CotacoesTab() {
       {/* Filtros */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="flex-1">
-          <Input
-            placeholder="Buscar cotação..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-xs"
-            prefix={<Search className="h-4 w-4 text-muted-foreground" />}
-          />
+          <div className="relative max-w-xs">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar cotação..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button 
@@ -892,7 +898,6 @@ export default function CotacoesTab() {
                           <TableRow>
                             <TableHead>Item</TableHead>
                             <TableHead className="text-center">Quantidade</TableHead>
-                            <TableHead className="text-right">Preço Un. (R$)</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -903,9 +908,6 @@ export default function CotacoesTab() {
                                 <TableCell>{insumo?.nome || "Insumo não encontrado"}</TableCell>
                                 <TableCell className="text-center">
                                   {item.quantidade} {insumo?.unidadeMedida || ''}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {item.precoUnitario.toLocaleString('pt-BR', {minimumFractionDigits: 4, maximumFractionDigits: 4})}
                                 </TableCell>
                               </TableRow>
                             );
@@ -934,7 +936,7 @@ export default function CotacoesTab() {
                             Fechar
                           </Button>
                           
-                          {(cotacao.status === 'Enviada' || cotacao.status === 'Pendente') && (
+                          {(cotacao.status === 'Aberta' || cotacao.status === 'Finalizada') && (
                             <Button onClick={() => handleGerarPedido(cotacao.id)}>
                               <ShoppingCart className="mr-2 h-4 w-4" /> Gerar Pedido
                             </Button>

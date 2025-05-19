@@ -166,14 +166,15 @@ export default function PedidosTab() {
       {/* Filtros */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="flex-1">
-          <Input
-            placeholder="Buscar por fornecedor ou ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-xs"
-            // Fix the Input component prefix to be a ReactNode instead of a string
-            prefix={<Search className="h-4 w-4 text-muted-foreground" />}
-          />
+          <div className="relative max-w-xs">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por fornecedor ou ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button 
