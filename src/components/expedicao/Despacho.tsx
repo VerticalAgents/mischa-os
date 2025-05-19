@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -30,12 +31,18 @@ export const Despacho = () => {
   const [pedidosRoteirizacao, setPedidosRoteirizacao] = useState<Pedido[]>([]);
   const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({});
 
-  // Filtrar apenas pedidos com substatus "Separado" para despacho
+  // Filtrar pedidos que estão em processo de despacho (separados ou despachados, mas não entregues/retornados)
+  const pedidosEmDespacho = pedidos.filter(p => 
+    (p.statusPedido === "Agendado" && p.substatusPedido === "Separado") || 
+    (p.statusPedido === "Agendado" && p.substatusPedido === "Despachado")
+  ).sort((a, b) => new Date(a.dataPrevistaEntrega).getTime() - new Date(b.dataPrevistaEntrega).getTime());
+
+  // Filtrar apenas pedidos separados para exibição no modo roteirização
   const pedidosSeparados = pedidos.filter(p => 
     p.statusPedido === "Agendado" && p.substatusPedido === "Separado"
   ).sort((a, b) => new Date(a.dataPrevistaEntrega).getTime() - new Date(b.dataPrevistaEntrega).getTime());
 
-  // Filtrar pedidos com substatus "Despachado" para entrega
+  // Filtrar apenas pedidos despachados para entrega
   const pedidosDespachados = pedidos.filter(p => 
     p.statusPedido === "Agendado" && p.substatusPedido === "Despachado"
   ).sort((a, b) => new Date(a.dataPrevistaEntrega).getTime() - new Date(b.dataPrevistaEntrega).getTime());
@@ -398,7 +405,7 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
           </TabsList>
           
           <TabsContent value="pedidos">
-            {pedidosSeparados.length > 0 ? <div className="space-y-4">
+            {pedidosEmDespacho.length > 0 ? <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap gap-2">
                     <Button 
@@ -433,7 +440,7 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
                 </div>
               
                 <div className="space-y-6">
-                  {pedidosSeparados.map(pedido => <Card key={pedido.id} className="p-4">
+                  {pedidosEmDespacho.map(pedido => <Card key={pedido.id} className="p-4">
                       <div className="flex flex-col md:flex-row md:items-center justify-between">
                         <div className="flex items-center">
                           <div className="space-y-1">
@@ -531,7 +538,7 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
                     </Card>)}
                 </div>
               </div> : <div className="text-center py-6 text-muted-foreground">
-                Não há pedidos separados para despacho.
+                Não há pedidos em processo de despacho.
               </div>}
           </TabsContent>
           

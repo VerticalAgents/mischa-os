@@ -23,8 +23,12 @@ const SidebarContent = () => {
   
   return (
     <>
-      {/* Sidebar Header with Logo and Title */}
-      <SidebarHeader />
+      {/* Sidebar Header with Logo and Title - using custom logos */}
+      <SidebarHeader 
+        lightModeLogo="/lovable-uploads/021d1658-0d25-4427-a96e-47f6d10f9c8b.png"
+        darkModeLogo="/lovable-uploads/1e4d0e9f-7f47-47c2-96fd-bc9c6b697187.png" 
+        title="MischaOS" 
+      />
       
       {/* Main Menu */}
       <div className="flex-1 px-4 py-6 overflow-y-auto">

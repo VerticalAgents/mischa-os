@@ -48,8 +48,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
         />
       )}
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto pt-14 lg:pt-0">
+      {/* Main Content - adjusted to account for fixed sidebar */}
+      <main className={`flex-1 overflow-auto pt-14 lg:pt-0 ${sidebarOpen ? 'ml-64' : 'ml-16'} transition-all`}>
         <div className="container py-6 max-w-7xl mx-auto">
           {children}
         </div>

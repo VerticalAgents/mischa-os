@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./button";
+import { useThemeStore } from "@/lib/theme";
 
 // Interface definitions
 interface SidebarContextType {
@@ -37,6 +38,8 @@ interface SidebarHeaderProps {
   className?: string;
   logoSrc?: string;
   title?: string;
+  darkModeLogo?: string;
+  lightModeLogo?: string;
 }
 
 // Create context for sidebar state management
@@ -79,7 +82,7 @@ export const Sidebar = ({ children, open: propOpen, setOpen: propSetOpen, animat
     <SidebarProvider defaultOpen={isOpen} animate={shouldAnimate}>
       <aside
         className={cn(
-          "border-r bg-sidebar-background text-sidebar-foreground h-screen transition-all relative",
+          "border-r bg-sidebar-background text-sidebar-foreground h-screen transition-all fixed left-0 z-10",
           shouldAnimate
             ? isOpen
               ? "w-64"
@@ -117,14 +120,24 @@ export const SidebarBody = ({ className, children }: SidebarBodyProps) => {
 };
 
 // Sidebar header component
-export const SidebarHeader = ({ className, logoSrc = "/logo.svg", title = "MischaOS" }: SidebarHeaderProps) => {
+export const SidebarHeader = ({ 
+  className, 
+  logoSrc = "/logo.svg", 
+  title = "MischaOS",
+  darkModeLogo = "/logo.svg",
+  lightModeLogo = "/logo.svg"
+}: SidebarHeaderProps) => {
   const { open, animate } = useSidebar();
+  const { isDark } = useThemeStore();
   const showFullContent = animate ? open : true;
+  
+  // Use the appropriate logo based on the theme
+  const currentLogoSrc = isDark ? darkModeLogo : lightModeLogo;
   
   return (
     <div className={cn("flex h-14 items-center border-b px-6", className)}>
       <a href="/" className={cn("flex items-center", showFullContent ? "space-x-2" : "justify-center w-full")}>
-        <img src={logoSrc} alt="Logo" className="h-8 w-8" />
+        <img src={currentLogoSrc} alt="Logo" className="h-8 w-8" />
         {showFullContent && (
           <span className="font-bold text-lg text-sidebar-foreground">{title}</span>
         )}
@@ -155,8 +168,8 @@ export const SidebarLink = ({ link, active, onClick }: SidebarLinkProps) => {
           : "hover:bg-sidebar-background-hover"
       )}
     >
-      <span>{link.icon}</span>
-      {showFullContent && <span>{link.label}</span>}
+      <span className="flex-shrink-0">{link.icon}</span>
+      {showFullContent && <span className="truncate">{link.label}</span>}
     </a>
   );
 };
