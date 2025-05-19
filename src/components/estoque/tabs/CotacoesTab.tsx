@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   Table,
@@ -9,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, CalendarIcon } from "lucide-react";
 import { Cotacao } from "@/types/insumos";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -30,7 +31,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarIcon } from "@radix-ui/react-icons";
 import { ptBR } from 'date-fns/locale';
 
 const mockCotacoes: Cotacao[] = [
