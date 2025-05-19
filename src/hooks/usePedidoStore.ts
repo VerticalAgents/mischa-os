@@ -346,7 +346,7 @@ export const usePedidoStore = create<PedidoStore>()(
         });
         
         if (itensComSaldoInsuficiente.length > 0) {
-          const mensagens = itensComSaldoInsuficientes.map(item => {
+          const mensagens = itensComSaldoInsuficiente.map(item => {
             const sabor = sabores.find(s => s.id === item.idSabor);
             return `${sabor?.nome}: ${sabor?.saldoAtual}/${item.quantidadeSabor}`;
           });
@@ -393,6 +393,50 @@ export const usePedidoStore = create<PedidoStore>()(
         toast({
           title: "Pedido cancelado",
           description: `Pedido #${idPedido} cancelado com sucesso.`
+        });
+      },
+      
+      atualizarSubstatusPedido: (idPedido, novoSubstatus, observacao) => {
+        const pedido = get().pedidos.find(p => p.id === idPedido);
+        if (!pedido) return;
+    
+        // Criar a alteração de status
+        const alteracaoStatus: AlteracaoStatusPedido = {
+          dataAlteracao: new Date(),
+          statusAnterior: pedido.statusPedido,
+          statusNovo: pedido.statusPedido, // Status permanece o mesmo
+          substatusAnterior: pedido.substatusPedido,
+          substatusNovo: novoSubstatus,
+          observacao: observacao || `Substatus alterado para ${novoSubstatus}`
+        };
+    
+        // Atualizar o pedido
+        set(state => ({
+          pedidos: state.pedidos.map(p =>
+            p.id === idPedido ? {
+              ...p,
+              substatusPedido: novoSubstatus,
+              historicoAlteracoesStatus: [
+                ...(p.historicoAlteracoesStatus || []),
+                alteracaoStatus
+              ]
+            } : p
+          ),
+          pedidoAtual: state.pedidoAtual?.id === idPedido
+            ? {
+              ...state.pedidoAtual,
+              substatusPedido: novoSubstatus,
+              historicoAlteracoesStatus: [
+                ...(state.pedidoAtual.historicoAlteracoesStatus || []),
+                alteracaoStatus
+              ]
+            }
+            : state.pedidoAtual
+        }));
+    
+        toast({
+          title: "Substatus atualizado",
+          description: `Substatus do pedido #${idPedido} alterado para ${novoSubstatus}.`
         });
       },
       
