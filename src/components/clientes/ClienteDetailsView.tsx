@@ -6,7 +6,7 @@ import StatusBadge from "@/components/common/StatusBadge";
 import ClienteDetalhesTabs from "@/components/clientes/ClienteDetalhesTabs";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import { useState } from "react";
-import { useClienteStore } from "@/hooks/useClienteStore"; 
+import { useClienteStore } from "@/hooks/cliente"; 
 import {
   AlertDialog,
   AlertDialogAction,

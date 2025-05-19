@@ -4,7 +4,7 @@ import { ArrowRight, Download } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { useClienteStore } from "@/hooks/useClienteStore";
+import { useClienteStore } from "@/hooks/cliente";
 import { useProjectionStore } from "@/hooks/useProjectionStore";
 import { usePlanejamentoProducaoStore } from "@/hooks/usePlanejamentoProducaoStore";
 import { useDashboardStore } from "@/hooks/useDashboardStore";
