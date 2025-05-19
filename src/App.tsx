@@ -1,4 +1,5 @@
 
+import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,7 +17,6 @@ import Expedicao from "@/pages/Expedicao";
 import Projections from "@/pages/Projections";
 import NotFound from "./pages/NotFound";
 import { applyTheme } from "./lib/theme";
-import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
@@ -38,7 +38,7 @@ const initializeTheme = () => {
 
 const App = () => {
   // Initialize theme on app load
-  useEffect(() => {
+  React.useEffect(() => {
     initializeTheme();
   }, []);
 
