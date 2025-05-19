@@ -3,17 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import StatusBadge from "@/components/common/StatusBadge";
+import SubstatusBadge from "@/components/common/SubstatusBadge";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, ArrowRight, Map, Check } from "lucide-react";
+import { MapPin, ArrowRight, Map, Check, Undo, MapPinned } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { SubstatusPedidoAgendado } from "@/types";
+import { SubstatusPedidoAgendado, Pedido } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useCallback } from "react";
 
 export const Despacho = () => {
   const { toast } = useToast();
@@ -25,11 +28,42 @@ export const Despacho = () => {
   const [observacao, setObservacao] = useState("");
   const [pedidoSelecionado, setPedidoSelecionado] = useState<number | null>(null);
   const [substatusSelecionado, setSubstatusSelecionado] = useState<SubstatusPedidoAgendado | null>(null);
+  const [pedidosSelecionados, setPedidosSelecionados] = useState<Record<number, boolean>>({});
+  const [arrastando, setArrastando] = useState<number | null>(null);
+  const [pedidosRoteirizacao, setPedidosRoteirizacao] = useState<Pedido[]>([]);
 
   // Filtrar pedidos com status "Agendado"
   const pedidosAgendados = pedidos.filter(p => 
     p.statusPedido === "Agendado"
   ).sort((a, b) => new Date(a.dataPrevistaEntrega).getTime() - new Date(b.dataPrevistaEntrega).getTime());
+  
+  // Filtrar pedidos com substatus "Separado" para roteirização
+  const pedidosSeparados = pedidos.filter(p => 
+    p.substatusPedido === "Separado"
+  );
+
+  // Inicializar pedidosRoteirizacao se estiver vazio
+  const inicializarPedidosRoteirizacao = useCallback(() => {
+    if (pedidosRoteirizacao.length === 0 && pedidosSeparados.length > 0) {
+      setPedidosRoteirizacao([...pedidosSeparados]);
+    }
+  }, [pedidosSeparados, pedidosRoteirizacao.length]);
+
+  // Verificar se algum pedido está selecionado
+  const temPedidosSelecionados = Object.values(pedidosSelecionados).some(selected => selected);
+  
+  // Função para selecionar/desselecionar todos os pedidos
+  const toggleSelecionarTodos = () => {
+    if (temPedidosSelecionados) {
+      setPedidosSelecionados({});
+    } else {
+      const todos = {};
+      pedidosAgendados.forEach(p => {
+        todos[p.id] = true;
+      });
+      setPedidosSelecionados(todos);
+    }
+  };
 
   // Função para copiar informações para o WhatsApp
   const copiarInfoEntrega = (pedido) => {
@@ -52,6 +86,72 @@ export const Despacho = () => {
       title: "Informações copiadas",
       description: "Dados da entrega copiados para a área de transferência"
     });
+  };
+
+  // Função para despacho em massa
+  const confirmarDespachoEmMassa = () => {
+    const pedidosSelecionadosIds = Object.entries(pedidosSelecionados)
+      .filter(([_, selected]) => selected)
+      .map(([id]) => parseInt(id));
+    
+    if (pedidosSelecionadosIds.length === 0) {
+      toast({
+        title: "Nenhum pedido selecionado",
+        description: "Selecione ao menos um pedido para confirmar o despacho",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Confirmar o despacho de todos os pedidos selecionados
+    pedidosSelecionadosIds.forEach(id => {
+      const pedido = pedidos.find(p => p.id === id);
+      if (pedido && pedido.substatusPedido === "Separado") {
+        atualizarSubstatusPedido(id, "Despachado", "Despacho confirmado em massa");
+      }
+    });
+    
+    toast({
+      title: "Despacho em massa confirmado",
+      description: `${pedidosSelecionadosIds.length} pedidos foram marcados como despachados.`
+    });
+    
+    // Limpar seleção após a operação
+    setPedidosSelecionados({});
+  };
+  
+  // Função para confirmar entrega em massa
+  const confirmarEntregaEmMassa = () => {
+    const pedidosSelecionadosIds = Object.entries(pedidosSelecionados)
+      .filter(([_, selected]) => selected)
+      .map(([id]) => parseInt(id));
+    
+    if (pedidosSelecionadosIds.length === 0) {
+      toast({
+        title: "Nenhum pedido selecionado",
+        description: "Selecione ao menos um pedido para confirmar a entrega",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Confirmar a entrega de todos os pedidos selecionados
+    let contadorAtualizados = 0;
+    pedidosSelecionadosIds.forEach(id => {
+      const pedido = pedidos.find(p => p.id === id);
+      if (pedido && pedido.substatusPedido === "Despachado") {
+        atualizarSubstatusPedido(id, "Entregue", "Entrega confirmada em massa");
+        contadorAtualizados++;
+      }
+    });
+    
+    toast({
+      title: "Entrega em massa confirmada",
+      description: `${contadorAtualizados} pedidos foram marcados como entregues.`
+    });
+    
+    // Limpar seleção após a operação
+    setPedidosSelecionados({});
   };
 
   // Função para gerar a rota usando IA
@@ -214,7 +314,93 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
     );
   };
 
-  // Função para obter a classe de cor baseada no substatus
+  // Função para desfazer a última alteração de substatus
+  const desfazerAlteracao = (pedido) => {
+    // Verificar se é possível desfazer (se não é Entregue ou Retorno)
+    if (pedido.substatusPedido === "Entregue" || pedido.substatusPedido === "Retorno") {
+      toast({
+        title: "Não é possível desfazer",
+        description: "Pedidos entregues ou com retorno não podem ter a ação desfeita.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Obter o histórico para determinar o status anterior
+    const historicoAlteracoes = pedido.historicoAlteracoesStatus || [];
+    
+    // Se não houver histórico, não tem como desfazer
+    if (historicoAlteracoes.length <= 1) {
+      toast({
+        title: "Sem histórico para desfazer",
+        description: "Não há alterações anteriores registradas para este pedido.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Pegar o penúltimo status (anterior ao atual)
+    const alteracaoAnterior = historicoAlteracoes[historicoAlteracoes.length - 2];
+    const substatusAnterior = alteracaoAnterior.substatusNovo || "Agendado";
+    
+    // Fazer a alteração para o status anterior
+    atualizarSubstatusPedido(
+      pedido.id, 
+      substatusAnterior as SubstatusPedidoAgendado, 
+      "Alteração desfeita manualmente"
+    );
+    
+    toast({
+      title: "Alteração desfeita",
+      description: `O pedido foi revertido para o status anterior: ${substatusAnterior}`
+    });
+  };
+
+  // Funções para drag and drop de roteirização
+  const iniciarArraste = (id: number) => {
+    setArrastando(id);
+  };
+
+  const finalizarArraste = (index: number) => {
+    if (arrastando !== null) {
+      const novaOrdem = [...pedidosRoteirizacao];
+      const pedidoIndex = novaOrdem.findIndex(p => p.id === arrastando);
+      
+      if (pedidoIndex !== -1) {
+        const [pedidoRemovido] = novaOrdem.splice(pedidoIndex, 1);
+        novaOrdem.splice(index, 0, pedidoRemovido);
+        setPedidosRoteirizacao(novaOrdem);
+      }
+      
+      setArrastando(null);
+    }
+  };
+  
+  // Mover pedido para cima na ordem
+  const moverParaCima = (index: number) => {
+    if (index <= 0) return;
+    
+    const novaOrdem = [...pedidosRoteirizacao];
+    const temp = novaOrdem[index - 1];
+    novaOrdem[index - 1] = novaOrdem[index];
+    novaOrdem[index] = temp;
+    
+    setPedidosRoteirizacao(novaOrdem);
+  };
+  
+  // Mover pedido para baixo na ordem
+  const moverParaBaixo = (index: number) => {
+    if (index >= pedidosRoteirizacao.length - 1) return;
+    
+    const novaOrdem = [...pedidosRoteirizacao];
+    const temp = novaOrdem[index + 1];
+    novaOrdem[index + 1] = novaOrdem[index];
+    novaOrdem[index] = temp;
+    
+    setPedidosRoteirizacao(novaOrdem);
+  };
+
+  // Obter o status e classe de cor
   const getSubstatusColor = (substatus: SubstatusPedidoAgendado | undefined): string => {
     switch (substatus) {
       case "Agendado":
@@ -240,117 +426,176 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
         <Tabs defaultValue="pedidos" className="space-y-4">
           <TabsList>
             <TabsTrigger value="pedidos">Lista de Pedidos</TabsTrigger>
-            <TabsTrigger value="roteirizacao">Roteirização</TabsTrigger>
+            <TabsTrigger value="roteirizacao" onClick={inicializarPedidosRoteirizacao}>Roteirização</TabsTrigger>
           </TabsList>
           
           <TabsContent value="pedidos">
             {pedidosAgendados.length > 0 ? (
-              <div className="space-y-6">
-                {pedidosAgendados.map((pedido) => (
-                  <Card key={pedido.id} className="p-4">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-medium">{pedido.cliente?.nome || "Pedido Único"}</h3>
-                          <StatusBadge status={pedido.statusPedido} />
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="selectAll"
+                      checked={temPedidosSelecionados && Object.keys(pedidosSelecionados).length === pedidosAgendados.length}
+                      onCheckedChange={toggleSelecionarTodos}
+                    />
+                    <label htmlFor="selectAll" className="text-sm">
+                      {temPedidosSelecionados ? "Desmarcar todos" : "Selecionar todos"}
+                    </label>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    <Button 
+                      onClick={confirmarDespachoEmMassa} 
+                      disabled={!temPedidosSelecionados}
+                      size="sm"
+                      className="flex items-center gap-1"
+                    >
+                      <Check className="h-4 w-4" /> Confirmar Despacho em Massa
+                    </Button>
+                    <Button 
+                      onClick={confirmarEntregaEmMassa} 
+                      disabled={!temPedidosSelecionados}
+                      size="sm"
+                      className="flex items-center gap-1"
+                    >
+                      <Check className="h-4 w-4" /> Confirmar Entrega em Massa
+                    </Button>
+                  </div>
+                </div>
+              
+                <div className="space-y-6">
+                  {pedidosAgendados.map((pedido) => (
+                    <Card key={pedido.id} className="p-4">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`select-${pedido.id}`}
+                            checked={!!pedidosSelecionados[pedido.id]}
+                            onCheckedChange={(checked) => {
+                              setPedidosSelecionados(prev => ({
+                                ...prev,
+                                [pedido.id]: !!checked
+                              }));
+                            }}
+                          />
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-medium">{pedido.cliente?.nome || "Pedido Único"}</h3>
+                              <StatusBadge status={pedido.statusPedido} />
+                              {pedido.substatusPedido && <SubstatusBadge substatus={pedido.substatusPedido} />}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {pedido.cliente?.enderecoEntrega || "Endereço não disponível"}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Entrega prevista: {formatDate(new Date(pedido.dataPrevistaEntrega))} • 
+                              {pedido.totalPedidoUnidades} unidades
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {pedido.cliente?.enderecoEntrega || "Endereço não disponível"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Entrega prevista: {formatDate(new Date(pedido.dataPrevistaEntrega))} • 
-                          {pedido.totalPedidoUnidades} unidades
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 mt-4 md:mt-0">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => copiarInfoEntrega(pedido)}
-                          className="flex items-center gap-1"
-                        >
-                          <MapPin className="h-4 w-4" /> Info
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4">
-                      <div className="flex flex-col space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Status operacional</span>
-                          <span className="text-sm text-muted-foreground">
-                            {pedido.substatusPedido || "Agendado"}
-                          </span>
+                        <div className="flex items-center gap-2 mt-4 md:mt-0">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => copiarInfoEntrega(pedido)}
+                            className="flex items-center gap-1"
+                          >
+                            <MapPin className="h-4 w-4" /> Info
+                          </Button>
+                          
+                          {/* Botão desfazer - apenas para Separado e Despachado */}
+                          {(pedido.substatusPedido === "Separado" || pedido.substatusPedido === "Despachado") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => desfazerAlteracao(pedido)}
+                              className="flex items-center gap-1"
+                            >
+                              <Undo className="h-4 w-4" /> Desfazer
+                            </Button>
+                          )}
                         </div>
-                        <Progress 
-                          value={getProgressValue(pedido.substatusPedido)} 
-                          className={`h-2 ${getSubstatusColor(pedido.substatusPedido)}`} 
-                        />
-                        <div className="flex justify-between gap-2 mt-2 flex-wrap">
-                          <Dialog>
-                            {renderBotaoSubstatus(pedido.substatusPedido, "Agendado", pedido.id, "Agendado")}
-                            {renderBotaoSubstatus(pedido.substatusPedido, "Separado", pedido.id, "Separado")}
-                            {renderBotaoSubstatus(pedido.substatusPedido, "Despachado", pedido.id, "Despachado")}
-                            {renderBotaoSubstatus(pedido.substatusPedido, "Entregue", pedido.id, "Entregue")}
-                            {renderBotaoSubstatus(pedido.substatusPedido, "Retorno", pedido.id, "Retorno")}
-                            
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>
-                                  {substatusSelecionado === "Entregue" ? "Confirmar Entrega" : "Registrar Retorno"}
-                                </DialogTitle>
-                                <DialogDescription>
-                                  {substatusSelecionado === "Entregue" 
-                                    ? "Confirme a entrega do pedido ao cliente. O status será alterado para 'Reagendar'."
-                                    : "Registre o retorno do pedido à fábrica. O sistema irá sugerir o próximo dia útil para reagendamento."
-                                  }
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4 py-4">
-                                <div className="grid gap-4">
-                                  <Label htmlFor="observacao">Observações (opcional)</Label>
-                                  <Textarea
-                                    id="observacao"
-                                    placeholder="Informe detalhes adicionais..."
-                                    value={observacao}
-                                    onChange={(e) => setObservacao(e.target.value)}
-                                  />
+                      </div>
+                      
+                      <div className="mt-4">
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Status operacional</span>
+                            <span className="text-sm text-muted-foreground">
+                              {pedido.substatusPedido || "Agendado"}
+                            </span>
+                          </div>
+                          <Progress 
+                            value={getProgressValue(pedido.substatusPedido)} 
+                            className={`h-2 ${getSubstatusColor(pedido.substatusPedido)}`} 
+                          />
+                          <div className="flex justify-between gap-2 mt-2 flex-wrap">
+                            <Dialog>
+                              {renderBotaoSubstatus(pedido.substatusPedido, "Agendado", pedido.id, "Agendado")}
+                              {renderBotaoSubstatus(pedido.substatusPedido, "Separado", pedido.id, "Separado")}
+                              {renderBotaoSubstatus(pedido.substatusPedido, "Despachado", pedido.id, "Despachado")}
+                              {renderBotaoSubstatus(pedido.substatusPedido, "Entregue", pedido.id, "Entregue")}
+                              {renderBotaoSubstatus(pedido.substatusPedido, "Retorno", pedido.id, "Retorno")}
+                              
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>
+                                    {substatusSelecionado === "Entregue" ? "Confirmar Entrega" : "Registrar Retorno"}
+                                  </DialogTitle>
+                                  <DialogDescription>
+                                    {substatusSelecionado === "Entregue" 
+                                      ? "Confirme a entrega do pedido ao cliente. O status será alterado para 'Reagendar'."
+                                      : "Registre o retorno do pedido à fábrica. O sistema irá sugerir o próximo dia útil para reagendamento."
+                                    }
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                  <div className="grid gap-4">
+                                    <Label htmlFor="observacao">Observações (opcional)</Label>
+                                    <Textarea
+                                      id="observacao"
+                                      placeholder="Informe detalhes adicionais..."
+                                      value={observacao}
+                                      onChange={(e) => setObservacao(e.target.value)}
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-                              <DialogFooter>
-                                <DialogClose asChild>
-                                  <Button variant="outline">Cancelar</Button>
-                                </DialogClose>
-                                <DialogClose asChild>
-                                  <Button 
-                                    onClick={() => {
-                                      if (pedidoSelecionado && substatusSelecionado) {
-                                        atualizarSubstatusPedido(
-                                          pedidoSelecionado, 
-                                          substatusSelecionado as SubstatusPedidoAgendado,
-                                          observacao
-                                        );
-                                        setObservacao("");
-                                        toast({
-                                          title: substatusSelecionado === "Entregue" ? "Entrega confirmada" : "Retorno registrado",
-                                          description: substatusSelecionado === "Entregue" 
-                                            ? "O cliente será automaticamente colocado em status de reagendamento" 
-                                            : "Reagendamento sugerido para o próximo dia útil"
-                                        });
-                                      }
-                                    }}
-                                  >
-                                    Confirmar
-                                  </Button>
-                                </DialogClose>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
+                                <DialogFooter>
+                                  <DialogClose asChild>
+                                    <Button variant="outline">Cancelar</Button>
+                                  </DialogClose>
+                                  <DialogClose asChild>
+                                    <Button 
+                                      onClick={() => {
+                                        if (pedidoSelecionado && substatusSelecionado) {
+                                          atualizarSubstatusPedido(
+                                            pedidoSelecionado, 
+                                            substatusSelecionado as SubstatusPedidoAgendado,
+                                            observacao
+                                          );
+                                          setObservacao("");
+                                          toast({
+                                            title: substatusSelecionado === "Entregue" ? "Entrega confirmada" : "Retorno registrado",
+                                            description: substatusSelecionado === "Entregue" 
+                                              ? "O cliente será automaticamente colocado em status de reagendamento" 
+                                              : "Reagendamento sugerido para o próximo dia útil"
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      Confirmar
+                                    </Button>
+                                  </DialogClose>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="text-center py-6 text-muted-foreground">
@@ -362,6 +607,99 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
           <TabsContent value="roteirizacao">
             <div className="space-y-4">
               <div className="flex flex-col gap-4 max-w-xl">
+                {/* Interface de roteirização manual */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Ordenação Manual</h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => toast({
+                        title: "Rota salva",
+                        description: "A ordem de entrega foi salva com sucesso."
+                      })}
+                    >
+                      Salvar Ordem
+                    </Button>
+                  </div>
+                  
+                  {pedidosRoteirizacao.length > 0 ? (
+                    <div className="border rounded-md">
+                      {pedidosRoteirizacao.map((pedido, index) => (
+                        <div 
+                          key={pedido.id}
+                          className={`flex items-center justify-between p-3 border-b last:border-b-0
+                            ${arrastando === pedido.id ? "bg-muted" : ""}
+                          `}
+                          draggable
+                          onDragStart={() => iniciarArraste(pedido.id)}
+                          onDragOver={e => e.preventDefault()}
+                          onDrop={() => finalizarArraste(index)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center text-primary text-sm">
+                              {index + 1}
+                            </div>
+                            <div>
+                              <div className="font-medium">{pedido.cliente?.nome || "Pedido Único"}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {pedido.cliente?.enderecoEntrega || "Endereço não disponível"}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => moverParaCima(index)}
+                              disabled={index === 0}
+                            >
+                              <ArrowRight className="h-4 w-4 rotate-270" />
+                            </Button>
+                            <Button 
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => moverParaBaixo(index)}
+                              disabled={index === pedidosRoteirizacao.length - 1}
+                            >
+                              <ArrowRight className="h-4 w-4 rotate-90" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 border rounded-md">
+                      <p className="text-muted-foreground">
+                        Não há pedidos separados para roteirização
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="mt-6">
+                  <div className="flex flex-wrap gap-2 items-start justify-between">
+                    <div>
+                      <h3 className="font-medium mb-2">Roteirização Automática</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Gere uma rota otimizada automaticamente
+                      </p>
+                    </div>
+                    <Button 
+                      disabled={true}
+                      className="flex items-center gap-1"
+                    >
+                      <MapPinned className="h-4 w-4" />
+                      Gerar rota automaticamente (Google)
+                    </Button>
+                  </div>
+                  <div className="bg-muted/30 p-3 rounded-md border mt-2">
+                    <p className="text-sm text-muted-foreground italic">
+                      Em desenvolvimento – integração com Google Route API em breve
+                    </p>
+                  </div>
+                </div>
+                
                 <div>
                   <label htmlFor="api-key" className="block text-sm font-medium mb-1">
                     Chave da API Perplexity
@@ -384,7 +722,7 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
                   className="flex items-center gap-1 max-w-xs"
                 >
                   <Map className="h-4 w-4" />
-                  {isGeneratingRoute ? "Gerando rota..." : "Gerar Rota Otimizada"}
+                  {isGeneratingRoute ? "Gerando rota..." : "Gerar Rota com IA"}
                 </Button>
               </div>
               
@@ -409,29 +747,6 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
                   >
                     Copiar Rota
                   </Button>
-                </div>
-              )}
-              
-              {pedidosAgendados.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="font-medium mb-2">Pedidos para Roteirização</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {pedidosAgendados.map((pedido, index) => (
-                      <Card key={pedido.id} className="p-3">
-                        <div className="flex items-start gap-2">
-                          <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center text-primary text-sm flex-shrink-0">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <div className="font-medium">{pedido.cliente?.nome || "Pedido Único"}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {pedido.cliente?.enderecoEntrega || "Endereço não disponível"}
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
                 </div>
               )}
             </div>

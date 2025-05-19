@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import StatusBadge from "@/components/common/StatusBadge";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useToast } from "@/hooks/use-toast";
-import { Printer, FileText, Check } from "lucide-react";
+import { Printer, FileText, Check, Undo } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const SeparacaoPedidos = () => {
@@ -15,18 +15,18 @@ export const SeparacaoPedidos = () => {
   const [activeSubTab, setActiveSubTab] = useState<string>("padrao");
   const printFrameRef = useRef<HTMLIFrameElement>(null);
   
-  // Fix: Use individual selectors instead of calling the function directly
+  // Use individual selectors instead of calling the function directly
   const pedidos = usePedidoStore(state => state.pedidos);
-  const updatePedidoStatus = usePedidoStore(state => state.atualizarPedido);
+  const atualizarSubstatusPedido = usePedidoStore(state => state.atualizarSubstatusPedido);
   
   // Filtrar pedidos em separação/agendados e separá-los por tipo
   const pedidosPadrao = pedidos.filter(p => 
-    (p.statusPedido === "Agendado" || p.statusPedido === "Em Separação") && 
+    (p.statusPedido === "Agendado") && 
     p.tipoPedido === "Padrão"
   );
   
   const pedidosAlterados = pedidos.filter(p => 
-    (p.statusPedido === "Agendado" || p.statusPedido === "Em Separação") && 
+    (p.statusPedido === "Agendado") && 
     p.tipoPedido === "Alterado"
   );
   
@@ -34,12 +34,47 @@ export const SeparacaoPedidos = () => {
   const pedidosPadraoOrdenados = [...pedidosPadrao].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
   const pedidosAlteradosOrdenados = [...pedidosAlterados].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
 
-  // Nova função para confirmar separação
+  // Nova função para confirmar separação - Atualiza diretamente para "Separado" conforme requisito
   const confirmarSeparacaoPedido = (idPedido: number) => {
-    updatePedidoStatus(idPedido, { statusPedido: "Em Separação" });
+    atualizarSubstatusPedido(idPedido, "Separado", "Separação confirmada manualmente");
     toast({
       title: "Separação confirmada",
-      description: "O pedido foi movido para a fila de despacho.",
+      description: "O pedido foi marcado como Separado.",
+    });
+  };
+  
+  // Nova função para desfazer a separação
+  const desfazerSeparacao = (idPedido: number) => {
+    atualizarSubstatusPedido(idPedido, "Agendado", "Separação desfeita manualmente");
+    toast({
+      title: "Separação desfeita",
+      description: "O pedido voltou para o status Agendado.",
+    });
+  };
+  
+  // Nova função para marcar todos como separados
+  const marcarTodosSeparados = () => {
+    const listaAtual = activeSubTab === "padrao" ? pedidosPadraoOrdenados : pedidosAlteradosOrdenados;
+    
+    if (listaAtual.length === 0) {
+      toast({
+        title: "Sem pedidos para separação",
+        description: "Não há pedidos para separar nesta categoria.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Confirmar separação de todos os pedidos listados
+    listaAtual.forEach(pedido => {
+      if (pedido.substatusPedido !== "Separado") {
+        atualizarSubstatusPedido(pedido.id, "Separado", "Separação confirmada em massa");
+      }
+    });
+    
+    toast({
+      title: "Separação em massa concluída",
+      description: `${listaAtual.length} pedidos foram marcados como Separados.`,
     });
   };
 
@@ -223,6 +258,13 @@ export const SeparacaoPedidos = () => {
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <h2 className="text-lg font-semibold">Separação de Pedidos</h2>
           <div className="flex flex-wrap gap-2">
+            <Button 
+              onClick={marcarTodosSeparados} 
+              size="sm" 
+              className="flex items-center gap-1"
+            >
+              <Check className="h-4 w-4" /> Marcar todos como separados
+            </Button>
             <Button onClick={imprimirListaSeparacao} size="sm" variant="outline" className="flex items-center gap-1">
               <Printer className="h-4 w-4" /> Imprimir Lista
             </Button>
@@ -264,6 +306,11 @@ export const SeparacaoPedidos = () => {
                       <TableCell>{pedido.totalPedidoUnidades}</TableCell>
                       <TableCell>
                         <StatusBadge status={pedido.statusPedido} />
+                        {pedido.substatusPedido && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({pedido.substatusPedido})
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="max-w-[300px] truncate">
                         {pedido.itensPedido.map(item => 
@@ -271,16 +318,29 @@ export const SeparacaoPedidos = () => {
                         ).join(", ")}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => confirmarSeparacaoPedido(pedido.id)}
-                          className="flex items-center gap-1"
-                          disabled={pedido.statusPedido === "Em Separação"}
-                        >
-                          <Check className="h-4 w-4" />
-                          {pedido.statusPedido === "Em Separação" ? "Separado" : "Confirmar Separação"}
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          {pedido.substatusPedido === "Separado" ? (
+                            <Button
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => desfazerSeparacao(pedido.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <Undo className="h-4 w-4" />
+                              Desfazer
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => confirmarSeparacaoPedido(pedido.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <Check className="h-4 w-4" />
+                              Confirmar Separação
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -314,6 +374,11 @@ export const SeparacaoPedidos = () => {
                       <TableCell>{pedido.totalPedidoUnidades}</TableCell>
                       <TableCell>
                         <StatusBadge status={pedido.statusPedido} />
+                        {pedido.substatusPedido && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({pedido.substatusPedido})
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="max-w-[300px] truncate">
                         {pedido.itensPedido.map(item => 
@@ -321,16 +386,29 @@ export const SeparacaoPedidos = () => {
                         ).join(", ")}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => confirmarSeparacaoPedido(pedido.id)}
-                          className="flex items-center gap-1"
-                          disabled={pedido.statusPedido === "Em Separação"}
-                        >
-                          <Check className="h-4 w-4" />
-                          {pedido.statusPedido === "Em Separação" ? "Separado" : "Confirmar Separação"}
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          {pedido.substatusPedido === "Separado" ? (
+                            <Button
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => desfazerSeparacao(pedido.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <Undo className="h-4 w-4" />
+                              Desfazer
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => confirmarSeparacaoPedido(pedido.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <Check className="h-4 w-4" />
+                              Confirmar Separação
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
