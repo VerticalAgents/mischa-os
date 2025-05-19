@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -253,11 +252,11 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
     const isEntregaRetorno = novoStatus === "Entregue" || novoStatus === "Retorno";
     
     // Definir a variante do botão com base no status
-    let buttonVariant = isNextStatus ? "default" : "outline";
+    let buttonVariant: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | "success" = isNextStatus ? "default" : "outline";
     
     // Se o status atual for "Despachado" e for exibindo o botão "Despachado", mostrar como verde
     if (isCurrentStatus && novoStatus === "Despachado") {
-      buttonVariant = "success"; // Usando uma variante personalizada para verde
+      buttonVariant = "success"; // Usando a variante "success" que já existe
     }
     
     if (isCurrentStatus) {
