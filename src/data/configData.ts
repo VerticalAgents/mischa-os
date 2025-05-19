@@ -1,64 +1,156 @@
-
 import { 
   Representante, 
   RotaEntrega, 
   CategoriaEstabelecimento, 
   TipoLogistica, 
   FormaPagamento,
-  ConfiguracoesProducao
+  ConfiguracoesProducao,
+  CategoriaInsumoParam
 } from '@/types';
 
-// Mock data for representantes
 export const representantesMock: Representante[] = [
-  { id: 1, nome: 'João Silva', email: 'joao@exemplo.com', telefone: '(51) 99999-1111', ativo: true },
-  { id: 2, nome: 'Maria Oliveira', email: 'maria@exemplo.com', telefone: '(51) 99999-2222', ativo: true },
-  { id: 3, nome: 'Pedro Santos', email: 'pedro@exemplo.com', telefone: '(51) 99999-3333', ativo: true },
-  { id: 4, nome: 'Ana Costa', email: 'ana@exemplo.com', telefone: '(51) 99999-4444', ativo: false },
+  {
+    id: 1,
+    nome: "João da Silva",
+    email: "joao.silva@example.com",
+    telefone: "1199999999",
+    ativo: true,
+    comissao: 0.05
+  },
+  {
+    id: 2,
+    nome: "Maria Souza",
+    email: "maria.souza@example.com",
+    telefone: "2198888888",
+    ativo: false,
+    comissao: 0.07
+  },
+  {
+    id: 3,
+    nome: "José Santos",
+    email: "jose.santos@example.com",
+    telefone: "3197777777",
+    ativo: true,
+    comissao: 0.06
+  }
 ];
 
-// Mock data for rotas de entrega
 export const rotasEntregaMock: RotaEntrega[] = [
-  { id: 1, nome: 'Zona Norte', descricao: 'Região norte da cidade', ativo: true },
-  { id: 2, nome: 'Zona Sul', descricao: 'Região sul da cidade', ativo: true },
-  { id: 3, nome: 'Centro', descricao: 'Região central', ativo: true },
-  { id: 4, nome: 'Zona Leste', descricao: 'Região leste da cidade', ativo: false },
+  {
+    id: 1,
+    nome: "Rota Centro",
+    diasSemana: ["Segunda", "Quarta", "Sexta"],
+    horarioInicio: "08:00",
+    horarioFim: "12:00",
+    ativo: true
+  },
+  {
+    id: 2,
+    nome: "Rota Norte",
+    diasSemana: ["Terça", "Quinta", "Sábado"],
+    horarioInicio: "13:00",
+    horarioFim: "17:00",
+    ativo: true
+  },
+  {
+    id: 3,
+    nome: "Rota Sul",
+    diasSemana: ["Segunda", "Quarta", "Sexta"],
+    horarioInicio: "14:00",
+    horarioFim: "18:00",
+    ativo: false
+  }
 ];
 
-// Mock data for categorias de estabelecimento
 export const categoriasEstabelecimentoMock: CategoriaEstabelecimento[] = [
-  { id: 1, nome: 'Cafeteria', descricao: 'Estabelecimentos focados em café', ativo: true },
-  { id: 2, nome: 'Empório', descricao: 'Empórios e lojas de produtos naturais', ativo: true },
-  { id: 3, nome: 'Restaurante', descricao: 'Restaurantes em geral', ativo: true },
-  { id: 4, nome: 'Bar', descricao: 'Bares e pubs', ativo: true },
-  { id: 5, nome: 'Hotel', descricao: 'Hotéis e pousadas', ativo: true },
-  { id: 6, nome: 'Padaria', descricao: 'Padarias e confeitarias', ativo: true },
+  {
+    id: 1,
+    nome: "Restaurante",
+    descricao: "Estabelecimentos que servem refeições",
+    ativo: true
+  },
+  {
+    id: 2,
+    nome: "Cafeteria",
+    descricao: "Estabelecimentos que servem café e lanches rápidos",
+    ativo: true
+  },
+  {
+    id: 3,
+    nome: "Supermercado",
+    descricao: "Estabelecimentos que vendem alimentos e produtos diversos",
+    ativo: false
+  }
 ];
 
-// Mock data for tipos de logística
 export const tiposLogisticaMock: TipoLogistica[] = [
-  { id: 1, nome: 'Própria', percentualLogistico: 8.5, ativo: true },
-  { id: 2, nome: 'Distribuição', percentualLogistico: 12.0, ativo: true },
-  { id: 3, nome: 'Terceirizada', percentualLogistico: 15.0, ativo: true },
-  { id: 4, nome: 'Retirada pelo cliente', percentualLogistico: 0, ativo: true },
+  {
+    id: 1,
+    nome: "Entrega Própria",
+    descricao: "Entrega realizada pela própria empresa",
+    ativo: true
+  },
+  {
+    id: 2,
+    nome: "Transportadora",
+    descricao: "Entrega realizada por uma transportadora terceirizada",
+    ativo: true
+  },
+  {
+    id: 3,
+    nome: "Retirada no Local",
+    descricao: "Cliente retira o produto no local",
+    ativo: false
+  }
 ];
 
-// Mock data for formas de pagamento
 export const formasPagamentoMock: FormaPagamento[] = [
-  { id: 1, nome: 'Dinheiro', ativo: true },
-  { id: 2, nome: 'Cartão de Crédito', ativo: true },
-  { id: 3, nome: 'Cartão de Débito', ativo: true },
-  { id: 4, nome: 'PIX', ativo: true },
-  { id: 5, nome: 'Boleto Bancário', ativo: true },
-  { id: 6, nome: 'Transferência', ativo: true },
+  {
+    id: 1,
+    nome: "Dinheiro",
+    descricao: "Pagamento em dinheiro",
+    ativo: true
+  },
+  {
+    id: 2,
+    nome: "Cartão de Crédito",
+    descricao: "Pagamento com cartão de crédito",
+    ativo: true
+  },
+  {
+    id: 3,
+    nome: "Boleto Bancário",
+    descricao: "Pagamento com boleto bancário",
+    ativo: false
+  }
 ];
 
-// Mock data for configurações de produção
 export const configuracoesProducaoMock: ConfiguracoesProducao = {
-  unidadesPorForma: 24,
-  formasPorLote: 4,
-  incluirPedidosPrevistos: true,
-  percentualPedidosPrevistos: 15,
-  tempoMedioPorFornada: 45,
-  unidadesBrowniePorForma: 16,
-  formasPorFornada: 2
+  tempoPreparoPadrao: 30,
+  custoHoraProducao: 15.00,
+  margemLucroPadrao: 0.30
 };
+
+export const categoriasInsumoMock: CategoriaInsumoParam[] = [
+  {
+    id: 1,
+    nome: "Insumos de Produção",
+    descricao: "Ingredientes utilizados no preparo de receitas",
+    ativo: true,
+    quantidadeItensVinculados: 15
+  },
+  {
+    id: 2,
+    nome: "Embalagens",
+    descricao: "Caixas, potes, filmes e outros materiais para embalagem",
+    ativo: true,
+    quantidadeItensVinculados: 8
+  },
+  {
+    id: 3,
+    nome: "Outros Materiais",
+    descricao: "Material de limpeza, escritório e itens diversos",
+    ativo: true,
+    quantidadeItensVinculados: 3
+  }
+];

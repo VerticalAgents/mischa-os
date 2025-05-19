@@ -6,7 +6,8 @@ import {
   CategoriaEstabelecimento, 
   TipoLogistica, 
   FormaPagamento,
-  ConfiguracoesProducao 
+  ConfiguracoesProducao,
+  CategoriaInsumoParam
 } from '@/types';
 import { 
   representantesMock, 
@@ -14,7 +15,8 @@ import {
   categoriasEstabelecimentoMock,
   tiposLogisticaMock,
   formasPagamentoMock,
-  configuracoesProducaoMock
+  configuracoesProducaoMock,
+  categoriasInsumoMock
 } from '@/data/configData';
 
 interface ConfigStore {
@@ -24,6 +26,7 @@ interface ConfigStore {
   tiposLogistica: TipoLogistica[];
   formasPagamento: FormaPagamento[];
   configuracoesProducao: ConfiguracoesProducao;
+  categoriasInsumo: CategoriaInsumoParam[];
 
   // Ações para Representantes
   adicionarRepresentante: (representante: Omit<Representante, 'id'>) => void;
@@ -53,12 +56,18 @@ interface ConfigStore {
   // Ações para Configurações de Produção
   atualizarConfiguracoesProducao: (dados: Partial<ConfiguracoesProducao>) => void;
 
+  // Ações para Categorias de Insumo
+  adicionarCategoriaInsumo: (categoria: Omit<CategoriaInsumoParam, 'id'>) => void;
+  atualizarCategoriaInsumo: (id: number, dados: Partial<CategoriaInsumoParam>) => void;
+  removerCategoriaInsumo: (id: number) => void;
+
   // Getters
   getRepresentanteAtivo: () => Representante[];
   getRotaAtiva: () => RotaEntrega[];
   getCategoriaAtiva: () => CategoriaEstabelecimento[];
   getTipoLogisticaAtivo: () => TipoLogistica[];
   getFormaPagamentoAtiva: () => FormaPagamento[];
+  getCategoriaInsumoAtiva: () => CategoriaInsumoParam[];
 }
 
 export const useConfigStore = create<ConfigStore>()(
@@ -70,6 +79,7 @@ export const useConfigStore = create<ConfigStore>()(
       tiposLogistica: tiposLogisticaMock,
       formasPagamento: formasPagamentoMock,
       configuracoesProducao: configuracoesProducaoMock,
+      categoriasInsumo: categoriasInsumoMock,
 
       // Implementação para Representantes
       adicionarRepresentante: (representante) => {
@@ -216,6 +226,40 @@ export const useConfigStore = create<ConfigStore>()(
         }));
       },
 
+      // Implementação para Categorias de Insumo
+      adicionarCategoriaInsumo: (categoria) => {
+        set((state) => {
+          const novoId = Math.max(0, ...state.categoriasInsumo.map(c => c.id)) + 1;
+          return {
+            categoriasInsumo: [
+              ...state.categoriasInsumo,
+              { ...categoria, id: novoId, quantidadeItensVinculados: 0 }
+            ]
+          };
+        });
+      },
+
+      atualizarCategoriaInsumo: (id, dados) => {
+        set((state) => ({
+          categoriasInsumo: state.categoriasInsumo.map(cat => 
+            cat.id === id ? { ...cat, ...dados } : cat
+          )
+        }));
+      },
+
+      removerCategoriaInsumo: (id) => {
+        // Verificar se existem itens vinculados antes de remover
+        const categoria = get().categoriasInsumo.find(c => c.id === id);
+        if (categoria && categoria.quantidadeItensVinculados && categoria.quantidadeItensVinculados > 0) {
+          console.error('Não é possível remover uma categoria com itens vinculados');
+          return;
+        }
+        
+        set((state) => ({
+          categoriasInsumo: state.categoriasInsumo.filter(cat => cat.id !== id)
+        }));
+      },
+
       // Getters filtrados
       getRepresentanteAtivo: () => {
         return get().representantes.filter(r => r.ativo);
@@ -235,6 +279,11 @@ export const useConfigStore = create<ConfigStore>()(
 
       getFormaPagamentoAtiva: () => {
         return get().formasPagamento.filter(f => f.ativo);
+      },
+      
+      // Getter para Categorias de Insumo ativas
+      getCategoriaInsumoAtiva: () => {
+        return get().categoriasInsumo.filter(c => c.ativo);
       }
     }),
     { name: 'config-store' }

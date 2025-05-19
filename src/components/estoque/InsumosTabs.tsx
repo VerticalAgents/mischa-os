@@ -1,5 +1,5 @@
 
-import { ReactNode } from "react";
+import React from "react";
 import EstoqueTab from "./tabs/EstoqueTab";
 import CotacoesTab from "./tabs/CotacoesTab";
 import PedidosTab from "./tabs/PedidosTab";
