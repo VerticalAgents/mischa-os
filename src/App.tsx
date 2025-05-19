@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 import { applyTheme } from "./lib/theme";
 import AgentesIA from "./pages/AgentesIA";
 import AgenteIAPage from "./pages/AgenteIAPage";
+import EstoqueInsumos from "./pages/EstoqueInsumos";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,11 @@ const App = () => {
             <Route path="/estoque" element={
               <AppLayout>
                 <Estoque />
+              </AppLayout>
+            } />
+            <Route path="/estoque/insumos" element={
+              <AppLayout>
+                <EstoqueInsumos />
               </AppLayout>
             } />
             <Route path="/configuracoes" element={

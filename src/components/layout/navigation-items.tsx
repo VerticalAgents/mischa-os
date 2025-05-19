@@ -3,7 +3,7 @@ import { ReactNode } from "react";
 import { 
   BarChart3, Users, Tag, Clipboard, 
   ShoppingBag, Settings, Layers, Truck, FileText,
-  Cpu
+  Cpu, PackageCheck
 } from "lucide-react";
 
 export type MenuItem = {
@@ -41,7 +41,7 @@ export const mainMenuItems: MenuItem[] = [
   {
     label: "Estoque",
     path: "/estoque",
-    icon: <ShoppingBag className="h-5 w-5" />,
+    icon: <PackageCheck className="h-5 w-5" />,
   },
   {
     label: "PCP",
