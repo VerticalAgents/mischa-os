@@ -40,5 +40,36 @@ export interface DREData {
     channel: Channel;
     revenue: number;
     percentage: number;
+    volume?: number;
+    variableCosts?: number;
+    margin?: number;
   }[];
+  grossProfit?: number;
+  grossMargin?: number;
+  totalVariableCosts?: number;
+  totalFixedCosts?: number;
+  fixedCosts?: Array<{name: string, value: number}>;
+  totalAdministrativeCosts?: number;
+  administrativeCosts?: Array<{name: string, value: number}>;
+  operationalResult?: number;
+  operationalMargin?: number;
+  monthlyDepreciation?: number;
+  ebitda?: number;
+  ebitdaMargin?: number;
+  totalInvestment?: number;
+  paybackMonths?: number;
+  breakEvenPoint?: number;
+  channelGrowthFactors?: Record<Channel, { type: "percentage" | "absolute", value: number }>;
+  investments?: InvestmentItem[];
+}
+
+export interface CostItem {
+  name: string;
+  value: number;
+}
+
+export interface InvestmentItem {
+  name: string;
+  value: number;
+  depreciationMonths: number;
 }

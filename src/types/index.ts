@@ -24,7 +24,7 @@ export type CategoriaEstabelecimento = {
 export type TipoLogistica = {
   id: number;
   nome: string;
-  descricao: string;  // Make it optional to match usage in TiposLogisticaList
+  descricao?: string;  // Optional to match usage in TiposLogisticaList
   percentualLogistico: number;
   ativo: boolean;
 };
