@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,21 +7,28 @@ import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, ArrowRight, Map } from "lucide-react";
+import { MapPin, ArrowRight, Map, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SubstatusPedidoAgendado } from "@/types";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 export const Despacho = () => {
   const { toast } = useToast();
-  // Fix: Use the pedidos array directly from the store instead of calling a function
   const pedidos = usePedidoStore(state => state.pedidos);
+  const atualizarSubstatusPedido = usePedidoStore(state => state.atualizarSubstatusPedido);
   const [perplexityApiKey, setPerplexityApiKey] = useState("");
   const [isGeneratingRoute, setIsGeneratingRoute] = useState(false);
   const [rotaGerada, setRotaGerada] = useState("");
+  const [observacao, setObservacao] = useState("");
+  const [pedidoSelecionado, setPedidoSelecionado] = useState<number | null>(null);
+  const [substatusSelecionado, setSubstatusSelecionado] = useState<SubstatusPedidoAgendado | null>(null);
 
-  // Filtrar pedidos em separação ou despachados
-  const pedidosParaDespacho = pedidos.filter(p => 
-    p.statusPedido === "Em Separação" || p.statusPedido === "Despachado"
+  // Filtrar pedidos com status "Agendado"
+  const pedidosAgendados = pedidos.filter(p => 
+    p.statusPedido === "Agendado"
   ).sort((a, b) => new Date(a.dataPrevistaEntrega).getTime() - new Date(b.dataPrevistaEntrega).getTime());
 
   // Função para copiar informações para o WhatsApp
@@ -63,7 +69,7 @@ export const Despacho = () => {
     
     try {
       // Preparar os dados dos pedidos
-      const pedidosComEndereco = pedidosParaDespacho
+      const pedidosComEndereco = pedidosAgendados
         .filter(p => p.cliente?.enderecoEntrega)
         .map((p, index) => ({
           id: p.id,
@@ -113,6 +119,119 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
     }
   };
 
+  // Função para obter o valor do progresso baseado no substatus
+  const getProgressValue = (substatus: SubstatusPedidoAgendado | undefined): number => {
+    switch (substatus) {
+      case "Agendado":
+        return 20;
+      case "Separado":
+        return 40;
+      case "Despachado":
+        return 60;
+      case "Entregue":
+        return 100;
+      case "Retorno":
+        return 100;
+      default:
+        return 0;
+    }
+  };
+
+  // Função para renderizar o botão de substatus
+  const renderBotaoSubstatus = (statusAtual: SubstatusPedidoAgendado | undefined, novoStatus: SubstatusPedidoAgendado, pedidoId: number, label: string) => {
+    const isCurrentStatus = statusAtual === novoStatus;
+    const isPastStatus = getProgressValue(statusAtual) > getProgressValue(novoStatus);
+    
+    // Determinar se este é o próximo status lógico
+    const isNextStatus = (() => {
+      if (!statusAtual) return novoStatus === "Agendado";
+      
+      if (statusAtual === "Agendado") return novoStatus === "Separado";
+      if (statusAtual === "Separado") return novoStatus === "Despachado";
+      if (statusAtual === "Despachado") return novoStatus === "Entregue" || novoStatus === "Retorno";
+      
+      return false; // Para "Entregue" e "Retorno" não há próximo status
+    })();
+    
+    // Para "Entregue" e "Retorno", sempre mostrar o diálogo de confirmação
+    const isEntregaRetorno = novoStatus === "Entregue" || novoStatus === "Retorno";
+    
+    if (isCurrentStatus) {
+      return (
+        <Button variant="secondary" size="sm" className="pointer-events-none opacity-50">
+          <Check className="h-3 w-3 mr-1" /> {label}
+        </Button>
+      );
+    }
+    
+    if (isPastStatus) {
+      return (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="opacity-50"
+          onClick={() => {
+            setPedidoSelecionado(pedidoId);
+            setSubstatusSelecionado(novoStatus);
+          }}
+        >
+          {label}
+        </Button>
+      );
+    }
+    
+    if (isEntregaRetorno) {
+      return (
+        <DialogTrigger asChild>
+          <Button 
+            variant={isNextStatus ? "default" : "outline"} 
+            size="sm" 
+            onClick={() => {
+              setPedidoSelecionado(pedidoId);
+              setSubstatusSelecionado(novoStatus);
+            }}
+          >
+            {label}
+          </Button>
+        </DialogTrigger>
+      );
+    }
+    
+    return (
+      <Button 
+        variant={isNextStatus ? "default" : "outline"} 
+        size="sm"
+        onClick={() => {
+          atualizarSubstatusPedido(pedidoId, novoStatus);
+          toast({
+            title: "Status atualizado",
+            description: `Pedido atualizado para "${novoStatus}"`
+          });
+        }}
+      >
+        {label}
+      </Button>
+    );
+  };
+
+  // Função para obter a classe de cor baseada no substatus
+  const getSubstatusColor = (substatus: SubstatusPedidoAgendado | undefined): string => {
+    switch (substatus) {
+      case "Agendado":
+        return "bg-blue-500";
+      case "Separado":
+        return "bg-amber-500";
+      case "Despachado":
+        return "bg-purple-500";
+      case "Entregue":
+        return "bg-green-500";
+      case "Retorno":
+        return "bg-red-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card className="p-4">
@@ -125,45 +244,117 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
           </TabsList>
           
           <TabsContent value="pedidos">
-            {pedidosParaDespacho.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Endereço</TableHead>
-                    <TableHead>Data Entrega</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pedidosParaDespacho.map((pedido) => (
-                    <TableRow key={pedido.id}>
-                      <TableCell>{pedido.cliente?.nome || "Pedido Único"}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {pedido.cliente?.enderecoEntrega || "Endereço não disponível"}
-                      </TableCell>
-                      <TableCell>{formatDate(new Date(pedido.dataPrevistaEntrega))}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={pedido.statusPedido} />
-                      </TableCell>
-                      <TableCell>
+            {pedidosAgendados.length > 0 ? (
+              <div className="space-y-6">
+                {pedidosAgendados.map((pedido) => (
+                  <Card key={pedido.id} className="p-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">{pedido.cliente?.nome || "Pedido Único"}</h3>
+                          <StatusBadge status={pedido.statusPedido} />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {pedido.cliente?.enderecoEntrega || "Endereço não disponível"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Entrega prevista: {formatDate(new Date(pedido.dataPrevistaEntrega))} • 
+                          {pedido.totalPedidoUnidades} unidades
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-4 md:mt-0">
                         <Button 
                           variant="outline" 
                           size="sm"
                           onClick={() => copiarInfoEntrega(pedido)}
                           className="flex items-center gap-1"
                         >
-                          <MapPin className="h-4 w-4" /> Copiar Info
+                          <MapPin className="h-4 w-4" /> Info
                         </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4">
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Status operacional</span>
+                          <span className="text-sm text-muted-foreground">
+                            {pedido.substatusPedido || "Agendado"}
+                          </span>
+                        </div>
+                        <Progress 
+                          value={getProgressValue(pedido.substatusPedido)} 
+                          className={`h-2 ${getSubstatusColor(pedido.substatusPedido)}`} 
+                        />
+                        <div className="flex justify-between gap-2 mt-2 flex-wrap">
+                          <Dialog>
+                            {renderBotaoSubstatus(pedido.substatusPedido, "Agendado", pedido.id, "Agendado")}
+                            {renderBotaoSubstatus(pedido.substatusPedido, "Separado", pedido.id, "Separado")}
+                            {renderBotaoSubstatus(pedido.substatusPedido, "Despachado", pedido.id, "Despachado")}
+                            {renderBotaoSubstatus(pedido.substatusPedido, "Entregue", pedido.id, "Entregue")}
+                            {renderBotaoSubstatus(pedido.substatusPedido, "Retorno", pedido.id, "Retorno")}
+                            
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>
+                                  {substatusSelecionado === "Entregue" ? "Confirmar Entrega" : "Registrar Retorno"}
+                                </DialogTitle>
+                                <DialogDescription>
+                                  {substatusSelecionado === "Entregue" 
+                                    ? "Confirme a entrega do pedido ao cliente. O status será alterado para 'Reagendar'."
+                                    : "Registre o retorno do pedido à fábrica. O sistema irá sugerir o próximo dia útil para reagendamento."
+                                  }
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div className="grid gap-4">
+                                  <Label htmlFor="observacao">Observações (opcional)</Label>
+                                  <Textarea
+                                    id="observacao"
+                                    placeholder="Informe detalhes adicionais..."
+                                    value={observacao}
+                                    onChange={(e) => setObservacao(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <DialogClose asChild>
+                                  <Button variant="outline">Cancelar</Button>
+                                </DialogClose>
+                                <DialogClose asChild>
+                                  <Button 
+                                    onClick={() => {
+                                      if (pedidoSelecionado && substatusSelecionado) {
+                                        atualizarSubstatusPedido(
+                                          pedidoSelecionado, 
+                                          substatusSelecionado as SubstatusPedidoAgendado,
+                                          observacao
+                                        );
+                                        setObservacao("");
+                                        toast({
+                                          title: substatusSelecionado === "Entregue" ? "Entrega confirmada" : "Retorno registrado",
+                                          description: substatusSelecionado === "Entregue" 
+                                            ? "O cliente será automaticamente colocado em status de reagendamento" 
+                                            : "Reagendamento sugerido para o próximo dia útil"
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    Confirmar
+                                  </Button>
+                                </DialogClose>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             ) : (
               <div className="text-center py-6 text-muted-foreground">
-                Não há pedidos preparados para despacho.
+                Não há pedidos agendados para despacho.
               </div>
             )}
           </TabsContent>
@@ -189,7 +380,7 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
                 
                 <Button 
                   onClick={gerarRota} 
-                  disabled={isGeneratingRoute || pedidosParaDespacho.length === 0}
+                  disabled={isGeneratingRoute || pedidosAgendados.length === 0}
                   className="flex items-center gap-1 max-w-xs"
                 >
                   <Map className="h-4 w-4" />
@@ -221,11 +412,11 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
                 </div>
               )}
               
-              {pedidosParaDespacho.length > 0 && (
+              {pedidosAgendados.length > 0 && (
                 <div className="mt-4">
                   <h3 className="font-medium mb-2">Pedidos para Roteirização</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {pedidosParaDespacho.map((pedido, index) => (
+                    {pedidosAgendados.map((pedido, index) => (
                       <Card key={pedido.id} className="p-3">
                         <div className="flex items-start gap-2">
                           <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center text-primary text-sm flex-shrink-0">

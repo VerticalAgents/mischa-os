@@ -1,12 +1,12 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "@/hooks/use-toast";
-import { Pedido, StatusPedido, ItemPedido, Cliente } from '../types';
+import { Pedido, StatusPedido, ItemPedido, Cliente, SubstatusPedidoAgendado, AlteracaoStatusPedido } from '../types';
 import { pedidosMock, relacionarItensPedidos, relacionarClientesPedidos } from '../data/mockData';
 import { calcularDistribuicaoSabores, calcularDeltaEfetivo, deltaForaTolerancia, calcularGiroSemanalPDV, calcularNovoQp } from '../utils/calculations';
 import { useClienteStore } from './useClienteStore';
 import { useSaborStore } from './useSaborStore';
+import { addDays, isWeekend } from 'date-fns';
 
 interface PedidoStore {
   pedidos: Pedido[];
@@ -16,11 +16,12 @@ interface PedidoStore {
     dataFim?: Date;
     idCliente?: number;
     status?: StatusPedido | 'Todos';
+    substatus?: SubstatusPedidoAgendado | 'Todos';
   };
   
   // Ações
   setPedidos: (pedidos: Pedido[]) => void;
-  criarNovoPedido: (idCliente: number) => Pedido | null; // Explicitly define return type
+  criarNovoPedido: (idCliente: number) => Pedido | null;
   adicionarPedido: (pedido: Omit<Pedido, 'id' | 'dataPedido'>) => Pedido;
   atualizarPedido: (id: number, dadosPedido: Partial<Pedido>) => void;
   atualizarItensPedido: (idPedido: number, itens: Omit<ItemPedido, 'id' | 'idPedido'>[]) => void;
@@ -31,12 +32,14 @@ interface PedidoStore {
   confirmarEntrega: (idPedido: number, dataEfetiva: Date, itensEntregues: {idSabor: number, quantidadeEntregue: number}[]) => void;
   despacharPedido: (idPedido: number) => void;
   cancelarPedido: (idPedido: number) => void;
+  atualizarSubstatusPedido: (idPedido: number, novoSubstatus: SubstatusPedidoAgendado, observacao?: string) => void;
   
   // Ações de filtro
   setFiltroDataInicio: (data?: Date) => void;
   setFiltroDataFim: (data?: Date) => void;
   setFiltroCliente: (idCliente?: number) => void;
   setFiltroStatus: (status?: StatusPedido | 'Todos') => void;
+  setFiltroSubstatus: (substatus?: SubstatusPedidoAgendado | 'Todos') => void;
   limparFiltros: () => void;
   
   // Getters
@@ -44,9 +47,16 @@ interface PedidoStore {
   getPedidoPorId: (id: number) => Pedido | undefined;
   getPedidosPorCliente: (idCliente: number) => Pedido[];
   getPedidosPorStatus: (status: StatusPedido) => Pedido[];
+  getPedidosPorSubstatus: (substatus: SubstatusPedidoAgendado) => Pedido[];
   getPedidosFuturos: () => Pedido[];
   getPedidosUnicos: () => Pedido[];
 }
+
+// Helper to calculate next working day
+const getProximoDiaUtil = (data: Date): Date => {
+  const proximaData = addDays(new Date(data), 1);
+  return isWeekend(proximaData) ? getProximoDiaUtil(proximaData) : proximaData;
+};
 
 export const usePedidoStore = create<PedidoStore>()(
   devtools(
@@ -54,7 +64,8 @@ export const usePedidoStore = create<PedidoStore>()(
       pedidos: relacionarClientesPedidos(),
       pedidoAtual: null,
       filtros: {
-        status: 'Todos'
+        status: 'Todos',
+        substatus: 'Todos'
       },
       
       setPedidos: (pedidos) => set({ pedidos }),
@@ -68,7 +79,7 @@ export const usePedidoStore = create<PedidoStore>()(
             description: "Cliente não encontrado",
             variant: "destructive"
           });
-          return null; // Explicitly return null when client is not found
+          return null;
         }
         
         // Calcular a data prevista de entrega
@@ -89,7 +100,15 @@ export const usePedidoStore = create<PedidoStore>()(
           totalPedidoUnidades: cliente.quantidadePadrao,
           tipoPedido: "Padrão",
           statusPedido: "Agendado",
-          itensPedido: []
+          substatusPedido: "Agendado", // Substatus inicial para pedidos agendados
+          itensPedido: [],
+          historicoAlteracoesStatus: [{
+            dataAlteracao: new Date(),
+            statusAnterior: "Agendado",
+            statusNovo: "Agendado",
+            substatusNovo: "Agendado",
+            observacao: "Pedido criado"
+          }]
         };
         
         // Calcular a distribuição de sabores
@@ -118,7 +137,13 @@ export const usePedidoStore = create<PedidoStore>()(
           description: `Pedido padrão criado para ${cliente.nome}`
         });
         
-        return pedidoCompleto; // Explicitly return the new order
+        // Atualizar o status de agendamento do cliente
+        useClienteStore.getState().atualizarCliente(cliente.id, {
+          statusAgendamento: "Agendado",
+          proximaDataReposicao: dataPrevistaEntrega
+        });
+        
+        return pedidoCompleto;
       },
       
       adicionarPedido: (pedido) => {
@@ -321,7 +346,7 @@ export const usePedidoStore = create<PedidoStore>()(
         });
         
         if (itensComSaldoInsuficiente.length > 0) {
-          const mensagens = itensComSaldoInsuficiente.map(item => {
+          const mensagens = itensComSaldoInsuficientes.map(item => {
             const sabor = sabores.find(s => s.id === item.idSabor);
             return `${sabor?.nome}: ${sabor?.saldoAtual}/${item.quantidadeSabor}`;
           });
@@ -371,6 +396,15 @@ export const usePedidoStore = create<PedidoStore>()(
         });
       },
       
+      setFiltroSubstatus: (substatus) => {
+        set(state => ({
+          filtros: {
+            ...state.filtros,
+            substatus
+          }
+        }));
+      },
+      
       setFiltroDataInicio: (dataInicio) => {
         set(state => ({
           filtros: {
@@ -410,7 +444,8 @@ export const usePedidoStore = create<PedidoStore>()(
       limparFiltros: () => {
         set({
           filtros: {
-            status: 'Todos'
+            status: 'Todos',
+            substatus: 'Todos'
           }
         });
       },
@@ -430,7 +465,10 @@ export const usePedidoStore = create<PedidoStore>()(
           // Filtro por status
           const statusMatch = !filtros.status || filtros.status === 'Todos' || pedido.statusPedido === filtros.status;
           
-          return dataMatch && clienteMatch && statusMatch;
+          // Filtro por substatus
+          const substatusMatch = !filtros.substatus || filtros.substatus === 'Todos' || pedido.substatusPedido === filtros.substatus;
+          
+          return dataMatch && clienteMatch && statusMatch && substatusMatch;
         });
       },
       
@@ -444,6 +482,10 @@ export const usePedidoStore = create<PedidoStore>()(
       
       getPedidosPorStatus: (status) => {
         return get().pedidos.filter(p => p.statusPedido === status);
+      },
+      
+      getPedidosPorSubstatus: (substatus) => {
+        return get().pedidos.filter(p => p.substatusPedido === substatus);
       },
       
       getPedidosFuturos: () => {

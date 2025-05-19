@@ -1,12 +1,13 @@
 
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Settings, DollarSign, CalendarClock, Truck, UserCog, Database, BoxesIcon } from "lucide-react";
+import { Settings, DollarSign, CalendarClock, Truck, UserCog, Database, BoxesIcon, Calendar } from "lucide-react";
 import EmpresaTab from "./tabs/EmpresaTab";
 import SistemaTab from "./tabs/SistemaTab";
 import FinanceiroTab from "./tabs/FinanceiroTab";
 import ClientesTab from "./tabs/ClientesTab";
 import ProducaoTab from "./tabs/ProducaoTab";
+import AgendamentoTab from "./tabs/AgendamentoTab";
 
 export default function ConfiguracoesTabs() {
   const [activeTab, setActiveTab] = useState("empresa");
@@ -34,6 +35,10 @@ export default function ConfiguracoesTabs() {
             <BoxesIcon className="h-4 w-4" />
             <span>Produção</span>
           </TabsTrigger>
+          <TabsTrigger value="agendamento" className="flex items-center gap-1">
+            <Calendar className="h-4 w-4" />
+            <span>Agendamento</span>
+          </TabsTrigger>
         </TabsList>
       </div>
       
@@ -55,6 +60,10 @@ export default function ConfiguracoesTabs() {
       
       <TabsContent value="producao">
         <ProducaoTab />
+      </TabsContent>
+      
+      <TabsContent value="agendamento">
+        <AgendamentoTab />
       </TabsContent>
     </Tabs>;
 }

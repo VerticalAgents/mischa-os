@@ -1,4 +1,3 @@
-
 export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby';
 
 // Adding new types for client configuration
@@ -22,6 +21,9 @@ export type TipoLogisticaNome = 'Própria' | 'Distribuição';
 export type TipoCobranca = 'À vista' | 'Consignado';
 export type FormaPagamentoNome = 'Boleto' | 'PIX' | 'Dinheiro';
 
+// Status de agendamento do cliente
+export type StatusAgendamentoCliente = 'Agendar' | 'Previsto' | 'Agendado' | 'Reagendar' | string;
+
 export interface Cliente {
   id: number;
   nome: string;
@@ -36,8 +38,8 @@ export interface Cliente {
   dataCadastro: Date;
   metaGiroSemanal?: number; // Meta de giro semanal
   ultimaDataReposicaoEfetiva?: Date; // Data da última reposição efetiva
-  statusAgendamento?: 'Agendado' | 'Não Agendado' | 'Pendente'; // Novo campo para status do agendamento
-  proximaDataReposicao?: Date; // Novo campo para próxima data de reposição agendada
+  statusAgendamento?: StatusAgendamentoCliente; // Status do agendamento
+  proximaDataReposicao?: Date; // Próxima data de reposição agendada
   
   // Novos campos para configuração avançada
   janelasEntrega?: DiaSemana[];
@@ -88,6 +90,18 @@ export interface ConfiguracoesProducao {
 
 export type StatusPedido = 'Agendado' | 'Em Separação' | 'Despachado' | 'Entregue' | 'Cancelado';
 export type TipoPedido = 'Padrão' | 'Alterado' | 'Único';
+export type SubstatusPedidoAgendado = 'Agendado' | 'Separado' | 'Despachado' | 'Entregue' | 'Retorno';
+
+export interface AlteracaoStatusPedido {
+  dataAlteracao: Date;
+  usuarioId?: number;
+  nomeUsuario?: string;
+  statusAnterior: StatusPedido;
+  statusNovo: StatusPedido;
+  substatusAnterior?: SubstatusPedidoAgendado;
+  substatusNovo?: SubstatusPedidoAgendado;
+  observacao?: string;
+}
 
 export interface ItemPedido {
   id: number;
@@ -110,12 +124,14 @@ export interface Pedido {
   dataPrevistaEntrega: Date;
   dataEfetivaEntrega?: Date;
   statusPedido: StatusPedido;
+  substatusPedido?: SubstatusPedidoAgendado;
   itensPedido: ItemPedido[];
   observacoes?: string;
   totalPedidoUnidades: number;
   valorTotal?: number;
   separado?: boolean;
   tipoPedido?: TipoPedido;
+  historicoAlteracoesStatus?: AlteracaoStatusPedido[];
 }
 
 export type CategoriaInsumo = 'Matéria Prima' | 'Embalagem' | 'Outros';

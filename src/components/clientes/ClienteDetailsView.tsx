@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/utils";
 
 interface ClienteDetailsViewProps {
   cliente: Cliente;
@@ -43,9 +44,21 @@ export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsVi
             ← Voltar para lista
           </Button>
           <h1 className="text-2xl font-bold tracking-tight">{cliente.nome}</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground flex items-center flex-wrap gap-2">
             {cliente.cnpjCpf}
-            <StatusBadge status={cliente.statusCliente} className="ml-2" />
+            <StatusBadge status={cliente.statusCliente} />
+            {cliente.statusAgendamento && (
+              <div className="flex items-center gap-1">
+                <span>Agendamento:</span>
+                <span className="font-medium">{cliente.statusAgendamento}</span>
+              </div>
+            )}
+            {cliente.proximaDataReposicao && (
+              <div className="flex items-center gap-1">
+                <span>Próxima reposição:</span>
+                <span className="font-medium">{formatDate(new Date(cliente.proximaDataReposicao))}</span>
+              </div>
+            )}
           </p>
         </div>
         <div className="flex gap-2">
