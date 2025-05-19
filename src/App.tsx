@@ -15,18 +15,32 @@ import PCP from "@/pages/PCP";
 import Expedicao from "@/pages/Expedicao";
 import Projections from "@/pages/Projections";
 import NotFound from "./pages/NotFound";
+import { applyTheme } from "./lib/theme";
 import { useEffect } from "react";
-import { useThemeStore, applyTheme } from "./lib/theme";
 
 const queryClient = new QueryClient();
 
+// Apply theme from localStorage on load
+const initializeTheme = () => {
+  const stored = localStorage.getItem('theme-storage');
+  if (stored) {
+    try {
+      const theme = JSON.parse(stored);
+      applyTheme(theme.state?.isDark || false);
+    } catch (e) {
+      console.error("Error parsing theme from localStorage:", e);
+      applyTheme(false);
+    }
+  } else {
+    applyTheme(false);
+  }
+};
+
 const App = () => {
-  const { isDark } = useThemeStore();
-  
-  // Apply theme on initial load
+  // Initialize theme on app load
   useEffect(() => {
-    applyTheme(isDark);
-  }, [isDark]);
+    initializeTheme();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

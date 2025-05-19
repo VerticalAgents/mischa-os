@@ -1,9 +1,10 @@
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Sidebar, SidebarBody } from "@/components/ui/sidebar-animated";
 import SidebarContent from "@/components/layout/SidebarContent";
 import MobileHeader from "@/components/layout/MobileHeader";
 import MobileMenuOverlay from "@/components/layout/MobileMenuOverlay";
+import { useThemeStore } from "@/lib/theme";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -12,6 +13,19 @@ type AppLayoutProps = {
 export default function AppLayout({ children }: AppLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { isDark } = useThemeStore();
+
+  // Apply theme when the isDark state changes
+  useEffect(() => {
+    const htmlElement = document.documentElement;
+    if (isDark) {
+      htmlElement.classList.add('dark');
+      htmlElement.style.colorScheme = 'dark';
+    } else {
+      htmlElement.classList.remove('dark');
+      htmlElement.style.colorScheme = 'light';
+    }
+  }, [isDark]);
 
   return (
     <div className="min-h-screen flex w-full bg-background">
