@@ -1,6 +1,8 @@
 
 import React, { createContext, useContext, useState } from "react";
 import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "./button";
 
 // Interface definitions
 interface SidebarContextType {
@@ -29,6 +31,12 @@ interface SidebarLinkProps {
   };
   active?: boolean;
   onClick?: () => void;
+}
+
+interface SidebarHeaderProps {
+  className?: string;
+  logoSrc?: string;
+  title?: string;
 }
 
 // Create context for sidebar state management
@@ -71,7 +79,7 @@ export const Sidebar = ({ children, open: propOpen, setOpen: propSetOpen, animat
     <SidebarProvider defaultOpen={isOpen} animate={shouldAnimate}>
       <aside
         className={cn(
-          "border-r bg-sidebar-background text-sidebar-foreground h-screen transition-all",
+          "border-r bg-sidebar-background text-sidebar-foreground h-screen transition-all relative",
           shouldAnimate
             ? isOpen
               ? "w-64"
@@ -79,6 +87,20 @@ export const Sidebar = ({ children, open: propOpen, setOpen: propSetOpen, animat
             : "w-64"
         )}
       >
+        <div className="absolute right-0 top-3 transform translate-x-1/2 z-10">
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full h-6 w-6 bg-background text-foreground border-border"
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            {isOpen ? (
+              <ChevronLeft className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
+          </Button>
+        </div>
         {children}
       </aside>
     </SidebarProvider>
@@ -90,6 +112,23 @@ export const SidebarBody = ({ className, children }: SidebarBodyProps) => {
   return (
     <div className={cn("flex flex-col h-full", className)}>
       {children}
+    </div>
+  );
+};
+
+// Sidebar header component
+export const SidebarHeader = ({ className, logoSrc = "/logo.svg", title = "MischaOS" }: SidebarHeaderProps) => {
+  const { open, animate } = useSidebar();
+  const showFullContent = animate ? open : true;
+  
+  return (
+    <div className={cn("flex h-14 items-center border-b px-6", className)}>
+      <a href="/" className={cn("flex items-center", showFullContent ? "space-x-2" : "justify-center w-full")}>
+        <img src={logoSrc} alt="Logo" className="h-8 w-8" />
+        {showFullContent && (
+          <span className="font-bold text-lg text-sidebar-foreground">{title}</span>
+        )}
+      </a>
     </div>
   );
 };
@@ -120,4 +159,12 @@ export const SidebarLink = ({ link, active, onClick }: SidebarLinkProps) => {
       {showFullContent && <span>{link.label}</span>}
     </a>
   );
+};
+
+export default {
+  Sidebar,
+  SidebarBody,
+  SidebarLink,
+  SidebarHeader,
+  useSidebar
 };

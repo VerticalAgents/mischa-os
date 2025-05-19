@@ -2,13 +2,13 @@
 import { Link } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import { Bell, Clock } from "lucide-react";
-import { SidebarLink } from "@/components/ui/sidebar-animated";
+import { SidebarLink, SidebarHeader, useSidebar } from "@/components/ui/sidebar-animated";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAlertaStore } from "@/hooks/useAlertaStore";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useSidebar } from "@/components/ui/sidebar-animated";
+import { cn } from "@/lib/utils";
 
 // Menu items definition
 import { mainMenuItems, secondaryMenuItems } from "@/components/layout/navigation-items";
@@ -23,15 +23,8 @@ const SidebarContent = () => {
   
   return (
     <>
-      {/* Sidebar Header */}
-      <div className="flex h-14 items-center border-b px-6">
-        <Link to="/" className={cn("flex items-center", showFullContent ? "space-x-2" : "justify-center w-full")}>
-          <img src="/logo.svg" alt="Mischa's Bakery Logo" className="h-8 w-8" />
-          {showFullContent && (
-            <span className="font-bold text-lg text-sidebar-foreground">Mischa's Bakery</span>
-          )}
-        </Link>
-      </div>
+      {/* Sidebar Header with Logo and Title */}
+      <SidebarHeader />
       
       {/* Main Menu */}
       <div className="flex-1 px-4 py-6 overflow-y-auto">
@@ -99,15 +92,28 @@ const SidebarContent = () => {
           </div>
         ) : (
           <div className="flex justify-center">
-            {/* When sidebar is minimized, don't show anything in the footer */}
+            {/* When sidebar is minimized, show only icons */}
+            <div className="flex flex-col space-y-4 items-center">
+              <Avatar className="h-8 w-8 bg-primary">
+                <AvatarFallback>A</AvatarFallback>
+              </Avatar>
+              
+              <Link to="/alertas">
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  {quantidadeAlertasNaoLidas > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center">
+                      {quantidadeAlertasNaoLidas}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
+            </div>
           </div>
         )}
       </div>
     </>
   );
 };
-
-// Import cn function from utils
-import { cn } from "@/lib/utils";
 
 export default SidebarContent;
