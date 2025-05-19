@@ -1,5 +1,5 @@
 
-import { Cliente, DiaSemana } from '../../types';
+import { Cliente, DiaSemana, TipoLogisticaNome } from '../../types';
 import { clientesMock } from '../../data/mockData';
 import { clientesComDados } from './clienteMockData';
 
@@ -35,6 +35,9 @@ export function generateInitialClientes(): Cliente[] {
       // Converter os dias da semana para o tipo DiaSemana
       const diasSemanaRandom: DiaSemana[] = ['Seg', 'Qua', 'Sex'];
 
+      // Ensure tipoLogistica is a valid TipoLogisticaNome
+      const tipoLogistica: TipoLogisticaNome = Math.random() > 0.3 ? 'Própria' : 'Distribuição';
+
       return {
         id: 1000 + index,
         nome: cliente.nome || `Cliente ${1000 + index}`,
@@ -58,7 +61,7 @@ export function generateInitialClientes(): Cliente[] {
         categoriaEstabelecimentoId: Math.ceil(Math.random() * 6),
         instrucoesEntrega: Math.random() > 0.7 ? `Instruções de entrega para ${cliente.nome}` : undefined,
         contabilizarGiroMedio: Math.random() > 0.1, // 90% dos clientes contabilizam
-        tipoLogistica: Math.random() > 0.3 ? 'Própria' : 'Distribuição',
+        tipoLogistica: tipoLogistica, // Using the properly typed variable
         emiteNotaFiscal: Math.random() > 0.2,
         tipoCobranca: Math.random() > 0.5 ? 'À vista' : 'Consignado',
         formaPagamento: ['Boleto', 'PIX', 'Dinheiro'][Math.floor(Math.random() * 3)] as 'Boleto' | 'PIX' | 'Dinheiro',
