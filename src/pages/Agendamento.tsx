@@ -1,7 +1,6 @@
-
 import { useState } from "react";
 import { format, isWeekend, getDay, addDays, parseISO } from "date-fns";
-import { CalendarClock, CheckCircle, RefreshCw, Plus } from "lucide-react";
+import { CalendarClock, CheckCircle, RefreshCw, Plus, MessageSquare } from "lucide-react";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSaborStore } from "@/hooks/useSaborStore";
@@ -22,12 +21,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import ConfirmacaoReposicao from "@/components/agendamento/ConfirmacaoReposicao";
 
 export default function Agendamento() {
   const { pedidos, getPedidosFiltrados, confirmarEntrega, criarNovoPedido, atualizarPedido, atualizarItensPedido, adicionarPedido } = usePedidoStore();
   const { clientes, getClientePorId } = useClienteStore();
   const { sabores } = useSaborStore();
-  const [tabValue, setTabValue] = useState("previstos");
+  const [tabValue, setTabValue] = useState("confirmacao");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [entregaDialogOpen, setEntregaDialogOpen] = useState(false);
@@ -334,13 +334,22 @@ export default function Agendamento() {
         </div>
       </PageHeader>
 
-      <Tabs defaultValue="previstos" value={tabValue} onValueChange={setTabValue} className="w-full mt-6">
-        <TabsList className="grid w-full max-w-md grid-cols-4">
+      <Tabs defaultValue="confirmacao" value={tabValue} onValueChange={setTabValue} className="w-full mt-6">
+        <TabsList className="grid w-full max-w-md grid-cols-5">
+          <TabsTrigger value="confirmacao" className="flex items-center gap-1">
+            <MessageSquare className="h-4 w-4" />
+            <span>Confirmação</span>
+          </TabsTrigger>
           <TabsTrigger value="previstos">Previstos</TabsTrigger>
           <TabsTrigger value="agendados">Agendados</TabsTrigger>
           <TabsTrigger value="unicos">Pedidos Únicos</TabsTrigger>
           <TabsTrigger value="concluidos">Concluídos</TabsTrigger>
         </TabsList>
+        
+        {/* Nova tab de confirmação de reposição */}
+        <TabsContent value="confirmacao" className="mt-4">
+          <ConfirmacaoReposicao />
+        </TabsContent>
         
         {/* Tab para pedidos previstos */}
         <TabsContent value="previstos" className="mt-4">
