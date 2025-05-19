@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -141,7 +140,8 @@ export const Despacho = () => {
     let contadorAtualizados = 0;
     pedidosSelecionadosIds.forEach(id => {
       const pedido = pedidos.find(p => p.id === id);
-      if (pedido && pedido.substatusPedido === "Despachado" && pedido.substatusPedido !== "Retorno") {
+      // Fix: Only check if substatusPedido is "Despachado" - this is the only valid state for changing to "Entregue"
+      if (pedido && pedido.substatusPedido === "Despachado") {
         atualizarSubstatusPedido(id, "Entregue", "Entrega confirmada em massa");
         contadorAtualizados++;
       }
