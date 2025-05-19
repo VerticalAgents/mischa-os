@@ -8,9 +8,11 @@ import StatsBarChart from "@/components/dashboard/StatsBarChart";
 import StatsPieChart from "@/components/dashboard/StatsPieChart";
 import StatsTable from "@/components/dashboard/StatsTable";
 import { useConfirmacaoReposicaoStore } from "@/hooks/useConfirmacaoReposicaoStore";
+import { useDashboardStore } from "@/hooks/useDashboardStore";
 
 export default function OperationalSummary({ dashboardData, baseDRE, clientes }: any) {
   const confirmacaoStats = useConfirmacaoReposicaoStore(state => state.getConfirmacaoStats());
+  const { getDadosGraficoPDVsPorStatus } = useDashboardStore();
   
   // Status colors
   const getStatusColor = (count: number, threshold1: number, threshold2: number) => {
@@ -101,7 +103,7 @@ export default function OperationalSummary({ dashboardData, baseDRE, clientes }:
           <StatsPieChart 
             title="Distribuição de PDVs por Status"
             description="Visão geral dos pontos de venda por status"
-            data={dashboardData.getDadosGraficoPDVsPorStatus()}
+            data={getDadosGraficoPDVsPorStatus()}
             colors={['#4ade80', '#60a5fa', '#facc15', '#c084fc', '#f87171']}
           />
         </div>
