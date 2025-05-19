@@ -405,7 +405,6 @@ export default function PedidosTab() {
                       <div className="flex justify-between w-full">
                         <Button variant="outline" onClick={() => {
                           // Aqui poderia ter uma função para gerar PDF do pedido
-                          // Por enquanto é um placeholder
                           alert("Funcionalidade de imprimir em desenvolvimento");
                         }}>
                           <FileText className="mr-2 h-4 w-4" /> Imprimir

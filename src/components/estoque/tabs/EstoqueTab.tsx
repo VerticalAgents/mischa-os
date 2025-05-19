@@ -164,7 +164,15 @@ export default function EstoqueTab() {
     if (editingInsumo) {
       atualizarInsumo(editingInsumo, values);
     } else {
-      adicionarInsumo(values);
+      adicionarInsumo({
+        nome: values.nome,
+        categoria: values.categoria,
+        volumeBruto: values.volumeBruto,
+        unidadeMedida: values.unidadeMedida,
+        custoMedio: values.custoMedio,
+        estoqueAtual: values.estoqueAtual,
+        estoqueMinimo: values.estoqueMinimo
+      });
     }
     setIsFormOpen(false);
   };
