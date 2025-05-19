@@ -1,7 +1,7 @@
 
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Settings, Tag, MessageSquare, Calendar } from 'lucide-react';
+import { Settings, Tag, MessageSquare, Calendar, CheckCircle } from 'lucide-react';
 
 export default function Index() {
   const navigate = useNavigate();
@@ -35,10 +35,10 @@ export default function Index() {
           
           <Button 
             size="lg" 
-            className="h-24 flex flex-col items-center justify-center" 
+            className="h-24 flex flex-col items-center justify-center bg-green-600 hover:bg-green-700" 
             onClick={() => navigate('/agendamento?tab=confirmacao')}
           >
-            <MessageSquare className="h-8 w-8 mb-2" />
+            <CheckCircle className="h-8 w-8 mb-2" />
             <span>Confirmação de Reposição</span>
           </Button>
           

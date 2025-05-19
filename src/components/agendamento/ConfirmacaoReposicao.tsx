@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
@@ -20,15 +19,20 @@ import {
 import { MessageSquare, CheckCircle, XCircle, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Cliente, Pedido } from "@/types";
+import ReagendamentoDialog from "./ReagendamentoDialog";
 
 export default function ConfirmacaoReposicao() {
-  const { clientes } = useClienteStore();
-  const { getPedidosFiltrados, getPedidosFuturos } = usePedidoStore();
+  const { clientes, atualizarCliente } = useClienteStore();
+  const { getPedidosFiltrados, getPedidosFuturos, atualizarPedido } = usePedidoStore();
   const { statusConfirmacao } = useStatusAgendamentoStore();
   const [clientesporStatus, setClientesPorStatus] = useState<{[key: number]: Cliente[]}>({});
   const [pedidosCliente, setPedidosCliente] = useState<{[key: number]: Pedido}>({});
   const [observacoes, setObservacoes] = useState<{[key: number]: string}>({});
   const [tabValue, setTabValue] = useState("hoje");
+
+  // State for reagendamento dialog
+  const [reagendamentoDialogOpen, setReagendamentoDialogOpen] = useState(false);
+  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null);
 
   // Simulated function to get status - in a real app, this would come from the client data
   const getClienteStatusConfirmacao = (cliente: Cliente): number => {
@@ -52,6 +56,7 @@ export default function ConfirmacaoReposicao() {
 
   // Organize clients by confirmation status
   useEffect(() => {
+    
     const pedidosFuturos = getPedidosFuturos();
     const clientesComPedidos: {[key: number]: Cliente} = {};
     const pedidosPorCliente: {[key: number]: Pedido} = {};
@@ -86,6 +91,8 @@ export default function ConfirmacaoReposicao() {
 
   // Function to handle WhatsApp message
   const handleWhatsAppClick = (cliente: Cliente) => {
+    
+    
     if (!cliente.contatoTelefone) {
       toast({
         title: "Número não disponível",
@@ -129,27 +136,49 @@ export default function ConfirmacaoReposicao() {
     });
   };
 
-  // Function to handle marking as 'will not replenish'
+  // Function to open rescheduling dialog
   const handleNoReplenishment = (cliente: Cliente) => {
-    // In a real app, this would integrate with the client and pedido stores
-    toast({
-      title: "Status atualizado",
-      description: `${cliente.nome} marcado para reagendamento`,
-    });
+    setClienteSelecionado(cliente);
+    setReagendamentoDialogOpen(true);
+  };
+
+  // Function to handle rescheduling confirmation
+  const handleReagendamentoConfirm = (cliente: Cliente, novaData: Date) => {
+    // 1. Update the client's next replenishment date
+    const clienteAtualizado = { ...cliente, proximaDataReposicao: novaData };
+    atualizarCliente(cliente.id, clienteAtualizado);
     
-    // Update observations
+    // 2. Update the order's expected delivery date if it exists
+    const pedido = pedidosCliente[cliente.id];
+    if (pedido) {
+      atualizarPedido(pedido.id, { dataPrevistaEntrega: novaData });
+    }
+    
+    // 3. Update observations
     const now = new Date();
     const obsText = observacoes[cliente.id] || '';
-    const newObs = `${format(now, 'dd/MM HH:mm')} - Cliente não será reposto, marcado para reagendamento\n${obsText}`;
+    const newObs = `${format(now, 'dd/MM HH:mm')} - Cliente reagendado para ${format(novaData, 'dd/MM/yyyy')}\n${obsText}`;
     
     setObservacoes({
       ...observacoes,
       [cliente.id]: newObs
     });
+    
+    // 4. Close the dialog
+    setReagendamentoDialogOpen(false);
+    setClienteSelecionado(null);
+    
+    // 5. Show success toast
+    toast({
+      title: "Reagendamento realizado",
+      description: `${cliente.nome} reagendado para ${format(novaData, 'dd/MM/yyyy')}`,
+    });
   };
 
   // Function to move client to another status
   const moveClientToStatus = (cliente: Cliente, newStatusId: number) => {
+    
+    
     // This would update the client's status in a real application
     toast({
       title: "Status atualizado",
@@ -159,6 +188,8 @@ export default function ConfirmacaoReposicao() {
 
   // Render client list for a specific status
   const renderClientList = (statusId: number) => {
+    
+    
     const clientesWithStatus = clientesporStatus[statusId] || [];
     
     if (clientesWithStatus.length === 0) {
@@ -333,6 +364,19 @@ export default function ConfirmacaoReposicao() {
           </Tabs>
         </CardContent>
       </Card>
+      
+      {/* Reagendamento Dialog */}
+      {clienteSelecionado && (
+        <ReagendamentoDialog
+          cliente={clienteSelecionado}
+          isOpen={reagendamentoDialogOpen}
+          onClose={() => {
+            setReagendamentoDialogOpen(false);
+            setClienteSelecionado(null);
+          }}
+          onConfirm={handleReagendamentoConfirm}
+        />
+      )}
     </div>
   );
 }

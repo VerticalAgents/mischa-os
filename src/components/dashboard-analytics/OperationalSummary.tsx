@@ -7,6 +7,7 @@ import StatusCard from "@/components/dashboard/StatusCard";
 import StatsPieChart from "@/components/dashboard/StatsPieChart";
 import StatsBarChart from "@/components/dashboard/StatsBarChart";
 import StatsTable from "@/components/dashboard/StatsTable";
+import ConfirmacaoReposicaoWidget from "@/components/dashboard/ConfirmacaoReposicaoWidget";
 import { Cliente, DashboardData } from "@/types";
 import { DREData } from "@/types/projections";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
@@ -132,6 +133,40 @@ export default function OperationalSummary({
       </div>
       
       <div className="grid gap-6 md:grid-cols-2">
+        {/* Insert the new ConfirmacaoReposicaoWidget here */}
+        <ConfirmacaoReposicaoWidget />
+        
+        <div className="flex flex-col">
+          <StatsTable 
+            title="Próximas Entregas"
+            description="Pedidos agendados para os próximos dias"
+            data={pedidosFuturos}
+            columns={[
+              {
+                header: "Cliente",
+                accessorKey: (item) => item.cliente?.nome
+              },
+              {
+                header: "Data Prevista",
+                accessorKey: (item) => new Date(item.dataPrevistaEntrega).toLocaleDateString()
+              },
+              {
+                header: "Qtde.",
+                accessorKey: "totalPedidoUnidades"
+              }
+            ]}
+          />
+          <div className="flex justify-end mt-2">
+            <Button variant="ghost" asChild className="text-xs">
+              <Link to="/agendamento" className="flex items-center">
+                Ver agendamentos <ArrowRight className="ml-1 h-3 w-3" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      <div className="grid gap-6 md:grid-cols-1">
         <div className="flex flex-col">
           <StatsTable 
             title="Top PDVs por Volume"
@@ -158,35 +193,6 @@ export default function OperationalSummary({
             <Button variant="ghost" asChild className="text-xs">
               <Link to="/clientes" className="flex items-center">
                 Ver todos clientes <ArrowRight className="ml-1 h-3 w-3" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-        
-        <div className="flex flex-col">
-          <StatsTable 
-            title="Próximas Entregas"
-            description="Pedidos agendados para os próximos dias"
-            data={pedidosFuturos}
-            columns={[
-              {
-                header: "Cliente",
-                accessorKey: (item) => item.cliente?.nome
-              },
-              {
-                header: "Data Prevista",
-                accessorKey: (item) => new Date(item.dataPrevistaEntrega).toLocaleDateString()
-              },
-              {
-                header: "Qtde.",
-                accessorKey: "totalPedidoUnidades"
-              }
-            ]}
-          />
-          <div className="flex justify-end mt-2">
-            <Button variant="ghost" asChild className="text-xs">
-              <Link to="/agendamento" className="flex items-center">
-                Ver agendamentos <ArrowRight className="ml-1 h-3 w-3" />
               </Link>
             </Button>
           </div>
