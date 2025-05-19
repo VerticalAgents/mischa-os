@@ -1,22 +1,10 @@
 
-export interface GiroHistorico {
-  semana: string; // Formato: "YYYY-WW" (ano-número da semana)
-  valor: number;
-}
-
-export interface MetaGiro {
-  idCliente: number;
-  valorSemanal: number;
-  valorMensal: number;
-  dataAtualizacao: Date;
-}
-
 export interface AnaliseGiroData {
   mediaHistorica: number;
   ultimaSemana: number;
   variacaoPercentual: number;
   meta: number;
-  achievement: number; // porcentagem de atingimento da meta
-  historico: GiroHistorico[];
+  achievement: number;
+  historico: { semana: string; valor: number }[];
   semaforo: 'vermelho' | 'amarelo' | 'verde';
 }
