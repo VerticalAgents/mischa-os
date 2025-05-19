@@ -16,7 +16,6 @@ import { SubstatusPedidoAgendado, Pedido } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 
 export const Despacho = () => {
   const { toast } = useToast();
@@ -28,7 +27,6 @@ export const Despacho = () => {
   const [observacao, setObservacao] = useState("");
   const [pedidoSelecionado, setPedidoSelecionado] = useState<number | null>(null);
   const [substatusSelecionado, setSubstatusSelecionado] = useState<SubstatusPedidoAgendado | null>(null);
-  const [pedidosSelecionados, setPedidosSelecionados] = useState<Record<number, boolean>>({});
   const [arrastando, setArrastando] = useState<number | null>(null);
   const [pedidosRoteirizacao, setPedidosRoteirizacao] = useState<Pedido[]>([]);
   const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({});
@@ -38,28 +36,17 @@ export const Despacho = () => {
     p.statusPedido === "Agendado" && p.substatusPedido === "Separado"
   ).sort((a, b) => new Date(a.dataPrevistaEntrega).getTime() - new Date(b.dataPrevistaEntrega).getTime());
 
+  // Filtrar pedidos com substatus "Despachado" para entrega
+  const pedidosDespachados = pedidos.filter(p => 
+    p.statusPedido === "Agendado" && p.substatusPedido === "Despachado"
+  ).sort((a, b) => new Date(a.dataPrevistaEntrega).getTime() - new Date(b.dataPrevistaEntrega).getTime());
+
   // Inicializar pedidosRoteirizacao se estiver vazio
   const inicializarPedidosRoteirizacao = useCallback(() => {
     if (pedidosRoteirizacao.length === 0 && pedidosSeparados.length > 0) {
       setPedidosRoteirizacao([...pedidosSeparados]);
     }
   }, [pedidosSeparados, pedidosRoteirizacao.length]);
-
-  // Verificar se algum pedido está selecionado
-  const temPedidosSelecionados = Object.values(pedidosSelecionados).some(selected => selected);
-
-  // Função para selecionar/desselecionar todos os pedidos
-  const toggleSelecionarTodos = () => {
-    if (temPedidosSelecionados) {
-      setPedidosSelecionados({});
-    } else {
-      const todos = {};
-      pedidosSeparados.forEach(p => {
-        todos[p.id] = true;
-      });
-      setPedidosSelecionados(todos);
-    }
-  };
 
   // Função para copiar informações para o WhatsApp
   const copiarInfoEntrega = pedido => {
@@ -93,29 +80,11 @@ export const Despacho = () => {
 
   // Função para despacho em massa
   const confirmarDespachoEmMassa = async () => {
-    const pedidosSelecionadosIds = Object.entries(pedidosSelecionados)
-      .filter(([_, selected]) => selected)
-      .map(([id]) => parseInt(id));
-    
-    if (pedidosSelecionadosIds.length === 0) {
+    // Verificar se há pedidos separados para despachar
+    if (pedidosSeparados.length === 0) {
       toast({
-        title: "Nenhum pedido selecionado",
-        description: "Selecione ao menos um pedido para confirmar o despacho",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Verificar se todos os pedidos estão com substatus "Separado"
-    const pedidosInvalidos = pedidosSelecionadosIds.filter(id => {
-      const pedido = pedidos.find(p => p.id === id);
-      return pedido && pedido.substatusPedido !== "Separado";
-    });
-
-    if (pedidosInvalidos.length > 0) {
-      toast({
-        title: "Pedidos com status inválido",
-        description: `${pedidosInvalidos.length} pedidos não podem ser despachados pois não estão separados.`,
+        title: "Nenhum pedido para despachar",
+        description: "Não há pedidos com status 'Separado' para despachar.",
         variant: "destructive"
       });
       return;
@@ -125,19 +94,16 @@ export const Despacho = () => {
     setIsLoading({...isLoading, despachoMassa: true});
 
     try {
-      // Confirmar o despacho de todos os pedidos selecionados
-      for (const id of pedidosSelecionadosIds) {
+      // Confirmar o despacho de todos os pedidos separados
+      for (const pedido of pedidosSeparados) {
         await new Promise(resolve => setTimeout(resolve, 100)); // Simular processamento
-        atualizarSubstatusPedido(id, "Despachado", "Despacho confirmado em massa");
+        atualizarSubstatusPedido(pedido.id, "Despachado", "Despacho confirmado em massa");
       }
       
       toast({
         title: "Despacho em massa confirmado",
-        description: `${pedidosSelecionadosIds.length} pedidos foram marcados como despachados.`
+        description: `${pedidosSeparados.length} pedidos foram marcados como despachados.`
       });
-
-      // Limpar seleção após a operação
-      setPedidosSelecionados({});
     } catch (error) {
       console.error("Erro ao confirmar despacho em massa:", error);
       toast({
@@ -152,39 +118,14 @@ export const Despacho = () => {
 
   // Função para confirmar entrega em massa
   const confirmarEntregaEmMassa = async () => {
-    const pedidosSelecionadosIds = Object.entries(pedidosSelecionados)
-      .filter(([_, selected]) => selected)
-      .map(([id]) => parseInt(id));
-    
-    if (pedidosSelecionadosIds.length === 0) {
+    // Verificar se há pedidos despachados para entregar
+    if (pedidosDespachados.length === 0) {
       toast({
-        title: "Nenhum pedido selecionado",
-        description: "Selecione ao menos um pedido para confirmar a entrega",
+        title: "Nenhum pedido para entregar",
+        description: "Não há pedidos com status 'Despachado' para entregar.",
         variant: "destructive"
       });
       return;
-    }
-
-    // Verificar se os pedidos estão com substatus "Despachado"
-    const pedidosValidosIds = pedidosSelecionadosIds.filter(id => {
-      const pedido = pedidos.find(p => p.id === id);
-      return pedido && pedido.substatusPedido === "Despachado";
-    });
-
-    if (pedidosValidosIds.length === 0) {
-      toast({
-        title: "Nenhum pedido válido selecionado",
-        description: "Os pedidos selecionados não possuem status 'Despachado' e não podem ser entregues.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (pedidosValidosIds.length < pedidosSelecionadosIds.length) {
-      toast({
-        title: "Alguns pedidos não podem ser entregues",
-        description: `${pedidosSelecionadosIds.length - pedidosValidosIds.length} pedidos não estão despachados e serão ignorados.`,
-      });
     }
 
     // Ativar loading
@@ -192,18 +133,15 @@ export const Despacho = () => {
 
     try {
       // Confirmar a entrega dos pedidos válidos
-      for (const id of pedidosValidosIds) {
+      for (const pedido of pedidosDespachados) {
         await new Promise(resolve => setTimeout(resolve, 100)); // Simular processamento
-        atualizarSubstatusPedido(id, "Entregue", "Entrega confirmada em massa");
+        atualizarSubstatusPedido(pedido.id, "Entregue", "Entrega confirmada em massa");
       }
       
       toast({
         title: "Entrega em massa confirmada",
-        description: `${pedidosValidosIds.length} pedidos foram marcados como entregues.`
+        description: `${pedidosDespachados.length} pedidos foram marcados como entregues.`
       });
-
-      // Limpar seleção após a operação
-      setPedidosSelecionados({});
     } catch (error) {
       console.error("Erro ao confirmar entrega em massa:", error);
       toast({
@@ -240,9 +178,6 @@ export const Despacho = () => {
       }
 
       // Simular uma chamada à API de IA
-      // Normalmente, você enviaria endereços para um serviço real de roteirização
-      // Aqui estamos simulando uma resposta para fins de demonstração
-
       setTimeout(() => {
         // Simular uma resposta de roteirização
         const rotaSimulada = `## Rota otimizada para entrega
@@ -305,40 +240,60 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
       if (statusAtual === "Despachado") return novoStatus === "Entregue" || novoStatus === "Retorno";
       return false; // Para "Entregue" e "Retorno" não há próximo status
     })();
+    
+    // Ocultar botões "Entregue" e "Retorno" se o status atual não for "Despachado"
+    if ((novoStatus === "Entregue" || novoStatus === "Retorno") && statusAtual !== "Despachado") {
+      return null;
+    }
+
+    // Modificar o texto do botão "Despachado" para "Confirmar Despacho"
+    const buttonLabel = novoStatus === "Despachado" ? "Confirmar Despacho" : label;
 
     // Para "Entregue" e "Retorno", sempre mostrar o diálogo de confirmação
     const isEntregaRetorno = novoStatus === "Entregue" || novoStatus === "Retorno";
+    
+    // Definir a variante do botão com base no status
+    let buttonVariant = isNextStatus ? "default" : "outline";
+    
+    // Se o status atual for "Despachado" e for exibindo o botão "Despachado", mostrar como verde
+    if (isCurrentStatus && novoStatus === "Despachado") {
+      buttonVariant = "success"; // Usando uma variante personalizada para verde
+    }
+    
     if (isCurrentStatus) {
-      return <Button variant="secondary" size="sm" className="pointer-events-none opacity-50">
-          <Check className="h-3 w-3 mr-1" /> {label}
+      return <Button variant={novoStatus === "Despachado" ? "success" : "secondary"} size="sm" className="pointer-events-none opacity-50">
+          <Check className="h-3 w-3 mr-1" /> {buttonLabel}
         </Button>;
     }
+    
     if (isPastStatus) {
       return <Button variant="outline" size="sm" className="opacity-50" onClick={() => {
         setPedidoSelecionado(pedidoId);
         setSubstatusSelecionado(novoStatus);
       }}>
-          {label}
+          {buttonLabel}
         </Button>;
     }
+    
     if (isEntregaRetorno) {
       return <DialogTrigger asChild>
-          <Button variant={isNextStatus ? "default" : "outline"} size="sm" onClick={() => {
+          <Button variant={buttonVariant} size="sm" onClick={() => {
           setPedidoSelecionado(pedidoId);
           setSubstatusSelecionado(novoStatus);
         }}>
-            {label}
+            {buttonLabel}
           </Button>
         </DialogTrigger>;
     }
-    return <Button variant={isNextStatus ? "default" : "outline"} size="sm" onClick={() => {
+    
+    return <Button variant={buttonVariant} size="sm" onClick={() => {
       atualizarSubstatusPedido(pedidoId, novoStatus);
       toast({
         title: "Status atualizado",
         description: `Pedido atualizado para "${novoStatus}"`
       });
     }}>
-        {label}
+        {buttonLabel}
       </Button>;
   };
 
@@ -446,17 +401,10 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
           <TabsContent value="pedidos">
             {pedidosSeparados.length > 0 ? <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="selectAll" checked={temPedidosSelecionados && Object.keys(pedidosSelecionados).length === pedidosSeparados.length} onCheckedChange={toggleSelecionarTodos} />
-                    <label htmlFor="selectAll" className="text-sm">
-                      {temPedidosSelecionados ? "Desmarcar todos" : "Selecionar todos"}
-                    </label>
-                  </div>
-                  
                   <div className="flex flex-wrap gap-2">
                     <Button 
                       onClick={confirmarDespachoEmMassa} 
-                      disabled={!temPedidosSelecionados || isLoading.despachoMassa}
+                      disabled={pedidosSeparados.length === 0 || isLoading.despachoMassa}
                       size="sm" 
                       className="flex items-center gap-1"
                     >
@@ -470,7 +418,7 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
                     </Button>
                     <Button 
                       onClick={confirmarEntregaEmMassa}
-                      disabled={!temPedidosSelecionados || isLoading.entregaMassa}
+                      disabled={pedidosDespachados.length === 0 || isLoading.entregaMassa}
                       size="sm" 
                       className="flex items-center gap-1"
                     >
@@ -488,13 +436,7 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
                 <div className="space-y-6">
                   {pedidosSeparados.map(pedido => <Card key={pedido.id} className="p-4">
                       <div className="flex flex-col md:flex-row md:items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id={`select-${pedido.id}`} checked={!!pedidosSelecionados[pedido.id]} onCheckedChange={checked => {
-                      setPedidosSelecionados(prev => ({
-                        ...prev,
-                        [pedido.id]: !!checked
-                      }));
-                    }} />
+                        <div className="flex items-center">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <h3 className="font-medium">{pedido.cliente?.nome || "Pedido Único"}</h3>
@@ -543,8 +485,8 @@ ${i + 2}. **Parada ${i + 1}**: ${p.cliente} - ${p.endereco}`).join('')}
                           <Progress value={getProgressValue(pedido.substatusPedido)} className={`h-2 ${getSubstatusColor(pedido.substatusPedido)}`} />
                           <div className="flex justify-between gap-2 mt-2 flex-wrap">
                             <Dialog>
-                              {/* Removido o botão de Separado, pois estamos filtrando apenas pedidos já separados */}
-                              {renderBotaoSubstatus(pedido.substatusPedido, "Despachado", pedido.id, "Despachado")}
+                              {/* Botões de substatus com novos rótulos e comportamentos */}
+                              {renderBotaoSubstatus(pedido.substatusPedido, "Despachado", pedido.id, "Confirmar Despacho")}
                               {renderBotaoSubstatus(pedido.substatusPedido, "Entregue", pedido.id, "Entregue")}
                               {renderBotaoSubstatus(pedido.substatusPedido, "Retorno", pedido.id, "Retorno")}
                               
