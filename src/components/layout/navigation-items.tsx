@@ -2,7 +2,8 @@
 import { ReactNode } from "react";
 import { 
   BarChart3, Users, Tag, Clipboard, 
-  ShoppingBag, Settings, Layers, Truck, FileText 
+  ShoppingBag, Settings, Layers, Truck, FileText,
+  Cpu
 } from "lucide-react";
 
 export type MenuItem = {
@@ -51,6 +52,11 @@ export const mainMenuItems: MenuItem[] = [
     label: "Projeções",
     path: "/projecoes",
     icon: <FileText className="h-5 w-5" />,
+  },
+  {
+    label: "Agentes de IA",
+    path: "/agentes-ia",
+    icon: <Cpu className="h-5 w-5" />,
   },
 ];
 

@@ -17,6 +17,8 @@ import Expedicao from "@/pages/Expedicao";
 import Projections from "@/pages/Projections";
 import NotFound from "./pages/NotFound";
 import { applyTheme } from "./lib/theme";
+import AgentesIA from "./pages/AgentesIA";
+import AgenteIAPage from "./pages/AgenteIAPage";
 
 const queryClient = new QueryClient();
 
@@ -97,6 +99,16 @@ const App = () => {
             <Route path="/analytics" element={
               <AppLayout>
                 <DashboardAnalytics />
+              </AppLayout>
+            } />
+            <Route path="/agentes-ia" element={
+              <AppLayout>
+                <AgentesIA />
+              </AppLayout>
+            } />
+            <Route path="/agentes-ia/:id" element={
+              <AppLayout>
+                <AgenteIAPage />
               </AppLayout>
             } />
             <Route path="*" element={<NotFound />} />
