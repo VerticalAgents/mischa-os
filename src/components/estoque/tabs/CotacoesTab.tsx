@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useInsumosStore } from "@/hooks/useInsumosStore";
 import { Button } from "@/components/ui/button";
@@ -84,7 +83,7 @@ type CotacaoFormValues = z.infer<typeof cotacaoFormSchema>;
 type PropostaFormValues = z.infer<typeof propostaFormSchema>;
 
 export default function CotacoesTab() {
-  const { cotacoes, insumos, fornecedores, adicionarCotacao, atualizarCotacao, removerCotacao, adicionarPropostaFornecedor, definirPropostaVencedora, gerarPedidoCompra } = useInsumosStore();
+  const { cotacoes, insumos, fornecedores, criarCotacao, escolherPropostaVencedora, adicionarPropostaFornecedor, gerarPedidoCompraDeCotacao } = useInsumosStore();
   
   // States
   const [searchTerm, setSearchTerm] = useState("");
@@ -112,7 +111,7 @@ export default function CotacoesTab() {
       itens: [],
       prazoEntrega: 5,
       frete: 0,
-      formaPagamento: "",
+      formaPagamento: "À vista",
       observacoes: ""
     }
   });
@@ -155,7 +154,6 @@ export default function CotacoesTab() {
   };
   
   const openPropostaForm = (cotacao: Cotacao) => {
-    // Preparar os itens da proposta
     const itensProposta = cotacao.itens.map(item => ({
       itemId: item.id,
       precoUnitario: 0
@@ -181,7 +179,11 @@ export default function CotacoesTab() {
   
   const handleDeleteCotacao = (id: number) => {
     if (confirm("Tem certeza que deseja excluir esta cotação?")) {
-      removerCotacao(id);
+      toast({
+        title: "Funcionalidade não implementada",
+        description: "A remoção de cotações será implementada em breve.",
+        variant: "destructive"
+      });
     }
   };
   
@@ -211,21 +213,18 @@ export default function CotacoesTab() {
   
   const onSubmitCotacao = (values: CotacaoFormValues) => {
     if (editingCotacao) {
-      atualizarCotacao(editingCotacao, {
-        titulo: values.titulo,
-        dataValidade: values.dataValidade,
-        itens: values.itens
-      });
       toast({
-        title: "Cotação atualizada",
-        description: `A cotação "${values.titulo}" foi atualizada com sucesso!`,
+        title: "Funcionalidade não implementada",
+        description: "A atualização de cotações será implementada em breve.",
       });
     } else {
-      adicionarCotacao({
+      criarCotacao({
         titulo: values.titulo,
         dataValidade: values.dataValidade,
-        itens: values.itens
+        itens: values.itens,
+        status: "Aberta"
       });
+      
       toast({
         title: "Cotação criada",
         description: `A nova cotação "${values.titulo}" foi criada com sucesso!`,
@@ -236,13 +235,13 @@ export default function CotacoesTab() {
   
   const onSubmitProposta = (values: PropostaFormValues) => {
     if (selectedCotacao) {
-      // Garantir que todos os itens tenham itemId e precoUnitario definidos
       const itensCompletos = values.itens.map(item => ({
         itemId: item.itemId,
         precoUnitario: item.precoUnitario
       }));
       
-      adicionarPropostaFornecedor(selectedCotacao, {
+      adicionarPropostaFornecedor({
+        cotacaoId: selectedCotacao,
         fornecedorId: values.fornecedorId,
         itens: itensCompletos,
         prazoEntrega: values.prazoEntrega,
@@ -262,7 +261,7 @@ export default function CotacoesTab() {
   
   const handleSetPropostaVencedora = (cotacaoId: number, propostaId: number) => {
     if (confirm("Deseja definir esta proposta como vencedora? Isso finalizará a cotação.")) {
-      definirPropostaVencedora(cotacaoId, propostaId);
+      escolherPropostaVencedora(cotacaoId, propostaId);
       toast({
         title: "Proposta vencedora definida",
         description: "A cotação foi finalizada com sucesso!",
@@ -272,7 +271,7 @@ export default function CotacoesTab() {
   
   const handleGerarPedido = (cotacaoId: number) => {
     if (confirm("Deseja gerar um pedido de compra com base nesta cotação?")) {
-      gerarPedidoCompra(cotacaoId);
+      gerarPedidoCompraDeCotacao(cotacaoId);
       toast({
         title: "Pedido gerado",
         description: "O pedido de compra foi gerado com sucesso!",
@@ -281,7 +280,6 @@ export default function CotacoesTab() {
     }
   };
   
-  // Exportar para CSV
   const exportarCSV = () => {
     const headers = ["ID", "Título", "Data Criação", "Data Validade", "Status", "Qtd Itens", "Qtd Propostas"];
     
@@ -310,7 +308,6 @@ export default function CotacoesTab() {
     document.body.removeChild(link);
   };
   
-  // Helper para calcular valor total da proposta
   const calcularTotalProposta = (proposta: PropostaFornecedor, cotacao: Cotacao) => {
     let total = proposta.frete;
     
@@ -894,8 +891,8 @@ export default function CotacoesTab() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Item</TableHead>
-                            <TableHead className="text-right">Quantidade</TableHead>
-                            <TableHead>Unidade</TableHead>
+                            <TableHead className="text-center">Quantidade</TableHead>
+                            <TableHead className="text-right">Preço Un. (R$)</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -904,8 +901,12 @@ export default function CotacoesTab() {
                             return (
                               <TableRow key={item.id}>
                                 <TableCell>{insumo?.nome || "Insumo não encontrado"}</TableCell>
-                                <TableCell className="text-right">{item.quantidade}</TableCell>
-                                <TableCell>{insumo?.unidadeMedida || ""}</TableCell>
+                                <TableCell className="text-center">
+                                  {item.quantidade} {insumo?.unidadeMedida || ''}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {item.precoUnitario.toLocaleString('pt-BR', {minimumFractionDigits: 4, maximumFractionDigits: 4})}
+                                </TableCell>
                               </TableRow>
                             );
                           })}
@@ -913,86 +914,31 @@ export default function CotacoesTab() {
                       </Table>
                     </div>
                     
-                    {cotacao.propostas.length > 0 && (
-                      <div className="mt-6">
-                        <h3 className="text-lg font-medium mb-2">Propostas Recebidas</h3>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Fornecedor</TableHead>
-                              <TableHead className="text-right">Valor Total (R$)</TableHead>
-                              <TableHead className="text-right">Frete (R$)</TableHead>
-                              <TableHead className="text-right">Prazo (dias)</TableHead>
-                              <TableHead>Pagamento</TableHead>
-                              <TableHead className="text-center">Status</TableHead>
-                              <TableHead className="text-right">Ações</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {cotacao.propostas.map(proposta => {
-                              const fornecedor = fornecedores.find(f => f.id === proposta.fornecedorId);
-                              const isVencedora = cotacao.propostaVencedoraId === proposta.id;
-                              
-                              return (
-                                <TableRow key={proposta.id} className={isVencedora ? "bg-green-50" : ""}>
-                                  <TableCell>{fornecedor?.nome || "Fornecedor não encontrado"}</TableCell>
-                                  <TableCell className="text-right">
-                                    {calcularTotalProposta(proposta, cotacao).toFixed(2)}
-                                  </TableCell>
-                                  <TableCell className="text-right">{proposta.frete.toFixed(2)}</TableCell>
-                                  <TableCell className="text-right">{proposta.prazoEntrega}</TableCell>
-                                  <TableCell>{proposta.formaPagamento}</TableCell>
-                                  <TableCell className="text-center">
-                                    {isVencedora ? (
-                                      <Badge className="bg-green-100 text-green-800">Vencedora</Badge>
-                                    ) : (
-                                      <Badge variant="outline">Recebida</Badge>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {!cotacao.propostaVencedoraId && cotacao.status !== "Cancelada" && (
-                                      <Button
-                                        size="sm"
-                                        onClick={() => handleSetPropostaVencedora(cotacao.id, proposta.id)}
-                                      >
-                                        <Check className="h-4 w-4 mr-1" /> Escolher
-                                      </Button>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
+                    {cotacao.observacoes && (
+                      <div className="mt-4">
+                        <h3 className="text-sm font-medium mb-1">Observações</h3>
+                        <p className="text-sm text-muted-foreground">{cotacao.observacoes}</p>
                       </div>
                     )}
                     
                     <DialogFooter className="mt-6">
-                      <div className="flex w-full justify-between">
-                        <div>
-                          {(cotacao.status === "Aberta" || cotacao.status === "Aguardando Propostas") && (
-                            <Button 
-                              variant="outline" 
-                              onClick={() => openPropostaForm(cotacao)}
-                            >
-                              <Plus className="h-4 w-4 mr-1" /> Adicionar Proposta
-                            </Button>
-                          )}
-                        </div>
+                      <div className="flex justify-between w-full">
+                        <Button variant="outline" onClick={() => {
+                          alert("Funcionalidade de imprimir em desenvolvimento");
+                        }}>
+                          <FileDown className="mr-2 h-4 w-4" /> Imprimir
+                        </Button>
                         
                         <div>
-                          {cotacao.status === "Finalizada" && cotacao.propostaVencedoraId && (
-                            <Button
-                              onClick={() => handleGerarPedido(cotacao.id)}
-                              className="mr-2"
-                            >
-                              <ShoppingCart className="h-4 w-4 mr-1" /> Gerar Pedido de Compra
-                            </Button>
-                          )}
-                          
-                          <Button variant="outline" onClick={() => setIsDetalhesOpen(false)}>
+                          <Button variant="outline" onClick={() => setIsDetalhesOpen(false)} className="mr-2">
                             Fechar
                           </Button>
+                          
+                          {(cotacao.status === 'Enviada' || cotacao.status === 'Pendente') && (
+                            <Button onClick={() => handleGerarPedido(cotacao.id)}>
+                              <ShoppingCart className="mr-2 h-4 w-4" /> Gerar Pedido
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </DialogFooter>
