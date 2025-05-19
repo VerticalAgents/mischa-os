@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -31,6 +32,7 @@ export const Despacho = () => {
   const [pedidosSelecionados, setPedidosSelecionados] = useState<Record<number, boolean>>({});
   const [arrastando, setArrastando] = useState<number | null>(null);
   const [pedidosRoteirizacao, setPedidosRoteirizacao] = useState<Pedido[]>([]);
+  const printFrameRef = useRef<HTMLIFrameElement>(null);
 
   // Filtrar pedidos com status "Agendado"
   const pedidosAgendados = pedidos.filter(p => 
@@ -139,7 +141,7 @@ export const Despacho = () => {
     let contadorAtualizados = 0;
     pedidosSelecionadosIds.forEach(id => {
       const pedido = pedidos.find(p => p.id === id);
-      if (pedido && pedido.substatusPedido === "Despachado") {
+      if (pedido && pedido.substatusPedido === "Despachado" && pedido.substatusPedido !== "Retorno") {
         atualizarSubstatusPedido(id, "Entregue", "Entrega confirmada em massa");
         contadorAtualizados++;
       }
@@ -418,6 +420,80 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
     }
   };
 
+  // Imprimir rota de entrega
+  const imprimirRotaEntrega = () => {
+    if (!rotaGerada) {
+      toast({
+        title: "Nenhuma rota disponível",
+        description: "Gere uma rota antes de tentar imprimi-la",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Criar conteúdo para impressão da rota
+    let printContent = `
+      <html>
+        <head>
+          <title>Rota de Entrega</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 20mm;
+              line-height: 1.5;
+            }
+            h1 { 
+              text-align: center; 
+              margin-bottom: 20px;
+            }
+            .data { 
+              text-align: center;
+              margin-bottom: 30px;
+              font-size: 14px;
+              color: #666;
+            }
+            pre {
+              white-space: pre-wrap;
+              font-family: 'Courier New', monospace;
+              background-color: #f5f5f5;
+              padding: 15px;
+              border-radius: 5px;
+              line-height: 1.5;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Rota de Entrega</h1>
+          <div class="data">Gerada em: ${new Date().toLocaleDateString()} às ${new Date().toLocaleTimeString()}</div>
+          <pre>${rotaGerada}</pre>
+        </body>
+      </html>
+    `;
+    
+    // Criar iframe para impressão
+    if (printFrameRef.current) {
+      const iframe = printFrameRef.current;
+      const iframeWindow = iframe.contentWindow;
+      if (iframeWindow) {
+        iframe.style.height = "0px";
+        iframe.style.width = "0px";
+        iframe.style.position = "absolute";
+        
+        iframeWindow.document.open();
+        iframeWindow.document.write(printContent);
+        iframeWindow.document.close();
+        
+        setTimeout(() => {
+          iframeWindow.print();
+          toast({
+            title: "Impressão iniciada",
+            description: "A rota de entrega foi enviada para impressão."
+          });
+        }, 500);
+      }
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card className="p-4">
@@ -482,8 +558,16 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <h3 className="font-medium">{pedido.cliente?.nome || "Pedido Único"}</h3>
-                              <StatusBadge status={pedido.statusPedido} />
-                              {pedido.substatusPedido && <SubstatusBadge substatus={pedido.substatusPedido} />}
+                              {pedido.statusPedido === pedido.substatusPedido ? (
+                                <StatusBadge status={pedido.statusPedido} />
+                              ) : (
+                                <>
+                                  <StatusBadge status={pedido.statusPedido} />
+                                  {pedido.substatusPedido && pedido.statusPedido !== pedido.substatusPedido && (
+                                    <SubstatusBadge substatus={pedido.substatusPedido} />
+                                  )}
+                                </>
+                              )}
                             </div>
                             <p className="text-sm text-muted-foreground">
                               {pedido.cliente?.enderecoEntrega || "Endereço não disponível"}
@@ -561,7 +645,7 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
                                     />
                                   </div>
                                 </div>
-                                <DialogFooter>
+                                <DialogFooter className="flex-col sm:flex-row gap-2">
                                   <DialogClose asChild>
                                     <Button variant="outline">Cancelar</Button>
                                   </DialogClose>
@@ -728,31 +812,47 @@ ${i+2}. **Parada ${i+1}**: ${p.cliente} - ${p.endereco}`).join('')}
               
               {rotaGerada && (
                 <div className="mt-6 border rounded-md p-4 bg-muted/30">
-                  <h3 className="font-medium mb-2 flex items-center gap-1">
-                    <Map className="h-4 w-4" /> Rota Gerada
-                  </h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium flex items-center gap-1">
+                      <Map className="h-4 w-4" /> Rota Gerada
+                    </h3>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(rotaGerada);
+                          toast({ 
+                            title: "Rota copiada", 
+                            description: "Rota copiada para a área de transferência" 
+                          });
+                        }}
+                      >
+                        Copiar Rota
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={imprimirRotaEntrega}
+                      >
+                        Imprimir Rota
+                      </Button>
+                    </div>
+                  </div>
                   <Textarea 
                     value={rotaGerada} 
                     readOnly 
                     className="min-h-[200px] font-mono text-sm"
                   />
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-2"
-                    onClick={() => {
-                      navigator.clipboard.writeText(rotaGerada);
-                      toast({ title: "Rota copiada", description: "Rota copiada para a área de transferência" });
-                    }}
-                  >
-                    Copiar Rota
-                  </Button>
                 </div>
               )}
             </div>
           </TabsContent>
         </Tabs>
       </Card>
+
+      {/* IFrame invisível para impressão */}
+      <iframe ref={printFrameRef} style={{ display: 'none' }} />
     </div>
   );
 };
