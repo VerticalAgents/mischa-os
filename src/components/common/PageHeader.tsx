@@ -2,11 +2,14 @@
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 type PageHeaderProps = {
   title: string;
   description?: string;
-  icon?: ReactNode;  // Added icon property as ReactNode
+  icon?: ReactNode;
+  backLink?: string;  // Added backLink property
   action?: {
     label: string;
     onClick: () => void;
@@ -19,7 +22,8 @@ type PageHeaderProps = {
 export default function PageHeader({ 
   title, 
   description, 
-  icon,  // Added icon parameter
+  icon,
+  backLink,  // Added backLink parameter
   action, 
   children,
   className 
@@ -27,8 +31,14 @@ export default function PageHeader({
   return (
     <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8", className)}>
       <div>
+        {backLink && (
+          <Link to={backLink} className="flex items-center text-muted-foreground hover:text-foreground mb-2 transition-colors">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            <span>Voltar</span>
+          </Link>
+        )}
         <div className="flex items-center gap-2">
-          {icon && icon}  {/* Render icon if provided */}
+          {icon && icon}
           <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
         </div>
         {description && <p className="text-muted-foreground mt-1">{description}</p>}
