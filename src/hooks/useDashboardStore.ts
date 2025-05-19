@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { DashboardData, Cliente, Pedido } from '../types';
@@ -19,26 +18,35 @@ interface DashboardStore {
   getDadosGraficoPDVsPorStatus: () => { name: string; value: number }[];
 }
 
+// Initial dashboard data state to prevent undefined errors
+const initialDashboardData: DashboardData = {
+  contadoresStatus: {
+    ativos: 0,
+    emAnalise: 0,
+    inativos: 0,
+    aAtivar: 0,
+    standby: 0
+  },
+  giroMedioSemanalPorPDV: [],
+  giroMedioSemanalGeral: 0,
+  previsaoGiroTotalSemanal: 0,
+  previsaoGiroTotalMensal: 0
+};
+
 export const useDashboardStore = create<DashboardStore>()(
   devtools(
     (set, get) => ({
-      dashboardData: {
-        contadoresStatus: {
-          ativos: 0,
-          emAnalise: 0,
-          inativos: 0,
-          aAtivar: 0,
-          standby: 0
-        },
-        giroMedioSemanalPorPDV: [],
-        giroMedioSemanalGeral: 0,
-        previsaoGiroTotalSemanal: 0,
-        previsaoGiroTotalMensal: 0
-      },
+      dashboardData: initialDashboardData,
       
       atualizarDashboard: (clientes, pedidos) => {
-        // Prevent unnecessary updates - check if we have the same data already
+        // Guard against empty data
+        if (!clientes.length) return;
+        
+        // Prevent unnecessary updates - check if we have the data filled already
         const currentData = get().dashboardData;
+        if (currentData.contadoresStatus.ativos > 0 && currentData.giroMedioSemanalPorPDV.length > 0) {
+          return; // Data already loaded, skip update
+        }
         
         // 1. Calcular contadores de status
         const contadoresStatus = {
@@ -132,7 +140,7 @@ export const useDashboardStore = create<DashboardStore>()(
         // 5. Calcular previsão de giro mensal
         const previsaoGiroTotalMensal = calcularPrevisaoGiroMensal(previsaoGiroTotalSemanal);
         
-        // Atualizar o store apenas se os dados forem diferentes
+        // Prepare the new data
         const newDashboardData = {
           contadoresStatus,
           giroMedioSemanalPorPDV,
@@ -141,11 +149,11 @@ export const useDashboardStore = create<DashboardStore>()(
           previsaoGiroTotalMensal
         };
         
+        // Update the store with a single, atomic operation
         set({ dashboardData: newDashboardData });
       },
       
-      // Avoid using these getter methods directly in render functions
-      // Instead, access dashboardData directly from the store
+      // Keep getters the same
       getContadoresStatus: () => get().dashboardData.contadoresStatus,
       getGiroMedioSemanalPorPDV: () => get().dashboardData.giroMedioSemanalPorPDV,
       getGiroMedioSemanalGeral: () => get().dashboardData.giroMedioSemanalGeral,

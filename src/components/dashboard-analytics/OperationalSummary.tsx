@@ -11,11 +11,13 @@ import { useConfirmacaoReposicaoStore } from "@/hooks/useConfirmacaoReposicaoSto
 import { useMemo } from "react";
 
 export default function OperationalSummary({ dashboardData, baseDRE, clientes }: any) {
-  // Call the hooks outside of render paths and get data once - use selector pattern
+  // Use a stable reference to confirmacaoStats
   const confirmacaoStats = useConfirmacaoReposicaoStore(state => state.getConfirmacaoStats());
   
-  // Use useMemo to extract data from dashboardData to prevent recalculation on every render
+  // Memoize derived data to prevent recalculations
   const statusData = useMemo(() => {
+    if (!dashboardData || !dashboardData.contadoresStatus) return [];
+    
     return [
       { name: 'Ativos', value: dashboardData.contadoresStatus.ativos },
       { name: 'Em análise', value: dashboardData.contadoresStatus.emAnalise },
@@ -25,7 +27,7 @@ export default function OperationalSummary({ dashboardData, baseDRE, clientes }:
     ];
   }, [dashboardData.contadoresStatus]);
   
-  // Format top PDVs data once using useMemo
+  // Memoize top PDVs data
   const topPDVsData = useMemo(() => {
     if (!dashboardData.giroMedioSemanalPorPDV || !dashboardData.giroMedioSemanalPorPDV.length) {
       return [];
@@ -40,7 +42,7 @@ export default function OperationalSummary({ dashboardData, baseDRE, clientes }:
       }));
   }, [dashboardData.giroMedioSemanalPorPDV]);
   
-  // Status colors
+  // Status colors - extract outside the render function
   const getStatusColor = (count: number, threshold1: number, threshold2: number) => {
     if (count === 0) return "bg-gray-100 text-gray-800 hover:bg-gray-200";
     if (count <= threshold1) return "bg-green-100 text-green-800 hover:bg-green-200";

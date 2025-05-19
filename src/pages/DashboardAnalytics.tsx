@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback } from "react";
 import { ArrowRight, Download } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
@@ -28,18 +27,15 @@ export default function DashboardAnalytics() {
   const { pedidos } = usePedidoStore();
   const { baseDRE } = useProjectionStore();
   const planejamentoProducaoStore = usePlanejamentoProducaoStore();
-  const dashboardStore = useDashboardStore();
-  const { dashboardData } = dashboardStore;
+  const { dashboardData, atualizarDashboard } = useDashboardStore();
 
-  // Memoize the update function to prevent recreations on each render
-  const updateDashboard = useCallback(() => {
-    dashboardStore.atualizarDashboard(clientes, pedidos);
-  }, [dashboardStore, clientes, pedidos]);
-
-  // Update dashboard data when the component mounts or data changes
+  // Update dashboard data only when component mounts
   useEffect(() => {
-    updateDashboard();
-  }, [updateDashboard]); // Now we can safely use updateDashboard in dependency array
+    // Only update if we need to
+    if (!dashboardData.contadoresStatus.ativos && clientes.length > 0) {
+      atualizarDashboard(clientes, pedidos);
+    }
+  }, []); // Empty dependency array to only run once on mount
 
   // Get mock production data
   const registrosProducao: any[] = [];
