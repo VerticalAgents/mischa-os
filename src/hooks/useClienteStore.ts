@@ -1,8 +1,11 @@
 
-import { Cliente, StatusCliente } from '../../types';
+import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
+import { Cliente, StatusCliente } from '../types';
+import { clientesMock } from '../data/mockData';
 
 // Dados dos clientes com giro semanal e periodicidade
-export const clientesComDados: Partial<Cliente>[] = [
+const clientesComDados: Partial<Cliente>[] = [
   { nome: "AMPM (João Wallig)", quantidadePadrao: 15, periodicidadePadrao: 14, statusCliente: "Ativo", enderecoEntrega: "Av. Dr. João Wallig, 1800 - Passo da Areia, Porto Alegre - RS" },
   { nome: "Arena Sports Poa", quantidadePadrao: 15, periodicidadePadrao: 10, statusCliente: "Ativo", enderecoEntrega: "Av. Bento Gonçalves, 567 - Partenon, Porto Alegre - RS" },
   { nome: "Argentum", quantidadePadrao: 50, periodicidadePadrao: 7, statusCliente: "Ativo", enderecoEntrega: "R. 24 de Outubro, 111 - Moinhos de Vento, Porto Alegre - RS" },
@@ -62,3 +65,188 @@ export const clientesComDados: Partial<Cliente>[] = [
   { nome: "The Brothers Distribuidora", quantidadePadrao: 0, periodicidadePadrao: 7, statusCliente: "Em análise", enderecoEntrega: "R. Padre Chagas, 342 - Moinhos de Vento, Porto Alegre - RS" },
   { nome: "Xirú Beer", quantidadePadrao: 8, periodicidadePadrao: 14, statusCliente: "Ativo", enderecoEntrega: "Av. Dr. Nilo Peçanha, 2000 - Boa Vista, Porto Alegre - RS" }
 ];
+
+interface ClienteStore {
+  clientes: Cliente[];
+  clienteAtual: Cliente | null;
+  filtros: {
+    termo: string;
+    status: StatusCliente | 'Todos';
+  };
+  
+  // Ações
+  setClientes: (clientes: Cliente[]) => void;
+  adicionarCliente: (cliente: Omit<Cliente, 'id' | 'dataCadastro'>) => void;
+  atualizarCliente: (id: number, dadosCliente: Partial<Cliente>) => void;
+  removerCliente: (id: number) => void;
+  selecionarCliente: (id: number | null) => void;
+  setFiltroTermo: (termo: string) => void;
+  setFiltroStatus: (status: StatusCliente | 'Todos') => void;
+  setMetaGiro: (idCliente: number, metaSemanal: number) => void;
+  
+  // Getters
+  getClientesFiltrados: () => Cliente[];
+  getClientePorId: (id: number) => Cliente | undefined;
+}
+
+export const useClienteStore = create<ClienteStore>()(
+  devtools(
+    (set, get) => ({
+      clientes: [
+        ...clientesMock,
+        ...clientesComDados.map((cliente, index) => {
+          // Gerar datas aleatórias para próxima reposição (entre hoje e 30 dias à frente)
+          const today = new Date();
+          const randomDays = Math.floor(Math.random() * 30);
+          const proximaDataReposicao = new Date(today);
+          proximaDataReposicao.setDate(today.getDate() + randomDays);
+          
+          // Definir status de agendamento baseado na data de reposição
+          const statusAgendamento = randomDays <= 7 
+            ? 'Agendado' 
+            : (randomDays <= 15 ? 'Pendente' : 'Não Agendado');
+
+          return {
+            id: 1000 + index,
+            nome: cliente.nome || `Cliente ${1000 + index}`,
+            cnpjCpf: `${Math.floor(Math.random() * 99)}.${Math.floor(Math.random() * 999)}.${Math.floor(Math.random() * 999)}/0001-${Math.floor(Math.random() * 99)}`,
+            enderecoEntrega: cliente.enderecoEntrega || `Endereço do cliente ${1000 + index}`,
+            contatoNome: `Contato ${1000 + index}`,
+            contatoTelefone: `(51) 9${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}`,
+            contatoEmail: `contato@${cliente.nome?.toLowerCase().replace(/[^a-z0-9]/g, '')}.com.br`,
+            quantidadePadrao: cliente.quantidadePadrao || 0,
+            periodicidadePadrao: cliente.periodicidadePadrao || 7,
+            statusCliente: cliente.statusCliente || "Ativo",
+            dataCadastro: new Date(Date.now() - Math.floor(Math.random() * 10000000000)),
+            metaGiroSemanal: Math.round((cliente.quantidadePadrao || 0) * 1.2), // Meta inicial: 20% acima do giro atual
+            ultimaDataReposicaoEfetiva: new Date(Date.now() - Math.floor(Math.random() * 1000000000)),
+            proximaDataReposicao: Math.random() > 0.1 ? proximaDataReposicao : undefined,
+            statusAgendamento: Math.random() > 0.1 ? statusAgendamento : undefined,
+            // Novos campos
+            janelasEntrega: ['Seg', 'Qua', 'Sex'],
+            representanteId: Math.ceil(Math.random() * 3),
+            rotaEntregaId: Math.ceil(Math.random() * 3),
+            categoriaEstabelecimentoId: Math.ceil(Math.random() * 6),
+            instrucoesEntrega: Math.random() > 0.7 ? `Instruções de entrega para ${cliente.nome}` : undefined,
+            contabilizarGiroMedio: Math.random() > 0.1, // 90% dos clientes contabilizam
+            tipoLogistica: Math.random() > 0.3 ? 'Própria' : 'Distribuição',
+            emiteNotaFiscal: Math.random() > 0.2,
+            tipoCobranca: Math.random() > 0.5 ? 'À vista' : 'Consignado',
+            formaPagamento: ['Boleto', 'PIX', 'Dinheiro'][Math.floor(Math.random() * 3)] as 'Boleto' | 'PIX' | 'Dinheiro',
+            observacoes: Math.random() > 0.8 ? `Observações para ${cliente.nome}` : undefined
+          };
+        })
+      ],
+      clienteAtual: null,
+      filtros: {
+        termo: '',
+        status: 'Todos'
+      },
+      
+      setClientes: (clientes) => set({ clientes }),
+      
+      adicionarCliente: (cliente) => {
+        const novoId = Math.max(0, ...get().clientes.map(c => c.id)) + 1;
+        
+        set(state => ({
+          clientes: [
+            ...state.clientes,
+            {
+              ...cliente,
+              id: novoId,
+              dataCadastro: new Date(),
+              metaGiroSemanal: Math.round(calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao) * 1.2)
+            }
+          ]
+        }));
+      },
+      
+      atualizarCliente: (id, dadosCliente) => {
+        set(state => ({
+          clientes: state.clientes.map(cliente => 
+            cliente.id === id ? { ...cliente, ...dadosCliente } : cliente
+          ),
+          clienteAtual: state.clienteAtual?.id === id ? { ...state.clienteAtual, ...dadosCliente } : state.clienteAtual
+        }));
+      },
+      
+      removerCliente: (id) => {
+        set(state => ({
+          clientes: state.clientes.filter(cliente => cliente.id !== id),
+          clienteAtual: state.clienteAtual?.id === id ? null : state.clienteAtual
+        }));
+      },
+      
+      selecionarCliente: (id) => {
+        if (id === null) {
+          set({ clienteAtual: null });
+          return;
+        }
+        
+        const cliente = get().clientes.find(c => c.id === id);
+        set({ clienteAtual: cliente || null });
+      },
+      
+      setFiltroTermo: (termo) => {
+        set(state => ({
+          filtros: {
+            ...state.filtros,
+            termo
+          }
+        }));
+      },
+      
+      setFiltroStatus: (status) => {
+        set(state => ({
+          filtros: {
+            ...state.filtros,
+            status
+          }
+        }));
+      },
+      
+      setMetaGiro: (idCliente, metaSemanal) => {
+        set(state => ({
+          clientes: state.clientes.map(cliente => 
+            cliente.id === idCliente ? { ...cliente, metaGiroSemanal: metaSemanal } : cliente
+          ),
+          clienteAtual: state.clienteAtual?.id === idCliente ? { ...state.clienteAtual, metaGiroSemanal: metaSemanal } : state.clienteAtual
+        }));
+      },
+      
+      getClientesFiltrados: () => {
+        const { clientes, filtros } = get();
+        
+        return clientes.filter(cliente => {
+          // Filtro por termo
+          const termoMatch = filtros.termo === '' || 
+            cliente.nome.toLowerCase().includes(filtros.termo.toLowerCase()) ||
+            (cliente.cnpjCpf && cliente.cnpjCpf.includes(filtros.termo));
+          
+          // Filtro por status
+          const statusMatch = filtros.status === 'Todos' || cliente.statusCliente === filtros.status;
+          
+          return termoMatch && statusMatch;
+        });
+      },
+      
+      getClientePorId: (id) => {
+        return get().clientes.find(c => c.id === id);
+      }
+    }),
+    { name: 'cliente-store' }
+  )
+);
+
+// Helper para calcular giro semanal
+function calcularGiroSemanal(qtdPadrao: number, periodicidadeDias: number): number {
+  // Para periodicidade em dias, converter para semanas
+  if (periodicidadeDias === 3) {
+    // Caso especial: 3x por semana
+    return qtdPadrao * 3;
+  }
+  
+  // Para outros casos, calcular giro semanal
+  const periodicidadeSemanas = periodicidadeDias / 7;
+  return Math.round(qtdPadrao / periodicidadeSemanas);
+}

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Cliente } from "@/types";
-import { useClienteStore } from "@/hooks/cliente";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import { CheckSquare, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {

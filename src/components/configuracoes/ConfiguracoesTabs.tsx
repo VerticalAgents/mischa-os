@@ -1,14 +1,13 @@
 
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Settings, DollarSign, CalendarClock, Truck, UserCog, Database, BoxesIcon, Calendar, Tag } from "lucide-react";
+import { Settings, DollarSign, CalendarClock, Truck, UserCog, Database, BoxesIcon, Calendar } from "lucide-react";
 import EmpresaTab from "./tabs/EmpresaTab";
 import SistemaTab from "./tabs/SistemaTab";
 import FinanceiroTab from "./tabs/FinanceiroTab";
 import ClientesTab from "./tabs/ClientesTab";
 import ProducaoTab from "./tabs/ProducaoTab";
 import AgendamentoTab from "./tabs/AgendamentoTab";
-import CategoriasProdutoTab from "./tabs/CategoriasProdutoTab";
 
 export default function ConfiguracoesTabs() {
   const [activeTab, setActiveTab] = useState("empresa");
@@ -31,10 +30,6 @@ export default function ConfiguracoesTabs() {
           <TabsTrigger value="parametros" className="flex items-center gap-1">
             <Truck className="h-4 w-4" />
             <span>Parâmetros</span>
-          </TabsTrigger>
-          <TabsTrigger value="categorias" className="flex items-center gap-1">
-            <Tag className="h-4 w-4" />
-            <span>Categorias de Produtos</span>
           </TabsTrigger>
           <TabsTrigger value="producao" className="flex items-center gap-1">
             <BoxesIcon className="h-4 w-4" />
@@ -61,10 +56,6 @@ export default function ConfiguracoesTabs() {
       
       <TabsContent value="parametros">
         <ClientesTab />
-      </TabsContent>
-      
-      <TabsContent value="categorias">
-        <CategoriasProdutoTab />
       </TabsContent>
       
       <TabsContent value="producao">

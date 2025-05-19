@@ -1,91 +1,70 @@
 
-import { ArrowUpRight, BarChart, Users, Calendar, MessageCircle, CalendarDays } from "lucide-react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { ArrowRight, Users, TrendingUp, ShoppingBag, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import StatusCard from "@/components/dashboard/StatusCard";
-import StatsBarChart from "@/components/dashboard/StatsBarChart";
 import StatsPieChart from "@/components/dashboard/StatsPieChart";
+import StatsBarChart from "@/components/dashboard/StatsBarChart";
 import StatsTable from "@/components/dashboard/StatsTable";
-import { useConfirmacaoReposicaoStore } from "@/hooks/useConfirmacaoReposicaoStore";
-import { useMemo } from "react";
-import { DashboardData } from "@/types";
+import { Cliente, DashboardData } from "@/types";
+import { DREData } from "@/types/projections";
+import { usePedidoStore } from "@/hooks/usePedidoStore";
 
 interface OperationalSummaryProps {
   dashboardData: DashboardData;
-  baseDRE: any;
-  clientes: any[];
+  baseDRE: DREData | null;
+  clientes: Cliente[];
 }
 
-export default function OperationalSummary({ dashboardData, baseDRE, clientes }: OperationalSummaryProps) {
-  // Use a stable reference to confirmacaoStats by extracting only what we need
-  const confirmacaoStats = useConfirmacaoReposicaoStore(state => ({
-    contatarHoje: state.getConfirmacaoStats().contatarHoje,
-    contatoPendente: state.getConfirmacaoStats().contatoPendente,
-    semResposta1: state.getConfirmacaoStats().semResposta1,
-    semResposta2: state.getConfirmacaoStats().semResposta2
-  }));
+export default function OperationalSummary({ 
+  dashboardData, 
+  baseDRE,
+  clientes 
+}: OperationalSummaryProps) {
+  const [faturamentoMensal, setFaturamentoMensal] = useState(0);
+  const [ticketMedio, setTicketMedio] = useState(0);
   
-  // Memoize derived data to prevent recalculations
-  const statusData = useMemo(() => {
-    if (!dashboardData?.contadoresStatus) {
-      console.log("No dashboard data available for status chart");
-      return [];
+  // Calcular ticket médio e faturamento
+  useEffect(() => {
+    if (baseDRE && dashboardData.contadoresStatus.ativos > 0) {
+      const faturamento = baseDRE.totalRevenue;
+      setFaturamentoMensal(faturamento);
+      setTicketMedio(faturamento / dashboardData.contadoresStatus.ativos);
     }
-    
-    return [
-      { name: 'Ativos', value: dashboardData.contadoresStatus.ativos },
-      { name: 'Em análise', value: dashboardData.contadoresStatus.emAnalise },
-      { name: 'A ativar', value: dashboardData.contadoresStatus.aAtivar },
-      { name: 'Standby', value: dashboardData.contadoresStatus.standby },
-      { name: 'Inativos', value: dashboardData.contadoresStatus.inativos }
-    ];
-  }, [dashboardData.contadoresStatus]);
+  }, [baseDRE, dashboardData]);
   
-  // Memoize top PDVs data
-  const topPDVsData = useMemo(() => {
-    if (!dashboardData?.giroMedioSemanalPorPDV || !dashboardData.giroMedioSemanalPorPDV.length) {
-      console.log("No PDV data available for top PDVs chart");
-      return [];
-    }
-    
-    return [...dashboardData.giroMedioSemanalPorPDV]
-      .sort((a, b) => b.giroSemanal - a.giroSemanal)
-      .slice(0, 5)
-      .map((pdv) => ({
-        name: pdv.nomeCliente,
-        value: Math.round(pdv.giroSemanal)
-      }));
-  }, [dashboardData.giroMedioSemanalPorPDV]);
+  // Calcular % produção realizada (dummy data para exemplo - deve ser integrado com PCP)
+  const producaoPlanejada = 1000;
+  const producaoRealizada = 850;
+  const percentualProducao = (producaoRealizada / producaoPlanejada) * 100;
   
-  // Memoize top PDVs for table
-  const topPDVsTable = useMemo(() => {
-    if (!dashboardData?.giroMedioSemanalPorPDV || !dashboardData.giroMedioSemanalPorPDV.length) {
-      return [];
-    }
-    
-    return [...dashboardData.giroMedioSemanalPorPDV]
-      .sort((a, b) => b.giroSemanal - a.giroSemanal)
-      .slice(0, 5);
-  }, [dashboardData.giroMedioSemanalPorPDV]);
+  const pedidosFuturos = usePedidoStore.getState().getPedidosFuturos().slice(0, 5);
   
-  // Status colors - extract outside the render function
-  const getStatusColor = (count: number, threshold1: number, threshold2: number) => {
-    if (count === 0) return "bg-gray-100 text-gray-800 hover:bg-gray-200";
-    if (count <= threshold1) return "bg-green-100 text-green-800 hover:bg-green-200";
-    if (count <= threshold2) return "bg-amber-100 text-amber-800 hover:bg-amber-200";
-    return "bg-red-100 text-red-800 hover:bg-red-200";
-  };
-
-  // Return null if we don't have valid dashboard data to prevent errors
-  if (!dashboardData || typeof dashboardData.contadoresStatus?.ativos !== 'number') {
-    console.log("Waiting for dashboard data to load...");
-    return <div>Carregando dados do dashboard...</div>;
-  }
-
+  const giroSemanalPorPDV = dashboardData.giroMedioSemanalPorPDV
+    .sort((a, b) => b.giroSemanal - a.giroSemanal)
+    .slice(0, 5);
+    
+  // Prepare data for pie chart
+  const dadosGraficoPDVsPorStatus = [
+    { name: 'Ativos', value: dashboardData.contadoresStatus.ativos },
+    { name: 'Em análise', value: dashboardData.contadoresStatus.emAnalise },
+    { name: 'A ativar', value: dashboardData.contadoresStatus.aAtivar },
+    { name: 'Standby', value: dashboardData.contadoresStatus.standby },
+    { name: 'Inativos', value: dashboardData.contadoresStatus.inativos }
+  ];
+    
   return (
     <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <StatusCard
+          title="Faturamento Mensal"
+          value={`R$ ${faturamentoMensal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`}
+          icon={<ShoppingBag className="h-5 w-5" />}
+          description="Faturamento previsto (DRE)"
+          trend={{ value: 3.2, isPositive: true }}
+        />
+        
         <StatusCard
           title="PDVs Ativos"
           value={dashboardData.contadoresStatus.ativos}
@@ -94,135 +73,124 @@ export default function OperationalSummary({ dashboardData, baseDRE, clientes }:
         />
         
         <StatusCard
-          title="Giro Médio Semanal"
-          value={Math.round(dashboardData.giroMedioSemanalGeral).toLocaleString()}
-          icon={<BarChart className="h-5 w-5" />}
-          description="Brownies por semana"
-          trend={{ value: 5.2, isPositive: true }}
+          title="Produção Realizada"
+          value={`${percentualProducao.toFixed(1)}%`}
+          icon={<TrendingUp className="h-5 w-5" />}
+          description="Vs planejamento mensal"
+          trend={{ value: percentualProducao - 95, isPositive: percentualProducao >= 95 }}
         />
         
         <StatusCard
-          title="Previsão Mensal"
-          value={Math.round(dashboardData.previsaoGiroTotalMensal).toLocaleString()}
+          title="Ticket Médio"
+          value={`R$ ${ticketMedio.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`}
           icon={<Calendar className="h-5 w-5" />}
-          description="Brownies por mês"
-        />
-        
-        <StatusCard
-          title="Próximas Entregas"
-          // Assuming pedidosFuturos is defined elsewhere in your app
-          value={10} // Replace with actual value
-          icon={<CalendarDays className="h-5 w-5" />}
-          description="Pedidos agendados"
+          description="Por PDV ativo"
         />
       </div>
       
-      {/* Reposition Confirmation Widget */}
-      <Card className="border-l-4 border-l-blue-500">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center">
-            <MessageCircle className="h-5 w-5 mr-2 text-blue-500" />
-            Confirmação de Reposição
-          </CardTitle>
-          <CardDescription>Resumo de PDVs aguardando confirmação</CardDescription>
-        </CardHeader>
-        <CardContent className="pb-2">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className={`p-3 rounded-lg ${getStatusColor(confirmacaoStats.contatarHoje, 3, 6)}`}>
-              <div className="text-2xl font-bold">{confirmacaoStats.contatarHoje}</div>
-              <div className="text-xs">A contatar hoje</div>
-            </div>
-            
-            <div className={`p-3 rounded-lg ${getStatusColor(confirmacaoStats.contatoPendente, 2, 4)}`}>
-              <div className="text-2xl font-bold">{confirmacaoStats.contatoPendente}</div>
-              <div className="text-xs">Contato pendente</div>
-            </div>
-            
-            <div className={`p-3 rounded-lg ${getStatusColor(confirmacaoStats.semResposta1, 2, 5)}`}>
-              <div className="text-2xl font-bold">{confirmacaoStats.semResposta1}</div>
-              <div className="text-xs">Sem resposta (1º contato)</div>
-            </div>
-            
-            <div className={`p-3 rounded-lg ${getStatusColor(confirmacaoStats.semResposta2, 1, 3)}`}>
-              <div className="text-2xl font-bold">{confirmacaoStats.semResposta2}</div>
-              <div className="text-xs">Sem resposta (2º contato)</div>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button variant="outline" size="sm" className="w-full" asChild>
-            <Link to="/agendamento?tab=confirmacao">
-              <span>Ir para Confirmação de Reposição</span>
-              <ArrowUpRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        </CardFooter>
-      </Card>
-      
       <div className="grid gap-6 md:grid-cols-5">
         <div className="md:col-span-2">
-          <StatsPieChart 
-            title="Distribuição de PDVs por Status"
-            description="Visão geral dos pontos de venda por status"
-            data={statusData}
-            colors={['#4ade80', '#60a5fa', '#facc15', '#c084fc', '#f87171']}
-          />
+          <div className="flex flex-col">
+            <StatsPieChart 
+              title="Distribuição de PDVs por Status"
+              description="Visão geral dos pontos de venda por status"
+              data={dadosGraficoPDVsPorStatus}
+              colors={['#4ade80', '#60a5fa', '#facc15', '#c084fc', '#f87171']}
+            />
+            <div className="flex justify-end mt-2">
+              <Button variant="ghost" asChild className="text-xs">
+                <Link to="/clientes" className="flex items-center">
+                  Ver detalhes <ArrowRight className="ml-1 h-3 w-3" />
+                </Link>
+              </Button>
+            </div>
+          </div>
         </div>
         
         <div className="md:col-span-3">
-          <StatsBarChart 
-            title="Top 5 PDVs por Giro Semanal"
-            description="Maiores volumes de venda por semana"
-            data={topPDVsData}
-            bars={[
-              { dataKey: 'value', name: 'Brownies/Semana', color: '#8b5cf6' }
-            ]}
-          />
+          <div className="flex flex-col">
+            <StatsBarChart 
+              title="Top 5 PDVs por Giro Semanal"
+              description="Maiores volumes de venda por semana"
+              data={giroSemanalPorPDV.map(pdv => ({
+                name: pdv.nomeCliente,
+                value: Math.round(pdv.giroSemanal)
+              }))}
+              bars={[
+                { dataKey: 'value', name: 'Brownies/Semana', color: '#8b5cf6' }
+              ]}
+            />
+            <div className="flex justify-end mt-2">
+              <Button variant="ghost" asChild className="text-xs">
+                <Link to="/projecoes" className="flex items-center">
+                  Ver projeções <ArrowRight className="ml-1 h-3 w-3" />
+                </Link>
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
       
       <div className="grid gap-6 md:grid-cols-2">
-        <StatsTable 
-          title="Top PDVs por Volume"
-          description="Pontos de venda com maior giro semanal"
-          data={topPDVsTable}
-          columns={[
-            {
-              header: "Cliente",
-              accessorKey: "nomeCliente"
-            },
-            {
-              header: "Giro Semanal",
-              accessorKey: (item: any) => Math.round(item.giroSemanal).toLocaleString(),
-              cell: (item: any) => (
-                <div className="flex items-center">
-                  <span>{Math.round(item.giroSemanal).toLocaleString()}</span>
-                  <ArrowUpRight className="h-4 w-4 text-green-500 ml-2" />
-                </div>
-              )
-            }
-          ]}
-        />
+        <div className="flex flex-col">
+          <StatsTable 
+            title="Top PDVs por Volume"
+            description="Pontos de venda com maior giro semanal"
+            data={giroSemanalPorPDV}
+            columns={[
+              {
+                header: "Cliente",
+                accessorKey: "nomeCliente"
+              },
+              {
+                header: "Giro Semanal",
+                accessorKey: (item) => Math.round(item.giroSemanal).toLocaleString(),
+                cell: (item) => (
+                  <div className="flex items-center">
+                    <span>{Math.round(item.giroSemanal).toLocaleString()}</span>
+                    <ArrowRight className="h-4 w-4 text-green-500 ml-2" />
+                  </div>
+                )
+              }
+            ]}
+          />
+          <div className="flex justify-end mt-2">
+            <Button variant="ghost" asChild className="text-xs">
+              <Link to="/clientes" className="flex items-center">
+                Ver todos clientes <ArrowRight className="ml-1 h-3 w-3" />
+              </Link>
+            </Button>
+          </div>
+        </div>
         
-        <StatsTable 
-          title="Próximas Entregas"
-          description="Pedidos agendados para os próximos dias"
-          data={[]} // Replace with your data
-          columns={[
-            {
-              header: "Cliente",
-              accessorKey: (item: any) => item.cliente?.nome
-            },
-            {
-              header: "Data Prevista",
-              accessorKey: (item: any) => new Date(item.dataPrevistaEntrega).toLocaleDateString()
-            },
-            {
-              header: "Qtde.",
-              accessorKey: "totalPedidoUnidades"
-            }
-          ]}
-        />
+        <div className="flex flex-col">
+          <StatsTable 
+            title="Próximas Entregas"
+            description="Pedidos agendados para os próximos dias"
+            data={pedidosFuturos}
+            columns={[
+              {
+                header: "Cliente",
+                accessorKey: (item) => item.cliente?.nome
+              },
+              {
+                header: "Data Prevista",
+                accessorKey: (item) => new Date(item.dataPrevistaEntrega).toLocaleDateString()
+              },
+              {
+                header: "Qtde.",
+                accessorKey: "totalPedidoUnidades"
+              }
+            ]}
+          />
+          <div className="flex justify-end mt-2">
+            <Button variant="ghost" asChild className="text-xs">
+              <Link to="/agendamento" className="flex items-center">
+                Ver agendamentos <ArrowRight className="ml-1 h-3 w-3" />
+              </Link>
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

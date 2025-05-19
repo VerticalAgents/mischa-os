@@ -6,7 +6,7 @@ import StatusBadge from "@/components/common/StatusBadge";
 import ClienteDetalhesTabs from "@/components/clientes/ClienteDetalhesTabs";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import { useState } from "react";
-import { useClienteStore } from "@/hooks/cliente"; 
+import { useClienteStore } from "@/hooks/useClienteStore"; 
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,7 +84,7 @@ export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsVi
       <ClienteFormDialog 
         open={isFormOpen} 
         onOpenChange={setIsFormOpen} 
-        clienteParaEditar={cliente} 
+        clienteId={cliente.id} 
       />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

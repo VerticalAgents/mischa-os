@@ -1,10 +1,10 @@
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, Download } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { useClienteStore } from "@/hooks/cliente";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import { useProjectionStore } from "@/hooks/useProjectionStore";
 import { usePlanejamentoProducaoStore } from "@/hooks/usePlanejamentoProducaoStore";
 import { useDashboardStore } from "@/hooks/useDashboardStore";
@@ -28,25 +28,16 @@ export default function DashboardAnalytics() {
   const { pedidos } = usePedidoStore();
   const { baseDRE } = useProjectionStore();
   const planejamentoProducaoStore = usePlanejamentoProducaoStore();
-  const { dashboardData, atualizarDashboard } = useDashboardStore();
+  const { atualizarDashboard, dashboardData } = useDashboardStore();
 
-  // Memoize the update function to prevent recreating it on each render
-  const updateDashboardIfNeeded = useCallback(() => {
-    // Only update if we have clients and the dashboard hasn't been initialized yet
-    if (clientes.length > 0 && !dashboardData.contadoresStatus.ativos) {
-      console.log("Updating dashboard data");
-      atualizarDashboard(clientes, pedidos);
-    }
-  }, [clientes, pedidos, dashboardData.contadoresStatus.ativos, atualizarDashboard]);
-
-  // Update dashboard data only when component mounts or dependencies change
+  // Update dashboard data when the component mounts or data changes
   useEffect(() => {
-    updateDashboardIfNeeded();
-  }, [updateDashboardIfNeeded]); 
+    atualizarDashboard(clientes, pedidos);
+  }, [atualizarDashboard, clientes, pedidos]);
 
   // Get mock production data
-  const registrosProducao = [];
-  const planejamentoProducao = [];
+  const registrosProducao: any[] = [];
+  const planejamentoProducao: any[] = [];
 
   // Export dashboard as PDF
   const exportToPDF = async () => {

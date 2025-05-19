@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import DashboardAnalytics from "@/pages/DashboardAnalytics";
 import Clientes from "@/pages/Clientes";
@@ -15,18 +15,10 @@ import PCP from "@/pages/PCP";
 import Expedicao from "@/pages/Expedicao";
 import Projections from "@/pages/Projections";
 import NotFound from "./pages/NotFound";
-import Index from "./pages/Index";
 import { useEffect } from "react";
 import { useThemeStore, applyTheme } from "./lib/theme";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false, // Prevent unnecessary refetches
-      retry: 1, // Limit retries
-    },
-  },
-});
+const queryClient = new QueryClient();
 
 const App = () => {
   const { isDark } = useThemeStore();
@@ -43,8 +35,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/analytics" element={
+            <Route path="/" element={
               <AppLayout>
                 <DashboardAnalytics />
               </AppLayout>
@@ -87,6 +78,11 @@ const App = () => {
             <Route path="/projecoes" element={
               <AppLayout>
                 <Projections />
+              </AppLayout>
+            } />
+            <Route path="/analytics" element={
+              <AppLayout>
+                <DashboardAnalytics />
               </AppLayout>
             } />
             <Route path="*" element={<NotFound />} />

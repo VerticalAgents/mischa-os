@@ -19,42 +19,24 @@ interface DashboardStore {
   getDadosGraficoPDVsPorStatus: () => { name: string; value: number }[];
 }
 
-// Initial dashboard data state to prevent undefined errors
-const initialDashboardData: DashboardData = {
-  contadoresStatus: {
-    ativos: 0,
-    emAnalise: 0,
-    inativos: 0,
-    aAtivar: 0,
-    standby: 0
-  },
-  giroMedioSemanalPorPDV: [],
-  giroMedioSemanalGeral: 0,
-  previsaoGiroTotalSemanal: 0,
-  previsaoGiroTotalMensal: 0
-};
-
 export const useDashboardStore = create<DashboardStore>()(
   devtools(
     (set, get) => ({
-      dashboardData: initialDashboardData,
+      dashboardData: {
+        contadoresStatus: {
+          ativos: 0,
+          emAnalise: 0,
+          inativos: 0,
+          aAtivar: 0,
+          standby: 0
+        },
+        giroMedioSemanalPorPDV: [],
+        giroMedioSemanalGeral: 0,
+        previsaoGiroTotalSemanal: 0,
+        previsaoGiroTotalMensal: 0
+      },
       
       atualizarDashboard: (clientes, pedidos) => {
-        // Prevent executing if no data
-        if (!clientes || clientes.length === 0) {
-          console.log("No client data to update dashboard");
-          return;
-        }
-        
-        // Prevent unnecessary updates - check if we have the data filled already
-        const currentData = get().dashboardData;
-        if (currentData.contadoresStatus.ativos > 0 && currentData.giroMedioSemanalPorPDV.length > 0) {
-          console.log("Dashboard data already loaded, skipping update");
-          return; // Data already loaded, skip update
-        }
-        
-        console.log("Calculating dashboard data...");
-        
         // 1. Calcular contadores de status
         const contadoresStatus = {
           ativos: clientes.filter(c => c.statusCliente === "Ativo").length,
@@ -73,7 +55,7 @@ export const useDashboardStore = create<DashboardStore>()(
           .filter(cliente => cliente.ultimaDataReposicaoEfetiva)
           .map(cliente => {
             // Encontrar o último pedido entregue para este cliente
-            const ultimoPedidoEntregue = pedidos
+            const ultimoPedidoEntregue = [...pedidos]
               .filter(p => 
                 p.idCliente === cliente.id && 
                 p.statusPedido === "Entregue" &&
@@ -92,7 +74,7 @@ export const useDashboardStore = create<DashboardStore>()(
             }
             
             // Encontrar o penúltimo pedido entregue (para calcular o delta)
-            const penultimoPedidoEntregue = pedidos
+            const penultimoPedidoEntregue = [...pedidos]
               .filter(p => 
                 p.idCliente === cliente.id && 
                 p.statusPedido === "Entregue" &&
@@ -147,27 +129,28 @@ export const useDashboardStore = create<DashboardStore>()(
         // 5. Calcular previsão de giro mensal
         const previsaoGiroTotalMensal = calcularPrevisaoGiroMensal(previsaoGiroTotalSemanal);
         
-        // Prepare the new data
-        const newDashboardData = {
-          contadoresStatus,
-          giroMedioSemanalPorPDV,
-          giroMedioSemanalGeral,
-          previsaoGiroTotalSemanal,
-          previsaoGiroTotalMensal
-        };
-        
-        console.log("Dashboard data calculated, updating store...");
-        
-        // Update the store with a single, atomic operation
-        set(() => ({ dashboardData: newDashboardData }));
+        // Atualizar o store
+        set({
+          dashboardData: {
+            contadoresStatus,
+            giroMedioSemanalPorPDV,
+            giroMedioSemanalGeral,
+            previsaoGiroTotalSemanal,
+            previsaoGiroTotalMensal
+          }
+        });
       },
       
-      // Keep getters the same
       getContadoresStatus: () => get().dashboardData.contadoresStatus,
+      
       getGiroMedioSemanalPorPDV: () => get().dashboardData.giroMedioSemanalPorPDV,
+      
       getGiroMedioSemanalGeral: () => get().dashboardData.giroMedioSemanalGeral,
+      
       getPrevisaoGiroTotalSemanal: () => get().dashboardData.previsaoGiroTotalSemanal,
+      
       getPrevisaoGiroTotalMensal: () => get().dashboardData.previsaoGiroTotalMensal,
+      
       getDadosGraficoPDVsPorStatus: () => {
         const { contadoresStatus } = get().dashboardData;
         

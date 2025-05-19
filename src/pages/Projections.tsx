@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
-import { useClienteStore } from '@/hooks/cliente';
+import { useClienteStore } from '@/hooks/useClienteStore';
 import { useDashboardStore } from '@/hooks/useDashboardStore';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
 import { ScenarioTabs } from '@/components/projections/ScenarioTabs';

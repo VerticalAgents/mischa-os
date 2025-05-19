@@ -5,12 +5,10 @@ import { SubstatusPedidoAgendado } from "@/types";
 interface SubstatusBadgeProps {
   substatus?: SubstatusPedidoAgendado;
   className?: string;
-  statusPrincipal?: string; // Add this to check for duplicates
 }
 
-export default function SubstatusBadge({ substatus, className, statusPrincipal }: SubstatusBadgeProps) {
-  // If no substatus or if substatus is the same as main status, don't render
-  if (!substatus || substatus === statusPrincipal) return null;
+export default function SubstatusBadge({ substatus, className }: SubstatusBadgeProps) {
+  if (!substatus) return null;
   
   const getBadgeStyles = (substatus: SubstatusPedidoAgendado) => {
     switch (substatus) {

@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useClienteStore } from "@/hooks/cliente";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import PageHeader from "@/components/common/PageHeader";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import ClientesFilters, { ColumnOption } from "@/components/clientes/ClientesFilters";
