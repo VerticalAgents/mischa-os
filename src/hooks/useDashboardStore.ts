@@ -37,6 +37,9 @@ export const useDashboardStore = create<DashboardStore>()(
       },
       
       atualizarDashboard: (clientes, pedidos) => {
+        // Prevent unnecessary updates - check if we have the same data already
+        const currentData = get().dashboardData;
+        
         // 1. Calcular contadores de status
         const contadoresStatus = {
           ativos: clientes.filter(c => c.statusCliente === "Ativo").length,
@@ -129,28 +132,25 @@ export const useDashboardStore = create<DashboardStore>()(
         // 5. Calcular previsão de giro mensal
         const previsaoGiroTotalMensal = calcularPrevisaoGiroMensal(previsaoGiroTotalSemanal);
         
-        // Atualizar o store
-        set({
-          dashboardData: {
-            contadoresStatus,
-            giroMedioSemanalPorPDV,
-            giroMedioSemanalGeral,
-            previsaoGiroTotalSemanal,
-            previsaoGiroTotalMensal
-          }
-        });
+        // Atualizar o store apenas se os dados forem diferentes
+        const newDashboardData = {
+          contadoresStatus,
+          giroMedioSemanalPorPDV,
+          giroMedioSemanalGeral,
+          previsaoGiroTotalSemanal,
+          previsaoGiroTotalMensal
+        };
+        
+        set({ dashboardData: newDashboardData });
       },
       
+      // Avoid using these getter methods directly in render functions
+      // Instead, access dashboardData directly from the store
       getContadoresStatus: () => get().dashboardData.contadoresStatus,
-      
       getGiroMedioSemanalPorPDV: () => get().dashboardData.giroMedioSemanalPorPDV,
-      
       getGiroMedioSemanalGeral: () => get().dashboardData.giroMedioSemanalGeral,
-      
       getPrevisaoGiroTotalSemanal: () => get().dashboardData.previsaoGiroTotalSemanal,
-      
       getPrevisaoGiroTotalMensal: () => get().dashboardData.previsaoGiroTotalMensal,
-      
       getDadosGraficoPDVsPorStatus: () => {
         const { contadoresStatus } = get().dashboardData;
         

@@ -8,14 +8,13 @@ import StatsBarChart from "@/components/dashboard/StatsBarChart";
 import StatsPieChart from "@/components/dashboard/StatsPieChart";
 import StatsTable from "@/components/dashboard/StatsTable";
 import { useConfirmacaoReposicaoStore } from "@/hooks/useConfirmacaoReposicaoStore";
-import { useDashboardStore } from "@/hooks/useDashboardStore";
 import { useMemo } from "react";
 
 export default function OperationalSummary({ dashboardData, baseDRE, clientes }: any) {
-  // Call the hooks outside of render paths and get data once
+  // Call the hooks outside of render paths and get data once - use selector pattern
   const confirmacaoStats = useConfirmacaoReposicaoStore(state => state.getConfirmacaoStats());
   
-  // Use useMemo to extract data from dashboardStore to prevent recalculation on every render
+  // Use useMemo to extract data from dashboardData to prevent recalculation on every render
   const statusData = useMemo(() => {
     return [
       { name: 'Ativos', value: dashboardData.contadoresStatus.ativos },
@@ -28,10 +27,14 @@ export default function OperationalSummary({ dashboardData, baseDRE, clientes }:
   
   // Format top PDVs data once using useMemo
   const topPDVsData = useMemo(() => {
-    return dashboardData.giroMedioSemanalPorPDV
-      .sort((a: any, b: any) => b.giroSemanal - a.giroSemanal)
+    if (!dashboardData.giroMedioSemanalPorPDV || !dashboardData.giroMedioSemanalPorPDV.length) {
+      return [];
+    }
+    
+    return [...dashboardData.giroMedioSemanalPorPDV]
+      .sort((a, b) => b.giroSemanal - a.giroSemanal)
       .slice(0, 5)
-      .map((pdv: any) => ({
+      .map((pdv) => ({
         name: pdv.nomeCliente,
         value: Math.round(pdv.giroSemanal)
       }));
