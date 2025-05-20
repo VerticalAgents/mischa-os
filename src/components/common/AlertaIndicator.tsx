@@ -65,7 +65,7 @@ export default function AlertaIndicator() {
                       <p className="text-sm font-medium">{getTipoAlerta(alerta.tipo)}</p>
                       <p className="text-sm text-muted-foreground">{alerta.mensagem}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(alerta.data), "dd 'de' MMMM, HH:mm", { locale: ptBR })}
+                        {format(new Date(alerta.dataAlerta), "dd 'de' MMMM, HH:mm", { locale: ptBR })}
                       </p>
                     </div>
                     <Button 

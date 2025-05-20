@@ -8,7 +8,7 @@ import {
   CardContent,
   CardHeader
 } from "@/components/ui/card";
-import { DREData } from '@/types/projections';
+import { DREData, CostItem, InvestmentItem } from '@/types/projections';
 import { DRETable } from './DRETable';
 import { ChannelGrowthSection } from './ChannelGrowthSection';
 import { CostsSection } from './CostsSection';
@@ -32,6 +32,11 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
     getGrowthValue,
     onSubmit
   } = useScenarioFormCalculations(scenario);
+  
+  // Ensure proper typings for the form values
+  const fixedCosts = form.getValues('fixedCosts') as CostItem[];
+  const administrativeCosts = form.getValues('administrativeCosts') as CostItem[];
+  const investments = form.getValues('investments') as InvestmentItem[];
   
   return (
     <div className="space-y-6">
@@ -58,15 +63,15 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
               />
               
               <CostsSection 
-                fixedCosts={form.getValues('fixedCosts')} 
-                administrativeCosts={form.getValues('administrativeCosts')}
+                fixedCosts={fixedCosts}
+                administrativeCosts={administrativeCosts}
                 updateCosts={updateCosts}
                 expandedSection={expandedSection}
                 setExpandedSection={setExpandedSection}
               />
 
               <InvestmentsSection 
-                investments={form.getValues('investments')}
+                investments={investments}
                 updateInvestment={updateInvestment}
               />
             </div>

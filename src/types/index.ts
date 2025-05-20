@@ -1,4 +1,3 @@
-
 export type Representante = {
   id: number;
   nome: string;
@@ -199,7 +198,12 @@ export interface Sabor {
   nome: string;
   ativo: boolean;
   saldoAtual?: number;
-  percentualPadraoDist?: number; // Added property
+  percentualPadraoDist?: number;
+  estoqueMinimo?: number;
+  custoUnitario?: number;
+  precoVenda?: number;
+  estoqueIdeal?: number;
+  emProducao?: number;
 }
 
 export interface Produto {
@@ -252,12 +256,14 @@ export interface ItemReceita {
 
 export interface Alerta {
   id: number;
-  titulo: string;
+  titulo?: string;
   mensagem: string;
   tipo: string;
-  data: Date;
-  dataAlerta: Date; // Added property
-  lido: boolean;
+  data?: Date;
+  dataAlerta: Date;
+  lido?: boolean;
+  lida?: boolean; // Added both lido and lida to handle inconsistencies
+  dados?: any;
   link?: string;
 }
 

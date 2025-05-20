@@ -1,4 +1,3 @@
-
 import { 
   Cliente, 
   Sabor, 
@@ -278,57 +277,82 @@ export const saboresMock: Sabor[] = [
 export const pedidosMock: Pedido[] = [
   {
     id: 1,
+    clienteId: 1,
     idCliente: 1,
     dataPedido: new Date("2024-05-10"),
+    dataEntrega: new Date("2024-05-14"),
     dataPrevistaEntrega: new Date("2024-05-14"),
     totalPedidoUnidades: 100,
     tipoPedido: "Padrão",
     statusPedido: "Agendado",
+    status: "Agendado",
     observacoes: "Entrega antes das 10h",
-    itensPedido: []
+    itens: [],
+    itensPedido: [],
+    valorTotal: 0
   },
   {
     id: 2,
+    clienteId: 2,
     idCliente: 2,
     dataPedido: new Date("2024-05-11"),
+    dataEntrega: new Date("2024-05-14"),
     dataPrevistaEntrega: new Date("2024-05-14"),
     totalPedidoUnidades: 80,
     tipoPedido: "Alterado",
     statusPedido: "Agendado",
+    status: "Agendado",
     observacoes: "Cliente pediu mais Avelã e menos Tradicional",
-    itensPedido: []
+    itens: [],
+    itensPedido: [],
+    valorTotal: 0
   },
   {
     id: 3,
+    clienteId: 3,
     idCliente: 3,
     dataPedido: new Date("2024-05-09"),
+    dataEntrega: new Date("2024-05-15"),
     dataPrevistaEntrega: new Date("2024-05-15"),
     totalPedidoUnidades: 60,
     tipoPedido: "Padrão",
     statusPedido: "Agendado",
-    itensPedido: []
+    status: "Agendado",
+    itens: [],
+    itensPedido: [],
+    valorTotal: 0
   },
   {
     id: 4,
+    clienteId: 1,
     idCliente: 1,
     dataPedido: new Date("2024-05-03"),
+    dataEntrega: new Date("2024-05-07"),
     dataPrevistaEntrega: new Date("2024-05-07"),
+    dataEfetivaEntrega: new Date("2024-05-07"),
     totalPedidoUnidades: 100,
     tipoPedido: "Padrão",
     statusPedido: "Entregue",
-    dataEfetivaEntrega: new Date("2024-05-07"),
-    itensPedido: []
+    status: "Entregue",
+    itens: [],
+    itensPedido: [],
+    valorTotal: 0
   },
   {
     id: 5,
+    clienteId: 2,
     idCliente: 2,
     dataPedido: new Date("2024-05-04"),
+    dataEntrega: new Date("2024-05-09"),
     dataPrevistaEntrega: new Date("2024-05-09"),
+    dataEfetivaEntrega: new Date("2024-05-09"),
     totalPedidoUnidades: 80,
     tipoPedido: "Padrão",
     statusPedido: "Entregue",
-    dataEfetivaEntrega: new Date("2024-05-09"),
-    itensPedido: []
+    status: "Entregue",
+    itens: [],
+    itensPedido: [],
+    valorTotal: 0
   }
 ];
 
@@ -375,9 +399,10 @@ export const alertasMock: Alerta[] = [
   {
     id: 1,
     tipo: "EstoqueAbaixoMinimo",
+    titulo: "Estoque Abaixo do Mínimo",
     mensagem: "Estoque de Avelã está abaixo do mínimo! Saldo atual: 22, Mínimo: 40",
     dataAlerta: new Date("2024-05-13T08:30:00"),
-    lida: false,
+    lido: false,
     dados: {
       idSabor: 5,
       nomeSabor: "Avelã",
@@ -388,9 +413,10 @@ export const alertasMock: Alerta[] = [
   {
     id: 2,
     tipo: "EstoqueAbaixoMinimo",
+    titulo: "Estoque Abaixo do Mínimo",
     mensagem: "Estoque de Pistache está abaixo do mínimo! Saldo atual: 8, Mínimo: 10",
     dataAlerta: new Date("2024-05-13T08:30:00"),
-    lida: false,
+    lido: false,
     dados: {
       idSabor: 10,
       nomeSabor: "Pistache",
@@ -401,9 +427,10 @@ export const alertasMock: Alerta[] = [
   {
     id: 3,
     tipo: "ProximasEntregas",
+    titulo: "Entregas Pendentes",
     mensagem: "2 entregas agendadas para amanhã (14/05/2024)",
     dataAlerta: new Date("2024-05-13T07:00:00"),
-    lida: true,
+    lido: true,
     dados: {
       dataEntrega: "2024-05-14",
       quantidadePedidos: 2,
@@ -413,9 +440,10 @@ export const alertasMock: Alerta[] = [
   {
     id: 4,
     tipo: "DeltaForaTolerancia",
+    titulo: "Recálculo de Qp",
     mensagem: "Recálculo de Qp para 'Café Central' devido a Δ fora da tolerância",
     dataAlerta: new Date("2024-05-07T15:45:00"),
-    lida: true,
+    lido: true,
     dados: {
       idCliente: 1,
       nomeCliente: "Café Central",

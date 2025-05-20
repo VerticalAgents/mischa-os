@@ -46,7 +46,7 @@ export const useAlertaStore = create<AlertaStore>()(
               ...alerta,
               id: novoId,
               dataAlerta: new Date(),
-              lida: false
+              lido: false
             },
             ...state.alertas
           ]
@@ -56,14 +56,14 @@ export const useAlertaStore = create<AlertaStore>()(
       marcarComoLida: (id) => {
         set(state => ({
           alertas: state.alertas.map(alerta => 
-            alerta.id === id ? { ...alerta, lida: true } : alerta
+            alerta.id === id ? { ...alerta, lido: true } : alerta
           )
         }));
       },
       
       marcarTodasComoLidas: () => {
         set(state => ({
-          alertas: state.alertas.map(alerta => ({ ...alerta, lida: true }))
+          alertas: state.alertas.map(alerta => ({ ...alerta, lido: true }))
         }));
       },
       
@@ -76,8 +76,9 @@ export const useAlertaStore = create<AlertaStore>()(
       gerarAlertaEstoqueMinimo: (sabor) => {
         get().adicionarAlerta({
           tipo: "EstoqueAbaixoMinimo",
+          titulo: "Estoque Abaixo do Mínimo",
           mensagem: `Estoque de ${sabor.nome} está abaixo do mínimo! Saldo atual: ${sabor.saldoAtual}, Mínimo: ${sabor.estoqueMinimo}`,
-          lida: false,
+          lido: false,
           dados: {
             idSabor: sabor.id,
             nomeSabor: sabor.nome,
@@ -92,8 +93,9 @@ export const useAlertaStore = create<AlertaStore>()(
         
         get().adicionarAlerta({
           tipo: "ProximasEntregas",
+          titulo: "Entregas Pendentes",
           mensagem: `${quantidadePedidos} entregas agendadas para ${dataFormatada}`,
-          lida: false,
+          lido: false,
           dados: {
             dataEntrega: data.toISOString().split('T')[0],
             quantidadePedidos,
@@ -105,8 +107,9 @@ export const useAlertaStore = create<AlertaStore>()(
       gerarAlertaDeltaTolerancia: (idCliente, nomeCliente, deltaEfetivo, periodicidadePadrao, qpAntigo, qpNovo) => {
         get().adicionarAlerta({
           tipo: "DeltaForaTolerancia",
+          titulo: "Recálculo de Qp",
           mensagem: `Recálculo de Qp para '${nomeCliente}' devido a Δ fora da tolerância`,
-          lida: false,
+          lido: false,
           dados: {
             idCliente,
             nomeCliente,
@@ -119,7 +122,7 @@ export const useAlertaStore = create<AlertaStore>()(
       },
       
       getAlertasNaoLidas: () => {
-        return get().alertas.filter(alerta => !alerta.lida);
+        return get().alertas.filter(alerta => !alerta.lido);
       },
       
       getAlertasPorTipo: (tipo) => {
@@ -127,7 +130,7 @@ export const useAlertaStore = create<AlertaStore>()(
       },
       
       getQuantidadeAlertasNaoLidas: () => {
-        return get().alertas.filter(alerta => !alerta.lida).length;
+        return get().alertas.filter(alerta => !alerta.lido).length;
       }
     }),
     { name: 'alerta-store' }
