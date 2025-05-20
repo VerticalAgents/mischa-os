@@ -1,8 +1,6 @@
+
 import { useState } from "react";
 import { useInsumosStore } from "@/hooks/useInsumosStore";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -18,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -26,423 +25,200 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { toast } from "@/hooks/use-toast";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { FilePlus, FileText, Check } from "lucide-react";
 import { format } from "date-fns";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Cotacao, PropostaFornecedor } from "@/types/insumos";
-import {
-  FileDown,
-  Search,
-  FilePlus,
-  Pencil,
-  Trash,
-  ShoppingCart,
-  Plus,
-  Check,
-  X,
-  AlignJustify,
-} from "lucide-react";
 
-// Form schemas
-const cotacaoFormSchema = z.object({
-  titulo: z.string().min(3, "Título deve ter no mínimo 3 caracteres"),
+// Form schema for creating cotações
+const cotacaoSchema = z.object({
+  titulo: z.string().min(3, { message: "Título deve ter pelo menos 3 caracteres" }),
   dataValidade: z.date().optional(),
-  itens: z.array(
-    z.object({
-      insumoId: z.number({ required_error: "Selecione um insumo" }),
-      quantidade: z.number().min(0.01, "Quantidade deve ser maior que zero"),
-    })
-  ).min(1, "Adicione pelo menos um item"),
 });
 
-const propostaFormSchema = z.object({
-  fornecedorId: z.number({ required_error: "Selecione um fornecedor" }),
-  itens: z.array(
-    z.object({
-      itemId: z.number(),
-      precoUnitario: z.number().min(0.01, "Preço deve ser maior que zero"),
-    })
-  ),
-  prazoEntrega: z.number().min(1, "Prazo deve ser de pelo menos 1 dia"),
-  frete: z.number().min(0, "Frete não pode ser negativo"),
-  formaPagamento: z.string().min(1, "Forma de pagamento é obrigatória"),
+// Form schema for adding items
+const itemSchema = z.object({
+  insumoId: z.number().min(1, { message: "Selecione um insumo" }),
+  quantidade: z.number().min(1, { message: "Quantidade deve ser maior que zero" }),
+});
+
+// Form schema for adding proposta
+const propostaSchema = z.object({
+  fornecedorId: z.number().min(1, { message: "Selecione um fornecedor" }),
+  prazoEntrega: z.number().min(1, { message: "Prazo deve ser maior que zero" }),
+  frete: z.number().min(0, { message: "Frete não pode ser negativo" }),
+  formaPagamento: z.string().min(1, { message: "Forma de pagamento é obrigatória" }),
   observacoes: z.string().optional(),
 });
 
-type CotacaoFormValues = z.infer<typeof cotacaoFormSchema>;
-type PropostaFormValues = z.infer<typeof propostaFormSchema>;
-
 export default function CotacoesTab() {
-  const { cotacoes, insumos, fornecedores, criarCotacao, escolherPropostaVencedora, adicionarPropostaFornecedor, gerarPedidoCompraDeCotacao } = useInsumosStore();
-  
+  const {
+    insumos,
+    fornecedores,
+    cotacoes,
+    criarCotacao,
+    adicionarItemCotacao,
+    adicionarPropostaFornecedor,
+    escolherPropostaVencedora,
+    atualizarStatusCotacao,
+    gerarPedidoCompraDeCotacao,
+  } = useInsumosStore();
+
   // States
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Cotacao['status'] | "Todas">("Todas");
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isPropostaFormOpen, setIsPropostaFormOpen] = useState(false);
-  const [isDetalhesOpen, setIsDetalhesOpen] = useState(false);
-  const [editingCotacao, setEditingCotacao] = useState<number | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
+  const [isPropostaDialogOpen, setIsPropostaDialogOpen] = useState(false);
   const [selectedCotacao, setSelectedCotacao] = useState<number | null>(null);
-  
-  // Form para cotação
-  const cotacaoForm = useForm<CotacaoFormValues>({
-    resolver: zodResolver(cotacaoFormSchema),
+  const [detailMode, setDetailMode] = useState<"items" | "proposals" | null>(null);
+
+  // Forms
+  const cotacaoForm = useForm<z.infer<typeof cotacaoSchema>>({
+    resolver: zodResolver(cotacaoSchema),
     defaultValues: {
       titulo: "",
-      itens: [{ insumoId: 0, quantidade: 1 }]
-    }
+    },
   });
-  
-  // Form para proposta de fornecedor
-  const propostaForm = useForm<PropostaFormValues>({
-    resolver: zodResolver(propostaFormSchema),
+
+  const itemForm = useForm<z.infer<typeof itemSchema>>({
+    resolver: zodResolver(itemSchema),
+    defaultValues: {
+      insumoId: 0,
+      quantidade: 1,
+    },
+  });
+
+  const propostaForm = useForm<z.infer<typeof propostaSchema>>({
+    resolver: zodResolver(propostaSchema),
     defaultValues: {
       fornecedorId: 0,
-      itens: [],
       prazoEntrega: 5,
       frete: 0,
       formaPagamento: "À vista",
-      observacoes: ""
-    }
+      observacoes: "",
+    },
   });
-  
-  // Filtragem de cotações
-  const cotacoesFiltradas = cotacoes
-    .filter(cotacao => 
-      cotacao.titulo.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .filter(cotacao => statusFilter === "Todas" || cotacao.status === statusFilter)
-    .sort((a, b) => new Date(b.dataCriacao).getTime() - new Date(a.dataCriacao).getTime());
-  
-  // Contadores para os cards
-  const totalCotacoes = cotacoes.length;
-  const cotacoesAbertas = cotacoes.filter(c => c.status === "Aberta" || c.status === "Aguardando Propostas").length;
-  const cotacoesConcluidas = cotacoes.filter(c => c.status === "Finalizada").length;
-  const cotacoesCanceladas = cotacoes.filter(c => c.status === "Cancelada").length;
-  
+
   // Handlers
-  const openNewCotacaoForm = () => {
-    cotacaoForm.reset({
-      titulo: "",
-      itens: [{ insumoId: 0, quantidade: 1 }]
+  const handleCreateCotacao = (data: z.infer<typeof cotacaoSchema>) => {
+    const newCotacaoId = criarCotacao({
+      titulo: data.titulo,
+      status: "Aberta",
+      itens: [],
+      dataValidade: data.dataValidade,
     });
-    setEditingCotacao(null);
-    setIsFormOpen(true);
+
+    setIsCreateDialogOpen(false);
+    setSelectedCotacao(newCotacaoId);
+    setDetailMode("items");
   };
-  
-  const openEditCotacaoForm = (cotacao: Cotacao) => {
-    cotacaoForm.reset({
-      titulo: cotacao.titulo,
-      dataValidade: cotacao.dataValidade,
-      itens: cotacao.itens.map(item => ({
-        insumoId: item.insumoId,
-        quantidade: item.quantidade
-      }))
-    });
-    setEditingCotacao(cotacao.id);
-    setIsFormOpen(true);
-  };
-  
-  const openPropostaForm = (cotacao: Cotacao) => {
-    const itensProposta = cotacao.itens.map(item => ({
-      itemId: item.id,
-      precoUnitario: 0
-    }));
-    
-    propostaForm.reset({
-      fornecedorId: 0,
-      itens: itensProposta,
-      prazoEntrega: 5,
-      frete: 0,
-      formaPagamento: "À vista",
-      observacoes: ""
-    });
-    
-    setSelectedCotacao(cotacao.id);
-    setIsPropostaFormOpen(true);
-  };
-  
-  const openDetalhes = (cotacao: Cotacao) => {
-    setSelectedCotacao(cotacao.id);
-    setIsDetalhesOpen(true);
-  };
-  
-  const handleDeleteCotacao = (id: number) => {
-    if (confirm("Tem certeza que deseja excluir esta cotação?")) {
-      toast({
-        title: "Funcionalidade não implementada",
-        description: "A remoção de cotações será implementada em breve.",
-        variant: "destructive"
-      });
-    }
-  };
-  
-  const adicionarItemCotacao = () => {
-    const itens = cotacaoForm.getValues("itens");
-    cotacaoForm.setValue("itens", [
-      ...itens,
-      { insumoId: 0, quantidade: 1 }
-    ]);
-  };
-  
-  const removerItemCotacao = (index: number) => {
-    const itens = cotacaoForm.getValues("itens");
-    if (itens.length > 1) {
-      cotacaoForm.setValue(
-        "itens",
-        itens.filter((_, i) => i !== index)
-      );
-    } else {
-      toast({
-        title: "Erro",
-        description: "A cotação deve ter pelo menos um item",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const onSubmitCotacao = (values: CotacaoFormValues) => {
-    if (editingCotacao) {
-      toast({
-        title: "Funcionalidade não implementada",
-        description: "A atualização de cotações será implementada em breve.",
-      });
-    } else {
-      criarCotacao({
-        titulo: values.titulo,
-        dataValidade: values.dataValidade,
-        status: "Aberta",
-        itens: values.itens.map((item, index) => ({
-          id: index + 1, // Temporary IDs that will be replaced in the store
-          insumoId: item.insumoId, 
-          quantidade: item.quantidade
-        }))
-      });
-      
-      toast({
-        title: "Cotação criada",
-        description: `A nova cotação "${values.titulo}" foi criada com sucesso!`,
-      });
-    }
-    setIsFormOpen(false);
-  };
-  
-  const onSubmitProposta = (values: PropostaFormValues) => {
+
+  const handleAddItem = (data: z.infer<typeof itemSchema>) => {
     if (selectedCotacao) {
-      const itensCompletos = values.itens.map(item => ({
-        itemId: item.itemId,
-        precoUnitario: item.precoUnitario
+      adicionarItemCotacao(selectedCotacao, {
+        insumoId: data.insumoId,
+        quantidade: data.quantidade,
+      });
+      setIsItemDialogOpen(false);
+      itemForm.reset();
+    }
+  };
+
+  const handleAddProposta = (data: z.infer<typeof propostaSchema>) => {
+    if (selectedCotacao) {
+      const cotacao = cotacoes.find((c) => c.id === selectedCotacao);
+      if (!cotacao) return;
+
+      const propostaItems = cotacao.itens.map((item) => ({
+        itemId: item.id,
+        precoUnitario: parseFloat(
+          (document.getElementById(`price-${item.id}`) as HTMLInputElement).value
+        ),
       }));
-      
+
       adicionarPropostaFornecedor({
         cotacaoId: selectedCotacao,
-        fornecedorId: values.fornecedorId,
-        itens: itensCompletos,
-        prazoEntrega: values.prazoEntrega,
-        frete: values.frete,
-        formaPagamento: values.formaPagamento,
-        observacoes: values.observacoes
+        fornecedorId: data.fornecedorId,
+        itens: propostaItems,
+        prazoEntrega: data.prazoEntrega,
+        frete: data.frete,
+        formaPagamento: data.formaPagamento,
+        observacoes: data.observacoes,
       });
-      
-      toast({
-        title: "Proposta adicionada",
-        description: "A proposta foi adicionada com sucesso!",
-      });
-      
-      setIsPropostaFormOpen(false);
+
+      setIsPropostaDialogOpen(false);
+      propostaForm.reset();
     }
   };
-  
-  const handleSetPropostaVencedora = (cotacaoId: number, propostaId: number) => {
-    if (confirm("Deseja definir esta proposta como vencedora? Isso finalizará a cotação.")) {
-      escolherPropostaVencedora(cotacaoId, propostaId);
-      toast({
-        title: "Proposta vencedora definida",
-        description: "A cotação foi finalizada com sucesso!",
-      });
-    }
+
+  const handleSelectWinner = (cotacaoId: number, propostaId: number) => {
+    escolherPropostaVencedora(cotacaoId, propostaId);
   };
-  
-  const handleGerarPedido = (cotacaoId: number) => {
-    if (confirm("Deseja gerar um pedido de compra com base nesta cotação?")) {
-      gerarPedidoCompraDeCotacao(cotacaoId);
-      toast({
-        title: "Pedido gerado",
-        description: "O pedido de compra foi gerado com sucesso!",
-      });
-      setIsDetalhesOpen(false);
-    }
+
+  const handleGeneratePurchaseOrder = (cotacaoId: number) => {
+    gerarPedidoCompraDeCotacao(cotacaoId);
   };
-  
-  const exportarCSV = () => {
-    const headers = ["ID", "Título", "Data Criação", "Data Validade", "Status", "Qtd Itens", "Qtd Propostas"];
-    
-    const linhas = cotacoesFiltradas.map(cotacao => [
-      cotacao.id,
-      cotacao.titulo,
-      format(new Date(cotacao.dataCriacao), "dd/MM/yyyy"),
-      cotacao.dataValidade ? format(new Date(cotacao.dataValidade), "dd/MM/yyyy") : "N/A",
-      cotacao.status,
-      cotacao.itens.length,
-      cotacao.propostas.length
-    ]);
-    
-    const csvContent = [
-      headers.join(","),
-      ...linhas.map(l => l.join(","))
-    ].join("\n");
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `cotacoes_${format(new Date(), "yyyyMMdd")}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-  
-  const getPropostaStatusBadge = (status: string) => {
+
+  // Helper functions
+  const getStatusColor = (status: Cotacao["status"]) => {
     switch (status) {
       case "Aberta":
-        return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Aberta</Badge>;
+        return "bg-blue-100 text-blue-800";
       case "Aguardando Propostas":
-        return <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">Aguardando Propostas</Badge>;
+        return "bg-yellow-100 text-yellow-800";
       case "Finalizada":
-        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Finalizada</Badge>;
+        return "bg-green-100 text-green-800";
       case "Cancelada":
-        return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">Cancelada</Badge>;
+        return "bg-gray-100 text-gray-800";
       default:
-        return <Badge>{status}</Badge>;
+        return "bg-gray-100 text-gray-800";
     }
   };
-  
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-start">
-        <div>
-          <h2 className="text-2xl font-semibold">Cotações de Insumos</h2>
-          <p className="text-muted-foreground">Compare preços e condições de fornecedores antes de comprar</p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={exportarCSV} variant="outline">
-            <FileDown className="mr-2 h-4 w-4" /> Exportar CSV
-          </Button>
-          <Button onClick={openNewCotacaoForm}>
-            <FilePlus className="mr-2 h-4 w-4" /> Nova Cotação
-          </Button>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total de Cotações</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalCotacoes}</div>
-            <p className="text-xs text-muted-foreground">cotações registradas</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Cotações em Aberto</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-500">{cotacoesAbertas}</div>
-            <p className="text-xs text-muted-foreground">aguardando propostas ou análise</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Cotações Concluídas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-500">{cotacoesConcluidas}</div>
-            <p className="text-xs text-muted-foreground">finalizadas com compra</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Cotações Canceladas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-500">{cotacoesCanceladas}</div>
-            <p className="text-xs text-muted-foreground">canceladas sem compra</p>
-          </CardContent>
-        </Card>
-      </div>
-      
-      {/* Filtros */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div className="flex-1">
-          <div className="relative max-w-xs">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar cotação..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button 
-            size="sm"
-            variant={statusFilter === "Todas" ? "default" : "outline"} 
-            onClick={() => setStatusFilter("Todas")}
-          >
-            Todas
-          </Button>
-          <Button 
-            size="sm"
-            variant={statusFilter === "Aberta" ? "default" : "outline"} 
-            onClick={() => setStatusFilter("Aberta")}
-          >
-            Abertas
-          </Button>
-          <Button 
-            size="sm"
-            variant={statusFilter === "Aguardando Propostas" ? "default" : "outline"} 
-            onClick={() => setStatusFilter("Aguardando Propostas")}
-          >
-            Aguardando Propostas
-          </Button>
-          <Button 
-            size="sm"
-            variant={statusFilter === "Finalizada" ? "default" : "outline"} 
-            onClick={() => setStatusFilter("Finalizada")}
-          >
-            Finalizadas
-          </Button>
-          <Button 
-            size="sm"
-            variant={statusFilter === "Cancelada" ? "default" : "outline"} 
-            onClick={() => setStatusFilter("Cancelada")}
-          >
-            Canceladas
-          </Button>
-        </div>
-      </div>
-      
-      {/* Lista de Cotações */}
+
+  const getInsumoById = (id: number) => {
+    return insumos.find((i) => i.id === id);
+  };
+
+  const getFornecedorById = (id: number) => {
+    return fornecedores.find((f) => f.id === id);
+  };
+
+  const calculateTotalProposta = (proposta: PropostaFornecedor, cotacaoId: number) => {
+    const cotacao = cotacoes.find((c) => c.id === cotacaoId);
+    if (!cotacao) return 0;
+
+    let total = proposta.frete || 0;
+    cotacao.itens.forEach((item) => {
+      const propostaItem = proposta.itens.find((i) => i.itemId === item.id);
+      if (propostaItem) {
+        total += item.quantidade * propostaItem.precoUnitario;
+      }
+    });
+
+    return total;
+  };
+
+  // Render functions
+  const renderCotacaoList = () => {
+    return (
       <Card>
-        <CardHeader>
-          <CardTitle>Lista de Cotações</CardTitle>
-          <CardDescription>Gerencie e acompanhe as cotações de insumos</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Cotações</CardTitle>
+            <CardDescription>
+              Gerencie suas cotações de compra de insumos
+            </CardDescription>
+          </div>
+          <Button onClick={() => {
+            cotacaoForm.reset();
+            setIsCreateDialogOpen(true);
+          }}>
+            <FilePlus className="h-4 w-4 mr-2" /> Nova Cotação
+          </Button>
         </CardHeader>
         <CardContent>
           <Table>
@@ -450,82 +226,72 @@ export default function CotacoesTab() {
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Título</TableHead>
-                <TableHead>Data Criação</TableHead>
-                <TableHead>Data Validade</TableHead>
-                <TableHead className="text-center">Status</TableHead>
+                <TableHead>Data de Criação</TableHead>
+                <TableHead>Validade</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Itens</TableHead>
                 <TableHead>Propostas</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {cotacoesFiltradas.length === 0 ? (
+              {cotacoes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
                     Nenhuma cotação encontrada
                   </TableCell>
                 </TableRow>
               ) : (
-                cotacoesFiltradas.map((cotacao) => (
+                cotacoes.map((cotacao) => (
                   <TableRow key={cotacao.id}>
                     <TableCell>{cotacao.id}</TableCell>
                     <TableCell className="font-medium">{cotacao.titulo}</TableCell>
-                    <TableCell>{format(new Date(cotacao.dataCriacao), "dd/MM/yyyy")}</TableCell>
                     <TableCell>
-                      {cotacao.dataValidade 
-                        ? format(new Date(cotacao.dataValidade), "dd/MM/yyyy")
-                        : "—"
-                      }
+                      {format(new Date(cotacao.dataCriacao), "dd/MM/yyyy")}
                     </TableCell>
-                    <TableCell className="text-center">
-                      {getPropostaStatusBadge(cotacao.status)}
+                    <TableCell>
+                      {cotacao.dataValidade
+                        ? format(new Date(cotacao.dataValidade), "dd/MM/yyyy")
+                        : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(cotacao.status)}>
+                        {cotacao.status}
+                      </Badge>
                     </TableCell>
                     <TableCell>{cotacao.itens.length}</TableCell>
                     <TableCell>{cotacao.propostas.length}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
-                        <Button 
-                          size="sm" 
+                        <Button
                           variant="outline"
-                          onClick={() => openDetalhes(cotacao)}
+                          size="sm"
+                          onClick={() => {
+                            setSelectedCotacao(cotacao.id);
+                            setDetailMode("items");
+                          }}
                         >
-                          <AlignJustify className="h-4 w-4" />
+                          <FileText className="h-4 w-4" />
                         </Button>
-                        
-                        {(cotacao.status === "Aberta" || cotacao.status === "Aguardando Propostas") && (
-                          <>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => openEditCotacaoForm(cotacao)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => openPropostaForm(cotacao)}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                            
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleDeleteCotacao(cotacao.id)}
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                        
-                        {cotacao.status === "Finalizada" && cotacao.propostaVencedoraId && (
+                        {cotacao.status === "Finalizada" && !cotacao.propostaVencedoraId && (
                           <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => handleGerarPedido(cotacao.id)}
+                            onClick={() => {
+                              setSelectedCotacao(cotacao.id);
+                              setDetailMode("proposals");
+                            }}
                           >
-                            <ShoppingCart className="h-4 w-4 mr-1" /> Gerar Pedido
+                            Escolher Proposta
+                          </Button>
+                        )}
+                        {cotacao.propostaVencedoraId && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleGeneratePurchaseOrder(cotacao.id)}
+                          >
+                            Gerar Pedido
                           </Button>
                         )}
                       </div>
@@ -537,158 +303,319 @@ export default function CotacoesTab() {
           </Table>
         </CardContent>
       </Card>
-      
-      {/* Form de Cotação */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[650px]">
+    );
+  };
+
+  const renderCotacaoDetail = () => {
+    if (!selectedCotacao) return null;
+
+    const cotacao = cotacoes.find((c) => c.id === selectedCotacao);
+    if (!cotacao) return null;
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedCotacao(null);
+                setDetailMode(null);
+              }}
+            >
+              Voltar para lista
+            </Button>
+            <h2 className="text-2xl font-bold mt-4">{cotacao.titulo}</h2>
+            <div className="flex items-center gap-4 mt-2">
+              <Badge className={getStatusColor(cotacao.status)}>
+                {cotacao.status}
+              </Badge>
+              <p className="text-sm text-muted-foreground">
+                Criada em: {format(new Date(cotacao.dataCriacao), "dd/MM/yyyy")}
+              </p>
+              {cotacao.dataValidade && (
+                <p className="text-sm text-muted-foreground">
+                  Válida até: {format(new Date(cotacao.dataValidade), "dd/MM/yyyy")}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {cotacao.status === "Aberta" && (
+              <>
+                <Button
+                  onClick={() => {
+                    itemForm.reset();
+                    setIsItemDialogOpen(true);
+                  }}
+                >
+                  Adicionar Item
+                </Button>
+                {cotacao.itens.length > 0 && (
+                  <Button
+                    onClick={() => atualizarStatusCotacao(cotacao.id, "Aguardando Propostas")}
+                  >
+                    Solicitar Propostas
+                  </Button>
+                )}
+              </>
+            )}
+            {cotacao.status === "Aguardando Propostas" && (
+              <Button
+                onClick={() => {
+                  propostaForm.reset();
+                  setIsPropostaDialogOpen(true);
+                }}
+              >
+                Adicionar Proposta
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Itens da Cotação</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Insumo</TableHead>
+                    <TableHead>Quantidade</TableHead>
+                    <TableHead>Unidade</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cotacao.itens.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={3}
+                        className="text-center py-6 text-muted-foreground"
+                      >
+                        Nenhum item adicionado à cotação
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    cotacao.itens.map((item) => {
+                      const insumo = getInsumoById(item.insumoId);
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">
+                            {insumo?.nome || "Insumo não encontrado"}
+                          </TableCell>
+                          <TableCell>{item.quantidade}</TableCell>
+                          <TableCell>{insumo?.unidadeMedida}</TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {(detailMode === "proposals" ||
+            cotacao.status === "Aguardando Propostas" ||
+            cotacao.status === "Finalizada") &&
+            cotacao.propostas.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Propostas Recebidas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fornecedor</TableHead>
+                        <TableHead>Prazo (dias)</TableHead>
+                        <TableHead>Frete (R$)</TableHead>
+                        <TableHead>Forma de Pagamento</TableHead>
+                        <TableHead className="text-right">Valor Total (R$)</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cotacao.propostas.map((proposta) => {
+                        const fornecedor = getFornecedorById(proposta.fornecedorId);
+                        const totalValue = calculateTotalProposta(proposta, cotacao.id);
+                        const isWinner = cotacao.propostaVencedoraId === proposta.id;
+
+                        return (
+                          <TableRow key={proposta.id}>
+                            <TableCell className="font-medium">
+                              {fornecedor?.nome || "Fornecedor não encontrado"}
+                              {isWinner && (
+                                <Badge className="ml-2 bg-green-100 text-green-800">
+                                  Vencedora
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>{proposta.prazoEntrega}</TableCell>
+                            <TableCell>
+                              {proposta.frete.toLocaleString("pt-BR", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </TableCell>
+                            <TableCell>{proposta.formaPagamento}</TableCell>
+                            <TableCell className="text-right">
+                              {totalValue.toLocaleString("pt-BR", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {cotacao.status === "Finalizada" &&
+                                !cotacao.propostaVencedoraId && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      handleSelectWinner(cotacao.id, proposta.id)
+                                    }
+                                  >
+                                    <Check className="h-4 w-4 mr-1" /> Escolher
+                                  </Button>
+                                )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+        </div>
+      </div>
+    );
+  };
+
+  // Dialog components
+  const renderCreateCotacaoDialog = () => {
+    return (
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>
-              {editingCotacao ? "Editar Cotação" : "Nova Cotação"}
-            </DialogTitle>
+            <DialogTitle>Nova Cotação</DialogTitle>
             <DialogDescription>
-              {editingCotacao 
-                ? "Atualize os detalhes da cotação existente."
-                : "Crie uma nova cotação para obter preços de insumos."
-              }
+              Crie uma nova cotação para compra de insumos
             </DialogDescription>
           </DialogHeader>
-          
           <Form {...cotacaoForm}>
-            <form onSubmit={cotacaoForm.handleSubmit(onSubmitCotacao)} className="space-y-4">
+            <form onSubmit={cotacaoForm.handleSubmit(handleCreateCotacao)} className="space-y-4">
               <FormField
                 control={cotacaoForm.control}
                 name="titulo"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Título da Cotação</FormLabel>
+                    <FormLabel>Título</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: Cotação mensal de matérias-primas" {...field} />
+                      <Input placeholder="Ex: Cotação de Insumos - Junho/2025" {...field} />
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
-              
-              <FormField
-                control={cotacaoForm.control}
-                name="dataValidade"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data de Validade (opcional)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="date" 
-                        {...field} 
-                        value={field.value ? format(new Date(field.value), "yyyy-MM-dd") : ""}
-                        onChange={(e) => {
-                          const date = e.target.value ? new Date(e.target.value) : undefined;
-                          field.onChange(date);
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div>
-                <h3 className="text-md font-medium mb-2">Itens da Cotação</h3>
-                
-                {cotacaoForm.getValues().itens.map((_, index) => (
-                  <div key={index} className="flex items-center gap-2 mb-2">
-                    <FormField
-                      control={cotacaoForm.control}
-                      name={`itens.${index}.insumoId`}
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormControl>
-                            <select
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                              value={field.value}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                            >
-                              <option value={0}>Selecione um insumo</option>
-                              {insumos.map(insumo => (
-                                <option key={insumo.id} value={insumo.id}>
-                                  {insumo.nome} ({insumo.unidadeMedida})
-                                </option>
-                              ))}
-                            </select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={cotacaoForm.control}
-                      name={`itens.${index}.quantidade`}
-                      render={({ field }) => (
-                        <FormItem className="w-28">
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0.01"
-                              step="0.01"
-                              placeholder="Qtd"
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                              value={field.value}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    {cotacaoForm.getValues().itens.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removerItemCotacao(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={adicionarItemCotacao}
-                  className="mt-2"
-                >
-                  <Plus className="h-4 w-4 mr-2" /> Adicionar Item
-                </Button>
-              </div>
-              
+              {/* Mais campos se necessário */}
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  {editingCotacao ? "Salvar Alterações" : "Criar Cotação"}
-                </Button>
+                <Button type="submit">Criar Cotação</Button>
               </DialogFooter>
             </form>
           </Form>
         </DialogContent>
       </Dialog>
-      
-      {/* Form de Proposta */}
-      <Dialog open={isPropostaFormOpen} onOpenChange={setIsPropostaFormOpen}>
-        <DialogContent className="sm:max-w-[650px]">
+    );
+  };
+
+  const renderAddItemDialog = () => {
+    return (
+      <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Nova Proposta de Fornecedor</DialogTitle>
+            <DialogTitle>Adicionar Item</DialogTitle>
             <DialogDescription>
-              Adicione uma proposta de fornecedor para esta cotação
+              Adicione um novo item à cotação
             </DialogDescription>
           </DialogHeader>
-          
+          <Form {...itemForm}>
+            <form onSubmit={itemForm.handleSubmit(handleAddItem)} className="space-y-4">
+              <FormField
+                control={itemForm.control}
+                name="insumoId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Insumo</FormLabel>
+                    <FormControl>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                        value={field.value}
+                      >
+                        <option value="0">Selecione um insumo</option>
+                        {insumos.map((insumo) => (
+                          <option key={insumo.id} value={insumo.id}>
+                            {insumo.nome} ({insumo.unidadeMedida})
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={itemForm.control}
+                name="quantidade"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quantidade</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsItemDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">Adicionar Item</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  const renderAddPropostaDialog = () => {
+    if (!selectedCotacao) return null;
+
+    const cotacao = cotacoes.find((c) => c.id === selectedCotacao);
+    if (!cotacao) return null;
+
+    return (
+      <Dialog open={isPropostaDialogOpen} onOpenChange={setIsPropostaDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Adicionar Proposta</DialogTitle>
+            <DialogDescription>
+              Registre uma nova proposta de fornecedor
+            </DialogDescription>
+          </DialogHeader>
           <Form {...propostaForm}>
-            <form onSubmit={propostaForm.handleSubmit(onSubmitProposta)} className="space-y-4">
+            <form
+              onSubmit={propostaForm.handleSubmit(handleAddProposta)}
+              className="space-y-4"
+            >
               <FormField
                 control={propostaForm.control}
                 name="fornecedorId"
@@ -697,69 +624,49 @@ export default function CotacoesTab() {
                     <FormLabel>Fornecedor</FormLabel>
                     <FormControl>
                       <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value))}
                         value={field.value}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
                       >
-                        <option value={0}>Selecione um fornecedor</option>
-                        {fornecedores.map(fornecedor => (
+                        <option value="0">Selecione um fornecedor</option>
+                        {fornecedores.map((fornecedor) => (
                           <option key={fornecedor.id} value={fornecedor.id}>
                             {fornecedor.nome}
                           </option>
                         ))}
                       </select>
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
-              
-              <div>
-                <h3 className="text-md font-medium mb-2">Preços dos Itens</h3>
-                
-                {selectedCotacao && cotacoes.find(c => c.id === selectedCotacao)?.itens.map((item, index) => {
-                  const insumo = insumos.find(i => i.id === item.insumoId);
-                  
-                  return (
-                    <div key={index} className="flex items-center gap-2 mb-2">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{insumo?.nome}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Quantidade: {item.quantidade} {insumo?.unidadeMedida}
-                        </p>
+
+              <div className="border p-4 rounded-md">
+                <h3 className="font-bold mb-2">Preços por Item</h3>
+                <div className="space-y-2">
+                  {cotacao.itens.map((item) => {
+                    const insumo = getInsumoById(item.insumoId);
+                    return (
+                      <div key={item.id} className="flex items-center gap-4">
+                        <div className="flex-1">
+                          {insumo?.nome || "Insumo não encontrado"} ({item.quantidade} {insumo?.unidadeMedida})
+                        </div>
+                        <div className="w-32">
+                          <Input
+                            id={`price-${item.id}`}
+                            type="number"
+                            step="0.01"
+                            placeholder="Preço unitário"
+                            required
+                          />
+                        </div>
                       </div>
-                      
-                      <FormField
-                        control={propostaForm.control}
-                        name={`itens.${index}.precoUnitario`}
-                        render={({ field }) => (
-                          <FormItem className="w-32">
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0.01"
-                                step="0.01"
-                                placeholder="Preço Un."
-                                {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <input 
-                        type="hidden" 
-                        {...propostaForm.register(`itens.${index}.itemId`)}
-                        value={item.id}
-                      />
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={propostaForm.control}
                   name="prazoEntrega"
@@ -769,38 +676,33 @@ export default function CotacoesTab() {
                       <FormControl>
                         <Input
                           type="number"
-                          min="1"
-                          step="1"
                           {...field}
                           onChange={(e) => field.onChange(parseInt(e.target.value))}
                         />
                       </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={propostaForm.control}
                   name="frete"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Valor do Frete (R$)</FormLabel>
+                      <FormLabel>Frete (R$)</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
-                          min="0"
                           step="0.01"
                           {...field}
                           onChange={(e) => field.onChange(parseFloat(e.target.value))}
                         />
                       </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              
+
               <FormField
                 control={propostaForm.control}
                 name="formaPagamento"
@@ -808,129 +710,48 @@ export default function CotacoesTab() {
                   <FormItem>
                     <FormLabel>Forma de Pagamento</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: À vista, 30 dias, etc" {...field} />
+                      <Input placeholder="Ex: À vista, 30 dias, etc." {...field} />
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={propostaForm.control}
                 name="observacoes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Observações (opcional)</FormLabel>
+                    <FormLabel>Observações</FormLabel>
                     <FormControl>
                       <Input placeholder="Observações adicionais" {...field} />
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsPropostaFormOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsPropostaDialogOpen(false)}
+                >
                   Cancelar
                 </Button>
-                <Button type="submit">
-                  Adicionar Proposta
-                </Button>
+                <Button type="submit">Adicionar Proposta</Button>
               </DialogFooter>
             </form>
           </Form>
         </DialogContent>
       </Dialog>
-      
-      {/* Dialog de Detalhes */}
-      <Dialog open={isDetalhesOpen} onOpenChange={setIsDetalhesOpen}>
-        <DialogContent className="sm:max-w-[800px]">
-          {selectedCotacao && (
-            <>
-              {(() => {
-                const cotacao = cotacoes.find(c => c.id === selectedCotacao);
-                if (!cotacao) return null;
-                
-                return (
-                  <>
-                    <DialogHeader>
-                      <div className="flex justify-between">
-                        <DialogTitle className="text-xl">
-                          {cotacao.titulo}
-                        </DialogTitle>
-                        {getPropostaStatusBadge(cotacao.status)}
-                      </div>
-                      <DialogDescription>
-                        <div className="flex justify-between text-sm mt-2">
-                          <div>
-                            <p>Cotação #{cotacao.id}</p>
-                            <p>Criado em: {format(new Date(cotacao.dataCriacao), "dd/MM/yyyy")}</p>
-                          </div>
-                          <div>
-                            <p>
-                              Validade: {cotacao.dataValidade 
-                                ? format(new Date(cotacao.dataValidade), "dd/MM/yyyy")
-                                : "Não informada"}
-                            </p>
-                            <p>Status: {cotacao.status}</p>
-                          </div>
-                        </div>
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="mt-4">
-                      <h3 className="text-lg font-medium mb-2">Itens da Cotação</h3>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Item</TableHead>
-                            <TableHead className="text-center">Quantidade</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {cotacao.itens.map(item => {
-                            const insumo = insumos.find(i => i.id === item.insumoId);
-                            return (
-                              <TableRow key={item.id}>
-                                <TableCell>{insumo?.nome || "Insumo não encontrado"}</TableCell>
-                                <TableCell className="text-center">
-                                  {item.quantidade} {insumo?.unidadeMedida || ''}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                    
-                    <DialogFooter className="mt-6">
-                      <div className="flex justify-between w-full">
-                        <Button variant="outline" onClick={() => {
-                          alert("Funcionalidade de imprimir em desenvolvimento");
-                        }}>
-                          <FileDown className="mr-2 h-4 w-4" /> Imprimir
-                        </Button>
-                        
-                        <div>
-                          <Button variant="outline" onClick={() => setIsDetalhesOpen(false)} className="mr-2">
-                            Fechar
-                          </Button>
-                          
-                          {(cotacao.status === 'Aberta' || cotacao.status === 'Finalizada') && (
-                            <Button onClick={() => handleGerarPedido(cotacao.id)}>
-                              <ShoppingCart className="mr-2 h-4 w-4" /> Gerar Pedido
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </DialogFooter>
-                  </>
-                );
-              })()}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {selectedCotacao ? renderCotacaoDetail() : renderCotacaoList()}
+      {renderCreateCotacaoDialog()}
+      {renderAddItemDialog()}
+      {renderAddPropostaDialog()}
     </div>
   );
 }

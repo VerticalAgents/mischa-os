@@ -1,9 +1,6 @@
 
 import { useState } from "react";
 import { useInsumosStore } from "@/hooks/useInsumosStore";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -19,6 +16,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { format } from "date-fns";
+import { Search, FileText, Check, Package, Truck, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,96 +29,237 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { format } from "date-fns";
 import { PedidoCompra } from "@/types/insumos";
-import { 
-  FileDown, 
-  Search, 
-  CheckCircle, 
-  Clock, 
-  ShoppingBag,
-  PackageCheck,
-  FileText,
-  Eye
-} from "lucide-react";
 
 export default function PedidosTab() {
-  const { 
-    pedidosCompra, 
-    fornecedores, 
-    insumos, 
-    atualizarStatusPedido, 
-    receberPedido 
+  const {
+    pedidosCompra,
+    insumos,
+    fornecedores,
+    atualizarStatusPedido,
+    receberPedido,
   } = useInsumosStore();
-  
+
+  // States
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<PedidoCompra['status'] | 'Todos'>('Todos');
-  const [isDetalhesOpen, setIsDetalhesOpen] = useState(false);
-  const [pedidoSelecionado, setPedidoSelecionado] = useState<number | null>(null);
-  
-  // Filtragem de pedidos
-  const pedidosFiltrados = pedidosCompra
-    .filter(pedido => {
-      const fornecedor = fornecedores.find(f => f.id === pedido.fornecedorId);
-      return fornecedor?.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             String(pedido.id).includes(searchTerm);
-    })
-    .filter(pedido => statusFilter === 'Todos' || pedido.status === statusFilter)
-    .sort((a, b) => new Date(b.dataCriacao).getTime() - new Date(a.dataCriacao).getTime());
-  
-  // Contadores para os cards
-  const totalPedidos = pedidosCompra.length;
-  const pedidosRecebidos = pedidosCompra.filter(p => p.status === 'Recebido').length;
-  const pedidosPendentes = pedidosCompra.filter(p => p.status === 'Pendente' || p.status === 'Enviado').length;
-  
+  const [statusFilter, setStatusFilter] = useState<PedidoCompra["status"] | "Todos">("Todos");
+  const [selectedPedido, setSelectedPedido] = useState<number | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+
+  // Filtered pedidos
+  const filteredPedidos = pedidosCompra.filter(pedido => {
+    // Apply search term filter
+    const fornecedor = fornecedores.find(f => f.id === pedido.fornecedorId);
+    const searchCheck = 
+      pedido.id.toString().includes(searchTerm) || 
+      (fornecedor?.nome.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+    
+    // Apply status filter
+    const statusCheck = statusFilter === "Todos" || pedido.status === statusFilter;
+    
+    return searchCheck && statusCheck;
+  });
+
   // Handlers
-  const abrirDetalhes = (pedido: PedidoCompra) => {
-    setPedidoSelecionado(pedido.id);
-    setIsDetalhesOpen(true);
+  const handleOpenDetail = (pedidoId: number) => {
+    setSelectedPedido(pedidoId);
+    setIsDetailDialogOpen(true);
   };
-  
-  const confirmarRecebimento = (pedidoId: number) => {
-    if (confirm('Tem certeza que deseja confirmar o recebimento deste pedido? Esta ação atualizará o estoque.')) {
+
+  const handleUpdateStatus = (pedidoId: number, status: PedidoCompra["status"]) => {
+    atualizarStatusPedido(pedidoId, status);
+  };
+
+  const handleReceivePedido = (pedidoId: number) => {
+    if (confirm("Deseja marcar este pedido como recebido? Isso atualizará automaticamente o estoque de todos os itens.")) {
       receberPedido(pedidoId);
-      setPedidoSelecionado(null);
-      setIsDetalhesOpen(false);
+      setIsDetailDialogOpen(false);
     }
   };
-  
-  const atualizarStatus = (pedidoId: number, novoStatus: PedidoCompra['status']) => {
-    atualizarStatusPedido(pedidoId, novoStatus);
+
+  // Helper functions
+  const getInsumoById = (id: number) => {
+    return insumos.find(i => i.id === id);
+  };
+
+  const getFornecedorById = (id: number) => {
+    return fornecedores.find(f => f.id === id);
   };
   
-  const exportarPedidosCSV = () => {
-    const headers = [
-      "ID", "Fornecedor", "Data Criação", "Previsão Entrega", 
-      "Valor Total", "Status", "Origem", "Observações"
-    ];
+  const getStatusColor = (status: PedidoCompra["status"]) => {
+    switch (status) {
+      case "Pendente":
+        return "bg-yellow-100 text-yellow-800";
+      case "Enviado":
+        return "bg-blue-100 text-blue-800";
+      case "Recebido":
+        return "bg-green-100 text-green-800";
+      case "Cancelado":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getStatusCard = (statusPredicate: PedidoCompra["status"], icon: any, title: string) => {
+    const count = pedidosCompra.filter(p => p.status === statusPredicate).length;
+    const valor = pedidosCompra
+      .filter(p => p.status === statusPredicate)
+      .reduce((acc, p) => acc + p.valorTotal, 0);
     
-    const linhas = pedidosFiltrados.map(pedido => [
-      pedido.id,
-      fornecedores.find(f => f.id === pedido.fornecedorId)?.nome || "Fornecedor não encontrado",
-      format(new Date(pedido.dataCriacao), "dd/MM/yyyy"),
-      format(new Date(pedido.dataEntregaPrevista), "dd/MM/yyyy"),
-      pedido.valorTotal.toFixed(2),
-      pedido.status,
-      pedido.cotacaoId ? `Cotação #${pedido.cotacaoId}` : "Manual",
-      pedido.observacoes || ""
-    ]);
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          {icon}
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{count}</div>
+          <p className="text-xs text-muted-foreground">
+            R$ {valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Render functions
+  const renderDetailDialog = () => {
+    if (!selectedPedido) return null;
     
-    const csvContent = [
-      headers.join(","),
-      ...linhas.map(linha => linha.join(","))
-    ].join("\n");
+    const pedido = pedidosCompra.find(p => p.id === selectedPedido);
+    if (!pedido) return null;
     
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `pedidos_compra_${format(new Date(), "yyyyMMdd")}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const fornecedor = getFornecedorById(pedido.fornecedorId);
+    
+    return (
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="sm:max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Pedido #{pedido.id}</DialogTitle>
+            <DialogDescription>
+              Visualize as informações completas deste pedido de compra
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Fornecedor</p>
+                <p className="font-medium">{fornecedor?.nome || "Fornecedor não encontrado"}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Status</p>
+                <Badge className={getStatusColor(pedido.status)}>
+                  {pedido.status}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Data de Criação</p>
+                <p className="font-medium">{format(new Date(pedido.dataCriacao), "dd/MM/yyyy")}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Previsão de Entrega</p>
+                <p className="font-medium">{format(new Date(pedido.dataEntregaPrevista), "dd/MM/yyyy")}</p>
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="font-medium mb-2">Itens do Pedido</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="text-right">Quantidade</TableHead>
+                    <TableHead className="text-right">Preço Unitário</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pedido.itens.map(item => {
+                    const insumo = getInsumoById(item.insumoId);
+                    const total = item.quantidade * item.precoUnitario;
+                    
+                    return (
+                      <TableRow key={item.insumoId}>
+                        <TableCell>
+                          {insumo?.nome || "Insumo não encontrado"}
+                          <span className="text-xs text-muted-foreground block">
+                            {insumo?.unidadeMedida}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">{item.quantidade}</TableCell>
+                        <TableCell className="text-right">
+                          R$ {item.precoUnitario.toLocaleString('pt-BR', {
+                            minimumFractionDigits: 4,
+                            maximumFractionDigits: 4,
+                          })}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          R$ {total.toLocaleString('pt-BR', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-right font-bold">Total do Pedido</TableCell>
+                    <TableCell className="text-right font-bold">
+                      R$ {pedido.valorTotal.toLocaleString('pt-BR', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+            
+            {pedido.observacoes && (
+              <div>
+                <h3 className="font-medium mb-2">Observações</h3>
+                <p className="text-sm">{pedido.observacoes}</p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter className="space-x-2">
+            {pedido.status === "Pendente" && (
+              <Button 
+                variant="outline" 
+                onClick={() => handleUpdateStatus(pedido.id, "Enviado")}
+              >
+                <Truck className="h-4 w-4 mr-2" />
+                Marcar como Enviado
+              </Button>
+            )}
+            {(pedido.status === "Pendente" || pedido.status === "Enviado") && (
+              <Button 
+                onClick={() => handleReceivePedido(pedido.id)}
+              >
+                <Check className="h-4 w-4 mr-2" />
+                Marcar como Recebido
+              </Button>
+            )}
+            {(pedido.status === "Pendente") && (
+              <Button 
+                variant="destructive" 
+                onClick={() => {
+                  if (confirm("Tem certeza que deseja cancelar este pedido?")) {
+                    handleUpdateStatus(pedido.id, "Cancelado");
+                    setIsDetailDialogOpen(false);
+                  }
+                }}
+              >
+                Cancelar Pedido
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
   };
   
   return (
@@ -124,52 +267,24 @@ export default function PedidosTab() {
       <div className="flex justify-between items-start">
         <div>
           <h2 className="text-2xl font-semibold">Pedidos de Compra</h2>
-          <p className="text-muted-foreground">Acompanhe os pedidos de compra e controle o recebimento de mercadorias</p>
+          <p className="text-muted-foreground">
+            Gerencie os pedidos para fornecedores
+          </p>
         </div>
-        <Button onClick={exportarPedidosCSV} variant="outline">
-          <FileDown className="mr-2 h-4 w-4" /> Exportar CSV
-        </Button>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total de Pedidos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalPedidos}</div>
-            <p className="text-xs text-muted-foreground">pedidos no sistema</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Pedidos em Aberto</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-500">{pedidosPendentes}</div>
-            <p className="text-xs text-muted-foreground">aguardando recebimento</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Pedidos Recebidos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-500">{pedidosRecebidos}</div>
-            <p className="text-xs text-muted-foreground">concluídos e estoque atualizado</p>
-          </CardContent>
-        </Card>
+        {getStatusCard("Pendente", <AlertTriangle className="h-4 w-4 text-yellow-500" />, "Pendentes de Envio")}
+        {getStatusCard("Enviado", <Truck className="h-4 w-4 text-blue-500" />, "Em Trânsito")}
+        {getStatusCard("Recebido", <Package className="h-4 w-4 text-green-500" />, "Recebidos")}
       </div>
       
-      {/* Filtros */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="flex-1">
           <div className="relative max-w-xs">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por fornecedor ou ID..."
+              placeholder="Buscar pedido..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-8"
@@ -177,124 +292,115 @@ export default function PedidosTab() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button 
+          <Button
             size="sm"
-            variant={statusFilter === 'Todos' ? 'default' : 'outline'} 
-            onClick={() => setStatusFilter('Todos')}
+            variant={statusFilter === "Todos" ? "default" : "outline"}
+            onClick={() => setStatusFilter("Todos")}
           >
             Todos
           </Button>
-          <Button 
+          <Button
             size="sm"
-            variant={statusFilter === 'Pendente' ? 'default' : 'outline'} 
-            onClick={() => setStatusFilter('Pendente')}
+            variant={statusFilter === "Pendente" ? "default" : "outline"}
+            onClick={() => setStatusFilter("Pendente")}
           >
-            <Clock className="mr-1 h-4 w-4" /> Pendentes
+            Pendentes
           </Button>
-          <Button 
+          <Button
             size="sm"
-            variant={statusFilter === 'Enviado' ? 'default' : 'outline'} 
-            onClick={() => setStatusFilter('Enviado')}
+            variant={statusFilter === "Enviado" ? "default" : "outline"}
+            onClick={() => setStatusFilter("Enviado")}
           >
-            <ShoppingBag className="mr-1 h-4 w-4" /> Enviados
+            Enviados
           </Button>
-          <Button 
+          <Button
             size="sm"
-            variant={statusFilter === 'Recebido' ? 'default' : 'outline'} 
-            onClick={() => setStatusFilter('Recebido')}
+            variant={statusFilter === "Recebido" ? "default" : "outline"}
+            onClick={() => setStatusFilter("Recebido")}
           >
-            <CheckCircle className="mr-1 h-4 w-4" /> Recebidos
+            Recebidos
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === "Cancelado" ? "default" : "outline"}
+            onClick={() => setStatusFilter("Cancelado")}
+          >
+            Cancelados
           </Button>
         </div>
       </div>
       
-      {/* Lista de Pedidos */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Pedidos de Compra</CardTitle>
+          <CardTitle>Lista de Pedidos</CardTitle>
           <CardDescription>
-            Controle os pedidos enviados aos fornecedores e atualize o estoque ao receber
+            Gerenciamento de pedidos de compra para insumos
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
+                <TableHead>Pedido #</TableHead>
                 <TableHead>Fornecedor</TableHead>
-                <TableHead>Data Criação</TableHead>
-                <TableHead>Previsão Entrega</TableHead>
-                <TableHead className="text-right">Valor Total (R$)</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-                <TableHead>Origem</TableHead>
+                <TableHead>Data do Pedido</TableHead>
+                <TableHead>Data Prevista</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Valor Total</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pedidosFiltrados.length === 0 ? (
+              {filteredPedidos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     Nenhum pedido encontrado
                   </TableCell>
                 </TableRow>
               ) : (
-                pedidosFiltrados.map((pedido) => {
-                  const fornecedor = fornecedores.find(f => f.id === pedido.fornecedorId);
-                  
-                  const statusBadge = () => {
-                    switch (pedido.status) {
-                      case 'Pendente':
-                        return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Pendente</Badge>;
-                      case 'Enviado':
-                        return <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">Enviado</Badge>;
-                      case 'Recebido':
-                        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Recebido</Badge>;
-                      case 'Cancelado':
-                        return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">Cancelado</Badge>;
-                      default:
-                        return <Badge>{pedido.status}</Badge>;
-                    }
-                  };
-                  
+                filteredPedidos.map(pedido => {
+                  const fornecedor = getFornecedorById(pedido.fornecedorId);
                   return (
                     <TableRow key={pedido.id}>
-                      <TableCell>{pedido.id}</TableCell>
-                      <TableCell>{fornecedor?.nome || 'Fornecedor não encontrado'}</TableCell>
-                      <TableCell>{format(new Date(pedido.dataCriacao), 'dd/MM/yyyy')}</TableCell>
-                      <TableCell>{format(new Date(pedido.dataEntregaPrevista), 'dd/MM/yyyy')}</TableCell>
+                      <TableCell className="font-medium">{pedido.id}</TableCell>
+                      <TableCell>{fornecedor?.nome || "Fornecedor não encontrado"}</TableCell>
+                      <TableCell>{format(new Date(pedido.dataCriacao), "dd/MM/yyyy")}</TableCell>
+                      <TableCell>{format(new Date(pedido.dataEntregaPrevista), "dd/MM/yyyy")}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(pedido.status)}>
+                          {pedido.status}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-right">
-                        {pedido.valorTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        R$ {pedido.valorTotal.toLocaleString('pt-BR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
                       </TableCell>
-                      <TableCell className="text-center">{statusBadge()}</TableCell>
-                      <TableCell>
-                        {pedido.cotacaoId ? (
-                          <Badge variant="outline">Cotação #{pedido.cotacaoId}</Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-slate-100">Manual</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
+                      <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
-                          <Button size="sm" variant="outline" onClick={() => abrirDetalhes(pedido)}>
-                            <Eye className="h-4 w-4 mr-1" /> Detalhes
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenDetail(pedido.id)}
+                          >
+                            <FileText className="h-4 w-4" />
                           </Button>
-                          
-                          {pedido.status === 'Pendente' && (
-                            <Button 
-                              size="sm" 
+                          {pedido.status === "Pendente" && (
+                            <Button
                               variant="outline"
-                              onClick={() => atualizarStatus(pedido.id, 'Enviado')}
+                              size="sm"
+                              onClick={() => handleUpdateStatus(pedido.id, "Enviado")}
                             >
-                              <ShoppingBag className="h-4 w-4 mr-1" /> Enviado
+                              Enviado
                             </Button>
                           )}
-                          
-                          {(pedido.status === 'Enviado' || pedido.status === 'Pendente') && (
-                            <Button 
+                          {(pedido.status === "Pendente" || pedido.status === "Enviado") && (
+                            <Button
                               size="sm"
-                              onClick={() => confirmarRecebimento(pedido.id)}
+                              onClick={() => handleReceivePedido(pedido.id)}
                             >
-                              <PackageCheck className="h-4 w-4 mr-1" /> Recebido
+                              Recebido
                             </Button>
                           )}
                         </div>
@@ -308,130 +414,7 @@ export default function PedidosTab() {
         </CardContent>
       </Card>
       
-      {/* Dialog para detalhes do pedido */}
-      <Dialog open={isDetalhesOpen} onOpenChange={setIsDetalhesOpen}>
-        <DialogContent className="sm:max-w-[700px]">
-          {pedidoSelecionado && (
-            <>
-              {(() => {
-                const pedido = pedidosCompra.find(p => p.id === pedidoSelecionado);
-                if (!pedido) return null;
-                
-                const fornecedor = fornecedores.find(f => f.id === pedido.fornecedorId);
-                
-                return (
-                  <>
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center justify-between">
-                        <span>Pedido de Compra #{pedido.id}</span>
-                        <Badge
-                          className={
-                            pedido.status === 'Pendente'
-                              ? 'bg-blue-100 text-blue-800 border-blue-200'
-                              : pedido.status === 'Enviado'
-                                ? 'bg-amber-100 text-amber-800 border-amber-200'
-                                : pedido.status === 'Recebido'
-                                  ? 'bg-green-100 text-green-800 border-green-200'
-                                  : 'bg-red-100 text-red-800 border-red-200'
-                          }
-                        >
-                          {pedido.status}
-                        </Badge>
-                      </DialogTitle>
-                      <DialogDescription>
-                        <div className="flex flex-col sm:flex-row sm:justify-between text-sm mt-2">
-                          <div>
-                            <p><strong>Fornecedor:</strong> {fornecedor?.nome || 'Fornecedor não encontrado'}</p>
-                            <p><strong>Criado em:</strong> {format(new Date(pedido.dataCriacao), 'dd/MM/yyyy')}</p>
-                          </div>
-                          <div className="mt-2 sm:mt-0 sm:text-right">
-                            <p><strong>Previsão de entrega:</strong> {format(new Date(pedido.dataEntregaPrevista), 'dd/MM/yyyy')}</p>
-                            {pedido.cotacaoId && (
-                              <p><strong>Origem:</strong> Cotação #{pedido.cotacaoId}</p>
-                            )}
-                          </div>
-                        </div>
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="mt-4">
-                      <h3 className="text-lg font-medium mb-2">Itens do Pedido</h3>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Insumo</TableHead>
-                            <TableHead className="text-center">Quantidade</TableHead>
-                            <TableHead className="text-right">Preço Un. (R$)</TableHead>
-                            <TableHead className="text-right">Subtotal (R$)</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {pedido.itens.map((item, index) => {
-                            const insumo = insumos.find(i => i.id === item.insumoId);
-                            const subtotal = item.quantidade * item.precoUnitario;
-                            
-                            return (
-                              <TableRow key={index}>
-                                <TableCell>{insumo?.nome || 'Insumo não encontrado'}</TableCell>
-                                <TableCell className="text-center">
-                                  {item.quantidade} {insumo?.unidadeMedida || ''}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {item.precoUnitario.toLocaleString('pt-BR', {minimumFractionDigits: 4, maximumFractionDigits: 4})}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {subtotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                          <TableRow>
-                            <TableCell colSpan={2}></TableCell>
-                            <TableCell className="text-right font-medium">Total:</TableCell>
-                            <TableCell className="text-right font-medium">
-                              {pedido.valorTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                            </TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </div>
-                    
-                    {pedido.observacoes && (
-                      <div className="mt-4">
-                        <h3 className="text-sm font-medium mb-1">Observações</h3>
-                        <p className="text-sm text-muted-foreground">{pedido.observacoes}</p>
-                      </div>
-                    )}
-                    
-                    <DialogFooter className="mt-6">
-                      <div className="flex justify-between w-full">
-                        <Button variant="outline" onClick={() => {
-                          // Aqui poderia ter uma função para gerar PDF do pedido
-                          alert("Funcionalidade de imprimir em desenvolvimento");
-                        }}>
-                          <FileText className="mr-2 h-4 w-4" /> Imprimir
-                        </Button>
-                        
-                        <div>
-                          <Button variant="outline" onClick={() => setIsDetalhesOpen(false)} className="mr-2">
-                            Fechar
-                          </Button>
-                          
-                          {(pedido.status === 'Enviado' || pedido.status === 'Pendente') && (
-                            <Button onClick={() => confirmarRecebimento(pedido.id)}>
-                              <PackageCheck className="mr-2 h-4 w-4" /> Confirmar Recebimento
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </DialogFooter>
-                  </>
-                );
-              })()}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      {renderDetailDialog()}
     </div>
   );
 }
