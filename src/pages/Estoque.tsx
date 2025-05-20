@@ -64,15 +64,15 @@ export default function Estoque() {
           <CardHeader className="bg-amber-50 dark:bg-amber-900/20">
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              Insumos, Embalagens e Outros
+              Insumos
             </CardTitle>
             <CardDescription>
-              Gestão completa de materiais usados na produção, incluindo estoque, cotações e pedidos de compra.
+              Gestão completa de insumos usados na produção, incluindo estoque, cotações e pedidos de compra.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <p className="text-muted-foreground">
-              Gerencie o estoque de insumos, embalagens e outros materiais, crie cotações, compare fornecedores 
+              Gerencie o estoque de insumos, crie cotações, compare fornecedores 
               e mantenha o controle das compras em um único lugar.
             </p>
           </CardContent>

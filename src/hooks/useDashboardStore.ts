@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { DashboardData, Cliente, Pedido } from '../types';
@@ -22,11 +23,6 @@ export const useDashboardStore = create<DashboardStore>()(
   devtools(
     (set, get) => ({
       dashboardData: {
-        vendasMensais: 0,
-        clientesAtivos: 0,
-        ticketMedio: 0,
-        taxaCrescimento: 0,
-        pedidosPendentes: 0,
         contadoresStatus: {
           ativos: 0,
           emAnalise: 0,
@@ -39,7 +35,6 @@ export const useDashboardStore = create<DashboardStore>()(
         previsaoGiroTotalSemanal: 0,
         previsaoGiroTotalMensal: 0
       },
-      
       
       atualizarDashboard: (clientes, pedidos) => {
         // 1. Calcular contadores de status
@@ -134,49 +129,27 @@ export const useDashboardStore = create<DashboardStore>()(
         // 5. Calcular previsão de giro mensal
         const previsaoGiroTotalMensal = calcularPrevisaoGiroMensal(previsaoGiroTotalSemanal);
         
-        // Update the store with properly typed dashboardData
+        // Atualizar o store
         set({
           dashboardData: {
-            vendasMensais: 0, // Add default values for required properties
-            clientesAtivos: 0,
-            ticketMedio: 0,
-            taxaCrescimento: 0,
-            pedidosPendentes: 0,
-            contadoresStatus: {
-              ativos: clientes.filter(c => c.statusCliente === "Ativo").length,
-              emAnalise: clientes.filter(c => c.statusCliente === "Em análise").length,
-              inativos: clientes.filter(c => c.statusCliente === "Inativo").length,
-              aAtivar: clientes.filter(c => c.statusCliente === "A ativar").length,
-              standby: clientes.filter(c => c.statusCliente === "Standby").length
-            },
-            giroMedioSemanalPorPDV: clientesAtivosAnalise
-              .filter(cliente => cliente.ultimaDataReposicaoEfetiva)
-              .map(cliente => {
-                // This calculation needs to be adapted to the interface
-                // Using hardcoded return structure to match DashboardData['giroMedioSemanalPorPDV']
-                return {
-                  idCliente: cliente.id,
-                  nomeCliente: cliente.nome,
-                  giroSemanal: cliente.quantidadePadrao * (7 / cliente.periodicidadePadrao)
-                };
-              }),
-            giroMedioSemanalGeral: 0, // You can calculate the actual value
-            previsaoGiroTotalSemanal: calcularPrevisaoGiroSemanal(
-              clientes.filter(c => c.statusCliente === "Ativo")
-            ),
-            previsaoGiroTotalMensal: calcularPrevisaoGiroMensal(
-              calcularPrevisaoGiroSemanal(clientes.filter(c => c.statusCliente === "Ativo"))
-            )
+            contadoresStatus,
+            giroMedioSemanalPorPDV,
+            giroMedioSemanalGeral,
+            previsaoGiroTotalSemanal,
+            previsaoGiroTotalMensal
           }
         });
       },
       
-      
       getContadoresStatus: () => get().dashboardData.contadoresStatus,
+      
       getGiroMedioSemanalPorPDV: () => get().dashboardData.giroMedioSemanalPorPDV,
-      getGiroMedioSemanalGeral: () => get().dashboardData.giroMedioSemanalGeral || 0,
-      getPrevisaoGiroTotalSemanal: () => get().dashboardData.previsaoGiroTotalSemanal || 0,
-      getPrevisaoGiroTotalMensal: () => get().dashboardData.previsaoGiroTotalMensal || 0,
+      
+      getGiroMedioSemanalGeral: () => get().dashboardData.giroMedioSemanalGeral,
+      
+      getPrevisaoGiroTotalSemanal: () => get().dashboardData.previsaoGiroTotalSemanal,
+      
+      getPrevisaoGiroTotalMensal: () => get().dashboardData.previsaoGiroTotalMensal,
       
       getDadosGraficoPDVsPorStatus: () => {
         const { contadoresStatus } = get().dashboardData;

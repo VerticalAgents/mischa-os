@@ -1,246 +1,64 @@
 
-import {
-  Representante,
-  RotaEntrega,
-  CategoriaEstabelecimento,
-  TipoLogistica,
+import { 
+  Representante, 
+  RotaEntrega, 
+  CategoriaEstabelecimento, 
+  TipoLogistica, 
   FormaPagamento,
-  ConfiguracoesProducao,
-  CategoriaInsumoParam,
-  Sabor
-} from "@/types";
+  ConfiguracoesProducao
+} from '@/types';
 
-export const representantes: Representante[] = [
-  {
-    id: 1,
-    nome: "João da Silva",
-    email: "joao.silva@example.com",
-    telefone: "555-1234",
-    ativo: true,
-    comissao: 0.05
-  },
-  {
-    id: 2,
-    nome: "Maria Souza",
-    email: "maria.souza@example.com",
-    telefone: "555-5678",
-    ativo: true,
-    comissao: 0.07
-  },
-  {
-    id: 3,
-    nome: "Carlos Pereira",
-    email: "carlos.pereira@example.com",
-    telefone: "555-9012",
-    ativo: false,
-    comissao: 0.06
-  }
+// Mock data for representantes
+export const representantesMock: Representante[] = [
+  { id: 1, nome: 'João Silva', email: 'joao@exemplo.com', telefone: '(51) 99999-1111', ativo: true },
+  { id: 2, nome: 'Maria Oliveira', email: 'maria@exemplo.com', telefone: '(51) 99999-2222', ativo: true },
+  { id: 3, nome: 'Pedro Santos', email: 'pedro@exemplo.com', telefone: '(51) 99999-3333', ativo: true },
+  { id: 4, nome: 'Ana Costa', email: 'ana@exemplo.com', telefone: '(51) 99999-4444', ativo: false },
 ];
 
-export const rotasEntrega: RotaEntrega[] = [
-  {
-    id: 1,
-    nome: "Rota Norte",
-    descricao: "Entrega na região norte da cidade",
-    ativo: true,
-    diasSemana: ["Seg", "Qua", "Sex"],
-    horarioInicio: "08:00",
-    horarioFim: "12:00"
-  },
-  {
-    id: 2,
-    nome: "Rota Sul",
-    descricao: "Entrega na região sul da cidade",
-    ativo: true,
-    diasSemana: ["Ter", "Qui", "Sáb"],
-    horarioInicio: "13:00",
-    horarioFim: "17:00"
-  },
-  {
-    id: 3,
-    nome: "Rota Leste",
-    descricao: "Entrega na região leste da cidade",
-    ativo: false,
-    diasSemana: ["Seg", "Qua", "Sex"],
-    horarioInicio: "09:00",
-    horarioFim: "13:00"
-  }
+// Mock data for rotas de entrega
+export const rotasEntregaMock: RotaEntrega[] = [
+  { id: 1, nome: 'Zona Norte', descricao: 'Região norte da cidade', ativo: true },
+  { id: 2, nome: 'Zona Sul', descricao: 'Região sul da cidade', ativo: true },
+  { id: 3, nome: 'Centro', descricao: 'Região central', ativo: true },
+  { id: 4, nome: 'Zona Leste', descricao: 'Região leste da cidade', ativo: false },
 ];
 
-export const categoriasEstabelecimento: CategoriaEstabelecimento[] = [
-  {
-    id: 1,
-    nome: "Restaurante",
-    descricao: "Estabelecimento que serve refeições",
-    ativo: true
-  },
-  {
-    id: 2,
-    nome: "Cafeteria",
-    descricao: "Estabelecimento especializado em cafés",
-    ativo: true
-  },
-  {
-    id: 3,
-    nome: "Supermercado",
-    descricao: "Estabelecimento que vende alimentos e outros produtos",
-    ativo: false
-  }
+// Mock data for categorias de estabelecimento
+export const categoriasEstabelecimentoMock: CategoriaEstabelecimento[] = [
+  { id: 1, nome: 'Cafeteria', descricao: 'Estabelecimentos focados em café', ativo: true },
+  { id: 2, nome: 'Empório', descricao: 'Empórios e lojas de produtos naturais', ativo: true },
+  { id: 3, nome: 'Restaurante', descricao: 'Restaurantes em geral', ativo: true },
+  { id: 4, nome: 'Bar', descricao: 'Bares e pubs', ativo: true },
+  { id: 5, nome: 'Hotel', descricao: 'Hotéis e pousadas', ativo: true },
+  { id: 6, nome: 'Padaria', descricao: 'Padarias e confeitarias', ativo: true },
 ];
 
-// Updated tiposLogistica with percentualLogistico
-export const tiposLogistica: TipoLogistica[] = [
-  {
-    id: 1,
-    nome: "Própria",
-    descricao: "Entrega feita pela própria empresa",
-    percentualLogistico: 10,
-    ativo: true
-  },
-  {
-    id: 2,
-    nome: "Distribuição",
-    descricao: "Entrega feita por parceiro de distribuição",
-    percentualLogistico: 15,
-    ativo: true
-  },
-  {
-    id: 3,
-    nome: "Retirada",
-    descricao: "Cliente retira na empresa",
-    percentualLogistico: 0,
-    ativo: false
-  }
+// Mock data for tipos de logística
+export const tiposLogisticaMock: TipoLogistica[] = [
+  { id: 1, nome: 'Própria', percentualLogistico: 8.5, ativo: true },
+  { id: 2, nome: 'Distribuição', percentualLogistico: 12.0, ativo: true },
+  { id: 3, nome: 'Terceirizada', percentualLogistico: 15.0, ativo: true },
+  { id: 4, nome: 'Retirada pelo cliente', percentualLogistico: 0, ativo: true },
 ];
 
-export const formasPagamento: FormaPagamento[] = [
-  {
-    id: 1,
-    nome: "Boleto",
-    descricao: "Pagamento via boleto bancário",
-    ativo: true
-  },
-  {
-    id: 2,
-    nome: "PIX",
-    descricao: "Pagamento via PIX",
-    ativo: true
-  },
-  {
-    id: 3,
-    nome: "Dinheiro",
-    descricao: "Pagamento em dinheiro",
-    ativo: false
-  }
+// Mock data for formas de pagamento
+export const formasPagamentoMock: FormaPagamento[] = [
+  { id: 1, nome: 'Dinheiro', ativo: true },
+  { id: 2, nome: 'Cartão de Crédito', ativo: true },
+  { id: 3, nome: 'Cartão de Débito', ativo: true },
+  { id: 4, nome: 'PIX', ativo: true },
+  { id: 5, nome: 'Boleto Bancário', ativo: true },
+  { id: 6, nome: 'Transferência', ativo: true },
 ];
 
-export const configuracoesProducao: ConfiguracoesProducao = {
-  tempoPreparoPadrao: 30,
-  custoHoraProducao: 50.00,
-  margemLucroDesejada: 30,
-  margemLucroPadrao: 40,
+// Mock data for configurações de produção
+export const configuracoesProducaoMock: ConfiguracoesProducao = {
+  unidadesPorForma: 24,
+  formasPorLote: 4,
   incluirPedidosPrevistos: true,
-  formasPorLote: 10,
-  unidadesPorForma: 6,
-  percentualPedidosPrevistos: 20,
-  tempoMedioPorFornada: 60,
-  unidadesBrowniePorForma: 12,
-  formasPorFornada: 4
+  percentualPedidosPrevistos: 15,
+  tempoMedioPorFornada: 45,
+  unidadesBrowniePorForma: 16,
+  formasPorFornada: 2
 };
-
-export const categoriasInsumoParam: CategoriaInsumoParam[] = [
-  {
-    id: 1,
-    nome: "Ingredientes",
-    descricao: "Insumos utilizados nas receitas",
-    ativo: true,
-    quantidadeItensVinculados: 5
-  },
-  {
-    id: 2,
-    nome: "Embalagens",
-    descricao: "Embalagens para os produtos",
-    ativo: true,
-    quantidadeItensVinculados: 3
-  },
-  {
-    id: 3,
-    nome: "Outros",
-    descricao: "Outros insumos não categorizados",
-    ativo: false,
-    quantidadeItensVinculados: 2
-  }
-];
-
-export const saboresMock: Sabor[] = [
-  {
-    id: 1,
-    nome: "Chocolate",
-    ativo: true,
-    saldoAtual: 100,
-    percentualPadraoDist: 10
-  },
-  {
-    id: 2,
-    nome: "Doce de Leite",
-    ativo: true,
-    saldoAtual: 100,
-    percentualPadraoDist: 10
-  },
-  {
-    id: 3,
-    nome: "Nutella",
-    ativo: true,
-    saldoAtual: 100,
-    percentualPadraoDist: 10
-  },
-  {
-    id: 4,
-    nome: "Coco",
-    ativo: true,
-    saldoAtual: 100,
-    percentualPadraoDist: 10
-  },
-  {
-    id: 5,
-    nome: "Morango",
-    ativo: true,
-    saldoAtual: 100,
-    percentualPadraoDist: 10
-  },
-  {
-    id: 6,
-    nome: "Limão",
-    ativo: true,
-    saldoAtual: 100,
-    percentualPadraoDist: 10
-  },
-  {
-    id: 7,
-    nome: "Maracujá",
-    ativo: true,
-    saldoAtual: 100,
-    percentualPadraoDist: 10
-  },
-  {
-    id: 8,
-    nome: "Café",
-    ativo: true,
-    saldoAtual: 100,
-    percentualPadraoDist: 10
-  },
-  {
-    id: 9,
-    nome: "Ovomaltine",
-    ativo: true,
-    saldoAtual: 100,
-    percentualPadraoDist: 10
-  },
-  {
-    id: 10,
-    nome: "Romeu e Julieta",
-    ativo: true,
-    saldoAtual: 100,
-    percentualPadraoDist: 10
-  }
-];

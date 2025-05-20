@@ -1,3 +1,4 @@
+
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { ProdutoCategoria, ProdutoSubcategoria } from "@/types";
@@ -34,21 +35,19 @@ export const useCategoriaStore = create<CategoriaStore>()(
         nome: "Doces",
         descricao: "Produtos da linha de doces",
         subcategorias: [
-          { id: 1, nome: "Brownie 38g", categoriaId: 1, quantidadeProdutos: 1, ativo: true },
-          { id: 2, nome: "Brownie 55g", categoriaId: 1, quantidadeProdutos: 0, ativo: true }
+          { id: 1, nome: "Brownie 38g", categoriaId: 1, quantidadeProdutos: 1 },
+          { id: 2, nome: "Brownie 55g", categoriaId: 1, quantidadeProdutos: 0 }
         ],
-        quantidadeProdutos: 1,
-        ativo: true
+        quantidadeProdutos: 1
       },
       {
         id: 2,
         nome: "Food Service",
         descricao: "Produtos para estabelecimentos",
         subcategorias: [
-          { id: 3, nome: "Kits", categoriaId: 2, quantidadeProdutos: 0, ativo: true }
+          { id: 3, nome: "Kits", categoriaId: 2, quantidadeProdutos: 0 }
         ],
-        quantidadeProdutos: 0,
-        ativo: true
+        quantidadeProdutos: 0
       }
     ],
     
@@ -62,8 +61,7 @@ export const useCategoriaStore = create<CategoriaStore>()(
         nome,
         descricao,
         subcategorias: [],
-        quantidadeProdutos: 0,
-        ativo: true
+        quantidadeProdutos: 0
       });
     }),
     
@@ -102,8 +100,7 @@ export const useCategoriaStore = create<CategoriaStore>()(
           id,
           nome,
           categoriaId,
-          quantidadeProdutos: 0,
-          ativo: true
+          quantidadeProdutos: 0
         });
       }
     }),

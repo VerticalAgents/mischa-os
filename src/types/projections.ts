@@ -1,79 +1,63 @@
 
-export type Channel = 'Delivery' | 'B2B' | 'Eventos' | 'Varejo' | 'B2B-Revenda' | 'B2B-FoodService' | 'B2C-UFCSPA' | 'B2C-Personalizados' | 'B2C-Outros';
+import { Cliente } from './index';
 
-export interface ProjectionParams {
-  startDate: Date;
-  endDate: Date;
-  initialValue: number;
-  growthRate: number;
-  seasonality: boolean;
+export type Channel = 'B2B-Revenda' | 'B2B-FoodService' | 'B2C-UFCSPA' | 'B2C-Personalizados' | 'B2C-Outros';
+
+export interface ClienteChannel {
+  idCliente: number;
+  channel: Channel;
 }
 
-export interface ProjectionScenario {
-  id: string;
-  name: string;
-  params: ProjectionParams;
-  channels: {
-    channel: Channel;
-    percentage: number;
-  }[];
-  data: ProjectionData[];
-}
-
-export interface ProjectionData {
-  month: string;
+export interface ChannelData {
+  channel: Channel;
+  volume: number;
   revenue: number;
-  cogs: number;
-  grossProfit: number;
-  grossMargin: number;
-  channelRevenues: {
-    channel: Channel;
-    revenue: number;
-  }[];
-}
-
-export interface DREData {
-  id: string;
-  name: string;
-  totalRevenue: number;
-  channelsData: {
-    channel: Channel;
-    revenue: number;
-    percentage: number;
-    volume?: number;
-    variableCosts?: number;
-    margin?: number;
-    marginPercent?: number;
-  }[];
-  grossProfit?: number;
-  grossMargin?: number;
-  totalVariableCosts?: number;
-  totalFixedCosts?: number;
-  totalCosts?: number;
-  fixedCosts?: CostItem[];
-  totalAdministrativeCosts?: number;
-  administrativeCosts?: CostItem[];
-  operationalResult?: number;
-  operationalMargin?: number;
-  monthlyDepreciation?: number;
-  ebitda?: number;
-  ebitdaMargin?: number;
-  totalInvestment?: number;
-  paybackMonths?: number;
-  breakEvenPoint?: number;
-  channelGrowthFactors?: Record<string, { type: "percentage" | "absolute", value: number }>;
-  investments?: InvestmentItem[];
+  variableCosts: number;
+  margin: number;
+  marginPercent: number;
 }
 
 export interface CostItem {
   name: string;
   value: number;
+  isPercentage?: boolean;
 }
 
 export interface InvestmentItem {
   name: string;
   value: number;
-  depreciationMonths: number;
-  depreciationYears?: number;
-  monthlyDepreciation?: number;
+  depreciationYears: number;
+  monthlyDepreciation: number;
+}
+
+export interface DREData {
+  id: string;
+  name: string;
+  isBase: boolean;
+  createdAt: Date;
+  channelsData: ChannelData[];
+  fixedCosts: CostItem[];
+  administrativeCosts: CostItem[];
+  investments: InvestmentItem[];
+  // Calculated fields
+  totalRevenue: number;
+  totalVariableCosts: number;
+  totalFixedCosts: number;
+  totalAdministrativeCosts: number;
+  totalCosts: number;
+  grossProfit: number;
+  grossMargin: number;
+  operationalResult: number;
+  operationalMargin: number;
+  totalInvestment: number;
+  monthlyDepreciation: number;
+  ebitda: number;
+  ebitdaMargin: number;
+  breakEvenPoint: number;
+  paybackMonths: number;
+  // Included/excluded clients for scenarios
+  includedClients?: number[];
+  excludedClients?: number[];
+  // Growth factors for scenarios
+  channelGrowthFactors?: Record<Channel, { type: 'percentage' | 'absolute', value: number }>;
 }

@@ -11,6 +11,7 @@ import {
 import { useAlertaStore } from "@/hooks/useAlertaStore";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 export default function AlertaIndicator() {
   const { alertas, marcarComoLida, marcarTodasComoLidas } = useAlertaStore(
