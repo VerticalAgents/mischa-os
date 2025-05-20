@@ -3,6 +3,13 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "@/hooks/use-toast";
 import { Insumo, CategoriaInsumo, UnidadeMedida } from '@/types';
+import { v4 as uuidv4 } from 'uuid';
+
+// Custom category type
+interface CategoriaPersonalizada {
+  id: string;
+  nome: string;
+}
 
 // Mock data for insumos
 const insumosMock: Insumo[] = [
@@ -62,19 +69,38 @@ const insumosMock: Insumo[] = [
   }
 ];
 
+// Initial custom categories
+const categoriasPersonalizadasMock: CategoriaPersonalizada[] = [
+  {
+    id: uuidv4(),
+    nome: "Material de Limpeza"
+  },
+  {
+    id: uuidv4(),
+    nome: "Utensílios de Cozinha"
+  }
+];
+
 interface InsumoStore {
   insumos: Insumo[];
   insumoAtual: Insumo | null;
+  categoriasPersonalizadas: CategoriaPersonalizada[];
   
-  // Ações
+  // Ações para Insumos
   adicionarInsumo: (insumo: Omit<Insumo, 'id' | 'custoUnitario'>) => Insumo;
   atualizarInsumo: (id: number, dados: Partial<Omit<Insumo, 'id' | 'custoUnitario'>>) => void;
   removerInsumo: (id: number) => void;
   
+  // Ações para Categorias Personalizadas
+  adicionarCategoria: (nome: string) => void;
+  editarCategoria: (id: string, nome: string) => void;
+  removerCategoria: (id: string) => void;
+  
   // Getters
-  getInsumosPorCategoria: (categoria: CategoriaInsumo) => Insumo[];
+  getInsumosPorCategoria: (categoria: CategoriaInsumo | string) => Insumo[];
   getInsumoPorId: (id: number) => Insumo | undefined;
   getAllInsumos: () => Insumo[];
+  getAllCategorias: () => (CategoriaInsumo | string)[];
 }
 
 export const useInsumoStore = create<InsumoStore>()(
@@ -82,6 +108,7 @@ export const useInsumoStore = create<InsumoStore>()(
     (set, get) => ({
       insumos: insumosMock,
       insumoAtual: null,
+      categoriasPersonalizadas: categoriasPersonalizadasMock,
       
       adicionarInsumo: (insumo) => {
         const novoId = Math.max(0, ...get().insumos.map(i => i.id)) + 1;
@@ -154,6 +181,97 @@ export const useInsumoStore = create<InsumoStore>()(
         });
       },
       
+      adicionarCategoria: (nome) => {
+        // Verificar se já existe uma categoria com esse nome
+        const categoriasPadroes: CategoriaInsumo[] = ["Matéria Prima", "Embalagem", "Outros"];
+        const todasCategorias = [...categoriasPadroes, ...get().categoriasPersonalizadas.map(c => c.nome)];
+        
+        if (todasCategorias.includes(nome)) {
+          toast({
+            title: "Erro",
+            description: "Já existe uma categoria com esse nome",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        set(state => ({
+          categoriasPersonalizadas: [
+            ...state.categoriasPersonalizadas, 
+            { id: uuidv4(), nome }
+          ]
+        }));
+        
+        toast({
+          title: "Categoria adicionada",
+          description: `Categoria "${nome}" adicionada com sucesso`
+        });
+      },
+      
+      editarCategoria: (id, novoNome) => {
+        const categoriaAtual = get().categoriasPersonalizadas.find(c => c.id === id);
+        if (!categoriaAtual) return;
+        
+        // Verificar se já existe outra categoria com esse nome
+        const categoriasPadroes: CategoriaInsumo[] = ["Matéria Prima", "Embalagem", "Outros"];
+        const outrasCategoriasPersonalizadas = get().categoriasPersonalizadas
+          .filter(c => c.id !== id)
+          .map(c => c.nome);
+        
+        if ([...categoriasPadroes, ...outrasCategoriasPersonalizadas].includes(novoNome)) {
+          toast({
+            title: "Erro",
+            description: "Já existe uma categoria com esse nome",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        // Atualizar o nome da categoria
+        set(state => ({
+          categoriasPersonalizadas: state.categoriasPersonalizadas.map(c => 
+            c.id === id ? { ...c, nome: novoNome } : c
+          ),
+          // Atualizar também os insumos que usam essa categoria
+          insumos: state.insumos.map(insumo => 
+            insumo.categoria === categoriaAtual.nome 
+              ? { ...insumo, categoria: novoNome } 
+              : insumo
+          )
+        }));
+        
+        toast({
+          title: "Categoria atualizada",
+          description: `Categoria atualizada para "${novoNome}"`
+        });
+      },
+      
+      removerCategoria: (id) => {
+        const categoria = get().categoriasPersonalizadas.find(c => c.id === id);
+        if (!categoria) return;
+        
+        // Verificar se há insumos usando essa categoria
+        const insumosNaCategoria = get().insumos.filter(i => i.categoria === categoria.nome);
+        
+        if (insumosNaCategoria.length > 0) {
+          toast({
+            title: "Erro",
+            description: `Não é possível remover esta categoria pois existem ${insumosNaCategoria.length} insumo(s) vinculado(s)`,
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        set(state => ({
+          categoriasPersonalizadas: state.categoriasPersonalizadas.filter(c => c.id !== id)
+        }));
+        
+        toast({
+          title: "Categoria removida",
+          description: `Categoria "${categoria.nome}" removida com sucesso`
+        });
+      },
+      
       getInsumosPorCategoria: (categoria) => {
         return get().insumos.filter(i => i.categoria === categoria);
       },
@@ -164,6 +282,12 @@ export const useInsumoStore = create<InsumoStore>()(
       
       getAllInsumos: () => {
         return get().insumos;
+      },
+      
+      getAllCategorias: () => {
+        const categoriasPadroes: CategoriaInsumo[] = ["Matéria Prima", "Embalagem", "Outros"];
+        const categoriasPersonalizadas = get().categoriasPersonalizadas.map(c => c.nome);
+        return [...categoriasPadroes, ...categoriasPersonalizadas];
       }
     }),
     { name: 'insumo-store' }
