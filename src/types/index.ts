@@ -1,10 +1,11 @@
+
 export type Representante = {
   id: number;
   nome: string;
   email: string;
   telefone: string;
   ativo: boolean;
-  comissao?: number; // Added missing property
+  comissao?: number; // Added property
 };
 
 export type RotaEntrega = {
@@ -12,9 +13,9 @@ export type RotaEntrega = {
   nome: string;
   descricao: string;
   ativo: boolean;
-  diasSemana?: string[]; // Added missing property
-  horarioInicio?: string; // Added for config data
-  horarioFim?: string; // Added for config data
+  diasSemana?: string[]; // Added property
+  horarioInicio?: string;
+  horarioFim?: string;
 };
 
 export type CategoriaEstabelecimento = {
@@ -27,8 +28,8 @@ export type CategoriaEstabelecimento = {
 export type TipoLogistica = {
   id: number;
   nome: string;
-  descricao?: string;  // Optional to match usage in TiposLogisticaList
-  percentualLogistico: number; // Added missing property
+  descricao?: string;
+  percentualLogistico: number; // Required property
   ativo: boolean;
 };
 
@@ -43,7 +44,7 @@ export type ConfiguracoesProducao = {
   tempoPreparoPadrao: number;
   custoHoraProducao: number;
   margemLucroDesejada: number;
-  margemLucroPadrao?: number; // Added for configData.ts
+  margemLucroPadrao?: number; // Added property
   incluirPedidosPrevistos?: boolean;
   formasPorLote?: number;
   unidadesPorForma?: number;
@@ -93,14 +94,14 @@ export interface Cliente {
   statusAgendamento?: string;
   proximaDataReposicao?: Date;
   metaGiroSemanal?: number;
-  observacoes?: string; // Added for ClienteFormDialog
-  ultimaDataReposicaoEfetiva?: Date; // Added missing property
-}
+  observacoes?: string;
+  ultimaDataReposicaoEfetiva?: Date; // Added property
+};
 
 // Pedido types
 export type StatusPedido = 'Agendado' | 'Em Separação' | 'Despachado' | 'Entregue' | 'Cancelado';
 export type SubstatusPedidoAgendado = 'Agendado' | 'Separado' | 'Despachado' | 'Entregue' | 'Retorno';
-export type TipoPedido = 'Padrão' | 'Alterado'; // Added type for tipoPedido
+export type TipoPedido = 'Padrão' | 'Alterado';
 
 export interface PedidoItem {
   id: number;
@@ -112,26 +113,26 @@ export interface PedidoItem {
 export interface Pedido {
   id: number;
   clienteId: number;
-  cliente?: Cliente; // Added to match references in components
+  cliente?: Cliente;
   dataPedido: Date;
   dataEntrega: Date;
-  dataPrevistaEntrega?: Date; // Added to match references
-  dataEfetivaEntrega?: Date; // Added to match references
+  dataPrevistaEntrega?: Date;
+  dataEfetivaEntrega?: Date;
   status: StatusPedido;
-  statusPedido?: StatusPedido; // Added to match legacy references
+  statusPedido?: StatusPedido;
   substatus?: SubstatusPedidoAgendado;
-  substatusPedido?: SubstatusPedidoAgendado; // Added to match legacy references
+  substatusPedido?: SubstatusPedidoAgendado;
   itens: PedidoItem[];
-  itensPedido?: ItemPedido[]; // Added for legacy references
+  itensPedido?: ItemPedido[];
   valorTotal: number;
   observacoes?: string;
-  totalPedidoUnidades?: number; // Added to match references
-  idCliente?: number; // Added to support legacy usage
-  tipoPedido?: TipoPedido; // Added for SeparacaoPedidos.tsx
+  totalPedidoUnidades?: number;
+  idCliente?: number;
+  tipoPedido?: TipoPedido;
   historicoAlteracoesStatus?: AlteracaoStatusPedido[];
 }
 
-// Add missing ItemPedido and AlteracaoStatusPedido types 
+// Updated ItemPedido and AlteracaoStatusPedido types
 export interface ItemPedido {
   id: number;
   idPedido: number;
@@ -155,10 +156,10 @@ export interface AlteracaoStatusPedido {
 export interface ProdutoCategoria {
   id: number;
   nome: string;
-  descricao?: string; // Made optional to match usage in components
+  descricao?: string;
   ativo: boolean;
   subcategorias: ProdutoSubcategoria[];
-  quantidadeProdutos?: number; // Added for categoria store
+  quantidadeProdutos?: number; // Added property
 }
 
 export interface ProdutoSubcategoria {
@@ -166,7 +167,7 @@ export interface ProdutoSubcategoria {
   categoriaId: number;
   nome: string;
   ativo: boolean;
-  quantidadeProdutos?: number; // Added for categoria store
+  quantidadeProdutos?: number; // Added property
 }
 
 // Dashboard data
@@ -198,15 +199,25 @@ export interface Sabor {
   nome: string;
   ativo: boolean;
   saldoAtual?: number;
+  percentualPadraoDist?: number; // Added property
 }
 
 export interface Produto {
   id: number;
   nome: string;
+  descricao?: string; // Added property
   categoriaId: number;
   subcategoriaId: number;
   componentes: ComponenteProduto[];
   ativo: boolean;
+  categoria?: string; // Added property
+  custoUnitario?: number; // Added property
+  custoTotal?: number; // Added property
+  pesoUnitario?: number; // Added property
+  unidadesProducao?: number; // Added property
+  estoqueMinimo?: number; // Added property
+  precoVenda?: number; // Added property for compatibility
+  margemLucro?: number; // Added property for compatibility
 }
 
 export interface ComponenteProduto {
@@ -214,21 +225,29 @@ export interface ComponenteProduto {
   nome: string;
   tipo: TipoComponente;
   quantidade: number;
+  idItem?: number; // Added property
+  custo?: number; // Added property
 }
 
-export type TipoComponente = 'Insumo' | 'Outro';
+export type TipoComponente = 'Insumo' | 'Outro' | 'Receita';
 
 export interface ReceitaBase {
   id: number;
   nome: string;
-  rendimento: number;
+  rendimento?: number;
   itens: ItemReceita[];
+  pesoTotal?: number; // Added property
+  custoTotal?: number; // Added property
+  itensReceita?: ItemReceita[]; // Added property for compatibility
 }
 
 export interface ItemReceita {
   id: number;
   insumoId: number;
+  idInsumo?: number; // Added for compatibility
   quantidade: number;
+  custo?: number; // Added property
+  insumo?: { nome: string; unidadeMedida?: string }; // Added property
 }
 
 export interface Alerta {
@@ -237,6 +256,7 @@ export interface Alerta {
   mensagem: string;
   tipo: string;
   data: Date;
+  dataAlerta: Date; // Added property
   lido: boolean;
   link?: string;
 }
@@ -263,7 +283,7 @@ export type {
   ProjectionScenario, 
   ProjectionData,
   DREData,
-  Channel,  // Make sure to export Channel directly
+  Channel,
   CostItem,
   InvestmentItem  
 } from './projections';

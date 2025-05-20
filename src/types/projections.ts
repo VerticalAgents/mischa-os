@@ -43,16 +43,16 @@ export interface DREData {
     volume?: number;
     variableCosts?: number;
     margin?: number;
-    marginPercent?: number; // Added for ScenarioForm.tsx
+    marginPercent?: number;
   }[];
   grossProfit?: number;
   grossMargin?: number;
   totalVariableCosts?: number;
   totalFixedCosts?: number;
-  totalCosts?: number; // Added for ScenarioForm.tsx
-  fixedCosts?: Array<{name: string, value: number}>;
+  totalCosts?: number;
+  fixedCosts?: CostItem[];
   totalAdministrativeCosts?: number;
-  administrativeCosts?: Array<{name: string, value: number}>;
+  administrativeCosts?: CostItem[];
   operationalResult?: number;
   operationalMargin?: number;
   monthlyDepreciation?: number;
@@ -61,7 +61,7 @@ export interface DREData {
   totalInvestment?: number;
   paybackMonths?: number;
   breakEvenPoint?: number;
-  channelGrowthFactors?: Record<Channel, { type: "percentage" | "absolute", value: number }>;
+  channelGrowthFactors?: Record<string, { type: "percentage" | "absolute", value: number }>;
   investments?: InvestmentItem[];
 }
 
@@ -74,6 +74,6 @@ export interface InvestmentItem {
   name: string;
   value: number;
   depreciationMonths: number;
-  depreciationYears?: number; // Added for ScenarioForm.tsx
-  monthlyDepreciation?: number; // Added for ScenarioForm.tsx
+  depreciationYears?: number;
+  monthlyDepreciation?: number;
 }
