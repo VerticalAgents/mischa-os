@@ -1,3 +1,4 @@
+
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { Produto, ComponenteProduto, TipoComponente } from "@/types";
@@ -6,17 +7,44 @@ type ProdutoEdit = Omit<Produto, "id" | "custoTotal" | "margemLucro" | "componen
 
 interface ProdutoStore {
   produtos: Produto[];
-  adicionarProduto: (nome: string, descricao?: string, unidadesProducao?: number) => void;
+  adicionarProduto: (produto: z.infer<typeof formSchema>) => void;
   adicionarComponenteReceita: (idProduto: number, idReceita: number, quantidade: number) => void;
   adicionarComponenteInsumo: (idProduto: number, idInsumo: number, quantidade: number) => void;
   atualizarComponente: (idProduto: number, idComponente: number, quantidade: number) => void;
   removerComponente: (idProduto: number, idComponente: number) => void;
-  atualizarProduto: (id: number, produto: Partial<ProdutoEdit>) => void;
+  atualizarProduto: (id: number, produto: Partial<z.infer<typeof formSchema>>) => void;
   removerProduto: (id: number) => void;
   calcularCustoProduto: (produto: Produto) => number;
   getAllProdutos: () => Produto[];
   atualizarEstoqueMinimo: (id: number, estoqueMinimo: number) => void;
 }
+
+// This schema is the same as in ProdutosTab.tsx but needs to be duplicated here to avoid circular imports
+import * as z from "zod";
+
+const formSchema = z.object({
+  nome: z.string().min(2, {
+    message: "Nome deve ter pelo menos 2 caracteres.",
+  }),
+  descricao: z.string().optional(),
+  categoriaId: z.number().min(1, {
+    message: "Categoria é obrigatória.",
+  }),
+  subcategoriaId: z.number().min(1, {
+    message: "Subcategoria é obrigatória.",
+  }),
+  ativo: z.boolean().default(true),
+  componentes: z.array(
+    z.object({
+      id: z.number(),
+      nome: z.string(),
+      tipo: z.enum(["Insumo", "Receita", "Outro"]),
+      quantidade: z.number(),
+      idItem: z.number().optional(),
+      custo: z.number().optional(),
+    })
+  ),
+});
 
 export const useProdutoStore = create<ProdutoStore>()(
   immer((set, get) => ({
@@ -31,26 +59,18 @@ export const useProdutoStore = create<ProdutoStore>()(
         componentes: [
           {
             id: 1,
-            idProduto: 1,
-            idReceita: 1,
-            nomeReceita: "Massa Brownie Tradicional",
-            quantidade: 35,
-            custoParcial: 1.85,
-            tipo: "Receita",
-            idItem: 1,
             nome: "Massa Brownie Tradicional",
+            tipo: "Receita",
+            quantidade: 35,
+            idItem: 1,
             custo: 1.85
           },
           {
             id: 2,
-            idProduto: 1,
-            idReceita: 0,
-            nomeReceita: "",
-            quantidade: 1,
-            custoParcial: 1.00,
-            tipo: "Insumo",
-            idItem: 3,
             nome: "Embalagem Individual",
+            tipo: "Insumo",
+            quantidade: 1,
+            idItem: 3,
             custo: 1.00
           }
         ],
@@ -65,24 +85,24 @@ export const useProdutoStore = create<ProdutoStore>()(
       }
     ],
     
-    adicionarProduto: (nome, descricao, unidadesProducao = 1) => set(state => {
+    adicionarProduto: (produto) => set(state => {
       const id = state.produtos.length > 0 ? Math.max(...state.produtos.map(p => p.id)) + 1 : 1;
       state.produtos.push({
         id,
-        nome,
-        descricao,
+        nome: produto.nome,
+        descricao: produto.descricao,
+        categoriaId: produto.categoriaId,
+        subcategoriaId: produto.subcategoriaId,
         precoVenda: 0,
         custoTotal: 0,
         margemLucro: 0,
-        componentes: [],
-        ativo: true,
-        unidadesProducao,
+        componentes: produto.componentes || [],
+        ativo: produto.ativo,
+        unidadesProducao: 1,
         pesoUnitario: 0,
         custoUnitario: 0,
         categoria: "Não categorizado",
-        estoqueMinimo: 0,
-        categoriaId: 0,
-        subcategoriaId: 0
+        estoqueMinimo: 0
       });
     }),
     
@@ -99,14 +119,10 @@ export const useProdutoStore = create<ProdutoStore>()(
         
         state.produtos[produtoIndex].componentes.push({
           id,
-          idProduto,
-          idReceita,
-          nomeReceita,
-          quantidade,
-          custoParcial,
-          tipo: "Receita" as TipoComponente,
-          idItem: idReceita,
           nome: nomeReceita,
+          tipo: "Receita",
+          quantidade,
+          idItem: idReceita,
           custo: custoParcial
         });
         
@@ -137,14 +153,10 @@ export const useProdutoStore = create<ProdutoStore>()(
         
         state.produtos[produtoIndex].componentes.push({
           id,
-          idProduto,
-          idReceita: 0,
-          nomeReceita: "",
-          quantidade,
-          custoParcial,
-          tipo: "Insumo" as TipoComponente,
-          idItem: idInsumo,
           nome: nomeInsumo,
+          tipo: "Insumo",
+          quantidade,
+          idItem: idInsumo,
           custo: custoParcial
         });
         
@@ -167,9 +179,14 @@ export const useProdutoStore = create<ProdutoStore>()(
           // Atualizar quantidade
           state.produtos[produtoIndex].componentes[componenteIndex].quantidade = quantidade;
           
-          // Recalcular custo parcial
+          // Recalcular custo 
           const componente = state.produtos[produtoIndex].componentes[componenteIndex];
-          componente.custoParcial = componente.custo * quantidade;
+          if (componente.custo) {
+            // Calcular o custo unitário (custo por unidade de quantidade)
+            const custoUnitario = componente.custo / componente.quantidade;
+            // Atualizar o custo com base na nova quantidade
+            componente.custo = custoUnitario * quantidade;
+          }
           
           // Atualizar custo total
           state.produtos[produtoIndex].custoTotal = get().calcularCustoProduto(state.produtos[produtoIndex]);
@@ -202,7 +219,15 @@ export const useProdutoStore = create<ProdutoStore>()(
     atualizarProduto: (id, produto) => set(state => {
       const produtoIndex = state.produtos.findIndex(p => p.id === id);
       if (produtoIndex !== -1) {
-        state.produtos[produtoIndex] = { ...state.produtos[produtoIndex], ...produto };
+        state.produtos[produtoIndex] = { 
+          ...state.produtos[produtoIndex], 
+          nome: produto.nome || state.produtos[produtoIndex].nome,
+          descricao: produto.descricao,
+          categoriaId: produto.categoriaId || state.produtos[produtoIndex].categoriaId,
+          subcategoriaId: produto.subcategoriaId || state.produtos[produtoIndex].subcategoriaId,
+          ativo: produto.ativo ?? state.produtos[produtoIndex].ativo,
+          componentes: produto.componentes || state.produtos[produtoIndex].componentes
+        };
         
         // Update categoria field if categoriaId was changed
         if (produto.categoriaId) {
@@ -231,7 +256,7 @@ export const useProdutoStore = create<ProdutoStore>()(
     }),
     
     calcularCustoProduto: (produto) => {
-      return produto.componentes.reduce((total, componente) => total + componente.custoParcial, 0);
+      return produto.componentes.reduce((total, componente) => total + (componente.custo || 0), 0);
     },
     
     getAllProdutos: () => get().produtos

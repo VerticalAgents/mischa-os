@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,7 +21,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,6 +43,7 @@ import {
 import { useProdutoStore } from "@/hooks/useProdutoStore";
 import { useCategoriaStore } from "@/hooks/useCategoriaStore";
 import { Produto, ComponenteProduto, TipoComponente } from "@/types";
+import { Form, FormField, FormItem, FormControl } from "@/components/ui/form";
 import { ReceitasModal } from "./modals/ReceitasModal";
 import { InsumosModal } from "./modals/InsumosModal";
 
@@ -77,7 +78,8 @@ export default function ProdutosTab() {
     adicionarProduto,
     atualizarProduto,
     removerProduto,
-    adicionarComponente,
+    adicionarComponenteReceita,
+    adicionarComponenteInsumo,
     atualizarComponente,
     removerComponente,
   } = useProdutoStore();
@@ -148,10 +150,7 @@ export default function ProdutosTab() {
 
   const handleSave = (values: z.infer<typeof formSchema>) => {
     if (currentProduto) {
-      atualizarProduto(currentProduto.id, {
-        ...values,
-        componentes: values.componentes,
-      });
+      atualizarProduto(currentProduto.id, values);
       toast({
         title: "Produto Atualizado",
         description: "Produto atualizado com sucesso.",
@@ -159,7 +158,6 @@ export default function ProdutosTab() {
     } else {
       adicionarProduto({
         ...values,
-        componentes: values.componentes,
       });
       toast({
         title: "Produto Adicionado",
@@ -236,6 +234,7 @@ export default function ProdutosTab() {
                   variant="outline"
                   size="sm"
                   onClick={() => handleEdit(produto)}
+                  className="mr-2"
                 >
                   <Pencil className="h-4 w-4 mr-2" />
                   Editar
@@ -254,7 +253,7 @@ export default function ProdutosTab() {
         </TableBody>
       </Table>
 
-      <Dialog open={open} onOpenChange={() => setOpen(false)}>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
