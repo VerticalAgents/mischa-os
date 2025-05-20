@@ -227,18 +227,21 @@ export const useInsumoStore = create<InsumoStore>()(
           return;
         }
         
-        // Atualizar o nome da categoria
-        set(state => ({
-          categoriasPersonalizadas: state.categoriasPersonalizadas.map(c => 
-            c.id === id ? { ...c, nome: novoNome } : c
-          ),
-          // Atualizar também os insumos que usam essa categoria
-          insumos: state.insumos.map(insumo => 
+        // Use a type assertion to fix the type compatibility issue
+        set((state) => {
+          const updatedInsumos = state.insumos.map(insumo => 
             insumo.categoria === categoriaAtual.nome 
-              ? { ...insumo, categoria: novoNome } 
+              ? { ...insumo, categoria: novoNome as CategoriaInsumo } 
               : insumo
-          )
-        }));
+          );
+          
+          return {
+            categoriasPersonalizadas: state.categoriasPersonalizadas.map(c => 
+              c.id === id ? { ...c, nome: novoNome } : c
+            ),
+            insumos: updatedInsumos
+          };
+        });
         
         toast({
           title: "Categoria atualizada",
