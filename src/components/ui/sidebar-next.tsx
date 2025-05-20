@@ -1,4 +1,5 @@
 
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
@@ -30,7 +31,6 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useLocation } from "react-router-dom";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -150,7 +150,7 @@ export function SessionNavBar() {
                           pathname === item.path && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
                         )}
                       >
-                        {React.cloneElement(item.icon as React.ReactElement, { className: "h-4 w-4" })}
+                        {React.cloneElement(item.icon, { className: "h-4 w-4" })}
                         <motion.li variants={variants}>
                           {!isCollapsed && (
                             <p className="ml-2 text-sm">{item.label}</p>
@@ -171,7 +171,7 @@ export function SessionNavBar() {
                           pathname === item.path && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
                         )}
                       >
-                        {React.cloneElement(item.icon as React.ReactElement, { className: "h-4 w-4" })}
+                        {React.cloneElement(item.icon, { className: "h-4 w-4" })}
                         <motion.li variants={variants}>
                           {!isCollapsed && (
                             <p className="ml-2 text-sm">{item.label}</p>
