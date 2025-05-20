@@ -1,10 +1,9 @@
 
 import { ReactNode, useState, useEffect } from "react";
-import { Sidebar, SidebarBody } from "@/components/ui/sidebar-animated";
-import SidebarContent from "@/components/layout/SidebarContent";
+import { useThemeStore } from "@/lib/theme";
 import MobileHeader from "@/components/layout/MobileHeader";
 import MobileMenuOverlay from "@/components/layout/MobileMenuOverlay";
-import { useThemeStore } from "@/lib/theme";
+import { SessionNavBar } from "@/components/ui/sidebar-next";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -12,7 +11,6 @@ type AppLayoutProps = {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const { isDark } = useThemeStore();
 
   // Apply theme when the isDark state changes
@@ -29,11 +27,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen flex w-full bg-background">
-      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} animate>
-        <SidebarBody className="flex flex-col">
-          <SidebarContent />
-        </SidebarBody>
-      </Sidebar>
+      {/* Nova sidebar com animações fluidas */}
+      <SessionNavBar />
 
       {/* Mobile Header */}
       <MobileHeader 
@@ -48,8 +43,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
         />
       )}
 
-      {/* Main Content - adjusted to account for fixed sidebar */}
-      <main className={`flex-1 overflow-auto pt-14 lg:pt-0 ${sidebarOpen ? 'ml-64' : 'ml-16'} transition-all`}>
+      {/* Main Content - adjusts automatically with the sidebar */}
+      <main className="flex-1 overflow-auto pt-14 lg:pt-0 ml-[3.05rem] transition-all">
         <div className="container py-6 max-w-7xl mx-auto">
           {children}
         </div>
