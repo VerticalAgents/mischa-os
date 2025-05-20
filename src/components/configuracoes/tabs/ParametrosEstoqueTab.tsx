@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useConfigStore } from "@/hooks/useConfigStore";
 import { useToast } from "@/hooks/use-toast";
 import {

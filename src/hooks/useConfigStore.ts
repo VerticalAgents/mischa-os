@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { 
@@ -7,16 +8,18 @@ import {
   TipoLogistica, 
   FormaPagamento,
   ConfiguracoesProducao,
-  CategoriaInsumoParam
+  CategoriaInsumoParam,
+  Sabor
 } from '@/types';
 import { 
-  representantesMock, 
-  rotasEntregaMock, 
-  categoriasEstabelecimentoMock,
-  tiposLogisticaMock,
-  formasPagamentoMock,
-  configuracoesProducaoMock,
-  categoriasInsumoMock
+  representantes, 
+  rotasEntrega, 
+  categoriasEstabelecimento,
+  tiposLogistica,
+  formasPagamento,
+  configuracoesProducao,
+  categoriasInsumoParam,
+  saboresMock
 } from '@/data/configData';
 
 interface ConfigStore {
@@ -27,6 +30,7 @@ interface ConfigStore {
   formasPagamento: FormaPagamento[];
   configuracoesProducao: ConfiguracoesProducao;
   categoriasInsumo: CategoriaInsumoParam[];
+  sabores: Sabor[];
 
   // Ações para Representantes
   adicionarRepresentante: (representante: Omit<Representante, 'id'>) => void;
@@ -61,6 +65,11 @@ interface ConfigStore {
   atualizarCategoriaInsumo: (id: number, dados: Partial<CategoriaInsumoParam>) => void;
   removerCategoriaInsumo: (id: number) => void;
 
+  // Ações para Sabores
+  adicionarSabor: (sabor: Omit<Sabor, 'id'>) => void;
+  atualizarSabor: (id: number, dados: Partial<Sabor>) => void;
+  removerSabor: (id: number) => void;
+
   // Getters
   getRepresentanteAtivo: () => Representante[];
   getRotaAtiva: () => RotaEntrega[];
@@ -68,18 +77,20 @@ interface ConfigStore {
   getTipoLogisticaAtivo: () => TipoLogistica[];
   getFormaPagamentoAtiva: () => FormaPagamento[];
   getCategoriaInsumoAtiva: () => CategoriaInsumoParam[];
+  getSaborAtivo: () => Sabor[];
 }
 
 export const useConfigStore = create<ConfigStore>()(
   devtools(
     (set, get) => ({
-      representantes: representantesMock,
-      rotasEntrega: rotasEntregaMock,
-      categoriasEstabelecimento: categoriasEstabelecimentoMock,
-      tiposLogistica: tiposLogisticaMock,
-      formasPagamento: formasPagamentoMock,
-      configuracoesProducao: configuracoesProducaoMock,
-      categoriasInsumo: categoriasInsumoMock,
+      representantes: representantes,
+      rotasEntrega: rotasEntrega,
+      categoriasEstabelecimento: categoriasEstabelecimento,
+      tiposLogistica: tiposLogistica,
+      formasPagamento: formasPagamento,
+      configuracoesProducao: configuracoesProducao,
+      categoriasInsumo: categoriasInsumoParam,
+      sabores: saboresMock,
 
       // Implementação para Representantes
       adicionarRepresentante: (representante) => {
@@ -260,6 +271,33 @@ export const useConfigStore = create<ConfigStore>()(
         }));
       },
 
+      // Implementação para Sabores
+      adicionarSabor: (sabor) => {
+        set((state) => {
+          const novoId = Math.max(0, ...state.sabores.map(s => s.id)) + 1;
+          return {
+            sabores: [
+              ...state.sabores,
+              { ...sabor, id: novoId }
+            ]
+          };
+        });
+      },
+
+      atualizarSabor: (id, dados) => {
+        set((state) => ({
+          sabores: state.sabores.map(sabor => 
+            sabor.id === id ? { ...sabor, ...dados } : sabor
+          )
+        }));
+      },
+
+      removerSabor: (id) => {
+        set((state) => ({
+          sabores: state.sabores.filter(sabor => sabor.id !== id)
+        }));
+      },
+
       // Getters filtrados
       getRepresentanteAtivo: () => {
         return get().representantes.filter(r => r.ativo);
@@ -284,6 +322,11 @@ export const useConfigStore = create<ConfigStore>()(
       // Getter para Categorias de Insumo ativas
       getCategoriaInsumoAtiva: () => {
         return get().categoriasInsumo.filter(c => c.ativo);
+      },
+
+      // Getter para Sabores ativos
+      getSaborAtivo: () => {
+        return get().sabores.filter(s => s.ativo);
       }
     }),
     { name: 'config-store' }

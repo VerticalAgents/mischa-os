@@ -11,7 +11,6 @@ import {
 import { useAlertaStore } from "@/hooks/useAlertaStore";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 
 export default function AlertaIndicator() {
   const { alertas, marcarComoLida, marcarTodasComoLidas } = useAlertaStore(
@@ -66,7 +65,7 @@ export default function AlertaIndicator() {
                       <p className="text-sm font-medium">{getTipoAlerta(alerta.tipo)}</p>
                       <p className="text-sm text-muted-foreground">{alerta.mensagem}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(alerta.dataAlerta || alerta.data), "dd 'de' MMMM, HH:mm", { locale: ptBR })}
+                        {format(new Date(alerta.data), "dd 'de' MMMM, HH:mm", { locale: ptBR })}
                       </p>
                     </div>
                     <Button 
