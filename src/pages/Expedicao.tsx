@@ -4,6 +4,7 @@ import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SeparacaoPedidos } from "@/components/expedicao/SeparacaoPedidos";
 import { Despacho } from "@/components/expedicao/Despacho";
+import { HistoricoEntregas } from "@/components/expedicao/HistoricoEntregas";
 import { format, isToday, isTomorrow, isYesterday, addBusinessDays, isWeekend } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -35,6 +36,7 @@ export default function Expedicao() {
         <TabsList>
           <TabsTrigger value="separacao">Separação de Pedidos</TabsTrigger>
           <TabsTrigger value="despacho">Despacho de Pedidos</TabsTrigger>
+          <TabsTrigger value="historico">Histórico de Entregas</TabsTrigger>
         </TabsList>
         
         <TabsContent value="separacao" className="space-y-4">
@@ -47,9 +49,6 @@ export default function Expedicao() {
               <TabsTrigger value="hoje" className="data-[state=active]:bg-green-500/10 data-[state=active]:text-green-700">
                 🟢 Entregas de Hoje
               </TabsTrigger>
-              <TabsTrigger value="proximas" className="data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-700">
-                🔵 Próximas Entregas
-              </TabsTrigger>
               <TabsTrigger value="atrasadas" className="data-[state=active]:bg-yellow-500/10 data-[state=active]:text-yellow-700">
                 🟡 Entregas Atrasadas (Ontem)
               </TabsTrigger>
@@ -59,14 +58,14 @@ export default function Expedicao() {
               <Despacho tipoFiltro="hoje" />
             </TabsContent>
             
-            <TabsContent value="proximas">
-              <Despacho tipoFiltro="proximas" />
-            </TabsContent>
-            
             <TabsContent value="atrasadas">
               <Despacho tipoFiltro="atrasadas" />
             </TabsContent>
           </Tabs>
+        </TabsContent>
+        
+        <TabsContent value="historico" className="space-y-4">
+          <HistoricoEntregas />
         </TabsContent>
       </Tabs>
     </div>

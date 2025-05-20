@@ -9,15 +9,29 @@ import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useToast } from "@/hooks/use-toast";
 import { Printer, FileText, Check, Undo } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { addBusinessDays, isWeekend } from "date-fns";
+
+// Helper function to get the next business day
+const getProximoDiaUtil = (data: Date): Date => {
+  const proximaData = addBusinessDays(new Date(data), 1);
+  return isWeekend(proximaData) ? getProximoDiaUtil(proximaData) : proximaData;
+};
 
 export const SeparacaoPedidos = () => {
   const { toast } = useToast();
-  const [activeSubTab, setActiveSubTab] = useState<string>("padrao");
+  const [activeSubTab, setActiveSubTab] = useState<string>("todos");
   const printFrameRef = useRef<HTMLIFrameElement>(null);
   
   // Use individual selectors instead of calling the function directly
   const pedidos = usePedidoStore(state => state.pedidos);
   const atualizarSubstatusPedido = usePedidoStore(state => state.atualizarSubstatusPedido);
+  
+  // Get today's date with time set to beginning of day for comparison
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  
+  // Calculate next business day
+  const proximoDiaUtil = getProximoDiaUtil(hoje);
   
   // Filtrar pedidos em separação/agendados e separá-los por tipo
   const pedidosPadrao = pedidos.filter(p => 
@@ -29,10 +43,23 @@ export const SeparacaoPedidos = () => {
     (p.statusPedido === "Agendado") && 
     p.tipoPedido === "Alterado"
   );
+
+  // Filtrar pedidos para o próximo dia útil que ainda não foram separados
+  const pedidosProximoDia = pedidos.filter(p => {
+    // Converter a data do pedido para o início do dia para comparação consistente
+    const dataPedido = new Date(p.dataPrevistaEntrega);
+    dataPedido.setHours(0, 0, 0, 0);
+    
+    // Verificar se o pedido é para o próximo dia útil e não foi separado ainda
+    return dataPedido.getTime() === proximoDiaUtil.getTime() && 
+           p.substatusPedido !== "Separado" &&
+           p.statusPedido === "Agendado";
+  });
   
   // Ordenar pedidos pelo tamanho do pacote (total de unidades)
   const pedidosPadraoOrdenados = [...pedidosPadrao].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
   const pedidosAlteradosOrdenados = [...pedidosAlterados].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
+  const pedidosProximoDiaOrdenados = [...pedidosProximoDia].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
   
   // Nova lista combinada para a subaba "Todos os Pedidos"
   const todosPedidos = [
@@ -66,6 +93,8 @@ export const SeparacaoPedidos = () => {
       listaAtual = pedidosPadraoOrdenados;
     } else if (activeSubTab === "alterados") {
       listaAtual = pedidosAlteradosOrdenados;
+    } else if (activeSubTab === "proximos") {
+      listaAtual = pedidosProximoDiaOrdenados;
     } else {
       listaAtual = todosPedidos;
     }
@@ -103,6 +132,9 @@ export const SeparacaoPedidos = () => {
     } else if (activeSubTab === "alterados") {
       listaAtual = pedidosAlteradosOrdenados;
       tipoLista = "Pedidos Alterados";
+    } else if (activeSubTab === "proximos") {
+      listaAtual = pedidosProximoDiaOrdenados;
+      tipoLista = "Próximas Separações";
     } else {
       listaAtual = todosPedidos;
       tipoLista = "Todos os Pedidos";
@@ -315,16 +347,99 @@ export const SeparacaoPedidos = () => {
         </div>
         
         <Tabs 
-          defaultValue="padrao" 
+          defaultValue="todos" 
           value={activeSubTab}
           onValueChange={setActiveSubTab}
           className="w-full"
         >
           <TabsList className="mb-4">
-            <TabsTrigger value="padrao">Pedidos Padrão</TabsTrigger>
-            <TabsTrigger value="alterados">Pedidos Alterados</TabsTrigger>
             <TabsTrigger value="todos">Todos os Pedidos</TabsTrigger>
+            <TabsTrigger value="padrao" className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-green-500"></span> Pedidos Padrão
+            </TabsTrigger>
+            <TabsTrigger value="alterados" className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-red-500"></span> Pedidos Alterados
+            </TabsTrigger>
+            <TabsTrigger value="proximos" className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-blue-500"></span> Próximas Separações
+            </TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="todos">
+            {todosPedidos.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Total Unidades</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Sabores</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {todosPedidos.map((pedido) => (
+                    <TableRow key={pedido.id}>
+                      <TableCell>{pedido.cliente?.nome || "Pedido Único"}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          pedido.tipoPedido === "Padrão" 
+                            ? "bg-green-100 text-green-800" 
+                            : "bg-red-100 text-red-800"
+                        }`}>
+                          {pedido.tipoPedido}
+                        </span>
+                      </TableCell>
+                      <TableCell>{pedido.totalPedidoUnidades}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={pedido.statusPedido} />
+                        {pedido.substatusPedido && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({pedido.substatusPedido})
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-[300px] truncate">
+                        {pedido.itensPedido.map(item => 
+                          `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
+                        ).join(", ")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          {pedido.substatusPedido === "Separado" ? (
+                            <Button
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => desfazerSeparacao(pedido.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <Undo className="h-4 w-4" />
+                              Desfazer
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => confirmarSeparacaoPedido(pedido.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <Check className="h-4 w-4" />
+                              Confirmar Separação
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-6 text-muted-foreground">
+                Não há pedidos para separação.
+              </div>
+            )}
+          </TabsContent>
           
           <TabsContent value="padrao">
             {pedidosPadraoOrdenados.length > 0 ? (
@@ -462,42 +577,35 @@ export const SeparacaoPedidos = () => {
             )}
           </TabsContent>
           
-          {/* Nova subaba "Todos os Pedidos" */}
-          <TabsContent value="todos">
-            {todosPedidos.length > 0 ? (
+          {/* Nova aba "Próximas Separações" */}
+          <TabsContent value="proximos">
+            {pedidosProximoDiaOrdenados.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Cliente</TableHead>
+                    <TableHead>Data Entrega</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Total Unidades</TableHead>
-                    <TableHead>Status</TableHead>
                     <TableHead>Sabores</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {todosPedidos.map((pedido) => (
+                  {pedidosProximoDiaOrdenados.map((pedido) => (
                     <TableRow key={pedido.id}>
                       <TableCell>{pedido.cliente?.nome || "Pedido Único"}</TableCell>
+                      <TableCell>{formatDate(new Date(pedido.dataPrevistaEntrega))}</TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           pedido.tipoPedido === "Padrão" 
-                            ? "bg-blue-100 text-blue-800" 
-                            : "bg-amber-100 text-amber-800"
+                            ? "bg-green-100 text-green-800" 
+                            : "bg-red-100 text-red-800"
                         }`}>
                           {pedido.tipoPedido}
                         </span>
                       </TableCell>
                       <TableCell>{pedido.totalPedidoUnidades}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={pedido.statusPedido} />
-                        {pedido.substatusPedido && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            ({pedido.substatusPedido})
-                          </span>
-                        )}
-                      </TableCell>
                       <TableCell className="max-w-[300px] truncate">
                         {pedido.itensPedido.map(item => 
                           `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
@@ -505,27 +613,15 @@ export const SeparacaoPedidos = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {pedido.substatusPedido === "Separado" ? (
-                            <Button
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => desfazerSeparacao(pedido.id)}
-                              className="flex items-center gap-1"
-                            >
-                              <Undo className="h-4 w-4" />
-                              Desfazer
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => confirmarSeparacaoPedido(pedido.id)}
-                              className="flex items-center gap-1"
-                            >
-                              <Check className="h-4 w-4" />
-                              Confirmar Separação
-                            </Button>
-                          )}
+                          <Button
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => confirmarSeparacaoPedido(pedido.id)}
+                            className="flex items-center gap-1"
+                          >
+                            <Check className="h-4 w-4" />
+                            Confirmar Separação Antecipada
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -534,7 +630,7 @@ export const SeparacaoPedidos = () => {
               </Table>
             ) : (
               <div className="text-center py-6 text-muted-foreground">
-                Não há pedidos para separação.
+                Não há pedidos pendentes para separação antecipada.
               </div>
             )}
           </TabsContent>
