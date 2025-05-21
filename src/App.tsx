@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -20,6 +19,14 @@ import { applyTheme } from "./lib/theme";
 import AgentesIA from "./pages/AgentesIA";
 import AgenteIAPage from "./pages/AgenteIAPage";
 import EstoqueInsumos from "./pages/EstoqueInsumos";
+
+// New pages
+import GestaoComercial from "./pages/GestaoComercial";
+import FunilLeads from "./pages/gestao-comercial/FunilLeads";
+import Distribuidores from "./pages/gestao-comercial/Distribuidores";
+import Parceiros from "./pages/gestao-comercial/Parceiros";
+import GestaoFinanceira from "./pages/GestaoFinanceira";
+import Custos from "./pages/financeiro/Custos";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +59,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Existing Routes */}
             <Route path="/" element={
               <AppLayout>
                 <DashboardAnalytics />
@@ -117,6 +125,41 @@ const App = () => {
                 <AgenteIAPage />
               </AppLayout>
             } />
+            
+            {/* New Routes for Commercial Management */}
+            <Route path="/gestao-comercial" element={
+              <AppLayout>
+                <GestaoComercial />
+              </AppLayout>
+            } />
+            <Route path="/gestao-comercial/funil-leads" element={
+              <AppLayout>
+                <FunilLeads />
+              </AppLayout>
+            } />
+            <Route path="/gestao-comercial/distribuidores" element={
+              <AppLayout>
+                <Distribuidores />
+              </AppLayout>
+            } />
+            <Route path="/gestao-comercial/parceiros" element={
+              <AppLayout>
+                <Parceiros />
+              </AppLayout>
+            } />
+            
+            {/* New Routes for Financial Management */}
+            <Route path="/gestao-financeira" element={
+              <AppLayout>
+                <GestaoFinanceira />
+              </AppLayout>
+            } />
+            <Route path="/custos" element={
+              <AppLayout>
+                <Custos />
+              </AppLayout>
+            } />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

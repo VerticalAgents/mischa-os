@@ -9,9 +9,10 @@ import { useAlertaStore } from "@/hooks/useAlertaStore";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
 
 // Menu items definition
-import { mainMenuItems, secondaryMenuItems } from "@/components/layout/navigation-items";
+import { menuGroups } from "@/components/layout/navigation-items";
 
 const SidebarContent = () => {
   const location = useLocation();
@@ -30,35 +31,44 @@ const SidebarContent = () => {
         title="MischaOS" 
       />
       
-      {/* Main Menu */}
+      {/* Main Menu Grouped by Functional Areas */}
       <div className="flex-1 px-4 py-6 overflow-y-auto">
         <div className="space-y-6">
-          <div className="space-y-1">
-            {mainMenuItems.map((item) => (
-              <SidebarLink
-                key={item.path}
-                link={{
-                  label: item.label,
-                  href: item.path,
-                  icon: <div className="text-current">{item.icon}</div>,
-                }}
-                active={location.pathname === item.path}
-              />
-            ))}
-          </div>
-          <div className="space-y-1">
-            {secondaryMenuItems.map((item) => (
-              <SidebarLink
-                key={item.path}
-                link={{
-                  label: item.label,
-                  href: item.path,
-                  icon: <div className="text-current">{item.icon}</div>,
-                }}
-                active={location.pathname === item.path}
-              />
-            ))}
-          </div>
+          {menuGroups.map((group, index) => (
+            <div key={group.title} className="space-y-2">
+              {/* Group Header */}
+              <div className="px-3 flex items-center">
+                <div className={cn(
+                  "h-2 w-2 rounded-full mr-2",
+                  group.variant === "operational" && "bg-purple-500",
+                  group.variant === "tactical" && "bg-blue-500",
+                  group.variant === "strategic" && "bg-green-500",
+                  group.variant === "system" && "bg-gray-400"
+                )}/>
+                <h4 className="text-xs font-medium uppercase text-muted-foreground">{group.title}</h4>
+              </div>
+              
+              {/* Group Menu Items */}
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  <SidebarLink
+                    key={item.path}
+                    link={{
+                      label: item.label,
+                      href: item.path,
+                      icon: <div className="text-current">{item.icon}</div>,
+                    }}
+                    active={location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)}
+                  />
+                ))}
+              </div>
+              
+              {/* Add separator between groups */}
+              {index < menuGroups.length - 1 && (
+                <Separator className="my-2"/>
+              )}
+            </div>
+          ))}
         </div>
       </div>
       

@@ -3,7 +3,8 @@ import { ReactNode } from "react";
 import { 
   BarChart3, Users, Tag, Clipboard, 
   ShoppingBag, Settings, Layers, Truck, FileText,
-  Cpu, PackageCheck
+  Cpu, PackageCheck, DollarSign, LineChart, Receipt,
+  BarChart, Building, HelpingHand, UserCircle
 } from "lucide-react";
 
 export type MenuItem = {
@@ -12,58 +13,130 @@ export type MenuItem = {
   icon: ReactNode;
 };
 
-export const mainMenuItems: MenuItem[] = [
+export type MenuGroup = {
+  title: string;
+  items: MenuItem[];
+  variant: 'operational' | 'tactical' | 'strategic' | 'system';
+};
+
+export const menuGroups: MenuGroup[] = [
   {
-    label: "Dashboard & Analytics",
-    path: "/",
-    icon: <BarChart3 className="h-4 w-4" />,
+    title: "Operacional",
+    variant: "operational",
+    items: [
+      {
+        label: "Agendamento",
+        path: "/agendamento",
+        icon: <Clipboard className="h-4 w-4" />,
+      },
+      {
+        label: "Expedição",
+        path: "/expedicao",
+        icon: <Truck className="h-4 w-4" />,
+      },
+      {
+        label: "Estoque",
+        path: "/estoque",
+        icon: <PackageCheck className="h-4 w-4" />,
+      },
+      {
+        label: "PCP",
+        path: "/pcp",
+        icon: <Layers className="h-4 w-4" />,
+      },
+    ]
   },
   {
-    label: "Clientes",
-    path: "/clientes",
-    icon: <Users className="h-4 w-4" />,
+    title: "Tático",
+    variant: "tactical",
+    items: [
+      {
+        label: "Clientes",
+        path: "/clientes",
+        icon: <Users className="h-4 w-4" />,
+      },
+      {
+        label: "Precificação",
+        path: "/precificacao",
+        icon: <Tag className="h-4 w-4" />,
+      },
+      {
+        label: "Gestão Comercial",
+        path: "/gestao-comercial",
+        icon: <ShoppingBag className="h-4 w-4" />,
+      },
+    ]
   },
   {
-    label: "Precificação",
-    path: "/precificacao",
-    icon: <Tag className="h-4 w-4" />,
+    title: "Estratégico",
+    variant: "strategic",
+    items: [
+      {
+        label: "Dashboard & Analytics",
+        path: "/",
+        icon: <BarChart3 className="h-4 w-4" />,
+      },
+      {
+        label: "Gestão Financeira",
+        path: "/gestao-financeira",
+        icon: <DollarSign className="h-4 w-4" />,
+      },
+      {
+        label: "Projeções",
+        path: "/projecoes",
+        icon: <LineChart className="h-4 w-4" />,
+      },
+      {
+        label: "Custos Fixos e Variáveis",
+        path: "/custos",
+        icon: <Receipt className="h-4 w-4" />,
+      },
+      {
+        label: "Agentes de IA",
+        path: "/agentes-ia",
+        icon: <Cpu className="h-4 w-4" />,
+      },
+    ]
   },
   {
-    label: "Agendamento",
-    path: "/agendamento",
-    icon: <Clipboard className="h-4 w-4" />,
-  },
-  {
-    label: "Expedição",
-    path: "/expedicao",
-    icon: <Truck className="h-4 w-4" />,
-  },
-  {
-    label: "Estoque",
-    path: "/estoque",
-    icon: <PackageCheck className="h-4 w-4" />,
-  },
-  {
-    label: "PCP",
-    path: "/pcp",
-    icon: <Layers className="h-4 w-4" />,
-  },
-  {
-    label: "Projeções",
-    path: "/projecoes",
-    icon: <FileText className="h-4 w-4" />,
-  },
-  {
-    label: "Agentes de IA",
-    path: "/agentes-ia",
-    icon: <Cpu className="h-4 w-4" />,
-  },
+    title: "Sistema",
+    variant: "system",
+    items: [
+      {
+        label: "Configurações",
+        path: "/configuracoes",
+        icon: <Settings className="h-4 w-4" />,
+      },
+    ]
+  }
 ];
+
+// Maintain this for backward compatibility if needed elsewhere
+export const mainMenuItems: MenuItem[] = menuGroups.flatMap(group => group.items);
 
 export const secondaryMenuItems: MenuItem[] = [
   {
     label: "Configurações",
     path: "/configuracoes",
     icon: <Settings className="h-4 w-4" />,
+  },
+];
+
+// For gestão-comercial sub-navigation
+export const gestaoComercialItems = [
+  {
+    label: "Funil de Leads",
+    path: "/gestao-comercial/funil-leads",
+    icon: <UserCircle className="h-4 w-4" />,
+  },
+  {
+    label: "Distribuidores",
+    path: "/gestao-comercial/distribuidores",
+    icon: <Building className="h-4 w-4" />,
+  },
+  {
+    label: "Parceiros",
+    path: "/gestao-comercial/parceiros",
+    icon: <HelpingHand className="h-4 w-4" />,
   },
 ];
