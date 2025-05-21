@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -104,7 +105,21 @@ export function SessionNavBar() {
                     
                     
                     {/* Menu Secundário */}
-                    {secondaryMenuItems.map(item => {})}
+                    {secondaryMenuItems.map((item) => (
+                      <Link 
+                        key={item.path} 
+                        to={item.path} 
+                        className={cn(
+                          "flex h-8 w-full flex-row items-center rounded-md px-2 py-1.5 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", 
+                          pathname === item.path && "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                        )}
+                      >
+                        {item.icon}
+                        <motion.li variants={variants}>
+                          {!isCollapsed && <p className="ml-2 text-sm">{item.label}</p>}
+                        </motion.li>
+                      </Link>
+                    ))}
                   </div>
                 </ScrollArea>
               </div>
