@@ -15,30 +15,18 @@ import { cn } from "@/lib/utils";
 import { useMemo, useCallback, useState, useEffect } from "react";
 
 export default function AlertaIndicator() {
-  // Use local state to track alerts
-  const [alertasNaoLidas, setAlertasNaoLidas] = useState([]);
+  // Use local state to track alerts instead of directly accessing the store
+  const [alertas, setAlertas] = useState([]);
   
-  // Extract only methods from the store, not state values
-  const { marcarComoLida, marcarTodasComoLidas } = useAlertaStore(state => ({
-    marcarComoLida: state.marcarComoLida,
-    marcarTodasComoLidas: state.marcarTodasComoLidas
-  }));
+  // Get only methods from the store, not state values
+  const { marcarComoLida, marcarTodasComoLidas } = useAlertaStore();
   
-  // Memoize derived values to prevent re-renders
-  const alertasRecentes = useMemo(() => {
-    return alertasNaoLidas.slice(0, 5); // Get only the 5 most recent
-  }, [alertasNaoLidas]);
-  
-  const quantidadeAlertasNaoLidas = useMemo(() => {
-    return alertasRecentes.length;
-  }, [alertasRecentes]);
-  
-  // Load alerts only on mount
+  // Load alerts only on mount and when store changes
   useEffect(() => {
-    // Helper function to load alerts from store
+    // Function to get current alerts from store
     function loadAlertas() {
-      const alertas = useAlertaStore.getState().getAlertasNaoLidas();
-      setAlertasNaoLidas(alertas);
+      const currentAlertas = useAlertaStore.getState().alertas.filter(alerta => !alerta.lida);
+      setAlertas(currentAlertas);
     }
     
     // Initial load
@@ -51,15 +39,24 @@ export default function AlertaIndicator() {
     return () => unsubscribe();
   }, []);
   
-  // Create wrapped handlers that update our local state after store changes
+  // Memoize derived values to prevent unnecessary re-renders
+  const alertasRecentes = useMemo(() => {
+    return alertas.slice(0, 5); // Get only the 5 most recent
+  }, [alertas]);
+  
+  const quantidadeAlertasNaoLidas = useMemo(() => {
+    return alertasRecentes.length;
+  }, [alertasRecentes]);
+  
+  // Use callbacks to avoid recreating functions on each render
   const handleMarcarComoLida = useCallback((id) => {
     marcarComoLida(id);
-    // No need to update local state here, the subscription will handle it
+    // State will be updated via the subscription
   }, [marcarComoLida]);
   
   const handleMarcarTodasComoLidas = useCallback(() => {
     marcarTodasComoLidas();
-    // No need to update local state here, the subscription will handle it
+    // State will be updated via the subscription
   }, [marcarTodasComoLidas]);
   
   return (
