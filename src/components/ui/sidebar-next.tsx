@@ -1,5 +1,4 @@
-
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
@@ -76,9 +75,20 @@ export function SessionNavBar() {
   const location = useLocation();
   const pathname = location.pathname;
   
-  // Use memoized value to prevent re-renders
-  const quantidadeAlertasNaoLidas = useMemo(() => {
-    return useAlertaStore.getState().getQuantidadeAlertasNaoLidas();
+  // Use state to store the alert count instead of directly accessing the store
+  const [alertCount, setAlertCount] = useState(0);
+  
+  // Update alert count when component mounts and when alerts change
+  useEffect(() => {
+    // Initial count
+    setAlertCount(useAlertaStore.getState().getQuantidadeAlertasNaoLidas());
+    
+    // Subscribe to changes
+    const unsubscribe = useAlertaStore.subscribe(
+      () => setAlertCount(useAlertaStore.getState().getQuantidadeAlertasNaoLidas())
+    );
+    
+    return unsubscribe;
   }, []);
 
   return (
@@ -184,9 +194,9 @@ export function SessionNavBar() {
                           <Avatar className="size-6">
                             <AvatarFallback>A</AvatarFallback>
                           </Avatar>
-                          {quantidadeAlertasNaoLidas > 0 && (
+                          {alertCount > 0 && (
                             <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center">
-                              {quantidadeAlertasNaoLidas}
+                              {alertCount}
                             </Badge>
                           )}
                         </Button>

@@ -12,12 +12,33 @@ import { useAlertaStore } from "@/hooks/useAlertaStore";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useMemo } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 
 export default function AlertaIndicator() {
-  // Use useMemo to prevent unnecessary recalculations
-  const alertasNaoLidas = useAlertaStore(state => state.getAlertasNaoLidas());
-  const { marcarComoLida, marcarTodasComoLidas } = useAlertaStore();
+  // Use useState to track our own local state for alerts
+  const [alertasNaoLidas, setAlertasNaoLidas] = useState([]);
+  const { marcarComoLida, marcarTodasComoLidas } = useAlertaStore(state => ({
+    marcarComoLida: state.marcarComoLida,
+    marcarTodasComoLidas: state.marcarTodasComoLidas
+  }));
+  
+  // Load alerts only on mount and when the popover opens
+  useEffect(() => {
+    const loadAlertas = () => {
+      const alertas = useAlertaStore.getState().getAlertasNaoLidas();
+      setAlertasNaoLidas(alertas);
+    };
+    
+    // Load initially
+    loadAlertas();
+    
+    // Subscribe to store changes
+    const unsubscribe = useAlertaStore.subscribe(loadAlertas);
+    
+    return () => {
+      unsubscribe();
+    };
+  }, []);
   
   // Memoize derived values to prevent re-renders
   const alertasRecentes = useMemo(() => {
@@ -27,6 +48,19 @@ export default function AlertaIndicator() {
   const quantidadeAlertasNaoLidas = useMemo(() => {
     return alertasRecentes.length;
   }, [alertasRecentes]);
+  
+  // Create wrapped handlers that update our local state after store changes
+  const handleMarcarComoLida = useCallback((id) => {
+    marcarComoLida(id);
+    // Update our local state
+    setAlertasNaoLidas(prev => prev.filter(alerta => alerta.id !== id));
+  }, [marcarComoLida]);
+  
+  const handleMarcarTodasComoLidas = useCallback(() => {
+    marcarTodasComoLidas();
+    // Update our local state
+    setAlertasNaoLidas([]);
+  }, [marcarTodasComoLidas]);
   
   return (
     <Popover>
@@ -48,7 +82,7 @@ export default function AlertaIndicator() {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={() => marcarTodasComoLidas()}
+                onClick={handleMarcarTodasComoLidas}
                 className="text-xs h-7"
               >
                 Marcar todas como lidas
@@ -76,7 +110,7 @@ export default function AlertaIndicator() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      onClick={() => marcarComoLida(alerta.id)}
+                      onClick={() => handleMarcarComoLida(alerta.id)}
                       className="text-xs h-6 w-6 p-0"
                     >
                       ✓
