@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Settings, DollarSign, CalendarClock, Truck, UserCog, Database, BoxesIcon, Calendar, Tag, Package } from "lucide-react";
@@ -10,10 +9,8 @@ import ProducaoTab from "./tabs/ProducaoTab";
 import AgendamentoTab from "./tabs/AgendamentoTab";
 import CategoriasProdutoTab from "./tabs/CategoriasProdutoTab";
 import ParametrosEstoqueTab from "./tabs/ParametrosEstoqueTab";
-
 export default function ConfiguracoesTabs() {
   const [activeTab, setActiveTab] = useState("empresa");
-  
   return <Tabs defaultValue="empresa" value={activeTab} onValueChange={setActiveTab}>
       <div className="flex mb-8 overflow-x-auto">
         <TabsList className="grid grid-flow-col auto-cols-max gap-2">
@@ -35,7 +32,7 @@ export default function ConfiguracoesTabs() {
           </TabsTrigger>
           <TabsTrigger value="parametros-estoque" className="flex items-center gap-1">
             <Package className="h-4 w-4" />
-            <span>Parâmetros de Estoque</span>
+            <span>Estoque</span>
           </TabsTrigger>
           <TabsTrigger value="producao" className="flex items-center gap-1">
             <BoxesIcon className="h-4 w-4" />
