@@ -150,7 +150,7 @@ export function SessionNavBar() {
                           pathname === item.path && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
                         )}
                       >
-                        {React.cloneElement(item.icon, { className: "h-4 w-4" })}
+                        {item.icon}
                         <motion.li variants={variants}>
                           {!isCollapsed && (
                             <p className="ml-2 text-sm">{item.label}</p>
@@ -171,7 +171,7 @@ export function SessionNavBar() {
                           pathname === item.path && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
                         )}
                       >
-                        {React.cloneElement(item.icon, { className: "h-4 w-4" })}
+                        {item.icon}
                         <motion.li variants={variants}>
                           {!isCollapsed && (
                             <p className="ml-2 text-sm">{item.label}</p>
