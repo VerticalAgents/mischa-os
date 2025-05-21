@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,7 @@ export default function Custos() {
     frequencia: "mensal"
   });
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoriaFilter, setCategoriaFilter] = useState<CategoriaCusto | "">("");
+  const [categoriaFilter, setCategoriaFilter] = useState<CategoriaCusto | "todos">("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
 
@@ -107,7 +108,7 @@ export default function Custos() {
   const filteredCustos = custos.filter(custo => {
     const matchesSearch = custo.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          (custo.subcategoria && custo.subcategoria.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategoria = categoriaFilter === "" || custo.categoria === categoriaFilter;
+    const matchesCategoria = categoriaFilter === "todos" || custo.categoria === categoriaFilter;
     
     return matchesSearch && matchesCategoria;
   });
@@ -183,13 +184,13 @@ export default function Custos() {
           </div>
           <Select
             value={categoriaFilter}
-            onValueChange={(value) => setCategoriaFilter(value as CategoriaCusto | "")}
+            onValueChange={(value) => setCategoriaFilter(value as CategoriaCusto | "todos")}
           >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Categoria" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas</SelectItem>
+              <SelectItem value="todos">Todas</SelectItem>
               <SelectItem value="fixo">Fixos</SelectItem>
               <SelectItem value="variavel">Variáveis</SelectItem>
             </SelectContent>
