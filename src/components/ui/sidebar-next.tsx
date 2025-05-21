@@ -12,9 +12,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
-import { mainMenuItems, secondaryMenuItems } from "@/components/layout/navigation-items";
+import { mainMenuItems, secondaryMenuItems, menuGroups } from "@/components/layout/navigation-items";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useAlertaStore } from "@/hooks/useAlertaStore";
+import AlertaIndicator from "@/components/common/AlertaIndicator";
+
 const sidebarVariants = {
   open: {
     width: "15rem"
@@ -68,12 +70,23 @@ const staggerVariants = {
     }
   }
 };
+
 export function SessionNavBar() {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const location = useLocation();
   const pathname = location.pathname;
   const quantidadeAlertasNaoLidas = useAlertaStore(state => state.getQuantidadeAlertasNaoLidas());
-  return <motion.div className={cn("sidebar fixed left-0 z-40 h-full shrink-0 border-r fixed border-sidebar-border bg-sidebar")} initial={isCollapsed ? "closed" : "open"} animate={isCollapsed ? "closed" : "open"} variants={sidebarVariants} transition={transitionProps} onMouseEnter={() => setIsCollapsed(false)} onMouseLeave={() => setIsCollapsed(true)}>
+
+  return (
+    <motion.div 
+      className={cn("sidebar fixed left-0 z-40 h-full shrink-0 border-r fixed border-sidebar-border bg-sidebar")} 
+      initial={isCollapsed ? "closed" : "open"} 
+      animate={isCollapsed ? "closed" : "open"} 
+      variants={sidebarVariants} 
+      transition={transitionProps} 
+      onMouseEnter={() => setIsCollapsed(false)} 
+      onMouseLeave={() => setIsCollapsed(true)}
+    >
       <motion.div className="relative z-40 flex text-sidebar-foreground h-full shrink-0 flex-col transition-all" variants={contentVariants}>
         <motion.ul variants={staggerVariants} className="flex h-full flex-col">
           <div className="flex grow flex-col items-center">
@@ -94,31 +107,52 @@ export function SessionNavBar() {
               <div className="flex grow flex-col gap-4">
                 <ScrollArea className="h-16 grow p-2">
                   <div className={cn("flex w-full flex-col gap-1")}>
-                    {/* Menu Principal */}
-                    {mainMenuItems.map(item => <Link key={item.path} to={item.path} className={cn("flex h-8 w-full flex-row items-center rounded-md px-2 py-1.5 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", pathname === item.path && "bg-sidebar-accent text-sidebar-accent-foreground font-medium")}>
-                        {item.icon}
-                        <motion.li variants={variants}>
-                          {!isCollapsed && <p className="ml-2 text-sm">{item.label}</p>}
-                        </motion.li>
-                      </Link>)}
-
-                    
-                    
-                    {/* Menu Secundário */}
-                    {secondaryMenuItems.map((item) => (
-                      <Link 
-                        key={item.path} 
-                        to={item.path} 
-                        className={cn(
-                          "flex h-8 w-full flex-row items-center rounded-md px-2 py-1.5 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", 
-                          pathname === item.path && "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    {/* Menu por grupos funcionais */}
+                    {menuGroups.map((group, index) => (
+                      <div key={group.title} className="mt-2 first:mt-0">
+                        {/* Cabeçalho do grupo */}
+                        <div className={cn(
+                          "flex items-center px-2 py-1.5",
+                          isCollapsed ? "justify-center" : "justify-start"
+                        )}>
+                          <div className={cn(
+                            "h-2 w-2 rounded-full",
+                            group.variant === "operational" && "bg-purple-500",
+                            group.variant === "tactical" && "bg-blue-500",
+                            group.variant === "strategic" && "bg-green-500",
+                            group.variant === "system" && "bg-gray-400"
+                          )}/>
+                          {!isCollapsed && (
+                            <span className="ml-2 text-xs font-medium uppercase text-muted-foreground">
+                              {group.title}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Itens do grupo */}
+                        <div className="space-y-1 mt-1">
+                          {group.items.map(item => (
+                            <Link 
+                              key={item.path} 
+                              to={item.path} 
+                              className={cn(
+                                "flex h-8 w-full flex-row items-center rounded-md px-2 py-1.5 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", 
+                                pathname === item.path && "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                              )}
+                            >
+                              {item.icon}
+                              <motion.li variants={variants}>
+                                {!isCollapsed && <p className="ml-2 text-sm">{item.label}</p>}
+                              </motion.li>
+                            </Link>
+                          ))}
+                        </div>
+                        
+                        {/* Separator between groups */}
+                        {index < menuGroups.length - 1 && (
+                          <Separator className="my-2 mx-2" />
                         )}
-                      >
-                        {item.icon}
-                        <motion.li variants={variants}>
-                          {!isCollapsed && <p className="ml-2 text-sm">{item.label}</p>}
-                        </motion.li>
-                      </Link>
+                      </div>
                     ))}
                   </div>
                 </ScrollArea>
@@ -140,23 +174,25 @@ export function SessionNavBar() {
                     </div>}
                   
                   <div className="flex items-center justify-center space-x-1">
-                    {isCollapsed ? <Link to="/alertas">
+                    {isCollapsed ? (
+                      <Link to="/alertas">
                         <Button variant="ghost" size="icon" className="relative size-8">
                           <Avatar className="size-6">
                             <AvatarFallback>A</AvatarFallback>
                           </Avatar>
+                          {quantidadeAlertasNaoLidas > 0 && (
+                            <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center">
+                              {quantidadeAlertasNaoLidas}
+                            </Badge>
+                          )}
                         </Button>
-                      </Link> : <div className="flex w-full justify-between px-1">
+                      </Link>
+                    ) : (
+                      <div className="flex w-full justify-between px-1">
                         <ThemeToggle />
-                        <Link to="/alertas">
-                          <Button variant="ghost" size="icon" className="relative">
-                            <MessagesSquare className="h-5 w-5" />
-                            {quantidadeAlertasNaoLidas > 0 && <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center">
-                                {quantidadeAlertasNaoLidas}
-                              </Badge>}
-                          </Button>
-                        </Link>
-                      </div>}
+                        <AlertaIndicator />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -164,8 +200,10 @@ export function SessionNavBar() {
           </div>
         </motion.ul>
       </motion.div>
-    </motion.div>;
+    </motion.div>
+  );
 }
+
 export function SidebarDemo() {
   return <div className="flex h-screen w-screen flex-row">
       <SessionNavBar />
