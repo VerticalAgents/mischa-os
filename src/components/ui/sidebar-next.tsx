@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -79,18 +78,24 @@ export function SessionNavBar() {
   // Use state to store the alert count instead of directly accessing the store
   const [alertCount, setAlertCount] = useState(0);
   
-  // Update alert count when component mounts and when alerts change
+  // Update alert count when component mounts and when alerts change - with proper cleanup
   useEffect(() => {
+    // Function to get the current alert count
+    function updateAlertCount() {
+      const count = useAlertaStore.getState().getQuantidadeAlertasNaoLidas();
+      setAlertCount(count);
+    }
+    
     // Initial count
-    setAlertCount(useAlertaStore.getState().getQuantidadeAlertasNaoLidas());
+    updateAlertCount();
     
     // Subscribe to changes
-    const unsubscribe = useAlertaStore.subscribe(() => {
-      setAlertCount(useAlertaStore.getState().getQuantidadeAlertasNaoLidas());
-    });
+    const unsubscribe = useAlertaStore.subscribe(updateAlertCount);
     
-    // Cleanup subscription
-    return () => unsubscribe();
+    // Cleanup subscription when component unmounts
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   return (

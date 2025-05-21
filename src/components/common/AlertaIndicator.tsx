@@ -15,55 +15,51 @@ import { cn } from "@/lib/utils";
 import { useMemo, useCallback, useState, useEffect } from "react";
 
 export default function AlertaIndicator() {
-  // Use useState to track our own local state for alerts
+  // Use local state to track alerts
   const [alertasNaoLidas, setAlertasNaoLidas] = useState([]);
   
-  // Only extract methods, not derived state from the store
+  // Extract only methods from the store, not state values
   const { marcarComoLida, marcarTodasComoLidas } = useAlertaStore(state => ({
     marcarComoLida: state.marcarComoLida,
     marcarTodasComoLidas: state.marcarTodasComoLidas
   }));
   
-  // Load alerts only on mount and when the popover opens
-  useEffect(() => {
-    // Define a function to load alerts
-    const loadAlertas = () => {
-      const alertas = useAlertaStore.getState().getAlertasNaoLidas();
-      setAlertasNaoLidas(alertas);
-    };
-    
-    // Load initially
-    loadAlertas();
-    
-    // Subscribe to store changes
-    const unsubscribe = useAlertaStore.subscribe(loadAlertas);
-    
-    // Clean up subscription
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-  
   // Memoize derived values to prevent re-renders
   const alertasRecentes = useMemo(() => {
-    return alertasNaoLidas.slice(0, 5); // Pegar apenas os 5 mais recentes
+    return alertasNaoLidas.slice(0, 5); // Get only the 5 most recent
   }, [alertasNaoLidas]);
   
   const quantidadeAlertasNaoLidas = useMemo(() => {
     return alertasRecentes.length;
   }, [alertasRecentes]);
   
+  // Load alerts only on mount
+  useEffect(() => {
+    // Helper function to load alerts from store
+    function loadAlertas() {
+      const alertas = useAlertaStore.getState().getAlertasNaoLidas();
+      setAlertasNaoLidas(alertas);
+    }
+    
+    // Initial load
+    loadAlertas();
+    
+    // Subscribe to store changes
+    const unsubscribe = useAlertaStore.subscribe(loadAlertas);
+    
+    // Clean up subscription
+    return () => unsubscribe();
+  }, []);
+  
   // Create wrapped handlers that update our local state after store changes
   const handleMarcarComoLida = useCallback((id) => {
     marcarComoLida(id);
-    // Update our local state
-    setAlertasNaoLidas(prev => prev.filter(alerta => alerta.id !== id));
+    // No need to update local state here, the subscription will handle it
   }, [marcarComoLida]);
   
   const handleMarcarTodasComoLidas = useCallback(() => {
     marcarTodasComoLidas();
-    // Update our local state
-    setAlertasNaoLidas([]);
+    // No need to update local state here, the subscription will handle it
   }, [marcarTodasComoLidas]);
   
   return (
