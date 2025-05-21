@@ -41,7 +41,7 @@ export default function AlertaIndicator() {
   
   // Memoize derived values to prevent unnecessary re-renders
   const alertasRecentes = useMemo(() => {
-    return alertas.slice(0, 5); // Get only the 5 most recent
+    return alertas.slice(0, 10); // Get the 10 most recent alerts
   }, [alertas]);
   
   const quantidadeAlertasNaoLidas = useMemo(() => {
