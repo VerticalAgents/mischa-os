@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +25,8 @@ export default function Distribuidores() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | "ativo" | "inativo">("");
 
-  // Mock data for initial render
-  useState(() => {
+  // Initialize distribuidores with mock data
+  useEffect(() => {
     const mockData: Distribuidor[] = [
       {
         id: "1",

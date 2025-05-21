@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,8 +29,8 @@ export default function Parceiros() {
   const [tipoFilter, setTipoFilter] = useState<TipoParceiro | "">("");
   const [statusFilter, setStatusFilter] = useState<"" | "ativo" | "encerrado">("");
 
-  // Mock data for initial render
-  useState(() => {
+  // Initialize parceiros with mock data
+  useEffect(() => {
     const mockData: Parceiro[] = [
       {
         id: "1",

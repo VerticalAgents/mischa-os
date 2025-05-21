@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -54,7 +53,7 @@ export default function Custos() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
 
-  // Mock data for initial render
+  // Initialize custos with mock data
   useState(() => {
     const mockData: Custo[] = [
       {
@@ -103,7 +102,7 @@ export default function Custos() {
     ];
     
     setCustos(mockData);
-  }, []);
+  });
 
   const filteredCustos = custos.filter(custo => {
     const matchesSearch = custo.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 

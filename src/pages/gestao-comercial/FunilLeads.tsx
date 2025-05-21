@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,8 +28,8 @@ export default function FunilLeads() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEtapa, setFilterEtapa] = useState<LeadStage | "">("");
 
-  // Mock data for initial render
-  useState(() => {
+  // Initialize leads with mock data
+  useEffect(() => {
     const mockData: Lead[] = [
       {
         id: "1",
