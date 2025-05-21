@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -84,11 +85,12 @@ export function SessionNavBar() {
     setAlertCount(useAlertaStore.getState().getQuantidadeAlertasNaoLidas());
     
     // Subscribe to changes
-    const unsubscribe = useAlertaStore.subscribe(
-      () => setAlertCount(useAlertaStore.getState().getQuantidadeAlertasNaoLidas())
-    );
+    const unsubscribe = useAlertaStore.subscribe(() => {
+      setAlertCount(useAlertaStore.getState().getQuantidadeAlertasNaoLidas());
+    });
     
-    return unsubscribe;
+    // Cleanup subscription
+    return () => unsubscribe();
   }, []);
 
   return (

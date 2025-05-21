@@ -17,6 +17,8 @@ import { useMemo, useCallback, useState, useEffect } from "react";
 export default function AlertaIndicator() {
   // Use useState to track our own local state for alerts
   const [alertasNaoLidas, setAlertasNaoLidas] = useState([]);
+  
+  // Only extract methods, not derived state from the store
   const { marcarComoLida, marcarTodasComoLidas } = useAlertaStore(state => ({
     marcarComoLida: state.marcarComoLida,
     marcarTodasComoLidas: state.marcarTodasComoLidas
@@ -24,6 +26,7 @@ export default function AlertaIndicator() {
   
   // Load alerts only on mount and when the popover opens
   useEffect(() => {
+    // Define a function to load alerts
     const loadAlertas = () => {
       const alertas = useAlertaStore.getState().getAlertasNaoLidas();
       setAlertasNaoLidas(alertas);
@@ -35,6 +38,7 @@ export default function AlertaIndicator() {
     // Subscribe to store changes
     const unsubscribe = useAlertaStore.subscribe(loadAlertas);
     
+    // Clean up subscription
     return () => {
       unsubscribe();
     };
