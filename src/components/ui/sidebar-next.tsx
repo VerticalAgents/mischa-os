@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -128,10 +129,10 @@ export function SessionNavBar() {
               <div className="flex grow flex-col gap-4">
                 <ScrollArea className="h-16 grow p-2">
                   <div className={cn("flex w-full flex-col gap-1")}>
-                    {/* Menu por grupos funcionais */}
+                    {/* Menu por grupos funcionais com indicadores visuais de cor */}
                     {menuGroups.map((group, index) => (
                       <div key={group.title} className="mt-2 first:mt-0">
-                        {/* Cabeçalho do grupo */}
+                        {/* Cabeçalho do grupo com indicador de cor */}
                         <div className={cn(
                           "flex items-center px-2 py-1.5",
                           isCollapsed ? "justify-center" : "justify-start"

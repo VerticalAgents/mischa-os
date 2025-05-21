@@ -114,13 +114,9 @@ export const menuGroups: MenuGroup[] = [
 // Maintain this for backward compatibility if needed elsewhere
 export const mainMenuItems: MenuItem[] = menuGroups.flatMap(group => group.items);
 
-export const secondaryMenuItems: MenuItem[] = [
-  {
-    label: "Configurações",
-    path: "/configuracoes",
-    icon: <Settings className="h-4 w-4" />,
-  },
-];
+// We're removing secondaryMenuItems to avoid duplication of "Configurações"
+// Instead, we'll consolidate to only use the one in the "Sistema" group
+export const secondaryMenuItems: MenuItem[] = []; 
 
 // For gestão-comercial sub-navigation
 export const gestaoComercialItems = [
