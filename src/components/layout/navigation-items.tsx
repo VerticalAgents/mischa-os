@@ -87,7 +87,7 @@ export const menuGroups: MenuGroup[] = [
         icon: <LineChart className="h-4 w-4" />,
       },
       {
-        label: "Custos Fixos e Variáveis",
+        label: "Custos",
         path: "/custos",
         icon: <Receipt className="h-4 w-4" />,
       },

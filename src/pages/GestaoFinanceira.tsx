@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineChart, BarChart, Receipt, DollarSign, FileText, ArrowRight } from "lucide-react";
+import { LineChart, Receipt, DollarSign, FileText, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function GestaoFinanceira() {
@@ -43,7 +43,7 @@ export default function GestaoFinanceira() {
           <CardHeader className="pb-2">
             <CardTitle className="text-xl flex items-center">
               <Receipt className="mr-2 h-5 w-5" />
-              Custos Fixos e Variáveis
+              Custos
             </CardTitle>
             <CardDescription>
               Controle detalhado de custos

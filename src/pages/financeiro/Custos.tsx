@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { 
@@ -26,8 +26,9 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Search, Filter, ArrowUpDown } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Percent } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { useProjectionStore } from "@/hooks/useProjectionStore";
 
 // Types
 type CategoriaCusto = "fixo" | "variavel";
@@ -53,6 +54,11 @@ export default function Custos() {
   const [categoriaFilter, setCategoriaFilter] = useState<CategoriaCusto | "todos">("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  
+  // Get active DRE for percentage calculation
+  const { getActiveScenario } = useProjectionStore();
+  const activeDRE = getActiveScenario();
+  const faturamentoPrevisto = activeDRE?.totalRevenue || 0;
 
   // Initialize custos with mock data
   useState(() => {
@@ -99,6 +105,33 @@ export default function Custos() {
         subcategoria: "Manutenção",
         valor: 800,
         frequencia: "trimestral"
+      },
+      {
+        id: "6",
+        nome: "Embalagens",
+        categoria: "variavel",
+        subcategoria: "Materiais",
+        valor: 2500,
+        frequencia: "mensal",
+        observacoes: "Custo estimado com base na produção atual"
+      },
+      {
+        id: "7", 
+        nome: "Entregas",
+        categoria: "variavel",
+        subcategoria: "Logística",
+        valor: 4200,
+        frequencia: "mensal",
+        observacoes: "Serviço terceirizado de entregas"
+      },
+      {
+        id: "8",
+        nome: "Matéria-prima Geral",
+        categoria: "variavel",
+        subcategoria: "Produção",
+        valor: 12000,
+        frequencia: "mensal",
+        observacoes: "Todas as matérias-primas exceto farinha"
       }
     ];
     
@@ -112,6 +145,12 @@ export default function Custos() {
     
     return matchesSearch && matchesCategoria;
   });
+
+  // Calculate percentage of revenue for variable costs
+  const calcularPorcentagemFaturamento = (valor: number): number => {
+    if (!faturamentoPrevisto || faturamentoPrevisto === 0) return 0;
+    return (valor / faturamentoPrevisto) * 100;
+  };
 
   const totalFixo = filteredCustos
     .filter(custo => custo.categoria === "fixo")
@@ -167,7 +206,7 @@ export default function Custos() {
   return (
     <div className="container mx-auto">
       <PageHeader
-        title="Custos Fixos e Variáveis"
+        title="Custos"
         description="Gerencie todos os custos da operação"
       />
 
@@ -280,6 +319,21 @@ export default function Custos() {
                 </div>
               </div>
               
+              {novoCusto.categoria === "variavel" && (
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Percentual do Faturamento</label>
+                    <span className="text-sm text-muted-foreground flex items-center">
+                      <Percent className="h-3 w-3 mr-1" />
+                      {(novoCusto.valor ? calcularPorcentagemFaturamento(novoCusto.valor) : 0).toFixed(2)}%
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Baseado no faturamento previsto atual: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoPrevisto)}
+                  </div>
+                </div>
+              )}
+              
               <div>
                 <label htmlFor="observacoes" className="text-sm font-medium">Observações</label>
                 <Textarea
@@ -354,6 +408,7 @@ export default function Custos() {
                 <TableHead>Categoria</TableHead>
                 <TableHead>Subcategoria</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
+                {categoriaFilter !== "fixo" && <TableHead className="text-right">% do Faturamento</TableHead>}
                 <TableHead>Frequência</TableHead>
                 <TableHead>Observações</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -372,6 +427,18 @@ export default function Custos() {
                   <TableCell className="text-right">
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(custo.valor)}
                   </TableCell>
+                  {categoriaFilter !== "fixo" && (
+                    <TableCell className="text-right">
+                      {custo.categoria === "variavel" ? (
+                        <span className="flex items-center justify-end">
+                          <Percent className="h-3 w-3 mr-1" />
+                          {calcularPorcentagemFaturamento(custo.valor).toFixed(2)}%
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>{getFrequenciaLabel(custo.frequencia)}</TableCell>
                   <TableCell className="max-w-xs truncate" title={custo.observacoes}>
                     {custo.observacoes}
@@ -390,7 +457,7 @@ export default function Custos() {
               ))}
               {filteredCustos.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
+                  <TableCell colSpan={categoriaFilter !== "fixo" ? 8 : 7} className="text-center py-4 text-muted-foreground">
                     Nenhum custo encontrado.
                   </TableCell>
                 </TableRow>
