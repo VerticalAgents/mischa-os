@@ -12,17 +12,21 @@ import { useAlertaStore } from "@/hooks/useAlertaStore";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useMemo } from "react";
 
 export default function AlertaIndicator() {
-  const { alertas, marcarComoLida, marcarTodasComoLidas } = useAlertaStore(
-    (state) => ({
-      alertas: state.getAlertasNaoLidas().slice(0, 5), // Pegar apenas os 5 mais recentes
-      marcarComoLida: state.marcarComoLida,
-      marcarTodasComoLidas: state.marcarTodasComoLidas
-    })
-  );
+  // Use useMemo to prevent unnecessary recalculations
+  const alertasNaoLidas = useAlertaStore(state => state.getAlertasNaoLidas());
+  const { marcarComoLida, marcarTodasComoLidas } = useAlertaStore();
   
-  const quantidadeAlertasNaoLidas = alertas.length;
+  // Memoize derived values to prevent re-renders
+  const alertasRecentes = useMemo(() => {
+    return alertasNaoLidas.slice(0, 5); // Pegar apenas os 5 mais recentes
+  }, [alertasNaoLidas]);
+  
+  const quantidadeAlertasNaoLidas = useMemo(() => {
+    return alertasRecentes.length;
+  }, [alertasRecentes]);
   
   return (
     <Popover>
@@ -53,13 +57,13 @@ export default function AlertaIndicator() {
           </div>
         </div>
         <div className="max-h-[300px] overflow-auto">
-          {alertas.length === 0 ? (
+          {alertasRecentes.length === 0 ? (
             <div className="py-6 text-center text-muted-foreground">
               Nenhuma notificação não lida
             </div>
           ) : (
             <div className="divide-y">
-              {alertas.map((alerta) => (
+              {alertasRecentes.map((alerta) => (
                 <div key={alerta.id} className="p-4 hover:bg-muted/50">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">

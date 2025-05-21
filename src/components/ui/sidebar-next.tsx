@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
@@ -75,7 +75,11 @@ export function SessionNavBar() {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const location = useLocation();
   const pathname = location.pathname;
-  const quantidadeAlertasNaoLidas = useAlertaStore(state => state.getQuantidadeAlertasNaoLidas());
+  
+  // Use memoized value to prevent re-renders
+  const quantidadeAlertasNaoLidas = useMemo(() => {
+    return useAlertaStore.getState().getQuantidadeAlertasNaoLidas();
+  }, []);
 
   return (
     <motion.div 
