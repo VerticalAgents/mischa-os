@@ -1,4 +1,3 @@
-
 "use client";
 import { useEffect, useRef } from "react";
 
@@ -8,7 +7,7 @@ interface MaterialClass {
   fragmentShaderSource: string;
   programs: any[];
   activeProgram: any;
-  uniforms: any[];
+  uniforms: Record<string, any>;
   setKeywords(keywords: string[]): void;
   bind(): void;
 }
@@ -17,6 +16,16 @@ interface ProgramClass {
   uniforms: Record<string, any>;
   program: any;
   bind(): void;
+}
+
+// Add extended WebGL types for WebGL2 features
+interface WebGL2RenderingContextExtended extends WebGLRenderingContext {
+  HALF_FLOAT?: number;
+  RGBA16F?: number;
+  RG16F?: number;
+  R16F?: number;
+  RG?: number;
+  RED?: number;
 }
 
 function SplashCursor({
@@ -90,12 +99,12 @@ function SplashCursor({
         antialias: false,
         preserveDrawingBuffer: false,
       };
-      let gl = canvas.getContext("webgl2", params) as WebGLRenderingContext;
+      let gl = canvas.getContext("webgl2", params) as WebGL2RenderingContextExtended;
       const isWebGL2 = !!gl;
       if (!isWebGL2)
         gl =
-          (canvas.getContext("webgl", params) as WebGLRenderingContext) ||
-          (canvas.getContext("experimental-webgl", params) as WebGLRenderingContext);
+          (canvas.getContext("webgl", params) as WebGL2RenderingContextExtended) ||
+          (canvas.getContext("experimental-webgl", params) as WebGL2RenderingContextExtended);
       let halfFloat;
       let supportLinearFiltering;
       if (isWebGL2) {
@@ -118,16 +127,16 @@ function SplashCursor({
       if (isWebGL2) {
         formatRGBA = getSupportedFormat(
           gl,
-          gl.RGBA16F,
+          gl.RGBA16F!,
           gl.RGBA,
-          halfFloatTexType
+          halfFloatTexType!
         );
-        formatRG = getSupportedFormat(gl, gl.RG16F, gl.RG, halfFloatTexType);
-        formatR = getSupportedFormat(gl, gl.R16F, gl.RED, halfFloatTexType);
+        formatRG = getSupportedFormat(gl, gl.RG16F!, gl.RG!, halfFloatTexType!);
+        formatR = getSupportedFormat(gl, gl.R16F!, gl.RED!, halfFloatTexType!);
       } else {
-        formatRGBA = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType);
-        formatRG = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType);
-        formatR = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType);
+        formatRGBA = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType!);
+        formatRG = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType!);
+        formatR = getSupportedFormat(gl, gl.RGBA, gl.RGBA, halfFloatTexType!);
       }
 
       return {
@@ -142,13 +151,13 @@ function SplashCursor({
       };
     }
 
-    function getSupportedFormat(gl: WebGLRenderingContext, internalFormat: number, format: number, type: number) {
+    function getSupportedFormat(gl: WebGL2RenderingContextExtended, internalFormat: number, format: number, type: number) {
       if (!supportRenderTextureFormat(gl, internalFormat, format, type)) {
         switch (internalFormat) {
           case gl.R16F:
-            return getSupportedFormat(gl, gl.RG16F, gl.RG, type);
+            return getSupportedFormat(gl, gl.RG16F!, gl.RG!, type);
           case gl.RG16F:
-            return getSupportedFormat(gl, gl.RGBA16F, gl.RGBA, type);
+            return getSupportedFormat(gl, gl.RGBA16F!, gl.RGBA, type);
           default:
             return null;
         }
@@ -196,7 +205,7 @@ function SplashCursor({
       fragmentShaderSource: string;
       programs: any[] = [];
       activeProgram: any = null;
-      uniforms: any[] = [];
+      uniforms: Record<string, any> = {};
 
       constructor(vertexShader: any, fragmentShaderSource: string) {
         this.vertexShader = vertexShader;
