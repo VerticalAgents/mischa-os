@@ -1,6 +1,7 @@
+
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Settings, DollarSign, CalendarClock, Truck, UserCog, Database, BoxesIcon, Calendar, Tag, Package } from "lucide-react";
+import { Settings, DollarSign, CalendarClock, Truck, UserCog, Database, BoxesIcon, Calendar, Tag, Package, User } from "lucide-react";
 import EmpresaTab from "./tabs/EmpresaTab";
 import SistemaTab from "./tabs/SistemaTab";
 import FinanceiroTab from "./tabs/FinanceiroTab";
@@ -9,6 +10,8 @@ import ProducaoTab from "./tabs/ProducaoTab";
 import AgendamentoTab from "./tabs/AgendamentoTab";
 import CategoriasProdutoTab from "./tabs/CategoriasProdutoTab";
 import ParametrosEstoqueTab from "./tabs/ParametrosEstoqueTab";
+import UsuarioTab from "./tabs/UsuarioTab";
+
 export default function ConfiguracoesTabs() {
   const [activeTab, setActiveTab] = useState("empresa");
   return <Tabs defaultValue="empresa" value={activeTab} onValueChange={setActiveTab}>
@@ -46,6 +49,10 @@ export default function ConfiguracoesTabs() {
             <Tag className="h-4 w-4" />
             <span>Categorias</span>
           </TabsTrigger>
+          <TabsTrigger value="usuario" className="flex items-center gap-1">
+            <User className="h-4 w-4" />
+            <span>Usuário</span>
+          </TabsTrigger>
         </TabsList>
       </div>
       
@@ -79,6 +86,10 @@ export default function ConfiguracoesTabs() {
       
       <TabsContent value="categorias">
         <CategoriasProdutoTab />
+      </TabsContent>
+
+      <TabsContent value="usuario">
+        <UsuarioTab />
       </TabsContent>
     </Tabs>;
 }
