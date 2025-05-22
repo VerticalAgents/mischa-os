@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Phone, MapPin, User, CalendarClock, Building as BuildingIcon, FileText, Mail } from "lucide-react";
+import { Plus, Search, Phone, MapPin, User, CalendarClock, Building as BuildingIcon, FileText, Mail, DollarSign } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { toast } from "@/components/ui/use-toast";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -75,8 +74,8 @@ export default function FunilLeads() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedDiasSemana, setSelectedDiasSemana] = useState<string[]>([]);
 
-  // Get the addCliente function from the cliente store
-  const { addCliente } = useClienteStore();
+  // Get the adicionarCliente function from the cliente store
+  const { adicionarCliente } = useClienteStore();
 
   // Initialize leads with mock data
   useEffect(() => {
@@ -278,42 +277,21 @@ export default function FunilLeads() {
 
     try {
       // Create a new client from lead data
-      addCliente({
-        id: Math.floor(Math.random() * 1000000), // Use a proper ID generation in production
+      adicionarCliente({
         nome: lead.nome,
-        contato: lead.contato || "",
-        telefone: lead.telefone || "",
-        email: lead.email || "",
-        endereco: lead.endereco || "",
-        bairro: lead.bairro || "",
-        cidade: lead.cidade || "",
-        estado: lead.estado || "RS",
         cnpjCpf: lead.cnpjCpf || "",
-        categoriaEstabelecimento: lead.categoriaEstabelecimento || "Café",
-        responsavel: lead.responsavel || "",
-        tipoLogistica: lead.tipoLogistica || "Entrega Própria",
-        formaPagamento: lead.formaPagamento || "À Vista",
-        rota: lead.rota || "",
-        diasEntrega: lead.diasEntrega || ["Segunda"],
-        status: "Ativo",
-        statusAgendamento: "Não agendado",
+        enderecoEntrega: lead.endereco || "",
+        contatoNome: lead.contato || "",
+        contatoTelefone: lead.telefone || "",
+        contatoEmail: lead.email || "",
         quantidadePadrao: 0,
-        periodicidade: "Semanal",
-        proximaDataReposicao: null,
-        ultimaDataReposicao: null,
-        fotoFachada: null,
-        observacoes: lead.observacoes || "",
-        dataCadastro: new Date(),
-        giros: lead.valorGiroSemanal ? [{
-          id: Math.floor(Math.random() * 1000000),
-          clienteId: Math.floor(Math.random() * 1000000),
-          valor: lead.valorGiroSemanal,
-          semana: 1,
-          mes: new Date().getMonth() + 1,
-          ano: new Date().getFullYear(),
-          origem: lead.giroOrigem || "Convertido de Lead",
-          dataCriacao: new Date()
-        }] : []
+        periodicidadePadrao: 7,
+        statusCliente: "Ativo" as const,
+        contabilizarGiroMedio: true,
+        tipoLogistica: "Própria" as const,
+        emiteNotaFiscal: true,
+        tipoCobranca: "À vista" as const,
+        formaPagamento: "PIX" as const
       });
 
       toast({
