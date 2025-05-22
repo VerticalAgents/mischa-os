@@ -4,6 +4,7 @@ import { useThemeStore } from "@/lib/theme";
 import MobileHeader from "@/components/layout/MobileHeader";
 import MobileMenuOverlay from "@/components/layout/MobileMenuOverlay";
 import { SessionNavBar } from "@/components/ui/sidebar-next";
+import TopHeader from "@/components/layout/TopHeader";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -42,6 +43,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
           setIsMobileMenuOpen={setIsMobileMenuOpen}
         />
       )}
+      
+      {/* Header superior com avatar e toggle de tema */}
+      <TopHeader />
 
       {/* Main Content - adjusts automatically with the sidebar */}
       <main className="flex-1 overflow-auto pt-14 lg:pt-0 ml-[3.05rem] transition-all">

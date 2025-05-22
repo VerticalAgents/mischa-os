@@ -5,7 +5,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Blocks, ChevronsUpDown, FileClock, GraduationCap, Layout, LayoutDashboard, LogOut, MessageSquareText, MessagesSquare, Plus, Settings, UserCircle, UserCog, UserSearch, BarChart3, Users, Tag, Clipboard, Truck, PackageCheck, Layers, FileText, Cpu } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -13,7 +12,6 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { mainMenuItems, secondaryMenuItems, menuGroups } from "@/components/layout/navigation-items";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useAlertaStore } from "@/hooks/useAlertaStore";
 import AlertaIndicator from "@/components/common/AlertaIndicator";
 
@@ -180,42 +178,22 @@ export function SessionNavBar() {
                 </ScrollArea>
               </div>
               
-              {/* Área do usuário */}
+              {/* Área de alertas */}
               <div className="border-t border-sidebar-border p-2">
-                <div className="flex flex-col space-y-2">
-                  {!isCollapsed && <div className="flex items-center justify-between px-2 py-1">
-                      <div className="flex items-center space-x-2">
-                        <Avatar className="h-6 w-6 bg-primary">
-                          <AvatarFallback>A</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-medium">Admin</p>
-                          <p className="text-xs text-muted-foreground">admin@mischasbakery.com</p>
-                        </div>
-                      </div>
-                    </div>}
-                  
-                  <div className="flex items-center justify-center space-x-1">
-                    {isCollapsed ? (
-                      <Link to="/alertas">
-                        <Button variant="ghost" size="icon" className="relative size-8">
-                          <Avatar className="size-6">
-                            <AvatarFallback>A</AvatarFallback>
-                          </Avatar>
-                          {alertCount > 0 && (
-                            <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center">
-                              {alertCount}
-                            </Badge>
-                          )}
-                        </Button>
-                      </Link>
-                    ) : (
-                      <div className="flex w-full justify-between px-1">
-                        <ThemeToggle />
-                        <AlertaIndicator />
-                      </div>
-                    )}
-                  </div>
+                <div className="flex items-center justify-center">
+                  {isCollapsed ? (
+                    <Link to="/alertas">
+                      <Button variant="ghost" size="icon" className="relative size-8">
+                        <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center">
+                          {alertCount}
+                        </Badge>
+                      </Button>
+                    </Link>
+                  ) : (
+                    <div className="w-full px-1">
+                      <AlertaIndicator />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Settings, DollarSign, CalendarClock, Truck, UserCog, Database, BoxesIcon, Calendar, Tag, Package, User } from "lucide-react";
 import EmpresaTab from "./tabs/EmpresaTab";
@@ -11,9 +11,21 @@ import AgendamentoTab from "./tabs/AgendamentoTab";
 import CategoriasProdutoTab from "./tabs/CategoriasProdutoTab";
 import ParametrosEstoqueTab from "./tabs/ParametrosEstoqueTab";
 import UsuarioTab from "./tabs/UsuarioTab";
+import { useSearchParams } from "react-router-dom";
 
 export default function ConfiguracoesTabs() {
-  const [activeTab, setActiveTab] = useState("empresa");
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "empresa");
+  
+  // Atualizar a aba ativa quando a URL mudar
+  useEffect(() => {
+    if (tabFromUrl && ["empresa", "sistema", "financeiro", "parametros", "parametros-estoque", 
+                     "producao", "agendamento", "categorias", "usuario"].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+  
   return <Tabs defaultValue="empresa" value={activeTab} onValueChange={setActiveTab}>
       <div className="flex mb-8 overflow-x-auto">
         <TabsList className="grid grid-flow-col auto-cols-max gap-2">
