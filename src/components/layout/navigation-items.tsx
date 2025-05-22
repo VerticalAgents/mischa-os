@@ -82,16 +82,6 @@ export const menuGroups: MenuGroup[] = [
         icon: <DollarSign className="h-4 w-4" />,
       },
       {
-        label: "Projeções",
-        path: "/projecoes",
-        icon: <LineChart className="h-4 w-4" />,
-      },
-      {
-        label: "Custos",
-        path: "/custos",
-        icon: <Receipt className="h-4 w-4" />,
-      },
-      {
         label: "Agentes de IA",
         path: "/agentes-ia",
         icon: <Cpu className="h-4 w-4" />,

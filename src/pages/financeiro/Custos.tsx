@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import PageHeader from "@/components/common/PageHeader";
+import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { Button } from "@/components/ui/button";
 import { 
   Card, 
@@ -14,7 +15,8 @@ import {
   TableBody, 
   TableHead, 
   TableRow, 
-  TableCell 
+  TableCell, 
+  TableFooter
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { 
@@ -24,11 +26,12 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, Search, Percent } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useProjectionStore } from "@/hooks/useProjectionStore";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Types
 type CategoriaCusto = "fixo" | "variavel";
@@ -54,6 +57,7 @@ export default function Custos() {
   const [categoriaFilter, setCategoriaFilter] = useState<CategoriaCusto | "todos">("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"fixos" | "variaveis">("fixos");
   
   // Get active DRE for percentage calculation
   const { getActiveScenario } = useProjectionStore();
@@ -61,7 +65,7 @@ export default function Custos() {
   const faturamentoPrevisto = activeDRE?.totalRevenue || 0;
 
   // Initialize custos with mock data
-  useState(() => {
+  useEffect(() => {
     const mockData: Custo[] = [
       {
         id: "1",
@@ -136,14 +140,16 @@ export default function Custos() {
     ];
     
     setCustos(mockData);
-  });
+  }, []);
 
   const filteredCustos = custos.filter(custo => {
     const matchesSearch = custo.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          (custo.subcategoria && custo.subcategoria.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategoria = categoriaFilter === "todos" || custo.categoria === categoriaFilter;
+    const matchesTab = (activeTab === "fixos" && custo.categoria === "fixo") || 
+                       (activeTab === "variaveis" && custo.categoria === "variavel");
     
-    return matchesSearch && matchesCategoria;
+    return matchesSearch && matchesCategoria && matchesTab;
   });
 
   // Calculate percentage of revenue for variable costs
@@ -152,19 +158,36 @@ export default function Custos() {
     return (valor / faturamentoPrevisto) * 100;
   };
 
-  const totalFixo = filteredCustos
+  // Calculate normalized monthly value for fixed costs
+  const calcularValorMensal = (custo: Custo): number => {
+    let valorMensal = custo.valor;
+    switch (custo.frequencia) {
+      case "semanal": valorMensal *= 4.33; break;
+      case "trimestral": valorMensal /= 3; break;
+      case "semestral": valorMensal /= 6; break;
+      case "anual": valorMensal /= 12; break;
+      case "por-producao": return 0; // Skip for production-based costs
+    }
+    return valorMensal;
+  };
+
+  // Calculate totals
+  const totalFixo = custos
     .filter(custo => custo.categoria === "fixo")
+    .reduce((total, custo) => total + calcularValorMensal(custo), 0);
+  
+  const totalVariavel = custos
+    .filter(custo => custo.categoria === "variavel")
     .reduce((total, custo) => {
-      // Normalizar para valor mensal
-      let valorMensal = custo.valor;
-      switch (custo.frequencia) {
-        case "semanal": valorMensal *= 4.33; break;
-        case "trimestral": valorMensal /= 3; break;
-        case "semestral": valorMensal /= 6; break;
-        case "anual": valorMensal /= 12; break;
-        case "por-producao": return total; // Ignorar neste cálculo
-      }
-      return total + valorMensal;
+      if (custo.frequencia === "por-producao") return total;
+      return total + custo.valor;
+    }, 0);
+  
+  const totalPercentualVariavel = custos
+    .filter(custo => custo.categoria === "variavel")
+    .reduce((total, custo) => {
+      if (custo.frequencia === "por-producao") return total;
+      return total + calcularPorcentagemFaturamento(custo.valor);
     }, 0);
 
   const handleSalvar = () => {
@@ -205,6 +228,8 @@ export default function Custos() {
 
   return (
     <div className="container mx-auto">
+      <BreadcrumbNavigation />
+      
       <PageHeader
         title="Custos"
         description="Gerencie todos os custos da operação"
@@ -246,6 +271,9 @@ export default function Custos() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editandoId ? "Editar Custo" : "Adicionar Novo Custo"}</DialogTitle>
+              <DialogDescription>
+                Preencha os detalhes do custo abaixo.
+              </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-1 gap-2">
@@ -371,20 +399,26 @@ export default function Custos() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Subcategorias</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total de Custos Variáveis (mensal)
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col">
             <span className="text-2xl font-bold">
-              {new Set(custos.filter(c => c.subcategoria).map(c => c.subcategoria)).size}
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalVariavel)}
+            </span>
+            <span className="text-sm text-muted-foreground flex items-center mt-1">
+              <Percent className="h-3 w-3 mr-1" />
+              {totalPercentualVariavel.toFixed(2)}% do faturamento previsto
             </span>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Custos Cadastrados</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Subcategorias</CardTitle>
           </CardHeader>
           <CardContent className="flex justify-between items-center">
-            <span className="text-2xl font-bold">{custos.length}</span>
+            <span className="text-2xl font-bold">{new Set(custos.filter(c => c.subcategoria).map(c => c.subcategoria)).size}</span>
             <div className="flex gap-2">
               <Badge variant="outline">{custos.filter(c => c.categoria === "fixo").length} fixos</Badge>
               <Badge variant="outline">{custos.filter(c => c.categoria === "variavel").length} variáveis</Badge>
@@ -393,79 +427,152 @@ export default function Custos() {
         </Card>
       </div>
 
-      {/* Tabela de custos */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex justify-between">
-            <CardTitle>Todos os Custos</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-48">Nome</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Subcategoria</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-                {categoriaFilter !== "fixo" && <TableHead className="text-right">% do Faturamento</TableHead>}
-                <TableHead>Frequência</TableHead>
-                <TableHead>Observações</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCustos.map((custo) => (
-                <TableRow key={custo.id}>
-                  <TableCell className="font-medium">{custo.nome}</TableCell>
-                  <TableCell>
-                    <Badge variant={custo.categoria === "fixo" ? "default" : "secondary"}>
-                      {custo.categoria === "fixo" ? "Fixo" : "Variável"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{custo.subcategoria}</TableCell>
-                  <TableCell className="text-right">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(custo.valor)}
-                  </TableCell>
-                  {categoriaFilter !== "fixo" && (
+      {/* Abas de Custos Fixos e Variáveis */}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "fixos" | "variaveis")}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="fixos">Custos Fixos</TabsTrigger>
+          <TabsTrigger value="variaveis">Custos Variáveis</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="fixos">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>Custos Fixos</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-48">Nome</TableHead>
+                    <TableHead>Subcategoria</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead>Frequência</TableHead>
+                    <TableHead>Observações</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCustos.map((custo) => (
+                    <TableRow key={custo.id}>
+                      <TableCell className="font-medium">{custo.nome}</TableCell>
+                      <TableCell>{custo.subcategoria}</TableCell>
+                      <TableCell className="text-right">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(custo.valor)}
+                      </TableCell>
+                      <TableCell>{getFrequenciaLabel(custo.frequencia)}</TableCell>
+                      <TableCell className="max-w-xs truncate" title={custo.observacoes}>
+                        {custo.observacoes}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => editarCusto(custo)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => excluirCusto(custo.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredCustos.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                        Nenhum custo fixo encontrado.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={2}>Total Mensal</TableCell>
                     <TableCell className="text-right">
-                      {custo.categoria === "variavel" ? (
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFixo)}
+                    </TableCell>
+                    <TableCell colSpan={3}></TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="variaveis">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>Custos Variáveis</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-48">Nome</TableHead>
+                    <TableHead>Subcategoria</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="text-right">% do Faturamento</TableHead>
+                    <TableHead>Frequência</TableHead>
+                    <TableHead>Observações</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCustos.map((custo) => (
+                    <TableRow key={custo.id}>
+                      <TableCell className="font-medium">{custo.nome}</TableCell>
+                      <TableCell>{custo.subcategoria}</TableCell>
+                      <TableCell className="text-right">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(custo.valor)}
+                      </TableCell>
+                      <TableCell className="text-right">
                         <span className="flex items-center justify-end">
                           <Percent className="h-3 w-3 mr-1" />
                           {calcularPorcentagemFaturamento(custo.valor).toFixed(2)}%
                         </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
+                      </TableCell>
+                      <TableCell>{getFrequenciaLabel(custo.frequencia)}</TableCell>
+                      <TableCell className="max-w-xs truncate" title={custo.observacoes}>
+                        {custo.observacoes}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => editarCusto(custo)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => excluirCusto(custo.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredCustos.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
+                        Nenhum custo variável encontrado.
+                      </TableCell>
+                    </TableRow>
                   )}
-                  <TableCell>{getFrequenciaLabel(custo.frequencia)}</TableCell>
-                  <TableCell className="max-w-xs truncate" title={custo.observacoes}>
-                    {custo.observacoes}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => editarCusto(custo)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => excluirCusto(custo.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredCustos.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={categoriaFilter !== "fixo" ? 8 : 7} className="text-center py-4 text-muted-foreground">
-                    Nenhum custo encontrado.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={2}>Total</TableCell>
+                    <TableCell className="text-right">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalVariavel)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="flex items-center justify-end">
+                        <Percent className="h-3 w-3 mr-1" />
+                        {totalPercentualVariavel.toFixed(2)}%
+                      </span>
+                    </TableCell>
+                    <TableCell colSpan={3}></TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

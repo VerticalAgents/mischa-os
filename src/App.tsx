@@ -126,7 +126,7 @@ const App = () => {
               </AppLayout>
             } />
             
-            {/* New Routes for Commercial Management */}
+            {/* Routes for Commercial Management */}
             <Route path="/gestao-comercial" element={
               <AppLayout>
                 <GestaoComercial />
@@ -134,21 +134,21 @@ const App = () => {
             } />
             <Route path="/gestao-comercial/funil-leads" element={
               <AppLayout>
-                <FunilLeads />
+                <GestaoComercial />
               </AppLayout>
             } />
             <Route path="/gestao-comercial/distribuidores" element={
               <AppLayout>
-                <Distribuidores />
+                <GestaoComercial />
               </AppLayout>
             } />
             <Route path="/gestao-comercial/parceiros" element={
               <AppLayout>
-                <Parceiros />
+                <GestaoComercial />
               </AppLayout>
             } />
             
-            {/* New Routes for Financial Management */}
+            {/* Routes for Financial Management */}
             <Route path="/gestao-financeira" element={
               <AppLayout>
                 <GestaoFinanceira />

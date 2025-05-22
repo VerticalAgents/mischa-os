@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
+import BreadcrumbNavigation from '@/components/common/Breadcrumb';
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { useDashboardStore } from '@/hooks/useDashboardStore';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
@@ -26,6 +27,8 @@ export default function Projections() {
 
   return (
     <div className="container mx-auto py-6">
+      <BreadcrumbNavigation />
+      
       <PageHeader
         title="Projeções"
         description="Projeções financeiras, simulação de cenários e análise de desempenho"

@@ -2,8 +2,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
+import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { Building, HelpingHand, UserCircle } from "lucide-react";
 import FunilLeads from "./gestao-comercial/FunilLeads";
 import Distribuidores from "./gestao-comercial/Distribuidores";
@@ -20,6 +20,8 @@ export default function GestaoComercial() {
 
   return (
     <div className="container mx-auto">
+      <BreadcrumbNavigation />
+      
       <PageHeader
         title="Gestão Comercial"
         description="Gerencie leads, distribuidores e parcerias comerciais"
