@@ -1,4 +1,3 @@
-
 import { 
   Cliente, 
   Sabor, 
@@ -274,65 +273,142 @@ export const saboresMock: Sabor[] = [
   }
 ];
 
-// Pedidos mockados
+// Criando pedidos para a data de hoje
+const hoje = new Date();
+hoje.setHours(0, 0, 0, 0);
+
+// Pedidos mockados - Modificando para ter 10 entregas agendadas para hoje com diferentes configurações
 export const pedidosMock: Pedido[] = [
+  // Pedido 1: Agendado para hoje - status "Agendado"
   {
     id: 1,
     idCliente: 1,
-    dataPedido: new Date("2024-05-10"),
-    dataPrevistaEntrega: new Date("2024-05-14"),
+    dataPedido: new Date(hoje.getTime() - 86400000 * 2), // 2 dias atrás
+    dataPrevistaEntrega: hoje,
     totalPedidoUnidades: 100,
     tipoPedido: "Padrão",
     statusPedido: "Agendado",
+    substatusPedido: "Agendado",
     observacoes: "Entrega antes das 10h",
     itensPedido: []
   },
+  // Pedido 2: Agendado para hoje - status "Agendado", alterado
   {
     id: 2,
     idCliente: 2,
-    dataPedido: new Date("2024-05-11"),
-    dataPrevistaEntrega: new Date("2024-05-14"),
+    dataPedido: new Date(hoje.getTime() - 86400000 * 1), // 1 dia atrás
+    dataPrevistaEntrega: hoje,
     totalPedidoUnidades: 80,
     tipoPedido: "Alterado",
     statusPedido: "Agendado",
+    substatusPedido: "Agendado",
     observacoes: "Cliente pediu mais Avelã e menos Tradicional",
     itensPedido: []
   },
+  // Pedido 3: Agendado para hoje - status "Agendado", com substatus "Separado"
   {
     id: 3,
     idCliente: 3,
-    dataPedido: new Date("2024-05-09"),
-    dataPrevistaEntrega: new Date("2024-05-15"),
+    dataPedido: new Date(hoje.getTime() - 86400000 * 3), // 3 dias atrás
+    dataPrevistaEntrega: hoje,
     totalPedidoUnidades: 60,
     tipoPedido: "Padrão",
     statusPedido: "Agendado",
+    substatusPedido: "Separado",
     itensPedido: []
   },
+  // Pedido 4: Entregue hoje
   {
     id: 4,
-    idCliente: 1,
-    dataPedido: new Date("2024-05-03"),
-    dataPrevistaEntrega: new Date("2024-05-07"),
-    totalPedidoUnidades: 100,
+    idCliente: 4,
+    dataPedido: new Date(hoje.getTime() - 86400000 * 2), // 2 dias atrás
+    dataPrevistaEntrega: hoje,
+    totalPedidoUnidades: 50,
     tipoPedido: "Padrão",
     statusPedido: "Entregue",
-    dataEfetivaEntrega: new Date("2024-05-07"),
+    dataEfetivaEntrega: new Date(hoje.setHours(9, 30, 0, 0)),
     itensPedido: []
   },
+  // Pedido 5: Agendado para hoje - status "Despachado"
   {
     id: 5,
-    idCliente: 2,
-    dataPedido: new Date("2024-05-04"),
-    dataPrevistaEntrega: new Date("2024-05-09"),
-    totalPedidoUnidades: 80,
+    idCliente: 5,
+    dataPedido: new Date(hoje.getTime() - 86400000 * 1), // 1 dia atrás
+    dataPrevistaEntrega: hoje,
+    totalPedidoUnidades: 120,
     tipoPedido: "Padrão",
-    statusPedido: "Entregue",
-    dataEfetivaEntrega: new Date("2024-05-09"),
+    statusPedido: "Despachado",
+    substatusPedido: "Despachado",
+    observacoes: "Em rota de entrega desde 8h30",
+    itensPedido: []
+  },
+  // Pedido 6: Pedido Único para hoje
+  {
+    id: 6,
+    idCliente: 0, // 0 indica pedido único
+    dataPedido: new Date(hoje.getTime() - 86400000 * 2), // 2 dias atrás
+    dataPrevistaEntrega: hoje,
+    totalPedidoUnidades: 30,
+    tipoPedido: "Alterado",
+    statusPedido: "Agendado",
+    substatusPedido: "Agendado",
+    observacoes: "PEDIDO ÚNICO\nNome: Evento Corporativo ABC\nTelefone: (11) 97777-8888\nLevem em caixas separadas",
+    itensPedido: []
+  },
+  // Pedido 7: Outro Pedido Único para hoje - já despachado
+  {
+    id: 7,
+    idCliente: 0, // 0 indica pedido único
+    dataPedido: new Date(hoje.getTime() - 86400000 * 1), // 1 dia atrás
+    dataPrevistaEntrega: hoje,
+    totalPedidoUnidades: 25,
+    tipoPedido: "Alterado",
+    statusPedido: "Despachado",
+    substatusPedido: "Despachado",
+    observacoes: "PEDIDO ÚNICO\nNome: Festa de Aniversário\nTelefone: (11) 96666-5555\nEntregar no salão de festas",
+    itensPedido: []
+  },
+  // Pedido 8: Agendado para hoje - status "Em Separação"
+  {
+    id: 8,
+    idCliente: 6,
+    dataPedido: new Date(hoje.getTime() - 86400000 * 2), // 2 dias atrás
+    dataPrevistaEntrega: hoje,
+    totalPedidoUnidades: 40,
+    tipoPedido: "Padrão",
+    statusPedido: "Agendado",
+    substatusPedido: "Separado",
+    observacoes: "Primeira entrega para este PDV",
+    itensPedido: []
+  },
+  // Pedido 9: Agendado para hoje - status "Agendado"
+  {
+    id: 9,
+    idCliente: 7,
+    dataPedido: new Date(hoje.getTime() - 86400000 * 3), // 3 dias atrás
+    dataPrevistaEntrega: hoje,
+    totalPedidoUnidades: 90,
+    tipoPedido: "Padrão",
+    statusPedido: "Agendado",
+    substatusPedido: "Agendado",
+    itensPedido: []
+  },
+  // Pedido 10: Reposição em PDV novo para hoje
+  {
+    id: 10,
+    idCliente: 4,
+    dataPedido: new Date(hoje.getTime() - 86400000 * 1), // 1 dia atrás
+    dataPrevistaEntrega: hoje,
+    totalPedidoUnidades: 30,
+    tipoPedido: "Alterado",
+    statusPedido: "Agendado",
+    substatusPedido: "Agendado",
+    observacoes: "Pedido reduzido a pedido do cliente para teste de mercado",
     itensPedido: []
   }
 ];
 
-// Itens de pedido mockados com nomeSabor adicionado
+// Itens de pedido mockados com nomeSabor adicionado (mantendo os existentes)
 export const itensPedidoMock: ItemPedido[] = [
   // Pedido 1 (Padrão para Café Central)
   { id: 1, idPedido: 1, idSabor: 1, nomeSabor: "Tradicional", quantidadeSabor: 18 },
@@ -367,7 +443,49 @@ export const itensPedidoMock: ItemPedido[] = [
   { id: 22, idPedido: 5, idSabor: 2, nomeSabor: "Choco Duo", quantidadeSabor: 22, quantidadeEntregue: 22 },
   { id: 23, idPedido: 5, idSabor: 3, nomeSabor: "Meio Amargo", quantidadeSabor: 10, quantidadeEntregue: 10 },
   { id: 24, idPedido: 5, idSabor: 4, nomeSabor: "Stikadinho", quantidadeSabor: 16, quantidadeEntregue: 16 },
-  { id: 25, idPedido: 5, idSabor: 5, nomeSabor: "Avelã", quantidadeSabor: 18, quantidadeEntregue: 18 }
+  { id: 25, idPedido: 5, idSabor: 5, nomeSabor: "Avelã", quantidadeSabor: 18, quantidadeEntregue: 18 },
+  
+  // Novos itens para os pedidos 6-10 (adicionados agora)
+  
+  // Pedido 6: Pedido Único para evento
+  { id: 26, idPedido: 6, idSabor: 1, nomeSabor: "Tradicional", quantidadeSabor: 5 },
+  { id: 27, idPedido: 6, idSabor: 2, nomeSabor: "Choco Duo", quantidadeSabor: 10 },
+  { id: 28, idPedido: 6, idSabor: 4, nomeSabor: "Stikadinho", quantidadeSabor: 5 },
+  { id: 29, idPedido: 6, idSabor: 5, nomeSabor: "Avelã", quantidadeSabor: 10 },
+  
+  // Pedido 7: Outro Pedido Único para festa
+  { id: 30, idPedido: 7, idSabor: 1, nomeSabor: "Tradicional", quantidadeSabor: 5 },
+  { id: 31, idPedido: 7, idSabor: 2, nomeSabor: "Choco Duo", quantidadeSabor: 5 },
+  { id: 32, idPedido: 7, idSabor: 3, nomeSabor: "Meio Amargo", quantidadeSabor: 5 },
+  { id: 33, idPedido: 7, idSabor: 9, nomeSabor: "Oreo Cream", quantidadeSabor: 10 },
+  
+  // Pedido 8: PDV Delícias da Vovó
+  { id: 34, idPedido: 8, idSabor: 1, nomeSabor: "Tradicional", quantidadeSabor: 8 },
+  { id: 35, idPedido: 8, idSabor: 2, nomeSabor: "Choco Duo", quantidadeSabor: 12 },
+  { id: 36, idPedido: 8, idSabor: 3, nomeSabor: "Meio Amargo", quantidadeSabor: 5 },
+  { id: 37, idPedido: 8, idSabor: 4, nomeSabor: "Stikadinho", quantidadeSabor: 7 },
+  { id: 38, idPedido: 8, idSabor: 5, nomeSabor: "Avelã", quantidadeSabor: 8 },
+  
+  // Pedido 9: PDV Bairro Feliz
+  { id: 39, idPedido: 9, idSabor: 1, nomeSabor: "Tradicional", quantidadeSabor: 16 },
+  { id: 40, idPedido: 9, idSabor: 2, nomeSabor: "Choco Duo", quantidadeSabor: 24 },
+  { id: 41, idPedido: 9, idSabor: 3, nomeSabor: "Meio Amargo", quantidadeSabor: 12 },
+  { id: 42, idPedido: 9, idSabor: 4, nomeSabor: "Stikadinho", quantidadeSabor: 18 },
+  { id: 43, idPedido: 9, idSabor: 5, nomeSabor: "Avelã", quantidadeSabor: 20 },
+  
+  // Pedido 10: PDV novo com pedido de teste
+  { id: 44, idPedido: 10, idSabor: 1, nomeSabor: "Tradicional", quantidadeSabor: 5 },
+  { id: 45, idPedido: 10, idSabor: 2, nomeSabor: "Choco Duo", quantidadeSabor: 10 },
+  { id: 46, idPedido: 10, idSabor: 5, nomeSabor: "Avelã", quantidadeSabor: 5 },
+  { id: 47, idPedido: 10, idSabor: 6, nomeSabor: "Blondie", quantidadeSabor: 5 },
+  { id: 48, idPedido: 10, idSabor: 7, nomeSabor: "Doce de Leite", quantidadeSabor: 5 },
+  
+  // Adicionar também itens entregues para o pedido já entregue (id 4)
+  { id: 49, idPedido: 4, idSabor: 1, nomeSabor: "Tradicional", quantidadeSabor: 9, quantidadeEntregue: 9 },
+  { id: 50, idPedido: 4, idSabor: 2, nomeSabor: "Choco Duo", quantidadeSabor: 14, quantidadeEntregue: 14 },
+  { id: 51, idPedido: 4, idSabor: 3, nomeSabor: "Meio Amargo", quantidadeSabor: 7, quantidadeEntregue: 7 },
+  { id: 52, idPedido: 4, idSabor: 4, nomeSabor: "Stikadinho", quantidadeSabor: 10, quantidadeEntregue: 10 },
+  { id: 53, idPedido: 4, idSabor: 5, nomeSabor: "Avelã", quantidadeSabor: 10, quantidadeEntregue: 10 }
 ];
 
 // Alertas mockados
