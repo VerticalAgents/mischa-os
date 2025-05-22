@@ -1,132 +1,100 @@
 
-import { Link } from "react-router-dom";
-import { useLocation } from "react-router-dom";
-import { Bell, Clock } from "lucide-react";
-import { SidebarLink, SidebarHeader, useSidebar } from "@/components/ui/sidebar-animated";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useAlertaStore } from "@/hooks/useAlertaStore";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Link, useLocation } from "react-router-dom";
+import {
+  Home,
+  Users,
+  ShoppingBag,
+  Calendar,
+  Package,
+  Settings,
+  Factory,
+  Truck,
+  BarChart4,
+  FileText,
+  Bot,
+  ShoppingCart,
+  BadgeDollarSign,
+  LayoutDashboard,
+  Store,
+  LogOut,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { navigationItems } from "@/components/layout/navigation-items";
+import { useAuth } from "@/contexts/AuthContext";
 
-// Menu items definition
-import { menuGroups } from "@/components/layout/navigation-items";
+interface SidebarProps {
+  showLabels: boolean;
+  onItemClick?: () => void;
+}
 
-const SidebarContent = () => {
+const SidebarContent = ({ showLabels, onItemClick }: SidebarProps) => {
   const location = useLocation();
-  const quantidadeAlertasNaoLidas = useAlertaStore((state) => state.getQuantidadeAlertasNaoLidas());
-  const { open, animate } = useSidebar();
-  
-  // Determine if we should show full content based on sidebar state
-  const showFullContent = animate ? open : true;
-  
+  const { logout } = useAuth();
+
   return (
-    <>
-      {/* Sidebar Header with Logo and Title - using custom logos */}
-      <SidebarHeader 
-        lightModeLogo="/lovable-uploads/021d1658-0d25-4427-a96e-47f6d10f9c8b.png"
-        darkModeLogo="/lovable-uploads/1e4d0e9f-7f47-47c2-96fd-bc9c6b697187.png" 
-        title="MischaOS" 
-      />
-      
-      {/* Main Menu Grouped by Functional Areas */}
-      <div className="flex-1 px-4 py-6 overflow-y-auto">
-        <div className="space-y-6">
-          {menuGroups.map((group, index) => (
-            <div key={group.title} className="space-y-2">
-              {/* Group Header */}
-              <div className="px-3 flex items-center">
-                <div className={cn(
-                  "h-2 w-2 rounded-full mr-2",
-                  group.variant === "operational" && "bg-purple-500",
-                  group.variant === "tactical" && "bg-blue-500",
-                  group.variant === "strategic" && "bg-green-500",
-                  group.variant === "system" && "bg-gray-400"
-                )}/>
-                <h4 className="text-xs font-medium uppercase text-muted-foreground">{group.title}</h4>
-              </div>
-              
-              {/* Group Menu Items */}
-              <div className="space-y-1">
-                {group.items.map((item) => (
-                  <SidebarLink
-                    key={item.path}
-                    link={{
-                      label: item.label,
-                      href: item.path,
-                      icon: <div className="text-current">{item.icon}</div>,
-                    }}
-                    active={location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)}
-                  />
-                ))}
-              </div>
-              
-              {/* Add separator between groups */}
-              {index < menuGroups.length - 1 && (
-                <Separator className="my-2"/>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-      
-      {/* User Info & Alerts */}
-      <div className="border-t p-4">
-        {showFullContent ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Avatar className="h-8 w-8 bg-primary">
-                <AvatarFallback>A</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-medium text-sidebar-foreground">Administrador</p>
-                <p className="text-xs text-muted-foreground">admin@mischasbakery.com</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Link to="/alertas">
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5" />
-                  {quantidadeAlertasNaoLidas > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center">
-                      {quantidadeAlertasNaoLidas}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
-              <div className="md:hidden">
-                <ThemeToggle />
-              </div>
-              <div>
-                <Clock className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
+    <div className="flex h-full flex-col gap-2">
+      <div className="mb-6 mt-3 flex items-center px-2">
+        {showLabels ? (
+          <Link
+            to="/"
+            className="flex items-center gap-2 rounded-md p-2 text-lg font-semibold transition-colors hover:bg-accent"
+            onClick={onItemClick}
+          >
+            <img src="/logo.svg" alt="Logo" className="h-6 w-6" />
+            <span>Mischa's Bakery</span>
+          </Link>
         ) : (
-          <div className="flex justify-center">
-            {/* When sidebar is minimized, show only icons */}
-            <div className="flex flex-col space-y-4 items-center">
-              <Avatar className="h-8 w-8 bg-primary">
-                <AvatarFallback>A</AvatarFallback>
-              </Avatar>
-              
-              <Link to="/alertas">
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5" />
-                  {quantidadeAlertasNaoLidas > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center">
-                      {quantidadeAlertasNaoLidas}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
-            </div>
-          </div>
+          <Link
+            to="/"
+            className="flex items-center justify-center rounded-md p-2 transition-colors hover:bg-accent"
+            onClick={onItemClick}
+          >
+            <img src="/logo.svg" alt="Logo" className="h-6 w-6" />
+          </Link>
         )}
       </div>
-    </>
+
+      <nav className="space-y-1 px-2">
+        {navigationItems.map((item) => (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={cn(
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              location.pathname === item.path
+                ? "bg-accent text-accent-foreground"
+                : "hover:bg-accent hover:text-accent-foreground"
+            )}
+            onClick={onItemClick}
+          >
+            {item.icon}
+            {showLabels && <span>{item.label}</span>}
+          </Link>
+        ))}
+      </nav>
+
+      <div className="mt-auto space-y-1 px-2 pb-4">
+        <ThemeToggle
+          variant="ghost"
+          className={cn(
+            "flex w-full justify-start gap-2 px-3 py-2",
+            showLabels ? "justify-start" : "justify-center"
+          )}
+          showLabel={showLabels}
+        />
+        <button
+          className={cn(
+            "flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
+            showLabels ? "justify-start gap-3" : "justify-center"
+          )}
+          onClick={logout}
+        >
+          <LogOut className="h-4 w-4" />
+          {showLabels && <span>Sair</span>}
+        </button>
+      </div>
+    </div>
   );
 };
 

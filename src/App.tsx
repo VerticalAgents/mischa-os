@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -20,11 +21,13 @@ import AgentesIA from "./pages/AgentesIA";
 import AgenteIAPage from "./pages/AgenteIAPage";
 import EstoqueInsumos from "./pages/EstoqueInsumos";
 
+// Auth pages
+import LoginPage from "./pages/auth/LoginPage";
+import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+
 // New pages
 import GestaoComercial from "./pages/GestaoComercial";
-import FunilLeads from "./pages/gestao-comercial/FunilLeads";
-import Distribuidores from "./pages/gestao-comercial/Distribuidores";
-import Parceiros from "./pages/gestao-comercial/Parceiros";
 import GestaoFinanceira from "./pages/GestaoFinanceira";
 import Custos from "./pages/financeiro/Custos";
 
@@ -58,110 +61,154 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            {/* Existing Routes */}
-            <Route path="/" element={
-              <AppLayout>
-                <DashboardAnalytics />
-              </AppLayout>
-            } />
-            <Route path="/clientes" element={
-              <AppLayout>
-                <Clientes />
-              </AppLayout>
-            } />
-            <Route path="/precificacao" element={
-              <AppLayout>
-                <Precificacao />
-              </AppLayout>
-            } />
-            <Route path="/agendamento" element={
-              <AppLayout>
-                <Agendamento />
-              </AppLayout>
-            } />
-            <Route path="/expedicao" element={
-              <AppLayout>
-                <Expedicao />
-              </AppLayout>
-            } />
-            <Route path="/estoque" element={
-              <AppLayout>
-                <Estoque />
-              </AppLayout>
-            } />
-            <Route path="/estoque/insumos" element={
-              <AppLayout>
-                <EstoqueInsumos />
-              </AppLayout>
-            } />
-            <Route path="/configuracoes" element={
-              <AppLayout>
-                <Configuracoes />
-              </AppLayout>
-            } />
-            <Route path="/pcp" element={
-              <AppLayout>
-                <PCP />
-              </AppLayout>
-            } />
-            <Route path="/projecoes" element={
-              <AppLayout>
-                <Projections />
-              </AppLayout>
-            } />
-            <Route path="/analytics" element={
-              <AppLayout>
-                <DashboardAnalytics />
-              </AppLayout>
-            } />
-            <Route path="/agentes-ia" element={
-              <AppLayout>
-                <AgentesIA />
-              </AppLayout>
-            } />
-            <Route path="/agentes-ia/:id" element={
-              <AppLayout>
-                <AgenteIAPage />
-              </AppLayout>
-            } />
-            
-            {/* Routes for Commercial Management */}
-            <Route path="/gestao-comercial" element={
-              <AppLayout>
-                <GestaoComercial />
-              </AppLayout>
-            } />
-            <Route path="/gestao-comercial/funil-leads" element={
-              <AppLayout>
-                <GestaoComercial />
-              </AppLayout>
-            } />
-            <Route path="/gestao-comercial/distribuidores" element={
-              <AppLayout>
-                <GestaoComercial />
-              </AppLayout>
-            } />
-            <Route path="/gestao-comercial/parceiros" element={
-              <AppLayout>
-                <GestaoComercial />
-              </AppLayout>
-            } />
-            
-            {/* Routes for Financial Management */}
-            <Route path="/gestao-financeira" element={
-              <AppLayout>
-                <GestaoFinanceira />
-              </AppLayout>
-            } />
-            <Route path="/custos" element={
-              <AppLayout>
-                <Custos />
-              </AppLayout>
-            } />
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthProvider>
+            <Routes>
+              {/* Auth Routes */}
+              <Route path="/login" element={<LoginPage />} />
+              
+              {/* Protected Routes */}
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <DashboardAnalytics />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/clientes" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Clientes />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/precificacao" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Precificacao />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/agendamento" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Agendamento />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/expedicao" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Expedicao />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/estoque" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Estoque />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/estoque/insumos" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <EstoqueInsumos />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/configuracoes" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Configuracoes />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/pcp" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <PCP />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/projecoes" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Projections />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/analytics" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <DashboardAnalytics />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/agentes-ia" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <AgentesIA />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/agentes-ia/:id" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <AgenteIAPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              {/* Routes for Commercial Management */}
+              <Route path="/gestao-comercial" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <GestaoComercial />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/gestao-comercial/funil-leads" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <GestaoComercial />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/gestao-comercial/distribuidores" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <GestaoComercial />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/gestao-comercial/parceiros" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <GestaoComercial />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              {/* Routes for Financial Management */}
+              <Route path="/gestao-financeira" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <GestaoFinanceira />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/custos" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Custos />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              {/* Not Found Route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
