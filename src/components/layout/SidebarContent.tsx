@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { navigationItems } from "@/components/layout/navigation-items";
+import { mainMenuItems } from "@/components/layout/navigation-items";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface SidebarProps {
@@ -56,7 +56,7 @@ const SidebarContent = ({ showLabels, onItemClick }: SidebarProps) => {
       </div>
 
       <nav className="space-y-1 px-2">
-        {navigationItems.map((item) => (
+        {mainMenuItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
