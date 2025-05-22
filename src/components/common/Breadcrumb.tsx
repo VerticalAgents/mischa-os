@@ -22,31 +22,78 @@ interface BreadcrumbNavigationProps {
 
 // Map of routes to breadcrumb paths
 const routeMap: { [key: string]: BreadcrumbPathItem[] } = {
+  "/": [
+    { title: "Início", href: "/" }
+  ],
   "/gestao-comercial": [
-    { title: "Gestão Comercial", href: "/gestao-comercial" }
+    { title: "Início", href: "/" },
+    { title: "Gestão Comercial", href: "/gestao-comercial", current: true }
   ],
   "/gestao-comercial/funil-leads": [
+    { title: "Início", href: "/" },
     { title: "Gestão Comercial", href: "/gestao-comercial" },
     { title: "Funil de Leads", href: "/gestao-comercial/funil-leads", current: true }
   ],
   "/gestao-comercial/distribuidores": [
+    { title: "Início", href: "/" },
     { title: "Gestão Comercial", href: "/gestao-comercial" },
     { title: "Distribuidores", href: "/gestao-comercial/distribuidores", current: true }
   ],
   "/gestao-comercial/parceiros": [
+    { title: "Início", href: "/" },
     { title: "Gestão Comercial", href: "/gestao-comercial" },
     { title: "Parceiros", href: "/gestao-comercial/parceiros", current: true }
   ],
   "/gestao-financeira": [
-    { title: "Gestão Financeira", href: "/gestao-financeira" }
+    { title: "Início", href: "/" },
+    { title: "Gestão Financeira", href: "/gestao-financeira", current: true }
   ],
   "/custos": [
+    { title: "Início", href: "/" },
     { title: "Gestão Financeira", href: "/gestao-financeira" },
     { title: "Custos", href: "/custos", current: true }
   ],
   "/projecoes": [
+    { title: "Início", href: "/" },
     { title: "Gestão Financeira", href: "/gestao-financeira" },
     { title: "Projeções", href: "/projecoes", current: true }
+  ],
+  "/clientes": [
+    { title: "Início", href: "/" },
+    { title: "Clientes", href: "/clientes", current: true }
+  ],
+  "/precificacao": [
+    { title: "Início", href: "/" },
+    { title: "Precificação", href: "/precificacao", current: true }
+  ],
+  "/agendamento": [
+    { title: "Início", href: "/" },
+    { title: "Agendamento", href: "/agendamento", current: true }
+  ],
+  "/expedicao": [
+    { title: "Início", href: "/" },
+    { title: "Expedição", href: "/expedicao", current: true }
+  ],
+  "/estoque": [
+    { title: "Início", href: "/" },
+    { title: "Estoque", href: "/estoque", current: true }
+  ],
+  "/estoque/insumos": [
+    { title: "Início", href: "/" },
+    { title: "Estoque", href: "/estoque" },
+    { title: "Insumos", href: "/estoque/insumos", current: true }
+  ],
+  "/pcp": [
+    { title: "Início", href: "/" },
+    { title: "PCP", href: "/pcp", current: true }
+  ],
+  "/configuracoes": [
+    { title: "Início", href: "/" },
+    { title: "Configurações", href: "/configuracoes", current: true }
+  ],
+  "/agentes-ia": [
+    { title: "Início", href: "/" },
+    { title: "Agentes de IA", href: "/agentes-ia", current: true }
   ]
 };
 
@@ -58,7 +105,7 @@ export default function BreadcrumbNavigation({ items: customItems }: BreadcrumbN
   const items = customItems || routeMap[pathname] || [];
   
   // Don't render if there are no items or only one item (we're at the top level)
-  if (items.length <= 1) {
+  if (items.length === 0) {
     return null;
   }
 
