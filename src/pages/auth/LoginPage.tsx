@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
+import { SplashCursorDemo } from '@/components/ui/splash-cursor-demo';
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
@@ -29,8 +30,11 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <div className="relative mx-auto flex w-full max-w-md flex-col items-center justify-center space-y-6 rounded-xl border bg-card p-8 shadow-lg">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-transparent p-4 relative">
+      {/* Fundo com efeito fluido */}
+      <SplashCursorDemo />
+      
+      <div className="relative mx-auto flex w-full max-w-md flex-col items-center justify-center space-y-6 rounded-xl border bg-card p-8 shadow-lg z-10">
         {/* Logo and Title */}
         <div className="flex flex-col items-center space-y-4">
           <img src="/logo.svg" alt="Mischa's Bakery" className="h-20 w-20" />
