@@ -1,12 +1,10 @@
 
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Receipt, DollarSign, FileText, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
 
 export default function GestaoFinanceira() {
   const navigate = useNavigate();

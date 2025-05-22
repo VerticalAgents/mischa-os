@@ -1,573 +1,486 @@
 
 import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/components/ui/use-toast";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
-import { Button } from "@/components/ui/button";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableHead, 
-  TableRow, 
-  TableCell, 
-  TableFooter
-} from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Search, Percent } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
 import { useProjectionStore } from "@/hooks/useProjectionStore";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatCurrency } from "@/lib/utils";
+import { Edit, Plus, Trash } from "lucide-react";
 
-// Types
-type CategoriaCusto = "fixo" | "variavel";
-type Frequencia = "mensal" | "semanal" | "trimestral" | "semestral" | "anual" | "por-producao";
+type TipoCusto = "Fixo" | "Variável";
+type FrequenciaCusto = "Mensal" | "Trimestral" | "Semestral" | "Anual" | "Eventual";
+type TabelaCusto = "fixos" | "variaveis";
 
 interface Custo {
   id: string;
   nome: string;
-  categoria: CategoriaCusto;
-  subcategoria?: string;
   valor: number;
-  frequencia: Frequencia;
+  tipo: TipoCusto;
+  frequencia: FrequenciaCusto;
+  subcategoria: string;
   observacoes?: string;
 }
 
+const custosMock: Custo[] = [
+  { 
+    id: "1", 
+    nome: "Aluguel", 
+    valor: 3500, 
+    tipo: "Fixo", 
+    frequencia: "Mensal", 
+    subcategoria: "Instalações",
+    observacoes: "Contrato com reajuste anual" 
+  },
+  { 
+    id: "2", 
+    nome: "Energia elétrica", 
+    valor: 1200, 
+    tipo: "Variável", 
+    frequencia: "Mensal", 
+    subcategoria: "Utilidades",
+  },
+  { 
+    id: "3", 
+    nome: "Água", 
+    valor: 450, 
+    tipo: "Variável", 
+    frequencia: "Mensal", 
+    subcategoria: "Utilidades",
+  },
+  { 
+    id: "4", 
+    nome: "Internet e Telefone", 
+    valor: 350, 
+    tipo: "Fixo", 
+    frequencia: "Mensal", 
+    subcategoria: "Tecnologia",
+  },
+  { 
+    id: "5", 
+    nome: "Salários", 
+    valor: 15000, 
+    tipo: "Fixo", 
+    frequencia: "Mensal", 
+    subcategoria: "Pessoal",
+  },
+  { 
+    id: "6", 
+    nome: "FGTS e Encargos", 
+    valor: 4500, 
+    tipo: "Fixo", 
+    frequencia: "Mensal", 
+    subcategoria: "Pessoal",
+  },
+  { 
+    id: "7", 
+    nome: "Matéria-prima", 
+    valor: 12000, 
+    tipo: "Variável", 
+    frequencia: "Mensal", 
+    subcategoria: "Produção",
+  },
+  { 
+    id: "8", 
+    nome: "Embalagens", 
+    valor: 2500, 
+    tipo: "Variável", 
+    frequencia: "Mensal", 
+    subcategoria: "Produção",
+  },
+  { 
+    id: "9", 
+    nome: "Entregas", 
+    valor: 4200, 
+    tipo: "Variável", 
+    frequencia: "Mensal", 
+    subcategoria: "Logística",
+  },
+  { 
+    id: "10", 
+    nome: "Manutenção de Equipamentos", 
+    valor: 800, 
+    tipo: "Fixo", 
+    frequencia: "Trimestral", 
+    subcategoria: "Manutenção",
+  },
+  { 
+    id: "11", 
+    nome: "Contador", 
+    valor: 1200, 
+    tipo: "Fixo", 
+    frequencia: "Mensal", 
+    subcategoria: "Serviços",
+  },
+  { 
+    id: "12", 
+    nome: "Softwares e Licenças", 
+    valor: 600, 
+    tipo: "Fixo", 
+    frequencia: "Mensal", 
+    subcategoria: "Tecnologia",
+  },
+  { 
+    id: "13", 
+    nome: "Seguro", 
+    valor: 2400, 
+    tipo: "Fixo", 
+    frequencia: "Anual", 
+    subcategoria: "Seguros",
+  }
+];
+
+const subcategorias = [
+  "Instalações",
+  "Utilidades",
+  "Tecnologia",
+  "Pessoal",
+  "Produção",
+  "Logística",
+  "Manutenção",
+  "Seguros",
+  "Serviços",
+  "Impostos",
+  "Outros"
+];
+
 export default function Custos() {
+  const { toast } = useToast();
   const [custos, setCustos] = useState<Custo[]>([]);
-  const [novoCusto, setNovoCusto] = useState<Partial<Custo>>({
-    categoria: "fixo",
-    frequencia: "mensal"
-  });
-  const [searchTerm, setSearchTerm] = useState("");
-  const [categoriaFilter, setCategoriaFilter] = useState<CategoriaCusto | "todos">("todos");
+  const [tabela, setTabela] = useState<TabelaCusto>("fixos");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"fixos" | "variaveis">("fixos");
-  
-  // Get active DRE for percentage calculation
-  const { getActiveScenario } = useProjectionStore();
-  const activeDRE = getActiveScenario();
-  const faturamentoPrevisto = activeDRE?.totalRevenue || 0;
-
-  // Initialize custos with mock data
-  useEffect(() => {
-    const mockData: Custo[] = [
-      {
-        id: "1",
-        nome: "Aluguel",
-        categoria: "fixo",
-        subcategoria: "Instalações",
-        valor: 3500,
-        frequencia: "mensal",
-        observacoes: "Contrato reajustado em janeiro"
-      },
-      {
-        id: "2",
-        nome: "Energia Elétrica",
-        categoria: "fixo",
-        subcategoria: "Utilidades",
-        valor: 1200,
-        frequencia: "mensal",
-        observacoes: "Média dos últimos 6 meses"
-      },
-      {
-        id: "3",
-        nome: "Farinha de Trigo",
-        categoria: "variavel",
-        subcategoria: "Matéria-prima",
-        valor: 4.50,
-        frequencia: "por-producao",
-        observacoes: "Preço por kg"
-      },
-      {
-        id: "4",
-        nome: "Marketing Digital",
-        categoria: "fixo",
-        subcategoria: "Marketing",
-        valor: 1500,
-        frequencia: "mensal"
-      },
-      {
-        id: "5",
-        nome: "Manutenção Equipamentos",
-        categoria: "fixo",
-        subcategoria: "Manutenção",
-        valor: 800,
-        frequencia: "trimestral"
-      },
-      {
-        id: "6",
-        nome: "Embalagens",
-        categoria: "variavel",
-        subcategoria: "Materiais",
-        valor: 2500,
-        frequencia: "mensal",
-        observacoes: "Custo estimado com base na produção atual"
-      },
-      {
-        id: "7", 
-        nome: "Entregas",
-        categoria: "variavel",
-        subcategoria: "Logística",
-        valor: 4200,
-        frequencia: "mensal",
-        observacoes: "Serviço terceirizado de entregas"
-      },
-      {
-        id: "8",
-        nome: "Matéria-prima Geral",
-        categoria: "variavel",
-        subcategoria: "Produção",
-        valor: 12000,
-        frequencia: "mensal",
-        observacoes: "Todas as matérias-primas exceto farinha"
-      }
-    ];
-    
-    setCustos(mockData);
-  }, []);
-
-  const filteredCustos = custos.filter(custo => {
-    const matchesSearch = custo.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         (custo.subcategoria && custo.subcategoria.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategoria = categoriaFilter === "todos" || custo.categoria === categoriaFilter;
-    const matchesTab = (activeTab === "fixos" && custo.categoria === "fixo") || 
-                       (activeTab === "variaveis" && custo.categoria === "variavel");
-    
-    return matchesSearch && matchesCategoria && matchesTab;
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [novoCusto, setNovoCusto] = useState<Partial<Custo>>({
+    tipo: "Fixo",
+    frequencia: "Mensal"
   });
-
-  // Calculate percentage of revenue for variable costs
-  const calcularPorcentagemFaturamento = (valor: number): number => {
-    if (!faturamentoPrevisto || faturamentoPrevisto === 0) return 0;
-    return (valor / faturamentoPrevisto) * 100;
-  };
-
-  // Calculate normalized monthly value for fixed costs
-  const calcularValorMensal = (custo: Custo): number => {
-    let valorMensal = custo.valor;
-    switch (custo.frequencia) {
-      case "semanal": valorMensal *= 4.33; break;
-      case "trimestral": valorMensal /= 3; break;
-      case "semestral": valorMensal /= 6; break;
-      case "anual": valorMensal /= 12; break;
-      case "por-producao": return 0; // Skip for production-based costs
+  const { baseDRE } = useProjectionStore();
+  
+  useEffect(() => {
+    // Load mock data or from API
+    setCustos(custosMock);
+  }, []);
+  
+  const faturamentoPrevisto = baseDRE?.receita || 85000; // Fallback to 85k if no DRE
+  
+  const handleSalvarCusto = () => {
+    if (!novoCusto.nome || !novoCusto.valor) {
+      toast({
+        title: "Dados incompletos",
+        description: "Por favor, preencha nome e valor do custo.",
+        variant: "destructive"
+      });
+      return;
     }
-    return valorMensal;
-  };
-
-  // Calculate totals
-  const totalFixo = custos
-    .filter(custo => custo.categoria === "fixo")
-    .reduce((total, custo) => total + calcularValorMensal(custo), 0);
-  
-  const totalVariavel = custos
-    .filter(custo => custo.categoria === "variavel")
-    .reduce((total, custo) => {
-      if (custo.frequencia === "por-producao") return total;
-      return total + custo.valor;
-    }, 0);
-  
-  const totalPercentualVariavel = custos
-    .filter(custo => custo.categoria === "variavel")
-    .reduce((total, custo) => {
-      if (custo.frequencia === "por-producao") return total;
-      return total + calcularPorcentagemFaturamento(custo.valor);
-    }, 0);
-
-  const handleSalvar = () => {
-    if (editandoId) {
+    
+    if (editingId) {
       setCustos(prev => prev.map(custo => 
-        custo.id === editandoId ? {...novoCusto, id: editandoId} as Custo : custo
+        custo.id === editingId ? { ...custo, ...novoCusto } as Custo : custo
       ));
+      
+      toast({
+        title: "Custo atualizado",
+        description: `O custo ${novoCusto.nome} foi atualizado com sucesso.`
+      });
     } else {
-      const id = Math.random().toString(36).substr(2, 9);
-      setCustos(prev => [...prev, {...novoCusto, id} as Custo]);
+      const newId = Math.random().toString(36).substr(2, 9);
+      setCustos(prev => [...prev, { 
+        id: newId, 
+        ...novoCusto 
+      } as Custo]);
+      
+      toast({
+        title: "Custo adicionado",
+        description: `O custo ${novoCusto.nome} foi adicionado com sucesso.`
+      });
     }
+    
     setDialogOpen(false);
-    setNovoCusto({ categoria: "fixo", frequencia: "mensal" });
-    setEditandoId(null);
+    setNovoCusto({
+      tipo: "Fixo",
+      frequencia: "Mensal"
+    });
+    setEditingId(null);
   };
-
-  const editarCusto = (custo: Custo) => {
-    setNovoCusto({ ...custo });
-    setEditandoId(custo.id);
+  
+  const handleEditarCusto = (custo: Custo) => {
+    setNovoCusto(custo);
+    setEditingId(custo.id);
     setDialogOpen(true);
   };
-
-  const excluirCusto = (id: string) => {
+  
+  const handleExcluirCusto = (id: string) => {
+    const custoParaExcluir = custos.find(c => c.id === id);
+    
     setCustos(prev => prev.filter(custo => custo.id !== id));
+    
+    toast({
+      title: "Custo excluído",
+      description: `O custo ${custoParaExcluir?.nome} foi excluído com sucesso.`
+    });
   };
 
-  const getFrequenciaLabel = (freq: Frequencia): string => {
-    const labels = {
-      "mensal": "Mensal",
-      "semanal": "Semanal",
-      "trimestral": "Trimestral",
-      "semestral": "Semestral",
-      "anual": "Anual",
-      "por-producao": "Por Produção"
-    };
-    return labels[freq];
-  };
+  // Filter custos by type
+  const custosFixos = custos.filter(c => c.tipo === "Fixo");
+  const custosVariaveis = custos.filter(c => c.tipo === "Variável");
+  
+  // Calculate totals
+  const totalCustosFixos = custosFixos.reduce((acc, custo) => acc + custo.valor, 0);
+  const totalCustosVariaveis = custosVariaveis.reduce((acc, custo) => acc + custo.valor, 0);
+  
+  // Calculate percentages of revenue for variable costs
+  const totalPercentageRevenue = custosVariaveis.reduce((acc, custo) => 
+    acc + (custo.valor / faturamentoPrevisto * 100), 0);
 
   return (
     <div className="container mx-auto">
       <BreadcrumbNavigation />
       
-      <PageHeader
-        title="Custos"
-        description="Gerencie todos os custos da operação"
+      <PageHeader 
+        title="Custos" 
+        description="Gerencie custos fixos e variáveis da operação" 
       />
 
-      <div className="flex justify-between items-center mb-6 mt-6">
-        <div className="flex gap-4">
-          <div className="relative w-80">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar custos..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Select
-            value={categoriaFilter}
-            onValueChange={(value) => setCategoriaFilter(value as CategoriaCusto | "todos")}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todas</SelectItem>
-              <SelectItem value="fixo">Fixos</SelectItem>
-              <SelectItem value="variavel">Variáveis</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Custo
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editandoId ? "Editar Custo" : "Adicionar Novo Custo"}</DialogTitle>
-              <DialogDescription>
-                Preencha os detalhes do custo abaixo.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-1 gap-2">
-                <label htmlFor="nome" className="text-sm font-medium">Nome</label>
-                <Input
-                  id="nome"
-                  placeholder="Nome do custo"
-                  value={novoCusto.nome || ""}
-                  onChange={(e) => setNovoCusto({...novoCusto, nome: e.target.value})}
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="categoria" className="text-sm font-medium">Categoria</label>
-                  <Select
-                    value={novoCusto.categoria}
-                    onValueChange={(value) => setNovoCusto({...novoCusto, categoria: value as CategoriaCusto})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="fixo">Fixo</SelectItem>
-                      <SelectItem value="variavel">Variável</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label htmlFor="subcategoria" className="text-sm font-medium">Subcategoria</label>
-                  <Input
-                    id="subcategoria"
-                    placeholder="Subcategoria (opcional)"
-                    value={novoCusto.subcategoria || ""}
-                    onChange={(e) => setNovoCusto({...novoCusto, subcategoria: e.target.value})}
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="valor" className="text-sm font-medium">Valor</label>
-                  <Input
-                    id="valor"
-                    type="number"
-                    placeholder="0,00"
-                    min="0"
-                    step="0.01"
-                    value={novoCusto.valor || ""}
-                    onChange={(e) => setNovoCusto({...novoCusto, valor: parseFloat(e.target.value)})}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="frequencia" className="text-sm font-medium">Frequência</label>
-                  <Select
-                    value={novoCusto.frequencia}
-                    onValueChange={(value) => setNovoCusto({...novoCusto, frequencia: value as Frequencia})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mensal">Mensal</SelectItem>
-                      <SelectItem value="semanal">Semanal</SelectItem>
-                      <SelectItem value="trimestral">Trimestral</SelectItem>
-                      <SelectItem value="semestral">Semestral</SelectItem>
-                      <SelectItem value="anual">Anual</SelectItem>
-                      <SelectItem value="por-producao">Por Produção</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              {novoCusto.categoria === "variavel" && (
-                <div className="grid grid-cols-1 gap-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Percentual do Faturamento</label>
-                    <span className="text-sm text-muted-foreground flex items-center">
-                      <Percent className="h-3 w-3 mr-1" />
-                      {(novoCusto.valor ? calcularPorcentagemFaturamento(novoCusto.valor) : 0).toFixed(2)}%
-                    </span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Baseado no faturamento previsto atual: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoPrevisto)}
-                  </div>
-                </div>
-              )}
-              
-              <div>
-                <label htmlFor="observacoes" className="text-sm font-medium">Observações</label>
-                <Textarea
-                  id="observacoes"
-                  placeholder="Observações adicionais"
-                  rows={3}
-                  value={novoCusto.observacoes || ""}
-                  onChange={(e) => setNovoCusto({...novoCusto, observacoes: e.target.value})}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSalvar}>
-                Salvar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Cards de resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total de Custos Fixos (mensal)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <span className="text-2xl font-bold">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFixo)}
-            </span>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total de Custos Variáveis (mensal)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col">
-            <span className="text-2xl font-bold">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalVariavel)}
-            </span>
-            <span className="text-sm text-muted-foreground flex items-center mt-1">
-              <Percent className="h-3 w-3 mr-1" />
-              {totalPercentualVariavel.toFixed(2)}% do faturamento previsto
-            </span>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Subcategorias</CardTitle>
-          </CardHeader>
-          <CardContent className="flex justify-between items-center">
-            <span className="text-2xl font-bold">{new Set(custos.filter(c => c.subcategoria).map(c => c.subcategoria)).size}</span>
-            <div className="flex gap-2">
-              <Badge variant="outline">{custos.filter(c => c.categoria === "fixo").length} fixos</Badge>
-              <Badge variant="outline">{custos.filter(c => c.categoria === "variavel").length} variáveis</Badge>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Abas de Custos Fixos e Variáveis */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "fixos" | "variaveis")}>
-        <TabsList className="mb-4">
+      <Tabs value={tabela} onValueChange={(value) => setTabela(value as TabelaCusto)} className="w-full mt-6">
+        <TabsList className="grid w-[400px] grid-cols-2 mb-6">
           <TabsTrigger value="fixos">Custos Fixos</TabsTrigger>
           <TabsTrigger value="variaveis">Custos Variáveis</TabsTrigger>
         </TabsList>
         
+        <div className="flex justify-end mb-4">
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Custo
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingId ? "Editar Custo" : "Adicionar Custo"}</DialogTitle>
+              </DialogHeader>
+              
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="nome">Nome</Label>
+                  <Input
+                    id="nome"
+                    value={novoCusto.nome || ""}
+                    onChange={(e) => setNovoCusto({...novoCusto, nome: e.target.value})}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="valor">Valor</Label>
+                    <Input
+                      id="valor"
+                      type="number"
+                      value={novoCusto.valor || ""}
+                      onChange={(e) => setNovoCusto({...novoCusto, valor: parseFloat(e.target.value)})}
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="tipo">Tipo</Label>
+                    <Select 
+                      value={novoCusto.tipo} 
+                      onValueChange={(value) => setNovoCusto({...novoCusto, tipo: value as TipoCusto})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Fixo">Fixo</SelectItem>
+                        <SelectItem value="Variável">Variável</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="frequencia">Frequência</Label>
+                    <Select 
+                      value={novoCusto.frequencia} 
+                      onValueChange={(value) => setNovoCusto({...novoCusto, frequencia: value as FrequenciaCusto})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Mensal">Mensal</SelectItem>
+                        <SelectItem value="Trimestral">Trimestral</SelectItem>
+                        <SelectItem value="Semestral">Semestral</SelectItem>
+                        <SelectItem value="Anual">Anual</SelectItem>
+                        <SelectItem value="Eventual">Eventual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="subcategoria">Subcategoria</Label>
+                    <Select 
+                      value={novoCusto.subcategoria} 
+                      onValueChange={(value) => setNovoCusto({...novoCusto, subcategoria: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subcategorias.map(subcat => (
+                          <SelectItem key={subcat} value={subcat}>{subcat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="observacoes">Observações</Label>
+                  <Textarea
+                    id="observacoes"
+                    value={novoCusto.observacoes || ""}
+                    onChange={(e) => setNovoCusto({...novoCusto, observacoes: e.target.value})}
+                    rows={3}
+                  />
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSalvarCusto}>
+                  {editingId ? "Salvar Alterações" : "Adicionar Custo"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+        
         <TabsContent value="fixos">
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader>
               <CardTitle>Custos Fixos</CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-48">Nome</TableHead>
-                    <TableHead>Subcategoria</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Valor</TableHead>
                     <TableHead>Frequência</TableHead>
+                    <TableHead>Subcategoria</TableHead>
                     <TableHead>Observações</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCustos.map((custo) => (
-                    <TableRow key={custo.id}>
-                      <TableCell className="font-medium">{custo.nome}</TableCell>
-                      <TableCell>{custo.subcategoria}</TableCell>
-                      <TableCell className="text-right">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(custo.valor)}
+                  {custosFixos.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                        Nenhum custo fixo cadastrado.
                       </TableCell>
-                      <TableCell>{getFrequenciaLabel(custo.frequencia)}</TableCell>
-                      <TableCell className="max-w-xs truncate" title={custo.observacoes}>
-                        {custo.observacoes}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => editarCusto(custo)}>
+                    </TableRow>
+                  ) : (
+                    custosFixos.map(custo => (
+                      <TableRow key={custo.id}>
+                        <TableCell className="font-medium">{custo.nome}</TableCell>
+                        <TableCell>{formatCurrency(custo.valor)}</TableCell>
+                        <TableCell>{custo.frequencia}</TableCell>
+                        <TableCell>{custo.subcategoria}</TableCell>
+                        <TableCell className="max-w-xs truncate">{custo.observacoes || "-"}</TableCell>
+                        <TableCell className="text-right space-x-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleEditarCusto(custo)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => excluirCusto(custo.id)}>
-                            <Trash2 className="h-4 w-4" />
+                          <Button variant="ghost" size="sm" onClick={() => handleExcluirCusto(custo.id)}>
+                            <Trash className="h-4 w-4" />
                           </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredCustos.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
-                        Nenhum custo fixo encontrado.
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
                 </TableBody>
-                <TableFooter>
-                  <TableRow>
-                    <TableCell colSpan={2}>Total Mensal</TableCell>
-                    <TableCell className="text-right">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFixo)}
-                    </TableCell>
-                    <TableCell colSpan={3}></TableCell>
-                  </TableRow>
-                </TableFooter>
+                <TableCaption>
+                  <div className="flex justify-end font-medium text-base">
+                    Total: {formatCurrency(totalCustosFixos)}
+                  </div>
+                </TableCaption>
               </Table>
             </CardContent>
           </Card>
         </TabsContent>
-
+        
         <TabsContent value="variaveis">
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader>
               <CardTitle>Custos Variáveis</CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent>
+              <div className="text-sm text-muted-foreground mb-4">
+                O percentual é calculado com base no faturamento previsto atual de {formatCurrency(faturamentoPrevisto)}.
+              </div>
+
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-48">Nome</TableHead>
-                    <TableHead>Subcategoria</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead className="text-right">% do Faturamento</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>% do Faturamento</TableHead>
                     <TableHead>Frequência</TableHead>
-                    <TableHead>Observações</TableHead>
+                    <TableHead>Subcategoria</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCustos.map((custo) => (
-                    <TableRow key={custo.id}>
-                      <TableCell className="font-medium">{custo.nome}</TableCell>
-                      <TableCell>{custo.subcategoria}</TableCell>
-                      <TableCell className="text-right">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(custo.valor)}
+                  {custosVariaveis.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                        Nenhum custo variável cadastrado.
                       </TableCell>
-                      <TableCell className="text-right">
-                        <span className="flex items-center justify-end">
-                          <Percent className="h-3 w-3 mr-1" />
-                          {calcularPorcentagemFaturamento(custo.valor).toFixed(2)}%
-                        </span>
-                      </TableCell>
-                      <TableCell>{getFrequenciaLabel(custo.frequencia)}</TableCell>
-                      <TableCell className="max-w-xs truncate" title={custo.observacoes}>
-                        {custo.observacoes}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => editarCusto(custo)}>
+                    </TableRow>
+                  ) : (
+                    custosVariaveis.map(custo => (
+                      <TableRow key={custo.id}>
+                        <TableCell className="font-medium">{custo.nome}</TableCell>
+                        <TableCell>{formatCurrency(custo.valor)}</TableCell>
+                        <TableCell>
+                          {(custo.valor / faturamentoPrevisto * 100).toFixed(1)}%
+                        </TableCell>
+                        <TableCell>{custo.frequencia}</TableCell>
+                        <TableCell>{custo.subcategoria}</TableCell>
+                        <TableCell className="text-right space-x-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleEditarCusto(custo)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => excluirCusto(custo.id)}>
-                            <Trash2 className="h-4 w-4" />
+                          <Button variant="ghost" size="sm" onClick={() => handleExcluirCusto(custo.id)}>
+                            <Trash className="h-4 w-4" />
                           </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredCustos.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
-                        Nenhum custo variável encontrado.
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
                 </TableBody>
-                <TableFooter>
-                  <TableRow>
-                    <TableCell colSpan={2}>Total</TableCell>
-                    <TableCell className="text-right">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalVariavel)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="flex items-center justify-end">
-                        <Percent className="h-3 w-3 mr-1" />
-                        {totalPercentualVariavel.toFixed(2)}%
-                      </span>
-                    </TableCell>
-                    <TableCell colSpan={3}></TableCell>
-                  </TableRow>
-                </TableFooter>
+                <TableCaption>
+                  <div className="flex justify-end font-medium text-base">
+                    <div className="mr-8">
+                      Total: {formatCurrency(totalCustosVariaveis)}
+                    </div>
+                    <div>
+                      {totalPercentageRevenue.toFixed(1)}% do faturamento
+                    </div>
+                  </div>
+                </TableCaption>
               </Table>
             </CardContent>
           </Card>
