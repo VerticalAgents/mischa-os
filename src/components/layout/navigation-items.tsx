@@ -126,3 +126,17 @@ export const gestaoComercialItems = [
     icon: <HelpingHand className="h-4 w-4" />,
   },
 ];
+
+// For gestão-financeira sub-navigation
+export const gestaoFinanceiraItems = [
+  {
+    label: "Projeções",
+    path: "/projecoes",
+    icon: <LineChart className="h-4 w-4" />,
+  },
+  {
+    label: "Custos",
+    path: "/custos",
+    icon: <Receipt className="h-4 w-4" />,
+  }
+];

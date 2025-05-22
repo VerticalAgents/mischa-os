@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Receipt, DollarSign, FileText, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { gestaoFinanceiraItems } from "@/components/layout/navigation-items";
 
 export default function GestaoFinanceira() {
   const navigate = useNavigate();

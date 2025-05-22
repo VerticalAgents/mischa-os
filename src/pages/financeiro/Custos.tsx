@@ -142,12 +142,13 @@ export default function Custos() {
     setCustos(mockData);
   }, []);
 
+  // Filter custos based on activeTab and searchTerm
   const filteredCustos = custos.filter(custo => {
     const matchesSearch = custo.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          (custo.subcategoria && custo.subcategoria.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategoria = categoriaFilter === "todos" || custo.categoria === categoriaFilter;
     const matchesTab = (activeTab === "fixos" && custo.categoria === "fixo") || 
-                       (activeTab === "variaveis" && custo.categoria === "variavel");
+                      (activeTab === "variaveis" && custo.categoria === "variavel");
     
     return matchesSearch && matchesCategoria && matchesTab;
   });
@@ -224,6 +225,14 @@ export default function Custos() {
       "por-producao": "Por Produção"
     };
     return labels[freq];
+  };
+
+  // Format currency
+  const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL' 
+    }).format(value);
   };
 
   return (
@@ -357,7 +366,7 @@ export default function Custos() {
                     </span>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Baseado no faturamento previsto atual: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoPrevisto)}
+                    Baseado no faturamento previsto atual: {formatCurrency(faturamentoPrevisto)}
                   </div>
                 </div>
               )}
@@ -393,7 +402,7 @@ export default function Custos() {
           </CardHeader>
           <CardContent>
             <span className="text-2xl font-bold">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFixo)}
+              {formatCurrency(totalFixo)}
             </span>
           </CardContent>
         </Card>
@@ -405,7 +414,7 @@ export default function Custos() {
           </CardHeader>
           <CardContent className="flex flex-col">
             <span className="text-2xl font-bold">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalVariavel)}
+              {formatCurrency(totalVariavel)}
             </span>
             <span className="text-sm text-muted-foreground flex items-center mt-1">
               <Percent className="h-3 w-3 mr-1" />
@@ -452,12 +461,12 @@ export default function Custos() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCustos.map((custo) => (
+                  {filteredCustos.filter(c => c.categoria === "fixo").map((custo) => (
                     <TableRow key={custo.id}>
                       <TableCell className="font-medium">{custo.nome}</TableCell>
                       <TableCell>{custo.subcategoria}</TableCell>
                       <TableCell className="text-right">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(custo.valor)}
+                        {formatCurrency(custo.valor)}
                       </TableCell>
                       <TableCell>{getFrequenciaLabel(custo.frequencia)}</TableCell>
                       <TableCell className="max-w-xs truncate" title={custo.observacoes}>
@@ -475,7 +484,7 @@ export default function Custos() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filteredCustos.length === 0 && (
+                  {filteredCustos.filter(c => c.categoria === "fixo").length === 0 && (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
                         Nenhum custo fixo encontrado.
@@ -487,7 +496,7 @@ export default function Custos() {
                   <TableRow>
                     <TableCell colSpan={2}>Total Mensal</TableCell>
                     <TableCell className="text-right">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFixo)}
+                      {formatCurrency(totalFixo)}
                     </TableCell>
                     <TableCell colSpan={3}></TableCell>
                   </TableRow>
@@ -516,12 +525,12 @@ export default function Custos() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCustos.map((custo) => (
+                  {filteredCustos.filter(c => c.categoria === "variavel").map((custo) => (
                     <TableRow key={custo.id}>
                       <TableCell className="font-medium">{custo.nome}</TableCell>
                       <TableCell>{custo.subcategoria}</TableCell>
                       <TableCell className="text-right">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(custo.valor)}
+                        {formatCurrency(custo.valor)}
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="flex items-center justify-end">
@@ -545,7 +554,7 @@ export default function Custos() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {filteredCustos.length === 0 && (
+                  {filteredCustos.filter(c => c.categoria === "variavel").length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
                         Nenhum custo variável encontrado.
@@ -557,7 +566,7 @@ export default function Custos() {
                   <TableRow>
                     <TableCell colSpan={2}>Total</TableCell>
                     <TableCell className="text-right">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalVariavel)}
+                      {formatCurrency(totalVariavel)}
                     </TableCell>
                     <TableCell className="text-right">
                       <span className="flex items-center justify-end">
