@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -61,7 +60,7 @@ const formasPagamento = ["À Vista", "Boleto", "Cartão de Crédito", "PIX", "Pr
 const diasSemana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
 export default function FunilLeads() {
-  const { addCliente } = useClienteStore();
+  const clienteStore = useClienteStore();
   const { toast } = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -249,17 +248,17 @@ export default function FunilLeads() {
         toast({
           title: "Dados incompletos",
           description: "Para ativar um cliente, complete os dados cadastrais completos.",
-          variant: "warning"
+          variant: "destructive"
         });
         return false;
       }
       
       // Add the lead as a client in the client store
-      addCliente({
+      clienteStore.addCliente({
         id: lead.id,
         nome: lead.nome,
         razaoSocial: lead.razaoSocial || "",
-        cnpj: lead.cnpj || "",
+        cnpjCpf: lead.cnpj || "",
         contato: lead.contato,
         telefone: lead.telefone,
         email: lead.email || "",
@@ -270,7 +269,7 @@ export default function FunilLeads() {
         representante: lead.responsavel,
         categoriaEstabelecimento: "Novo",
         rota: lead.rota,
-        status: "Ativo",
+        statusCliente: "Ativo",
         tipoLogistica: lead.tipoLogistica || "Própria",
         formaPagamento: lead.formaPagamento || "À Vista",
         diasEntrega: lead.diasVisita || ["Segunda"],
@@ -282,7 +281,7 @@ export default function FunilLeads() {
       toast({
         title: "Cliente ativado",
         description: `${lead.nome} foi convertido para cliente com sucesso!`,
-        variant: "success"
+        variant: "default"
       });
       
       return true;
@@ -334,7 +333,7 @@ export default function FunilLeads() {
           toast({
             title: "Dados incompletos",
             description: "Complete o cadastro do lead antes de movê-lo para Cliente Ativado.",
-            variant: "warning"
+            variant: "destructive"
           });
           setSelectedLead(movedLead);
           setDetailsOpen(true);
