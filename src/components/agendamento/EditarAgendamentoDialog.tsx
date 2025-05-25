@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
   Dialog,
@@ -27,8 +27,10 @@ import {
 } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Cliente, Pedido } from "@/types";
+import { Cliente, Pedido, TipoPedido } from "@/types";
 import { toast } from "@/hooks/use-toast";
+import { useProdutoStore } from "@/hooks/useProdutoStore";
+import { Separator } from "@/components/ui/separator";
 
 interface AgendamentoItem {
   cliente: Cliente;
@@ -45,12 +47,17 @@ interface EditarAgendamentoDialogProps {
   onSave: (agendamentoAtualizado: AgendamentoItem) => void;
 }
 
+interface QuantidadePorProduto {
+  [produtoId: number]: number;
+}
+
 export default function EditarAgendamentoDialog({
   agendamento,
   open,
   onOpenChange,
   onSave,
 }: EditarAgendamentoDialogProps) {
+  const { produtos } = useProdutoStore();
   const [dataReposicao, setDataReposicao] = useState<Date>(
     agendamento?.dataReposicao || new Date()
   );
@@ -61,10 +68,57 @@ export default function EditarAgendamentoDialog({
   const [observacoes, setObservacoes] = useState(
     agendamento?.pedido?.observacoes || ""
   );
+  const [tipoPedido, setTipoPedido] = useState<TipoPedido>(
+    agendamento?.pedido?.tipoPedido || "Padrão"
+  );
+  const [quantidadesPorProduto, setQuantidadesPorProduto] = useState<QuantidadePorProduto>({});
+
+  // Atualizar estados quando o agendamento mudar
+  useEffect(() => {
+    if (agendamento) {
+      setDataReposicao(agendamento.dataReposicao);
+      setQuantidade(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0);
+      setStatus(agendamento.statusAgendamento);
+      setObservacoes(agendamento.pedido?.observacoes || "");
+      setTipoPedido(agendamento.pedido?.tipoPedido || "Padrão");
+      
+      // Inicializar quantidades por produto se for pedido alterado
+      if (agendamento.pedido?.tipoPedido === "Alterado" && agendamento.pedido?.itensPedido) {
+        const quantidades: QuantidadePorProduto = {};
+        agendamento.pedido.itensPedido.forEach(item => {
+          quantidades[item.idSabor] = item.quantidadeSabor;
+        });
+        setQuantidadesPorProduto(quantidades);
+      }
+    }
+  }, [agendamento]);
 
   if (!agendamento) return null;
 
+  const produtosAtivos = produtos.filter(p => p.ativo);
+  
+  // Calcular total das quantidades individuais
+  const totalQuantidadesIndividuais = Object.values(quantidadesPorProduto).reduce((sum, qty) => sum + (qty || 0), 0);
+
+  const handleQuantidadeProdutoChange = (produtoId: number, valor: string) => {
+    const valorNumerico = parseInt(valor) || 0;
+    setQuantidadesPorProduto(prev => ({
+      ...prev,
+      [produtoId]: valorNumerico
+    }));
+  };
+
   const handleSave = () => {
+    // Validação para pedidos alterados
+    if (tipoPedido === "Alterado" && totalQuantidadesIndividuais !== quantidade) {
+      toast({
+        title: "Erro de validação",
+        description: `A soma das quantidades por produto (${totalQuantidadesIndividuais}) deve ser igual à quantidade total (${quantidade}).`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     const agendamentoAtualizado: AgendamentoItem = {
       ...agendamento,
       dataReposicao,
@@ -73,7 +127,8 @@ export default function EditarAgendamentoDialog({
         ...agendamento.pedido,
         totalPedidoUnidades: quantidade,
         observacoes,
-        dataPrevistaEntrega: dataReposicao, // Keep as Date object
+        dataPrevistaEntrega: dataReposicao,
+        tipoPedido,
       } : undefined,
     };
 
@@ -88,7 +143,7 @@ export default function EditarAgendamentoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Agendamento</DialogTitle>
         </DialogHeader>
@@ -136,7 +191,7 @@ export default function EditarAgendamentoDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Quantidade</Label>
+            <Label>Quantidade Total</Label>
             <Input
               type="number"
               value={quantidade}
@@ -158,6 +213,56 @@ export default function EditarAgendamentoDialog({
               </SelectContent>
             </Select>
           </div>
+
+          <div className="space-y-2">
+            <Label>Tipo de Pedido</Label>
+            <Select value={tipoPedido} onValueChange={(value: TipoPedido) => setTipoPedido(value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Padrão">Padrão</SelectItem>
+                <SelectItem value="Alterado">Alterado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {tipoPedido === "Alterado" && (
+            <>
+              <Separator />
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Quantidades por Produto</Label>
+                {produtosAtivos.map((produto) => (
+                  <div key={produto.id} className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <Label htmlFor={`produto-${produto.id}`} className="text-sm">
+                        {produto.nome}
+                      </Label>
+                    </div>
+                    <div className="w-24">
+                      <Input
+                        id={`produto-${produto.id}`}
+                        type="number"
+                        min="0"
+                        value={quantidadesPorProduto[produto.id] || ''}
+                        onChange={(e) => handleQuantidadeProdutoChange(produto.id, e.target.value)}
+                        placeholder="0"
+                        className="text-center"
+                      />
+                    </div>
+                  </div>
+                ))}
+                <div className="text-sm text-muted-foreground">
+                  <span>Total das quantidades: </span>
+                  <span className={`font-medium ${
+                    totalQuantidadesIndividuais === quantidade ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {totalQuantidadesIndividuais} / {quantidade}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="space-y-2">
             <Label>Observações</Label>

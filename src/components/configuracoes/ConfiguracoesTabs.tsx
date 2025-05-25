@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Settings, DollarSign, CalendarClock, Truck, UserCog, Database, BoxesIcon, Calendar, Tag, Package, User } from "lucide-react";
+import { Settings, DollarSign, CalendarClock, Truck, UserCog, Database, BoxesIcon, Calendar, Tag, Package, User, Percent } from "lucide-react";
 import EmpresaTab from "./tabs/EmpresaTab";
 import SistemaTab from "./tabs/SistemaTab";
 import FinanceiroTab from "./tabs/FinanceiroTab";
@@ -11,6 +11,7 @@ import AgendamentoTab from "./tabs/AgendamentoTab";
 import CategoriasProdutoTab from "./tabs/CategoriasProdutoTab";
 import ParametrosEstoqueTab from "./tabs/ParametrosEstoqueTab";
 import UsuarioTab from "./tabs/UsuarioTab";
+import ProporcoesTab from "./tabs/ProporcoesTab";
 import { useSearchParams } from "react-router-dom";
 
 export default function ConfiguracoesTabs() {
@@ -21,12 +22,13 @@ export default function ConfiguracoesTabs() {
   // Atualizar a aba ativa quando a URL mudar
   useEffect(() => {
     if (tabFromUrl && ["empresa", "sistema", "financeiro", "parametros", "parametros-estoque", 
-                     "producao", "agendamento", "categorias", "usuario"].includes(tabFromUrl)) {
+                     "producao", "agendamento", "categorias", "proporcoes", "usuario"].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl]);
   
-  return <Tabs defaultValue="empresa" value={activeTab} onValueChange={setActiveTab}>
+  return (
+    <Tabs defaultValue="empresa" value={activeTab} onValueChange={setActiveTab}>
       <div className="flex mb-8 overflow-x-auto">
         <TabsList className="grid grid-flow-col auto-cols-max gap-2">
           <TabsTrigger value="empresa" className="flex items-center gap-1">
@@ -60,6 +62,10 @@ export default function ConfiguracoesTabs() {
           <TabsTrigger value="categorias" className="flex items-center gap-1">
             <Tag className="h-4 w-4" />
             <span>Categorias</span>
+          </TabsTrigger>
+          <TabsTrigger value="proporcoes" className="flex items-center gap-1">
+            <Percent className="h-4 w-4" />
+            <span>Proporção Padrão</span>
           </TabsTrigger>
           <TabsTrigger value="usuario" className="flex items-center gap-1">
             <User className="h-4 w-4" />
@@ -100,8 +106,13 @@ export default function ConfiguracoesTabs() {
         <CategoriasProdutoTab />
       </TabsContent>
 
+      <TabsContent value="proporcoes">
+        <ProporcoesTab />
+      </TabsContent>
+
       <TabsContent value="usuario">
         <UsuarioTab />
       </TabsContent>
-    </Tabs>;
+    </Tabs>
+  );
 }

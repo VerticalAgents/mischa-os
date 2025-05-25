@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
@@ -142,9 +143,10 @@ export default function TodosAgendamentos() {
     // Atualizar no store se for um pedido
     if (agendamentoAtualizado.pedido) {
       atualizarPedido(agendamentoAtualizado.pedido.id, {
-        dataPrevistaEntrega: agendamentoAtualizado.dataReposicao, // Keep as Date object
+        dataPrevistaEntrega: agendamentoAtualizado.dataReposicao,
         totalPedidoUnidades: agendamentoAtualizado.pedido.totalPedidoUnidades,
-        observacoes: agendamentoAtualizado.pedido.observacoes
+        observacoes: agendamentoAtualizado.pedido.observacoes,
+        tipoPedido: agendamentoAtualizado.pedido.tipoPedido
       });
     }
 
@@ -184,6 +186,14 @@ export default function TodosAgendamentos() {
       case "Agendado": return "bg-green-500";
       case "Reagendar": return "bg-purple-500";
       default: return "bg-gray-500";
+    }
+  };
+
+  const getTipoPedidoColor = (tipoPedido?: string) => {
+    switch (tipoPedido) {
+      case "Padrão": return "bg-green-100 text-green-800";
+      case "Alterado": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -248,6 +258,7 @@ export default function TodosAgendamentos() {
                   <TableHead>Status</TableHead>
                   <TableHead>Quantidade</TableHead>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Tipo de Pedido</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -282,6 +293,11 @@ export default function TodosAgendamentos() {
                     <TableCell>
                       <Badge variant={agendamento.isPedidoUnico ? "destructive" : "default"}>
                         {agendamento.isPedidoUnico ? "Pedido Único" : "PDV"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getTipoPedidoColor(agendamento.pedido?.tipoPedido)}>
+                        {agendamento.pedido?.tipoPedido || "Padrão"}
                       </Badge>
                     </TableCell>
                     <TableCell>
