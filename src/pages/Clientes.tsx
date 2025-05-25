@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import PageHeader from "@/components/common/PageHeader";
@@ -16,12 +16,19 @@ export default function Clientes() {
   
   const {
     filtros,
+    loading,
+    carregarClientes,
     setFiltroTermo,
     setFiltroStatus,
     getClientesFiltrados,
     clienteAtual,
     selecionarCliente
   } = useClienteStore();
+
+  // Carregar clientes ao montar o componente
+  useEffect(() => {
+    carregarClientes();
+  }, [carregarClientes]);
 
   // Column visibility state
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
@@ -124,16 +131,22 @@ export default function Clientes() {
         columnOptions={columnOptions}
       />
 
-      <ClientesTable 
-        clientes={clientes}
-        visibleColumns={visibleColumns}
-        columnOptions={columnOptions}
-        onSelectCliente={handleSelectCliente}
-        selectedClientes={selectedClienteIds}
-        onToggleClienteSelection={toggleClienteSelection}
-        onSelectAllClientes={handleSelectAllClientes}
-        showSelectionControls={isSelectionMode}
-      />
+      {loading ? (
+        <div className="flex justify-center items-center py-8">
+          <div className="text-muted-foreground">Carregando clientes...</div>
+        </div>
+      ) : (
+        <ClientesTable 
+          clientes={clientes}
+          visibleColumns={visibleColumns}
+          columnOptions={columnOptions}
+          onSelectCliente={handleSelectCliente}
+          selectedClientes={selectedClienteIds}
+          onToggleClienteSelection={toggleClienteSelection}
+          onSelectAllClientes={handleSelectAllClientes}
+          showSelectionControls={isSelectionMode}
+        />
+      )}
 
       <ClienteFormDialog 
         open={isFormOpen} 
