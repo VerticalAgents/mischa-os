@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "@/hooks/use-toast";
 import { Pedido, StatusPedido, ItemPedido, Cliente, SubstatusPedidoAgendado, AlteracaoStatusPedido } from '../types';
-import { pedidosMock, relacionarItensPedidos, relacionarClientesPedidos } from '../data/mockData';
 import { calcularDistribuicaoSabores, calcularDeltaEfetivo, deltaForaTolerancia, calcularGiroSemanalPDV, calcularNovoQp } from '../utils/calculations';
 import { useClienteStore } from './useClienteStore';
 import { useSaborStore } from './useSaborStore';
@@ -52,7 +51,6 @@ interface PedidoStore {
   getPedidosUnicos: () => Pedido[];
 }
 
-// Helper to calculate next working day
 const getProximoDiaUtil = (data: Date): Date => {
   const proximaData = addDays(new Date(data), 1);
   return isWeekend(proximaData) ? getProximoDiaUtil(proximaData) : proximaData;
@@ -61,7 +59,7 @@ const getProximoDiaUtil = (data: Date): Date => {
 export const usePedidoStore = create<PedidoStore>()(
   devtools(
     (set, get) => ({
-      pedidos: relacionarClientesPedidos(),
+      pedidos: [], // Iniciando vazio
       pedidoAtual: null,
       filtros: {
         status: 'Todos',
@@ -82,16 +80,14 @@ export const usePedidoStore = create<PedidoStore>()(
           return null;
         }
         
-        // Calcular a data prevista de entrega
         let dataPrevistaEntrega = new Date();
         if (cliente.ultimaDataReposicaoEfetiva) {
           dataPrevistaEntrega = new Date(cliente.ultimaDataReposicaoEfetiva);
           dataPrevistaEntrega.setDate(dataPrevistaEntrega.getDate() + cliente.periodicidadePadrao);
         } else {
-          dataPrevistaEntrega.setDate(dataPrevistaEntrega.getDate() + 1); // Mínimo 1 dia se não houver histórico
+          dataPrevistaEntrega.setDate(dataPrevistaEntrega.getDate() + 1);
         }
         
-        // Criar o novo pedido
         const novoPedido: Omit<Pedido, 'id'> = {
           idCliente,
           cliente,
@@ -100,7 +96,7 @@ export const usePedidoStore = create<PedidoStore>()(
           totalPedidoUnidades: cliente.quantidadePadrao,
           tipoPedido: "Padrão",
           statusPedido: "Agendado",
-          substatusPedido: "Agendado", // Substatus inicial para pedidos agendados
+          substatusPedido: "Agendado",
           itensPedido: [],
           historicoAlteracoesStatus: [{
             dataAlteracao: new Date(),
@@ -111,11 +107,9 @@ export const usePedidoStore = create<PedidoStore>()(
           }]
         };
         
-        // Calcular a distribuição de sabores
         const saboresAtivos = useSaborStore.getState().getSaboresAtivos();
         const itensPedido = calcularDistribuicaoSabores(saboresAtivos, cliente.quantidadePadrao);
         
-        // Salvar o pedido
         const novoId = Math.max(0, ...get().pedidos.map(p => p.id)) + 1;
         const pedidoCompleto = {
           ...novoPedido,
@@ -137,7 +131,6 @@ export const usePedidoStore = create<PedidoStore>()(
           description: `Pedido padrão criado para ${cliente.nome}`
         });
         
-        // Atualizar o status de agendamento do cliente
         useClienteStore.getState().atualizarCliente(cliente.id, {
           statusAgendamento: "Agendado",
           proximaDataReposicao: dataPrevistaEntrega
@@ -149,7 +142,6 @@ export const usePedidoStore = create<PedidoStore>()(
       adicionarPedido: (pedido) => {
         const novoId = Math.max(0, ...get().pedidos.map(p => p.id)) + 1;
         
-        // Buscar cliente para relacionamento (se idCliente > 0)
         let cliente = undefined;
         if (pedido.idCliente > 0) {
           cliente = useClienteStore.getState().getClientePorId(pedido.idCliente);
@@ -160,7 +152,7 @@ export const usePedidoStore = create<PedidoStore>()(
           id: novoId,
           dataPedido: new Date(),
           cliente,
-          itensPedido: [] // Inicializa o array vazio para ser preenchido depois
+          itensPedido: []
         };
         
         set(state => ({
@@ -193,22 +185,18 @@ export const usePedidoStore = create<PedidoStore>()(
         
         if (!pedido) return;
         
-        // Calcular o total de unidades
         const totalUnidades = itens.reduce((sum, item) => sum + item.quantidadeSabor, 0);
         
-        // Determinar se é um pedido alterado (quando não segue a distribuição padrão)
         const tipoPedido = pedido.tipoPedido === "Padrão" && itens.length > 0 
           ? "Alterado" 
           : pedido.tipoPedido;
         
-        // Criar novos itens com IDs
         const novosItens = itens.map((item, idx) => ({
           ...item,
           id: pedido.itensPedido[idx]?.id || (idx + 1),
           idPedido
         }));
         
-        // Atualizar o pedido
         set(state => ({
           pedidos: state.pedidos.map(p => {
             if (p.id === idPedido) {
@@ -253,11 +241,9 @@ export const usePedidoStore = create<PedidoStore>()(
         const pedido = get().pedidos.find(p => p.id === idPedido);
         if (!pedido) return;
         
-        // Atualizar o status do pedido
         set(state => ({
           pedidos: state.pedidos.map(p => {
             if (p.id === idPedido) {
-              // Atualizar as quantidades entregues
               const itensAtualizados = p.itensPedido.map(item => {
                 const itemEntregue = itensEntregues.find(i => i.idSabor === item.idSabor);
                 return itemEntregue 
@@ -276,12 +262,9 @@ export const usePedidoStore = create<PedidoStore>()(
           })
         }));
         
-        // Calcular o total entregue
         const totalEntregue = itensEntregues.reduce((sum, item) => sum + item.quantidadeEntregue, 0);
         
-        // Só atualiza cliente se for um pedido de PDV (não for pedido único)
         if (pedido.cliente) {
-          // 1. Atualizar a última data de reposição do cliente
           const clienteState = useClienteStore.getState();
           const ultimaDataReposicao = pedido.cliente.ultimaDataReposicaoEfetiva;
           
@@ -289,21 +272,17 @@ export const usePedidoStore = create<PedidoStore>()(
             ultimaDataReposicaoEfetiva: dataEfetiva
           });
           
-          // 2. Verificar Delta e recalcular Qp se necessário
           if (ultimaDataReposicao) {
             const deltaEfetivo = calcularDeltaEfetivo(dataEfetiva, ultimaDataReposicao);
             
             if (deltaForaTolerancia(deltaEfetivo, pedido.cliente.periodicidadePadrao)) {
-              // Calcular o giro semanal e o novo Qp
               const giroSemanal = calcularGiroSemanalPDV(totalEntregue, deltaEfetivo);
               const novoQp = calcularNovoQp(giroSemanal, pedido.cliente.periodicidadePadrao);
               
-              // Atualizar o Qp do cliente
               clienteState.atualizarCliente(pedido.cliente.id, {
                 quantidadePadrao: novoQp
               });
               
-              // Notificar o usuário
               toast({
                 title: "Qp recalculado",
                 description: `Qp de ${pedido.cliente.nome} atualizado de ${pedido.cliente.quantidadePadrao} para ${novoQp} (Δ=${deltaEfetivo})`,
@@ -313,14 +292,12 @@ export const usePedidoStore = create<PedidoStore>()(
           }
         }
         
-        // 3. Atualizar estoques (dando baixa)
         const saborState = useSaborStore.getState();
         
         itensEntregues.forEach(item => {
           saborState.atualizarSaldoEstoque(item.idSabor, item.quantidadeEntregue, false);
         });
         
-        // Mensagem personalizada baseada no tipo de pedido
         const clienteNome = pedido.cliente?.nome || 
           (pedido.observacoes?.includes("PEDIDO ÚNICO") 
             ? pedido.observacoes?.match(/Nome: (.*?)(?:\n|$)/)?.[1] 
@@ -336,7 +313,6 @@ export const usePedidoStore = create<PedidoStore>()(
         const pedido = get().pedidos.find(p => p.id === idPedido);
         if (!pedido) return;
         
-        // Verificar se há estoque suficiente
         const saborState = useSaborStore.getState();
         const sabores = saborState.sabores;
         
@@ -359,7 +335,6 @@ export const usePedidoStore = create<PedidoStore>()(
           return;
         }
         
-        // Atualizar o status do pedido
         set(state => ({
           pedidos: state.pedidos.map(p => 
             p.id === idPedido ? { ...p, statusPedido: "Despachado" } : p
@@ -369,7 +344,6 @@ export const usePedidoStore = create<PedidoStore>()(
             : state.pedidoAtual
         }));
         
-        // Dar baixa no estoque
         pedido.itensPedido.forEach(item => {
           saborState.atualizarSaldoEstoque(item.idSabor, item.quantidadeSabor, false);
         });
@@ -400,17 +374,15 @@ export const usePedidoStore = create<PedidoStore>()(
         const pedido = get().pedidos.find(p => p.id === idPedido);
         if (!pedido) return;
     
-        // Criar a alteração de status
         const alteracaoStatus: AlteracaoStatusPedido = {
           dataAlteracao: new Date(),
           statusAnterior: pedido.statusPedido,
-          statusNovo: pedido.statusPedido, // Status permanece o mesmo
+          statusNovo: pedido.statusPedido,
           substatusAnterior: pedido.substatusPedido,
           substatusNovo: novoSubstatus,
           observacao: observacao || `Substatus alterado para ${novoSubstatus}`
         };
     
-        // Atualizar o pedido
         set(state => ({
           pedidos: state.pedidos.map(p =>
             p.id === idPedido ? {
@@ -498,18 +470,14 @@ export const usePedidoStore = create<PedidoStore>()(
         const { pedidos, filtros } = get();
         
         return pedidos.filter(pedido => {
-          // Filtro por data
           const dataMatch = 
             (!filtros.dataInicio || new Date(pedido.dataPrevistaEntrega) >= new Date(filtros.dataInicio)) &&
             (!filtros.dataFim || new Date(pedido.dataPrevistaEntrega) <= new Date(filtros.dataFim));
           
-          // Filtro por cliente
           const clienteMatch = !filtros.idCliente || pedido.idCliente === filtros.idCliente;
           
-          // Filtro por status
           const statusMatch = !filtros.status || filtros.status === 'Todos' || pedido.statusPedido === filtros.status;
           
-          // Filtro por substatus
           const substatusMatch = !filtros.substatus || filtros.substatus === 'Todos' || pedido.substatusPedido === filtros.substatus;
           
           return dataMatch && clienteMatch && statusMatch && substatusMatch;
@@ -546,8 +514,8 @@ export const usePedidoStore = create<PedidoStore>()(
       
       getPedidosUnicos: () => {
         return get().pedidos.filter(p => 
-          p.idCliente === 0 || // Cliente ID = 0 para pedidos únicos
-          !p.cliente // Sem relação com cliente
+          p.idCliente === 0 || 
+          !p.cliente
         );
       }
     }),

@@ -1,3 +1,4 @@
+
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { Produto, ComponenteProduto, TipoComponente } from "@/types";
@@ -20,50 +21,7 @@ interface ProdutoStore {
 
 export const useProdutoStore = create<ProdutoStore>()(
   immer((set, get) => ({
-    produtos: [
-      {
-        id: 1,
-        nome: "Brownie Individual",
-        descricao: "Brownie individual embalado",
-        precoVenda: 5.99,
-        custoTotal: 2.85,
-        margemLucro: 52.4,
-        componentes: [
-          {
-            id: 1,
-            idProduto: 1,
-            idReceita: 1,
-            nomeReceita: "Massa Brownie Tradicional",
-            quantidade: 35,
-            custoParcial: 1.85,
-            tipo: "Receita",
-            idItem: 1,
-            nome: "Massa Brownie Tradicional",
-            custo: 1.85
-          },
-          {
-            id: 2,
-            idProduto: 1,
-            idReceita: 0,
-            nomeReceita: "",
-            quantidade: 1,
-            custoParcial: 1.00,
-            tipo: "Insumo",
-            idItem: 3,
-            nome: "Embalagem Individual",
-            custo: 1.00
-          }
-        ],
-        ativo: true,
-        pesoUnitario: 35,
-        custoUnitario: 2.85,
-        unidadesProducao: 100,
-        categoria: "Doces",
-        estoqueMinimo: 10,
-        categoriaId: 1,
-        subcategoriaId: 1
-      }
-    ],
+    produtos: [], // Iniciando vazio
     
     adicionarProduto: (nome, descricao, unidadesProducao = 1) => set(state => {
       const id = state.produtos.length > 0 ? Math.max(...state.produtos.map(p => p.id)) + 1 : 1;
@@ -92,9 +50,8 @@ export const useProdutoStore = create<ProdutoStore>()(
         const componentes = state.produtos[produtoIndex].componentes;
         const id = componentes.length > 0 ? Math.max(...componentes.map(c => c.id)) + 1 : 1;
         
-        // Simular busca na receita
-        const nomeReceita = `Receita ${idReceita}`; // Substituir por busca real
-        const custoPorGrama = 0.05; // Simulação de custo
+        const nomeReceita = `Receita ${idReceita}`;
+        const custoPorGrama = 0.05;
         const custoParcial = quantidade * custoPorGrama;
         
         state.produtos[produtoIndex].componentes.push({
@@ -110,16 +67,13 @@ export const useProdutoStore = create<ProdutoStore>()(
           custo: custoParcial
         });
         
-        // Atualizar custo total
         state.produtos[produtoIndex].custoTotal = get().calcularCustoProduto(state.produtos[produtoIndex]);
         state.produtos[produtoIndex].custoUnitario = state.produtos[produtoIndex].custoTotal / (state.produtos[produtoIndex].unidadesProducao || 1);
         
-        // Atualizar margem de lucro
         if (state.produtos[produtoIndex].precoVenda > 0) {
           state.produtos[produtoIndex].margemLucro = ((state.produtos[produtoIndex].precoVenda - state.produtos[produtoIndex].custoUnitario) / state.produtos[produtoIndex].precoVenda) * 100;
         }
         
-        // Atualizar peso unitário se for uma receita
         state.produtos[produtoIndex].pesoUnitario = (state.produtos[produtoIndex].pesoUnitario || 0) + quantidade / (state.produtos[produtoIndex].unidadesProducao || 1);
       }
     }),
@@ -130,9 +84,8 @@ export const useProdutoStore = create<ProdutoStore>()(
         const componentes = state.produtos[produtoIndex].componentes;
         const id = componentes.length > 0 ? Math.max(...componentes.map(c => c.id)) + 1 : 1;
         
-        // Simular busca no insumo
-        const nomeInsumo = `Insumo ${idInsumo}`; // Substituir por busca real
-        const custoUnitario = 1.0; // Simulação de custo
+        const nomeInsumo = `Insumo ${idInsumo}`;
+        const custoUnitario = 1.0;
         const custoParcial = quantidade * custoUnitario;
         
         state.produtos[produtoIndex].componentes.push({
@@ -148,11 +101,9 @@ export const useProdutoStore = create<ProdutoStore>()(
           custo: custoParcial
         });
         
-        // Atualizar custo total
         state.produtos[produtoIndex].custoTotal = get().calcularCustoProduto(state.produtos[produtoIndex]);
         state.produtos[produtoIndex].custoUnitario = state.produtos[produtoIndex].custoTotal / (state.produtos[produtoIndex].unidadesProducao || 1);
         
-        // Atualizar margem de lucro
         if (state.produtos[produtoIndex].precoVenda > 0) {
           state.produtos[produtoIndex].margemLucro = ((state.produtos[produtoIndex].precoVenda - state.produtos[produtoIndex].custoUnitario) / state.produtos[produtoIndex].precoVenda) * 100;
         }
@@ -164,18 +115,14 @@ export const useProdutoStore = create<ProdutoStore>()(
       if (produtoIndex !== -1) {
         const componenteIndex = state.produtos[produtoIndex].componentes.findIndex(c => c.id === idComponente);
         if (componenteIndex !== -1) {
-          // Atualizar quantidade
           state.produtos[produtoIndex].componentes[componenteIndex].quantidade = quantidade;
           
-          // Recalcular custo parcial
           const componente = state.produtos[produtoIndex].componentes[componenteIndex];
           componente.custoParcial = componente.custo * quantidade;
           
-          // Atualizar custo total
           state.produtos[produtoIndex].custoTotal = get().calcularCustoProduto(state.produtos[produtoIndex]);
           state.produtos[produtoIndex].custoUnitario = state.produtos[produtoIndex].custoTotal / (state.produtos[produtoIndex].unidadesProducao || 1);
           
-          // Atualizar margem de lucro
           if (state.produtos[produtoIndex].precoVenda > 0) {
             state.produtos[produtoIndex].margemLucro = ((state.produtos[produtoIndex].precoVenda - state.produtos[produtoIndex].custoUnitario) / state.produtos[produtoIndex].precoVenda) * 100;
           }
@@ -188,11 +135,9 @@ export const useProdutoStore = create<ProdutoStore>()(
       if (produtoIndex !== -1) {
         state.produtos[produtoIndex].componentes = state.produtos[produtoIndex].componentes.filter(c => c.id !== idComponente);
         
-        // Atualizar custo total
         state.produtos[produtoIndex].custoTotal = get().calcularCustoProduto(state.produtos[produtoIndex]);
         state.produtos[produtoIndex].custoUnitario = state.produtos[produtoIndex].custoTotal / (state.produtos[produtoIndex].unidadesProducao || 1);
         
-        // Atualizar margem de lucro
         if (state.produtos[produtoIndex].precoVenda > 0) {
           state.produtos[produtoIndex].margemLucro = ((state.produtos[produtoIndex].precoVenda - state.produtos[produtoIndex].custoUnitario) / state.produtos[produtoIndex].precoVenda) * 100;
         }
@@ -204,9 +149,7 @@ export const useProdutoStore = create<ProdutoStore>()(
       if (produtoIndex !== -1) {
         state.produtos[produtoIndex] = { ...state.produtos[produtoIndex], ...produto };
         
-        // Update categoria field if categoriaId was changed
         if (produto.categoriaId) {
-          // This is a simplified approach - in a real app, you'd fetch the category name from the category store
           const categoriaId = produto.categoriaId;
           if (categoriaId === 1) {
             state.produtos[produtoIndex].categoria = "Doces";

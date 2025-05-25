@@ -11,76 +11,6 @@ interface CategoriaPersonalizada {
   nome: string;
 }
 
-// Mock data for insumos
-const insumosMock: Insumo[] = [
-  {
-    id: 1,
-    nome: "Chocolate Meio Amargo",
-    categoria: "Matéria Prima",
-    volumeBruto: 1000,
-    unidadeMedida: "g",
-    custoMedio: 30.00,
-    custoUnitario: 0.03 // 30.00 / 1000
-  },
-  {
-    id: 2,
-    nome: "Manteiga",
-    categoria: "Matéria Prima",
-    volumeBruto: 200,
-    unidadeMedida: "g",
-    custoMedio: 8.50,
-    custoUnitario: 0.0425 // 8.50 / 200
-  },
-  {
-    id: 3,
-    nome: "Açúcar",
-    categoria: "Matéria Prima",
-    volumeBruto: 1000,
-    unidadeMedida: "g",
-    custoMedio: 6.00,
-    custoUnitario: 0.006 // 6.00 / 1000
-  },
-  {
-    id: 4,
-    nome: "Farinha de Trigo",
-    categoria: "Matéria Prima",
-    volumeBruto: 1000,
-    unidadeMedida: "g",
-    custoMedio: 4.50,
-    custoUnitario: 0.0045 // 4.50 / 1000
-  },
-  {
-    id: 5,
-    nome: "Embalagem Plástica Individual",
-    categoria: "Embalagem",
-    volumeBruto: 100,
-    unidadeMedida: "un",
-    custoMedio: 25.00,
-    custoUnitario: 0.25 // 25.00 / 100
-  },
-  {
-    id: 6,
-    nome: "Rótulo de Papel",
-    categoria: "Embalagem",
-    volumeBruto: 100,
-    unidadeMedida: "un",
-    custoMedio: 10.00,
-    custoUnitario: 0.10 // 10.00 / 100
-  }
-];
-
-// Initial custom categories
-const categoriasPersonalizadasMock: CategoriaPersonalizada[] = [
-  {
-    id: uuidv4(),
-    nome: "Material de Limpeza"
-  },
-  {
-    id: uuidv4(),
-    nome: "Utensílios de Cozinha"
-  }
-];
-
 interface InsumoStore {
   insumos: Insumo[];
   insumoAtual: Insumo | null;
@@ -106,9 +36,9 @@ interface InsumoStore {
 export const useInsumoStore = create<InsumoStore>()(
   devtools(
     (set, get) => ({
-      insumos: insumosMock,
+      insumos: [], // Iniciando vazio
       insumoAtual: null,
-      categoriasPersonalizadas: categoriasPersonalizadasMock,
+      categoriasPersonalizadas: [], // Iniciando vazio
       
       adicionarInsumo: (insumo) => {
         const novoId = Math.max(0, ...get().insumos.map(i => i.id)) + 1;
@@ -182,7 +112,6 @@ export const useInsumoStore = create<InsumoStore>()(
       },
       
       adicionarCategoria: (nome) => {
-        // Verificar se já existe uma categoria com esse nome
         const categoriasPadroes: CategoriaInsumo[] = ["Matéria Prima", "Embalagem", "Outros"];
         const todasCategorias = [...categoriasPadroes, ...get().categoriasPersonalizadas.map(c => c.nome)];
         
@@ -212,7 +141,6 @@ export const useInsumoStore = create<InsumoStore>()(
         const categoriaAtual = get().categoriasPersonalizadas.find(c => c.id === id);
         if (!categoriaAtual) return;
         
-        // Verificar se já existe outra categoria com esse nome
         const categoriasPadroes: CategoriaInsumo[] = ["Matéria Prima", "Embalagem", "Outros"];
         const outrasCategoriasPersonalizadas = get().categoriasPersonalizadas
           .filter(c => c.id !== id)
@@ -227,7 +155,6 @@ export const useInsumoStore = create<InsumoStore>()(
           return;
         }
         
-        // Use a type assertion to fix the type compatibility issue
         set((state) => {
           const updatedInsumos = state.insumos.map(insumo => 
             insumo.categoria === categoriaAtual.nome 
@@ -253,7 +180,6 @@ export const useInsumoStore = create<InsumoStore>()(
         const categoria = get().categoriasPersonalizadas.find(c => c.id === id);
         if (!categoria) return;
         
-        // Verificar se há insumos usando essa categoria
         const insumosNaCategoria = get().insumos.filter(i => i.categoria === categoria.nome);
         
         if (insumosNaCategoria.length > 0) {

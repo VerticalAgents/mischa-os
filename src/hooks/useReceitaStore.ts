@@ -5,104 +5,6 @@ import { toast } from "@/hooks/use-toast";
 import { ReceitaBase, ItemReceita, Insumo, UnidadeMedida } from '@/types';
 import { useInsumoStore } from './useInsumoStore';
 
-// Mock data for receitas
-const receitasMock: ReceitaBase[] = [
-  {
-    id: 1,
-    nome: "Brownie Tradicional",
-    descricao: "Receita padrão de brownie tradicional",
-    rendimento: 30,
-    unidadeRendimento: "unidades",
-    custoUnitario: 0.57,
-    itensReceita: [
-      { 
-        id: 1, 
-        idReceita: 1, 
-        idInsumo: 1, 
-        nomeInsumo: "Chocolate em pó", 
-        quantidade: 300, 
-        unidadeMedida: "g", 
-        custoParcial: 9.00, 
-        custo: 9.00 
-      },
-      { 
-        id: 2, 
-        idReceita: 1, 
-        idInsumo: 2, 
-        nomeInsumo: "Manteiga", 
-        quantidade: 150, 
-        unidadeMedida: "g", 
-        custoParcial: 6.375, 
-        custo: 6.375 
-      },
-      { 
-        id: 3, 
-        idReceita: 1, 
-        idInsumo: 3, 
-        nomeInsumo: "Açúcar", 
-        quantidade: 200, 
-        unidadeMedida: "g", 
-        custoParcial: 1.20, 
-        custo: 1.20 
-      },
-      { 
-        id: 4, 
-        idReceita: 1, 
-        idInsumo: 4, 
-        nomeInsumo: "Farinha", 
-        quantidade: 100, 
-        unidadeMedida: "g", 
-        custoParcial: 0.45, 
-        custo: 0.45 
-      }
-    ],
-    pesoTotal: 750, // soma das quantidades
-    custoTotal: 17.025 // soma dos custos
-  },
-  {
-    id: 2,
-    nome: "Brownie Blondie",
-    descricao: "Receita de brownie branco",
-    rendimento: 28,
-    unidadeRendimento: "unidades",
-    custoUnitario: 0.31,
-    itensReceita: [
-      { 
-        id: 5, 
-        idReceita: 2, 
-        idInsumo: 2, 
-        nomeInsumo: "Manteiga", 
-        quantidade: 150, 
-        unidadeMedida: "g", 
-        custoParcial: 6.375, 
-        custo: 6.375 
-      },
-      { 
-        id: 6, 
-        idReceita: 2, 
-        idInsumo: 3, 
-        nomeInsumo: "Açúcar", 
-        quantidade: 250, 
-        unidadeMedida: "g", 
-        custoParcial: 1.50, 
-        custo: 1.50 
-      },
-      { 
-        id: 7, 
-        idReceita: 2, 
-        idInsumo: 4, 
-        nomeInsumo: "Farinha", 
-        quantidade: 150, 
-        unidadeMedida: "g", 
-        custoParcial: 0.675, 
-        custo: 0.675 
-      }
-    ],
-    pesoTotal: 550, // soma das quantidades
-    custoTotal: 8.55 // soma dos custos
-  }
-];
-
 interface ReceitaStore {
   receitas: ReceitaBase[];
   receitaAtual: ReceitaBase | null;
@@ -123,7 +25,7 @@ interface ReceitaStore {
 export const useReceitaStore = create<ReceitaStore>()(
   devtools(
     (set, get) => ({
-      receitas: receitasMock,
+      receitas: [], // Iniciando vazio
       receitaAtual: null,
       
       adicionarReceita: (nome) => {
@@ -166,10 +68,8 @@ export const useReceitaStore = create<ReceitaStore>()(
           return;
         }
         
-        // Verificar se este insumo já existe na receita
         const itemExistente = receita.itensReceita.find(i => i.idInsumo === idInsumo);
         if (itemExistente) {
-          // Atualizar quantidade em vez de adicionar novo
           get().atualizarItemReceita(idReceita, itemExistente.id, quantidade + itemExistente.quantidade);
           return;
         }
