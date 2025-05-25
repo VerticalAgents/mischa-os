@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { MessageSquare, CheckCircle, XCircle, Clock, Edit } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { Pedido } from "@/types";
+import { Pedido, TipoPedido } from "@/types";
 import ReagendamentoDialog from "./ReagendamentoDialog";
 import FiltrosLocalizacao from "./FiltrosLocalizacao";
 import ReclassificacaoStatus from "./ReclassificacaoStatus";
@@ -34,6 +34,14 @@ interface AgendamentoItem {
   dataReposicao: Date;
   statusAgendamento: string;
   isPedidoUnico: boolean;
+}
+
+// Type for exportation data that matches what ExportacaoButtons expects
+interface ClienteExportacao extends Cliente {
+  statusConfirmacao: string;
+  dataReposicao: Date;
+  tipoPedido: TipoPedido;
+  observacoes: string;
 }
 
 export default function ConfirmacaoReposicao() {
@@ -271,13 +279,13 @@ export default function ConfirmacaoReposicao() {
   };
 
   // Preparar dados para exportação
-  const prepararDadosExportacao = (statusId: number) => {
+  const prepararDadosExportacao = (statusId: number): ClienteExportacao[] => {
     const clientesStatus = clientesporStatus[statusId] || [];
     return clientesStatus.map(cliente => ({
       ...cliente,
       statusConfirmacao: statusConfirmacao.find(s => s.id === statusId)?.nome || "Não definido",
       dataReposicao: cliente.proxima_data_reposicao ? new Date(cliente.proxima_data_reposicao) : new Date(),
-      tipoPedido: pedidosCliente[cliente.id]?.tipoPedido || "Padrão",
+      tipoPedido: (pedidosCliente[cliente.id]?.tipoPedido || "Padrão") as TipoPedido,
       observacoes: observacoes[cliente.id] || ""
     }));
   };
@@ -475,7 +483,7 @@ export default function ConfirmacaoReposicao() {
                 ...cliente,
                 statusConfirmacao: "Todos",
                 dataReposicao: cliente.proxima_data_reposicao ? new Date(cliente.proxima_data_reposicao) : new Date(),
-                tipoPedido: pedidosCliente[cliente.id]?.tipoPedido || "Padrão",
+                tipoPedido: (pedidosCliente[cliente.id]?.tipoPedido || "Padrão") as TipoPedido,
                 observacoes: observacoes[cliente.id] || ""
               }))}
               filtroAtivo="Todos"

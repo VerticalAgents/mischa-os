@@ -50,7 +50,7 @@ export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsVi
           <h1 className="text-2xl font-bold tracking-tight">{cliente.nome}</h1>
           <p className="text-muted-foreground flex items-center flex-wrap gap-2">
             {cliente.cnpj_cpf}
-            <StatusBadge status={cliente.status_cliente} />
+            <StatusBadge status={cliente.status_cliente as any} />
             {cliente.status_agendamento && (
               <div className="flex items-center gap-1">
                 <span>Agendamento:</span>

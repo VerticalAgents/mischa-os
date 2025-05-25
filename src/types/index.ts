@@ -24,7 +24,43 @@ export type FormaPagamentoNome = 'Boleto' | 'PIX' | 'Dinheiro';
 // Status de agendamento do cliente
 export type StatusAgendamentoCliente = 'Agendar' | 'Previsto' | 'Agendado' | 'Reagendar' | string;
 
+// Updated Cliente interface to match Supabase structure
 export interface Cliente {
+  id: string; // Changed from number to string for Supabase UUID
+  nome: string;
+  cnpj_cpf?: string;
+  endereco_entrega?: string;
+  contato_nome?: string;
+  contato_telefone?: string;
+  contato_email?: string;
+  quantidade_padrao?: number;
+  periodicidade_padrao?: number; // em dias
+  status_cliente?: string;
+  meta_giro_semanal?: number; // Meta de giro semanal
+  ultima_data_reposicao_efetiva?: string; // Data da última reposição efetiva
+  status_agendamento?: string; // Status do agendamento
+  proxima_data_reposicao?: string; // Próxima data de reposição agendada
+  ativo?: boolean;
+  giro_medio_semanal?: number;
+  
+  // Novos campos para configuração avançada
+  janelas_entrega?: any;
+  representante_id?: number;
+  rota_entrega_id?: number;
+  categoria_estabelecimento_id?: number;
+  instrucoes_entrega?: string;
+  contabilizar_giro_medio?: boolean;
+  tipo_logistica?: string;
+  emite_nota_fiscal?: boolean;
+  tipo_cobranca?: string;
+  forma_pagamento?: string;
+  observacoes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Legacy interface for backward compatibility
+export interface ClienteLegacy {
   id: number;
   nome: string;
   cnpjCpf?: string;
@@ -40,8 +76,8 @@ export interface Cliente {
   ultimaDataReposicaoEfetiva?: Date; // Data da última reposição efetiva
   statusAgendamento?: StatusAgendamentoCliente; // Status do agendamento
   proximaDataReposicao?: Date; // Próxima data de reposição agendada
-  ativo: boolean; // Added missing property
-  giroMedioSemanal?: number; // Added missing property
+  ativo: boolean;
+  giroMedioSemanal?: number;
   
   // Novos campos para configuração avançada
   janelasEntrega?: DiaSemana[];
@@ -60,7 +96,14 @@ export interface Cliente {
   categoriasHabilitadas?: number[]; // Array of category IDs that client can purchase
 }
 
-// Representantes, Rotas e Categorias para configuração
+// Export data for export functionality
+export interface ClienteExportacao extends Cliente {
+  statusConfirmacao?: string;
+  dataReposicao?: Date;
+  tipoPedido?: TipoPedido;
+  observacoes?: string;
+}
+
 export interface Representante {
   id: number;
   nome: string;
