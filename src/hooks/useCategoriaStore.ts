@@ -1,4 +1,3 @@
-
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { ProdutoCategoria, ProdutoSubcategoria } from "@/types";
@@ -25,15 +24,20 @@ interface CategoriaStore {
   // Verification methods
   categoriaTemProdutos: (categoriaId: number) => boolean;
   subcategoriaTemProdutos: (subcategoriaId: number) => boolean;
+  
+  // Protection methods
+  categoriaEhProtegida: (categoriaId: number) => boolean;
 }
+
+const categoriasProtegidas = [1, 2]; // IDs das categorias "Revenda Padrão" e "Food Service"
 
 export const useCategoriaStore = create<CategoriaStore>()(
   immer((set, get) => ({
     categorias: [
       {
         id: 1,
-        nome: "Doces",
-        descricao: "Produtos da linha de doces",
+        nome: "Revenda Padrão", // Renomeado de "Doces" para "Revenda Padrão"
+        descricao: "Produtos da linha de revenda padrão",
         subcategorias: [
           { id: 1, nome: "Brownie 38g", categoriaId: 1, quantidadeProdutos: 1 },
           { id: 2, nome: "Brownie 55g", categoriaId: 1, quantidadeProdutos: 0 }
@@ -76,7 +80,13 @@ export const useCategoriaStore = create<CategoriaStore>()(
     }),
     
     removerCategoria: (id) => {
-      const { categoriaTemProdutos } = get();
+      const { categoriaTemProdutos, categoriaEhProtegida } = get();
+      
+      // Verificar se a categoria é protegida
+      if (categoriaEhProtegida(id)) {
+        return false;
+      }
+      
       if (categoriaTemProdutos(id)) {
         return false;
       }
@@ -158,6 +168,10 @@ export const useCategoriaStore = create<CategoriaStore>()(
     subcategoriaTemProdutos: (subcategoriaId) => {
       const produtos = useProdutoStore.getState().produtos;
       return produtos.some(p => p.subcategoriaId === subcategoriaId);
+    },
+    
+    categoriaEhProtegida: (categoriaId) => {
+      return categoriasProtegidas.includes(categoriaId);
     }
   }))
 );

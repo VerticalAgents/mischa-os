@@ -25,32 +25,32 @@ interface ConfigStore {
   formasPagamento: FormaPagamento[];
   configuracoesProducao: ConfiguracoesProducao;
 
-  // Ações para Representantes
+  // Actions for Representantes
   adicionarRepresentante: (representante: Omit<Representante, 'id'>) => void;
   atualizarRepresentante: (id: number, dados: Partial<Representante>) => void;
   removerRepresentante: (id: number) => void;
   
-  // Ações para Rotas
+  // Actions for Rotas
   adicionarRota: (rota: Omit<RotaEntrega, 'id'>) => void;
   atualizarRota: (id: number, dados: Partial<RotaEntrega>) => void;
   removerRota: (id: number) => void;
 
-  // Ações para Categorias
+  // Actions for Categorias
   adicionarCategoria: (categoria: Omit<CategoriaEstabelecimento, 'id'>) => void;
   atualizarCategoria: (id: number, dados: Partial<CategoriaEstabelecimento>) => void;
   removerCategoria: (id: number) => void;
   
-  // Ações para Tipos de Logística
+  // Actions for Tipos de Logística
   adicionarTipoLogistica: (tipoLogistica: Omit<TipoLogistica, 'id'>) => void;
   atualizarTipoLogistica: (id: number, dados: Partial<TipoLogistica>) => void;
   removerTipoLogistica: (id: number) => void;
   
-  // Ações para Formas de Pagamento
+  // Actions for Formas de Pagamento
   adicionarFormaPagamento: (formaPagamento: Omit<FormaPagamento, 'id'>) => void;
   atualizarFormaPagamento: (id: number, dados: Partial<FormaPagamento>) => void;
   removerFormaPagamento: (id: number) => void;
   
-  // Ações para Configurações de Produção
+  // Actions for Configurações de Produção
   atualizarConfiguracoesProducao: (dados: Partial<ConfiguracoesProducao>) => void;
 
   // Getters
@@ -71,7 +71,6 @@ export const useConfigStore = create<ConfigStore>()(
       formasPagamento: formasPagamentoMock,
       configuracoesProducao: configuracoesProducaoMock,
 
-      // Implementação para Representantes
       adicionarRepresentante: (representante) => {
         set((state) => {
           const novoId = Math.max(0, ...state.representantes.map(r => r.id)) + 1;
@@ -98,7 +97,6 @@ export const useConfigStore = create<ConfigStore>()(
         }));
       },
 
-      // Implementação para Rotas
       adicionarRota: (rota) => {
         set((state) => {
           const novoId = Math.max(0, ...state.rotasEntrega.map(r => r.id)) + 1;
@@ -125,7 +123,6 @@ export const useConfigStore = create<ConfigStore>()(
         }));
       },
 
-      // Implementação para Categorias
       adicionarCategoria: (categoria) => {
         set((state) => {
           const novoId = Math.max(0, ...state.categoriasEstabelecimento.map(c => c.id)) + 1;
@@ -152,7 +149,6 @@ export const useConfigStore = create<ConfigStore>()(
         }));
       },
 
-      // Implementação para Tipos de Logística
       adicionarTipoLogistica: (tipoLogistica) => {
         set((state) => {
           const novoId = Math.max(0, ...state.tiposLogistica.map(t => t.id)) + 1;
@@ -179,7 +175,6 @@ export const useConfigStore = create<ConfigStore>()(
         }));
       },
 
-      // Implementação para Formas de Pagamento
       adicionarFormaPagamento: (formaPagamento) => {
         set((state) => {
           const novoId = Math.max(0, ...state.formasPagamento.map(f => f.id)) + 1;
@@ -206,7 +201,6 @@ export const useConfigStore = create<ConfigStore>()(
         }));
       },
 
-      // Implementação para Configurações de Produção
       atualizarConfiguracoesProducao: (dados) => {
         set((state) => ({
           configuracoesProducao: {
@@ -216,7 +210,6 @@ export const useConfigStore = create<ConfigStore>()(
         }));
       },
 
-      // Getters filtrados
       getRepresentanteAtivo: () => {
         return get().representantes.filter(r => r.ativo);
       },

@@ -58,10 +58,198 @@ export const useProdutoStore = create<ProdutoStore>()(
         pesoUnitario: 35,
         custoUnitario: 2.85,
         unidadesProducao: 100,
-        categoria: "Doces",
+        categoria: "Revenda Padrão", // Atualizado para refletir a nova categoria
         estoqueMinimo: 10,
         categoriaId: 1,
         subcategoriaId: 1
+      },
+      // Novos produtos padrão
+      {
+        id: 2,
+        nome: "Brownie Tradicional",
+        descricao: "Brownie tradicional",
+        precoVenda: 0,
+        custoTotal: 0,
+        margemLucro: 0,
+        componentes: [],
+        ativo: true,
+        pesoUnitario: 0,
+        custoUnitario: 0,
+        unidadesProducao: 100,
+        categoria: "Revenda Padrão",
+        estoqueMinimo: 0,
+        categoriaId: 1,
+        subcategoriaId: 1
+      },
+      {
+        id: 3,
+        nome: "Brownie Choco Duo",
+        descricao: "Brownie com chocolate duplo",
+        precoVenda: 0,
+        custoTotal: 0,
+        margemLucro: 0,
+        componentes: [],
+        ativo: true,
+        pesoUnitario: 0,
+        custoUnitario: 0,
+        unidadesProducao: 100,
+        categoria: "Revenda Padrão",
+        estoqueMinimo: 0,
+        categoriaId: 1,
+        subcategoriaId: 1
+      },
+      {
+        id: 4,
+        nome: "Brownie Meio Amargo",
+        descricao: "Brownie meio amargo",
+        precoVenda: 0,
+        custoTotal: 0,
+        margemLucro: 0,
+        componentes: [],
+        ativo: true,
+        pesoUnitario: 0,
+        custoUnitario: 0,
+        unidadesProducao: 100,
+        categoria: "Revenda Padrão",
+        estoqueMinimo: 0,
+        categoriaId: 1,
+        subcategoriaId: 1
+      },
+      {
+        id: 5,
+        nome: "Brownie Stikadinho",
+        descricao: "Brownie stikadinho",
+        precoVenda: 0,
+        custoTotal: 0,
+        margemLucro: 0,
+        componentes: [],
+        ativo: true,
+        pesoUnitario: 0,
+        custoUnitario: 0,
+        unidadesProducao: 100,
+        categoria: "Revenda Padrão",
+        estoqueMinimo: 0,
+        categoriaId: 1,
+        subcategoriaId: 1
+      },
+      {
+        id: 6,
+        nome: "Brownie Avelã",
+        descricao: "Brownie com avelã",
+        precoVenda: 0,
+        custoTotal: 0,
+        margemLucro: 0,
+        componentes: [],
+        ativo: true,
+        pesoUnitario: 0,
+        custoUnitario: 0,
+        unidadesProducao: 100,
+        categoria: "Revenda Padrão",
+        estoqueMinimo: 0,
+        categoriaId: 1,
+        subcategoriaId: 1
+      },
+      {
+        id: 7,
+        nome: "Brownie Blondie",
+        descricao: "Brownie blondie",
+        precoVenda: 0,
+        custoTotal: 0,
+        margemLucro: 0,
+        componentes: [],
+        ativo: true,
+        pesoUnitario: 0,
+        custoUnitario: 0,
+        unidadesProducao: 100,
+        categoria: "Revenda Padrão",
+        estoqueMinimo: 0,
+        categoriaId: 1,
+        subcategoriaId: 1
+      },
+      {
+        id: 8,
+        nome: "Brownie Doce de Leite",
+        descricao: "Brownie com doce de leite",
+        precoVenda: 0,
+        custoTotal: 0,
+        margemLucro: 0,
+        componentes: [],
+        ativo: true,
+        pesoUnitario: 0,
+        custoUnitario: 0,
+        unidadesProducao: 100,
+        categoria: "Revenda Padrão",
+        estoqueMinimo: 0,
+        categoriaId: 1,
+        subcategoriaId: 1
+      },
+      {
+        id: 9,
+        nome: "Brownie Nesquik",
+        descricao: "Brownie Nesquik",
+        precoVenda: 0,
+        custoTotal: 0,
+        margemLucro: 0,
+        componentes: [],
+        ativo: true,
+        pesoUnitario: 0,
+        custoUnitario: 0,
+        unidadesProducao: 100,
+        categoria: "Revenda Padrão",
+        estoqueMinimo: 0,
+        categoriaId: 1,
+        subcategoriaId: 1
+      },
+      {
+        id: 10,
+        nome: "Brownie Oreo Cream",
+        descricao: "Brownie Oreo Cream",
+        precoVenda: 0,
+        custoTotal: 0,
+        margemLucro: 0,
+        componentes: [],
+        ativo: true,
+        pesoUnitario: 0,
+        custoUnitario: 0,
+        unidadesProducao: 100,
+        categoria: "Revenda Padrão",
+        estoqueMinimo: 0,
+        categoriaId: 1,
+        subcategoriaId: 1
+      },
+      {
+        id: 11,
+        nome: "Brownie Pistache",
+        descricao: "Brownie com pistache",
+        precoVenda: 0,
+        custoTotal: 0,
+        margemLucro: 0,
+        componentes: [],
+        ativo: true,
+        pesoUnitario: 0,
+        custoUnitario: 0,
+        unidadesProducao: 100,
+        categoria: "Revenda Padrão",
+        estoqueMinimo: 0,
+        categoriaId: 1,
+        subcategoriaId: 1
+      },
+      {
+        id: 12,
+        nome: "Mini Brownie Tradicional Congelado 2kg",
+        descricao: "Mini brownie tradicional congelado",
+        precoVenda: 0,
+        custoTotal: 0,
+        margemLucro: 0,
+        componentes: [],
+        ativo: true,
+        pesoUnitario: 0,
+        custoUnitario: 0,
+        unidadesProducao: 100,
+        categoria: "Food Service",
+        estoqueMinimo: 0,
+        categoriaId: 2,
+        subcategoriaId: 3
       }
     ],
     
@@ -86,15 +274,33 @@ export const useProdutoStore = create<ProdutoStore>()(
       });
     }),
     
+    atualizarProduto: (id, produto) => set(state => {
+      const produtoIndex = state.produtos.findIndex(p => p.id === id);
+      if (produtoIndex !== -1) {
+        state.produtos[produtoIndex] = { ...state.produtos[produtoIndex], ...produto };
+        
+        // Update categoria field if categoriaId was changed
+        if (produto.categoriaId) {
+          const categoriaId = produto.categoriaId;
+          if (categoriaId === 1) {
+            state.produtos[produtoIndex].categoria = "Revenda Padrão"; // Atualizado
+          } else if (categoriaId === 2) {
+            state.produtos[produtoIndex].categoria = "Food Service";
+          } else {
+            state.produtos[produtoIndex].categoria = "Não categorizado";
+          }
+        }
+      }
+    }),
+    
     adicionarComponenteReceita: (idProduto, idReceita, quantidade) => set(state => {
       const produtoIndex = state.produtos.findIndex(p => p.id === idProduto);
       if (produtoIndex !== -1) {
         const componentes = state.produtos[produtoIndex].componentes;
         const id = componentes.length > 0 ? Math.max(...componentes.map(c => c.id)) + 1 : 1;
         
-        // Simular busca na receita
-        const nomeReceita = `Receita ${idReceita}`; // Substituir por busca real
-        const custoPorGrama = 0.05; // Simulação de custo
+        const nomeReceita = `Receita ${idReceita}`;
+        const custoPorGrama = 0.05;
         const custoParcial = quantidade * custoPorGrama;
         
         state.produtos[produtoIndex].componentes.push({
@@ -110,16 +316,13 @@ export const useProdutoStore = create<ProdutoStore>()(
           custo: custoParcial
         });
         
-        // Atualizar custo total
         state.produtos[produtoIndex].custoTotal = get().calcularCustoProduto(state.produtos[produtoIndex]);
         state.produtos[produtoIndex].custoUnitario = state.produtos[produtoIndex].custoTotal / (state.produtos[produtoIndex].unidadesProducao || 1);
         
-        // Atualizar margem de lucro
         if (state.produtos[produtoIndex].precoVenda > 0) {
           state.produtos[produtoIndex].margemLucro = ((state.produtos[produtoIndex].precoVenda - state.produtos[produtoIndex].custoUnitario) / state.produtos[produtoIndex].precoVenda) * 100;
         }
         
-        // Atualizar peso unitário se for uma receita
         state.produtos[produtoIndex].pesoUnitario = (state.produtos[produtoIndex].pesoUnitario || 0) + quantidade / (state.produtos[produtoIndex].unidadesProducao || 1);
       }
     }),
@@ -130,9 +333,8 @@ export const useProdutoStore = create<ProdutoStore>()(
         const componentes = state.produtos[produtoIndex].componentes;
         const id = componentes.length > 0 ? Math.max(...componentes.map(c => c.id)) + 1 : 1;
         
-        // Simular busca no insumo
-        const nomeInsumo = `Insumo ${idInsumo}`; // Substituir por busca real
-        const custoUnitario = 1.0; // Simulação de custo
+        const nomeInsumo = `Insumo ${idInsumo}`;
+        const custoUnitario = 1.0;
         const custoParcial = quantidade * custoUnitario;
         
         state.produtos[produtoIndex].componentes.push({
@@ -148,11 +350,9 @@ export const useProdutoStore = create<ProdutoStore>()(
           custo: custoParcial
         });
         
-        // Atualizar custo total
         state.produtos[produtoIndex].custoTotal = get().calcularCustoProduto(state.produtos[produtoIndex]);
         state.produtos[produtoIndex].custoUnitario = state.produtos[produtoIndex].custoTotal / (state.produtos[produtoIndex].unidadesProducao || 1);
         
-        // Atualizar margem de lucro
         if (state.produtos[produtoIndex].precoVenda > 0) {
           state.produtos[produtoIndex].margemLucro = ((state.produtos[produtoIndex].precoVenda - state.produtos[produtoIndex].custoUnitario) / state.produtos[produtoIndex].precoVenda) * 100;
         }
@@ -164,18 +364,14 @@ export const useProdutoStore = create<ProdutoStore>()(
       if (produtoIndex !== -1) {
         const componenteIndex = state.produtos[produtoIndex].componentes.findIndex(c => c.id === idComponente);
         if (componenteIndex !== -1) {
-          // Atualizar quantidade
           state.produtos[produtoIndex].componentes[componenteIndex].quantidade = quantidade;
           
-          // Recalcular custo parcial
           const componente = state.produtos[produtoIndex].componentes[componenteIndex];
           componente.custoParcial = componente.custo * quantidade;
           
-          // Atualizar custo total
           state.produtos[produtoIndex].custoTotal = get().calcularCustoProduto(state.produtos[produtoIndex]);
           state.produtos[produtoIndex].custoUnitario = state.produtos[produtoIndex].custoTotal / (state.produtos[produtoIndex].unidadesProducao || 1);
           
-          // Atualizar margem de lucro
           if (state.produtos[produtoIndex].precoVenda > 0) {
             state.produtos[produtoIndex].margemLucro = ((state.produtos[produtoIndex].precoVenda - state.produtos[produtoIndex].custoUnitario) / state.produtos[produtoIndex].precoVenda) * 100;
           }
@@ -188,33 +384,11 @@ export const useProdutoStore = create<ProdutoStore>()(
       if (produtoIndex !== -1) {
         state.produtos[produtoIndex].componentes = state.produtos[produtoIndex].componentes.filter(c => c.id !== idComponente);
         
-        // Atualizar custo total
         state.produtos[produtoIndex].custoTotal = get().calcularCustoProduto(state.produtos[produtoIndex]);
         state.produtos[produtoIndex].custoUnitario = state.produtos[produtoIndex].custoTotal / (state.produtos[produtoIndex].unidadesProducao || 1);
         
-        // Atualizar margem de lucro
         if (state.produtos[produtoIndex].precoVenda > 0) {
           state.produtos[produtoIndex].margemLucro = ((state.produtos[produtoIndex].precoVenda - state.produtos[produtoIndex].custoUnitario) / state.produtos[produtoIndex].precoVenda) * 100;
-        }
-      }
-    }),
-    
-    atualizarProduto: (id, produto) => set(state => {
-      const produtoIndex = state.produtos.findIndex(p => p.id === id);
-      if (produtoIndex !== -1) {
-        state.produtos[produtoIndex] = { ...state.produtos[produtoIndex], ...produto };
-        
-        // Update categoria field if categoriaId was changed
-        if (produto.categoriaId) {
-          // This is a simplified approach - in a real app, you'd fetch the category name from the category store
-          const categoriaId = produto.categoriaId;
-          if (categoriaId === 1) {
-            state.produtos[produtoIndex].categoria = "Doces";
-          } else if (categoriaId === 2) {
-            state.produtos[produtoIndex].categoria = "Food Service";
-          } else {
-            state.produtos[produtoIndex].categoria = "Não categorizado";
-          }
         }
       }
     }),
