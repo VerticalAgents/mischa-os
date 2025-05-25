@@ -7,6 +7,7 @@ import { Layers } from "lucide-react";
 // Import components
 import AjusteEstoqueTab from "@/components/pcp/AjusteEstoqueTab";
 import ProjecaoProducaoTab from "@/components/pcp/ProjecaoProducaoTab";
+import NecessidadeDiariaTab from "@/components/pcp/NecessidadeDiariaTab";
 
 export default function PCP() {
   const [activeTab, setActiveTab] = useState("ajuste-estoque");
@@ -23,7 +24,7 @@ export default function PCP() {
         <TabsList className="w-full justify-start">
           <TabsTrigger value="ajuste-estoque">Ajuste de Estoque</TabsTrigger>
           <TabsTrigger value="projecao-producao">Projeção de Produção</TabsTrigger>
-          <TabsTrigger value="necessidade-diaria" disabled>Necessidade Diária</TabsTrigger>
+          <TabsTrigger value="necessidade-diaria">Necessidade Diária</TabsTrigger>
           <TabsTrigger value="planejamento" disabled>Planejamento</TabsTrigger>
           <TabsTrigger value="historico" disabled>Histórico</TabsTrigger>
         </TabsList>
@@ -37,9 +38,7 @@ export default function PCP() {
         </TabsContent>
         
         <TabsContent value="necessidade-diaria" className="space-y-6 mt-6">
-          <div className="text-center py-12 text-muted-foreground">
-            Em desenvolvimento - Aba de Necessidade Diária
-          </div>
+          <NecessidadeDiariaTab />
         </TabsContent>
         
         <TabsContent value="planejamento" className="space-y-6 mt-6">
