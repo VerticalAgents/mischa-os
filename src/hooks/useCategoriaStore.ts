@@ -25,9 +25,6 @@ interface CategoriaStore {
   // Verification methods
   categoriaTemProdutos: (categoriaId: number) => boolean;
   subcategoriaTemProdutos: (subcategoriaId: number) => boolean;
-  
-  // Protection method
-  isProtectedCategory: (categoriaId: number) => boolean;
 }
 
 export const useCategoriaStore = create<CategoriaStore>()(
@@ -35,22 +32,22 @@ export const useCategoriaStore = create<CategoriaStore>()(
     categorias: [
       {
         id: 1,
-        nome: "Revenda Padrão",
-        descricao: "Produtos da linha de revenda padrão",
+        nome: "Doces",
+        descricao: "Produtos da linha de doces",
         subcategorias: [
-          { id: 1, nome: "Brownie 38g", categoriaId: 1, quantidadeProdutos: 11 },
+          { id: 1, nome: "Brownie 38g", categoriaId: 1, quantidadeProdutos: 1 },
           { id: 2, nome: "Brownie 55g", categoriaId: 1, quantidadeProdutos: 0 }
         ],
-        quantidadeProdutos: 11
+        quantidadeProdutos: 1
       },
       {
         id: 2,
         nome: "Food Service",
         descricao: "Produtos para estabelecimentos",
         subcategorias: [
-          { id: 3, nome: "Kits", categoriaId: 2, quantidadeProdutos: 1 }
+          { id: 3, nome: "Kits", categoriaId: 2, quantidadeProdutos: 0 }
         ],
-        quantidadeProdutos: 1
+        quantidadeProdutos: 0
       }
     ],
     
@@ -69,11 +66,6 @@ export const useCategoriaStore = create<CategoriaStore>()(
     }),
     
     atualizarCategoria: (id, nome, descricao) => set(state => {
-      // Prevent updating protected categories
-      if (get().isProtectedCategory(id)) {
-        return;
-      }
-      
       const index = state.categorias.findIndex(c => c.id === id);
       if (index !== -1) {
         state.categorias[index].nome = nome;
@@ -84,11 +76,6 @@ export const useCategoriaStore = create<CategoriaStore>()(
     }),
     
     removerCategoria: (id) => {
-      // Prevent deletion of protected categories
-      if (get().isProtectedCategory(id)) {
-        return false;
-      }
-      
       const { categoriaTemProdutos } = get();
       if (categoriaTemProdutos(id)) {
         return false;
@@ -171,11 +158,6 @@ export const useCategoriaStore = create<CategoriaStore>()(
     subcategoriaTemProdutos: (subcategoriaId) => {
       const produtos = useProdutoStore.getState().produtos;
       return produtos.some(p => p.subcategoriaId === subcategoriaId);
-    },
-    
-    isProtectedCategory: (categoriaId) => {
-      // Categories 1 (Revenda Padrão) and 2 (Food Service) are protected
-      return categoriaId === 1 || categoriaId === 2;
     }
   }))
 );
