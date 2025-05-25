@@ -55,11 +55,11 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             const agendamento: AgendamentoCliente = {
               id: data.id,
               cliente_id: data.cliente_id,
-              status_agendamento: data.status_agendamento,
+              status_agendamento: data.status_agendamento as 'Agendar' | 'Previsto' | 'Agendado',
               data_proxima_reposicao: data.data_proxima_reposicao ? new Date(data.data_proxima_reposicao) : undefined,
               quantidade_total: data.quantidade_total,
-              tipo_pedido: data.tipo_pedido,
-              itens_personalizados: data.itens_personalizados,
+              tipo_pedido: data.tipo_pedido as 'Padrão' | 'Alterado',
+              itens_personalizados: data.itens_personalizados as Array<{ produto: string; quantidade: number }> | undefined,
               created_at: new Date(data.created_at),
               updated_at: new Date(data.updated_at)
             };
