@@ -10,6 +10,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -51,7 +53,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         if (event === 'SIGNED_OUT') {
-          navigate('/login');
+          navigate('/auth');
           toast.info("Você foi desconectado");
         }
       }
@@ -66,6 +68,65 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     return () => subscription.unsubscribe();
   }, [navigate, location]);
+
+  const signInWithEmail = async (email: string, password: string): Promise<void> => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error("Email ou senha incorretos");
+        } else {
+          toast.error("Erro ao fazer login: " + error.message);
+        }
+        throw error;
+      }
+    } catch (error) {
+      if (error instanceof Error && !error.message.includes('Invalid login credentials')) {
+        toast.error("Erro inesperado ao fazer login");
+      }
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUpWithEmail = async (email: string, password: string, fullName: string): Promise<void> => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName
+          }
+        }
+      });
+
+      if (error) {
+        if (error.message.includes('User already registered')) {
+          toast.error("Este email já está cadastrado. Tente fazer login.");
+        } else {
+          toast.error("Erro ao criar conta: " + error.message);
+        }
+        throw error;
+      } else {
+        toast.success("Conta criada com sucesso! Verifique seu email para confirmar.");
+      }
+    } catch (error) {
+      if (error instanceof Error && !error.message.includes('User already registered')) {
+        toast.error("Erro inesperado ao criar conta");
+      }
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const signInWithGoogle = async (): Promise<void> => {
     try {
@@ -108,7 +169,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       isAuthenticated, 
       user, 
       session, 
-      signInWithGoogle, 
+      signInWithGoogle,
+      signInWithEmail,
+      signUpWithEmail,
       logout, 
       loading 
     }}>

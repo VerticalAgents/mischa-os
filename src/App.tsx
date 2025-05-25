@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -22,6 +23,7 @@ import EstoqueInsumos from "./pages/EstoqueInsumos";
 
 // Auth pages
 import LoginPage from "./pages/auth/LoginPage";
+import AuthPage from "./pages/auth/AuthPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
@@ -64,6 +66,7 @@ const App = () => {
             <Routes>
               {/* Auth Routes */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth" element={<AuthPage />} />
               
               {/* Protected Routes */}
               <Route path="/" element={
