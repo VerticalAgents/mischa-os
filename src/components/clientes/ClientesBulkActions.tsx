@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useClientesSupabase, Cliente } from "@/hooks/useClientesSupabase";
@@ -81,16 +80,16 @@ export default function ClientesBulkActions({
       
       switch (bulkEditField) {
         case "status_cliente":
-          updates.status_cliente = bulkEditValue as any;
+          updates.status_cliente = bulkEditValue;
           break;
         case "tipo_logistica":
-          updates.tipo_logistica = bulkEditValue as any;
+          updates.tipo_logistica = bulkEditValue;
           break;
         case "tipo_cobranca":
-          updates.tipo_cobranca = bulkEditValue as any;
+          updates.tipo_cobranca = bulkEditValue;
           break;
         case "forma_pagamento":
-          updates.forma_pagamento = bulkEditValue as any;
+          updates.forma_pagamento = bulkEditValue;
           break;
         case "quantidade_padrao":
           updates.quantidade_padrao = parseInt(bulkEditValue);
@@ -205,18 +204,18 @@ export default function ClientesBulkActions({
                   <SelectValue placeholder="Selecione um campo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="statusCliente">Status</SelectItem>
-                  <SelectItem value="tipoLogistica">Tipo de Logística</SelectItem>
-                  <SelectItem value="tipoCobranca">Tipo de Cobrança</SelectItem>
-                  <SelectItem value="formaPagamento">Forma de Pagamento</SelectItem>
-                  <SelectItem value="quantidadePadrao">Quantidade Padrão</SelectItem>
-                  <SelectItem value="periodicidadePadrao">Periodicidade</SelectItem>
+                  <SelectItem value="status_cliente">Status</SelectItem>
+                  <SelectItem value="tipo_logistica">Tipo de Logística</SelectItem>
+                  <SelectItem value="tipo_cobranca">Tipo de Cobrança</SelectItem>
+                  <SelectItem value="forma_pagamento">Forma de Pagamento</SelectItem>
+                  <SelectItem value="quantidade_padrao">Quantidade Padrão</SelectItem>
+                  <SelectItem value="periodicidade_padrao">Periodicidade</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
-              {bulkEditField === "statusCliente" && (
+              {bulkEditField === "status_cliente" && (
                 <div>
                   <Label htmlFor="status">Status</Label>
                   <Select
@@ -237,7 +236,7 @@ export default function ClientesBulkActions({
                 </div>
               )}
               
-              {bulkEditField === "tipoLogistica" && (
+              {bulkEditField === "tipo_logistica" && (
                 <div>
                   <Label htmlFor="logistica">Tipo de Logística</Label>
                   <Select
@@ -255,7 +254,7 @@ export default function ClientesBulkActions({
                 </div>
               )}
               
-              {bulkEditField === "tipoCobranca" && (
+              {bulkEditField === "tipo_cobranca" && (
                 <div>
                   <Label htmlFor="cobranca">Tipo de Cobrança</Label>
                   <Select
@@ -273,7 +272,7 @@ export default function ClientesBulkActions({
                 </div>
               )}
               
-              {bulkEditField === "formaPagamento" && (
+              {bulkEditField === "forma_pagamento" && (
                 <div>
                   <Label htmlFor="pagamento">Forma de Pagamento</Label>
                   <Select
@@ -292,10 +291,10 @@ export default function ClientesBulkActions({
                 </div>
               )}
               
-              {["quantidadePadrao", "periodicidadePadrao"].includes(bulkEditField) && (
+              {["quantidade_padrao", "periodicidade_padrao"].includes(bulkEditField) && (
                 <div>
                   <Label htmlFor="value">
-                    {bulkEditField === "quantidadePadrao" ? "Quantidade Padrão" : "Periodicidade (dias)"}
+                    {bulkEditField === "quantidade_padrao" ? "Quantidade Padrão" : "Periodicidade (dias)"}
                   </Label>
                   <Input
                     id="value"

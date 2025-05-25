@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { useClientesSupabase } from "@/hooks/useClientesSupabase";
+import { useClientesSupabase, Cliente } from "@/hooks/useClientesSupabase";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useStatusAgendamentoStore, StatusConfirmacao } from "@/hooks/useStatusAgendamentoStore";
 import { useAutomacaoStatus } from "@/hooks/useAutomacaoStatus";
@@ -19,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { MessageSquare, CheckCircle, XCircle, Clock, Edit } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { Cliente, Pedido } from "@/types";
+import { Pedido } from "@/types";
 import ReagendamentoDialog from "./ReagendamentoDialog";
 import FiltrosLocalizacao from "./FiltrosLocalizacao";
 import ReclassificacaoStatus from "./ReclassificacaoStatus";
@@ -39,7 +40,7 @@ export default function ConfirmacaoReposicao() {
   const { clientes, updateCliente } = useClientesSupabase();
   const { getPedidosFiltrados, getPedidosFuturos, atualizarPedido } = usePedidoStore();
   const { statusConfirmacao } = useStatusAgendamentoStore();
-  const { confirmarEntrega } = useAutomacaoStatus(); // Usar hook de automação
+  const { confirmarEntrega } = useAutomacaoStatus();
   const [clientesporStatus, setClientesPorStatus] = useState<{[key: number]: Cliente[]}>({});
   const [pedidosCliente, setPedidosCliente] = useState<{[key: string]: Pedido}>({});
   const [observacoes, setObservacoes] = useState<{[key: string]: string}>({});

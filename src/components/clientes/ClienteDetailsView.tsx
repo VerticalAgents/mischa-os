@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Cliente } from "@/types";
+import { Cliente } from "@/hooks/useClientesSupabase";
 import { Trash2 } from "lucide-react";
 import StatusBadge from "@/components/common/StatusBadge";
 import ClienteDetalhesTabs from "@/components/clientes/ClienteDetalhesTabs";
