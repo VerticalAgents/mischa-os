@@ -15,6 +15,7 @@ import { AlertTriangle, Save, Calendar } from "lucide-react";
 
 interface AgendamentoAtualProps {
   cliente: Cliente;
+  onAgendamentoUpdate?: () => void; // Callback para notificar atualizações
 }
 
 interface ProdutoQuantidade {
@@ -36,7 +37,7 @@ const parseDateFromInput = (dateString: string): Date => {
   return new Date(year, month - 1, day);
 };
 
-export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
+export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: AgendamentoAtualProps) {
   const [statusAgendamento, setStatusAgendamento] = useState<'Agendar' | 'Previsto' | 'Agendado'>('Agendar');
   const [proximaDataReposicao, setProximaDataReposicao] = useState('');
   const [quantidadeTotal, setQuantidadeTotal] = useState(0);
@@ -45,7 +46,6 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
   const [produtosQuantidades, setProdutosQuantidades] = useState<ProdutoQuantidade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [agendamentoCarregado, setAgendamentoCarregado] = useState(false);
-  const [agendamentoId, setAgendamentoId] = useState<string | null>(null);
   
   const { produtos } = useProdutoStore();
   const { carregarAgendamentoPorCliente, salvarAgendamento, loading } = useAgendamentoClienteStore();
@@ -58,17 +58,18 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
     return cliente.categoriasHabilitadas.includes(produto.categoriaId);
   });
 
-  // Carregar agendamento existente ou criar um padrão
+  // Carregar dados EXCLUSIVAMENTE da tabela agendamentos_clientes
   useEffect(() => {
     const carregarDados = async () => {
       if (!agendamentoCarregado && cliente?.id) {
         try {
-          console.log('Carregando agendamento para cliente:', cliente.id);
+          console.log('AgendamentoAtual: Carregando dados da tabela agendamentos_clientes para cliente:', cliente.id);
           const agendamento = await carregarAgendamentoPorCliente(cliente.id);
           
           if (agendamento) {
-            console.log('Agendamento carregado:', agendamento);
-            setAgendamentoId(agendamento.id);
+            console.log('AgendamentoAtual: Dados carregados da tabela:', agendamento);
+            
+            // Usar EXCLUSIVAMENTE os dados da tabela agendamentos_clientes
             setStatusAgendamento(agendamento.status_agendamento);
             setProximaDataReposicao(
               agendamento.data_proxima_reposicao 
@@ -78,26 +79,33 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
             setQuantidadeTotal(agendamento.quantidade_total);
             setTipoPedido(agendamento.tipo_pedido);
             
+            // Usar periodicidade do cliente como referência, mas o agendamento prevalece
+            setPeriodicidade(cliente.periodicidadePadrao || 7);
+            
             if (agendamento.itens_personalizados && agendamento.tipo_pedido === 'Alterado') {
               setProdutosQuantidades(agendamento.itens_personalizados);
+            } else {
+              setProdutosQuantidades([]);
             }
           } else {
-            console.log('Nenhum agendamento encontrado, usando valores padrão');
-            // Valores padrão quando não há agendamento
+            console.log('AgendamentoAtual: Nenhum agendamento encontrado, será criado automaticamente');
+            // Valores padrão quando não há agendamento (será criado automaticamente pela store)
             setStatusAgendamento('Agendar');
             setTipoPedido('Padrão');
-            setQuantidadeTotal(0);
+            setQuantidadeTotal(cliente.quantidadePadrao || 0);
             setProximaDataReposicao('');
+            setPeriodicidade(cliente.periodicidadePadrao || 7);
             setProdutosQuantidades([]);
           }
           setAgendamentoCarregado(true);
         } catch (error) {
-          console.error('Erro ao carregar agendamento:', error);
-          // Em caso de erro, usar valores padrão para não travar a interface
+          console.error('AgendamentoAtual: Erro ao carregar agendamento:', error);
+          // Em caso de erro, usar valores padrão
           setStatusAgendamento('Agendar');
           setTipoPedido('Padrão');
-          setQuantidadeTotal(0);
+          setQuantidadeTotal(cliente.quantidadePadrao || 0);
           setProximaDataReposicao('');
+          setPeriodicidade(cliente.periodicidadePadrao || 7);
           setProdutosQuantidades([]);
           setAgendamentoCarregado(true);
         }
@@ -151,7 +159,7 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
     );
   };
 
-  // Salvar alterações
+  // Salvar alterações EXCLUSIVAMENTE na tabela agendamentos_clientes
   const handleSalvar = async () => {
     if (hasValidationError) {
       toast({
@@ -181,11 +189,16 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
         itens_personalizados: tipoPedido === 'Alterado' ? produtosQuantidades : undefined
       };
 
-      console.log('Salvando agendamento com data input:', proximaDataReposicao, '-> convertida para:', dadosAgendamento.data_proxima_reposicao);
+      console.log('AgendamentoAtual: Salvando na tabela agendamentos_clientes:', dadosAgendamento);
       await salvarAgendamento(cliente.id, dadosAgendamento);
       
+      // Notificar componente pai sobre a atualização (para recarregar dados se necessário)
+      if (onAgendamentoUpdate) {
+        onAgendamentoUpdate();
+      }
+      
     } catch (error) {
-      console.error('Erro ao salvar agendamento:', error);
+      console.error('AgendamentoAtual: Erro ao salvar agendamento:', error);
     } finally {
       setIsLoading(false);
     }

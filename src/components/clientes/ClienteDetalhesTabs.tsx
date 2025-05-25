@@ -1,45 +1,50 @@
 
-import { Cliente } from '@/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AnaliseGiro from "@/components/clientes/AnaliseGiro";
-import ClienteDetalhesInfo from "@/components/clientes/ClienteDetalhesInfo";
-import AgendamentoAtual from "@/components/clientes/AgendamentoAtual";
-import { Card, CardContent } from "@/components/ui/card";
+import { Cliente } from "@/types";
+import ClienteDetalhesInfo from "./ClienteDetalhesInfo";
+import AgendamentoAtual from "./AgendamentoAtual";
+import AnaliseGiro from "./AnaliseGiro";
 
 interface ClienteDetalhesTabsProps {
   cliente: Cliente;
-  onEdit: () => void;
+  onAgendamentoUpdate?: () => void;
+  refreshTrigger?: number;
 }
 
-export default function ClienteDetalhesTabs({ cliente, onEdit }: ClienteDetalhesTabsProps) {
+export default function ClienteDetalhesTabs({ 
+  cliente, 
+  onAgendamentoUpdate,
+  refreshTrigger 
+}: ClienteDetalhesTabsProps) {
   return (
-    <Tabs defaultValue="info" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="info">Informações</TabsTrigger>
-        <TabsTrigger value="agendamento-atual">Agendamento Atual</TabsTrigger>
-        <TabsTrigger value="analise-giro">Análise de Giro</TabsTrigger>
+    <Tabs defaultValue="informacoes" className="space-y-6">
+      <TabsList className="grid w-full grid-cols-4">
+        <TabsTrigger value="informacoes">Informações</TabsTrigger>
+        <TabsTrigger value="agendamento">Agendamento Atual</TabsTrigger>
+        <TabsTrigger value="analise">Análise de Giro</TabsTrigger>
         <TabsTrigger value="historico">Histórico</TabsTrigger>
       </TabsList>
-      
-      <TabsContent value="info" className="space-y-4">
+
+      <TabsContent value="informacoes">
         <ClienteDetalhesInfo cliente={cliente} />
       </TabsContent>
-      
-      <TabsContent value="agendamento-atual" className="space-y-4">
-        <AgendamentoAtual cliente={cliente} />
+
+      <TabsContent value="agendamento">
+        <AgendamentoAtual 
+          cliente={cliente} 
+          onAgendamentoUpdate={onAgendamentoUpdate}
+          key={refreshTrigger} // Force re-render when refreshTrigger changes
+        />
       </TabsContent>
-      
-      <TabsContent value="analise-giro" className="space-y-4">
+
+      <TabsContent value="analise">
         <AnaliseGiro cliente={cliente} />
       </TabsContent>
-      
-      <TabsContent value="historico" className="space-y-4">
-        <Card>
-          <CardContent className="pt-6">
-            <h3 className="text-lg font-medium mb-4">Histórico de Pedidos</h3>
-            <p className="text-muted-foreground">O histórico de pedidos será implementado em breve.</p>
-          </CardContent>
-        </Card>
+
+      <TabsContent value="historico">
+        <div className="text-center text-muted-foreground py-8">
+          Histórico do cliente em desenvolvimento
+        </div>
       </TabsContent>
     </Tabs>
   );
