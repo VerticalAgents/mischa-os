@@ -12,7 +12,7 @@ export default function Agendamento() {
     <div className="space-y-6">
       <PageHeader 
         title="Agendamento" 
-        subtitle="Gerencie entregas e confirmações de reposição"
+        description="Gerencie entregas e confirmações de reposição"
       />
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
