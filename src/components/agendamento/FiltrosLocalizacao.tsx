@@ -10,49 +10,36 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { X } from "lucide-react";
+import { useConfigStore } from "@/hooks/useConfigStore";
 
 interface FiltrosLocalizacaoProps {
-  onFiltroChange: (filtro: { rota?: string; cidade?: string }) => void;
+  onFiltroChange: (filtro: { rota?: string }) => void;
 }
 
-// Mock data para rotas e cidades
-const rotasMock = [
-  "Rota Centro",
-  "Rota Norte",
-  "Rota Sul",
-  "Rota Leste",
-  "Rota Oeste"
-];
-
-const cidadesMock = [
-  "São Paulo",
-  "Guarulhos",
-  "Osasco",
-  "Santo André",
-  "São Bernardo"
-];
-
 export default function FiltrosLocalizacao({ onFiltroChange }: FiltrosLocalizacaoProps) {
+  const { configuracoes } = useConfigStore();
   const [rotaSelecionada, setRotaSelecionada] = useState<string>("");
-  const [cidadeSelecionada, setCidadeSelecionada] = useState<string>("");
+
+  // Obter rotas das configurações do sistema
+  const rotasDisponiveis = configuracoes.rotasEntrega || [
+    "Rota Centro",
+    "Rota Norte", 
+    "Rota Sul",
+    "Rota Leste",
+    "Rota Oeste"
+  ];
 
   const handleRotaChange = (rota: string) => {
     setRotaSelecionada(rota);
-    onFiltroChange({ rota: rota || undefined, cidade: cidadeSelecionada || undefined });
-  };
-
-  const handleCidadeChange = (cidade: string) => {
-    setCidadeSelecionada(cidade);
-    onFiltroChange({ rota: rotaSelecionada || undefined, cidade: cidade || undefined });
+    onFiltroChange({ rota: rota || undefined });
   };
 
   const limparFiltros = () => {
     setRotaSelecionada("");
-    setCidadeSelecionada("");
     onFiltroChange({});
   };
 
-  const temFiltrosAtivos = rotaSelecionada || cidadeSelecionada;
+  const temFiltrosAtivos = rotaSelecionada;
 
   return (
     <div className="flex items-center gap-4 mb-4">
@@ -62,22 +49,9 @@ export default function FiltrosLocalizacao({ onFiltroChange }: FiltrosLocalizaca
             <SelectValue placeholder="Filtrar por rota" />
           </SelectTrigger>
           <SelectContent>
-            {rotasMock.map((rota) => (
+            {rotasDisponiveis.map((rota) => (
               <SelectItem key={rota} value={rota}>
                 {rota}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={cidadeSelecionada} onValueChange={handleCidadeChange}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filtrar por cidade" />
-          </SelectTrigger>
-          <SelectContent>
-            {cidadesMock.map((cidade) => (
-              <SelectItem key={cidade} value={cidade}>
-                {cidade}
               </SelectItem>
             ))}
           </SelectContent>
@@ -105,15 +79,6 @@ export default function FiltrosLocalizacao({ onFiltroChange }: FiltrosLocalizaca
               <X 
                 className="h-3 w-3 cursor-pointer" 
                 onClick={() => handleRotaChange("")}
-              />
-            </Badge>
-          )}
-          {cidadeSelecionada && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              {cidadeSelecionada}
-              <X 
-                className="h-3 w-3 cursor-pointer" 
-                onClick={() => handleCidadeChange("")}
               />
             </Badge>
           )}
