@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { 
   Table, 
@@ -83,7 +82,9 @@ export function PDVCategoryTable({ clientes, baseDRE }: PDVCategoryTableProps) {
         // Map clients to channels and calculate revenue share
         const channelCounts = new Map<Channel, number>();
         clients.forEach(client => {
-          const channel = getClientChannel(client.id);
+          // Convert string ID to number for getClientChannel compatibility
+          const clientIdAsNumber = parseInt(client.id.replace(/\D/g, '').slice(0, 10)) || 1;
+          const channel = getClientChannel(clientIdAsNumber);
           channelCounts.set(channel, (channelCounts.get(channel) || 0) + 1);
         });
         
@@ -94,7 +95,10 @@ export function PDVCategoryTable({ clientes, baseDRE }: PDVCategoryTableProps) {
         channelCounts.forEach((count, channel) => {
           const channelRevenue = channelRevenues.get(channel) || 0;
           // Estimate category's share of this channel's revenue
-          const clientsInChannel = clientes.filter(c => getClientChannel(c.id) === channel).length;
+          const clientsInChannel = clientes.filter(c => {
+            const clientIdAsNumber = parseInt(c.id.replace(/\D/g, '').slice(0, 10)) || 1;
+            return getClientChannel(clientIdAsNumber) === channel;
+          }).length;
           if (clientsInChannel > 0) {
             categoryRevenue += (count / clientsInChannel) * channelRevenue;
           }
