@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
@@ -16,10 +17,13 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { MessageSquare, CheckCircle, XCircle, Clock } from "lucide-react";
+import { MessageSquare, CheckCircle, XCircle, Clock, Edit } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Cliente, Pedido } from "@/types";
 import ReagendamentoDialog from "./ReagendamentoDialog";
+import FiltrosLocalizacao from "./FiltrosLocalizacao";
+import ReclassificacaoStatus from "./ReclassificacaoStatus";
+import AcoesEmLote from "./AcoesEmLote";
 
 export default function ConfirmacaoReposicao() {
   const { clientes, atualizarCliente } = useClienteStore();
@@ -29,6 +33,7 @@ export default function ConfirmacaoReposicao() {
   const [pedidosCliente, setPedidosCliente] = useState<{[key: number]: Pedido}>({});
   const [observacoes, setObservacoes] = useState<{[key: number]: string}>({});
   const [tabValue, setTabValue] = useState("hoje");
+  const [filtros, setFiltros] = useState<{ rota?: string; cidade?: string }>({});
 
   // State for reagendamento dialog
   const [reagendamentoDialogOpen, setReagendamentoDialogOpen] = useState(false);
@@ -56,7 +61,6 @@ export default function ConfirmacaoReposicao() {
 
   // Organize clients by confirmation status
   useEffect(() => {
-    
     const pedidosFuturos = getPedidosFuturos();
     const clientesComPedidos: {[key: number]: Cliente} = {};
     const pedidosPorCliente: {[key: number]: Pedido} = {};
@@ -69,6 +73,22 @@ export default function ConfirmacaoReposicao() {
       }
     });
     
+    // Aplicar filtros de localização
+    let clientesFiltrados = Object.values(clientesComPedidos);
+    
+    if (filtros.rota || filtros.cidade) {
+      clientesFiltrados = clientesFiltrados.filter(cliente => {
+        // Simulação de filtro por rota/cidade - em implementação real viria dos dados do cliente
+        const rotaCliente = ["Rota Centro", "Rota Norte", "Rota Sul"][cliente.id % 3];
+        const cidadeCliente = ["São Paulo", "Guarulhos", "Osasco"][cliente.id % 3];
+        
+        const rotaMatch = !filtros.rota || rotaCliente === filtros.rota;
+        const cidadeMatch = !filtros.cidade || cidadeCliente === filtros.cidade;
+        
+        return rotaMatch && cidadeMatch;
+      });
+    }
+    
     // Organize clients by status
     const clientesPorStatusTemp: {[key: number]: Cliente[]} = {};
     
@@ -78,7 +98,7 @@ export default function ConfirmacaoReposicao() {
     });
     
     // Assign clients to status
-    Object.values(clientesComPedidos).forEach(cliente => {
+    clientesFiltrados.forEach(cliente => {
       const statusId = getClienteStatusConfirmacao(cliente);
       if (statusId > 0 && clientesPorStatusTemp[statusId]) {
         clientesPorStatusTemp[statusId].push(cliente);
@@ -87,12 +107,10 @@ export default function ConfirmacaoReposicao() {
     
     setClientesPorStatus(clientesPorStatusTemp);
     setPedidosCliente(pedidosPorCliente);
-  }, [clientes, getPedidosFuturos, statusConfirmacao]);
+  }, [clientes, getPedidosFuturos, statusConfirmacao, filtros]);
 
   // Function to handle WhatsApp message
   const handleWhatsAppClick = (cliente: Cliente) => {
-    
-    
     if (!cliente.contatoTelefone) {
       toast({
         title: "Número não disponível",
@@ -114,7 +132,7 @@ export default function ConfirmacaoReposicao() {
     
     // Create message
     const message = encodeURIComponent(
-      `Olá ${cliente.contatoNome || cliente.nome}, gostaria de confirmar a reposição para ${nextDate}. Podemos manter essa data?`
+      `Olá ${cliente.nome}, tudo bem? Gostaríamos de confirmar a entrega prevista para o dia ${nextDate}. Por favor, nos confirme a necessidade da reposição.`
     );
     
     // Open WhatsApp
@@ -175,22 +193,47 @@ export default function ConfirmacaoReposicao() {
     });
   };
 
+  // Function to handle status change
+  const handleStatusChange = (cliente: Cliente, novoStatus: string, observacao?: string) => {
+    // Update client status in real implementation
+    const now = new Date();
+    const obsText = observacoes[cliente.id] || '';
+    const newObs = `${format(now, 'dd/MM HH:mm')} - Status alterado para "${novoStatus}"${observacao ? ` - ${observacao}` : ''}\n${obsText}`;
+    
+    setObservacoes({
+      ...observacoes,
+      [cliente.id]: newObs
+    });
+  };
+
+  // Function to handle bulk actions
+  const handleAcaoEmLote = (clientesAfetados: Cliente[], novoStatus: string) => {
+    const now = new Date();
+    const novosObservacoes = { ...observacoes };
+    
+    clientesAfetados.forEach(cliente => {
+      const obsText = novosObservacoes[cliente.id] || '';
+      const newObs = `${format(now, 'dd/MM HH:mm')} - Ação em lote: "${novoStatus}"\n${obsText}`;
+      novosObservacoes[cliente.id] = newObs;
+    });
+    
+    setObservacoes(novosObservacoes);
+  };
+
   // Function to move client to another status
   const moveClientToStatus = (cliente: Cliente, newStatusId: number) => {
+    const statusNome = statusConfirmacao.find(s => s.id === newStatusId)?.nome;
     
-    
-    // This would update the client's status in a real application
     toast({
       title: "Status atualizado",
-      description: `${cliente.nome} movido para ${statusConfirmacao.find(s => s.id === newStatusId)?.nome}`,
+      description: `${cliente.nome} movido para ${statusNome}`,
     });
   };
 
   // Render client list for a specific status
   const renderClientList = (statusId: number) => {
-    
-    
     const clientesWithStatus = clientesporStatus[statusId] || [];
+    const status = statusConfirmacao.find(s => s.id === statusId);
     
     if (clientesWithStatus.length === 0) {
       return (
@@ -201,97 +244,125 @@ export default function ConfirmacaoReposicao() {
     }
     
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>PDV</TableHead>
-            <TableHead>Data Prevista</TableHead>
-            <TableHead>Contato</TableHead>
-            <TableHead>Observações</TableHead>
-            <TableHead>Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {clientesWithStatus.map((cliente) => {
-            const pedido = pedidosCliente[cliente.id];
-            
-            return (
-              <TableRow key={cliente.id}>
-                <TableCell className="font-medium">{cliente.nome}</TableCell>
-                <TableCell>
-                  {cliente.proximaDataReposicao ? 
-                    format(new Date(cliente.proximaDataReposicao), 'dd/MM/yyyy') : 
-                    'Não definida'}
-                </TableCell>
-                <TableCell>
-                  {cliente.contatoNome || 'N/A'}
-                  <div className="text-xs text-muted-foreground">
-                    {cliente.contatoTelefone || 'Sem telefone'}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Textarea
-                    value={observacoes[cliente.id] || ''}
-                    onChange={(e) => setObservacoes({
-                      ...observacoes,
-                      [cliente.id]: e.target.value
-                    })}
-                    placeholder="Adicionar observações..."
-                    className="min-h-[80px] text-xs"
-                  />
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full flex items-center gap-1"
-                      onClick={() => handleWhatsAppClick(cliente)}
-                    >
-                      <MessageSquare className="h-4 w-4 text-green-500" />
-                      <span>WhatsApp</span>
-                    </Button>
-                    
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full flex items-center gap-1 text-muted-foreground"
-                      onClick={() => handleNoReplenishment(cliente)}
-                    >
-                      <XCircle className="h-4 w-4 text-red-500" />
-                      <span>Não será reposto</span>
-                    </Button>
-                    
-                    {statusId === 1 && (
+      <div className="space-y-4">
+        {/* Ações em lote */}
+        {status?.acaoRequerida && (
+          <div className="flex justify-end gap-2">
+            {statusId === 1 && (
+              <AcoesEmLote
+                clientes={clientesWithStatus}
+                tipoAcao="marcar-contatados"
+                onAcaoExecutada={handleAcaoEmLote}
+              />
+            )}
+            {statusId === 4 && (
+              <AcoesEmLote
+                clientes={clientesWithStatus}
+                tipoAcao="segundo-contato"
+                onAcaoExecutada={handleAcaoEmLote}
+              />
+            )}
+          </div>
+        )}
+        
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>PDV</TableHead>
+              <TableHead>Data Prevista</TableHead>
+              <TableHead>Contato</TableHead>
+              <TableHead>Observações</TableHead>
+              <TableHead>Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {clientesWithStatus.map((cliente) => {
+              const pedido = pedidosCliente[cliente.id];
+              
+              return (
+                <TableRow key={cliente.id}>
+                  <TableCell className="font-medium">{cliente.nome}</TableCell>
+                  <TableCell>
+                    {cliente.proximaDataReposicao ? 
+                      format(new Date(cliente.proximaDataReposicao), 'dd/MM/yyyy') : 
+                      'Não definida'}
+                  </TableCell>
+                  <TableCell>
+                    {cliente.contatoNome || 'N/A'}
+                    <div className="text-xs text-muted-foreground">
+                      {cliente.contatoTelefone || 'Sem telefone'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Textarea
+                      value={observacoes[cliente.id] || ''}
+                      onChange={(e) => setObservacoes({
+                        ...observacoes,
+                        [cliente.id]: e.target.value
+                      })}
+                      placeholder="Adicionar observações..."
+                      className="min-h-[80px] text-xs"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-2">
                       <Button 
                         variant="outline" 
                         size="sm" 
                         className="w-full flex items-center gap-1"
-                        onClick={() => moveClientToStatus(cliente, 3)}
+                        onClick={() => handleWhatsAppClick(cliente)}
                       >
-                        <Clock className="h-4 w-4 text-amber-500" />
-                        <span>Aguardando resposta</span>
+                        <MessageSquare className="h-4 w-4 text-green-500" />
+                        <span>WhatsApp</span>
                       </Button>
-                    )}
-                    
-                    {(statusId === 3 || statusId === 4) && (
+                      
+                      <ReclassificacaoStatus
+                        cliente={cliente}
+                        statusAtual={status?.nome || "Não definido"}
+                        onStatusChange={(novoStatus, observacao) => handleStatusChange(cliente, novoStatus, observacao)}
+                      />
+                      
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="w-full flex items-center gap-1"
-                        onClick={() => moveClientToStatus(cliente, 7)}
+                        className="w-full flex items-center gap-1 text-muted-foreground"
+                        onClick={() => handleNoReplenishment(cliente)}
                       >
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>Confirmado</span>
+                        <XCircle className="h-4 w-4 text-red-500" />
+                        <span>Não será reposto</span>
                       </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                      
+                      {statusId === 1 && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full flex items-center gap-1"
+                          onClick={() => moveClientToStatus(cliente, 3)}
+                        >
+                          <Clock className="h-4 w-4 text-amber-500" />
+                          <span>Aguardando resposta</span>
+                        </Button>
+                      )}
+                      
+                      {(statusId === 3 || statusId === 4) && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full flex items-center gap-1"
+                          onClick={() => moveClientToStatus(cliente, 7)}
+                        >
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span>Confirmado</span>
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
     );
   };
 
@@ -314,6 +385,9 @@ export default function ConfirmacaoReposicao() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Filtros de localização */}
+          <FiltrosLocalizacao onFiltroChange={setFiltros} />
+          
           <Tabs defaultValue="hoje" value={tabValue} onValueChange={setTabValue} className="w-full">
             <TabsList className="grid grid-cols-2 w-full max-w-md mb-6">
               <TabsTrigger value="hoje">Necessitam Ação</TabsTrigger>
