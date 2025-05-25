@@ -25,13 +25,13 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash } from "lucide-react";
 import { useConfigStore } from "@/hooks/useConfigStore";
-import { TipoLogisticaItem } from "@/types";
+import { TipoLogistica } from "@/types";
 
 export default function TiposLogisticaList() {
   const { tiposLogistica, adicionarTipoLogistica, atualizarTipoLogistica, removerTipoLogistica } = useConfigStore();
-  const [editingItem, setEditingItem] = useState<TipoLogisticaItem | null>(null);
-  const [newItem, setNewItem] = useState<Omit<TipoLogisticaItem, "id">>({
-    nome: "Própria",
+  const [editingItem, setEditingItem] = useState<TipoLogistica | null>(null);
+  const [newItem, setNewItem] = useState<Omit<TipoLogistica, "id">>({
+    nome: "",
     percentualLogistico: 0,
     ativo: true
   });
@@ -40,14 +40,14 @@ export default function TiposLogisticaList() {
   const handleNewItem = () => {
     setEditingItem(null);
     setNewItem({
-      nome: "Própria",
+      nome: "",
       percentualLogistico: 0,
       ativo: true
     });
   };
 
   // Set item for editing
-  const handleEditItem = (item: TipoLogisticaItem) => {
+  const handleEditItem = (item: TipoLogistica) => {
     setEditingItem(item);
     setNewItem({
       nome: item.nome,
@@ -58,6 +58,15 @@ export default function TiposLogisticaList() {
 
   // Handle save (add or update)
   const handleSave = (close: () => void) => {
+    if (!newItem.nome.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome do tipo de logística é obrigatório",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (editingItem) {
       atualizarTipoLogistica(editingItem.id, newItem);
       toast({
@@ -110,15 +119,12 @@ export default function TiposLogisticaList() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome</Label>
-                <select
+                <Input
                   id="nome"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Nome do tipo de logística"
                   value={newItem.nome}
-                  onChange={(e) => setNewItem({...newItem, nome: e.target.value as any})}
-                >
-                  <option value="Própria">Própria</option>
-                  <option value="Distribuição">Distribuição</option>
-                </select>
+                  onChange={(e) => setNewItem({...newItem, nome: e.target.value})}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="percentualLogistico">Percentual Logístico (%)</Label>
@@ -205,15 +211,12 @@ export default function TiposLogisticaList() {
                         <div className="space-y-4 py-4">
                           <div className="space-y-2">
                             <Label htmlFor="nome">Nome</Label>
-                            <select
+                            <Input
                               id="nome"
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                              placeholder="Nome do tipo de logística"
                               value={newItem.nome}
-                              onChange={(e) => setNewItem({...newItem, nome: e.target.value as any})}
-                            >
-                              <option value="Própria">Própria</option>
-                              <option value="Distribuição">Distribuição</option>
-                            </select>
+                              onChange={(e) => setNewItem({...newItem, nome: e.target.value})}
+                            />
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="percentualLogistico">Percentual Logístico (%)</Label>

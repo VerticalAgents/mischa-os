@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
-import { compareAsc, format } from "date-fns";
+import { compareAsc } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Cliente, Pedido } from "@/types";
 import FiltrosLocalizacao from "./FiltrosLocalizacao";
@@ -65,8 +65,7 @@ export default function TodosAgendamentos() {
         emiteNotaFiscal: false,
         tipoCobranca: "À vista",
         formaPagamento: "Dinheiro",
-        ativo: true,
-        giroMedioSemanal: 0 // Add missing property
+        ativo: true
       };
       
       agendamentosTemp.push({
@@ -135,7 +134,7 @@ export default function TodosAgendamentos() {
     // Atualizar no store se for um pedido
     if (agendamentoAtualizado.pedido) {
       atualizarPedido(agendamentoAtualizado.pedido.id, {
-        dataPrevistaEntrega: format(agendamentoAtualizado.dataReposicao, 'yyyy-MM-dd'), // Convert Date to string
+        dataPrevistaEntrega: agendamentoAtualizado.dataReposicao,
         totalPedidoUnidades: agendamentoAtualizado.pedido.totalPedidoUnidades,
         observacoes: agendamentoAtualizado.pedido.observacoes,
         tipoPedido: agendamentoAtualizado.pedido.tipoPedido

@@ -25,13 +25,13 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash } from "lucide-react";
 import { useConfigStore } from "@/hooks/useConfigStore";
-import { FormaPagamentoItem } from "@/types";
+import { FormaPagamento } from "@/types";
 
 export default function FormasPagamentoList() {
   const { formasPagamento, adicionarFormaPagamento, atualizarFormaPagamento, removerFormaPagamento } = useConfigStore();
-  const [editingItem, setEditingItem] = useState<FormaPagamentoItem | null>(null);
-  const [newItem, setNewItem] = useState<Omit<FormaPagamentoItem, "id">>({
-    nome: "Boleto",
+  const [editingItem, setEditingItem] = useState<FormaPagamento | null>(null);
+  const [newItem, setNewItem] = useState<Omit<FormaPagamento, "id">>({
+    nome: "",
     ativo: true
   });
 
@@ -39,13 +39,13 @@ export default function FormasPagamentoList() {
   const handleNewItem = () => {
     setEditingItem(null);
     setNewItem({
-      nome: "Boleto",
+      nome: "",
       ativo: true
     });
   };
 
   // Set item for editing
-  const handleEditItem = (item: FormaPagamentoItem) => {
+  const handleEditItem = (item: FormaPagamento) => {
     setEditingItem(item);
     setNewItem({
       nome: item.nome,
@@ -55,6 +55,15 @@ export default function FormasPagamentoList() {
 
   // Handle save (add or update)
   const handleSave = (close: () => void) => {
+    if (!newItem.nome.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome da forma de pagamento é obrigatório",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (editingItem) {
       atualizarFormaPagamento(editingItem.id, newItem);
       toast({
@@ -107,16 +116,12 @@ export default function FormasPagamentoList() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome</Label>
-                <select
+                <Input
                   id="nome"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Nome da forma de pagamento"
                   value={newItem.nome}
-                  onChange={(e) => setNewItem({...newItem, nome: e.target.value as any})}
-                >
-                  <option value="Boleto">Boleto</option>
-                  <option value="PIX">PIX</option>
-                  <option value="Dinheiro">Dinheiro</option>
-                </select>
+                  onChange={(e) => setNewItem({...newItem, nome: e.target.value})}
+                />
               </div>
               <div className="flex items-center space-x-2">
                 <Switch
@@ -186,16 +191,12 @@ export default function FormasPagamentoList() {
                         <div className="space-y-4 py-4">
                           <div className="space-y-2">
                             <Label htmlFor="nome">Nome</Label>
-                            <select
+                            <Input
                               id="nome"
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                              placeholder="Nome da forma de pagamento"
                               value={newItem.nome}
-                              onChange={(e) => setNewItem({...newItem, nome: e.target.value as any})}
-                            >
-                              <option value="Boleto">Boleto</option>
-                              <option value="PIX">PIX</option>
-                              <option value="Dinheiro">Dinheiro</option>
-                            </select>
+                              onChange={(e) => setNewItem({...newItem, nome: e.target.value})}
+                            />
                           </div>
                           <div className="flex items-center space-x-2">
                             <Switch

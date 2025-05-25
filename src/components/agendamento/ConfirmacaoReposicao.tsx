@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
@@ -202,7 +201,7 @@ export default function ConfirmacaoReposicao() {
     // 2. Update the order's expected delivery date if it exists
     const pedido = pedidosCliente[cliente.id];
     if (pedido) {
-      atualizarPedido(pedido.id, { dataPrevistaEntrega: format(novaData, 'yyyy-MM-dd') });
+      atualizarPedido(pedido.id, { dataPrevistaEntrega: novaData });
     }
     
     // 3. Update observations

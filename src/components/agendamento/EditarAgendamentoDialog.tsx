@@ -109,7 +109,7 @@ export default function EditarAgendamentoDialog({
   };
 
   const handleSave = () => {
-    // Validation for altered orders
+    // Validação para pedidos alterados
     if (tipoPedido === "Alterado" && totalQuantidadesIndividuais !== quantidade) {
       toast({
         title: "Erro de validação",
@@ -127,7 +127,7 @@ export default function EditarAgendamentoDialog({
         ...agendamento.pedido,
         totalPedidoUnidades: quantidade,
         observacoes,
-        dataPrevistaEntrega: format(dataReposicao, 'yyyy-MM-dd'),
+        dataPrevistaEntrega: dataReposicao,
         tipoPedido,
       } : undefined,
     };
