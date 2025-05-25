@@ -12,6 +12,12 @@ import AgendamentoTable from "./AgendamentoTable";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import { toast } from "sonner";
 
+// Helper para converter data do banco (string) para Date local
+const parseDateFromDatabase = (dateString: string): Date => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
 export default function TodosAgendamentos() {
   const { clientes, carregarClientes } = useClienteStore();
   const { pedidos, criarNovoPedido } = usePedidoStore();
@@ -60,6 +66,8 @@ export default function TodosAgendamentos() {
               statusAgendamento = cliente.statusAgendamento;
             }
           }
+          
+          console.log('Data carregada para', cliente.nome, ':', dataReposicao);
           
           agendamentosCarregados.push({
             cliente,

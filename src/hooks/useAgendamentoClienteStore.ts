@@ -27,6 +27,21 @@ interface AgendamentoClienteStore {
   criarAgendamentoPadrao: (clienteId: string) => Promise<AgendamentoCliente>;
 }
 
+// Helper para converter data local para formato de data sem timezone
+const formatDateForDatabase = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper para converter string de data do banco para Date local
+const parseDateFromDatabase = (dateString: string): Date => {
+  // Parse a data como local, sem considerar timezone
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
 export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
   devtools(
     (set, get) => ({
@@ -42,7 +57,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           const { data: clienteData, error: clienteError } = await supabase
             .from('clientes')
             .select('id')
-            .eq('id', clienteId) // Removido .toString() - clienteId já é string
+            .eq('id', clienteId)
             .maybeSingle();
 
           if (clienteError) {
@@ -68,7 +83,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           const { data, error } = await supabase
             .from('agendamentos_clientes')
             .select('*')
-            .eq('cliente_id', clienteId) // Removido .toString()
+            .eq('cliente_id', clienteId)
             .maybeSingle();
 
           if (error) {
@@ -86,13 +101,14 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
               id: data.id,
               cliente_id: data.cliente_id,
               status_agendamento: data.status_agendamento as 'Agendar' | 'Previsto' | 'Agendado',
-              data_proxima_reposicao: data.data_proxima_reposicao ? new Date(data.data_proxima_reposicao) : undefined,
+              data_proxima_reposicao: data.data_proxima_reposicao ? parseDateFromDatabase(data.data_proxima_reposicao) : undefined,
               quantidade_total: data.quantidade_total,
               tipo_pedido: data.tipo_pedido as 'Padrão' | 'Alterado',
               itens_personalizados: data.itens_personalizados as Array<{ produto: string; quantidade: number }> | undefined,
               created_at: new Date(data.created_at),
               updated_at: new Date(data.updated_at)
             };
+            console.log('Agendamento carregado com data:', data.data_proxima_reposicao, '-> convertida para:', agendamento.data_proxima_reposicao);
             return agendamento;
           }
 
@@ -114,7 +130,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
       criarAgendamentoPadrao: async (clienteId: string) => {
         try {
           const dadosDefault = {
-            cliente_id: clienteId, // Removido .toString()
+            cliente_id: clienteId,
             status_agendamento: 'Agendar' as const,
             quantidade_total: 0,
             tipo_pedido: 'Padrão' as const,
@@ -136,7 +152,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             id: data.id,
             cliente_id: data.cliente_id,
             status_agendamento: data.status_agendamento as 'Agendar' | 'Previsto' | 'Agendado',
-            data_proxima_reposicao: data.data_proxima_reposicao ? new Date(data.data_proxima_reposicao) : undefined,
+            data_proxima_reposicao: data.data_proxima_reposicao ? parseDateFromDatabase(data.data_proxima_reposicao) : undefined,
             quantidade_total: data.quantidade_total,
             tipo_pedido: data.tipo_pedido as 'Padrão' | 'Alterado',
             itens_personalizados: data.itens_personalizados as Array<{ produto: string; quantidade: number }> | undefined,
@@ -155,19 +171,21 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
         set({ loading: true });
         try {
           const dadosSupabase = {
-            cliente_id: clienteId, // Removido .toString()
+            cliente_id: clienteId,
             status_agendamento: dados.status_agendamento,
-            data_proxima_reposicao: dados.data_proxima_reposicao?.toISOString().split('T')[0],
+            data_proxima_reposicao: dados.data_proxima_reposicao ? formatDateForDatabase(dados.data_proxima_reposicao) : null,
             quantidade_total: dados.quantidade_total,
             tipo_pedido: dados.tipo_pedido,
             itens_personalizados: dados.itens_personalizados || null
           };
 
+          console.log('Salvando agendamento com data:', dados.data_proxima_reposicao, '-> formatada para:', dadosSupabase.data_proxima_reposicao);
+
           // Verificar se já existe um agendamento para este cliente
           const { data: existente } = await supabase
             .from('agendamentos_clientes')
             .select('id')
-            .eq('cliente_id', clienteId) // Removido .toString()
+            .eq('cliente_id', clienteId)
             .maybeSingle();
 
           if (existente) {
@@ -175,7 +193,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             const { error } = await supabase
               .from('agendamentos_clientes')
               .update(dadosSupabase)
-              .eq('cliente_id', clienteId); // Removido .toString()
+              .eq('cliente_id', clienteId);
 
             if (error) {
               throw error;
@@ -214,7 +232,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           const { error } = await supabase
             .from('agendamentos_clientes')
             .delete()
-            .eq('cliente_id', clienteId); // Removido .toString()
+            .eq('cliente_id', clienteId);
 
           if (error) {
             throw error;

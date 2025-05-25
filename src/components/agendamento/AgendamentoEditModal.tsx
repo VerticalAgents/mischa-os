@@ -25,6 +25,20 @@ interface ProdutoQuantidade {
   quantidade: number;
 }
 
+// Helper para converter Date para string de input date (formato local)
+const formatDateForInput = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper para converter string de input date para Date local
+const parseDateFromInput = (dateString: string): Date => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
 export default function AgendamentoEditModal({ 
   agendamento, 
   open, 
@@ -56,7 +70,7 @@ export default function AgendamentoEditModal({
       setStatusAgendamento(agendamento.statusAgendamento as 'Agendar' | 'Previsto' | 'Agendado');
       setProximaDataReposicao(
         agendamento.dataReposicao 
-          ? agendamento.dataReposicao.toISOString().split('T')[0] 
+          ? formatDateForInput(agendamento.dataReposicao)
           : ''
       );
       setQuantidadeTotal(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0);
@@ -137,19 +151,20 @@ export default function AgendamentoEditModal({
     try {
       const dadosAgendamento: Partial<AgendamentoCliente> = {
         status_agendamento: statusAgendamento,
-        data_proxima_reposicao: proximaDataReposicao ? new Date(proximaDataReposicao) : undefined,
+        data_proxima_reposicao: proximaDataReposicao ? parseDateFromInput(proximaDataReposicao) : undefined,
         quantidade_total: quantidadeTotal,
         tipo_pedido: tipoPedido,
         itens_personalizados: tipoPedido === 'Alterado' ? produtosQuantidades : undefined
       };
 
+      console.log('Salvando agendamento modal com data input:', proximaDataReposicao, '-> convertida para:', dadosAgendamento.data_proxima_reposicao);
       await salvarAgendamento(agendamento.cliente.id, dadosAgendamento);
       
       // Atualizar o agendamento local
       const agendamentoAtualizado: AgendamentoItem = {
         ...agendamento,
         statusAgendamento,
-        dataReposicao: proximaDataReposicao ? new Date(proximaDataReposicao) : agendamento.dataReposicao,
+        dataReposicao: proximaDataReposicao ? parseDateFromInput(proximaDataReposicao) : agendamento.dataReposicao,
         pedido: agendamento.pedido ? {
           ...agendamento.pedido,
           totalPedidoUnidades: quantidadeTotal,

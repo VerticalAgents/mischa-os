@@ -22,6 +22,20 @@ interface ProdutoQuantidade {
   quantidade: number;
 }
 
+// Helper para converter Date para string de input date (formato local)
+const formatDateForInput = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper para converter string de input date para Date local
+const parseDateFromInput = (dateString: string): Date => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
 export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
   const [statusAgendamento, setStatusAgendamento] = useState<'Agendar' | 'Previsto' | 'Agendado'>('Agendar');
   const [proximaDataReposicao, setProximaDataReposicao] = useState('');
@@ -50,7 +64,7 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
       if (!agendamentoCarregado && cliente?.id) {
         try {
           console.log('Carregando agendamento para cliente:', cliente.id);
-          const agendamento = await carregarAgendamentoPorCliente(cliente.id); // Removido .toString()
+          const agendamento = await carregarAgendamentoPorCliente(cliente.id);
           
           if (agendamento) {
             console.log('Agendamento carregado:', agendamento);
@@ -58,7 +72,7 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
             setStatusAgendamento(agendamento.status_agendamento);
             setProximaDataReposicao(
               agendamento.data_proxima_reposicao 
-                ? agendamento.data_proxima_reposicao.toISOString().split('T')[0] 
+                ? formatDateForInput(agendamento.data_proxima_reposicao)
                 : ''
             );
             setQuantidadeTotal(agendamento.quantidade_total);
@@ -161,14 +175,14 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
     try {
       const dadosAgendamento: Partial<AgendamentoCliente> = {
         status_agendamento: statusAgendamento,
-        data_proxima_reposicao: proximaDataReposicao ? new Date(proximaDataReposicao) : undefined,
+        data_proxima_reposicao: proximaDataReposicao ? parseDateFromInput(proximaDataReposicao) : undefined,
         quantidade_total: quantidadeTotal,
         tipo_pedido: tipoPedido,
         itens_personalizados: tipoPedido === 'Alterado' ? produtosQuantidades : undefined
       };
 
-      console.log('Salvando agendamento:', dadosAgendamento);
-      await salvarAgendamento(cliente.id, dadosAgendamento); // Removido .toString()
+      console.log('Salvando agendamento com data input:', proximaDataReposicao, '-> convertida para:', dadosAgendamento.data_proxima_reposicao);
+      await salvarAgendamento(cliente.id, dadosAgendamento);
       
     } catch (error) {
       console.error('Erro ao salvar agendamento:', error);
