@@ -1,164 +1,108 @@
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, CheckCircle, XCircle, Clock } from "lucide-react";
-import { Cliente } from "@/hooks/useClientesSupabase";
+import { MessageSquare, Calendar, X, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
-import { toast } from "@/hooks/use-toast";
-import { useAutomacaoStatus } from "@/hooks/useAutomacaoStatus";
-import ReclassificacaoStatus from "./ReclassificacaoStatus";
+import { ptBR } from "date-fns/locale";
+import { Cliente } from "@/hooks/useClientesSupabase";
+import { Pedido } from "@/types/pedido";
 
 interface ConfirmacaoActionsProps {
   cliente: Cliente;
-  statusNome: string;
-  statusId: number;
-  observacoes: {[key: string]: string};
-  setObservacoes: (obs: {[key: string]: string}) => void;
-  onNoReplenishment: (cliente: Cliente) => void;
-  onStatusChange: (cliente: Cliente, novoStatus: string, observacao?: string) => void;
-  moveClientToStatus: (cliente: Cliente, newStatusId: number) => void;
+  pedido?: Pedido;
+  onReagendar: (cliente: Cliente, novaData: Date) => void;
+  onConfirmar: (cliente: Cliente) => void;
+  onCancelar: (cliente: Cliente) => void;
 }
 
-export default function ConfirmacaoActions({
-  cliente,
-  statusNome,
-  statusId,
-  observacoes,
-  setObservacoes,
-  onNoReplenishment,
-  onStatusChange,
-  moveClientToStatus
+export default function ConfirmacaoActions({ 
+  cliente, 
+  pedido, 
+  onReagendar, 
+  onConfirmar, 
+  onCancelar 
 }: ConfirmacaoActionsProps) {
-  const { confirmarEntrega } = useAutomacaoStatus();
-
-  // Function to handle WhatsApp message
-  const handleWhatsAppClick = (cliente: Cliente) => {
-    if (!cliente.contato_telefone) {
-      toast({
-        title: "Número não disponível",
-        description: "Este cliente não possui número de telefone cadastrado.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleWhatsAppClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     
-    // Format phone number for WhatsApp
+    if (!cliente.contato_telefone) return;
+    
     let phone = cliente.contato_telefone.replace(/\D/g, '');
     if (phone.startsWith('0')) phone = phone.substring(1);
     if (!phone.startsWith('55')) phone = '55' + phone;
     
-    // Get the client's next replenishment date
-    const nextDate = cliente.proxima_data_reposicao 
-      ? format(new Date(cliente.proxima_data_reposicao), 'dd/MM/yyyy') 
+    const dataFormatada = cliente.proxima_data_reposicao 
+      ? format(new Date(cliente.proxima_data_reposicao), 'dd/MM/yyyy', { locale: ptBR })
       : 'data a definir';
     
-    // Create message
     const message = encodeURIComponent(
-      `Olá ${cliente.nome}, tudo bem? Gostaríamos de confirmar a entrega prevista para o dia ${nextDate}. Por favor, nos confirme a necessidade da reposição.`
+      `Olá ${cliente.nome}, tudo bem? Gostaríamos de confirmar a entrega prevista para o dia ${dataFormatada}. Por favor, nos confirme a necessidade da reposição.`
     );
     
-    // Open WhatsApp
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
-    
-    // Update observations record
-    const now = new Date();
-    const obsText = observacoes[cliente.id] || '';
-    const newObs = `${format(now, 'dd/MM HH:mm')} - Mensagem enviada via WhatsApp\n${obsText}`;
-    
-    setObservacoes({
-      ...observacoes,
-      [cliente.id]: newObs
-    });
-    
-    toast({
-      title: "WhatsApp aberto",
-      description: `Mensagem preparada para ${cliente.nome}`,
-    });
   };
 
-  // Função atualizada para confirmar entrega com automação de status
-  const handleConfirmarEntrega = (cliente: Cliente) => {
-    // Usar o hook de automação para confirmar e atualizar status automaticamente
-    confirmarEntrega(cliente.id);
+  const handleReagendarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     
-    // Atualizar observações
-    const now = new Date();
-    const obsText = observacoes[cliente.id] || '';
-    const newObs = `${format(now, 'dd/MM HH:mm')} - Entrega confirmada - Status atualizado para "Confirmado"\n${obsText}`;
+    const novaData = new Date();
+    novaData.setDate(novaData.getDate() + 7); // Reagendar para uma semana à frente
     
-    setObservacoes({
-      ...observacoes,
-      [cliente.id]: newObs
-    });
-    
-    toast({
-      title: "Entrega confirmada",
-      description: `${cliente.nome} confirmado e status atualizado automaticamente`,
-    });
+    onReagendar(cliente, novaData);
+  };
+
+  const handleConfirmarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onConfirmar(cliente);
+  };
+
+  const handleCancelarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onCancelar(cliente);
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="w-full flex items-center gap-1"
-        onClick={() => handleWhatsAppClick(cliente)}
-      >
-        <MessageSquare className="h-4 w-4 text-green-500" />
-        <span>WhatsApp</span>
-      </Button>
-      
-      {/* Botão de confirmar entrega com automação */}
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="w-full flex items-center gap-1"
-        onClick={() => handleConfirmarEntrega(cliente)}
-      >
-        <CheckCircle className="h-4 w-4 text-green-500" />
-        <span>Confirmar Entrega</span>
-      </Button>
-      
-      <ReclassificacaoStatus
-        cliente={cliente}
-        statusAtual={statusNome}
-        onStatusChange={(novoStatus, observacao) => onStatusChange(cliente, novoStatus, observacao)}
-      />
-      
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="w-full flex items-center gap-1 text-muted-foreground"
-        onClick={() => onNoReplenishment(cliente)}
-      >
-        <XCircle className="h-4 w-4 text-red-500" />
-        <span>Não será reposto</span>
-      </Button>
-      
-      {statusId === 1 && (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="w-full flex items-center gap-1"
-          onClick={() => moveClientToStatus(cliente, 3)}
+    <div className="flex items-center gap-2">
+      {cliente.contato_telefone && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleWhatsAppClick}
+          className="flex items-center gap-1"
         >
-          <Clock className="h-4 w-4 text-amber-500" />
-          <span>Aguardando resposta</span>
+          <MessageSquare className="h-4 w-4 text-green-500" />
+          <span className="hidden sm:inline">WhatsApp</span>
         </Button>
       )}
       
-      {(statusId === 3 || statusId === 4) && (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="w-full flex items-center gap-1"
-          onClick={() => moveClientToStatus(cliente, 7)}
-        >
-          <CheckCircle className="h-4 w-4 text-green-500" />
-          <span>Confirmado</span>
-        </Button>
-      )}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleReagendarClick}
+        className="flex items-center gap-1"
+      >
+        <Calendar className="h-4 w-4 text-blue-500" />
+        <span className="hidden sm:inline">Reagendar</span>
+      </Button>
+      
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleConfirmarClick}
+        className="flex items-center gap-1"
+      >
+        <CheckCircle2 className="h-4 w-4 text-green-500" />
+        <span className="hidden sm:inline">Confirmar</span>
+      </Button>
+      
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleCancelarClick}
+        className="flex items-center gap-1"
+      >
+        <X className="h-4 w-4 text-red-500" />
+        <span className="hidden sm:inline">Cancelar</span>
+      </Button>
     </div>
   );
 }

@@ -1,36 +1,14 @@
 
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Cliente, Pedido, TipoPedido } from "@/types";
-import { toast } from "@/hooks/use-toast";
-import { useProdutoStore } from "@/hooks/useProdutoStore";
-import { Separator } from "@/components/ui/separator";
+import { format } from "date-fns";
+import { Cliente } from "@/hooks/useClientesSupabase";
+import { Pedido } from "@/types/pedido";
 
 interface AgendamentoItem {
   cliente: Cliente;
@@ -44,167 +22,95 @@ interface EditarAgendamentoDialogProps {
   agendamento: AgendamentoItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (agendamentoAtualizado: AgendamentoItem) => void;
+  onSave: (agendamento: AgendamentoItem) => void;
 }
 
-interface QuantidadePorProduto {
-  [produtoId: number]: number;
-}
-
-export default function EditarAgendamentoDialog({
-  agendamento,
-  open,
-  onOpenChange,
-  onSave,
+export default function EditarAgendamentoDialog({ 
+  agendamento, 
+  open, 
+  onOpenChange, 
+  onSave 
 }: EditarAgendamentoDialogProps) {
-  const { produtos } = useProdutoStore();
-  const [dataReposicao, setDataReposicao] = useState<Date>(
-    agendamento?.dataReposicao || new Date()
-  );
-  const [quantidade, setQuantidade] = useState(
-    agendamento?.pedido?.totalPedidoUnidades || agendamento?.cliente.quantidadePadrao || 0
-  );
-  const [status, setStatus] = useState(agendamento?.statusAgendamento || "Previsto");
-  const [observacoes, setObservacoes] = useState(
-    agendamento?.pedido?.observacoes || ""
-  );
-  const [tipoPedido, setTipoPedido] = useState<TipoPedido>(
-    agendamento?.pedido?.tipoPedido || "Padrão"
-  );
-  const [quantidadesPorProduto, setQuantidadesPorProduto] = useState<QuantidadePorProduto>({});
+  const [formData, setFormData] = useState({
+    dataReposicao: "",
+    statusAgendamento: "",
+    totalUnidades: 0,
+    observacoes: "",
+    tipoPedido: "Padrão"
+  });
 
-  // Atualizar estados quando o agendamento mudar
   useEffect(() => {
     if (agendamento) {
-      setDataReposicao(agendamento.dataReposicao);
-      setQuantidade(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0);
-      setStatus(agendamento.statusAgendamento);
-      setObservacoes(agendamento.pedido?.observacoes || "");
-      setTipoPedido(agendamento.pedido?.tipoPedido || "Padrão");
-      
-      // Inicializar quantidades por produto se for pedido alterado
-      if (agendamento.pedido?.tipoPedido === "Alterado" && agendamento.pedido?.itensPedido) {
-        const quantidades: QuantidadePorProduto = {};
-        agendamento.pedido.itensPedido.forEach(item => {
-          quantidades[item.idSabor] = item.quantidadeSabor;
-        });
-        setQuantidadesPorProduto(quantidades);
-      }
+      setFormData({
+        dataReposicao: format(agendamento.dataReposicao, 'yyyy-MM-dd'),
+        statusAgendamento: agendamento.statusAgendamento,
+        totalUnidades: agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidade_padrao || 0,
+        observacoes: agendamento.pedido?.observacoes || "",
+        tipoPedido: agendamento.pedido?.tipoPedido || "Padrão"
+      });
     }
   }, [agendamento]);
 
-  if (!agendamento) return null;
-
-  const produtosAtivos = produtos.filter(p => p.ativo);
-  
-  // Calcular total das quantidades individuais
-  const totalQuantidadesIndividuais = Object.values(quantidadesPorProduto).reduce((sum, qty) => sum + (qty || 0), 0);
-
-  const handleQuantidadeProdutoChange = (produtoId: number, valor: string) => {
-    const valorNumerico = parseInt(valor) || 0;
-    setQuantidadesPorProduto(prev => ({
-      ...prev,
-      [produtoId]: valorNumerico
-    }));
-  };
-
-  const handleSave = () => {
-    // Validação para pedidos alterados
-    if (tipoPedido === "Alterado" && totalQuantidadesIndividuais !== quantidade) {
-      toast({
-        title: "Erro de validação",
-        description: `A soma das quantidades por produto (${totalQuantidadesIndividuais}) deve ser igual à quantidade total (${quantidade}).`,
-        variant: "destructive"
-      });
-      return;
-    }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!agendamento) return;
 
     const agendamentoAtualizado: AgendamentoItem = {
       ...agendamento,
-      dataReposicao,
-      statusAgendamento: status,
+      dataReposicao: new Date(formData.dataReposicao),
+      statusAgendamento: formData.statusAgendamento,
       pedido: agendamento.pedido ? {
         ...agendamento.pedido,
-        totalPedidoUnidades: quantidade,
-        observacoes,
-        dataPrevistaEntrega: dataReposicao,
-        tipoPedido,
-      } : undefined,
+        totalPedidoUnidades: formData.totalUnidades,
+        observacoes: formData.observacoes,
+        tipoPedido: formData.tipoPedido as "Padrão" | "Alterado" | "Único"
+      } : undefined
     };
 
     onSave(agendamentoAtualizado);
     onOpenChange(false);
-    
-    toast({
-      title: "Agendamento atualizado",
-      description: `Alterações salvas para ${agendamento.cliente.nome}`,
-    });
   };
+
+  if (!agendamento) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Editar Agendamento</DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Nome do Cliente</Label>
-              <Input value={agendamento.cliente.nome} readOnly className="bg-muted" />
-            </div>
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Input 
-                value={agendamento.isPedidoUnico ? "Pedido Único" : "PDV"} 
-                readOnly 
-                className="bg-muted" 
-              />
-            </div>
-          </div>
-
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Data da Reposição</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !dataReposicao && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dataReposicao ? format(dataReposicao, "dd/MM/yyyy") : "Selecionar data"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={dataReposicao}
-                  onSelect={(date) => date && setDataReposicao(date)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Quantidade Total</Label>
+            <Label htmlFor="cliente">Cliente</Label>
             <Input
-              type="number"
-              value={quantidade}
-              onChange={(e) => setQuantidade(Number(e.target.value))}
-              min="1"
+              id="cliente"
+              value={agendamento.cliente.nome}
+              disabled
+              className="bg-muted"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Status</Label>
-            <Select value={status} onValueChange={setStatus}>
+            <Label htmlFor="dataReposicao">Data da Reposição</Label>
+            <Input
+              id="dataReposicao"
+              type="date"
+              value={formData.dataReposicao}
+              onChange={(e) => setFormData(prev => ({ ...prev, dataReposicao: e.target.value }))}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="statusAgendamento">Status</Label>
+            <Select
+              value={formData.statusAgendamento}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, statusAgendamento: value }))}
+            >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Selecione o status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Previsto">Previsto</SelectItem>
@@ -214,75 +120,57 @@ export default function EditarAgendamentoDialog({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Tipo de Pedido</Label>
-            <Select value={tipoPedido} onValueChange={(value: TipoPedido) => setTipoPedido(value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Padrão">Padrão</SelectItem>
-                <SelectItem value="Alterado">Alterado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {tipoPedido === "Alterado" && (
+          {!agendamento.isPedidoUnico && (
             <>
-              <Separator />
-              <div className="space-y-4">
-                <Label className="text-base font-semibold">Quantidades por Produto</Label>
-                {produtosAtivos.map((produto) => (
-                  <div key={produto.id} className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <Label htmlFor={`produto-${produto.id}`} className="text-sm">
-                        {produto.nome}
-                      </Label>
-                    </div>
-                    <div className="w-24">
-                      <Input
-                        id={`produto-${produto.id}`}
-                        type="number"
-                        min="0"
-                        value={quantidadesPorProduto[produto.id] || ''}
-                        onChange={(e) => handleQuantidadeProdutoChange(produto.id, e.target.value)}
-                        placeholder="0"
-                        className="text-center"
-                      />
-                    </div>
-                  </div>
-                ))}
-                <div className="text-sm text-muted-foreground">
-                  <span>Total das quantidades: </span>
-                  <span className={`font-medium ${
-                    totalQuantidadesIndividuais === quantidade ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {totalQuantidadesIndividuais} / {quantidade}
-                  </span>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="totalUnidades">Quantidade (unidades)</Label>
+                <Input
+                  id="totalUnidades"
+                  type="number"
+                  min="0"
+                  value={formData.totalUnidades}
+                  onChange={(e) => setFormData(prev => ({ ...prev, totalUnidades: parseInt(e.target.value) || 0 }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tipoPedido">Tipo de Pedido</Label>
+                <Select
+                  value={formData.tipoPedido}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, tipoPedido: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Padrão">Padrão</SelectItem>
+                    <SelectItem value="Alterado">Alterado</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </>
           )}
 
           <div className="space-y-2">
-            <Label>Observações</Label>
+            <Label htmlFor="observacoes">Observações</Label>
             <Textarea
-              value={observacoes}
-              onChange={(e) => setObservacoes(e.target.value)}
-              placeholder="Observações adicionais..."
-              className="min-h-[80px]"
+              id="observacoes"
+              value={formData.observacoes}
+              onChange={(e) => setFormData(prev => ({ ...prev, observacoes: e.target.value }))}
+              placeholder="Digite observações sobre o agendamento..."
+              rows={3}
             />
           </div>
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave}>
-            Salvar alterações
-          </Button>
-        </DialogFooter>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">
+              Salvar Alterações
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
