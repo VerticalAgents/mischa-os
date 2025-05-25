@@ -69,7 +69,7 @@ export default function EditarAgendamentoDialog({
     agendamento?.pedido?.observacoes || ""
   );
   const [tipoPedido, setTipoPedido] = useState<TipoPedido>(
-    agendamento?.pedido?.tipoPedido || "Padrão"
+    agendamento?.pedido?.tipoPedido || "Normal"
   );
   const [quantidadesPorProduto, setQuantidadesPorProduto] = useState<QuantidadePorProduto>({});
 
@@ -80,7 +80,7 @@ export default function EditarAgendamentoDialog({
       setQuantidade(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0);
       setStatus(agendamento.statusAgendamento);
       setObservacoes(agendamento.pedido?.observacoes || "");
-      setTipoPedido(agendamento.pedido?.tipoPedido || "Padrão");
+      setTipoPedido(agendamento.pedido?.tipoPedido || "Normal");
       
       // Inicializar quantidades por produto se for pedido alterado
       if (agendamento.pedido?.tipoPedido === "Alterado" && agendamento.pedido?.itensPedido) {
@@ -127,7 +127,7 @@ export default function EditarAgendamentoDialog({
         ...agendamento.pedido,
         totalPedidoUnidades: quantidade,
         observacoes,
-        dataPrevistaEntrega: dataReposicao,
+        dataPrevistaEntrega: format(dataReposicao, 'yyyy-MM-dd'),
         tipoPedido,
       } : undefined,
     };
@@ -221,7 +221,9 @@ export default function EditarAgendamentoDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Padrão">Padrão</SelectItem>
+                <SelectItem value="Normal">Normal</SelectItem>
+                <SelectItem value="Reposição">Reposição</SelectItem>
+                <SelectItem value="Especial">Especial</SelectItem>
                 <SelectItem value="Alterado">Alterado</SelectItem>
               </SelectContent>
             </Select>

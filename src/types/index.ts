@@ -1,3 +1,4 @@
+
 import { Icons } from "@/components/icons"
 
 export interface NavItem {
@@ -24,7 +25,15 @@ export type StatusPedido = "Agendado" | "Em Separação" | "Reagendar" | "Previs
 
 export type SubstatusPedidoAgendado = "Agendado" | "Separado" | "Despachado" | "Entregue" | "Retorno";
 
-export type TipoPedido = "Normal" | "Reposição" | "Especial";
+export type TipoPedido = "Normal" | "Reposição" | "Especial" | "Padrão" | "Alterado";
+
+export type StatusCliente = "Ativo" | "Inativo" | "A ativar" | "Em análise" | "Standby";
+
+export type TipoCobranca = "À vista" | "A prazo" | "Consignado";
+
+export type TipoLogisticaNome = "Própria" | "Terceirizada" | "Distribuição";
+
+export type FormaPagamentoNome = "Dinheiro" | "Cartão" | "Pix" | "Boleto";
 
 export interface ItemPedido {
   id: number;
@@ -35,10 +44,12 @@ export interface ItemPedido {
 }
 
 export interface AlteracaoStatusPedido {
-  dataAlteracao: string;
+  dataAlteracao: string | Date;
   statusAnterior: StatusPedido;
   statusNovo: StatusPedido;
-  observacoes?: string;
+  substatusAnterior?: SubstatusPedidoAgendado;
+  substatusNovo?: SubstatusPedidoAgendado;
+  observacao?: string;
 }
 
 export interface ConfiguracoesProducao {
@@ -189,6 +200,7 @@ export interface Pedido {
   itensPedido: ItemPedido[];
   totalPedidoUnidades: number;
   dataCriacao: string;
+  dataPedido?: string;
   dataPrevistaEntrega: string;
   dataEfetivaEntrega?: string;
   statusPedido: StatusPedido;
@@ -203,23 +215,34 @@ export interface Cliente {
   nome: string;
   cnpjCpf: string;
   endereco?: string;
+  enderecoEntrega?: string;
   telefone?: string;
+  contatoNome?: string;
+  contatoTelefone?: string;
+  contatoEmail?: string;
   email?: string;
-  statusCliente: "Ativo" | "Inativo";
+  statusCliente: StatusCliente;
   statusAgendamento?: "Ativo" | "Pausado";
   dataCadastro: Date;
   proximaDataReposicao?: string;
+  ultimaDataReposicaoEfetiva?: Date;
   quantidadePadrao: number;
   periodicidadePadrao: number;
   diasEntrega?: DiaSemana[];
+  janelasEntrega?: DiaSemana[];
   contabilizarGiroMedio: boolean;
   giroMedioSemanal: number;
+  metaGiroSemanal?: number;
   representante?: string;
+  representanteId?: number;
   categoriaEstabelecimento?: string;
-  tipoLogistica: "Própria" | "Terceirizada";
+  categoriaEstabelecimentoId?: number;
+  rotaEntregaId?: number;
+  tipoLogistica: TipoLogisticaNome;
   emiteNotaFiscal: boolean;
-  tipoCobranca: "À vista" | "A prazo";
-  formaPagamento: "Dinheiro" | "Cartão" | "Pix" | "Boleto";
+  tipoCobranca: TipoCobranca;
+  formaPagamento: FormaPagamentoNome;
+  instrucoesEntrega?: string;
   observacoes?: string;
   ativo: boolean;
 }
