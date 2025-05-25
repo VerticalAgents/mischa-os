@@ -64,20 +64,36 @@ export default function AgendamentoEditModal({
     return agendamento.cliente.categoriasHabilitadas.includes(produto.categoriaId);
   });
 
-  // Carregar dados do agendamento ao abrir o modal
+  // Carregar dados do agendamento ao abrir o modal - usando EXATAMENTE os dados da tabela
   useEffect(() => {
     if (agendamento && open) {
+      console.log('Carregando dados no modal para cliente:', agendamento.cliente.nome);
+      console.log('Dados do agendamento na tabela:', {
+        statusAgendamento: agendamento.statusAgendamento,
+        dataReposicao: agendamento.dataReposicao,
+        quantidade: agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao,
+        tipoPedido: agendamento.pedido?.tipoPedido
+      });
+
+      // Usar EXATAMENTE os dados exibidos na tabela
       setStatusAgendamento(agendamento.statusAgendamento as 'Agendar' | 'Previsto' | 'Agendado');
-      setProximaDataReposicao(
-        agendamento.dataReposicao 
-          ? formatDateForInput(agendamento.dataReposicao)
-          : ''
-      );
-      setQuantidadeTotal(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0);
-      setTipoPedido(agendamento.pedido?.tipoPedido as 'Padrão' | 'Alterado' || 'Padrão');
+      
+      // Usar a data EXATA da tabela, sem conversões adicionais
+      setProximaDataReposicao(formatDateForInput(agendamento.dataReposicao));
+      
+      // Usar a quantidade EXATA da tabela
+      const quantidadeExibida = agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0;
+      setQuantidadeTotal(quantidadeExibida);
+      
+      // Usar o tipo de pedido EXATO da tabela
+      const tipoPedidoExibido = agendamento.pedido?.tipoPedido as 'Padrão' | 'Alterado' || 'Padrão';
+      setTipoPedido(tipoPedidoExibido);
+      
+      // Usar a periodicidade do cliente
+      setPeriodicidade(agendamento.cliente.periodicidadePadrao || 7);
       
       // Inicializar produtos com quantidades se for tipo "Alterado"
-      if (agendamento.pedido?.tipoPedido === 'Alterado' && produtosFiltrados.length > 0) {
+      if (tipoPedidoExibido === 'Alterado' && produtosFiltrados.length > 0) {
         const produtosIniciais = produtosFiltrados.map(produto => ({
           produto: produto.nome,
           quantidade: 0
@@ -86,6 +102,13 @@ export default function AgendamentoEditModal({
       } else {
         setProdutosQuantidades([]);
       }
+
+      console.log('Dados carregados no modal:', {
+        statusAgendamento: agendamento.statusAgendamento,
+        proximaDataReposicao: formatDateForInput(agendamento.dataReposicao),
+        quantidadeTotal: quantidadeExibida,
+        tipoPedido: tipoPedidoExibido
+      });
     }
   }, [agendamento, open, produtosFiltrados.length]);
 
@@ -160,7 +183,7 @@ export default function AgendamentoEditModal({
       console.log('Salvando agendamento modal com data input:', proximaDataReposicao, '-> convertida para:', dadosAgendamento.data_proxima_reposicao);
       await salvarAgendamento(agendamento.cliente.id, dadosAgendamento);
       
-      // Atualizar o agendamento local
+      // Atualizar o agendamento local para refletir as mudanças na tabela
       const agendamentoAtualizado: AgendamentoItem = {
         ...agendamento,
         statusAgendamento,
