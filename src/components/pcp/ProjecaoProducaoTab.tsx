@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar, Download, AlertTriangle, Calculator } from "lucide-react";
+import { Calendar, Download, Calculator } from "lucide-react";
 import { format } from "date-fns";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useSaborStore } from "@/hooks/useSaborStore";
@@ -205,26 +204,9 @@ export default function ProjecaoProducaoTab() {
             <Badge variant="secondary">
               Considerando: {tipoAgendamento === 'agendados' ? 'somente pedidos agendados' : 'agendados + previstos'}
             </Badge>
-            {!temEstoqueManual && (
-              <Badge variant="outline" className="text-amber-600 border-amber-600">
-                <AlertTriangle className="h-3 w-3 mr-1" />
-                Estoque não verificado manualmente
-              </Badge>
-            )}
           </div>
         </CardContent>
       </Card>
-
-      {/* Alerta sobre estoque */}
-      {!temEstoqueManual && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            ⚠ Estoque não verificado manualmente — projeção pode estar imprecisa.
-            Considere usar a aba "Ajuste de Estoque" para validar os valores.
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Tabela de projeção */}
       <Card>

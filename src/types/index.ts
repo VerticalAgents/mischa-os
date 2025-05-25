@@ -20,15 +20,22 @@ export interface FormaPagamento {
 
 export type TipoLogisticaNome = 'Própria' | 'Distribuição';
 export type TipoCobranca = 'À vista' | 'Consignado';
-export type FormaPagamentoNome = 'Boleto' | 'PIX' | 'Dinheiro';
+export type FormaPagamentoNome = 'Boleto' | 'Pix' | 'Dinheiro';
 
 // Status de agendamento do cliente
-export type StatusAgendamentoCliente = 'Agendar' | 'Previsto' | 'Agendado' | 'Reagendar' | string;
+export type StatusAgendamentoCliente = 'Ativo' | 'Pausado';
+
+// Status de confirmação
+export interface StatusConfirmacao {
+  label: string;
+  color: string;
+  value: string;
+}
 
 export interface Cliente {
   id: number;
   nome: string;
-  cnpjCpf?: string;
+  cnpjCpf: string;
   enderecoEntrega?: string;
   contatoNome?: string;
   contatoTelefone?: string;
@@ -38,11 +45,11 @@ export interface Cliente {
   statusCliente: StatusCliente;
   dataCadastro: Date;
   metaGiroSemanal?: number; // Meta de giro semanal
-  ultimaDataReposicaoEfetiva?: Date; // Data da última reposição efetiva
+  ultimaDataReposicaoEfetiva?: string; // Data da última reposição efetiva
   statusAgendamento?: StatusAgendamentoCliente; // Status do agendamento
-  proximaDataReposicao?: Date; // Próxima data de reposição agendada
-  ativo: boolean; // Added missing property
-  giroMedioSemanal?: number; // Added missing property
+  proximaDataReposicao?: string; // Próxima data de reposição agendada
+  ativo: boolean;
+  giroMedioSemanal: number;
   
   // Novos campos para configuração avançada
   janelasEntrega?: DiaSemana[];
@@ -82,7 +89,7 @@ export interface CategoriaEstabelecimento {
 }
 
 export interface ConfiguracoesProducao {
-  unidadesPorForma: number;
+  capacidadeForma: number;
   formasPorLote: number;
   incluirPedidosPrevistos: boolean;
   percentualPedidosPrevistos: number;
@@ -110,7 +117,7 @@ export interface ItemPedido {
   id: number;
   idPedido: number;
   idSabor: number;
-  nomeSabor?: string; // Make nomeSabor optional to match mockData
+  nomeSabor?: string;
   quantidadeSabor: number;
   quantidadeSeparada?: number;
   quantidadeEntregue?: number;
@@ -124,8 +131,8 @@ export interface Pedido {
   idCliente: number;
   cliente?: Cliente;
   dataPedido: Date;
-  dataPrevistaEntrega: Date;
-  dataEfetivaEntrega?: Date;
+  dataPrevistaEntrega: string;
+  dataEfetivaEntrega?: string;
   statusPedido: StatusPedido;
   substatusPedido?: SubstatusPedidoAgendado;
   itensPedido: ItemPedido[];
@@ -137,7 +144,7 @@ export interface Pedido {
   historicoAlteracoesStatus?: AlteracaoStatusPedido[];
 }
 
-export type CategoriaInsumo = 'Matéria Prima' | 'Embalagem' | 'Outros';
+export type CategoriaInsumo = 'Ingrediente' | 'Embalagem' | 'Outros';
 export type UnidadeMedida = 'g' | 'kg' | 'ml' | 'l' | 'un' | 'pct';
 
 export interface Insumo {
