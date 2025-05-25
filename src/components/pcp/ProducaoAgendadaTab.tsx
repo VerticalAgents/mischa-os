@@ -141,7 +141,7 @@ export default function ProducaoAgendadaTab() {
                 {datasOrdenadas.length > 0 ? (
                   datasOrdenadas.map(data => {
                     const dateKey = format(data, 'yyyy-MM-dd');
-                    const producoesDaData = producaoPorData[dateKey];
+                    const producoesDaData = producaoPorData[dateKey] || [];
                     
                     return producoesDaData.map((item, index) => (
                       <TableRow key={item.id}>
