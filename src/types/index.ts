@@ -1,9 +1,61 @@
+
 export type StatusCliente = "Ativo" | "Inativo" | "A ativar" | "Em análise" | "Standby";
 export type DiaSemana = "Seg" | "Ter" | "Qua" | "Qui" | "Sex" | "Sab" | "Dom";
 export type TipoLogisticaNome = "Própria" | "Distribuição";
 export type TipoCobranca = "À vista" | "Consignado";
 export type FormaPagamentoNome = "Boleto" | "PIX" | "Dinheiro";
 export type TipoComponente = "Receita" | "Insumo";
+
+// Add missing status types for pedidos
+export type StatusPedido = "Agendado" | "Em Separação" | "Despachado" | "Entregue" | "Cancelado";
+export type SubstatusPedidoAgendado = "Agendado" | "Reagendar" | "Previsto" | "Em Separação" | "Separado" | "Despachado";
+export type TipoPedido = "Padrão" | "Alterado" | "Único";
+
+// Add missing configuration types
+export type TipoLogistica = TipoLogisticaNome;
+export type FormaPagamento = FormaPagamentoNome;
+
+export interface CategoriaEstabelecimento {
+  id: number;
+  nome: string;
+  descricao?: string;
+}
+
+export interface Representante {
+  id: number;
+  nome: string;
+  telefone?: string;
+  email?: string;
+}
+
+export interface RotaEntrega {
+  id: number;
+  nome: string;
+  descricao?: string;
+  regiao?: string;
+}
+
+export interface CategoriaInsumo {
+  id: number;
+  nome: string;
+  descricao?: string;
+}
+
+export interface DashboardData {
+  vendasMes: number;
+  pedidosAtivos: number;
+  estoqueAlerta: number;
+  clientesAtivos: number;
+}
+
+export interface AlteracaoStatusPedido {
+  dataAlteracao: Date;
+  statusAnterior: StatusPedido;
+  statusNovo: StatusPedido;
+  substatusAnterior?: SubstatusPedidoAgendado;
+  substatusNovo?: SubstatusPedidoAgendado;
+  observacao?: string;
+}
 
 export interface Cliente {
   id: number;
@@ -34,20 +86,24 @@ export interface Cliente {
   observacoes?: string;
   ativo: boolean;
   giroMedioSemanal: number;
-  categoriasProdutos?: number[]; // New field for product categories
+  categoriasProdutos?: number[];
 }
 
 export interface Pedido {
   id: number;
+  idCliente: number; // Add this property back
   cliente?: Cliente;
   itensPedido: ItemPedido[];
   dataCriacao: Date;
-  dataPrevistaEntrega: string;
+  dataPedido?: Date; // Add alternative property name
+  dataPrevistaEntrega: string; // Keep as string to match existing usage
   dataEfetivaEntrega?: string;
   totalPedidoUnidades: number;
   observacoes?: string;
-  statusPedido: string;
-  tipoPedido: string;
+  statusPedido: StatusPedido;
+  substatusPedido?: SubstatusPedidoAgendado; // Add substatus property
+  tipoPedido: TipoPedido;
+  historicoAlteracoesStatus?: AlteracaoStatusPedido[];
 }
 
 export interface ItemPedido {
@@ -56,6 +112,8 @@ export interface ItemPedido {
   idSabor: number;
   nomeSabor: string;
   quantidadeSabor: number;
+  quantidadeEntregue?: number;
+  sabor?: string; // Add sabor property for compatibility
 }
 
 export interface Produto {
@@ -67,8 +125,8 @@ export interface Produto {
   margemLucro: number;
   componentes: ComponenteProduto[];
   ativo: boolean;
-	pesoUnitario: number;
-	custoUnitario: number;
+  pesoUnitario: number;
+  custoUnitario: number;
   unidadesProducao?: number;
   categoria: string;
   estoqueMinimo: number;
@@ -100,6 +158,7 @@ export interface Insumo {
   dataUltimaCompra?: Date;
   fornecedor?: string;
   observacoes?: string;
+  categoria?: string; // Add categoria property
 }
 
 export interface Receita {

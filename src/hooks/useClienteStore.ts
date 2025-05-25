@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { Cliente, StatusCliente } from '../types';
@@ -135,7 +134,8 @@ export const useClienteStore = create<ClienteStore>()(
             emiteNotaFiscal: Math.random() > 0.2,
             tipoCobranca: Math.random() > 0.5 ? 'À vista' : 'Consignado',
             formaPagamento: ['Boleto', 'PIX', 'Dinheiro'][Math.floor(Math.random() * 3)] as 'Boleto' | 'PIX' | 'Dinheiro',
-            observacoes: Math.random() > 0.8 ? `Observações para ${cliente.nome}` : undefined
+            observacoes: Math.random() > 0.8 ? `Observações para ${cliente.nome}` : undefined,
+            categoriasProdutos: [1] // Default to "Revenda Padrão"
           };
         })
       ],

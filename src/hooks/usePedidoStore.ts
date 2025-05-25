@@ -95,8 +95,9 @@ export const usePedidoStore = create<PedidoStore>()(
         const novoPedido: Omit<Pedido, 'id'> = {
           idCliente,
           cliente,
+          dataCriacao: new Date(),
           dataPedido: new Date(),
-          dataPrevistaEntrega,
+          dataPrevistaEntrega: dataPrevistaEntrega.toISOString().split('T')[0], // Convert to string format
           totalPedidoUnidades: cliente.quantidadePadrao,
           tipoPedido: "Padrão",
           statusPedido: "Agendado",
@@ -158,6 +159,7 @@ export const usePedidoStore = create<PedidoStore>()(
         const novoPedido = {
           ...pedido,
           id: novoId,
+          dataCriacao: new Date(),
           dataPedido: new Date(),
           cliente,
           itensPedido: [] // Inicializa o array vazio para ser preenchido depois
@@ -268,7 +270,7 @@ export const usePedidoStore = create<PedidoStore>()(
               return {
                 ...p,
                 statusPedido: "Entregue",
-                dataEfetivaEntrega: dataEfetiva,
+                dataEfetivaEntrega: dataEfetiva.toISOString().split('T')[0], // Convert Date to string
                 itensPedido: itensAtualizados
               };
             }
