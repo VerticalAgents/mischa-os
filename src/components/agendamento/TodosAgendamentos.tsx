@@ -64,7 +64,8 @@ export default function TodosAgendamentos() {
         tipoLogistica: "Própria",
         emiteNotaFiscal: false,
         tipoCobranca: "À vista",
-        formaPagamento: "Dinheiro"
+        formaPagamento: "Dinheiro",
+        ativo: true
       };
       
       agendamentosTemp.push({

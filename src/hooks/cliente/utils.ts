@@ -1,3 +1,4 @@
+
 import { Cliente, DiaSemana, FormaPagamentoNome, StatusCliente, TipoCobranca, TipoLogisticaNome } from '../../types';
 import { clientesMock } from '../../data/mockData';
 
@@ -117,9 +118,24 @@ export function generateInitialClientes(): Cliente[] {
       emiteNotaFiscal: Math.random() > 0.2,
       tipoCobranca,
       formaPagamento,
-      observacoes: Math.random() > 0.8 ? `Observações para ${cliente.nome}` : undefined
+      observacoes: Math.random() > 0.8 ? `Observações para ${cliente.nome}` : undefined,
+      ativo: cliente.statusCliente === 'Ativo',
+      giroMedioSemanal: calcularGiroSemanal(cliente.quantidadePadrao || 0, cliente.periodicidadePadrao || 7)
     };
   });
 
   return [...clientesMock, ...convertedClientes];
+}
+
+// Helper para calcular giro semanal
+function calcularGiroSemanal(qtdPadrao: number, periodicidadeDias: number): number {
+  // Para periodicidade em dias, converter para semanas
+  if (periodicidadeDias === 3) {
+    // Caso especial: 3x por semana
+    return qtdPadrao * 3;
+  }
+  
+  // Para outros casos, calcular giro semanal
+  const periodicidadeSemanas = periodicidadeDias / 7;
+  return Math.round(qtdPadrao / periodicidadeSemanas);
 }

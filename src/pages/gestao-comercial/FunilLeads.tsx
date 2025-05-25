@@ -1,809 +1,605 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Phone, MapPin, User, CalendarClock, Building as BuildingIcon, FileText, Mail, DollarSign } from "lucide-react";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import { toast } from "@/components/ui/use-toast";
 import { useClienteStore } from "@/hooks/useClienteStore";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  AlertCircle, 
+  CheckCircle2, 
+  Clock, 
+  Phone, 
+  Mail, 
+  MapPin, 
+  User,
+  Calendar,
+  Star,
+  UserCheck
+} from "lucide-react";
 
-// Types
-type LeadStage = "identificado" | "contato" | "proposta" | "negociacao" | "ativo" | "perdido";
+// Tipos para o funil de leads
+type StatusLead = 'Novo' | 'Contato Inicial' | 'Proposta Enviada' | 'Negociação' | 'Fechado' | 'Perdido';
 
 interface Lead {
-  id: string;
+  id: number;
   nome: string;
-  contato: string;
+  empresa: string;
   telefone: string;
-  email?: string;
-  etapa: LeadStage;
+  email: string;
+  endereco: string;
+  status: StatusLead;
+  fonte: string;
+  dataContato: Date;
   observacoes: string;
-  responsavel: string;
-  cidade: string;
-  rota: string;
-  dataCriacao: Date;
-  dataAtualizacao: Date;
-  // Campos adicionais para integração com Cliente
-  endereco?: string;
-  bairro?: string;
-  estado?: string;
-  cnpjCpf?: string;
-  categoriaEstabelecimento?: string;
-  tipoLogistica?: string;
-  formaPagamento?: string;
-  diasEntrega?: string[];
-  valorGiroSemanal?: number;
-  giroOrigem?: string;
+  valorEstimado?: number;
+  probabilidade: number;
+  proximaAcao?: string;
+  dataProximaAcao?: Date;
 }
 
-// Stage configuration
-const leadStages: {id: LeadStage, title: string}[] = [
-  { id: "identificado", title: "Identificado" },
-  { id: "contato", title: "Contato Realizado" },
-  { id: "proposta", title: "Proposta Enviada" },
-  { id: "negociacao", title: "Em Negociação" },
-  { id: "ativo", title: "Cliente Ativado" },
-  { id: "perdido", title: "Perdido" }
-];
-
-// Mock data for dropdowns
-const responsaveis = ["Ana", "Carlos", "Rafael", "Juliana", "Todos"];
-const cidades = ["Porto Alegre", "Canoas", "São Leopoldo", "Novo Hamburgo", "Todas"];
-const rotas = ["Centro", "Zona Norte", "Zona Sul", "Zona Leste", "Região Metropolitana", "Vale dos Sinos"];
-const categoriasEstabelecimento = ["Café", "Padaria", "Restaurante", "Hotel", "Mercado", "Outro"];
-const tiposLogistica = ["Entrega Própria", "Entrega Terceirizada", "Retirada no Local"];
-const formasPagamento = ["À Vista", "Boleto 15 dias", "Boleto 30 dias", "PIX"];
-const diasSemana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
-
 export default function FunilLeads() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [responsavelFilter, setResponsavelFilter] = useState("Todos");
-  const [cidadeFilter, setCidadeFilter] = useState("Todas");
-  const [novoLead, setNovoLead] = useState<Partial<Lead>>({
-    etapa: "identificado",
-    responsavel: "Ana",
-    rota: "Zona Sul",
-    diasEntrega: []
-  });
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [selectedDiasSemana, setSelectedDiasSemana] = useState<string[]>([]);
-
-  // Get the adicionarCliente function from the cliente store
   const { adicionarCliente } = useClienteStore();
-
-  // Initialize leads with mock data
-  useEffect(() => {
-    const mockData: Lead[] = [
-      {
-        id: "1",
-        nome: "Café Central",
-        contato: "João Silva",
-        telefone: "(51) 98765-4321",
-        email: "contato@cafecentral.com.br",
-        etapa: "identificado",
-        observacoes: "Indicado pelo cliente Maria",
-        responsavel: "Ana",
-        cidade: "Porto Alegre",
-        rota: "Zona Sul",
-        dataCriacao: new Date(),
-        dataAtualizacao: new Date(),
-        endereco: "Rua das Flores, 123",
-        bairro: "Centro",
-        estado: "RS",
-        cnpjCpf: "12.345.678/0001-90",
-        categoriaEstabelecimento: "Café",
-        tipoLogistica: "Entrega Própria",
-        formaPagamento: "À Vista",
-        diasEntrega: ["Segunda", "Quarta", "Sexta"],
-        valorGiroSemanal: 800,
-        giroOrigem: "Estimativa"
-      },
-      {
-        id: "2",
-        nome: "Padaria Bom Pão",
-        contato: "Maria Oliveira",
-        telefone: "(51) 91234-5678",
-        email: "maria@bompao.com.br",
-        etapa: "contato",
-        observacoes: "Primeira reunião agendada",
-        responsavel: "Carlos",
-        cidade: "Canoas",
-        rota: "Região Metropolitana",
-        dataCriacao: new Date(),
-        dataAtualizacao: new Date(),
-        endereco: "Av. Brasil, 500",
-        bairro: "Centro",
-        estado: "RS",
-        cnpjCpf: "98.765.432/0001-10",
-        categoriaEstabelecimento: "Padaria",
-      },
-      {
-        id: "3",
-        nome: "Doceria Feliz",
-        contato: "Pedro Santos",
-        telefone: "(51) 98888-5555",
-        etapa: "proposta",
-        observacoes: "Aguardando retorno da proposta",
-        responsavel: "Ana",
-        cidade: "Porto Alegre",
-        rota: "Centro",
-        dataCriacao: new Date(),
-        dataAtualizacao: new Date(),
-      },
-      {
-        id: "4",
-        nome: "Supermercado Economia",
-        contato: "Lucas Machado",
-        telefone: "(51) 97777-6666",
-        etapa: "negociacao",
-        observacoes: "Negociando descontos por volume",
-        responsavel: "Rafael",
-        cidade: "São Leopoldo",
-        rota: "Vale dos Sinos",
-        dataCriacao: new Date(),
-        dataAtualizacao: new Date(),
-      },
-      {
-        id: "5",
-        nome: "Hotel Encanto",
-        contato: "Ana Paula",
-        telefone: "(51) 96666-3333",
-        etapa: "ativo",
-        observacoes: "Cliente desde 01/2024",
-        responsavel: "Juliana",
-        cidade: "Novo Hamburgo",
-        rota: "Vale dos Sinos",
-        dataCriacao: new Date(),
-        dataAtualizacao: new Date(),
-        endereco: "Av. das Flores, 1000",
-        bairro: "Centro",
-        estado: "RS",
-        cnpjCpf: "11.222.333/0001-44",
-        categoriaEstabelecimento: "Hotel",
-        tipoLogistica: "Entrega Própria",
-        formaPagamento: "Boleto 30 dias",
-        diasEntrega: ["Terça", "Quinta"],
-        valorGiroSemanal: 1500,
-        giroOrigem: "Informado pelo cliente"
-      },
-      {
-        id: "6",
-        nome: "Mercado do João",
-        contato: "João Pereira",
-        telefone: "(51) 95555-4444",
-        etapa: "perdido",
-        observacoes: "Preço fora do orçamento",
-        responsavel: "Carlos",
-        cidade: "Canoas",
-        rota: "Região Metropolitana",
-        dataCriacao: new Date(),
-        dataAtualizacao: new Date(),
-      }
-    ];
-    
-    setLeads(mockData);
-  }, []);
-
-  // Update selectedDiasSemana when editing a lead
-  useEffect(() => {
-    if (editingId && novoLead.diasEntrega) {
-      setSelectedDiasSemana(novoLead.diasEntrega);
-    } else {
-      setSelectedDiasSemana([]);
+  const { toast } = useToast();
+  const [leads, setLeads] = useState<Lead[]>([
+    {
+      id: 1,
+      nome: "Carlos Santos",
+      empresa: "Café Aromático",
+      telefone: "(11) 98765-4321",
+      email: "carlos@cafearomatico.com",
+      endereco: "Rua das Flores, 123 - Vila Madalena, São Paulo - SP",
+      status: "Novo",
+      fonte: "Indicação",
+      dataContato: new Date("2024-05-10"),
+      observacoes: "Interessado em 50 unidades semanais. Café especializado.",
+      valorEstimado: 15000,
+      probabilidade: 20,
+      proximaAcao: "Ligar para apresentar produtos",
+      dataProximaAcao: new Date("2024-05-15")
+    },
+    {
+      id: 2,
+      nome: "Ana Martins",
+      empresa: "Padaria Moderna",
+      telefone: "(11) 91234-5678",
+      email: "ana@padariamoderna.com",
+      endereco: "Av. Paulista, 1000 - Bela Vista, São Paulo - SP",
+      status: "Contato Inicial",
+      fonte: "Google Ads",
+      dataContato: new Date("2024-05-08"),
+      observacoes: "Já tem fornecedor, mas aberta para testar nossos produtos.",
+      valorEstimado: 8000,
+      probabilidade: 40,
+      proximaAcao: "Enviar amostras",
+      dataProximaAcao: new Date("2024-05-14")
+    },
+    {
+      id: 3,
+      nome: "Roberto Silva",
+      empresa: "Mercado do Bairro",
+      telefone: "(11) 99876-5432",
+      email: "roberto@mercadobairro.com",
+      endereco: "Rua Consolação, 500 - Consolação, São Paulo - SP",
+      status: "Proposta Enviada",
+      fonte: "Visita presencial",
+      dataContato: new Date("2024-05-05"),
+      observacoes: "Proposta enviada para 80 unidades. Aguardando retorno.",
+      valorEstimado: 20000,
+      probabilidade: 70,
+      proximaAcao: "Follow-up da proposta",
+      dataProximaAcao: new Date("2024-05-13")
+    },
+    {
+      id: 4,
+      nome: "Fernanda Costa",
+      empresa: "Café Gourmet Plus",
+      telefone: "(11) 94567-8901",
+      email: "fernanda@cafegourmetplus.com",
+      endereco: "Rua Augusta, 200 - Centro, São Paulo - SP",
+      status: "Negociação",
+      fonte: "LinkedIn",
+      dataContato: new Date("2024-05-03"),
+      observacoes: "Negociando preço para pedido mensal de 120 unidades.",
+      valorEstimado: 35000,
+      probabilidade: 85,
+      proximaAcao: "Reunião final",
+      dataProximaAcao: new Date("2024-05-12")
+    },
+    {
+      id: 5,
+      nome: "João Pereira",
+      empresa: "Bistrô Urbano",
+      telefone: "(11) 92345-6789",
+      email: "joao@bistrourbano.com",
+      endereco: "Rua Oscar Freire, 800 - Jardins, São Paulo - SP",
+      status: "Perdido",
+      fonte: "Indicação",
+      dataContato: new Date("2024-04-28"),
+      observacoes: "Decidiu continuar com fornecedor atual por questões de preço.",
+      valorEstimado: 12000,
+      probabilidade: 0
     }
-  }, [editingId, novoLead.diasEntrega]);
+  ]);
 
-  const filteredLeads = leads.filter(lead => {
-    const matchesSearch = lead.nome?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          lead.contato?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesResponsavel = responsavelFilter === "Todos" || lead.responsavel === responsavelFilter;
-    const matchesCidade = cidadeFilter === "Todas" || lead.cidade === cidadeFilter;
-    
-    return matchesSearch && matchesResponsavel && matchesCidade;
+  const [novoLead, setNovoLead] = useState<Partial<Lead>>({
+    nome: "",
+    empresa: "",
+    telefone: "",
+    email: "",
+    endereco: "",
+    status: "Novo",
+    fonte: "",
+    observacoes: "",
+    valorEstimado: 0,
+    probabilidade: 20
   });
 
-  // Handle day of week selection
-  const handleDiasSemanaToggle = (dia: string) => {
-    setSelectedDiasSemana(prev => {
-      if (prev.includes(dia)) {
-        return prev.filter(d => d !== dia);
-      } else {
-        return [...prev, dia];
-      }
-    });
+  const [leadSelecionado, setLeadSelecionado] = useState<Lead | null>(null);
+  const [dialogAberto, setDialogAberto] = useState(false);
+  const [dialogNovoAberto, setDialogNovoAberto] = useState(false);
+
+  const statusConfig = {
+    'Novo': { color: 'bg-gray-500', icon: AlertCircle },
+    'Contato Inicial': { color: 'bg-blue-500', icon: Phone },
+    'Proposta Enviada': { color: 'bg-yellow-500', icon: Mail },
+    'Negociação': { color: 'bg-orange-500', icon: Clock },
+    'Fechado': { color: 'bg-green-500', icon: CheckCircle2 },
+    'Perdido': { color: 'bg-red-500', icon: AlertCircle }
   };
 
-  // Update the novoLead state when selectedDiasSemana changes
-  useEffect(() => {
-    setNovoLead(prev => ({
-      ...prev,
-      diasEntrega: selectedDiasSemana
-    }));
-  }, [selectedDiasSemana]);
-
-  const handleSalvarLead = () => {
-    if (editingId) {
-      setLeads(prev => 
-        prev.map(lead => 
-          lead.id === editingId 
-            ? { ...lead, ...novoLead, id: editingId, dataAtualizacao: new Date() }
-            : lead
-        )
-      );
-    } else {
-      const now = new Date();
-      const id = Math.random().toString(36).substr(2, 9);
-      setLeads(prev => [...prev, {
-        ...novoLead,
-        id,
-        dataCriacao: now,
-        dataAtualizacao: now
-      } as Lead]);
-    }
-    
-    setDialogOpen(false);
-    setNovoLead({
-      etapa: "identificado",
-      responsavel: "Ana",
-      rota: "Zona Sul",
-      diasEntrega: []
-    });
-    setEditingId(null);
-    setSelectedDiasSemana([]);
-  };
-
-  const editLead = (lead: Lead) => {
-    setNovoLead({...lead});
-    setEditingId(lead.id);
-    setDialogOpen(true);
-  };
-
-  // Convert a lead to a client when it's moved to "ativo" stage
-  const convertLeadToClient = (lead: Lead) => {
-    if (!lead.nome || !lead.cidade) {
+  const handleAdicionarLead = () => {
+    if (!novoLead.nome || !novoLead.empresa) {
       toast({
-        title: "Dados insuficientes",
-        description: "Preencha pelo menos o nome e a cidade do cliente antes de ativá-lo.",
+        title: "Erro",
+        description: "Nome e empresa são obrigatórios.",
         variant: "destructive"
       });
-      return false;
-    }
-
-    try {
-      // Create a new client from lead data
-      adicionarCliente({
-        nome: lead.nome,
-        cnpjCpf: lead.cnpjCpf || "",
-        enderecoEntrega: lead.endereco || "",
-        contatoNome: lead.contato || "",
-        contatoTelefone: lead.telefone || "",
-        contatoEmail: lead.email || "",
-        quantidadePadrao: 0,
-        periodicidadePadrao: 7,
-        statusCliente: "Ativo" as const,
-        contabilizarGiroMedio: true,
-        tipoLogistica: "Própria" as const,
-        emiteNotaFiscal: true,
-        tipoCobranca: "À vista" as const,
-        formaPagamento: "PIX" as const
-      });
-
-      toast({
-        title: "Cliente criado com sucesso",
-        description: `${lead.nome} foi adicionado à base de clientes.`
-      });
-
-      return true;
-    } catch (error) {
-      console.error("Erro ao converter lead para cliente:", error);
-      toast({
-        title: "Erro ao criar cliente",
-        description: "Não foi possível adicionar o cliente. Tente novamente.",
-        variant: "destructive"
-      });
-      return false;
-    }
-  };
-
-  // Handle dragging leads between columns
-  const onDragEnd = (result: any) => {
-    const { destination, source, draggableId } = result;
-
-    // If dropped outside the list or in same position
-    if (!destination || 
-        (destination.droppableId === source.droppableId && 
-         destination.index === source.index)) {
       return;
     }
 
-    // Find the lead that was dragged
-    const draggedLead = leads.find(lead => lead.id === draggableId);
-    if (!draggedLead) return;
+    const lead: Lead = {
+      id: Math.max(...leads.map(l => l.id)) + 1,
+      nome: novoLead.nome!,
+      empresa: novoLead.empresa!,
+      telefone: novoLead.telefone || "",
+      email: novoLead.email || "",
+      endereco: novoLead.endereco || "",
+      status: novoLead.status || "Novo",
+      fonte: novoLead.fonte || "",
+      dataContato: new Date(),
+      observacoes: novoLead.observacoes || "",
+      valorEstimado: novoLead.valorEstimado || 0,
+      probabilidade: novoLead.probabilidade || 20
+    };
 
-    // Check if the lead is being moved to "ativo" stage
-    if (destination.droppableId === "ativo" && source.droppableId !== "ativo") {
-      // Try to convert the lead to a client
-      const success = convertLeadToClient(draggedLead);
-      
-      // If conversion fails, return without moving the lead
-      if (!success) return;
-      
-      // Show success toast
-      toast({
-        title: "Lead ativado",
-        description: `${draggedLead.nome} foi convertido para cliente ativo.`,
-      });
-    }
+    setLeads(prev => [...prev, lead]);
+    setNovoLead({
+      nome: "",
+      empresa: "",
+      telefone: "",
+      email: "",
+      endereco: "",
+      status: "Novo",
+      fonte: "",
+      observacoes: "",
+      valorEstimado: 0,
+      probabilidade: 20
+    });
+    setDialogNovoAberto(false);
 
-    // Update the lead's stage to match the new column
-    setLeads(prev => prev.map(lead => {
-      if (lead.id === draggableId) {
-        return {
-          ...lead,
-          etapa: destination.droppableId as LeadStage,
-          dataAtualizacao: new Date()
-        };
-      }
-      return lead;
-    }));
+    toast({
+      title: "Lead adicionado",
+      description: `${lead.nome} foi adicionado ao funil.`
+    });
   };
 
-  // Render form fields for the lead dialog
-  const renderFormFields = () => {
-    return (
-      <>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="nome">Nome da Empresa</Label>
-            <Input
-              id="nome"
-              value={novoLead.nome || ""}
-              onChange={e => setNovoLead({...novoLead, nome: e.target.value})}
-              placeholder="Nome da empresa"
-            />
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="contato">Nome do Contato</Label>
-              <Input
-                id="contato"
-                value={novoLead.contato || ""}
-                onChange={e => setNovoLead({...novoLead, contato: e.target.value})}
-                placeholder="Nome da pessoa de contato"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="telefone">Telefone</Label>
-              <Input
-                id="telefone"
-                value={novoLead.telefone || ""}
-                onChange={e => setNovoLead({...novoLead, telefone: e.target.value})}
-                placeholder="(xx) xxxxx-xxxx"
-              />
-            </div>
-          </div>
-          
-          <div className="grid gap-2">
-            <Label htmlFor="email">E-mail</Label>
-            <Input
-              id="email"
-              type="email"
-              value={novoLead.email || ""}
-              onChange={e => setNovoLead({...novoLead, email: e.target.value})}
-              placeholder="email@exemplo.com"
-            />
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="responsavel">Responsável</Label>
-              <Select
-                value={novoLead.responsavel}
-                onValueChange={(value) => setNovoLead({...novoLead, responsavel: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {responsaveis.filter(r => r !== "Todos").map(resp => (
-                    <SelectItem key={resp} value={resp}>{resp}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="etapa">Etapa</Label>
-              <Select
-                value={novoLead.etapa}
-                onValueChange={(value) => setNovoLead({...novoLead, etapa: value as LeadStage})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {leadStages.map(stage => (
-                    <SelectItem key={stage.id} value={stage.id}>{stage.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="cidade">Cidade</Label>
-              <Select
-                value={novoLead.cidade}
-                onValueChange={(value) => setNovoLead({...novoLead, cidade: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {cidades.filter(c => c !== "Todas").map(cidade => (
-                    <SelectItem key={cidade} value={cidade}>{cidade}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="estado">Estado</Label>
-              <Input
-                id="estado"
-                value={novoLead.estado || "RS"}
-                onChange={e => setNovoLead({...novoLead, estado: e.target.value})}
-                placeholder="Estado (UF)"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="rota">Rota</Label>
-              <Select
-                value={novoLead.rota}
-                onValueChange={(value) => setNovoLead({...novoLead, rota: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {rotas.map(rota => (
-                    <SelectItem key={rota} value={rota}>{rota}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="endereco">Endereço</Label>
-              <Input
-                id="endereco"
-                value={novoLead.endereco || ""}
-                onChange={e => setNovoLead({...novoLead, endereco: e.target.value})}
-                placeholder="Rua, Número"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="bairro">Bairro</Label>
-              <Input
-                id="bairro"
-                value={novoLead.bairro || ""}
-                onChange={e => setNovoLead({...novoLead, bairro: e.target.value})}
-                placeholder="Bairro"
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="cnpjCpf">CNPJ/CPF</Label>
-              <Input
-                id="cnpjCpf"
-                value={novoLead.cnpjCpf || ""}
-                onChange={e => setNovoLead({...novoLead, cnpjCpf: e.target.value})}
-                placeholder="00.000.000/0000-00"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="categoriaEstabelecimento">Categoria</Label>
-              <Select
-                value={novoLead.categoriaEstabelecimento}
-                onValueChange={(value) => setNovoLead({...novoLead, categoriaEstabelecimento: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categoriasEstabelecimento.map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
-              <Select
-                value={novoLead.tipoLogistica}
-                onValueChange={(value) => setNovoLead({...novoLead, tipoLogistica: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tiposLogistica.map(tipo => (
-                    <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="formaPagamento">Forma de Pagamento</Label>
-              <Select
-                value={novoLead.formaPagamento}
-                onValueChange={(value) => setNovoLead({...novoLead, formaPagamento: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {formasPagamento.map(forma => (
-                    <SelectItem key={forma} value={forma}>{forma}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="grid gap-2">
-            <Label htmlFor="diasEntrega">Dias de Entrega</Label>
-            <div className="flex flex-wrap gap-2">
-              {diasSemana.map(dia => (
-                <Button
-                  key={dia}
-                  type="button"
-                  size="sm"
-                  variant={selectedDiasSemana.includes(dia) ? "default" : "outline"}
-                  onClick={() => handleDiasSemanaToggle(dia)}
-                >
-                  {dia.substring(0, 3)}
-                </Button>
-              ))}
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="valorGiroSemanal">Valor de Giro Semanal (R$)</Label>
-              <Input
-                id="valorGiroSemanal"
-                type="number"
-                value={novoLead.valorGiroSemanal || ""}
-                onChange={e => setNovoLead({...novoLead, valorGiroSemanal: parseFloat(e.target.value)})}
-                placeholder="0.00"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="giroOrigem">Origem do Giro</Label>
-              <Select
-                value={novoLead.giroOrigem}
-                onValueChange={(value) => setNovoLead({...novoLead, giroOrigem: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Estimativa">Estimativa</SelectItem>
-                  <SelectItem value="Informado pelo cliente">Informado pelo cliente</SelectItem>
-                  <SelectItem value="Análise de mercado">Análise de mercado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="grid gap-2">
-            <Label htmlFor="observacoes">Observações</Label>
-            <Textarea
-              id="observacoes"
-              value={novoLead.observacoes || ""}
-              onChange={e => setNovoLead({...novoLead, observacoes: e.target.value})}
-              placeholder="Informações adicionais"
-              rows={3}
-            />
-          </div>
-        </div>
-      </>
+  const handleAtualizarStatus = (leadId: number, novoStatus: StatusLead) => {
+    setLeads(prev => 
+      prev.map(lead => 
+        lead.id === leadId 
+          ? { 
+              ...lead, 
+              status: novoStatus,
+              probabilidade: novoStatus === 'Fechado' ? 100 : 
+                           novoStatus === 'Perdido' ? 0 : lead.probabilidade
+            }
+          : lead
+      )
     );
+
+    toast({
+      title: "Status atualizado",
+      description: `Lead movido para ${novoStatus}.`
+    });
+  };
+
+  const handleConverterParaCliente = (lead: Lead) => {
+    // Converter lead para cliente
+    const novoCliente = {
+      nome: lead.empresa,
+      cnpjCpf: "", // Será preenchido posteriormente
+      enderecoEntrega: lead.endereco,
+      contatoNome: lead.nome,
+      contatoTelefone: lead.telefone,
+      contatoEmail: lead.email,
+      quantidadePadrao: 50, // Valor padrão
+      periodicidadePadrao: 7, // Semanal
+      statusCliente: "Ativo" as const,
+      observacoes: `Convertido do funil de leads. ${lead.observacoes}`,
+      contabilizarGiroMedio: true,
+      tipoLogistica: "Própria" as const,
+      emiteNotaFiscal: true,
+      tipoCobranca: "À vista" as const,
+      formaPagamento: "PIX" as const,
+      ativo: true
+    };
+
+    adicionarCliente(novoCliente);
+
+    // Atualizar status do lead para Fechado
+    handleAtualizarStatus(lead.id, 'Fechado');
+
+    toast({
+      title: "Cliente convertido!",
+      description: `${lead.empresa} foi adicionado como cliente ativo.`
+    });
+  };
+
+  const getLeadsPorStatus = (status: StatusLead) => {
+    return leads.filter(lead => lead.status === status);
+  };
+
+  const calcularValorTotalPipeline = () => {
+    return leads
+      .filter(lead => lead.status !== 'Perdido' && lead.status !== 'Fechado')
+      .reduce((total, lead) => total + (lead.valorEstimado || 0), 0);
+  };
+
+  const calcularTaxaConversao = () => {
+    const totalLeads = leads.length;
+    const leadsFechados = leads.filter(lead => lead.status === 'Fechado').length;
+    return totalLeads > 0 ? (leadsFechados / totalLeads * 100).toFixed(1) : "0";
   };
 
   return (
-    <div>
-      <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-        <div className="flex flex-wrap gap-3">
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar leads por nome ou contato..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Select
-            value={responsavelFilter}
-            onValueChange={setResponsavelFilter}
-          >
-            <SelectTrigger className="w-[160px]">
-              <User className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Responsável" />
-            </SelectTrigger>
-            <SelectContent>
-              {responsaveis.map(resp => (
-                <SelectItem key={resp} value={resp}>{resp}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={cidadeFilter}
-            onValueChange={setCidadeFilter}
-          >
-            <SelectTrigger className="w-[160px]">
-              <MapPin className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Cidade" />
-            </SelectTrigger>
-            <SelectContent>
-              {cidades.map(cidade => (
-                <SelectItem key={cidade} value={cidade}>{cidade}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+    <div className="space-y-6">
+      {/* Header com Métricas */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total no Pipeline</CardTitle>
+            <Star className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{leads.filter(l => l.status !== 'Perdido' && l.status !== 'Fechado').length}</div>
+            <p className="text-xs text-muted-foreground">leads ativos</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valor Estimado</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              R$ {calcularValorTotalPipeline().toLocaleString('pt-BR')}
+            </div>
+            <p className="text-xs text-muted-foreground">no pipeline</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{calcularTaxaConversao()}%</div>
+            <p className="text-xs text-muted-foreground">leads → clientes</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Fechados</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{leads.filter(l => l.status === 'Fechado').length}</div>
+            <p className="text-xs text-muted-foreground">este mês</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Ações */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Funil de Vendas</h2>
+        <Dialog open={dialogNovoAberto} onOpenChange={setDialogNovoAberto}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="h-4 w-4 mr-2" />
+              <User className="h-4 w-4 mr-2" />
               Novo Lead
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>{editingId ? "Editar Lead" : "Adicionar Novo Lead"}</DialogTitle>
+              <DialogTitle>Adicionar Novo Lead</DialogTitle>
               <DialogDescription>
-                Preencha as informações do lead abaixo. Quanto mais completo, melhor será a conversão para cliente.
+                Cadastre um novo prospect no funil de vendas.
               </DialogDescription>
             </DialogHeader>
-            
-            {renderFormFields()}
-            
+
+            <div className="grid grid-cols-1 gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="nome">Nome do Contato*</Label>
+                  <Input
+                    id="nome"
+                    value={novoLead.nome || ""}
+                    onChange={(e) => setNovoLead(prev => ({ ...prev, nome: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="empresa">Empresa*</Label>
+                  <Input
+                    id="empresa"
+                    value={novoLead.empresa || ""}
+                    onChange={(e) => setNovoLead(prev => ({ ...prev, empresa: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="telefone">Telefone</Label>
+                  <Input
+                    id="telefone"
+                    value={novoLead.telefone || ""}
+                    onChange={(e) => setNovoLead(prev => ({ ...prev, telefone: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={novoLead.email || ""}
+                    onChange={(e) => setNovoLead(prev => ({ ...prev, email: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="endereco">Endereço</Label>
+                <Input
+                  id="endereco"
+                  value={novoLead.endereco || ""}
+                  onChange={(e) => setNovoLead(prev => ({ ...prev, endereco: e.target.value }))}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="fonte">Fonte</Label>
+                  <Select
+                    value={novoLead.fonte || ""}
+                    onValueChange={(value) => setNovoLead(prev => ({ ...prev, fonte: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a fonte" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Indicação">Indicação</SelectItem>
+                      <SelectItem value="Google Ads">Google Ads</SelectItem>
+                      <SelectItem value="LinkedIn">LinkedIn</SelectItem>
+                      <SelectItem value="Instagram">Instagram</SelectItem>
+                      <SelectItem value="Visita presencial">Visita presencial</SelectItem>
+                      <SelectItem value="Site">Site</SelectItem>
+                      <SelectItem value="Outros">Outros</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="valorEstimado">Valor Estimado (R$)</Label>
+                  <Input
+                    id="valorEstimado"
+                    type="number"
+                    value={novoLead.valorEstimado || ""}
+                    onChange={(e) => setNovoLead(prev => ({ ...prev, valorEstimado: Number(e.target.value) }))}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="observacoes">Observações</Label>
+                <Textarea
+                  id="observacoes"
+                  value={novoLead.observacoes || ""}
+                  onChange={(e) => setNovoLead(prev => ({ ...prev, observacoes: e.target.value }))}
+                  className="min-h-[80px]"
+                />
+              </div>
+            </div>
+
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setDialogNovoAberto(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleSalvarLead}>
-                {editingId ? "Salvar Alterações" : "Adicionar Lead"}
+              <Button onClick={handleAdicionarLead}>
+                Adicionar Lead
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
-      
-      {/* Kanban Board */}
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 overflow-x-auto">
-          {leadStages.map((stage) => (
-            <div key={stage.id} className="min-w-[250px]">
-              <div className="flex justify-between items-center bg-secondary p-2 rounded-md mb-3">
-                <h3 className="font-medium">{stage.title}</h3>
-                <div className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs">
-                  {filteredLeads.filter(lead => lead.etapa === stage.id).length}
+
+      {/* Funil de Vendas */}
+      <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
+        {Object.entries(statusConfig).map(([status, config]) => {
+          const leadsDoStatus = getLeadsPorStatus(status as StatusLead);
+          const Icon = config.icon;
+          
+          return (
+            <Card key={status} className="h-fit">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${config.color}`} />
+                  {status}
+                  <Badge variant="secondary" className="ml-auto">
+                    {leadsDoStatus.length}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {leadsDoStatus.map(lead => (
+                  <Card key={lead.id} className="p-3 cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => {
+                          setLeadSelecionado(lead);
+                          setDialogAberto(true);
+                        }}>
+                    <div className="space-y-2">
+                      <div className="font-medium text-sm">{lead.empresa}</div>
+                      <div className="text-xs text-muted-foreground">{lead.nome}</div>
+                      {lead.valorEstimado && (
+                        <div className="text-xs font-medium text-green-600">
+                          R$ {lead.valorEstimado.toLocaleString('pt-BR')}
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <Badge variant="outline" className="text-xs">
+                          {lead.probabilidade}%
+                        </Badge>
+                        <Icon className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Dialog de Detalhes do Lead */}
+      <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
+        <DialogContent className="sm:max-w-[600px]">
+          {leadSelecionado && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{leadSelecionado.empresa}</DialogTitle>
+                <DialogDescription>
+                  {leadSelecionado.nome} • {leadSelecionado.status}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-1">
+                    <div className="font-medium flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Telefone
+                    </div>
+                    <div className="text-muted-foreground">{leadSelecionado.telefone}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="font-medium flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Email
+                    </div>
+                    <div className="text-muted-foreground">{leadSelecionado.email}</div>
+                  </div>
                 </div>
-              </div>
-              
-              <Droppable droppableId={stage.id}>
-                {(provided) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className="space-y-3 min-h-[200px]"
-                  >
-                    {filteredLeads
-                      .filter(lead => lead.etapa === stage.id)
-                      .map((lead, index) => (
-                        <Draggable
-                          key={lead.id}
-                          draggableId={lead.id}
-                          index={index}
-                        >
-                          {(provided) => (
-                            <Card
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className="p-2 cursor-pointer hover:shadow-md transition-shadow"
-                              onClick={() => editLead(lead)}
-                            >
-                              <CardHeader className="p-2">
-                                <CardTitle className="text-sm flex justify-between">
-                                  {lead.nome}
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent className="p-2 pt-0">
-                                <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-2">
-                                  <User className="h-3 w-3" />
-                                  <span>{lead.contato}</span>
-                                </div>
-                                <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-2">
-                                  <Phone className="h-3 w-3" />
-                                  <span>{lead.telefone}</span>
-                                </div>
-                                {lead.email && (
-                                  <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-2">
-                                    <Mail className="h-3 w-3" />
-                                    <span className="truncate">{lead.email}</span>
-                                  </div>
-                                )}
-                                <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
-                                  <MapPin className="h-3 w-3" />
-                                  <span>{lead.cidade}</span>
-                                </div>
-                                <div className="flex items-center space-x-1 text-xs text-muted-foreground mb-1">
-                                  <BuildingIcon className="h-3 w-3" />
-                                  <span>{lead.categoriaEstabelecimento || "Não definido"}</span>
-                                </div>
-                                <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-                                  <User className="h-3 w-3" />
-                                  <span>{lead.responsavel}</span>
-                                </div>
-                                {lead.valorGiroSemanal && (
-                                  <div className="flex items-center space-x-1 text-xs text-muted-foreground mt-1">
-                                    <DollarSign className="h-3 w-3" />
-                                    <span>R$ {lead.valorGiroSemanal.toFixed(2)}</span>
-                                  </div>
-                                )}
-                                {lead.observacoes && (
-                                  <div className="border-t mt-2 pt-1">
-                                    <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-                                      <FileText className="h-3 w-3" />
-                                      <span className="line-clamp-2">{lead.observacoes}</span>
-                                    </div>
-                                  </div>
-                                )}
-                                <div className="text-xs flex items-center mt-2 text-muted-foreground">
-                                  <CalendarClock className="h-3 w-3 mr-1" />
-                                  <span>
-                                    {new Date(lead.dataAtualizacao).toLocaleDateString('pt-BR')}
-                                  </span>
-                                </div>
-                                {lead.etapa === "ativo" && (
-                                  <div className="mt-2">
-                                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium dark:bg-green-900 dark:text-green-100">
-                                      Cliente Ativado
-                                    </span>
-                                  </div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          )}
-                        </Draggable>
-                      ))}
-                    {provided.placeholder}
+
+                <div className="space-y-1 text-sm">
+                  <div className="font-medium flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Endereço
+                  </div>
+                  <div className="text-muted-foreground">{leadSelecionado.endereco}</div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-1">
+                    <div className="font-medium">Fonte</div>
+                    <div className="text-muted-foreground">{leadSelecionado.fonte}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="font-medium">Valor Estimado</div>
+                    <div className="text-muted-foreground">
+                      R$ {leadSelecionado.valorEstimado?.toLocaleString('pt-BR') || '0'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-sm">
+                  <div className="font-medium">Observações</div>
+                  <div className="text-muted-foreground">{leadSelecionado.observacoes}</div>
+                </div>
+
+                {leadSelecionado.proximaAcao && (
+                  <div className="space-y-1 text-sm">
+                    <div className="font-medium">Próxima Ação</div>
+                    <div className="text-muted-foreground">{leadSelecionado.proximaAcao}</div>
                   </div>
                 )}
-              </Droppable>
-            </div>
-          ))}
-        </div>
-      </DragDropContext>
+
+                <div className="space-y-2">
+                  <Label>Mover para Status:</Label>
+                  <Select
+                    value={leadSelecionado.status}
+                    onValueChange={(value) => handleAtualizarStatus(leadSelecionado.id, value as StatusLead)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Novo">Novo</SelectItem>
+                      <SelectItem value="Contato Inicial">Contato Inicial</SelectItem>
+                      <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
+                      <SelectItem value="Negociação">Negociação</SelectItem>
+                      <SelectItem value="Fechado">Fechado</SelectItem>
+                      <SelectItem value="Perdido">Perdido</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDialogAberto(false)}>
+                  Fechar
+                </Button>
+                {leadSelecionado.status === 'Negociação' && (
+                  <Button onClick={() => handleConverterParaCliente(leadSelecionado)}>
+                    <UserCheck className="h-4 w-4 mr-2" />
+                    Converter para Cliente
+                  </Button>
+                )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

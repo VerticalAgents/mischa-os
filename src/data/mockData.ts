@@ -26,7 +26,8 @@ export const clientesMock: Cliente[] = [
     tipoLogistica: "Própria",
     emiteNotaFiscal: true,
     tipoCobranca: "À vista",
-    formaPagamento: "Boleto"
+    formaPagamento: "Boleto",
+    ativo: true
   },
   {
     id: 2,
@@ -46,7 +47,8 @@ export const clientesMock: Cliente[] = [
     tipoLogistica: "Própria",
     emiteNotaFiscal: true,
     tipoCobranca: "Consignado",
-    formaPagamento: "PIX"
+    formaPagamento: "PIX",
+    ativo: true
   },
   {
     id: 3,
@@ -66,7 +68,8 @@ export const clientesMock: Cliente[] = [
     tipoLogistica: "Distribuição",
     emiteNotaFiscal: false,
     tipoCobranca: "À vista",
-    formaPagamento: "Dinheiro"
+    formaPagamento: "Dinheiro",
+    ativo: true
   },
   {
     id: 4,
@@ -85,7 +88,8 @@ export const clientesMock: Cliente[] = [
     tipoLogistica: "Própria",
     emiteNotaFiscal: true,
     tipoCobranca: "À vista",
-    formaPagamento: "PIX"
+    formaPagamento: "PIX",
+    ativo: false
   },
   {
     id: 5,
@@ -105,7 +109,8 @@ export const clientesMock: Cliente[] = [
     tipoLogistica: "Distribuição",
     emiteNotaFiscal: true,
     tipoCobranca: "Consignado",
-    formaPagamento: "Boleto"
+    formaPagamento: "Boleto",
+    ativo: false
   },
   {
     id: 6,
@@ -124,7 +129,8 @@ export const clientesMock: Cliente[] = [
     tipoLogistica: "Própria",
     emiteNotaFiscal: false,
     tipoCobranca: "À vista",
-    formaPagamento: "Dinheiro"
+    formaPagamento: "Dinheiro",
+    ativo: false
   },
   {
     id: 7,
@@ -144,7 +150,8 @@ export const clientesMock: Cliente[] = [
     tipoLogistica: "Própria",
     emiteNotaFiscal: true,
     tipoCobranca: "Consignado",
-    formaPagamento: "PIX"
+    formaPagamento: "PIX",
+    ativo: false
   }
 ];
 

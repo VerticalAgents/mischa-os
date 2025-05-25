@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -161,6 +160,7 @@ export default function ClienteFormDialog({
           ...data,
           quantidadePadrao: Number(data.quantidadePadrao),
           periodicidadePadrao: Number(data.periodicidadePadrao),
+          ativo: data.statusCliente === 'Ativo'
         });
         
         toast({
