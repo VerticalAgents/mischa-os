@@ -153,7 +153,6 @@ export default function ClienteTable({
                 <TableCell>
                   <ConfirmacaoActions
                     cliente={cliente}
-                    statusNome={status?.nome || "Não definido"}
                     statusId={statusId}
                     observacoes={observacoes}
                     setObservacoes={setObservacoes}

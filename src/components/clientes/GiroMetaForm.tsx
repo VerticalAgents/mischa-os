@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Cliente } from "@/types";
+import { Cliente } from "@/hooks/useClientesSupabase";
 
 interface GiroMetaFormProps {
   cliente: Cliente;
@@ -93,12 +93,12 @@ export default function GiroMetaForm({ cliente, metaAtual, onClose, onSave }: Gi
 // Helper function to calculate weekly turnover
 function calcularGiroSemanalBase(cliente: Cliente): number {
   // Para periodicidade em dias, converter para semanas
-  if (cliente.periodicidadePadrao === 3) {
+  if (cliente.periodicidade_padrao === 3) {
     // Caso especial: 3x por semana
-    return cliente.quantidadePadrao * 3;
+    return (cliente.quantidade_padrao || 0) * 3;
   }
   
   // Para outros casos, calcular giro semanal
-  const periodicidadeSemanas = cliente.periodicidadePadrao / 7;
-  return Math.round(cliente.quantidadePadrao / periodicidadeSemanas);
+  const periodicidadeSemanas = (cliente.periodicidade_padrao || 7) / 7;
+  return Math.round((cliente.quantidade_padrao || 0) / periodicidadeSemanas);
 }

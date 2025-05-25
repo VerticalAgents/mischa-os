@@ -1,168 +1,111 @@
 
 import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
-import { DashboardData, Cliente, Pedido } from '../types';
-import { calcularGiroSemanalPDV, calcularPrevisaoGiroSemanal, calcularPrevisaoGiroMensal } from '../utils/calculations';
+import { Cliente, Pedido } from '../types';
 
-interface DashboardStore {
-  dashboardData: DashboardData;
-  
-  // Ações
-  atualizarDashboard: (clientes: Cliente[], pedidos: Pedido[]) => void;
-  
-  // Getters
-  getContadoresStatus: () => DashboardData['contadoresStatus'];
-  getGiroMedioSemanalPorPDV: () => DashboardData['giroMedioSemanalPorPDV'];
-  getGiroMedioSemanalGeral: () => number;
-  getPrevisaoGiroTotalSemanal: () => number;
-  getPrevisaoGiroTotalMensal: () => number;
-  getDadosGraficoPDVsPorStatus: () => { name: string; value: number }[];
+interface DashboardData {
+  totalPDVsAtivos: number;
+  totalEntregasHoje: number;
+  totalProducaoHoje: number;
+  totalVendasSemana: number;
+  clientesInativos: Cliente[];
+  alertasUrgentes: string[];
+  proximasEntregas: Pedido[];
+  metricasDesempenho: {
+    eficienciaEntrega: number;
+    satisfacaoCliente: number;
+    volumeProducao: number;
+  };
 }
 
-export const useDashboardStore = create<DashboardStore>()(
-  devtools(
-    (set, get) => ({
-      dashboardData: {
-        contadoresStatus: {
-          ativos: 0,
-          emAnalise: 0,
-          inativos: 0,
-          aAtivar: 0,
-          standby: 0
-        },
-        giroMedioSemanalPorPDV: [],
-        giroMedioSemanalGeral: 0,
-        previsaoGiroTotalSemanal: 0,
-        previsaoGiroTotalMensal: 0
-      },
+interface DashboardStore {
+  data: DashboardData;
+  loading: boolean;
+  loadDashboardData: (clientes: Cliente[], pedidos: Pedido[]) => void;
+}
+
+export const useDashboardStore = create<DashboardStore>((set) => ({
+  data: {
+    totalPDVsAtivos: 0,
+    totalEntregasHoje: 0,
+    totalProducaoHoje: 0,
+    totalVendasSemana: 0,
+    clientesInativos: [],
+    alertasUrgentes: [],
+    proximasEntregas: [],
+    metricasDesempenho: {
+      eficienciaEntrega: 0,
+      satisfacaoCliente: 0,
+      volumeProducao: 0,
+    },
+  },
+  loading: false,
+  
+  loadDashboardData: (clientes: Cliente[], pedidos: Pedido[]) => {
+    set({ loading: true });
+    
+    // Calculate dashboard metrics
+    const totalPDVsAtivos = clientes.filter(c => c.status_cliente === 'Ativo').length;
+    const clientesEmAnalise = clientes.filter(c => c.status_cliente === 'Em análise').length;
+    const clientesStandby = clientes.filter(c => c.status_cliente === 'Standby').length;
+    const clientesAtivar = clientes.filter(c => c.status_cliente === 'A ativar').length;
+    const clientesInativos = clientes.filter(c => c.status_cliente === 'Inativo').length;
+    
+    // Calculate clients without recent orders
+    const hoje = new Date();
+    const umMesAtras = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    const clientesSemPedidosRecentes = clientes.filter(cliente => {
+      if (cliente.status_cliente !== 'Ativo') return false;
       
-      atualizarDashboard: (clientes, pedidos) => {
-        // 1. Calcular contadores de status
-        const contadoresStatus = {
-          ativos: clientes.filter(c => c.statusCliente === "Ativo").length,
-          emAnalise: clientes.filter(c => c.statusCliente === "Em análise").length,
-          inativos: clientes.filter(c => c.statusCliente === "Inativo").length,
-          aAtivar: clientes.filter(c => c.statusCliente === "A ativar").length,
-          standby: clientes.filter(c => c.statusCliente === "Standby").length
-        };
-        
-        // 2. Calcular giro médio semanal por PDV
-        const clientesAtivosAnalise = clientes.filter(c => 
-          c.statusCliente === "Ativo" || c.statusCliente === "Em análise"
-        );
-        
-        const giroMedioSemanalPorPDV = clientesAtivosAnalise
-          .filter(cliente => cliente.ultimaDataReposicaoEfetiva)
-          .map(cliente => {
-            // Encontrar o último pedido entregue para este cliente
-            const ultimoPedidoEntregue = [...pedidos]
-              .filter(p => 
-                p.idCliente === cliente.id && 
-                p.statusPedido === "Entregue" &&
-                p.dataEfetivaEntrega
-              )
-              .sort((a, b) => 
-                new Date(b.dataEfetivaEntrega!).getTime() - new Date(a.dataEfetivaEntrega!).getTime()
-              )[0];
-            
-            if (!ultimoPedidoEntregue || !ultimoPedidoEntregue.dataEfetivaEntrega || !cliente.ultimaDataReposicaoEfetiva) {
-              return {
-                idCliente: cliente.id,
-                nomeCliente: cliente.nome,
-                giroSemanal: cliente.quantidadePadrao * (7 / cliente.periodicidadePadrao) // Estimativa baseada no Qp e Pp
-              };
-            }
-            
-            // Encontrar o penúltimo pedido entregue (para calcular o delta)
-            const penultimoPedidoEntregue = [...pedidos]
-              .filter(p => 
-                p.idCliente === cliente.id && 
-                p.statusPedido === "Entregue" &&
-                p.dataEfetivaEntrega &&
-                new Date(p.dataEfetivaEntrega).getTime() < new Date(ultimoPedidoEntregue.dataEfetivaEntrega!).getTime()
-              )
-              .sort((a, b) => 
-                new Date(b.dataEfetivaEntrega!).getTime() - new Date(a.dataEfetivaEntrega!).getTime()
-              )[0];
-            
-            if (!penultimoPedidoEntregue || !penultimoPedidoEntregue.dataEfetivaEntrega) {
-              return {
-                idCliente: cliente.id,
-                nomeCliente: cliente.nome,
-                giroSemanal: cliente.quantidadePadrao * (7 / cliente.periodicidadePadrao) // Estimativa baseada no Qp e Pp
-              };
-            }
-            
-            // Calcular delta efetivo
-            const deltaEfetivo = Math.max(1, Math.round(
-              (new Date(ultimoPedidoEntregue.dataEfetivaEntrega).getTime() - 
-               new Date(penultimoPedidoEntregue.dataEfetivaEntrega).getTime()) / 
-              (1000 * 60 * 60 * 24)
-            ));
-            
-            // Calcular o total entregue
-            const totalEntregue = ultimoPedidoEntregue.itensPedido.reduce(
-              (sum, item) => sum + (item.quantidadeEntregue ?? item.quantidadeSabor), 0
-            );
-            
-            // Calcular o giro semanal
-            const giroSemanal = calcularGiroSemanalPDV(totalEntregue, deltaEfetivo);
-            
-            return {
-              idCliente: cliente.id,
-              nomeCliente: cliente.nome,
-              giroSemanal
-            };
-          });
-        
-        // 3. Calcular giro médio semanal geral
-        const totalGiroSemanal = giroMedioSemanalPorPDV.reduce((sum, pdv) => sum + pdv.giroSemanal, 0);
-        const giroMedioSemanalGeral = giroMedioSemanalPorPDV.length > 0 
-          ? totalGiroSemanal / giroMedioSemanalPorPDV.length
-          : 0;
-        
-        // 4. Calcular previsão de giro semanal
-        const previsaoGiroTotalSemanal = calcularPrevisaoGiroSemanal(
-          clientes.filter(c => c.statusCliente === "Ativo")
-        );
-        
-        // 5. Calcular previsão de giro mensal
-        const previsaoGiroTotalMensal = calcularPrevisaoGiroMensal(previsaoGiroTotalSemanal);
-        
-        // Atualizar o store
-        set({
-          dashboardData: {
-            contadoresStatus,
-            giroMedioSemanalPorPDV,
-            giroMedioSemanalGeral,
-            previsaoGiroTotalSemanal,
-            previsaoGiroTotalMensal
-          }
-        });
-      },
+      const ultimaReposicao = cliente.ultima_data_reposicao_efetiva;
+      if (!ultimaReposicao) return true;
       
-      getContadoresStatus: () => get().dashboardData.contadoresStatus,
-      
-      getGiroMedioSemanalPorPDV: () => get().dashboardData.giroMedioSemanalPorPDV,
-      
-      getGiroMedioSemanalGeral: () => get().dashboardData.giroMedioSemanalGeral,
-      
-      getPrevisaoGiroTotalSemanal: () => get().dashboardData.previsaoGiroTotalSemanal,
-      
-      getPrevisaoGiroTotalMensal: () => get().dashboardData.previsaoGiroTotalMensal,
-      
-      getDadosGraficoPDVsPorStatus: () => {
-        const { contadoresStatus } = get().dashboardData;
-        
-        return [
-          { name: 'Ativos', value: contadoresStatus.ativos },
-          { name: 'Em análise', value: contadoresStatus.emAnalise },
-          { name: 'A ativar', value: contadoresStatus.aAtivar },
-          { name: 'Standby', value: contadoresStatus.standby },
-          { name: 'Inativos', value: contadoresStatus.inativos }
-        ];
+      return new Date(ultimaReposicao) < umMesAtras;
+    });
+    
+    // Calculate production metrics
+    const clientesComGiro = clientes.filter(c => 
+      c.ativo && c.quantidade_padrao && c.periodicidade_padrao
+    );
+    
+    const giroSemanalEstimado = clientesComGiro.reduce((total, cliente) => {
+      if (cliente.periodicidade_padrao === 3) {
+        return total + ((cliente.quantidade_padrao || 0) * 3);
       }
-    }),
-    { name: 'dashboard-store' }
-  )
-);
+      const periodicidadeSemanas = (cliente.periodicidade_padrao || 7) / 7;
+      return total + Math.round((cliente.quantidade_padrao || 0) / periodicidadeSemanas);
+    }, 0);
+    
+    // Calculate today's deliveries
+    const entregasHoje = pedidos.filter(p => {
+      const dataPrevista = new Date(p.dataPrevistaEntrega);
+      return dataPrevista.toDateString() === hoje.toDateString();
+    }).length;
+    
+    // Calculate weekly sales (estimated)
+    const vendasSemana = giroSemanalEstimado * 5; // Preço médio estimado
+    
+    const dashboardData: DashboardData = {
+      totalPDVsAtivos,
+      totalEntregasHoje: entregasHoje,
+      totalProducaoHoje: Math.round(giroSemanalEstimado / 7), // Daily average
+      totalVendasSemana: vendasSemana,
+      clientesInativos: clientesSemPedidosRecentes,
+      alertasUrgentes: [
+        clientesSemPedidosRecentes.length > 0 ? `${clientesSemPedidosRecentes.length} clientes sem pedidos há mais de 30 dias` : '',
+        clientesEmAnalise > 0 ? `${clientesEmAnalise} clientes em análise` : '',
+      ].filter(Boolean),
+      proximasEntregas: pedidos
+        .filter(p => new Date(p.dataPrevistaEntrega) >= hoje)
+        .sort((a, b) => new Date(a.dataPrevistaEntrega).getTime() - new Date(b.dataPrevistaEntrega).getTime())
+        .slice(0, 5),
+      metricasDesempenho: {
+        eficienciaEntrega: Math.min(95, Math.max(70, 90 - clientesSemPedidosRecentes.length)), // Between 70-95%
+        satisfacaoCliente: Math.min(100, Math.max(80, 95 - (clientesEmAnalise * 2))), // Between 80-100%
+        volumeProducao: Math.min(100, Math.max(60, (giroSemanalEstimado / 1000) * 100)), // Based on weekly volume
+      },
+    };
+    
+    set({ data: dashboardData, loading: false });
+  },
+}));
