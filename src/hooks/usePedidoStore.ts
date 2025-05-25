@@ -13,7 +13,7 @@ interface PedidoStore {
   filtros: {
     dataInicio?: Date;
     dataFim?: Date;
-    idCliente?: number;
+    idCliente?: string; // Changed from number to string
     status?: StatusPedido | 'Todos';
     substatus?: SubstatusPedidoAgendado | 'Todos';
   };
@@ -36,7 +36,7 @@ interface PedidoStore {
   // Ações de filtro
   setFiltroDataInicio: (data?: Date) => void;
   setFiltroDataFim: (data?: Date) => void;
-  setFiltroCliente: (idCliente?: number) => void;
+  setFiltroCliente: (idCliente?: string) => void; // Changed from number to string
   setFiltroStatus: (status?: StatusPedido | 'Todos') => void;
   setFiltroSubstatus: (substatus?: SubstatusPedidoAgendado | 'Todos') => void;
   limparFiltros: () => void;
@@ -44,7 +44,7 @@ interface PedidoStore {
   // Getters
   getPedidosFiltrados: () => Pedido[];
   getPedidoPorId: (id: number) => Pedido | undefined;
-  getPedidosPorCliente: (idCliente: number) => Pedido[];
+  getPedidosPorCliente: (idCliente: string) => Pedido[]; // Changed from number to string
   getPedidosPorStatus: (status: StatusPedido) => Pedido[];
   getPedidosPorSubstatus: (substatus: SubstatusPedidoAgendado) => Pedido[];
   getPedidosFuturos: () => Pedido[];
@@ -144,7 +144,7 @@ export const usePedidoStore = create<PedidoStore>()(
         
         let cliente = undefined;
         if (pedido.idCliente > 0) {
-          cliente = useClienteStore.getState().getClientePorId(pedido.idCliente);
+          cliente = useClienteStore.getState().getClientePorId(pedido.idCliente.toString());
         }
         
         const novoPedido = {
@@ -474,7 +474,7 @@ export const usePedidoStore = create<PedidoStore>()(
             (!filtros.dataInicio || new Date(pedido.dataPrevistaEntrega) >= new Date(filtros.dataInicio)) &&
             (!filtros.dataFim || new Date(pedido.dataPrevistaEntrega) <= new Date(filtros.dataFim));
           
-          const clienteMatch = !filtros.idCliente || pedido.idCliente === filtros.idCliente;
+          const clienteMatch = !filtros.idCliente || pedido.cliente?.id === filtros.idCliente;
           
           const statusMatch = !filtros.status || filtros.status === 'Todos' || pedido.statusPedido === filtros.status;
           
@@ -489,7 +489,7 @@ export const usePedidoStore = create<PedidoStore>()(
       },
       
       getPedidosPorCliente: (idCliente) => {
-        return get().pedidos.filter(p => p.idCliente === idCliente);
+        return get().pedidos.filter(p => p.cliente?.id === idCliente);
       },
       
       getPedidosPorStatus: (status) => {
