@@ -28,7 +28,7 @@ import ExportacaoButtons from "./ExportacaoButtons";
 import StatusCriticoBadge from "./StatusCriticoBadge";
 
 interface AgendamentoItem {
-  cliente: { id: number; nome: string; contatoNome?: string; contatoTelefone?: string };
+  cliente: { id: string; nome: string; contatoNome?: string; contatoTelefone?: string };
   pedido?: any;
   dataReposicao: Date;
   statusAgendamento: string;
@@ -39,9 +39,9 @@ export default function ConfirmacaoReposicao() {
   const { clientes, atualizarCliente } = useClienteStore();
   const { getPedidosFiltrados, getPedidosFuturos, atualizarPedido } = usePedidoStore();
   const { statusConfirmacao } = useStatusAgendamentoStore();
-  const { confirmarEntrega } = useAutomacaoStatus(); // Usar hook de automação
+  const { confirmarEntrega } = useAutomacaoStatus();
   const [clientesporStatus, setClientesPorStatus] = useState<{[key: number]: Cliente[]}>({});
-  const [pedidosCliente, setPedidosCliente] = useState<{[key: number]: Pedido}>({});
+  const [pedidosCliente, setPedidosCliente] = useState<{[key: string]: Pedido}>({});
   const [observacoes, setObservacoes] = useState<{[key: string]: string}>({});
   const [tabValue, setTabValue] = useState("hoje");
   const [filtros, setFiltros] = useState<{ rota?: string; cidade?: string }>({});
@@ -73,14 +73,14 @@ export default function ConfirmacaoReposicao() {
   // Organize clients by confirmation status
   useEffect(() => {
     const pedidosFuturos = getPedidosFuturos();
-    const clientesComPedidos: {[key: number]: Cliente} = {};
-    const pedidosPorCliente: {[key: number]: Pedido} = {};
+    const clientesComPedidos: {[key: string]: Cliente} = {};
+    const pedidosPorCliente: {[key: string]: Pedido} = {};
     
     // Map pedidos to clientes
     pedidosFuturos.forEach(pedido => {
       if (pedido.cliente) {
-        clientesComPedidos[pedido.idCliente] = pedido.cliente;
-        pedidosPorCliente[pedido.idCliente] = pedido;
+        clientesComPedidos[pedido.idCliente.toString()] = pedido.cliente;
+        pedidosPorCliente[pedido.idCliente.toString()] = pedido;
       }
     });
     
@@ -90,8 +90,9 @@ export default function ConfirmacaoReposicao() {
     if (filtros.rota || filtros.cidade) {
       clientesFiltrados = clientesFiltrados.filter(cliente => {
         // Simulação de filtro por rota/cidade - em implementação real viria dos dados do cliente
-        const rotaCliente = ["Rota Centro", "Rota Norte", "Rota Sul"][cliente.id % 3];
-        const cidadeCliente = ["São Paulo", "Guarulhos", "Osasco"][cliente.id % 3];
+        const hashId = cliente.id.length;
+        const rotaCliente = ["Rota Centro", "Rota Norte", "Rota Sul"][hashId % 3];
+        const cidadeCliente = ["São Paulo", "Guarulhos", "Osasco"][hashId % 3];
         
         const rotaMatch = !filtros.rota || rotaCliente === filtros.rota;
         const cidadeMatch = !filtros.cidade || cidadeCliente === filtros.cidade;

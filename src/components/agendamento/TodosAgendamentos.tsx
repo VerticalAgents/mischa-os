@@ -54,7 +54,7 @@ export default function TodosAgendamentos() {
       const nome = nomeMatch ? nomeMatch[1] : `Pedido Único #${pedido.id}`;
       
       const clienteFicticio: Cliente = {
-        id: 0,
+        id: `pedido-unico-${pedido.id}`,
         nome,
         quantidadePadrao: 0,
         periodicidadePadrao: 0,
@@ -65,7 +65,9 @@ export default function TodosAgendamentos() {
         emiteNotaFiscal: false,
         tipoCobranca: "À vista",
         formaPagamento: "Dinheiro",
-        ativo: true
+        ativo: true,
+        categoriaId: 1,
+        subcategoriaId: 1
       };
       
       agendamentosTemp.push({

@@ -29,7 +29,7 @@ export function relacionarItensPedidos() {
 
 export function relacionarClientesPedidos() {
   const pedidosComClientes = pedidosMock.map(pedido => {
-    const cliente = clientesMock.find(c => c.id === pedido.idCliente);
+    const cliente = clientesMock.find(c => c.id === pedido.idCliente.toString());
     return { ...pedido, cliente };
   });
   

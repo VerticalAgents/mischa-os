@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { Cliente, StatusCliente } from '../types';
@@ -16,22 +17,22 @@ interface ClienteStore {
   // Ações
   carregarClientes: () => Promise<void>;
   adicionarCliente: (cliente: Omit<Cliente, 'id' | 'dataCadastro'>) => Promise<void>;
-  atualizarCliente: (id: number, dadosCliente: Partial<Cliente>) => Promise<void>;
-  removerCliente: (id: number) => Promise<void>;
-  selecionarCliente: (id: number | null) => void;
+  atualizarCliente: (id: string, dadosCliente: Partial<Cliente>) => Promise<void>;
+  removerCliente: (id: string) => Promise<void>;
+  selecionarCliente: (id: string | null) => void;
   setFiltroTermo: (termo: string) => void;
   setFiltroStatus: (status: StatusCliente | 'Todos') => void;
-  setMetaGiro: (idCliente: number, metaSemanal: number) => Promise<void>;
+  setMetaGiro: (idCliente: string, metaSemanal: number) => Promise<void>;
   
   // Getters
   getClientesFiltrados: () => Cliente[];
-  getClientePorId: (id: number) => Cliente | undefined;
+  getClientePorId: (id: string) => Cliente | undefined;
 }
 
 // Helper para converter dados do Supabase para o tipo Cliente
 function convertSupabaseToCliente(data: any): Cliente {
   return {
-    id: parseInt(data.id) || Math.random() * 1000000, // Fallback temporário
+    id: data.id,
     nome: data.nome,
     cnpjCpf: data.cnpj_cpf,
     enderecoEntrega: data.endereco_entrega,
@@ -58,7 +59,9 @@ function convertSupabaseToCliente(data: any): Cliente {
     emiteNotaFiscal: data.emite_nota_fiscal || true,
     tipoCobranca: data.tipo_cobranca || 'À vista',
     formaPagamento: data.forma_pagamento || 'Boleto',
-    observacoes: data.observacoes
+    observacoes: data.observacoes,
+    categoriaId: data.categoria_id || 1,
+    subcategoriaId: data.subcategoria_id || 1
   };
 }
 
@@ -90,7 +93,9 @@ function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>)
     emite_nota_fiscal: cliente.emiteNotaFiscal,
     tipo_cobranca: cliente.tipoCobranca,
     forma_pagamento: cliente.formaPagamento,
-    observacoes: cliente.observacoes
+    observacoes: cliente.observacoes,
+    categoria_id: cliente.categoriaId,
+    subcategoria_id: cliente.subcategoriaId
   };
 }
 
@@ -192,23 +197,6 @@ export const useClienteStore = create<ClienteStore>()(
             return;
           }
 
-          // Encontrar o registro no Supabase usando o ID
-          const { data: clienteSupabase, error: fetchError } = await supabase
-            .from('clientes')
-            .select('id')
-            .eq('id', clienteExistente.id.toString())
-            .single();
-
-          if (fetchError) {
-            console.error('Erro ao buscar cliente:', fetchError);
-            toast({
-              title: "Erro",
-              description: "Cliente não encontrado no banco de dados",
-              variant: "destructive"
-            });
-            return;
-          }
-
           // Converter dadosCliente para formato Supabase
           const dadosSupabase: any = {};
           
@@ -226,7 +214,7 @@ export const useClienteStore = create<ClienteStore>()(
           const { error } = await supabase
             .from('clientes')
             .update(dadosSupabase)
-            .eq('id', clienteSupabase.id);
+            .eq('id', id);
 
           if (error) {
             console.error('Erro ao atualizar cliente:', error);
@@ -267,27 +255,10 @@ export const useClienteStore = create<ClienteStore>()(
 
         set({ loading: true });
         try {
-          // Encontrar o registro no Supabase usando o ID
-          const { data: clienteSupabase, error: fetchError } = await supabase
-            .from('clientes')
-            .select('id')
-            .eq('id', cliente.id.toString())
-            .single();
-
-          if (fetchError) {
-            console.error('Erro ao buscar cliente:', fetchError);
-            toast({
-              title: "Erro",
-              description: "Cliente não encontrado no banco de dados",
-              variant: "destructive"
-            });
-            return;
-          }
-
           const { error } = await supabase
             .from('clientes')
             .delete()
-            .eq('id', clienteSupabase.id);
+            .eq('id', id);
 
           if (error) {
             console.error('Erro ao remover cliente:', error);
