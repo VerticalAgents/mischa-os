@@ -3,7 +3,13 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components
 import AgendamentoRow from "./AgendamentoRow";
 
 interface AgendamentoItem {
-  cliente: { id: number; nome: string; contatoNome?: string; contatoTelefone?: string };
+  cliente: { 
+    id: number; 
+    nome: string; 
+    contatoNome?: string; 
+    contatoTelefone?: string;
+    quantidadePadrao?: number;
+  };
   pedido?: any;
   dataReposicao: Date;
   statusAgendamento: string;

@@ -5,7 +5,13 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import AgendamentoActions from "./AgendamentoActions";
 
 interface AgendamentoItem {
-  cliente: { id: number; nome: string; contatoNome?: string; contatoTelefone?: string };
+  cliente: { 
+    id: number; 
+    nome: string; 
+    contatoNome?: string; 
+    contatoTelefone?: string;
+    quantidadePadrao?: number;
+  };
   pedido?: any;
   dataReposicao: Date;
   statusAgendamento: string;
@@ -61,7 +67,7 @@ export default function AgendamentoRow({ agendamento, index, onEdit }: Agendamen
         </Badge>
       </TableCell>
       <TableCell>
-        {agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao} un
+        {agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0} un
       </TableCell>
       <TableCell>
         <Badge variant={agendamento.isPedidoUnico ? "destructive" : "default"}>

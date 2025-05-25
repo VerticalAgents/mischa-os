@@ -4,7 +4,13 @@ import { MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 
 interface AgendamentoItem {
-  cliente: { id: number; nome: string; contatoNome?: string; contatoTelefone?: string };
+  cliente: { 
+    id: number; 
+    nome: string; 
+    contatoNome?: string; 
+    contatoTelefone?: string;
+    quantidadePadrao?: number;
+  };
   pedido?: any;
   dataReposicao: Date;
   statusAgendamento: string;
