@@ -167,7 +167,8 @@ export default function AjusteEstoqueTab() {
                         ⚠ Estoque indisponível ou desatualizado
                       </div>
                     </TableCell>
-                  )}
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
