@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Cliente } from "@/types";
 import { Trash2 } from "lucide-react";
@@ -84,7 +83,7 @@ export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsVi
       <ClienteFormDialog 
         open={isFormOpen} 
         onOpenChange={setIsFormOpen} 
-        clienteId={cliente.id} 
+        cliente={cliente} 
       />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

@@ -19,6 +19,7 @@ export interface CategoriaEstabelecimento {
   id: number;
   nome: string;
   descricao?: string;
+  ativo: boolean;
 }
 
 export interface Representante {
@@ -26,6 +27,7 @@ export interface Representante {
   nome: string;
   telefone?: string;
   email?: string;
+  ativo: boolean;
 }
 
 export interface RotaEntrega {
@@ -33,12 +35,26 @@ export interface RotaEntrega {
   nome: string;
   descricao?: string;
   regiao?: string;
+  ativo: boolean;
 }
 
 export interface CategoriaInsumo {
   id: number;
   nome: string;
   descricao?: string;
+  ativo: boolean;
+}
+
+export interface FormaPagamentoItem {
+  id: number;
+  nome: FormaPagamentoNome;
+  ativo: boolean;
+}
+
+export interface TipoLogisticaItem {
+  id: number;
+  nome: TipoLogisticaNome;
+  ativo: boolean;
 }
 
 export interface DashboardData {
@@ -91,17 +107,17 @@ export interface Cliente {
 
 export interface Pedido {
   id: number;
-  idCliente: number; // Add this property back
+  idCliente: number;
   cliente?: Cliente;
   itensPedido: ItemPedido[];
   dataCriacao: Date;
-  dataPedido?: Date; // Add alternative property name
-  dataPrevistaEntrega: string; // Keep as string to match existing usage
+  dataPedido?: Date;
+  dataPrevistaEntrega: string;
   dataEfetivaEntrega?: string;
   totalPedidoUnidades: number;
   observacoes?: string;
   statusPedido: StatusPedido;
-  substatusPedido?: SubstatusPedidoAgendado; // Add substatus property
+  substatusPedido?: SubstatusPedidoAgendado;
   tipoPedido: TipoPedido;
   historicoAlteracoesStatus?: AlteracaoStatusPedido[];
 }
@@ -113,7 +129,7 @@ export interface ItemPedido {
   nomeSabor: string;
   quantidadeSabor: number;
   quantidadeEntregue?: number;
-  sabor?: string; // Add sabor property for compatibility
+  sabor?: string;
 }
 
 export interface Produto {
@@ -158,7 +174,7 @@ export interface Insumo {
   dataUltimaCompra?: Date;
   fornecedor?: string;
   observacoes?: string;
-  categoria?: string; // Add categoria property
+  categoria?: string;
 }
 
 export interface Receita {

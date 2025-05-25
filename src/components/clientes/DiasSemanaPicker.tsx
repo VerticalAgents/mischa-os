@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { DiaSemana } from '@/types';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-const diasSemana: DiaSemana[] = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const diasSemana: DiaSemana[] = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 
 interface DiaSemanaPickerProps {
   value: DiaSemana[];
@@ -41,3 +40,4 @@ export default function DiasSemanaPicker({ value, onChange, className }: DiaSema
     </div>
   );
 }
+
