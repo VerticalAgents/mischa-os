@@ -4,15 +4,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
 import UserDrawer from "@/components/user/UserDrawer";
-import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function TopHeader() {
   const [isUserDrawerOpen, setIsUserDrawerOpen] = useState(false);
+  const { user } = useAuth();
   
   const userData = {
-    name: "Admin",
-    email: "admin@mischasbakery.com",
-    avatarUrl: undefined // Se tiver uma URL de avatar, pode ser definida aqui
+    name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuário",
+    email: user?.email || "",
+    avatarUrl: user?.user_metadata?.avatar_url
   };
   
   return (

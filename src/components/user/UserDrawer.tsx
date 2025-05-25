@@ -1,20 +1,11 @@
 
-import React from "react";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
-} from "@/components/ui/sheet";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { LogOut, Settings, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate, Link } from "react-router-dom";
-import { LogOut, User, Settings, HelpCircle, Lightbulb, Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface UserDrawerProps {
   isOpen: boolean;
@@ -22,89 +13,75 @@ interface UserDrawerProps {
 }
 
 export default function UserDrawer({ isOpen, onOpenChange }: UserDrawerProps) {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-    onOpenChange(false);
+  const userData = {
+    name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuário",
+    email: user?.email || "",
+    avatarUrl: user?.user_metadata?.avatar_url
   };
 
-  const userData = {
-    name: "Admin",
-    email: "admin@mischasbakery.com",
-    avatarUrl: undefined // Se tiver uma URL de avatar, pode ser definida aqui
+  const handleConfigClick = () => {
+    onOpenChange(false);
+    navigate('/configuracoes');
+  };
+
+  const handleLogout = () => {
+    onOpenChange(false);
+    logout();
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[320px] sm:w[360px]">
-        <SheetHeader>
-          <SheetTitle>Minha Conta</SheetTitle>
-          <SheetDescription>
-            Gerenciar suas configurações de usuário e acesso
-          </SheetDescription>
-        </SheetHeader>
+    <Drawer open={isOpen} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-h-[80vh]">
+        <DrawerHeader>
+          <DrawerTitle className="text-left">Minha Conta</DrawerTitle>
+        </DrawerHeader>
         
-        <div className="py-6">
-          <div className="flex items-center space-x-4">
-            <Avatar className="h-16 w-16">
+        <div className="px-4 pb-6">
+          {/* User Info */}
+          <div className="flex items-center space-x-4 p-4 rounded-lg bg-muted/50">
+            <Avatar className="h-12 w-12">
               {userData.avatarUrl ? (
                 <AvatarImage src={userData.avatarUrl} alt={userData.name} />
               ) : (
-                <AvatarFallback className="text-lg">{userData.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback className="text-lg">
+                  {userData.name.charAt(0)}
+                </AvatarFallback>
               )}
             </Avatar>
-            <div>
-              <h3 className="font-medium text-lg">{userData.name}</h3>
-              <p className="text-sm text-muted-foreground">{userData.email}</p>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium truncate">{userData.name}</p>
+              <p className="text-sm text-muted-foreground truncate">{userData.email}</p>
+              <p className="text-xs text-muted-foreground">Conectado via Google</p>
             </div>
           </div>
-        </div>
-        
-        <Separator className="my-4" />
-        
-        <div className="space-y-3">
-          <Button variant="outline" className="w-full justify-start" asChild>
-            <Link to="/configuracoes?tab=usuario">
-              <User className="mr-2 h-4 w-4" />
-              Meus dados
-            </Link>
-          </Button>
-          
-          <Button variant="outline" className="w-full justify-start" asChild>
-            <Link to="/configuracoes">
-              <Settings className="mr-2 h-4 w-4" />
-              Configurações
-            </Link>
-          </Button>
-          
+
           <Separator className="my-4" />
-          
-          <Button variant="outline" className="w-full justify-start">
-            <HelpCircle className="mr-2 h-4 w-4" />
-            Central de Ajuda
-          </Button>
-          
-          <Button variant="outline" className="w-full justify-start">
-            <Lightbulb className="mr-2 h-4 w-4" />
-            Portal de Ideias
-          </Button>
-          
-          <Button variant="outline" className="w-full justify-start">
-            <Bell className="mr-2 h-4 w-4" />
-            Atualizações
-          </Button>
+
+          {/* Menu Options */}
+          <div className="space-y-2">
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={handleConfigClick}
+            >
+              <Settings className="mr-3 h-4 w-4" />
+              Configurações
+            </Button>
+            
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-destructive hover:text-destructive"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-3 h-4 w-4" />
+              Sair do Sistema
+            </Button>
+          </div>
         </div>
-        
-        <SheetFooter className="mt-6">
-          <Button variant="destructive" onClick={handleLogout} className="w-full">
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   );
 }

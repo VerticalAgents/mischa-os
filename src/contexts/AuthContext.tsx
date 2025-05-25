@@ -2,10 +2,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { Session, User } from '@supabase/supabase-js';
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
+  user: User | null;
+  session: Session | null;
+  signInWithGoogle: () => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -25,67 +29,89 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Check if user is already authenticated on load
   useEffect(() => {
-    const checkAuth = () => {
-      const authData = localStorage.getItem('auth');
-      if (authData) {
-        setIsAuthenticated(true);
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+
+        if (event === 'SIGNED_IN' && session) {
+          // Navigate to original intended route or default to home
+          const from = location.state?.from?.pathname || '/';
+          navigate(from, { replace: true });
+          toast.success("Login realizado com sucesso");
+        }
+
+        if (event === 'SIGNED_OUT') {
+          navigate('/login');
+          toast.info("Você foi desconectado");
+        }
       }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
       setLoading(false);
-    };
+    });
 
-    checkAuth();
-  }, []);
+    return () => subscription.unsubscribe();
+  }, [navigate, location]);
 
-  // Developer credentials
-  const DEV_USERNAME = 'devmischa';
-  const DEV_PASSWORD = 'mischa9898';
-
-  const login = async (username: string, password: string): Promise<boolean> => {
-    setLoading(true);
-    
+  const signInWithGoogle = async (): Promise<void> => {
     try {
-      // Simulate network request
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      if (username === DEV_USERNAME && password === DEV_PASSWORD) {
-        // Save auth state to local storage
-        localStorage.setItem('auth', JSON.stringify({ username }));
-        setIsAuthenticated(true);
-        
-        // Navigate to original intended route or default to home
-        const from = location.state?.from?.pathname || '/';
-        navigate(from, { replace: true });
-        
-        toast.success("Login realizado com sucesso");
-        return true;
-      } else {
-        toast.error("Credenciais inválidas");
-        return false;
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+
+      if (error) {
+        toast.error("Erro ao fazer login com Google: " + error.message);
       }
     } catch (error) {
-      toast.error("Erro ao fazer login");
-      return false;
+      toast.error("Erro inesperado ao fazer login");
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('auth');
-    setIsAuthenticated(false);
-    navigate('/login');
-    toast.info("Você foi desconectado");
+  const logout = async () => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        toast.error("Erro ao fazer logout: " + error.message);
+      }
+    } catch (error) {
+      toast.error("Erro inesperado ao fazer logout");
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const isAuthenticated = !!session;
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, loading }}>
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      user, 
+      session, 
+      signInWithGoogle, 
+      logout, 
+      loading 
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,5 @@
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,13 +27,12 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 export default function UsuarioTab() {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
+  const { logout, user } = useAuth();
   
-  // Valores default para o formulário
+  // Valores default baseados no usuário logado
   const defaultValues: Partial<ProfileFormValues> = {
-    nome: "Admin",
-    email: "admin@mischasbakery.com",
+    nome: user?.user_metadata?.full_name || user?.email?.split('@')[0] || "",
+    email: user?.email || "",
     notificacoes: true,
   };
 
@@ -45,11 +43,6 @@ export default function UsuarioTab() {
 
   function onSubmit(data: ProfileFormValues) {
     toast.success("Perfil atualizado com sucesso!");
-  }
-
-  function handleLogout() {
-    logout();
-    navigate('/login');
   }
 
   return (
@@ -68,7 +61,7 @@ export default function UsuarioTab() {
             <CardHeader>
               <CardTitle>Perfil</CardTitle>
               <CardDescription>
-                Estas informações são usadas para identificá-lo no sistema.
+                Informações da sua conta Google conectada.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -92,8 +85,11 @@ export default function UsuarioTab() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="Seu email" {...field} />
+                      <Input placeholder="Seu email" {...field} disabled />
                     </FormControl>
+                    <FormDescription>
+                      Email conectado via Google (somente leitura)
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -150,13 +146,23 @@ export default function UsuarioTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            Ao sair, você será redirecionado para a página de login e precisará inserir suas credenciais novamente.
-          </p>
-          <Button variant="destructive" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair do Sistema
-          </Button>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-4 p-4 border rounded-lg">
+              <User className="h-10 w-10 text-muted-foreground" />
+              <div>
+                <p className="font-medium">{user?.user_metadata?.full_name || "Usuário"}</p>
+                <p className="text-sm text-muted-foreground">{user?.email}</p>
+                <p className="text-xs text-muted-foreground">Conectado via Google</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Ao sair, você será redirecionado para a página de login e precisará autenticar-se novamente com o Google.
+            </p>
+            <Button variant="destructive" onClick={logout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair do Sistema
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
