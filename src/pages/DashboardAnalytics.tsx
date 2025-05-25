@@ -16,6 +16,7 @@ import FinancialAnalysis from "@/components/dashboard-analytics/FinancialAnalysi
 import CustomerBehavior from "@/components/dashboard-analytics/CustomerBehavior";
 import ProductionIndicators from "@/components/dashboard-analytics/ProductionIndicators";
 import AlertsRisks from "@/components/dashboard-analytics/AlertsRisks";
+import ProducaoSimuladaTab from "@/components/dashboard-analytics/ProducaoSimuladaTab";
 
 // PDF Export
 import { jsPDF } from "jspdf";
@@ -107,6 +108,7 @@ export default function DashboardAnalytics() {
             <TabsTrigger value="financial-analysis">Análise Financeira</TabsTrigger>
             <TabsTrigger value="customer-behavior">Comportamento dos Clientes</TabsTrigger>
             <TabsTrigger value="production-indicators">Indicadores de Produção</TabsTrigger>
+            <TabsTrigger value="producao-simulada">Produção Simulada (Mensal)</TabsTrigger>
             <TabsTrigger value="alerts-risks">Alertas e Riscos</TabsTrigger>
           </TabsList>
           
@@ -137,6 +139,10 @@ export default function DashboardAnalytics() {
               registrosProducao={registrosProducao}
               planejamentoProducao={planejamentoProducao}
             />
+          </TabsContent>
+          
+          <TabsContent value="producao-simulada" className="mt-0">
+            <ProducaoSimuladaTab clientes={clientes} />
           </TabsContent>
           
           <TabsContent value="alerts-risks" className="mt-0">
