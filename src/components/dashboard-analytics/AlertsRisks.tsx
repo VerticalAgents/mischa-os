@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
-import { Alert } from "@/components/ui/alert"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react";
-import { Cliente, Pedido } from "@/types";
+import { Cliente, Pedido, Alerta } from "@/types";
 
 interface AlertsRisksProps {
   clientes: Cliente[];
@@ -11,21 +12,21 @@ interface AlertsRisksProps {
 }
 
 export default function AlertsRisks({ clientes, pedidos, registrosProducao, planejamentoProducao }: AlertsRisksProps) {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alerts, setAlerts] = useState<Alerta[]>([]);
   
   useEffect(() => {
-    const generatedAlerts: Alert[] = [];
+    const generatedAlerts: Alerta[] = [];
     
     // Check for low stock clients
     clientes.forEach((cliente, index) => {
       if (cliente.statusCliente === 'Ativo' && cliente.giroMedioSemanal && cliente.giroMedioSemanal < 10) {
         generatedAlerts.push({
           id: index + 1,
-          type: 'warning',
-          title: 'Giro baixo',
-          message: `Cliente ${cliente.nome} com giro semanal baixo (${cliente.giroMedioSemanal})`,
-          timestamp: new Date(),
-          severity: 'medium'
+          tipo: 'EstoqueAbaixoMinimo',
+          mensagem: `Cliente ${cliente.nome} com giro semanal baixo (${cliente.giroMedioSemanal})`,
+          dataAlerta: new Date(),
+          lida: false,
+          dados: { clienteId: cliente.id, giroSemanal: cliente.giroMedioSemanal }
         });
       }
     });
@@ -39,11 +40,11 @@ export default function AlertsRisks({ clientes, pedidos, registrosProducao, plan
       if (cliente.statusCliente === 'Ativo' && (!lastOrder || (new Date().getTime() - new Date(lastOrder.dataPedido).getTime()) > 30 * 24 * 60 * 60 * 1000)) {
         generatedAlerts.push({
           id: generatedAlerts.length + 1,
-          type: 'warning',
-          title: 'Sem pedidos recentes',
-          message: `Cliente ${cliente.nome} sem pedidos nos últimos 30 dias`,
-          timestamp: new Date(),
-          severity: 'medium'
+          tipo: 'ProximasEntregas',
+          mensagem: `Cliente ${cliente.nome} sem pedidos nos últimos 30 dias`,
+          dataAlerta: new Date(),
+          lida: false,
+          dados: { clienteId: cliente.id }
         });
       }
     });
@@ -54,11 +55,11 @@ export default function AlertsRisks({ clientes, pedidos, registrosProducao, plan
         if (new Date(producao.dataProducao) < new Date() && producao.status !== 'Concluído') {
           generatedAlerts.push({
             id: generatedAlerts.length + 1,
-            type: 'error',
-            title: 'Produção Atrasada',
-            message: `Produção de ${producao.produtoNome} atrasada desde ${new Date(producao.dataProducao).toLocaleDateString()}`,
-            timestamp: new Date(),
-            severity: 'high'
+            tipo: 'PedidoPronto',
+            mensagem: `Produção de ${producao.produtoNome} atrasada desde ${new Date(producao.dataProducao).toLocaleDateString()}`,
+            dataAlerta: new Date(),
+            lida: false,
+            dados: { producaoId: producao.id }
           });
         }
       });
@@ -74,9 +75,9 @@ export default function AlertsRisks({ clientes, pedidos, registrosProducao, plan
         <p>Nenhum alerta ou risco detectado.</p>
       ) : (
         alerts.map((alert, index) => (
-          <Alert key={index} variant={alert.type}>
+          <Alert key={index} variant={alert.tipo === 'PedidoPronto' ? "destructive" : "default"}>
             <AlertCircle className="h-4 w-4" />
-            <p className="text-sm">{alert.message}</p>
+            <AlertDescription className="text-sm">{alert.mensagem}</AlertDescription>
           </Alert>
         ))
       )}

@@ -10,23 +10,38 @@ import { Cliente } from "@/types";
 import { toast } from "sonner";
 
 interface ConfirmacaoReposicaoProps {
-  cliente: Cliente;
-  onClose: () => void;
+  cliente?: Cliente;
+  onClose?: () => void;
 }
 
 export default function ConfirmacaoReposicao({ cliente, onClose }: ConfirmacaoReposicaoProps) {
-  const [quantidade, setQuantidade] = useState(cliente.quantidadePadrao.toString());
+  const [quantidade, setQuantidade] = useState(cliente?.quantidadePadrao?.toString() || "0");
   const [observacoes, setObservacoes] = useState("");
   const { criarNovoPedido } = usePedidoStore();
 
   const handleConfirmar = () => {
+    if (!cliente) {
+      toast.error("Nenhum cliente selecionado");
+      return;
+    }
+
     const pedido = criarNovoPedido(cliente.id);
     
     if (pedido) {
       toast.success("Reposição confirmada com sucesso!");
-      onClose();
+      onClose?.();
     }
   };
+
+  if (!cliente) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardContent className="p-6">
+          <p className="text-center text-muted-foreground">Selecione um cliente para confirmar a reposição</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-md mx-auto">

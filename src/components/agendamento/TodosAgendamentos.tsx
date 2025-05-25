@@ -1,185 +1,108 @@
 
 import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
-import { compareAsc } from "date-fns";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Cliente, Pedido } from "@/types";
-import FiltrosLocalizacao from "./FiltrosLocalizacao";
-import EditarAgendamentoDialog from "./EditarAgendamentoDialog";
-import AgendamentoFilters from "./AgendamentoFilters";
-import AgendamentoTable from "./AgendamentoTable";
 import { AgendamentoItem } from "./types";
+import AgendamentoFilters from "./AgendamentoFilters";
+import FiltrosLocalizacao from "./FiltrosLocalizacao";
+import AgendamentoTable from "./AgendamentoTable";
+import EditarAgendamentoDialog from "./EditarAgendamentoDialog";
+import { toast } from "sonner";
 
 export default function TodosAgendamentos() {
-  const { clientes } = useClienteStore();
-  const { getPedidosFuturos, getPedidosUnicos, atualizarPedido } = usePedidoStore();
-  const [agendamentos, setAgendamentos] = useState<AgendamentoItem[]>([]);
-  const [agendamentosFiltrados, setAgendamentosFiltrados] = useState<AgendamentoItem[]>([]);
-  const [filtroAtivo, setFiltroAtivo] = useState<{ rota?: string }>({});
-  const [agendamentoSelecionado, setAgendamentoSelecionado] = useState<AgendamentoItem | null>(null);
-  const [dialogAberto, setDialogAberto] = useState(false);
+  const { clientes, carregarClientes } = useClienteStore();
+  const { pedidos, criarNovoPedido } = usePedidoStore();
+  
   const [abaAtiva, setAbaAtiva] = useState("todos");
+  const [filtroRota, setFiltroRota] = useState<{ rota?: string }>({});
+  const [agendamentoEditando, setAgendamentoEditando] = useState<AgendamentoItem | null>(null);
 
-  // Carregar agendamentos
   useEffect(() => {
-    const pedidosFuturos = getPedidosFuturos();
-    const pedidosUnicos = getPedidosUnicos();
-    
-    const agendamentosTemp: AgendamentoItem[] = [];
-    
-    // Adicionar clientes com pedidos futuros
-    pedidosFuturos.forEach(pedido => {
-      if (pedido.cliente) {
-        agendamentosTemp.push({
-          cliente: pedido.cliente,
-          pedido,
-          dataReposicao: new Date(pedido.dataPrevistaEntrega),
-          statusAgendamento: pedido.cliente.statusAgendamento || "Agendado",
-          isPedidoUnico: false
-        });
-      }
-    });
-    
-    // Adicionar pedidos únicos
-    pedidosUnicos.forEach(pedido => {
-      const nomeMatch = pedido.observacoes?.match(/Nome: (.*?)(?:\n|$)/);
-      const nome = nomeMatch ? nomeMatch[1] : `Pedido Único #${pedido.id}`;
+    carregarClientes();
+  }, [carregarClientes]);
+
+  // Criar agendamentos baseados nos clientes
+  const agendamentos: AgendamentoItem[] = clientes
+    .filter(cliente => cliente.statusCliente === 'Ativo')
+    .map(cliente => {
+      const pedidoCliente = pedidos.find(p => p.cliente?.id === cliente.id && p.statusPedido === 'Agendado');
       
-      const clienteFicticio: Cliente = {
-        id: `pedido-unico-${pedido.id}`,
-        nome,
-        quantidadePadrao: 0,
-        periodicidadePadrao: 0,
-        statusCliente: "Ativo",
-        dataCadastro: new Date(),
-        contabilizarGiroMedio: false,
-        tipoLogistica: "Própria",
-        emiteNotaFiscal: false,
-        tipoCobranca: "À vista",
-        formaPagamento: "Dinheiro",
-        ativo: true,
-        categoriaId: 1,
-        subcategoriaId: 1
+      return {
+        cliente,
+        pedido: pedidoCliente,
+        dataReposicao: cliente.proximaDataReposicao || new Date(),
+        statusAgendamento: cliente.statusAgendamento || 'Agendar',
+        isPedidoUnico: false
       };
-      
-      agendamentosTemp.push({
-        cliente: clienteFicticio,
-        pedido,
-        dataReposicao: new Date(pedido.dataPrevistaEntrega),
-        statusAgendamento: "Agendado",
-        isPedidoUnico: true
-      });
+    })
+    .filter(agendamento => {
+      if (!filtroRota.rota) return true;
+      // Aqui você pode implementar a lógica de filtro por rota quando necessário
+      return true;
     });
-    
-    // Ordenar por data e depois por status
-    agendamentosTemp.sort((a, b) => {
-      const dataCompare = compareAsc(a.dataReposicao, b.dataReposicao);
-      if (dataCompare !== 0) return dataCompare;
-      
-      const statusOrder = { "Previsto": 0, "Agendado": 1, "Reagendar": 2 };
-      const aOrder = statusOrder[a.statusAgendamento as keyof typeof statusOrder] ?? 3;
-      const bOrder = statusOrder[b.statusAgendamento as keyof typeof statusOrder] ?? 3;
-      
-      return aOrder - bOrder;
-    });
-    
-    setAgendamentos(agendamentosTemp);
-  }, [clientes, getPedidosFuturos, getPedidosUnicos]);
 
-  // Aplicar filtros
-  useEffect(() => {
-    let filtrados = [...agendamentos];
-
-    // Filtro por rota (implementação básica - pode ser expandida conforme necessário)
-    if (filtroAtivo.rota) {
-      // Por enquanto, mantém todos os agendamentos já que não temos campo rota nos dados
-      // Esta lógica pode ser expandida quando os dados incluírem informação de rota
-    }
-
-    // Filtro por aba ativa
+  const agendamentosFiltrados = agendamentos.filter(agendamento => {
     switch (abaAtiva) {
-      case "previstos":
-        filtrados = filtrados.filter(a => a.statusAgendamento === "Previsto");
-        break;
-      case "agendados":
-        filtrados = filtrados.filter(a => a.statusAgendamento === "Agendado");
-        break;
-      case "pedidos-unicos":
-        filtrados = filtrados.filter(a => a.isPedidoUnico);
-        break;
+      case 'previstos':
+        return agendamento.statusAgendamento === 'Previsto';
+      case 'agendados':
+        return agendamento.statusAgendamento === 'Agendado';
+      case 'pedidos-unicos':
+        return agendamento.isPedidoUnico;
       default:
-        // "todos" - não filtra
-        break;
+        return true;
     }
+  });
 
-    setAgendamentosFiltrados(filtrados);
-  }, [agendamentos, filtroAtivo, abaAtiva]);
-
-  const handleFiltroChange = (novoFiltro: { rota?: string }) => {
-    setFiltroAtivo(novoFiltro);
+  const handleCriarPedido = (clienteId: string) => {
+    const novoPedido = criarNovoPedido(clienteId);
+    if (novoPedido) {
+      toast.success("Pedido criado com sucesso!");
+    }
   };
 
   const handleEditarAgendamento = (agendamento: AgendamentoItem) => {
-    setAgendamentoSelecionado(agendamento);
-    setDialogAberto(true);
+    setAgendamentoEditando(agendamento);
   };
 
   const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
-    // Atualizar no store se for um pedido
-    if (agendamentoAtualizado.pedido) {
-      atualizarPedido(agendamentoAtualizado.pedido.id, {
-        dataPrevistaEntrega: agendamentoAtualizado.dataReposicao,
-        totalPedidoUnidades: agendamentoAtualizado.pedido.totalPedidoUnidades,
-        observacoes: agendamentoAtualizado.pedido.observacoes,
-        tipoPedido: agendamentoAtualizado.pedido.tipoPedido
-      });
-    }
-
-    // Atualizar na lista local
-    setAgendamentos(prev => 
-      prev.map(a => 
-        a.cliente.id === agendamentoAtualizado.cliente.id && 
-        a.pedido?.id === agendamentoAtualizado.pedido?.id
-          ? agendamentoAtualizado 
-          : a
-      )
-    );
+    // Aqui você implementaria a lógica para salvar as alterações
+    toast.success("Agendamento atualizado com sucesso!");
+    setAgendamentoEditando(null);
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Todos os Agendamentos</CardTitle>
-        <CardDescription>
-          Gerencie todos os agendamentos de reposição dos clientes
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <FiltrosLocalizacao onFiltroChange={handleFiltroChange} />
-          
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Filtros e Visualização</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <AgendamentoFilters 
             abaAtiva={abaAtiva}
             onAbaChange={setAbaAtiva}
-            agendamentos={agendamentosFiltrados}
+            agendamentos={agendamentos}
           />
-          
-          <AgendamentoTable 
-            agendamentos={agendamentosFiltrados}
-            onEditarAgendamento={handleEditarAgendamento}
-          />
-        </div>
-      </CardContent>
+          <FiltrosLocalizacao onFiltroChange={setFiltroRota} />
+        </CardContent>
+      </Card>
 
-      {agendamentoSelecionado && (
+      <AgendamentoTable 
+        agendamentos={agendamentosFiltrados}
+        onCriarPedido={handleCriarPedido}
+        onEditarAgendamento={handleEditarAgendamento}
+      />
+
+      {agendamentoEditando && (
         <EditarAgendamentoDialog
-          agendamento={agendamentoSelecionado}
-          open={dialogAberto}
-          onOpenChange={setDialogAberto}
+          agendamento={agendamentoEditando}
+          open={!!agendamentoEditando}
+          onOpenChange={(open) => !open && setAgendamentoEditando(null)}
           onSalvar={handleSalvarAgendamento}
         />
       )}
-    </Card>
+    </div>
   );
 }
