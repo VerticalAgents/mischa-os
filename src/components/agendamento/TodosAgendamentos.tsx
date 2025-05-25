@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,7 +46,7 @@ export default function TodosAgendamentos() {
           let dataReposicao = new Date();
           let statusAgendamento = 'Agendar';
           let quantidadeTotal = cliente.quantidadePadrao || 0;
-          let tipoPedido = 'Padrão' as const;
+          let tipoPedido: 'Padrão' | 'Alterado' = 'Padrão'; // Fix: properly type the variable
           
           // Usar EXCLUSIVAMENTE dados da tabela agendamentos_clientes
           if (agendamentoCliente) {

@@ -26,8 +26,7 @@ export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsVi
         description={`Detalhes e configurações do cliente`}
         action={{
           label: "Voltar para lista",
-          onClick: onBack,
-          icon: ArrowLeft
+          onClick: onBack
         }}
       />
       
