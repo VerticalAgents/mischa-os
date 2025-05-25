@@ -67,6 +67,9 @@ export function generateInitialClientes(): Cliente[] {
 
   // Convert the clientesComDados to proper Cliente objects
   const convertedClientes: Cliente[] = clientesComDados.map((cliente, index) => {
+    // Generate UUID-like string IDs
+    const clienteId = `cliente-${1000 + index}-${Math.random().toString(36).substr(2, 9)}`;
+    
     // Gerar datas aleatórias para próxima reposição (entre hoje e 30 dias à frente)
     const today = new Date();
     const randomDays = Math.floor(Math.random() * 30);
@@ -92,7 +95,7 @@ export function generateInitialClientes(): Cliente[] {
       ['Boleto', 'PIX', 'Dinheiro'][Math.floor(Math.random() * 3)] as FormaPagamentoNome;
 
     return {
-      id: 1000 + index,
+      id: clienteId, // Now using string ID
       nome: cliente.nome || `Cliente ${1000 + index}`,
       cnpjCpf: `${Math.floor(Math.random() * 99)}.${Math.floor(Math.random() * 999)}.${Math.floor(Math.random() * 999)}/0001-${Math.floor(Math.random() * 99)}`,
       enderecoEntrega: cliente.enderecoEntrega || `Endereço do cliente ${1000 + index}`,
@@ -120,7 +123,9 @@ export function generateInitialClientes(): Cliente[] {
       formaPagamento,
       observacoes: Math.random() > 0.8 ? `Observações para ${cliente.nome}` : undefined,
       ativo: cliente.statusCliente === 'Ativo',
-      giroMedioSemanal: calcularGiroSemanal(cliente.quantidadePadrao || 0, cliente.periodicidadePadrao || 7)
+      giroMedioSemanal: calcularGiroSemanal(cliente.quantidadePadrao || 0, cliente.periodicidadePadrao || 7),
+      categoriaId: Math.ceil(Math.random() * 3), // Added categoriaId
+      subcategoriaId: Math.ceil(Math.random() * 5) // Added subcategoriaId
     };
   });
 

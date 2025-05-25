@@ -26,7 +26,7 @@ export type FormaPagamentoNome = 'Boleto' | 'PIX' | 'Dinheiro';
 export type StatusAgendamentoCliente = 'Agendar' | 'Previsto' | 'Agendado' | 'Reagendar' | string;
 
 export interface Cliente {
-  id: string; // Changed from number to string (UUID)
+  id: string; // UUID from Supabase
   nome: string;
   cnpjCpf?: string;
   enderecoEntrega?: string;
@@ -41,8 +41,8 @@ export interface Cliente {
   ultimaDataReposicaoEfetiva?: Date; // Data da última reposição efetiva
   statusAgendamento?: StatusAgendamentoCliente; // Status do agendamento
   proximaDataReposicao?: Date; // Próxima data de reposição agendada
-  ativo: boolean; // Added missing property
-  giroMedioSemanal?: number; // Added missing property
+  ativo: boolean;
+  giroMedioSemanal?: number;
   
   // Novos campos para configuração avançada
   janelasEntrega?: DiaSemana[];
@@ -56,6 +56,10 @@ export interface Cliente {
   tipoCobranca: TipoCobranca;
   formaPagamento: FormaPagamentoNome;
   observacoes?: string;
+  
+  // Added missing category fields
+  categoriaId: number;
+  subcategoriaId: number;
   
   // New field for category selection
   categoriasHabilitadas?: number[]; // Array of category IDs that client can purchase
@@ -299,7 +303,7 @@ export interface DashboardData {
     standby: number;
   };
   giroMedioSemanalPorPDV: {
-    idCliente: number;
+    idCliente: string; // Changed from number to string
     nomeCliente: string;
     giroSemanal: number;
   }[];
