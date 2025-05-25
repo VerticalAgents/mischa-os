@@ -1,15 +1,10 @@
 
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import AgendamentoRow from "./AgendamentoRow";
+import { Cliente } from "@/hooks/useClientesSupabase";
 
 interface AgendamentoItem {
-  cliente: { 
-    id: number; 
-    nome: string; 
-    contatoNome?: string; 
-    contatoTelefone?: string;
-    quantidadePadrao?: number;
-  };
+  cliente: Cliente;
   pedido?: any;
   dataReposicao: Date;
   statusAgendamento: string;

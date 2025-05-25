@@ -2,15 +2,10 @@
 import { Button } from "@/components/ui/button";
 import { MessageSquare } from "lucide-react";
 import { format } from "date-fns";
+import { Cliente } from "@/hooks/useClientesSupabase";
 
 interface AgendamentoItem {
-  cliente: { 
-    id: number; 
-    nome: string; 
-    contatoNome?: string; 
-    contatoTelefone?: string;
-    quantidadePadrao?: number;
-  };
+  cliente: Cliente;
   pedido?: any;
   dataReposicao: Date;
   statusAgendamento: string;
@@ -28,9 +23,9 @@ export default function AgendamentoActions({ agendamento }: AgendamentoActionsPr
     if (agendamento.isPedidoUnico) return;
     
     const cliente = agendamento.cliente;
-    if (!cliente.contatoTelefone) return;
+    if (!cliente.contato_telefone) return;
     
-    let phone = cliente.contatoTelefone.replace(/\D/g, '');
+    let phone = cliente.contato_telefone.replace(/\D/g, '');
     if (phone.startsWith('0')) phone = phone.substring(1);
     if (!phone.startsWith('55')) phone = '55' + phone;
     
@@ -43,7 +38,7 @@ export default function AgendamentoActions({ agendamento }: AgendamentoActionsPr
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
   };
 
-  if (agendamento.isPedidoUnico || !agendamento.cliente.contatoTelefone) {
+  if (agendamento.isPedidoUnico || !agendamento.cliente.contato_telefone) {
     return null;
   }
 

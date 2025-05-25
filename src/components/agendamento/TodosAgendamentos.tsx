@@ -1,10 +1,11 @@
 
 import { useState, useEffect } from "react";
-import { useClienteStore } from "@/hooks/useClienteStore";
+import { useClientesSupabase } from "@/hooks/useClientesSupabase";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { compareAsc } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Cliente, Pedido } from "@/types";
+import { Cliente } from "@/hooks/useClientesSupabase";
+import { Pedido } from "@/types";
 import FiltrosLocalizacao from "./FiltrosLocalizacao";
 import EditarAgendamentoDialog from "./EditarAgendamentoDialog";
 import AgendamentoFilters from "./AgendamentoFilters";
@@ -19,7 +20,7 @@ interface AgendamentoItem {
 }
 
 export default function TodosAgendamentos() {
-  const { clientes } = useClienteStore();
+  const { clientes } = useClientesSupabase();
   const { getPedidosFuturos, getPedidosUnicos, atualizarPedido } = usePedidoStore();
   const [agendamentos, setAgendamentos] = useState<AgendamentoItem[]>([]);
   const [agendamentosFiltrados, setAgendamentosFiltrados] = useState<AgendamentoItem[]>([]);
@@ -42,7 +43,7 @@ export default function TodosAgendamentos() {
           cliente: pedido.cliente,
           pedido,
           dataReposicao: new Date(pedido.dataPrevistaEntrega),
-          statusAgendamento: pedido.cliente.statusAgendamento || "Agendado",
+          statusAgendamento: pedido.cliente.status_agendamento || "Agendado",
           isPedidoUnico: false
         });
       }
@@ -54,17 +55,17 @@ export default function TodosAgendamentos() {
       const nome = nomeMatch ? nomeMatch[1] : `Pedido Único #${pedido.id}`;
       
       const clienteFicticio: Cliente = {
-        id: 0,
+        id: `unique-${pedido.id}`,
         nome,
-        quantidadePadrao: 0,
-        periodicidadePadrao: 0,
-        statusCliente: "Ativo",
-        dataCadastro: new Date(),
-        contabilizarGiroMedio: false,
-        tipoLogistica: "Própria",
-        emiteNotaFiscal: false,
-        tipoCobranca: "À vista",
-        formaPagamento: "Dinheiro",
+        quantidade_padrao: 0,
+        periodicidade_padrao: 0,
+        status_cliente: "Ativo",
+        created_at: new Date().toISOString(),
+        contabilizar_giro_medio: false,
+        tipo_logistica: "Própria",
+        emite_nota_fiscal: false,
+        tipo_cobranca: "À vista",
+        forma_pagamento: "Dinheiro",
         ativo: true
       };
       
