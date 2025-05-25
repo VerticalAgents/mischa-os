@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
+import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { AgendamentoItem } from "./types";
 import AgendamentoFilters from "./AgendamentoFilters";
 import FiltrosLocalizacao from "./FiltrosLocalizacao";
@@ -14,47 +15,98 @@ import { toast } from "sonner";
 export default function TodosAgendamentos() {
   const { clientes, carregarClientes } = useClienteStore();
   const { pedidos, criarNovoPedido } = usePedidoStore();
+  const { carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
   
   const [abaAtiva, setAbaAtiva] = useState("todos");
   const [filtroRota, setFiltroRota] = useState<{ rota?: string }>({});
   const [agendamentoEditando, setAgendamentoEditando] = useState<AgendamentoItem | null>(null);
+  const [agendamentos, setAgendamentos] = useState<AgendamentoItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     carregarClientes();
   }, [carregarClientes]);
 
-  // Criar agendamentos baseados nos clientes
-  const agendamentos: AgendamentoItem[] = clientes
-    .filter(cliente => cliente.statusCliente === 'Ativo')
-    .map(cliente => {
-      const pedidoCliente = pedidos.find(p => p.cliente?.id === cliente.id && p.statusPedido === 'Agendado');
+  // Carregar agendamentos dos clientes
+  useEffect(() => {
+    const carregarAgendamentos = async () => {
+      if (clientes.length === 0) return;
       
-      return {
-        cliente,
-        pedido: pedidoCliente,
-        dataReposicao: cliente.proximaDataReposicao || new Date(),
-        statusAgendamento: cliente.statusAgendamento || 'Agendar',
-        isPedidoUnico: false
-      };
-    })
+      setLoading(true);
+      console.log('Carregando agendamentos para', clientes.length, 'clientes');
+      
+      const agendamentosCarregados: AgendamentoItem[] = [];
+      
+      for (const cliente of clientes.filter(c => c.statusCliente === 'Ativo')) {
+        try {
+          // Carregar agendamento específico do cliente
+          const agendamentoCliente = await carregarAgendamentoPorCliente(cliente.id);
+          const pedidoCliente = pedidos.find(p => p.cliente?.id === cliente.id && p.statusPedido === 'Agendado');
+          
+          let dataReposicao = new Date();
+          let statusAgendamento = 'Agendar';
+          
+          // Usar dados do agendamento se existir
+          if (agendamentoCliente) {
+            console.log('Agendamento encontrado para cliente', cliente.nome, ':', agendamentoCliente);
+            dataReposicao = agendamentoCliente.data_proxima_reposicao || new Date();
+            statusAgendamento = agendamentoCliente.status_agendamento;
+          } else {
+            // Fallback para dados do cliente
+            if (cliente.proximaDataReposicao) {
+              dataReposicao = cliente.proximaDataReposicao;
+            }
+            if (cliente.statusAgendamento) {
+              statusAgendamento = cliente.statusAgendamento;
+            }
+          }
+          
+          agendamentosCarregados.push({
+            cliente,
+            pedido: pedidoCliente,
+            dataReposicao,
+            statusAgendamento,
+            isPedidoUnico: false
+          });
+        } catch (error) {
+          console.error('Erro ao carregar agendamento do cliente', cliente.nome, ':', error);
+          // Em caso de erro, usar dados básicos do cliente
+          agendamentosCarregados.push({
+            cliente,
+            pedido: undefined,
+            dataReposicao: cliente.proximaDataReposicao || new Date(),
+            statusAgendamento: cliente.statusAgendamento || 'Agendar',
+            isPedidoUnico: false
+          });
+        }
+      }
+      
+      console.log('Agendamentos carregados:', agendamentosCarregados);
+      setAgendamentos(agendamentosCarregados);
+      setLoading(false);
+    };
+
+    carregarAgendamentos();
+  }, [clientes, pedidos, carregarAgendamentoPorCliente]);
+
+  const agendamentosFiltrados = agendamentos
     .filter(agendamento => {
       if (!filtroRota.rota) return true;
       // Aqui você pode implementar a lógica de filtro por rota quando necessário
       return true;
+    })
+    .filter(agendamento => {
+      switch (abaAtiva) {
+        case 'previstos':
+          return agendamento.statusAgendamento === 'Previsto';
+        case 'agendados':
+          return agendamento.statusAgendamento === 'Agendado';
+        case 'pedidos-unicos':
+          return agendamento.isPedidoUnico;
+        default:
+          return true;
+      }
     });
-
-  const agendamentosFiltrados = agendamentos.filter(agendamento => {
-    switch (abaAtiva) {
-      case 'previstos':
-        return agendamento.statusAgendamento === 'Previsto';
-      case 'agendados':
-        return agendamento.statusAgendamento === 'Agendado';
-      case 'pedidos-unicos':
-        return agendamento.isPedidoUnico;
-      default:
-        return true;
-    }
-  });
 
   const handleCriarPedido = (clienteId: string) => {
     const novoPedido = criarNovoPedido(clienteId);
@@ -71,7 +123,29 @@ export default function TodosAgendamentos() {
     // Aqui você implementaria a lógica para salvar as alterações
     toast.success("Agendamento atualizado com sucesso!");
     setAgendamentoEditando(null);
+    
+    // Recarregar agendamentos após salvar
+    setAgendamentos(prev => 
+      prev.map(ag => 
+        ag.cliente.id === agendamentoAtualizado.cliente.id ? agendamentoAtualizado : ag
+      )
+    );
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-2 text-sm text-muted-foreground">Carregando agendamentos...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
