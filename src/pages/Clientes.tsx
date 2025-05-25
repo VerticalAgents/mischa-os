@@ -12,7 +12,7 @@ import ClientesBulkActions from "@/components/clientes/ClientesBulkActions";
 export default function Clientes() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedClienteIds, setSelectedClienteIds] = useState<string[]>([]);
+  const [selectedClienteIds, setSelectedClienteIds] = useState<string[]>([]); // Changed from number[] to string[]
   
   const {
     filtros,
@@ -57,7 +57,7 @@ export default function Clientes() {
     setIsFormOpen(true);
   };
   
-  const handleSelectCliente = (id: string) => {
+  const handleSelectCliente = (id: string) => { // Changed from number to string
     selecionarCliente(id);
   };
   
@@ -72,7 +72,7 @@ export default function Clientes() {
   };
 
   // Toggle client selection
-  const toggleClienteSelection = (id: string) => {
+  const toggleClienteSelection = (id: string) => { // Changed from number to string
     setSelectedClienteIds(prev => 
       prev.includes(id) 
         ? prev.filter(clienteId => clienteId !== id)

@@ -62,7 +62,7 @@ type ClienteFormValues = {
 interface ClienteFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  clienteId?: number; // Para edição
+  clienteId?: string; // Changed from number to string
 }
 
 export default function ClienteFormDialog({
@@ -165,7 +165,9 @@ export default function ClienteFormDialog({
           quantidadePadrao: Number(data.quantidadePadrao),
           periodicidadePadrao: Number(data.periodicidadePadrao),
           ativo: data.statusCliente === 'Ativo',
-          giroMedioSemanal: 0 // Add required field
+          giroMedioSemanal: 0,
+          categoriaId: 1, // Add required field
+          subcategoriaId: 1 // Add required field
         });
         
         toast({

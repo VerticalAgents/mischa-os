@@ -1,3 +1,4 @@
+
 import { ExternalLink, Calendar, ArrowUp, ArrowDown, Check } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -16,10 +17,10 @@ interface ClientesTableProps {
   clientes: Cliente[];
   visibleColumns: string[];
   columnOptions: ColumnOption[];
-  onSelectCliente: (id: number) => void;
-  selectedClientes?: number[];
+  onSelectCliente: (id: string) => void; // Changed from number to string
+  selectedClientes?: string[]; // Changed from number[] to string[]
   onSelectAllClientes?: () => void;
-  onToggleClienteSelection?: (id: number) => void;
+  onToggleClienteSelection?: (id: string) => void; // Changed from number to string
   showSelectionControls?: boolean;
 }
 

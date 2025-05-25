@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 interface ClientesBulkActionsProps {
-  selectedClienteIds: number[];
+  selectedClienteIds: string[]; // Changed from number[] to string[]
   onClearSelection: () => void;
   onToggleSelectionMode: () => void;
   isSelectionMode: boolean;
