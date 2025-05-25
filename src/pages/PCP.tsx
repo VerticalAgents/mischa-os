@@ -1,133 +1,58 @@
 
-import { useState, useEffect } from "react";
-import { format, addDays, subDays, startOfWeek, endOfWeek } from "date-fns";
-import { usePedidoStore } from "@/hooks/usePedidoStore";
-import { useSaborStore } from "@/hooks/useSaborStore";
-import { usePlanejamentoProducaoStore } from "@/hooks/usePlanejamentoProducaoStore";
+import { useState } from "react";
+import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Layers } from "lucide-react";
 
 // Import components
-import PCPHeader from "@/components/pcp/PCPHeader";
-import PCPPlanejamentoTab from "@/components/pcp/PCPPlanejamentoTab";
-import PCPNecessidadeDiariaTab from "@/components/pcp/PCPNecessidadeDiariaTab";
-import PCPRetrospectivaTab from "@/components/pcp/PCPRetrospectivaTab";
-import PlanejamentoProducao from "@/components/pcp/PlanejamentoProducao";
-import RegistroManualProducao from "@/components/pcp/RegistroManualProducao";
-import HistoricoProducao from "@/components/pcp/HistoricoProducao";
+import AjusteEstoqueTab from "@/components/pcp/AjusteEstoqueTab";
 
 export default function PCP() {
-  const { sabores } = useSaborStore();
-  const { getPedidosFiltrados } = usePedidoStore();
-  const { 
-    setPeriodo, 
-    calcularPlanejamento,
-    setCapacidadeForma,
-    capacidadeForma,
-    setIncluirPedidosPrevistos,
-    incluirPedidosPrevistos,
-  } = usePlanejamentoProducaoStore();
-
-  const [dataSelecionada, setDataSelecionada] = useState(new Date());
-  const [mostrarPedidosPrevistos, setMostrarPedidosPrevistos] = useState(incluirPedidosPrevistos);
-  const [activeTab, setActiveTab] = useState("planejamento");
-  
-  // Define o início e fim da semana para o planejamento
-  const inicioSemana = startOfWeek(dataSelecionada, { weekStartsOn: 1 }); // Segunda-feira
-  const fimSemana = endOfWeek(dataSelecionada, { weekStartsOn: 1 }); // Domingo
-
-  // Effect to sync checkbox with store
-  useEffect(() => {
-    setIncluirPedidosPrevistos(mostrarPedidosPrevistos);
-  }, [mostrarPedidosPrevistos, setIncluirPedidosPrevistos]);
-
-  // Calcula o planejamento a partir dos pedidos no período
-  const calcularPlanejamentoProducao = () => {
-    setPeriodo(inicioSemana, fimSemana);
-    const todosPedidos = getPedidosFiltrados()
-      .filter(pedido => 
-        (pedido.statusPedido === "Agendado" || 
-        pedido.statusPedido === "Em Separação" || 
-        pedido.statusPedido === "Despachado") &&
-        !pedido.dataEfetivaEntrega
-      );
-    
-    calcularPlanejamento(todosPedidos, sabores);
-  };
-
-  // Avançar uma semana no calendário
-  const avancarSemana = () => {
-    setDataSelecionada(prevDate => addDays(prevDate, 7));
-  };
-
-  // Voltar uma semana no calendário
-  const voltarSemana = () => {
-    setDataSelecionada(prevDate => subDays(prevDate, 7));
-  };
-
-  // Atualiza a capacidade da forma quando o número muda
-  const atualizarCapacidadeForma = (capacidade: number) => {
-    setCapacidadeForma(capacidade);
-    calcularPlanejamentoProducao();
-  };
-
-  // Exportar planejamento (mockup)
-  const exportarPlanejamento = () => {
-    alert("Funcionalidade de exportação será implementada em breve");
-  };
+  const [activeTab, setActiveTab] = useState("ajuste-estoque");
 
   return (
     <div className="container mx-auto py-6">
-      <PCPHeader
-        inicioSemana={inicioSemana}
-        fimSemana={fimSemana}
-        voltarSemana={voltarSemana}
-        avancarSemana={avancarSemana}
-        calcularPlanejamentoProducao={calcularPlanejamentoProducao}
-        exportarPlanejamento={exportarPlanejamento}
+      <PageHeader 
+        title="PCP - Planejamento e Controle da Produção" 
+        description="Gerencie a produção, estoques e planejamento de forma integrada"
+        icon={<Layers className="h-6 w-6" />}
       />
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
         <TabsList className="w-full justify-start">
-          <TabsTrigger value="planejamento">Planejamento</TabsTrigger>
-          <TabsTrigger value="necessidade-diaria">Necessidade Diária</TabsTrigger>
-          <TabsTrigger value="retrospectiva">Retrospectiva 30 Dias</TabsTrigger>
-          <TabsTrigger value="planejar-producao">Planejar Produção</TabsTrigger>
-          <TabsTrigger value="registro-manual">Registrar Produção</TabsTrigger>
-          <TabsTrigger value="historico">Histórico</TabsTrigger>
+          <TabsTrigger value="ajuste-estoque">Ajuste de Estoque</TabsTrigger>
+          <TabsTrigger value="projecao-producao" disabled>Projeção de Produção</TabsTrigger>
+          <TabsTrigger value="necessidade-diaria" disabled>Necessidade Diária</TabsTrigger>
+          <TabsTrigger value="planejamento" disabled>Planejamento</TabsTrigger>
+          <TabsTrigger value="historico" disabled>Histórico</TabsTrigger>
         </TabsList>
       
-        <TabsContent value="planejamento" className="space-y-6">
-          <PCPPlanejamentoTab
-            capacidadeForma={capacidadeForma}
-            atualizarCapacidadeForma={atualizarCapacidadeForma}
-            mostrarPedidosPrevistos={mostrarPedidosPrevistos}
-            setMostrarPedidosPrevistos={setMostrarPedidosPrevistos}
-            inicioSemana={inicioSemana}
-            fimSemana={fimSemana}
-          />
+        <TabsContent value="ajuste-estoque" className="space-y-6 mt-6">
+          <AjusteEstoqueTab />
         </TabsContent>
         
-        <TabsContent value="necessidade-diaria" className="space-y-6">
-          <PCPNecessidadeDiariaTab
-            mostrarPedidosPrevistos={mostrarPedidosPrevistos}
-            setMostrarPedidosPrevistos={setMostrarPedidosPrevistos}
-          />
+        <TabsContent value="projecao-producao" className="space-y-6 mt-6">
+          <div className="text-center py-12 text-muted-foreground">
+            Em desenvolvimento - Aba de Projeção de Produção
+          </div>
         </TabsContent>
         
-        <TabsContent value="retrospectiva" className="space-y-6">
-          <PCPRetrospectivaTab />
+        <TabsContent value="necessidade-diaria" className="space-y-6 mt-6">
+          <div className="text-center py-12 text-muted-foreground">
+            Em desenvolvimento - Aba de Necessidade Diária
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="planejamento" className="space-y-6 mt-6">
+          <div className="text-center py-12 text-muted-foreground">
+            Em desenvolvimento - Aba de Planejamento
+          </div>
         </TabsContent>
 
-        <TabsContent value="planejar-producao" className="space-y-6">
-          <PlanejamentoProducao />
-        </TabsContent>
-
-        <TabsContent value="registro-manual" className="space-y-6">
-          <RegistroManualProducao />
-        </TabsContent>
-
-        <TabsContent value="historico" className="space-y-6">
-          <HistoricoProducao />
+        <TabsContent value="historico" className="space-y-6 mt-6">
+          <div className="text-center py-12 text-muted-foreground">
+            Em desenvolvimento - Aba de Histórico
+          </div>
         </TabsContent>
       </Tabs>
     </div>
