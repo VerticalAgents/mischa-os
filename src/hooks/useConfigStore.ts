@@ -1,11 +1,12 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { 
   Representante, 
   RotaEntrega, 
   CategoriaEstabelecimento, 
-  TipoLogistica, 
-  FormaPagamento,
+  TipoLogisticaItem, 
+  FormaPagamentoItem,
   ConfiguracoesProducao 
 } from '@/types';
 import { 
@@ -21,8 +22,8 @@ interface ConfigStore {
   representantes: Representante[];
   rotasEntrega: RotaEntrega[];
   categoriasEstabelecimento: CategoriaEstabelecimento[];
-  tiposLogistica: TipoLogistica[];
-  formasPagamento: FormaPagamento[];
+  tiposLogistica: TipoLogisticaItem[];
+  formasPagamento: FormaPagamentoItem[];
   configuracoesProducao: ConfiguracoesProducao;
 
   // Ações para Representantes
@@ -41,13 +42,13 @@ interface ConfigStore {
   removerCategoria: (id: number) => void;
   
   // Ações para Tipos de Logística
-  adicionarTipoLogistica: (tipoLogistica: Omit<TipoLogistica, 'id'>) => void;
-  atualizarTipoLogistica: (id: number, dados: Partial<TipoLogistica>) => void;
+  adicionarTipoLogistica: (tipoLogistica: Omit<TipoLogisticaItem, 'id'>) => void;
+  atualizarTipoLogistica: (id: number, dados: Partial<TipoLogisticaItem>) => void;
   removerTipoLogistica: (id: number) => void;
   
   // Ações para Formas de Pagamento
-  adicionarFormaPagamento: (formaPagamento: Omit<FormaPagamento, 'id'>) => void;
-  atualizarFormaPagamento: (id: number, dados: Partial<FormaPagamento>) => void;
+  adicionarFormaPagamento: (formaPagamento: Omit<FormaPagamentoItem, 'id'>) => void;
+  atualizarFormaPagamento: (id: number, dados: Partial<FormaPagamentoItem>) => void;
   removerFormaPagamento: (id: number) => void;
   
   // Ações para Configurações de Produção
@@ -57,8 +58,8 @@ interface ConfigStore {
   getRepresentanteAtivo: () => Representante[];
   getRotaAtiva: () => RotaEntrega[];
   getCategoriaAtiva: () => CategoriaEstabelecimento[];
-  getTipoLogisticaAtivo: () => TipoLogistica[];
-  getFormaPagamentoAtiva: () => FormaPagamento[];
+  getTipoLogisticaAtivo: () => TipoLogisticaItem[];
+  getFormaPagamentoAtiva: () => FormaPagamentoItem[];
 }
 
 export const useConfigStore = create<ConfigStore>()(
