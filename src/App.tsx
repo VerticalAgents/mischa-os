@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import DashboardAnalytics from "@/pages/DashboardAnalytics";
 import Clientes from "@/pages/Clientes";
@@ -64,8 +64,8 @@ const App = () => {
             <Toaster />
             <Sonner />
             <Routes>
-              {/* Auth Routes */}
-              <Route path="/login" element={<LoginPage />} />
+              {/* Auth Routes - redirect /login to /auth */}
+              <Route path="/login" element={<Navigate to="/auth" replace />} />
               <Route path="/auth" element={<AuthPage />} />
               
               {/* Protected Routes */}

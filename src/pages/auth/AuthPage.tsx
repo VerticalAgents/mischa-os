@@ -29,8 +29,10 @@ const AuthPage = () => {
     setIsLoading(true);
     try {
       await signInWithEmail(loginEmail, loginPassword);
-    } catch (error) {
-      // Error handling is done in the auth context
+      toast.success('Login realizado com sucesso!');
+    } catch (error: any) {
+      console.error('Erro no login:', error);
+      toast.error('Erro ao fazer login: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setIsLoading(false);
     }
@@ -56,8 +58,10 @@ const AuthPage = () => {
     setIsLoading(true);
     try {
       await signUpWithEmail(signupEmail, signupPassword, signupFullName);
-    } catch (error) {
-      // Error handling is done in the auth context
+      toast.success('Conta criada com sucesso! Verifique seu email para confirmar.');
+    } catch (error: any) {
+      console.error('Erro no cadastro:', error);
+      toast.error('Erro ao criar conta: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setIsLoading(false);
     }
@@ -67,8 +71,9 @@ const AuthPage = () => {
     setIsLoading(true);
     try {
       await signInWithGoogle();
-    } catch (error) {
-      // Error handling is done in the auth context
+    } catch (error: any) {
+      console.error('Erro no login com Google:', error);
+      toast.error('Erro ao fazer login com Google: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setIsLoading(false);
     }
@@ -107,6 +112,7 @@ const AuthPage = () => {
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -118,6 +124,7 @@ const AuthPage = () => {
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
@@ -174,6 +181,7 @@ const AuthPage = () => {
                     value={signupFullName}
                     onChange={(e) => setSignupFullName(e.target.value)}
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -185,6 +193,7 @@ const AuthPage = () => {
                     value={signupEmail}
                     onChange={(e) => setSignupEmail(e.target.value)}
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -197,6 +206,7 @@ const AuthPage = () => {
                     onChange={(e) => setSignupPassword(e.target.value)}
                     required
                     minLength={6}
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -209,6 +219,7 @@ const AuthPage = () => {
                     onChange={(e) => setSignupConfirmPassword(e.target.value)}
                     required
                     minLength={6}
+                    disabled={isLoading}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
