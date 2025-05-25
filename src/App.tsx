@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -56,12 +55,12 @@ const App = () => {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
             <Routes>
               {/* Auth Routes */}
               <Route path="/login" element={<LoginPage />} />
@@ -74,6 +73,7 @@ const App = () => {
                   </AppLayout>
                 </ProtectedRoute>
               } />
+              
               <Route path="/clientes" element={
                 <ProtectedRoute>
                   <AppLayout>
@@ -159,7 +159,6 @@ const App = () => {
                 </ProtectedRoute>
               } />
               
-              {/* Routes for Commercial Management */}
               <Route path="/gestao-comercial" element={
                 <ProtectedRoute>
                   <AppLayout>
@@ -189,7 +188,6 @@ const App = () => {
                 </ProtectedRoute>
               } />
               
-              {/* Routes for Financial Management */}
               <Route path="/gestao-financeira" element={
                 <ProtectedRoute>
                   <AppLayout>
@@ -208,10 +206,10 @@ const App = () => {
               {/* Not Found Route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
   );
 };
 

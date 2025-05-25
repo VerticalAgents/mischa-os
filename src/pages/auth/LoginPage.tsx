@@ -72,7 +72,7 @@ const LoginPage = () => {
           <DialogTitle>Configuração Necessária</DialogTitle>
           <DialogDescription>
             Para usar o login com Google, você precisa configurar o provedor Google no Supabase. 
-            Verifique a configuração na aba Authentication > Providers do seu projeto Supabase.
+            Verifique a configuração na aba Authentication &gt; Providers do seu projeto Supabase.
           </DialogDescription>
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => setGoogleModalOpen(false)}>
