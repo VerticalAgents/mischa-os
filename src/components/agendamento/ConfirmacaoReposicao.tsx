@@ -194,14 +194,14 @@ export default function ConfirmacaoReposicao() {
 
   // Function to handle rescheduling confirmation
   const handleReagendamentoConfirm = (cliente: Cliente, novaData: Date) => {
-    // 1. Update the client's next replenishment date
-    const clienteAtualizado = { ...cliente, proximaDataReposicao: novaData };
+    // 1. Update the client's next replenishment date - convert Date to string
+    const clienteAtualizado = { ...cliente, proximaDataReposicao: format(novaData, 'yyyy-MM-dd') };
     atualizarCliente(cliente.id, clienteAtualizado);
     
-    // 2. Update the order's expected delivery date if it exists
+    // 2. Update the order's expected delivery date if it exists - convert Date to string
     const pedido = pedidosCliente[cliente.id];
     if (pedido) {
-      atualizarPedido(pedido.id, { dataPrevistaEntrega: novaData });
+      atualizarPedido(pedido.id, { dataPrevistaEntrega: format(novaData, 'yyyy-MM-dd') });
     }
     
     // 3. Update observations

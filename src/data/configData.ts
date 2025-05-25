@@ -1,4 +1,3 @@
-
 import { 
   Representante, 
   RotaEntrega, 
@@ -54,7 +53,7 @@ export const formasPagamentoMock: FormaPagamento[] = [
 
 // Mock data for configurações de produção
 export const configuracoesProducaoMock: ConfiguracoesProducao = {
-  unidadesPorForma: 24,
+  capacidadeForma: 24,
   formasPorLote: 4,
   incluirPedidosPrevistos: true,
   percentualPedidosPrevistos: 15,

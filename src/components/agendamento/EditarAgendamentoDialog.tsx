@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
@@ -127,7 +126,7 @@ export default function EditarAgendamentoDialog({
         ...agendamento.pedido,
         totalPedidoUnidades: quantidade,
         observacoes,
-        dataPrevistaEntrega: dataReposicao,
+        dataPrevistaEntrega: format(dataReposicao, 'yyyy-MM-dd'), // Convert Date to string
         tipoPedido,
       } : undefined,
     };

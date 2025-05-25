@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
@@ -9,6 +8,7 @@ import FiltrosLocalizacao from "./FiltrosLocalizacao";
 import EditarAgendamentoDialog from "./EditarAgendamentoDialog";
 import AgendamentoFilters from "./AgendamentoFilters";
 import AgendamentoTable from "./AgendamentoTable";
+import { format } from "date-fns";
 
 interface AgendamentoItem {
   cliente: Cliente;
@@ -42,7 +42,7 @@ export default function TodosAgendamentos() {
           cliente: pedido.cliente,
           pedido,
           dataReposicao: new Date(pedido.dataPrevistaEntrega),
-          statusAgendamento: pedido.cliente.statusAgendamento || "Agendado",
+          statusAgendamento: pedido.cliente.statusAgendamento || "Ativo",
           isPedidoUnico: false
         });
       }
@@ -56,6 +56,7 @@ export default function TodosAgendamentos() {
       const clienteFicticio: Cliente = {
         id: 0,
         nome,
+        cnpjCpf: "",
         quantidadePadrao: 0,
         periodicidadePadrao: 0,
         statusCliente: "Ativo",
@@ -65,14 +66,15 @@ export default function TodosAgendamentos() {
         emiteNotaFiscal: false,
         tipoCobranca: "À vista",
         formaPagamento: "Dinheiro",
-        ativo: true
+        ativo: true,
+        giroMedioSemanal: 0
       };
       
       agendamentosTemp.push({
         cliente: clienteFicticio,
         pedido,
         dataReposicao: new Date(pedido.dataPrevistaEntrega),
-        statusAgendamento: "Agendado",
+        statusAgendamento: "Ativo",
         isPedidoUnico: true
       });
     });
@@ -134,7 +136,7 @@ export default function TodosAgendamentos() {
     // Atualizar no store se for um pedido
     if (agendamentoAtualizado.pedido) {
       atualizarPedido(agendamentoAtualizado.pedido.id, {
-        dataPrevistaEntrega: agendamentoAtualizado.dataReposicao,
+        dataPrevistaEntrega: format(agendamentoAtualizado.dataReposicao, 'yyyy-MM-dd'), // Convert Date to string
         totalPedidoUnidades: agendamentoAtualizado.pedido.totalPedidoUnidades,
         observacoes: agendamentoAtualizado.pedido.observacoes,
         tipoPedido: agendamentoAtualizado.pedido.tipoPedido
