@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useStatusAgendamentoStore, StatusConfirmacao } from "@/hooks/useStatusAgendamentoStore";
+import { useAutomacaoStatus } from "@/hooks/useAutomacaoStatus";
 import { addDays, format, isWeekend, isBefore, differenceInBusinessDays } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,14 +24,25 @@ import ReagendamentoDialog from "./ReagendamentoDialog";
 import FiltrosLocalizacao from "./FiltrosLocalizacao";
 import ReclassificacaoStatus from "./ReclassificacaoStatus";
 import AcoesEmLote from "./AcoesEmLote";
+import ExportacaoButtons from "./ExportacaoButtons";
+import StatusCriticoBadge from "./StatusCriticoBadge";
+
+interface AgendamentoItem {
+  cliente: { id: number; nome: string; contatoNome?: string; contatoTelefone?: string };
+  pedido?: any;
+  dataReposicao: Date;
+  statusAgendamento: string;
+  isPedidoUnico: boolean;
+}
 
 export default function ConfirmacaoReposicao() {
   const { clientes, atualizarCliente } = useClienteStore();
   const { getPedidosFiltrados, getPedidosFuturos, atualizarPedido } = usePedidoStore();
   const { statusConfirmacao } = useStatusAgendamentoStore();
+  const { confirmarEntrega } = useAutomacaoStatus(); // Usar hook de automação
   const [clientesporStatus, setClientesPorStatus] = useState<{[key: number]: Cliente[]}>({});
   const [pedidosCliente, setPedidosCliente] = useState<{[key: number]: Pedido}>({});
-  const [observacoes, setObservacoes] = useState<{[key: number]: string}>({});
+  const [observacoes, setObservacoes] = useState<{[key: string]: string}>({});
   const [tabValue, setTabValue] = useState("hoje");
   const [filtros, setFiltros] = useState<{ rota?: string; cidade?: string }>({});
 
@@ -160,6 +171,27 @@ export default function ConfirmacaoReposicao() {
     setReagendamentoDialogOpen(true);
   };
 
+  // Função atualizada para confirmar entrega com automação de status
+  const handleConfirmarEntrega = (cliente: Cliente) => {
+    // Usar o hook de automação para confirmar e atualizar status automaticamente
+    confirmarEntrega(cliente.id);
+    
+    // Atualizar observações
+    const now = new Date();
+    const obsText = observacoes[cliente.id] || '';
+    const newObs = `${format(now, 'dd/MM HH:mm')} - Entrega confirmada - Status atualizado para "Confirmado"\n${obsText}`;
+    
+    setObservacoes({
+      ...observacoes,
+      [cliente.id]: newObs
+    });
+    
+    toast({
+      title: "Entrega confirmada",
+      description: `${cliente.nome} confirmado e status atualizado automaticamente`,
+    });
+  };
+
   // Function to handle rescheduling confirmation
   const handleReagendamentoConfirm = (cliente: Cliente, novaData: Date) => {
     // 1. Update the client's next replenishment date
@@ -230,6 +262,18 @@ export default function ConfirmacaoReposicao() {
     });
   };
 
+  // Preparar dados para exportação
+  const prepararDadosExportacao = (statusId: number) => {
+    const clientesStatus = clientesporStatus[statusId] || [];
+    return clientesStatus.map(cliente => ({
+      ...cliente,
+      statusConfirmacao: statusConfirmacao.find(s => s.id === statusId)?.nome || "Não definido",
+      dataReposicao: cliente.proximaDataReposicao ? new Date(cliente.proximaDataReposicao) : new Date(),
+      tipoPedido: pedidosCliente[cliente.id]?.tipoPedido || "Padrão",
+      observacoes: observacoes[cliente.id] || ""
+    }));
+  };
+
   // Render client list for a specific status
   const renderClientList = (statusId: number) => {
     const clientesWithStatus = clientesporStatus[statusId] || [];
@@ -245,25 +289,36 @@ export default function ConfirmacaoReposicao() {
     
     return (
       <div className="space-y-4">
-        {/* Ações em lote */}
-        {status?.acaoRequerida && (
-          <div className="flex justify-end gap-2">
-            {statusId === 1 && (
-              <AcoesEmLote
-                clientes={clientesWithStatus}
-                tipoAcao="marcar-contatados"
-                onAcaoExecutada={handleAcaoEmLote}
-              />
-            )}
-            {statusId === 4 && (
-              <AcoesEmLote
-                clientes={clientesWithStatus}
-                tipoAcao="segundo-contato"
-                onAcaoExecutada={handleAcaoEmLote}
-              />
+        {/* Header com ações em lote e exportação */}
+        <div className="flex justify-between items-center">
+          <div className="flex gap-2">
+            {/* Ações em lote */}
+            {status?.acaoRequerida && (
+              <>
+                {statusId === 1 && (
+                  <AcoesEmLote
+                    clientes={clientesWithStatus}
+                    tipoAcao="marcar-contatados"
+                    onAcaoExecutada={handleAcaoEmLote}
+                  />
+                )}
+                {statusId === 4 && (
+                  <AcoesEmLote
+                    clientes={clientesWithStatus}
+                    tipoAcao="segundo-contato"
+                    onAcaoExecutada={handleAcaoEmLote}
+                  />
+                )}
+              </>
             )}
           </div>
-        )}
+          
+          {/* Botão de exportação */}
+          <ExportacaoButtons 
+            clientes={prepararDadosExportacao(statusId)}
+            filtroAtivo={status?.nome || "Lista"}
+          />
+        </div>
         
         <Table>
           <TableHeader>
@@ -278,10 +333,19 @@ export default function ConfirmacaoReposicao() {
           <TableBody>
             {clientesWithStatus.map((cliente) => {
               const pedido = pedidosCliente[cliente.id];
+              const dataReposicao = cliente.proximaDataReposicao ? new Date(cliente.proximaDataReposicao) : new Date();
               
               return (
                 <TableRow key={cliente.id}>
-                  <TableCell className="font-medium">{cliente.nome}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{cliente.nome}</span>
+                      <StatusCriticoBadge 
+                        status={status?.nome || ""}
+                        dataReposicao={dataReposicao}
+                      />
+                    </div>
+                  </TableCell>
                   <TableCell>
                     {cliente.proximaDataReposicao ? 
                       format(new Date(cliente.proximaDataReposicao), 'dd/MM/yyyy') : 
@@ -314,6 +378,17 @@ export default function ConfirmacaoReposicao() {
                       >
                         <MessageSquare className="h-4 w-4 text-green-500" />
                         <span>WhatsApp</span>
+                      </Button>
+                      
+                      {/* Botão de confirmar entrega com automação */}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full flex items-center gap-1"
+                        onClick={() => handleConfirmarEntrega(cliente)}
+                      >
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span>Confirmar Entrega</span>
                       </Button>
                       
                       <ReclassificacaoStatus
@@ -379,10 +454,25 @@ export default function ConfirmacaoReposicao() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Confirmação de Reposição</CardTitle>
-          <CardDescription>
-            Gerencie o contato com PDVs para confirmar reposições agendadas
-          </CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle>Confirmação de Reposição</CardTitle>
+              <CardDescription>
+                Gerencie o contato com PDVs para confirmar reposições agendadas
+              </CardDescription>
+            </div>
+            {/* Botão de exportação geral no header */}
+            <ExportacaoButtons 
+              clientes={Object.values(clientesporStatus).flat().map(cliente => ({
+                ...cliente,
+                statusConfirmacao: "Todos",
+                dataReposicao: cliente.proximaDataReposicao ? new Date(cliente.proximaDataReposicao) : new Date(),
+                tipoPedido: pedidosCliente[cliente.id]?.tipoPedido || "Padrão",
+                observacoes: observacoes[cliente.id] || ""
+              }))}
+              filtroAtivo="Todos"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {/* Filtros de localização */}
