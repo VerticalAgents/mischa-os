@@ -73,7 +73,7 @@ export default function EditarAgendamentoDialog({
         ...agendamento.pedido,
         totalPedidoUnidades: quantidade,
         observacoes,
-        dataPrevistaEntrega: dataReposicao.toISOString(),
+        dataPrevistaEntrega: dataReposicao, // Keep as Date object
       } : undefined,
     };
 

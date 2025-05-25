@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
@@ -143,7 +142,7 @@ export default function TodosAgendamentos() {
     // Atualizar no store se for um pedido
     if (agendamentoAtualizado.pedido) {
       atualizarPedido(agendamentoAtualizado.pedido.id, {
-        dataPrevistaEntrega: agendamentoAtualizado.dataReposicao.toISOString(),
+        dataPrevistaEntrega: agendamentoAtualizado.dataReposicao, // Keep as Date object
         totalPedidoUnidades: agendamentoAtualizado.pedido.totalPedidoUnidades,
         observacoes: agendamentoAtualizado.pedido.observacoes
       });

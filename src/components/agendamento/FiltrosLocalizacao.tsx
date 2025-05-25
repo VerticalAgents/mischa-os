@@ -17,11 +17,11 @@ interface FiltrosLocalizacaoProps {
 }
 
 export default function FiltrosLocalizacao({ onFiltroChange }: FiltrosLocalizacaoProps) {
-  const { configuracoes } = useConfigStore();
+  const { rotasEntrega } = useConfigStore();
   const [rotaSelecionada, setRotaSelecionada] = useState<string>("");
 
-  // Obter rotas das configurações do sistema
-  const rotasDisponiveis = configuracoes.rotasEntrega || [
+  // Obter rotas das configurações do sistema ou usar rotas padrão
+  const rotasDisponiveis = rotasEntrega.length > 0 ? rotasEntrega.map(r => r.nome) : [
     "Rota Centro",
     "Rota Norte", 
     "Rota Sul",
