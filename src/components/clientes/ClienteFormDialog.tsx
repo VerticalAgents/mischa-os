@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useClienteStore } from "@/hooks/useClienteStore";
+import { useClientesSupabase } from "@/hooks/useClientesSupabase";
 import { useConfigStore } from "@/hooks/useConfigStore";
 import { 
   StatusCliente, 
@@ -28,7 +28,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import DiasSemanaPicker from "./DiasSemanaPicker";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,33 +36,33 @@ import CategoriasProdutoSelector from "./CategoriasProdutoSelector";
 
 type ClienteFormValues = {
   nome: string;
-  cnpjCpf?: string;
-  enderecoEntrega?: string;
-  contatoNome?: string;
-  contatoTelefone?: string;
-  contatoEmail?: string;
-  quantidadePadrao: number;
-  periodicidadePadrao: number;
-  statusCliente: StatusCliente;
+  cnpj_cpf?: string;
+  endereco_entrega?: string;
+  contato_nome?: string;
+  contato_telefone?: string;
+  contato_email?: string;
+  quantidade_padrao: number;
+  periodicidade_padrao: number;
+  status_cliente: StatusCliente;
   observacoes?: string;
   // Novos campos
-  janelasEntrega: DiaSemana[];
-  representanteId?: number;
-  rotaEntregaId?: number;
-  categoriaEstabelecimentoId?: number;
-  instrucoesEntrega?: string;
-  contabilizarGiroMedio: boolean;
-  tipoLogistica: TipoLogisticaNome;
-  emiteNotaFiscal: boolean;
-  tipoCobranca: TipoCobranca;
-  formaPagamento: FormaPagamentoNome;
+  janelas_entrega: DiaSemana[];
+  representante_id?: number;
+  rota_entrega_id?: number;
+  categoria_estabelecimento_id?: number;
+  instrucoes_entrega?: string;
+  contabilizar_giro_medio: boolean;
+  tipo_logistica: TipoLogisticaNome;
+  emite_nota_fiscal: boolean;
+  tipo_cobranca: TipoCobranca;
+  forma_pagamento: FormaPagamentoNome;
   categoriasHabilitadas: number[]; // New field for enabled categories
 };
 
 interface ClienteFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  clienteId?: number; // Para edição
+  clienteId?: string; // Para edição
 }
 
 export default function ClienteFormDialog({
@@ -70,13 +70,12 @@ export default function ClienteFormDialog({
   onOpenChange,
   clienteId,
 }: ClienteFormDialogProps) {
-  const { adicionarCliente, atualizarCliente, getClientePorId } = useClienteStore();
+  const { addCliente, updateCliente, clientes } = useClientesSupabase();
   const { 
     getRepresentanteAtivo,
     getRotaAtiva,
     getCategoriaAtiva
   } = useConfigStore();
-  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Get active configuration options
@@ -87,26 +86,26 @@ export default function ClienteFormDialog({
   const form = useForm<ClienteFormValues>({
     defaultValues: {
       nome: "",
-      cnpjCpf: "",
-      enderecoEntrega: "",
-      contatoNome: "",
-      contatoTelefone: "",
-      contatoEmail: "",
-      quantidadePadrao: 20,
-      periodicidadePadrao: 7,
-      statusCliente: "A ativar",
+      cnpj_cpf: "",
+      endereco_entrega: "",
+      contato_nome: "",
+      contato_telefone: "",
+      contato_email: "",
+      quantidade_padrao: 20,
+      periodicidade_padrao: 7,
+      status_cliente: "A ativar",
       observacoes: "",
       // Valores padrão para os novos campos
-      janelasEntrega: ['Seg', 'Qua', 'Sex'],
-      representanteId: representantes.length > 0 ? representantes[0].id : undefined,
-      rotaEntregaId: rotas.length > 0 ? rotas[0].id : undefined,
-      categoriaEstabelecimentoId: categorias.length > 0 ? categorias[0].id : undefined,
-      instrucoesEntrega: "",
-      contabilizarGiroMedio: true,
-      tipoLogistica: "Própria",
-      emiteNotaFiscal: true,
-      tipoCobranca: "À vista",
-      formaPagamento: "Boleto",
+      janelas_entrega: ['Seg', 'Qua', 'Sex'],
+      representante_id: representantes.length > 0 ? representantes[0].id : undefined,
+      rota_entrega_id: rotas.length > 0 ? rotas[0].id : undefined,
+      categoria_estabelecimento_id: categorias.length > 0 ? categorias[0].id : undefined,
+      instrucoes_entrega: "",
+      contabilizar_giro_medio: true,
+      tipo_logistica: "Própria",
+      emite_nota_fiscal: true,
+      tipo_cobranca: "À vista",
+      forma_pagamento: "Boleto",
       categoriasHabilitadas: [1], // Default to "Revenda Padrão"
     },
   });
@@ -114,74 +113,64 @@ export default function ClienteFormDialog({
   // Carregar dados do cliente se for edição
   useEffect(() => {
     if (clienteId && open) {
-      const cliente = getClientePorId(clienteId);
+      const cliente = clientes.find(c => c.id === clienteId);
       if (cliente) {
         form.reset({
           nome: cliente.nome,
-          cnpjCpf: cliente.cnpjCpf || "",
-          enderecoEntrega: cliente.enderecoEntrega || "",
-          contatoNome: cliente.contatoNome || "",
-          contatoTelefone: cliente.contatoTelefone || "",
-          contatoEmail: cliente.contatoEmail || "",
-          quantidadePadrao: cliente.quantidadePadrao,
-          periodicidadePadrao: cliente.periodicidadePadrao,
-          statusCliente: cliente.statusCliente,
+          cnpj_cpf: cliente.cnpj_cpf || "",
+          endereco_entrega: cliente.endereco_entrega || "",
+          contato_nome: cliente.contato_nome || "",
+          contato_telefone: cliente.contato_telefone || "",
+          contato_email: cliente.contato_email || "",
+          quantidade_padrao: cliente.quantidade_padrao || 20,
+          periodicidade_padrao: cliente.periodicidade_padrao || 7,
+          status_cliente: cliente.status_cliente || "A ativar",
           observacoes: cliente.observacoes || "",
           // Novos campos
-          janelasEntrega: cliente.janelasEntrega || ['Seg', 'Qua', 'Sex'],
-          representanteId: cliente.representanteId,
-          rotaEntregaId: cliente.rotaEntregaId,
-          categoriaEstabelecimentoId: cliente.categoriaEstabelecimentoId,
-          instrucoesEntrega: cliente.instrucoesEntrega || "",
-          contabilizarGiroMedio: cliente.contabilizarGiroMedio ?? true,
-          tipoLogistica: cliente.tipoLogistica,
-          emiteNotaFiscal: cliente.emiteNotaFiscal ?? true,
-          tipoCobranca: cliente.tipoCobranca || "À vista",
-          formaPagamento: cliente.formaPagamento,
-          categoriasHabilitadas: cliente.categoriasHabilitadas || [1],
+          janelas_entrega: (cliente.janelas_entrega as DiaSemana[]) || ['Seg', 'Qua', 'Sex'],
+          representante_id: cliente.representante_id,
+          rota_entrega_id: cliente.rota_entrega_id,
+          categoria_estabelecimento_id: cliente.categoria_estabelecimento_id,
+          instrucoes_entrega: cliente.instrucoes_entrega || "",
+          contabilizar_giro_medio: cliente.contabilizar_giro_medio ?? true,
+          tipo_logistica: cliente.tipo_logistica || "Própria",
+          emite_nota_fiscal: cliente.emite_nota_fiscal ?? true,
+          tipo_cobranca: cliente.tipo_cobranca || "À vista",
+          forma_pagamento: cliente.forma_pagamento || "Boleto",
+          categoriasHabilitadas: [1], // TODO: implement this field in Supabase
         });
       }
     }
-  }, [clienteId, open, getClientePorId, form]);
+  }, [clienteId, open, clientes, form]);
 
-  const onSubmit = (data: ClienteFormValues) => {
+  const onSubmit = async (data: ClienteFormValues) => {
     setIsSubmitting(true);
     
     try {
       if (clienteId) {
-        atualizarCliente(clienteId, {
+        await updateCliente(clienteId, {
           ...data,
-          quantidadePadrao: Number(data.quantidadePadrao),
-          periodicidadePadrao: Number(data.periodicidadePadrao),
+          quantidade_padrao: Number(data.quantidade_padrao),
+          periodicidade_padrao: Number(data.periodicidade_padrao),
         });
         
-        toast({
-          title: "Cliente atualizado com sucesso",
-          description: `O cliente ${data.nome} foi atualizado.`,
-        });
+        toast.success(`Cliente ${data.nome} atualizado com sucesso.`);
       } else {
-        adicionarCliente({
+        await addCliente({
           ...data,
-          quantidadePadrao: Number(data.quantidadePadrao),
-          periodicidadePadrao: Number(data.periodicidadePadrao),
-          ativo: data.statusCliente === 'Ativo',
-          giroMedioSemanal: 0 // Add required field
+          quantidade_padrao: Number(data.quantidade_padrao),
+          periodicidade_padrao: Number(data.periodicidade_padrao),
+          ativo: data.status_cliente === 'Ativo',
+          giro_medio_semanal: 0 // Add required field
         });
         
-        toast({
-          title: "Cliente cadastrado com sucesso",
-          description: `O cliente ${data.nome} foi adicionado.`,
-        });
+        toast.success(`Cliente ${data.nome} cadastrado com sucesso.`);
       }
       
       form.reset();
       onOpenChange(false);
     } catch (error) {
-      toast({
-        title: clienteId ? "Erro ao atualizar cliente" : "Erro ao cadastrar cliente",
-        description: "Ocorreu um erro ao tentar salvar os dados do cliente.",
-        variant: "destructive",
-      });
+      toast.error(clienteId ? "Erro ao atualizar cliente" : "Erro ao cadastrar cliente");
       console.error("Erro ao salvar cliente:", error);
     } finally {
       setIsSubmitting(false);
@@ -220,7 +209,7 @@ export default function ClienteFormDialog({
 
                 <FormField
                   control={form.control}
-                  name="cnpjCpf"
+                  name="cnpj_cpf"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>CNPJ/CPF</FormLabel>
@@ -235,7 +224,7 @@ export default function ClienteFormDialog({
 
               <FormField
                 control={form.control}
-                name="enderecoEntrega"
+                name="endereco_entrega"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Endereço de Entrega</FormLabel>
@@ -270,7 +259,7 @@ export default function ClienteFormDialog({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <FormField
                   control={form.control}
-                  name="contatoNome"
+                  name="contato_nome"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Nome do Contato</FormLabel>
@@ -284,7 +273,7 @@ export default function ClienteFormDialog({
 
                 <FormField
                   control={form.control}
-                  name="contatoTelefone"
+                  name="contato_telefone"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Telefone</FormLabel>
@@ -298,7 +287,7 @@ export default function ClienteFormDialog({
 
                 <FormField
                   control={form.control}
-                  name="contatoEmail"
+                  name="contato_email"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Email</FormLabel>
@@ -316,7 +305,7 @@ export default function ClienteFormDialog({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <FormField
                   control={form.control}
-                  name="quantidadePadrao"
+                  name="quantidade_padrao"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Quantidade Padrão*</FormLabel>
@@ -330,7 +319,7 @@ export default function ClienteFormDialog({
 
                 <FormField
                   control={form.control}
-                  name="periodicidadePadrao"
+                  name="periodicidade_padrao"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Periodicidade (dias)*</FormLabel>
@@ -344,7 +333,7 @@ export default function ClienteFormDialog({
 
                 <FormField
                   control={form.control}
-                  name="statusCliente"
+                  name="status_cliente"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status*</FormLabel>
@@ -370,7 +359,7 @@ export default function ClienteFormDialog({
               <h3 className="text-lg font-medium pt-2">Janela de Entrega</h3>
               <FormField
                 control={form.control}
-                name="janelasEntrega"
+                name="janelas_entrega"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Dias disponíveis para entrega</FormLabel>
@@ -391,7 +380,7 @@ export default function ClienteFormDialog({
                 {/* Representante */}
                 <FormField
                   control={form.control}
-                  name="representanteId"
+                  name="representante_id"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Representante Responsável</FormLabel>
@@ -415,7 +404,7 @@ export default function ClienteFormDialog({
                 {/* Rota */}
                 <FormField
                   control={form.control}
-                  name="rotaEntregaId"
+                  name="rota_entrega_id"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Rota de Entrega</FormLabel>
@@ -442,7 +431,7 @@ export default function ClienteFormDialog({
                 {/* Categoria */}
                 <FormField
                   control={form.control}
-                  name="categoriaEstabelecimentoId"
+                  name="categoria_estabelecimento_id"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Categoria de Estabelecimento</FormLabel>
@@ -466,7 +455,7 @@ export default function ClienteFormDialog({
                 {/* Toggle Contabilizar Giro */}
                 <FormField
                   control={form.control}
-                  name="contabilizarGiroMedio"
+                  name="contabilizar_giro_medio"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                       <div className="space-y-0.5">
@@ -489,7 +478,7 @@ export default function ClienteFormDialog({
               {/* Instruções de Entrega */}
               <FormField
                 control={form.control}
-                name="instrucoesEntrega"
+                name="instrucoes_entrega"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Instruções de Entrega</FormLabel>
@@ -512,7 +501,7 @@ export default function ClienteFormDialog({
                 {/* Tipo de Logística */}
                 <FormField
                   control={form.control}
-                  name="tipoLogistica"
+                  name="tipo_logistica"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Logística</FormLabel>
@@ -533,7 +522,7 @@ export default function ClienteFormDialog({
                 {/* Tipo de Nota Fiscal */}
                 <FormField
                   control={form.control}
-                  name="emiteNotaFiscal"
+                  name="emite_nota_fiscal"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Nota Fiscal</FormLabel>
@@ -555,7 +544,7 @@ export default function ClienteFormDialog({
                 {/* Tipo de Cobrança */}
                 <FormField
                   control={form.control}
-                  name="tipoCobranca"
+                  name="tipo_cobranca"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo de Cobrança</FormLabel>
@@ -577,7 +566,7 @@ export default function ClienteFormDialog({
               {/* Forma de Pagamento */}
               <FormField
                 control={form.control}
-                name="formaPagamento"
+                name="forma_pagamento"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Forma de Pagamento</FormLabel>
@@ -620,11 +609,12 @@ export default function ClienteFormDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
               >
                 Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Salvando..." : clienteId ? "Atualizar Cliente" : "Salvar Cliente"}
+                {isSubmitting ? "Salvando..." : clienteId ? "Atualizar" : "Criar Cliente"}
               </Button>
             </DialogFooter>
           </form>

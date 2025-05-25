@@ -1,8 +1,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Cliente } from "@/types";
-import { useClienteStore } from "@/hooks/useClienteStore";
+import { useClientesSupabase, Cliente } from "@/hooks/useClientesSupabase";
 import { CheckSquare, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -34,7 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 interface ClientesBulkActionsProps {
-  selectedClienteIds: number[];
+  selectedClienteIds: string[];
   onClearSelection: () => void;
   onToggleSelectionMode: () => void;
   isSelectionMode: boolean;
@@ -52,62 +51,65 @@ export default function ClientesBulkActions({
   const [bulkEditField, setBulkEditField] = useState<string>("");
   const [bulkEditValue, setBulkEditValue] = useState<string>("");
   
-  const { removerCliente, clientes, atualizarCliente } = useClienteStore();
+  const { deleteCliente, clientes, updateCliente } = useClientesSupabase();
   
   const handleDelete = () => {
     setIsDeleteDialogOpen(false);
     setIsConfirmDeleteDialogOpen(true);
   };
   
-  const handleConfirmDelete = () => {
-    selectedClienteIds.forEach(id => {
-      removerCliente(id);
-    });
-    
-    toast.success(`${selectedClienteIds.length} clientes excluídos com sucesso.`);
-    setIsConfirmDeleteDialogOpen(false);
-    onClearSelection();
-    onToggleSelectionMode();
+  const handleConfirmDelete = async () => {
+    try {
+      await Promise.all(selectedClienteIds.map(id => deleteCliente(id)));
+      toast.success(`${selectedClienteIds.length} clientes excluídos com sucesso.`);
+      setIsConfirmDeleteDialogOpen(false);
+      onClearSelection();
+      onToggleSelectionMode();
+    } catch (error) {
+      toast.error("Erro ao excluir clientes");
+    }
   };
   
-  const handleBulkEdit = () => {
+  const handleBulkEdit = async () => {
     if (!bulkEditField || !bulkEditValue) {
       toast.error("Selecione um campo e valor para editar.");
       return;
     }
     
-    selectedClienteIds.forEach(id => {
-      let updateData: Partial<Cliente> = {};
+    try {
+      const updates: Partial<Cliente> = {};
       
       switch (bulkEditField) {
-        case "statusCliente":
-          updateData = { statusCliente: bulkEditValue as any };
+        case "status_cliente":
+          updates.status_cliente = bulkEditValue as any;
           break;
-        case "tipoLogistica":
-          updateData = { tipoLogistica: bulkEditValue as any };
+        case "tipo_logistica":
+          updates.tipo_logistica = bulkEditValue as any;
           break;
-        case "tipoCobranca":
-          updateData = { tipoCobranca: bulkEditValue as any };
+        case "tipo_cobranca":
+          updates.tipo_cobranca = bulkEditValue as any;
           break;
-        case "formaPagamento":
-          updateData = { formaPagamento: bulkEditValue as any };
+        case "forma_pagamento":
+          updates.forma_pagamento = bulkEditValue as any;
           break;
-        case "quantidadePadrao":
-          updateData = { quantidadePadrao: parseInt(bulkEditValue) };
+        case "quantidade_padrao":
+          updates.quantidade_padrao = parseInt(bulkEditValue);
           break;
-        case "periodicidadePadrao":
-          updateData = { periodicidadePadrao: parseInt(bulkEditValue) };
+        case "periodicidade_padrao":
+          updates.periodicidade_padrao = parseInt(bulkEditValue);
           break;
       }
       
-      atualizarCliente(id, updateData);
-    });
-    
-    toast.success(`${selectedClienteIds.length} clientes atualizados com sucesso.`);
-    setIsBulkEditDialogOpen(false);
-    setBulkEditField("");
-    setBulkEditValue("");
-    onClearSelection();
+      await Promise.all(selectedClienteIds.map(id => updateCliente(id, updates)));
+      
+      toast.success(`${selectedClienteIds.length} clientes atualizados com sucesso.`);
+      setIsBulkEditDialogOpen(false);
+      setBulkEditField("");
+      setBulkEditValue("");
+      onClearSelection();
+    } catch (error) {
+      toast.error("Erro ao atualizar clientes");
+    }
   };
   
   return (

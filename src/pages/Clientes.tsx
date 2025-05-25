@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useClienteStore } from "@/hooks/useClienteStore";
+import { useClientesSupabase } from "@/hooks/useClientesSupabase";
 import PageHeader from "@/components/common/PageHeader";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import ClientesFilters, { ColumnOption } from "@/components/clientes/ClientesFilters";
@@ -12,16 +12,14 @@ import ClientesBulkActions from "@/components/clientes/ClientesBulkActions";
 export default function Clientes() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedClienteIds, setSelectedClienteIds] = useState<number[]>([]);
+  const [selectedClienteIds, setSelectedClienteIds] = useState<string[]>([]);
+  const [clienteSelecionado, setClienteSelecionado] = useState<string | null>(null);
+  const [filtros, setFiltros] = useState({
+    termo: '',
+    status: 'Todos' as const
+  });
   
-  const {
-    filtros,
-    setFiltroTermo,
-    setFiltroStatus,
-    getClientesFiltrados,
-    clienteAtual,
-    selecionarCliente
-  } = useClienteStore();
+  const { clientes } = useClientesSupabase();
 
   // Column visibility state
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
@@ -44,18 +42,27 @@ export default function Clientes() {
     { id: "acoes", label: "Ações", canToggle: false }
   ];
 
-  const clientes = getClientesFiltrados();
+  // Filter clients
+  const clientesFiltrados = clientes.filter(cliente => {
+    const termoMatch = !filtros.termo || 
+      cliente.nome.toLowerCase().includes(filtros.termo.toLowerCase()) ||
+      (cliente.cnpj_cpf && cliente.cnpj_cpf.toLowerCase().includes(filtros.termo.toLowerCase()));
+    
+    const statusMatch = filtros.status === 'Todos' || cliente.status_cliente === filtros.status;
+    
+    return termoMatch && statusMatch;
+  });
   
   const handleOpenForm = () => {
     setIsFormOpen(true);
   };
   
-  const handleSelectCliente = (id: number) => {
-    selecionarCliente(id);
+  const handleSelectCliente = (id: string) => {
+    setClienteSelecionado(id);
   };
   
   const handleBackToList = () => {
-    selecionarCliente(null);
+    setClienteSelecionado(null);
   };
 
   // Toggle selection mode
@@ -65,7 +72,7 @@ export default function Clientes() {
   };
 
   // Toggle client selection
-  const toggleClienteSelection = (id: number) => {
+  const toggleClienteSelection = (id: string) => {
     setSelectedClienteIds(prev => 
       prev.includes(id) 
         ? prev.filter(clienteId => clienteId !== id)
@@ -75,10 +82,10 @@ export default function Clientes() {
 
   // Select/deselect all clients
   const handleSelectAllClientes = () => {
-    if (selectedClienteIds.length === clientes.length) {
+    if (selectedClienteIds.length === clientesFiltrados.length) {
       setSelectedClienteIds([]);
     } else {
-      setSelectedClienteIds(clientes.map(cliente => cliente.id));
+      setSelectedClienteIds(clientesFiltrados.map(cliente => cliente.id));
     }
   };
 
@@ -86,6 +93,9 @@ export default function Clientes() {
   const clearSelection = () => {
     setSelectedClienteIds([]);
   };
+
+  // Find selected client
+  const clienteAtual = clienteSelecionado ? clientes.find(c => c.id === clienteSelecionado) : null;
 
   // Render client details view when a client is selected
   if (clienteAtual) {
@@ -117,15 +127,15 @@ export default function Clientes() {
 
       <ClientesFilters 
         filtros={filtros}
-        setFiltroTermo={setFiltroTermo}
-        setFiltroStatus={setFiltroStatus}
+        setFiltroTermo={(termo: string) => setFiltros(prev => ({ ...prev, termo }))}
+        setFiltroStatus={(status: any) => setFiltros(prev => ({ ...prev, status }))}
         visibleColumns={visibleColumns}
         setVisibleColumns={setVisibleColumns}
         columnOptions={columnOptions}
       />
 
       <ClientesTable 
-        clientes={clientes}
+        clientes={clientesFiltrados}
         visibleColumns={visibleColumns}
         columnOptions={columnOptions}
         onSelectCliente={handleSelectCliente}

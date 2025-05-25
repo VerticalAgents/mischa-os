@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useClienteStore } from "@/hooks/useClienteStore";
+import { useClientesSupabase } from "@/hooks/useClientesSupabase";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useStatusAgendamentoStore, StatusConfirmacao } from "@/hooks/useStatusAgendamentoStore";
 import { useAutomacaoStatus } from "@/hooks/useAutomacaoStatus";
@@ -28,7 +28,7 @@ import ExportacaoButtons from "./ExportacaoButtons";
 import StatusCriticoBadge from "./StatusCriticoBadge";
 
 interface AgendamentoItem {
-  cliente: { id: number; nome: string; contatoNome?: string; contatoTelefone?: string };
+  cliente: { id: string; nome: string; contato_nome?: string; contato_telefone?: string };
   pedido?: any;
   dataReposicao: Date;
   statusAgendamento: string;
@@ -36,12 +36,12 @@ interface AgendamentoItem {
 }
 
 export default function ConfirmacaoReposicao() {
-  const { clientes, atualizarCliente } = useClienteStore();
+  const { clientes, updateCliente } = useClientesSupabase();
   const { getPedidosFiltrados, getPedidosFuturos, atualizarPedido } = usePedidoStore();
   const { statusConfirmacao } = useStatusAgendamentoStore();
   const { confirmarEntrega } = useAutomacaoStatus(); // Usar hook de automação
   const [clientesporStatus, setClientesPorStatus] = useState<{[key: number]: Cliente[]}>({});
-  const [pedidosCliente, setPedidosCliente] = useState<{[key: number]: Pedido}>({});
+  const [pedidosCliente, setPedidosCliente] = useState<{[key: string]: Pedido}>({});
   const [observacoes, setObservacoes] = useState<{[key: string]: string}>({});
   const [tabValue, setTabValue] = useState("hoje");
   const [filtros, setFiltros] = useState<{ rota?: string; cidade?: string }>({});
@@ -53,10 +53,10 @@ export default function ConfirmacaoReposicao() {
   // Simulated function to get status - in a real app, this would come from the client data
   const getClienteStatusConfirmacao = (cliente: Cliente): number => {
     // Para fins de simulação, vamos distribuir os clientes entre os status
-    if (!cliente.proximaDataReposicao) return 0;
+    if (!cliente.proxima_data_reposicao) return 0;
     
     const hoje = new Date();
-    const dataReposicao = new Date(cliente.proximaDataReposicao);
+    const dataReposicao = new Date(cliente.proxima_data_reposicao);
     const diferencaDias = differenceInBusinessDays(dataReposicao, hoje);
     
     // Lógica para simular status baseado na proximidade da data
@@ -73,14 +73,14 @@ export default function ConfirmacaoReposicao() {
   // Organize clients by confirmation status
   useEffect(() => {
     const pedidosFuturos = getPedidosFuturos();
-    const clientesComPedidos: {[key: number]: Cliente} = {};
-    const pedidosPorCliente: {[key: number]: Pedido} = {};
+    const clientesComPedidos: {[key: string]: Cliente} = {};
+    const pedidosPorCliente: {[key: string]: Pedido} = {};
     
     // Map pedidos to clientes
     pedidosFuturos.forEach(pedido => {
       if (pedido.cliente) {
-        clientesComPedidos[pedido.idCliente] = pedido.cliente;
-        pedidosPorCliente[pedido.idCliente] = pedido;
+        clientesComPedidos[pedido.cliente.id] = pedido.cliente;
+        pedidosPorCliente[pedido.cliente.id] = pedido;
       }
     });
     
@@ -90,8 +90,8 @@ export default function ConfirmacaoReposicao() {
     if (filtros.rota || filtros.cidade) {
       clientesFiltrados = clientesFiltrados.filter(cliente => {
         // Simulação de filtro por rota/cidade - em implementação real viria dos dados do cliente
-        const rotaCliente = ["Rota Centro", "Rota Norte", "Rota Sul"][cliente.id % 3];
-        const cidadeCliente = ["São Paulo", "Guarulhos", "Osasco"][cliente.id % 3];
+        const rotaCliente = ["Rota Centro", "Rota Norte", "Rota Sul"][parseInt(cliente.id) % 3];
+        const cidadeCliente = ["São Paulo", "Guarulhos", "Osasco"][parseInt(cliente.id) % 3];
         
         const rotaMatch = !filtros.rota || rotaCliente === filtros.rota;
         const cidadeMatch = !filtros.cidade || cidadeCliente === filtros.cidade;
@@ -122,7 +122,7 @@ export default function ConfirmacaoReposicao() {
 
   // Function to handle WhatsApp message
   const handleWhatsAppClick = (cliente: Cliente) => {
-    if (!cliente.contatoTelefone) {
+    if (!cliente.contato_telefone) {
       toast({
         title: "Número não disponível",
         description: "Este cliente não possui número de telefone cadastrado.",
@@ -132,13 +132,13 @@ export default function ConfirmacaoReposicao() {
     }
     
     // Format phone number for WhatsApp
-    let phone = cliente.contatoTelefone.replace(/\D/g, '');
+    let phone = cliente.contato_telefone.replace(/\D/g, '');
     if (phone.startsWith('0')) phone = phone.substring(1);
     if (!phone.startsWith('55')) phone = '55' + phone;
     
     // Get the client's next replenishment date
-    const nextDate = cliente.proximaDataReposicao 
-      ? format(new Date(cliente.proximaDataReposicao), 'dd/MM/yyyy') 
+    const nextDate = cliente.proxima_data_reposicao 
+      ? format(new Date(cliente.proxima_data_reposicao), 'dd/MM/yyyy') 
       : 'data a definir';
     
     // Create message
@@ -193,36 +193,43 @@ export default function ConfirmacaoReposicao() {
   };
 
   // Function to handle rescheduling confirmation
-  const handleReagendamentoConfirm = (cliente: Cliente, novaData: Date) => {
-    // 1. Update the client's next replenishment date
-    const clienteAtualizado = { ...cliente, proximaDataReposicao: novaData };
-    atualizarCliente(cliente.id, clienteAtualizado);
-    
-    // 2. Update the order's expected delivery date if it exists
-    const pedido = pedidosCliente[cliente.id];
-    if (pedido) {
-      atualizarPedido(pedido.id, { dataPrevistaEntrega: novaData });
+  const handleReagendamentoConfirm = async (cliente: Cliente, novaData: Date) => {
+    try {
+      // 1. Update the client's next replenishment date
+      await updateCliente(cliente.id, { proxima_data_reposicao: novaData.toISOString().split('T')[0] });
+      
+      // 2. Update the order's expected delivery date if it exists
+      const pedido = pedidosCliente[cliente.id];
+      if (pedido) {
+        atualizarPedido(pedido.id, { dataPrevistaEntrega: novaData });
+      }
+      
+      // 3. Update observations
+      const now = new Date();
+      const obsText = observacoes[cliente.id] || '';
+      const newObs = `${format(now, 'dd/MM HH:mm')} - Cliente reagendado para ${format(novaData, 'dd/MM/yyyy')}\n${obsText}`;
+      
+      setObservacoes({
+        ...observacoes,
+        [cliente.id]: newObs
+      });
+      
+      // 4. Close the dialog
+      setReagendamentoDialogOpen(false);
+      setClienteSelecionado(null);
+      
+      // 5. Show success toast
+      toast({
+        title: "Reagendamento realizado",
+        description: `${cliente.nome} reagendado para ${format(novaData, 'dd/MM/yyyy')}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao reagendar cliente",
+        variant: "destructive"
+      });
     }
-    
-    // 3. Update observations
-    const now = new Date();
-    const obsText = observacoes[cliente.id] || '';
-    const newObs = `${format(now, 'dd/MM HH:mm')} - Cliente reagendado para ${format(novaData, 'dd/MM/yyyy')}\n${obsText}`;
-    
-    setObservacoes({
-      ...observacoes,
-      [cliente.id]: newObs
-    });
-    
-    // 4. Close the dialog
-    setReagendamentoDialogOpen(false);
-    setClienteSelecionado(null);
-    
-    // 5. Show success toast
-    toast({
-      title: "Reagendamento realizado",
-      description: `${cliente.nome} reagendado para ${format(novaData, 'dd/MM/yyyy')}`,
-    });
   };
 
   // Function to handle status change
@@ -268,7 +275,7 @@ export default function ConfirmacaoReposicao() {
     return clientesStatus.map(cliente => ({
       ...cliente,
       statusConfirmacao: statusConfirmacao.find(s => s.id === statusId)?.nome || "Não definido",
-      dataReposicao: cliente.proximaDataReposicao ? new Date(cliente.proximaDataReposicao) : new Date(),
+      dataReposicao: cliente.proxima_data_reposicao ? new Date(cliente.proxima_data_reposicao) : new Date(),
       tipoPedido: pedidosCliente[cliente.id]?.tipoPedido || "Padrão",
       observacoes: observacoes[cliente.id] || ""
     }));
@@ -333,7 +340,7 @@ export default function ConfirmacaoReposicao() {
           <TableBody>
             {clientesWithStatus.map((cliente) => {
               const pedido = pedidosCliente[cliente.id];
-              const dataReposicao = cliente.proximaDataReposicao ? new Date(cliente.proximaDataReposicao) : new Date();
+              const dataReposicao = cliente.proxima_data_reposicao ? new Date(cliente.proxima_data_reposicao) : new Date();
               
               return (
                 <TableRow key={cliente.id}>
@@ -347,14 +354,14 @@ export default function ConfirmacaoReposicao() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {cliente.proximaDataReposicao ? 
-                      format(new Date(cliente.proximaDataReposicao), 'dd/MM/yyyy') : 
+                    {cliente.proxima_data_reposicao ? 
+                      format(new Date(cliente.proxima_data_reposicao), 'dd/MM/yyyy') : 
                       'Não definida'}
                   </TableCell>
                   <TableCell>
-                    {cliente.contatoNome || 'N/A'}
+                    {cliente.contato_nome || 'N/A'}
                     <div className="text-xs text-muted-foreground">
-                      {cliente.contatoTelefone || 'Sem telefone'}
+                      {cliente.contato_telefone || 'Sem telefone'}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -466,7 +473,7 @@ export default function ConfirmacaoReposicao() {
               clientes={Object.values(clientesporStatus).flat().map(cliente => ({
                 ...cliente,
                 statusConfirmacao: "Todos",
-                dataReposicao: cliente.proximaDataReposicao ? new Date(cliente.proximaDataReposicao) : new Date(),
+                dataReposicao: cliente.proxima_data_reposicao ? new Date(cliente.proxima_data_reposicao) : new Date(),
                 tipoPedido: pedidosCliente[cliente.id]?.tipoPedido || "Padrão",
                 observacoes: observacoes[cliente.id] || ""
               }))}
