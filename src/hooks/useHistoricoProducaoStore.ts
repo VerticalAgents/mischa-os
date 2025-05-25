@@ -1,73 +1,38 @@
-
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { HistoricoProducao } from "@/types";
 
+// Legacy store for compatibility - components should migrate to Supabase hooks
 interface HistoricoProducaoStore {
-  historico: HistoricoProducao[];
+  historico: any[];
   
-  // Actions
-  adicionarRegistroHistorico: (registro: Omit<HistoricoProducao, 'id'>) => void;
-  editarRegistroHistorico: (id: number, dadosAtualizados: Partial<HistoricoProducao>) => void;
-  obterHistoricoPorPeriodo: (dataInicio: Date, dataFim: Date) => HistoricoProducao[];
-  obterHistoricoPorProduto: (produtoNome: string) => HistoricoProducao[];
+  // Actions - these will be handled by components using Supabase hooks
+  adicionarRegistroHistorico: (registro: any) => void;
+  editarRegistroHistorico: (id: number, dadosAtualizados: any) => void;
+  obterHistoricoPorPeriodo: (dataInicio: Date, dataFim: Date) => any[];
+  obterHistoricoPorProduto: (produtoNome: string) => any[];
 }
 
 export const useHistoricoProducaoStore = create<HistoricoProducaoStore>()(
   immer((set, get) => ({
-    historico: [
-      {
-        id: 1,
-        dataProducao: new Date(2023, 4, 15),
-        produtoId: 1,
-        produtoNome: 'Tradicional',
-        formasProducidas: 10,
-        unidadesCalculadas: 300,
-        turno: 'Matutino',
-        observacoes: 'Produção regular',
-        origem: 'Manual'
-      },
-      {
-        id: 2,
-        dataProducao: new Date(2023, 4, 16),
-        produtoId: 2,
-        produtoNome: 'Choco Duo',
-        formasProducidas: 8,
-        unidadesCalculadas: 240,
-        turno: 'Vespertino',
-        observacoes: 'Produção especial para evento',
-        origem: 'Manual'
-      }
-    ],
+    historico: [],
     
-    adicionarRegistroHistorico: (registro) => set(state => {
-      const novoId = state.historico.length > 0 
-        ? Math.max(...state.historico.map(h => h.id)) + 1 
-        : 1;
-        
-      state.historico.push({
-        ...registro,
-        id: novoId
-      });
-    }),
+    adicionarRegistroHistorico: (registro) => {
+      console.warn('Use useHistoricoProducaoSupabase hook instead of store');
+    },
     
-    editarRegistroHistorico: (id, dadosAtualizados) => set(state => {
-      const index = state.historico.findIndex(h => h.id === id);
-      if (index !== -1) {
-        Object.assign(state.historico[index], dadosAtualizados);
-      }
-    }),
+    editarRegistroHistorico: (id, dadosAtualizados) => {
+      console.warn('Use useHistoricoProducaoSupabase hook instead of store');
+    },
     
     obterHistoricoPorPeriodo: (dataInicio, dataFim) => {
-      return get().historico.filter(h => 
-        h.dataProducao >= dataInicio && h.dataProducao <= dataFim
-      );
+      console.warn('Use useHistoricoProducaoSupabase hook instead of store');
+      return [];
     },
     
     obterHistoricoPorProduto: (produtoNome) => {
-      return get().historico.filter(h => 
-        h.produtoNome.toLowerCase().includes(produtoNome.toLowerCase())
-      );
+      console.warn('Use useHistoricoProducaoSupabase hook instead of store');
+      return [];
     }
   }))
 );
