@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
-import { compareAsc, format } from "date-fns";
+import { compareAsc } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Cliente, Pedido } from "@/types";
 import FiltrosLocalizacao from "./FiltrosLocalizacao";
@@ -56,13 +56,11 @@ export default function TodosAgendamentos() {
       const clienteFicticio: Cliente = {
         id: 0,
         nome,
-        cnpjCpf: '',
         quantidadePadrao: 0,
         periodicidadePadrao: 0,
         statusCliente: "Ativo",
         dataCadastro: new Date(),
         contabilizarGiroMedio: false,
-        giroMedioSemanal: 0,
         tipoLogistica: "Própria",
         emiteNotaFiscal: false,
         tipoCobranca: "À vista",
@@ -136,7 +134,7 @@ export default function TodosAgendamentos() {
     // Atualizar no store se for um pedido
     if (agendamentoAtualizado.pedido) {
       atualizarPedido(agendamentoAtualizado.pedido.id, {
-        dataPrevistaEntrega: format(agendamentoAtualizado.dataReposicao, 'yyyy-MM-dd'),
+        dataPrevistaEntrega: agendamentoAtualizado.dataReposicao,
         totalPedidoUnidades: agendamentoAtualizado.pedido.totalPedidoUnidades,
         observacoes: agendamentoAtualizado.pedido.observacoes,
         tipoPedido: agendamentoAtualizado.pedido.tipoPedido
