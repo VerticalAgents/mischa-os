@@ -9,6 +9,50 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      agendamentos_clientes: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          data_proxima_reposicao: string | null
+          id: string
+          itens_personalizados: Json | null
+          quantidade_total: number
+          status_agendamento: string
+          tipo_pedido: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          data_proxima_reposicao?: string | null
+          id?: string
+          itens_personalizados?: Json | null
+          quantidade_total?: number
+          status_agendamento?: string
+          tipo_pedido?: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          data_proxima_reposicao?: string | null
+          id?: string
+          itens_personalizados?: Json | null
+          quantidade_total?: number
+          status_agendamento?: string
+          tipo_pedido?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_clientes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           ativo: boolean | null

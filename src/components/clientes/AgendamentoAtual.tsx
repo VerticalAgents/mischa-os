@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useClienteStore } from "@/hooks/useClienteStore";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
+import { useAgendamentoClienteStore, AgendamentoCliente } from "@/hooks/useAgendamentoClienteStore";
 import { toast } from "@/hooks/use-toast";
 import { AlertTriangle, Save, Calendar } from "lucide-react";
 
@@ -18,44 +18,82 @@ interface AgendamentoAtualProps {
 }
 
 interface ProdutoQuantidade {
-  produto_id: number;
-  nome_produto: string;
+  produto: string;
   quantidade: number;
 }
 
 export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
-  const [statusAgendamento, setStatusAgendamento] = useState(cliente.statusAgendamento || 'Agendar');
-  const [proximaDataReposicao, setProximaDataReposicao] = useState(
-    cliente.proximaDataReposicao ? cliente.proximaDataReposicao.toISOString().split('T')[0] : ''
-  );
+  const [statusAgendamento, setStatusAgendamento] = useState<'Agendar' | 'Previsto' | 'Agendado'>('Agendar');
+  const [proximaDataReposicao, setProximaDataReposicao] = useState('');
   const [quantidadeTotal, setQuantidadeTotal] = useState(cliente.quantidadePadrao);
   const [periodicidade, setPeriodicidade] = useState(cliente.periodicidadePadrao);
   const [tipoPedido, setTipoPedido] = useState<'Padrão' | 'Alterado'>('Padrão');
   const [produtosQuantidades, setProdutosQuantidades] = useState<ProdutoQuantidade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [agendamentoCarregado, setAgendamentoCarregado] = useState(false);
   
-  const { atualizarCliente } = useClienteStore();
   const { produtos } = useProdutoStore();
+  const { carregarAgendamentoPorCliente, salvarAgendamento, loading } = useAgendamentoClienteStore();
 
   // Filtrar produtos baseado nas categorias habilitadas do cliente
   const produtosFiltrados = produtos.filter(produto => {
     if (!cliente.categoriasHabilitadas || cliente.categoriasHabilitadas.length === 0) {
-      return true; // Se não há categorias específicas, mostrar todos
+      return true;
     }
     return cliente.categoriasHabilitadas.includes(produto.categoriaId);
   });
 
+  // Carregar agendamento existente
+  useEffect(() => {
+    const carregarDados = async () => {
+      if (!agendamentoCarregado) {
+        try {
+          const agendamento = await carregarAgendamentoPorCliente(cliente.id.toString());
+          
+          if (agendamento) {
+            setStatusAgendamento(agendamento.status_agendamento);
+            setProximaDataReposicao(
+              agendamento.data_proxima_reposicao 
+                ? agendamento.data_proxima_reposicao.toISOString().split('T')[0] 
+                : ''
+            );
+            setQuantidadeTotal(agendamento.quantidade_total);
+            setTipoPedido(agendamento.tipo_pedido);
+            
+            if (agendamento.itens_personalizados && agendamento.tipo_pedido === 'Alterado') {
+              setProdutosQuantidades(agendamento.itens_personalizados);
+            }
+          } else {
+            // Usar dados padrão do cliente se não há agendamento
+            setQuantidadeTotal(cliente.quantidadePadrao);
+            setPeriodicidade(cliente.periodicidadePadrao);
+            setStatusAgendamento(cliente.statusAgendamento as any || 'Agendar');
+            setProximaDataReposicao(
+              cliente.proximaDataReposicao 
+                ? cliente.proximaDataReposicao.toISOString().split('T')[0] 
+                : ''
+            );
+          }
+          setAgendamentoCarregado(true);
+        } catch (error) {
+          console.error('Erro ao carregar agendamento:', error);
+        }
+      }
+    };
+
+    carregarDados();
+  }, [cliente.id, carregarAgendamentoPorCliente, agendamentoCarregado, cliente]);
+
   // Inicializar produtos com quantidades quando o tipo for "Alterado"
   useEffect(() => {
-    if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0) {
+    if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0 && produtosQuantidades.length === 0) {
       const produtosIniciais = produtosFiltrados.map(produto => ({
-        produto_id: produto.id,
-        nome_produto: produto.nome,
+        produto: produto.nome,
         quantidade: 0
       }));
       setProdutosQuantidades(produtosIniciais);
     }
-  }, [tipoPedido, produtosFiltrados.length]);
+  }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length]);
 
   // Calcular soma das quantidades dos produtos
   const somaQuantidadesProdutos = produtosQuantidades.reduce((soma, produto) => soma + produto.quantidade, 0);
@@ -80,10 +118,10 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
   };
 
   // Atualizar quantidade de um produto específico
-  const atualizarQuantidadeProduto = (produtoId: number, novaQuantidade: number) => {
+  const atualizarQuantidadeProduto = (produtoNome: string, novaQuantidade: number) => {
     setProdutosQuantidades(prev => 
       prev.map(produto => 
-        produto.produto_id === produtoId 
+        produto.produto === produtoNome 
           ? { ...produto, quantidade: Math.max(0, novaQuantidade) }
           : produto
       )
@@ -112,26 +150,18 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
 
     setIsLoading(true);
     try {
-      const dadosAtualizacao: Partial<Cliente> = {
-        quantidadePadrao: quantidadeTotal,
-        periodicidadePadrao: periodicidade,
-        statusAgendamento,
-        proximaDataReposicao: proximaDataReposicao ? new Date(proximaDataReposicao) : undefined
+      const dadosAgendamento: Partial<AgendamentoCliente> = {
+        status_agendamento: statusAgendamento,
+        data_proxima_reposicao: proximaDataReposicao ? new Date(proximaDataReposicao) : undefined,
+        quantidade_total: quantidadeTotal,
+        tipo_pedido: tipoPedido,
+        itens_personalizados: tipoPedido === 'Alterado' ? produtosQuantidades : undefined
       };
 
-      await atualizarCliente(cliente.id, dadosAtualizacao);
+      await salvarAgendamento(cliente.id.toString(), dadosAgendamento);
       
-      toast({
-        title: "Agendamento atualizado",
-        description: "As configurações de agendamento foram salvas com sucesso"
-      });
     } catch (error) {
       console.error('Erro ao salvar agendamento:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível salvar as alterações",
-        variant: "destructive"
-      });
     } finally {
       setIsLoading(false);
     }
@@ -151,7 +181,7 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status-agendamento">Status do Agendamento</Label>
-              <Select value={statusAgendamento} onValueChange={setStatusAgendamento}>
+              <Select value={statusAgendamento} onValueChange={(value: 'Agendar' | 'Previsto' | 'Agendado') => setStatusAgendamento(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -228,7 +258,7 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
             <Label>Tipo de Pedido</Label>
             <RadioGroup 
               value={tipoPedido} 
-              onValueChange={(value) => setTipoPedido(value as 'Padrão' | 'Alterado')}
+              onValueChange={(value: 'Padrão' | 'Alterado') => setTipoPedido(value)}
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="Padrão" id="padrao" />
@@ -276,22 +306,22 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
                 </Alert>
               ) : (
                 <div className="grid gap-3 max-h-60 overflow-y-auto">
-                  {produtosQuantidades.map((produto) => {
-                    const produtoInfo = produtosFiltrados.find(p => p.id === produto.produto_id);
+                  {produtosFiltrados.map((produto) => {
+                    const produtoQuantidade = produtosQuantidades.find(p => p.produto === produto.nome);
                     return (
-                      <div key={produto.produto_id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div key={produto.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex flex-col">
-                          <span className="font-medium">{produto.nome_produto}</span>
-                          {produtoInfo?.categoria && (
+                          <span className="font-medium">{produto.nome}</span>
+                          {produto.categoria && (
                             <span className="text-xs text-muted-foreground">
-                              Categoria: {produtoInfo.categoria}
+                              Categoria: {produto.categoria}
                             </span>
                           )}
                         </div>
                         <Input
                           type="number"
-                          value={produto.quantidade}
-                          onChange={(e) => atualizarQuantidadeProduto(produto.produto_id, Number(e.target.value))}
+                          value={produtoQuantidade?.quantidade || 0}
+                          onChange={(e) => atualizarQuantidadeProduto(produto.nome, Number(e.target.value))}
                           min="0"
                           className="w-20"
                         />
@@ -307,11 +337,11 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
           <div className="flex justify-end pt-4">
             <Button 
               onClick={handleSalvar}
-              disabled={isLoading || hasValidationError || hasDataError}
+              disabled={isLoading || loading || hasValidationError || hasDataError}
               className="flex items-center gap-2"
             >
               <Save className="h-4 w-4" />
-              {isLoading ? 'Salvando...' : 'Salvar Alterações'}
+              {(isLoading || loading) ? 'Salvando...' : 'Salvar Alterações'}
             </Button>
           </div>
         </CardContent>
