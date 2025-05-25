@@ -62,7 +62,6 @@ export default function FiltrosLocalizacao({ onFiltroChange }: FiltrosLocalizaca
             <SelectValue placeholder="Filtrar por rota" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas as rotas</SelectItem>
             {rotasMock.map((rota) => (
               <SelectItem key={rota} value={rota}>
                 {rota}
@@ -76,7 +75,6 @@ export default function FiltrosLocalizacao({ onFiltroChange }: FiltrosLocalizaca
             <SelectValue placeholder="Filtrar por cidade" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas as cidades</SelectItem>
             {cidadesMock.map((cidade) => (
               <SelectItem key={cidade} value={cidade}>
                 {cidade}
