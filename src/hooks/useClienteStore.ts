@@ -122,6 +122,8 @@ export const useClienteStore = create<ClienteStore>()(
             ultimaDataReposicaoEfetiva: new Date(Date.now() - Math.floor(Math.random() * 1000000000)),
             proximaDataReposicao: Math.random() > 0.1 ? proximaDataReposicao : undefined,
             statusAgendamento: Math.random() > 0.1 ? statusAgendamento : undefined,
+            ativo: cliente.statusCliente === 'Ativo', // Added missing property based on status
+            giroMedioSemanal: calcularGiroSemanal(cliente.quantidadePadrao || 0, cliente.periodicidadePadrao || 7), // Added missing property
             // Novos campos
             janelasEntrega: ['Seg', 'Qua', 'Sex'],
             representanteId: Math.ceil(Math.random() * 3),
@@ -155,7 +157,9 @@ export const useClienteStore = create<ClienteStore>()(
               ...cliente,
               id: novoId,
               dataCadastro: new Date(),
-              metaGiroSemanal: Math.round(calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao) * 1.2)
+              metaGiroSemanal: Math.round(calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao) * 1.2),
+              ativo: cliente.statusCliente === 'Ativo', // Set ativo based on status
+              giroMedioSemanal: calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao) // Calculate giro
             }
           ]
         }));

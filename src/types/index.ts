@@ -1,3 +1,4 @@
+
 export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby';
 
 // Adding new types for client configuration
@@ -40,6 +41,8 @@ export interface Cliente {
   ultimaDataReposicaoEfetiva?: Date; // Data da última reposição efetiva
   statusAgendamento?: StatusAgendamentoCliente; // Status do agendamento
   proximaDataReposicao?: Date; // Próxima data de reposição agendada
+  ativo: boolean; // Added missing property
+  giroMedioSemanal?: number; // Added missing property
   
   // Novos campos para configuração avançada
   janelasEntrega?: DiaSemana[];
