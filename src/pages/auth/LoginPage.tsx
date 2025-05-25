@@ -11,7 +11,6 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { SplashCursorDemo } from '@/components/ui/splash-cursor-demo';
 import { toast } from 'sonner';
 
 const LoginPage = () => {
@@ -76,11 +75,8 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-transparent p-4 relative">
-      {/* Fundo com efeito fluido */}
-      <SplashCursorDemo />
-      
-      <div className="relative mx-auto flex w-full max-w-md flex-col items-center justify-center space-y-6 rounded-xl border bg-card p-8 shadow-lg z-10">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
+      <div className="relative mx-auto flex w-full max-w-md flex-col items-center justify-center space-y-6 rounded-xl border bg-card p-8 shadow-lg">
         {/* Logo and Title */}
         <div className="flex flex-col items-center space-y-4">
           <img src="/logo.svg" alt="Mischa's Bakery" className="h-20 w-20" />
