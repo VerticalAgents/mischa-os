@@ -85,7 +85,7 @@ export default function ProporcoesTab() {
           {produtosAtivos.length === 0 ? (
             <Alert>
               <AlertDescription>
-                Nenhum produto ativo encontrado. Cadastre produtos em "Precificação > Produtos" primeiro.
+                Nenhum produto ativo encontrado. Cadastre produtos em "Precificação &gt; Produtos" primeiro.
               </AlertDescription>
             </Alert>
           ) : (
