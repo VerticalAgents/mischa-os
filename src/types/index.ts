@@ -1,3 +1,4 @@
+
 export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby';
 
 // Adding new types for client configuration
@@ -25,7 +26,7 @@ export type FormaPagamentoNome = 'Boleto' | 'PIX' | 'Dinheiro';
 export type StatusAgendamentoCliente = 'Agendar' | 'Previsto' | 'Agendado' | 'Reagendar' | string;
 
 export interface Cliente {
-  id: number;
+  id: string; // Changed from number to string (UUID)
   nome: string;
   cnpjCpf?: string;
   enderecoEntrega?: string;

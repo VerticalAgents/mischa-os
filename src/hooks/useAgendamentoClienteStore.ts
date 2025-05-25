@@ -36,11 +36,13 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
       carregarAgendamentoPorCliente: async (clienteId: string) => {
         set({ loading: true });
         try {
+          console.log('Carregando agendamento para cliente:', clienteId);
+          
           // Primeiro, verificar se o cliente existe na tabela clientes
           const { data: clienteData, error: clienteError } = await supabase
             .from('clientes')
             .select('id')
-            .eq('id', clienteId)
+            .eq('id', clienteId) // Removido .toString() - clienteId já é string
             .maybeSingle();
 
           if (clienteError) {
@@ -66,7 +68,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           const { data, error } = await supabase
             .from('agendamentos_clientes')
             .select('*')
-            .eq('cliente_id', clienteId)
+            .eq('cliente_id', clienteId) // Removido .toString()
             .maybeSingle();
 
           if (error) {
@@ -112,7 +114,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
       criarAgendamentoPadrao: async (clienteId: string) => {
         try {
           const dadosDefault = {
-            cliente_id: clienteId,
+            cliente_id: clienteId, // Removido .toString()
             status_agendamento: 'Agendar' as const,
             quantidade_total: 0,
             tipo_pedido: 'Padrão' as const,
@@ -153,7 +155,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
         set({ loading: true });
         try {
           const dadosSupabase = {
-            cliente_id: clienteId,
+            cliente_id: clienteId, // Removido .toString()
             status_agendamento: dados.status_agendamento,
             data_proxima_reposicao: dados.data_proxima_reposicao?.toISOString().split('T')[0],
             quantidade_total: dados.quantidade_total,
@@ -165,7 +167,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           const { data: existente } = await supabase
             .from('agendamentos_clientes')
             .select('id')
-            .eq('cliente_id', clienteId)
+            .eq('cliente_id', clienteId) // Removido .toString()
             .maybeSingle();
 
           if (existente) {
@@ -173,7 +175,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             const { error } = await supabase
               .from('agendamentos_clientes')
               .update(dadosSupabase)
-              .eq('cliente_id', clienteId);
+              .eq('cliente_id', clienteId); // Removido .toString()
 
             if (error) {
               throw error;
@@ -212,7 +214,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           const { error } = await supabase
             .from('agendamentos_clientes')
             .delete()
-            .eq('cliente_id', clienteId);
+            .eq('cliente_id', clienteId); // Removido .toString()
 
           if (error) {
             throw error;

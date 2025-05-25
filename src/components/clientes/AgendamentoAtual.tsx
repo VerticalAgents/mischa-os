@@ -50,7 +50,7 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
       if (!agendamentoCarregado && cliente?.id) {
         try {
           console.log('Carregando agendamento para cliente:', cliente.id);
-          const agendamento = await carregarAgendamentoPorCliente(cliente.id.toString());
+          const agendamento = await carregarAgendamentoPorCliente(cliente.id); // Removido .toString()
           
           if (agendamento) {
             console.log('Agendamento carregado:', agendamento);
@@ -168,7 +168,7 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
       };
 
       console.log('Salvando agendamento:', dadosAgendamento);
-      await salvarAgendamento(cliente.id.toString(), dadosAgendamento);
+      await salvarAgendamento(cliente.id, dadosAgendamento); // Removido .toString()
       
     } catch (error) {
       console.error('Erro ao salvar agendamento:', error);
