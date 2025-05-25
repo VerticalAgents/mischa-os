@@ -4,22 +4,25 @@ import { MessageSquare, Calendar, X, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Cliente } from "@/hooks/useClientesSupabase";
-import { Pedido } from "@/types/pedido";
 
 interface ConfirmacaoActionsProps {
   cliente: Cliente;
-  pedido?: Pedido;
-  onReagendar: (cliente: Cliente, novaData: Date) => void;
-  onConfirmar: (cliente: Cliente) => void;
-  onCancelar: (cliente: Cliente) => void;
+  statusId: number;
+  observacoes: {[key: string]: string};
+  setObservacoes: (obs: {[key: string]: string}) => void;
+  onNoReplenishment: (cliente: Cliente) => void;
+  onStatusChange: (cliente: Cliente, novoStatus: string, observacao?: string) => void;
+  moveClientToStatus: (cliente: Cliente, newStatusId: number) => void;
 }
 
 export default function ConfirmacaoActions({ 
   cliente, 
-  pedido, 
-  onReagendar, 
-  onConfirmar, 
-  onCancelar 
+  statusId,
+  observacoes,
+  setObservacoes,
+  onNoReplenishment,
+  onStatusChange,
+  moveClientToStatus
 }: ConfirmacaoActionsProps) {
   const handleWhatsAppClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -47,17 +50,17 @@ export default function ConfirmacaoActions({
     const novaData = new Date();
     novaData.setDate(novaData.getDate() + 7); // Reagendar para uma semana à frente
     
-    onReagendar(cliente, novaData);
+    // onReagendar(cliente, novaData);
   };
 
   const handleConfirmarClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onConfirmar(cliente);
+    onStatusChange(cliente, 'Confirmado', observacoes[cliente.id]);
   };
 
   const handleCancelarClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onCancelar(cliente);
+    onNoReplenishment(cliente);
   };
 
   return (

@@ -1,7 +1,7 @@
 import { ExternalLink, Calendar, ArrowUp, ArrowDown, Check } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Cliente, StatusCliente } from "@/types";
+import { Cliente } from "@/hooks/useClientesSupabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,10 @@ interface ClientesTableProps {
   clientes: Cliente[];
   visibleColumns: string[];
   columnOptions: ColumnOption[];
-  onSelectCliente: (id: number) => void;
-  selectedClientes?: number[];
+  onSelectCliente: (id: string) => void;
+  selectedClientes?: string[];
   onSelectAllClientes?: () => void;
-  onToggleClienteSelection?: (id: number) => void;
+  onToggleClienteSelection?: (id: string) => void;
   showSelectionControls?: boolean;
 }
 
@@ -111,40 +111,40 @@ export default function ClientesTable({
         bValue = b.nome;
         break;
       case "cnpjCpf":
-        aValue = a.cnpjCpf || "";
-        bValue = b.cnpjCpf || "";
+        aValue = a.cnpj_cpf || "";
+        bValue = b.cnpj_cpf || "";
         break;
       case "enderecoEntrega":
-        aValue = a.enderecoEntrega || "";
-        bValue = b.enderecoEntrega || "";
+        aValue = a.endereco_entrega || "";
+        bValue = b.endereco_entrega || "";
         break;
       case "contato":
-        aValue = a.contatoNome || "";
-        bValue = b.contatoNome || "";
+        aValue = a.contato_nome || "";
+        bValue = b.contato_nome || "";
         break;
       case "quantidadePadrao":
-        aValue = a.quantidadePadrao;
-        bValue = b.quantidadePadrao;
+        aValue = a.quantidade_padrao || 0;
+        bValue = b.quantidade_padrao || 0;
         break;
       case "periodicidade":
-        aValue = a.periodicidadePadrao;
-        bValue = b.periodicidadePadrao;
+        aValue = a.periodicidade_padrao || 7;
+        bValue = b.periodicidade_padrao || 7;
         break;
       case "giroSemanal":
-        aValue = calcularGiroSemanal(a.quantidadePadrao, a.periodicidadePadrao);
-        bValue = calcularGiroSemanal(b.quantidadePadrao, b.periodicidadePadrao);
+        aValue = calcularGiroSemanal(a.quantidade_padrao || 0, a.periodicidade_padrao || 7);
+        bValue = calcularGiroSemanal(b.quantidade_padrao || 0, b.periodicidade_padrao || 7);
         break;
       case "status":
-        aValue = a.statusCliente;
-        bValue = b.statusCliente;
+        aValue = a.status_cliente || "";
+        bValue = b.status_cliente || "";
         break;
       case "statusAgendamento":
-        aValue = a.statusAgendamento || "";
-        bValue = b.statusAgendamento || "";
+        aValue = a.status_agendamento || "";
+        bValue = b.status_agendamento || "";
         break;
       case "proximaDataReposicao":
-        aValue = a.proximaDataReposicao ? a.proximaDataReposicao.getTime() : 0;
-        bValue = b.proximaDataReposicao ? b.proximaDataReposicao.getTime() : 0;
+        aValue = a.proxima_data_reposicao ? new Date(a.proxima_data_reposicao).getTime() : 0;
+        bValue = b.proxima_data_reposicao ? new Date(b.proxima_data_reposicao).getTime() : 0;
         break;
       default:
         return 0;
@@ -217,7 +217,10 @@ export default function ClientesTable({
               </TableRow>
             ) : (
               sortedClientes.map(cliente => {
-                const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
+                const giroSemanal = calcularGiroSemanal(
+                  cliente.quantidade_padrao || 0, 
+                  cliente.periodicidade_padrao || 7
+                );
                 const isSelected = selectedClientes.includes(cliente.id);
                 
                 return (
@@ -256,99 +259,88 @@ export default function ClientesTable({
                               {cliente.nome}
                             </TableCell>
                           );
+                        case "giroSemanal":
+                          return (
+                            <TableCell key={`${cliente.id}-${columnId}`} className="font-semibold">
+                              <Badge variant="outline" className="bg-blue-50">
+                                {giroSemanal}
+                              </Badge>
+                            </TableCell>
+                          );
                         case "cnpjCpf":
                           return (
                             <TableCell key={`${cliente.id}-${columnId}`}>
-                              {cliente.cnpjCpf || "-"}
+                              {cliente.cnpj_cpf || "-"}
                             </TableCell>
                           );
                         case "enderecoEntrega":
                           return (
-                            <TableCell key={`${cliente.id}-${columnId}`} className="max-w-[200px] truncate">
-                              {cliente.enderecoEntrega || "-"}
+                            <TableCell key={`${cliente.id}-${columnId}`}>
+                              {cliente.endereco_entrega || "-"}
                             </TableCell>
                           );
                         case "contato":
                           return (
                             <TableCell key={`${cliente.id}-${columnId}`}>
-                              {cliente.contatoNome || "-"}
-                              {cliente.contatoTelefone && (
-                                <div className="text-xs text-muted-foreground">
-                                  {cliente.contatoTelefone}
+                              <div className="text-sm">
+                                <div>{cliente.contato_nome || "-"}</div>
+                                <div className="text-muted-foreground">
+                                  {cliente.contato_telefone || "-"}
                                 </div>
-                              )}
+                              </div>
                             </TableCell>
                           );
                         case "quantidadePadrao":
                           return (
                             <TableCell key={`${cliente.id}-${columnId}`}>
-                              {cliente.quantidadePadrao}
+                              {cliente.quantidade_padrao || 0}
                             </TableCell>
                           );
                         case "periodicidade":
                           return (
                             <TableCell key={`${cliente.id}-${columnId}`}>
-                              {formatPeriodicidade(cliente.periodicidadePadrao)}
-                            </TableCell>
-                          );
-                        case "giroSemanal":
-                          return (
-                            <TableCell key={`${cliente.id}-${columnId}`}>
-                              <Badge 
-                                variant="outline" 
-                                className={cn(
-                                  "font-semibold",
-                                  isDark ? "bg-gray-800 text-gray-100" : "bg-gray-200 text-gray-800"
-                                )}
-                              >
-                                {giroSemanal}
-                              </Badge>
+                              {formatPeriodicidade(cliente.periodicidade_padrao || 7)}
                             </TableCell>
                           );
                         case "status":
                           return (
                             <TableCell key={`${cliente.id}-${columnId}`}>
-                              <StatusBadge status={cliente.statusCliente} />
+                              <StatusBadge status={cliente.status_cliente as any} />
                             </TableCell>
                           );
                         case "statusAgendamento":
                           return (
                             <TableCell key={`${cliente.id}-${columnId}`}>
-                              <Badge variant={
-                                cliente.statusAgendamento === "Agendado" ? "default" : 
-                                cliente.statusAgendamento === "Pendente" ? "secondary" : "outline"
-                              }>
-                                {cliente.statusAgendamento || "Não Agendado"}
-                              </Badge>
+                              {cliente.status_agendamento ? (
+                                <Badge variant="outline">
+                                  {cliente.status_agendamento}
+                                </Badge>
+                              ) : "-"}
                             </TableCell>
                           );
                         case "proximaDataReposicao":
                           return (
                             <TableCell key={`${cliente.id}-${columnId}`}>
-                              {cliente.proximaDataReposicao ? (
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <span>
-                                    {format(cliente.proximaDataReposicao, "dd/MM/yyyy", { locale: ptBR })}
-                                  </span>
-                                </div>
-                              ) : "-"}
+                              {cliente.proxima_data_reposicao ? 
+                                format(new Date(cliente.proxima_data_reposicao), 'dd/MM/yyyy', { locale: ptBR }) : 
+                                '-'}
                             </TableCell>
                           );
                         case "acoes":
                           return (
-                            <TableCell key={`${cliente.id}-${columnId}`} className="text-right">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onSelectCliente(cliente.id);
-                                }}
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                                <span className="sr-only">Ver detalhes</span>
-                              </Button>
+                            <TableCell key={`${cliente.id}-${columnId}`}>
+                              <div className="flex space-x-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelectCliente(cliente.id);
+                                  }}
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           );
                         default:

@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, ArrowUpDown } from "lucide-react";
-import { Cliente } from "@/types";
+import { Cliente } from "@/hooks/useClientesSupabase";
 import { DREData, Channel } from "@/types/projections";
 import { useProjectionStore } from "@/hooks/useProjectionStore";
 
@@ -47,8 +47,8 @@ export function PDVCategoryTable({ clientes, baseDRE }: PDVCategoryTableProps) {
     
     // Group by category establishment (we'll use a fallback if no category is set)
     clientes.forEach(cliente => {
-      // Use categoryEstabelecimentoId or fallback
-      const categoryId = cliente.categoriaEstabelecimentoId || 0;
+      // Use categoria_estabelecimento_id or fallback
+      const categoryId = cliente.categoria_estabelecimento_id || 0;
       const categoryName = getCategoryNameById(categoryId);
       
       if (!categoryMap.has(categoryName)) {
@@ -74,7 +74,9 @@ export function PDVCategoryTable({ clientes, baseDRE }: PDVCategoryTableProps) {
       let totalWeeklyOrders = 0;
       clients.forEach(client => {
         // Calculate weekly volume based on standard quantity and periodicity
-        totalWeeklyOrders += client.quantidadePadrao * (7 / client.periodicidadePadrao);
+        const quantidadePadrao = client.quantidade_padrao || 0;
+        const periodicidadePadrao = client.periodicidade_padrao || 7;
+        totalWeeklyOrders += quantidadePadrao * (7 / periodicidadePadrao);
       });
       
       // Calculate revenue percentage

@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Cliente, DiaSemana } from '@/types';
+import { Cliente } from "@/hooks/useClientesSupabase";
 import { useConfigStore } from '@/hooks/useConfigStore';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,9 +17,9 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
     categoriasEstabelecimento 
   } = useConfigStore();
 
-  const representante = representantes.find(r => r.id === cliente.representanteId);
-  const rota = rotasEntrega.find(r => r.id === cliente.rotaEntregaId);
-  const categoria = categoriasEstabelecimento.find(c => c.id === cliente.categoriaEstabelecimentoId);
+  const representante = representantes.find(r => r.id === cliente.representante_id);
+  const rota = rotasEntrega.find(r => r.id === cliente.rota_entrega_id);
+  const categoria = categoriasEstabelecimento.find(c => c.id === cliente.categoria_estabelecimento_id);
   
   // Helper para formatar a periodicidade em texto
   const formatPeriodicidade = (dias: number): string => {
@@ -46,12 +46,16 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
     return Math.round(qtdPadrao / periodicidadeSemanas);
   };
   
-  const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
+  const giroSemanal = calcularGiroSemanal(
+    cliente.quantidade_padrao || 0, 
+    cliente.periodicidade_padrao || 7
+  );
 
-  const formatarDiasSemana = (dias?: DiaSemana[]) => {
-    if (!dias || dias.length === 0) return "Não definidos";
-    if (dias.length === 7) return "Todos os dias";
-    return dias.join(', ');
+  const formatarDiasSemana = (dias?: any) => {
+    if (!dias || (Array.isArray(dias) && dias.length === 0)) return "Não definidos";
+    if (Array.isArray(dias) && dias.length === 7) return "Todos os dias";
+    if (Array.isArray(dias)) return dias.join(', ');
+    return "Não definidos";
   };
 
   return (
@@ -63,19 +67,19 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
             <dl className="space-y-2">
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Status:</dt>
-                <dd><StatusBadge status={cliente.statusCliente} /></dd>
+                <dd><StatusBadge status={cliente.status_cliente as any} /></dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">CNPJ/CPF:</dt>
-                <dd>{cliente.cnpjCpf || "-"}</dd>
+                <dd>{cliente.cnpj_cpf || "-"}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Endereço:</dt>
-                <dd className="text-right">{cliente.enderecoEntrega || "-"}</dd>
+                <dd className="text-right">{cliente.endereco_entrega || "-"}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Data de cadastro:</dt>
-                <dd>{cliente.dataCadastro.toLocaleDateString()}</dd>
+                <dd>{cliente.created_at ? new Date(cliente.created_at).toLocaleDateString() : "-"}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Categoria:</dt>
@@ -89,15 +93,15 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
             <dl className="space-y-2">
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Nome:</dt>
-                <dd>{cliente.contatoNome || "-"}</dd>
+                <dd>{cliente.contato_nome || "-"}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Telefone:</dt>
-                <dd>{cliente.contatoTelefone || "-"}</dd>
+                <dd>{cliente.contato_telefone || "-"}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Email:</dt>
-                <dd>{cliente.contatoEmail || "-"}</dd>
+                <dd>{cliente.contato_email || "-"}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Representante:</dt>
@@ -111,11 +115,11 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
             <dl className="space-y-2">
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Quantidade padrão:</dt>
-                <dd>{cliente.quantidadePadrao}</dd>
+                <dd>{cliente.quantidade_padrao || 0}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Periodicidade:</dt>
-                <dd>{formatPeriodicidade(cliente.periodicidadePadrao)}</dd>
+                <dd>{formatPeriodicidade(cliente.periodicidade_padrao || 7)}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Giro semanal estimado:</dt>
@@ -127,11 +131,11 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Contabiliza no giro médio:</dt>
-                <dd>{cliente.contabilizarGiroMedio ? "Sim" : "Não"}</dd>
+                <dd>{cliente.contabilizar_giro_medio ? "Sim" : "Não"}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Janelas de entrega:</dt>
-                <dd>{formatarDiasSemana(cliente.janelasEntrega)}</dd>
+                <dd>{formatarDiasSemana(cliente.janelas_entrega)}</dd>
               </div>
             </dl>
           </div>
@@ -145,28 +149,28 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Logística:</dt>
-                <dd>{cliente.tipoLogistica}</dd>
+                <dd>{cliente.tipo_logistica || "Própria"}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Nota fiscal:</dt>
-                <dd>{cliente.emiteNotaFiscal ? "Sim" : "Não"}</dd>
+                <dd>{cliente.emite_nota_fiscal ? "Sim" : "Não"}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Tipo de cobrança:</dt>
-                <dd>{cliente.tipoCobranca}</dd>
+                <dd>{cliente.tipo_cobranca || "À vista"}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Forma de pagamento:</dt>
-                <dd>{cliente.formaPagamento}</dd>
+                <dd>{cliente.forma_pagamento || "Boleto"}</dd>
               </div>
             </dl>
           </div>
           
-          {cliente.instrucoesEntrega && (
+          {cliente.instrucoes_entrega && (
             <div className="md:col-span-2">
               <h3 className="font-medium text-foreground mb-2">Instruções de Entrega</h3>
               <div className="p-3 bg-muted rounded-md text-sm">
-                {cliente.instrucoesEntrega}
+                {cliente.instrucoes_entrega}
               </div>
             </div>
           )}

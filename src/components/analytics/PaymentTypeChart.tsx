@@ -2,10 +2,10 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
-import { Cliente, TipoCobranca } from "@/types";
+import { Cliente } from "@/hooks/useClientesSupabase";
 
 interface PaymentTypeData {
-  name: TipoCobranca;
+  name: string;
   value: number;
   count: number;
 }
@@ -21,11 +21,11 @@ export function PaymentTypeChart({ clientes }: PaymentTypeChartProps) {
     if (clientes.length === 0) return;
     
     // Count clients by payment type
-    const activeClients = clientes.filter(c => c.statusCliente === 'Ativo' || c.statusCliente === 'Em análise');
-    const countByType = new Map<TipoCobranca, number>();
+    const activeClients = clientes.filter(c => c.status_cliente === 'Ativo' || c.status_cliente === 'Em análise');
+    const countByType = new Map<string, number>();
     
     activeClients.forEach(cliente => {
-      const type = cliente.tipoCobranca;
+      const type = cliente.tipo_cobranca || 'À vista';
       countByType.set(type, (countByType.get(type) || 0) + 1);
     });
     
