@@ -1,14 +1,14 @@
 
 import { useEffect } from "react";
 import PageHeader from "@/components/common/PageHeader";
-import { useClientesSupabase } from "@/hooks/useClientesSupabase";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import { useProjectionStore } from "@/hooks/useProjectionStore";
 import { PDVCategoryTable } from "@/components/analytics/PDVCategoryTable";
 import { PaymentTypeChart } from "@/components/analytics/PaymentTypeChart";
 import { LogisticsTypeChart } from "@/components/analytics/LogisticsTypeChart";
 
 export default function Analytics() {
-  const { clientes } = useClientesSupabase();
+  const { clientes } = useClienteStore();
   const { generateBaseDRE, baseDRE } = useProjectionStore();
   
   // Generate base DRE if it doesn't exist

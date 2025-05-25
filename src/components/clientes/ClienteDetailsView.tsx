@@ -1,12 +1,12 @@
 
 import { Button } from "@/components/ui/button";
-import { Cliente } from "@/hooks/useClientesSupabase";
+import { Cliente } from "@/types";
 import { Trash2 } from "lucide-react";
 import StatusBadge from "@/components/common/StatusBadge";
 import ClienteDetalhesTabs from "@/components/clientes/ClienteDetalhesTabs";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import { useState } from "react";
-import { useClientesSupabase } from "@/hooks/useClientesSupabase";
+import { useClienteStore } from "@/hooks/useClienteStore"; 
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,16 +28,12 @@ interface ClienteDetailsViewProps {
 export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsViewProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const { deleteCliente } = useClientesSupabase();
+  const { removerCliente } = useClienteStore();
   
-  const handleDeleteCliente = async () => {
-    try {
-      await deleteCliente(cliente.id);
-      toast.success(`Cliente ${cliente.nome} excluído com sucesso.`);
-      onBack();
-    } catch (error) {
-      toast.error('Erro ao excluir cliente');
-    }
+  const handleDeleteCliente = () => {
+    removerCliente(cliente.id);
+    toast.success(`Cliente ${cliente.nome} excluído com sucesso.`);
+    onBack();
   };
   
   return (
@@ -49,18 +45,18 @@ export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsVi
           </Button>
           <h1 className="text-2xl font-bold tracking-tight">{cliente.nome}</h1>
           <p className="text-muted-foreground flex items-center flex-wrap gap-2">
-            {cliente.cnpj_cpf}
-            <StatusBadge status={cliente.status_cliente as any} />
-            {cliente.status_agendamento && (
+            {cliente.cnpjCpf}
+            <StatusBadge status={cliente.statusCliente} />
+            {cliente.statusAgendamento && (
               <div className="flex items-center gap-1">
                 <span>Agendamento:</span>
-                <span className="font-medium">{cliente.status_agendamento}</span>
+                <span className="font-medium">{cliente.statusAgendamento}</span>
               </div>
             )}
-            {cliente.proxima_data_reposicao && (
+            {cliente.proximaDataReposicao && (
               <div className="flex items-center gap-1">
                 <span>Próxima reposição:</span>
-                <span className="font-medium">{formatDate(new Date(cliente.proxima_data_reposicao))}</span>
+                <span className="font-medium">{formatDate(new Date(cliente.proximaDataReposicao))}</span>
               </div>
             )}
           </p>

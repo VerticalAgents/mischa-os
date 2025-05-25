@@ -11,7 +11,7 @@ import { Calendar, Download, TrendingUp, Info } from "lucide-react";
 import { format, addMonths } from "date-fns";
 import { useSaborStore } from "@/hooks/useSaborStore";
 import { usePlanejamentoProducaoStore } from "@/hooks/usePlanejamentoProducaoStore";
-import { Cliente } from "@/hooks/useClientesSupabase";
+import { Cliente } from "@/types";
 
 interface ProducaoSimuladaItem {
   idSabor: number;
@@ -52,10 +52,10 @@ export default function ProducaoSimuladaTab({ clientes }: ProducaoSimuladaTabPro
       let demandaMensalEstimada = 0;
       
       clientes.forEach(cliente => {
-        if (cliente.ativo && cliente.giro_medio_semanal && cliente.giro_medio_semanal > 0) {
+        if (cliente.ativo && cliente.giroMedioSemanal && cliente.giroMedioSemanal > 0) {
           // Estimate client demand for this flavor based on distribution percentage
-          const demandaClienteMensal = cliente.giro_medio_semanal * 4.33; // weeks per month
-          const demandaSabor = demandaClienteMensal * ((sabor.percentual_padrao_dist || 0) / 100);
+          const demandaClienteMensal = cliente.giroMedioSemanal * 4.33; // weeks per month
+          const demandaSabor = demandaClienteMensal * ((sabor.percentualPadraoDist || 0) / 100);
           demandaMensalEstimada += demandaSabor;
         }
       });

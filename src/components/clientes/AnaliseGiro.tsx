@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { 
   Card, 
@@ -6,7 +7,13 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
+import { 
+  ChartContainer, 
+  ChartTooltip, 
+  ChartTooltipContent 
+} from "@/components/ui/chart";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
   ResponsiveContainer, 
@@ -19,7 +26,7 @@ import {
   Legend
 } from "recharts";
 import { ArrowUp, ArrowDown, Filter } from "lucide-react";
-import { Cliente } from "@/hooks/useClientesSupabase";
+import { Cliente } from "@/types";
 import { AnaliseGiroData } from "@/types/giro";
 import GiroMetricCard from "./GiroMetricCard";
 import GiroMetaForm from "./GiroMetaForm";
@@ -88,18 +95,15 @@ function gerarDadosHistoricosGiro(cliente: Cliente): AnaliseGiroData {
 }
 
 function calcularGiroSemanalBase(cliente: Cliente): number {
-  const periodicidade = cliente.periodicidade_padrao || 7;
-  const quantidade = cliente.quantidade_padrao || 0;
-  
   // Para periodicidade em dias, converter para semanas
-  if (periodicidade === 3) {
+  if (cliente.periodicidadePadrao === 3) {
     // Caso especial: 3x por semana
-    return quantidade * 3;
+    return cliente.quantidadePadrao * 3;
   }
   
   // Para outros casos, calcular giro semanal
-  const periodicidadeSemanas = periodicidade / 7;
-  return Math.round(quantidade / periodicidadeSemanas);
+  const periodicidadeSemanas = cliente.periodicidadePadrao / 7;
+  return Math.round(cliente.quantidadePadrao / periodicidadeSemanas);
 }
 
 function getWeekNumber(date: Date): number {

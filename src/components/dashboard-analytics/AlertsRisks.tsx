@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, AlertTriangle, AlertOctagon, Bell, ShoppingBag } from "lucide-react";
@@ -38,7 +39,7 @@ export default function AlertsRisks({
           .sort((a, b) => new Date(b.dataEfetivaEntrega || 0).getTime() - new Date(a.dataEfetivaEntrega || 0).getTime())[0];
         
         // Check if the client is active but hasn't had an order in the last 30 days
-        return cliente.status_cliente === "Ativo" && 
+        return cliente.statusCliente === "Ativo" && 
                (!latestOrder || new Date(latestOrder.dataEfetivaEntrega || 0) < thirtyDaysAgo);
       })
       .slice(0, 5); // Limit to 5 clients
@@ -83,12 +84,12 @@ export default function AlertsRisks({
                   <li key={index} className="flex items-center justify-between border-b pb-2">
                     <span className="font-medium">{client.nome}</span>
                     <Badge variant="outline">
-                      {client.categoria_estabelecimento_id === 1 ? 'Restaurante' : 
-                       client.categoria_estabelecimento_id === 2 ? 'Bar' : 
-                       client.categoria_estabelecimento_id === 3 ? 'Cafeteria' : 
-                       client.categoria_estabelecimento_id === 4 ? 'Lanchonete' : 
-                       client.categoria_estabelecimento_id === 5 ? 'Padaria' : 
-                       client.categoria_estabelecimento_id === 6 ? 'Conveniência' : 'Outro'}
+                      {client.categoriaEstabelecimentoId === 1 ? 'Restaurante' : 
+                       client.categoriaEstabelecimentoId === 2 ? 'Bar' : 
+                       client.categoriaEstabelecimentoId === 3 ? 'Cafeteria' : 
+                       client.categoriaEstabelecimentoId === 4 ? 'Lanchonete' : 
+                       client.categoriaEstabelecimentoId === 5 ? 'Padaria' : 
+                       client.categoriaEstabelecimentoId === 6 ? 'Conveniência' : 'Outro'}
                     </Badge>
                   </li>
                 ))}

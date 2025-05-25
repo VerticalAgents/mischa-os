@@ -9,148 +9,148 @@ import {
 // Clientes (PDVs) mockados
 export const clientesMock: Cliente[] = [
   {
-    id: "1",
+    id: 1,
     nome: "Café Central",
-    cnpj_cpf: "12.345.678/0001-90",
-    endereco_entrega: "Rua Central, 123",
-    contato_nome: "João Silva",
-    contato_telefone: "(11) 98765-4321",
-    contato_email: "joao@cafecentral.com",
-    quantidade_padrao: 100,
-    periodicidade_padrao: 7,
-    status_cliente: "Ativo",
-    created_at: "2023-01-15",
-    ultima_data_reposicao_efetiva: "2024-05-07",
+    cnpjCpf: "12.345.678/0001-90",
+    enderecoEntrega: "Rua Central, 123",
+    contatoNome: "João Silva",
+    contatoTelefone: "(11) 98765-4321",
+    contatoEmail: "joao@cafecentral.com",
+    quantidadePadrao: 100,
+    periodicidadePadrao: 7,
+    statusCliente: "Ativo",
+    dataCadastro: new Date("2023-01-15"),
+    ultimaDataReposicaoEfetiva: new Date("2024-05-07"),
     // Adding required fields
-    contabilizar_giro_medio: true,
-    tipo_logistica: "Própria",
-    emite_nota_fiscal: true,
-    tipo_cobranca: "À vista",
-    forma_pagamento: "Boleto",
+    contabilizarGiroMedio: true,
+    tipoLogistica: "Própria",
+    emiteNotaFiscal: true,
+    tipoCobranca: "À vista",
+    formaPagamento: "Boleto",
     ativo: true
   },
   {
-    id: "2",
+    id: 2,
     nome: "Padaria Bom Pão",
-    cnpj_cpf: "23.456.789/0001-01",
-    endereco_entrega: "Av. Paes, 456",
-    contato_nome: "Maria Oliveira",
-    contato_telefone: "(11) 91234-5678",
-    contato_email: "maria@bompao.com",
-    quantidade_padrao: 80,
-    periodicidade_padrao: 5,
-    status_cliente: "Ativo",
-    created_at: "2023-02-20",
-    ultima_data_reposicao_efetiva: "2024-05-09",
+    cnpjCpf: "23.456.789/0001-01",
+    enderecoEntrega: "Av. Paes, 456",
+    contatoNome: "Maria Oliveira",
+    contatoTelefone: "(11) 91234-5678",
+    contatoEmail: "maria@bompao.com",
+    quantidadePadrao: 80,
+    periodicidadePadrao: 5,
+    statusCliente: "Ativo",
+    dataCadastro: new Date("2023-02-20"),
+    ultimaDataReposicaoEfetiva: new Date("2024-05-09"),
     // Adding required fields
-    contabilizar_giro_medio: true,
-    tipo_logistica: "Própria",
-    emite_nota_fiscal: true,
-    tipo_cobranca: "Consignado",
-    forma_pagamento: "PIX",
+    contabilizarGiroMedio: true,
+    tipoLogistica: "Própria",
+    emiteNotaFiscal: true,
+    tipoCobranca: "Consignado",
+    formaPagamento: "PIX",
     ativo: true
   },
   {
-    id: "3",
+    id: 3,
     nome: "Empório da Esquina",
-    cnpj_cpf: "34.567.890/0001-12",
-    endereco_entrega: "Rua da Esquina, 789",
-    contato_nome: "Pedro Santos",
-    contato_telefone: "(11) 94321-8765",
-    contato_email: "pedro@emporio.com",
-    quantidade_padrao: 60,
-    periodicidade_padrao: 7,
-    status_cliente: "Ativo",
-    created_at: "2023-03-10",
-    ultima_data_reposicao_efetiva: "2024-05-08",
+    cnpjCpf: "34.567.890/0001-12",
+    enderecoEntrega: "Rua da Esquina, 789",
+    contatoNome: "Pedro Santos",
+    contatoTelefone: "(11) 94321-8765",
+    contatoEmail: "pedro@emporio.com",
+    quantidadePadrao: 60,
+    periodicidadePadrao: 7,
+    statusCliente: "Ativo",
+    dataCadastro: new Date("2023-03-10"),
+    ultimaDataReposicaoEfetiva: new Date("2024-05-08"),
     // Adding required fields
-    contabilizar_giro_medio: true,
-    tipo_logistica: "Distribuição",
-    emite_nota_fiscal: false,
-    tipo_cobranca: "À vista",
-    forma_pagamento: "Dinheiro",
+    contabilizarGiroMedio: true,
+    tipoLogistica: "Distribuição",
+    emiteNotaFiscal: false,
+    tipoCobranca: "À vista",
+    formaPagamento: "Dinheiro",
     ativo: true
   },
   {
-    id: "4",
+    id: 4,
     nome: "Café Novo Horizonte",
-    cnpj_cpf: "45.678.901/0001-23",
-    endereco_entrega: "Av. Horizonte, 234",
-    contato_nome: "Ana Souza",
-    contato_telefone: "(11) 98765-1234",
-    contato_email: "ana@novohorizonte.com",
-    quantidade_padrao: 50,
-    periodicidade_padrao: 5,
-    status_cliente: "Em análise",
-    created_at: "2024-04-05",
+    cnpjCpf: "45.678.901/0001-23",
+    enderecoEntrega: "Av. Horizonte, 234",
+    contatoNome: "Ana Souza",
+    contatoTelefone: "(11) 98765-1234",
+    contatoEmail: "ana@novohorizonte.com",
+    quantidadePadrao: 50,
+    periodicidadePadrao: 5,
+    statusCliente: "Em análise",
+    dataCadastro: new Date("2024-04-05"),
     // Adding required fields
-    contabilizar_giro_medio: false,
-    tipo_logistica: "Própria",
-    emite_nota_fiscal: true,
-    tipo_cobranca: "À vista",
-    forma_pagamento: "PIX",
+    contabilizarGiroMedio: false,
+    tipoLogistica: "Própria",
+    emiteNotaFiscal: true,
+    tipoCobranca: "À vista",
+    formaPagamento: "PIX",
     ativo: false
   },
   {
-    id: "5",
+    id: 5,
     nome: "Supermercado Compre Mais",
-    cnpj_cpf: "56.789.012/0001-34",
-    endereco_entrega: "Rua das Compras, 567",
-    contato_nome: "Carlos Lima",
-    contato_telefone: "(11) 91234-8765",
-    contato_email: "carlos@compremais.com",
-    quantidade_padrao: 120,
-    periodicidade_padrao: 7,
-    status_cliente: "Standby",
-    created_at: "2023-05-15",
-    ultima_data_reposicao_efetiva: "2024-04-25",
+    cnpjCpf: "56.789.012/0001-34",
+    enderecoEntrega: "Rua das Compras, 567",
+    contatoNome: "Carlos Lima",
+    contatoTelefone: "(11) 91234-8765",
+    contatoEmail: "carlos@compremais.com",
+    quantidadePadrao: 120,
+    periodicidadePadrao: 7,
+    statusCliente: "Standby",
+    dataCadastro: new Date("2023-05-15"),
+    ultimaDataReposicaoEfetiva: new Date("2024-04-25"),
     // Adding required fields
-    contabilizar_giro_medio: true,
-    tipo_logistica: "Distribuição",
-    emite_nota_fiscal: true,
-    tipo_cobranca: "Consignado",
-    forma_pagamento: "Boleto",
+    contabilizarGiroMedio: true,
+    tipoLogistica: "Distribuição",
+    emiteNotaFiscal: true,
+    tipoCobranca: "Consignado",
+    formaPagamento: "Boleto",
     ativo: false
   },
   {
-    id: "6",
+    id: 6,
     nome: "Delícias da Vovó",
-    cnpj_cpf: "67.890.123/0001-45",
-    endereco_entrega: "Rua das Delícias, 890",
-    contato_nome: "Laura Costa",
-    contato_telefone: "(11) 94321-5678",
-    contato_email: "laura@delicias.com",
-    quantidade_padrao: 40,
-    periodicidade_padrao: 3,
-    status_cliente: "A ativar",
-    created_at: "2024-05-01",
+    cnpjCpf: "67.890.123/0001-45",
+    enderecoEntrega: "Rua das Delícias, 890",
+    contatoNome: "Laura Costa",
+    contatoTelefone: "(11) 94321-5678",
+    contatoEmail: "laura@delicias.com",
+    quantidadePadrao: 40,
+    periodicidadePadrao: 3,
+    statusCliente: "A ativar",
+    dataCadastro: new Date("2024-05-01"),
     // Adding required fields
-    contabilizar_giro_medio: false,
-    tipo_logistica: "Própria",
-    emite_nota_fiscal: false,
-    tipo_cobranca: "À vista",
-    forma_pagamento: "Dinheiro",
+    contabilizarGiroMedio: false,
+    tipoLogistica: "Própria",
+    emiteNotaFiscal: false,
+    tipoCobranca: "À vista",
+    formaPagamento: "Dinheiro",
     ativo: false
   },
   {
-    id: "7",
+    id: 7,
     nome: "Mercado Bairro Feliz",
-    cnpj_cpf: "78.901.234/0001-56",
-    endereco_entrega: "Av. do Bairro, 123",
-    contato_nome: "Rafael Alves",
-    contato_telefone: "(11) 98765-4321",
-    contato_email: "rafael@bairrofeliz.com",
-    quantidade_padrao: 90,
-    periodicidade_padrao: 7,
-    status_cliente: "Inativo",
-    created_at: "2023-06-25",
-    ultima_data_reposicao_efetiva: "2024-03-15",
+    cnpjCpf: "78.901.234/0001-56",
+    enderecoEntrega: "Av. do Bairro, 123",
+    contatoNome: "Rafael Alves",
+    contatoTelefone: "(11) 98765-4321",
+    contatoEmail: "rafael@bairrofeliz.com",
+    quantidadePadrao: 90,
+    periodicidadePadrao: 7,
+    statusCliente: "Inativo",
+    dataCadastro: new Date("2023-06-25"),
+    ultimaDataReposicaoEfetiva: new Date("2024-03-15"),
     // Adding required fields
-    contabilizar_giro_medio: false,
-    tipo_logistica: "Própria",
-    emite_nota_fiscal: true,
-    tipo_cobranca: "Consignado",
-    forma_pagamento: "PIX",
+    contabilizarGiroMedio: false,
+    tipoLogistica: "Própria",
+    emiteNotaFiscal: true,
+    tipoCobranca: "Consignado",
+    formaPagamento: "PIX",
     ativo: false
   }
 ];
@@ -160,123 +160,123 @@ export const saboresMock: Sabor[] = [
   {
     id: 1,
     nome: "Tradicional",
-    percentual_padrao_dist: 18,
+    percentualPadraoDist: 18,
     ativo: true,
-    estoque_minimo: 30,
-    saldo_atual: 45,
+    estoqueMinimo: 30,
+    saldoAtual: 45,
     // Adicionando campos obrigatórios faltantes
-    custo_unitario: 2.50,
-    preco_venda: 5.00,
-    estoque_ideal: 50,
-    em_producao: 0
+    custoUnitario: 2.50,
+    precoVenda: 5.00,
+    estoqueIdeal: 50,
+    emProducao: 0
   },
   {
     id: 2,
     nome: "Choco Duo",
-    percentual_padrao_dist: 28,
+    percentualPadraoDist: 28,
     ativo: true,
-    estoque_minimo: 50,
-    saldo_atual: 38,
-    custo_unitario: 3.00,
-    preco_venda: 5.50,
-    estoque_ideal: 60,
-    em_producao: 0
+    estoqueMinimo: 50,
+    saldoAtual: 38,
+    custoUnitario: 3.00,
+    precoVenda: 5.50,
+    estoqueIdeal: 60,
+    emProducao: 0
   },
   {
     id: 3,
     nome: "Meio Amargo",
-    percentual_padrao_dist: 13,
+    percentualPadraoDist: 13,
     ativo: true,
-    estoque_minimo: 25,
-    saldo_atual: 30,
-    custo_unitario: 2.75,
-    preco_venda: 5.25,
-    estoque_ideal: 40,
-    em_producao: 0
+    estoqueMinimo: 25,
+    saldoAtual: 30,
+    custoUnitario: 2.75,
+    precoVenda: 5.25,
+    estoqueIdeal: 40,
+    emProducao: 0
   },
   {
     id: 4,
     nome: "Stikadinho",
-    percentual_padrao_dist: 20,
+    percentualPadraoDist: 20,
     ativo: true,
-    estoque_minimo: 40,
-    saldo_atual: 55,
-    custo_unitario: 2.90,
-    preco_venda: 5.40,
-    estoque_ideal: 60,
-    em_producao: 0
+    estoqueMinimo: 40,
+    saldoAtual: 55,
+    custoUnitario: 2.90,
+    precoVenda: 5.40,
+    estoqueIdeal: 60,
+    emProducao: 0
   },
   {
     id: 5,
     nome: "Avelã",
-    percentual_padrao_dist: 20,
+    percentualPadraoDist: 20,
     ativo: true,
-    estoque_minimo: 40,
-    saldo_atual: 22,
-    custo_unitario: 3.50,
-    preco_venda: 6.00,
-    estoque_ideal: 50,
-    em_producao: 0
+    estoqueMinimo: 40,
+    saldoAtual: 22,
+    custoUnitario: 3.50,
+    precoVenda: 6.00,
+    estoqueIdeal: 50,
+    emProducao: 0
   },
   {
     id: 6,
     nome: "Blondie",
-    percentual_padrao_dist: 0,
+    percentualPadraoDist: 0,
     ativo: true,
-    estoque_minimo: 15,
-    saldo_atual: 12,
-    custo_unitario: 3.20,
-    preco_venda: 5.80,
-    estoque_ideal: 30,
-    em_producao: 0
+    estoqueMinimo: 15,
+    saldoAtual: 12,
+    custoUnitario: 3.20,
+    precoVenda: 5.80,
+    estoqueIdeal: 30,
+    emProducao: 0
   },
   {
     id: 7,
     nome: "Doce de Leite",
-    percentual_padrao_dist: 1,
+    percentualPadraoDist: 1,
     ativo: true,
-    estoque_minimo: 15,
-    saldo_atual: 18,
-    custo_unitario: 2.80,
-    preco_venda: 5.30,
-    estoque_ideal: 30,
-    em_producao: 0
+    estoqueMinimo: 15,
+    saldoAtual: 18,
+    custoUnitario: 2.80,
+    precoVenda: 5.30,
+    estoqueIdeal: 30,
+    emProducao: 0
   },
   {
     id: 8,
     nome: "Nesquik",
-    percentual_padrao_dist: 0,
+    percentualPadraoDist: 0,
     ativo: true,
-    estoque_minimo: 15,
-    saldo_atual: 10,
-    custo_unitario: 2.60,
-    preco_venda: 5.20,
-    estoque_ideal: 25,
-    em_producao: 0
+    estoqueMinimo: 15,
+    saldoAtual: 10,
+    custoUnitario: 2.60,
+    precoVenda: 5.20,
+    estoqueIdeal: 25,
+    emProducao: 0
   },
   {
     id: 9,
     nome: "Oreo Cream",
-    percentual_padrao_dist: 0,
+    percentualPadraoDist: 0,
     ativo: true,
-    estoque_minimo: 15,
-    saldo_atual: 25,
-    custo_unitario: 3.30,
-    preco_venda: 5.90,
-    estoque_ideal: 35,
-    em_producao: 0
+    estoqueMinimo: 15,
+    saldoAtual: 25,
+    custoUnitario: 3.30,
+    precoVenda: 5.90,
+    estoqueIdeal: 35,
+    emProducao: 0
   },
   {
     id: 10,
     nome: "Pistache",
-    percentual_padrao_dist: 0,
+    percentualPadraoDist: 0,
     ativo: true,
-    estoque_minimo: 10,
-    saldo_atual: 8,
-    custo_unitario: 4.00,
-    preco_venda: 7.00,
-    estoque_ideal: 20,
-    em_producao: 0
+    estoqueMinimo: 10,
+    saldoAtual: 8,
+    custoUnitario: 4.00,
+    precoVenda: 7.00,
+    estoqueIdeal: 20,
+    emProducao: 0
   }
 ];
 
@@ -289,7 +289,7 @@ export const pedidosMock: Pedido[] = [
   // Pedido 1: Agendado para hoje - status "Agendado"
   {
     id: 1,
-    idCliente: "1",
+    idCliente: 1,
     dataPedido: new Date(hoje.getTime() - 86400000 * 2), // 2 dias atrás
     dataPrevistaEntrega: hoje,
     totalPedidoUnidades: 100,
@@ -299,10 +299,10 @@ export const pedidosMock: Pedido[] = [
     observacoes: "Entrega antes das 10h",
     itensPedido: []
   },
-  // Rest of pedidos with string IDs
+  // Pedido 2: Agendado para hoje - status "Agendado", alterado
   {
     id: 2,
-    idCliente: "2",
+    idCliente: 2,
     dataPedido: new Date(hoje.getTime() - 86400000 * 1), // 1 dia atrás
     dataPrevistaEntrega: hoje,
     totalPedidoUnidades: 80,
@@ -312,9 +312,10 @@ export const pedidosMock: Pedido[] = [
     observacoes: "Cliente pediu mais Avelã e menos Tradicional",
     itensPedido: []
   },
+  // Pedido 3: Agendado para hoje - status "Agendado", com substatus "Separado"
   {
     id: 3,
-    idCliente: "3",
+    idCliente: 3,
     dataPedido: new Date(hoje.getTime() - 86400000 * 3), // 3 dias atrás
     dataPrevistaEntrega: hoje,
     totalPedidoUnidades: 60,
@@ -323,9 +324,10 @@ export const pedidosMock: Pedido[] = [
     substatusPedido: "Separado",
     itensPedido: []
   },
+  // Pedido 4: Entregue hoje
   {
     id: 4,
-    idCliente: "4",
+    idCliente: 4,
     dataPedido: new Date(hoje.getTime() - 86400000 * 2), // 2 dias atrás
     dataPrevistaEntrega: hoje,
     totalPedidoUnidades: 50,
@@ -334,9 +336,10 @@ export const pedidosMock: Pedido[] = [
     dataEfetivaEntrega: new Date(hoje.setHours(9, 30, 0, 0)),
     itensPedido: []
   },
+  // Pedido 5: Agendado para hoje - status "Despachado"
   {
     id: 5,
-    idCliente: "5",
+    idCliente: 5,
     dataPedido: new Date(hoje.getTime() - 86400000 * 1), // 1 dia atrás
     dataPrevistaEntrega: hoje,
     totalPedidoUnidades: 120,
@@ -346,9 +349,10 @@ export const pedidosMock: Pedido[] = [
     observacoes: "Em rota de entrega desde 8h30",
     itensPedido: []
   },
+  // Pedido 6: Pedido Único para hoje
   {
     id: 6,
-    idCliente: "0", // 0 indica pedido único
+    idCliente: 0, // 0 indica pedido único
     dataPedido: new Date(hoje.getTime() - 86400000 * 2), // 2 dias atrás
     dataPrevistaEntrega: hoje,
     totalPedidoUnidades: 30,
@@ -358,9 +362,10 @@ export const pedidosMock: Pedido[] = [
     observacoes: "PEDIDO ÚNICO\nNome: Evento Corporativo ABC\nTelefone: (11) 97777-8888\nLevem em caixas separadas",
     itensPedido: []
   },
+  // Pedido 7: Outro Pedido Único para hoje - já despachado
   {
     id: 7,
-    idCliente: "0", // 0 indica pedido único
+    idCliente: 0, // 0 indica pedido único
     dataPedido: new Date(hoje.getTime() - 86400000 * 1), // 1 dia atrás
     dataPrevistaEntrega: hoje,
     totalPedidoUnidades: 25,
@@ -370,9 +375,10 @@ export const pedidosMock: Pedido[] = [
     observacoes: "PEDIDO ÚNICO\nNome: Festa de Aniversário\nTelefone: (11) 96666-5555\nEntregar no salão de festas",
     itensPedido: []
   },
+  // Pedido 8: Agendado para hoje - status "Em Separação"
   {
     id: 8,
-    idCliente: "6",
+    idCliente: 6,
     dataPedido: new Date(hoje.getTime() - 86400000 * 2), // 2 dias atrás
     dataPrevistaEntrega: hoje,
     totalPedidoUnidades: 40,
@@ -382,9 +388,10 @@ export const pedidosMock: Pedido[] = [
     observacoes: "Primeira entrega para este PDV",
     itensPedido: []
   },
+  // Pedido 9: Agendado para hoje - status "Agendado"
   {
     id: 9,
-    idCliente: "7",
+    idCliente: 7,
     dataPedido: new Date(hoje.getTime() - 86400000 * 3), // 3 dias atrás
     dataPrevistaEntrega: hoje,
     totalPedidoUnidades: 90,
@@ -393,9 +400,10 @@ export const pedidosMock: Pedido[] = [
     substatusPedido: "Agendado",
     itensPedido: []
   },
+  // Pedido 10: Reposição em PDV novo para hoje
   {
     id: 10,
-    idCliente: "4",
+    idCliente: 4,
     dataPedido: new Date(hoje.getTime() - 86400000 * 1), // 1 dia atrás
     dataPrevistaEntrega: hoje,
     totalPedidoUnidades: 30,

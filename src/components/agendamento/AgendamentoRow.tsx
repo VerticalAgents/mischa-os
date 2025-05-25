@@ -3,10 +3,15 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import AgendamentoActions from "./AgendamentoActions";
-import { Cliente } from "@/hooks/useClientesSupabase";
 
 interface AgendamentoItem {
-  cliente: Cliente;
+  cliente: { 
+    id: number; 
+    nome: string; 
+    contatoNome?: string; 
+    contatoTelefone?: string;
+    quantidadePadrao?: number;
+  };
   pedido?: any;
   dataReposicao: Date;
   statusAgendamento: string;
@@ -46,9 +51,9 @@ export default function AgendamentoRow({ agendamento, index, onEdit }: Agendamen
       <TableCell className="font-medium">
         <div>
           <div>{agendamento.cliente.nome}</div>
-          {!agendamento.isPedidoUnico && agendamento.cliente.contato_nome && (
+          {!agendamento.isPedidoUnico && agendamento.cliente.contatoNome && (
             <div className="text-xs text-muted-foreground">
-              {agendamento.cliente.contato_nome}
+              {agendamento.cliente.contatoNome}
             </div>
           )}
         </div>
@@ -62,7 +67,7 @@ export default function AgendamentoRow({ agendamento, index, onEdit }: Agendamen
         </Badge>
       </TableCell>
       <TableCell>
-        {agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidade_padrao || 0} un
+        {agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0} un
       </TableCell>
       <TableCell>
         <Badge variant={agendamento.isPedidoUnico ? "destructive" : "default"}>

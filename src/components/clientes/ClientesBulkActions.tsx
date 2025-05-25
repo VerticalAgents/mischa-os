@@ -1,6 +1,8 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useClientesSupabase, Cliente } from "@/hooks/useClientesSupabase";
+import { Cliente } from "@/types";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import { CheckSquare, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -32,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 interface ClientesBulkActionsProps {
-  selectedClienteIds: string[];
+  selectedClienteIds: number[];
   onClearSelection: () => void;
   onToggleSelectionMode: () => void;
   isSelectionMode: boolean;
@@ -50,65 +52,62 @@ export default function ClientesBulkActions({
   const [bulkEditField, setBulkEditField] = useState<string>("");
   const [bulkEditValue, setBulkEditValue] = useState<string>("");
   
-  const { deleteCliente, clientes, updateCliente } = useClientesSupabase();
+  const { removerCliente, clientes, atualizarCliente } = useClienteStore();
   
   const handleDelete = () => {
     setIsDeleteDialogOpen(false);
     setIsConfirmDeleteDialogOpen(true);
   };
   
-  const handleConfirmDelete = async () => {
-    try {
-      await Promise.all(selectedClienteIds.map(id => deleteCliente(id)));
-      toast.success(`${selectedClienteIds.length} clientes excluídos com sucesso.`);
-      setIsConfirmDeleteDialogOpen(false);
-      onClearSelection();
-      onToggleSelectionMode();
-    } catch (error) {
-      toast.error("Erro ao excluir clientes");
-    }
+  const handleConfirmDelete = () => {
+    selectedClienteIds.forEach(id => {
+      removerCliente(id);
+    });
+    
+    toast.success(`${selectedClienteIds.length} clientes excluídos com sucesso.`);
+    setIsConfirmDeleteDialogOpen(false);
+    onClearSelection();
+    onToggleSelectionMode();
   };
   
-  const handleBulkEdit = async () => {
+  const handleBulkEdit = () => {
     if (!bulkEditField || !bulkEditValue) {
       toast.error("Selecione um campo e valor para editar.");
       return;
     }
     
-    try {
-      const updates: Partial<Cliente> = {};
+    selectedClienteIds.forEach(id => {
+      let updateData: Partial<Cliente> = {};
       
       switch (bulkEditField) {
-        case "status_cliente":
-          updates.status_cliente = bulkEditValue;
+        case "statusCliente":
+          updateData = { statusCliente: bulkEditValue as any };
           break;
-        case "tipo_logistica":
-          updates.tipo_logistica = bulkEditValue;
+        case "tipoLogistica":
+          updateData = { tipoLogistica: bulkEditValue as any };
           break;
-        case "tipo_cobranca":
-          updates.tipo_cobranca = bulkEditValue;
+        case "tipoCobranca":
+          updateData = { tipoCobranca: bulkEditValue as any };
           break;
-        case "forma_pagamento":
-          updates.forma_pagamento = bulkEditValue;
+        case "formaPagamento":
+          updateData = { formaPagamento: bulkEditValue as any };
           break;
-        case "quantidade_padrao":
-          updates.quantidade_padrao = parseInt(bulkEditValue);
+        case "quantidadePadrao":
+          updateData = { quantidadePadrao: parseInt(bulkEditValue) };
           break;
-        case "periodicidade_padrao":
-          updates.periodicidade_padrao = parseInt(bulkEditValue);
+        case "periodicidadePadrao":
+          updateData = { periodicidadePadrao: parseInt(bulkEditValue) };
           break;
       }
       
-      await Promise.all(selectedClienteIds.map(id => updateCliente(id, updates)));
-      
-      toast.success(`${selectedClienteIds.length} clientes atualizados com sucesso.`);
-      setIsBulkEditDialogOpen(false);
-      setBulkEditField("");
-      setBulkEditValue("");
-      onClearSelection();
-    } catch (error) {
-      toast.error("Erro ao atualizar clientes");
-    }
+      atualizarCliente(id, updateData);
+    });
+    
+    toast.success(`${selectedClienteIds.length} clientes atualizados com sucesso.`);
+    setIsBulkEditDialogOpen(false);
+    setBulkEditField("");
+    setBulkEditValue("");
+    onClearSelection();
   };
   
   return (
@@ -204,18 +203,18 @@ export default function ClientesBulkActions({
                   <SelectValue placeholder="Selecione um campo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="status_cliente">Status</SelectItem>
-                  <SelectItem value="tipo_logistica">Tipo de Logística</SelectItem>
-                  <SelectItem value="tipo_cobranca">Tipo de Cobrança</SelectItem>
-                  <SelectItem value="forma_pagamento">Forma de Pagamento</SelectItem>
-                  <SelectItem value="quantidade_padrao">Quantidade Padrão</SelectItem>
-                  <SelectItem value="periodicidade_padrao">Periodicidade</SelectItem>
+                  <SelectItem value="statusCliente">Status</SelectItem>
+                  <SelectItem value="tipoLogistica">Tipo de Logística</SelectItem>
+                  <SelectItem value="tipoCobranca">Tipo de Cobrança</SelectItem>
+                  <SelectItem value="formaPagamento">Forma de Pagamento</SelectItem>
+                  <SelectItem value="quantidadePadrao">Quantidade Padrão</SelectItem>
+                  <SelectItem value="periodicidadePadrao">Periodicidade</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
-              {bulkEditField === "status_cliente" && (
+              {bulkEditField === "statusCliente" && (
                 <div>
                   <Label htmlFor="status">Status</Label>
                   <Select
@@ -236,7 +235,7 @@ export default function ClientesBulkActions({
                 </div>
               )}
               
-              {bulkEditField === "tipo_logistica" && (
+              {bulkEditField === "tipoLogistica" && (
                 <div>
                   <Label htmlFor="logistica">Tipo de Logística</Label>
                   <Select
@@ -254,7 +253,7 @@ export default function ClientesBulkActions({
                 </div>
               )}
               
-              {bulkEditField === "tipo_cobranca" && (
+              {bulkEditField === "tipoCobranca" && (
                 <div>
                   <Label htmlFor="cobranca">Tipo de Cobrança</Label>
                   <Select
@@ -272,7 +271,7 @@ export default function ClientesBulkActions({
                 </div>
               )}
               
-              {bulkEditField === "forma_pagamento" && (
+              {bulkEditField === "formaPagamento" && (
                 <div>
                   <Label htmlFor="pagamento">Forma de Pagamento</Label>
                   <Select
@@ -291,10 +290,10 @@ export default function ClientesBulkActions({
                 </div>
               )}
               
-              {["quantidade_padrao", "periodicidade_padrao"].includes(bulkEditField) && (
+              {["quantidadePadrao", "periodicidadePadrao"].includes(bulkEditField) && (
                 <div>
                   <Label htmlFor="value">
-                    {bulkEditField === "quantidade_padrao" ? "Quantidade Padrão" : "Periodicidade (dias)"}
+                    {bulkEditField === "quantidadePadrao" ? "Quantidade Padrão" : "Periodicidade (dias)"}
                   </Label>
                   <Input
                     id="value"

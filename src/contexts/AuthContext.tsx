@@ -10,8 +10,6 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   signInWithGoogle: () => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -56,11 +54,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           navigate('/login');
           toast.info("Você foi desconectado");
         }
-
-        if (event === 'INITIAL_SESSION') {
-          // Handle initial session setup
-          console.log('Initial session established');
-        }
       }
     );
 
@@ -85,54 +78,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (error) {
-        throw error;
+        toast.error("Erro ao fazer login com Google: " + error.message);
       }
-    } catch (error: any) {
-      toast.error("Erro ao fazer login com Google: " + error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signInWithEmail = async (email: string, password: string): Promise<void> => {
-    try {
-      setLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) {
-        throw error;
-      }
-    } catch (error: any) {
-      toast.error("Erro ao fazer login: " + error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signUpWithEmail = async (email: string, password: string): Promise<void> => {
-    try {
-      setLoading(true);
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: window.location.origin
-        }
-      });
-
-      if (error) {
-        throw error;
-      }
-      
-      toast.success("Conta criada com sucesso! Verifique seu email se necessário.");
-    } catch (error: any) {
-      toast.error("Erro ao criar conta: " + error.message);
-      throw error;
+    } catch (error) {
+      toast.error("Erro inesperado ao fazer login");
     } finally {
       setLoading(false);
     }
@@ -160,8 +109,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       user, 
       session, 
       signInWithGoogle, 
-      signInWithEmail,
-      signUpWithEmail,
       logout, 
       loading 
     }}>
