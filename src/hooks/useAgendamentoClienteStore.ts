@@ -24,6 +24,7 @@ interface AgendamentoClienteStore {
   carregarAgendamentoPorCliente: (clienteId: string) => Promise<AgendamentoCliente | null>;
   salvarAgendamento: (clienteId: string, dados: Partial<AgendamentoCliente>) => Promise<void>;
   removerAgendamento: (clienteId: string) => Promise<void>;
+  criarAgendamentoPadrao: (clienteId: string) => Promise<AgendamentoCliente>;
 }
 
 export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
@@ -35,6 +36,33 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
       carregarAgendamentoPorCliente: async (clienteId: string) => {
         set({ loading: true });
         try {
+          // Primeiro, verificar se o cliente existe na tabela clientes
+          const { data: clienteData, error: clienteError } = await supabase
+            .from('clientes')
+            .select('id')
+            .eq('id', clienteId)
+            .maybeSingle();
+
+          if (clienteError) {
+            console.error('Erro ao verificar cliente:', clienteError);
+            toast({
+              title: "Erro",
+              description: "Não foi possível verificar o cliente",
+              variant: "destructive"
+            });
+            return null;
+          }
+
+          if (!clienteData) {
+            console.error('Cliente não encontrado:', clienteId);
+            toast({
+              title: "Erro",
+              description: "Cliente não encontrado",
+              variant: "destructive"
+            });
+            return null;
+          }
+
           const { data, error } = await supabase
             .from('agendamentos_clientes')
             .select('*')
@@ -66,7 +94,8 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             return agendamento;
           }
 
-          return null;
+          // Se não existe agendamento, criar um padrão automaticamente
+          return await get().criarAgendamentoPadrao(clienteId);
         } catch (error) {
           console.error('Erro ao carregar agendamento:', error);
           toast({
@@ -77,6 +106,46 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           return null;
         } finally {
           set({ loading: false });
+        }
+      },
+
+      criarAgendamentoPadrao: async (clienteId: string) => {
+        try {
+          const dadosDefault = {
+            cliente_id: clienteId,
+            status_agendamento: 'Agendar' as const,
+            quantidade_total: 0,
+            tipo_pedido: 'Padrão' as const,
+            itens_personalizados: null
+          };
+
+          const { data, error } = await supabase
+            .from('agendamentos_clientes')
+            .insert([dadosDefault])
+            .select()
+            .single();
+
+          if (error) {
+            console.error('Erro ao criar agendamento padrão:', error);
+            throw error;
+          }
+
+          const agendamento: AgendamentoCliente = {
+            id: data.id,
+            cliente_id: data.cliente_id,
+            status_agendamento: data.status_agendamento as 'Agendar' | 'Previsto' | 'Agendado',
+            data_proxima_reposicao: data.data_proxima_reposicao ? new Date(data.data_proxima_reposicao) : undefined,
+            quantidade_total: data.quantidade_total,
+            tipo_pedido: data.tipo_pedido as 'Padrão' | 'Alterado',
+            itens_personalizados: data.itens_personalizados as Array<{ produto: string; quantidade: number }> | undefined,
+            created_at: new Date(data.created_at),
+            updated_at: new Date(data.updated_at)
+          };
+
+          return agendamento;
+        } catch (error) {
+          console.error('Erro ao criar agendamento padrão:', error);
+          throw error;
         }
       },
       
@@ -121,8 +190,8 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           }
 
           toast({
-            title: "Agendamento salvo",
-            description: "Agendamento atualizado com sucesso"
+            title: "Sucesso",
+            description: "Agendamento salvo com sucesso"
           });
         } catch (error) {
           console.error('Erro ao salvar agendamento:', error);

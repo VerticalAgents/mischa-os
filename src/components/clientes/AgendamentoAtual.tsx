@@ -25,12 +25,13 @@ interface ProdutoQuantidade {
 export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
   const [statusAgendamento, setStatusAgendamento] = useState<'Agendar' | 'Previsto' | 'Agendado'>('Agendar');
   const [proximaDataReposicao, setProximaDataReposicao] = useState('');
-  const [quantidadeTotal, setQuantidadeTotal] = useState(cliente.quantidadePadrao);
-  const [periodicidade, setPeriodicidade] = useState(cliente.periodicidadePadrao);
+  const [quantidadeTotal, setQuantidadeTotal] = useState(0);
+  const [periodicidade, setPeriodicidade] = useState(7);
   const [tipoPedido, setTipoPedido] = useState<'Padrão' | 'Alterado'>('Padrão');
   const [produtosQuantidades, setProdutosQuantidades] = useState<ProdutoQuantidade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [agendamentoCarregado, setAgendamentoCarregado] = useState(false);
+  const [agendamentoId, setAgendamentoId] = useState<string | null>(null);
   
   const { produtos } = useProdutoStore();
   const { carregarAgendamentoPorCliente, salvarAgendamento, loading } = useAgendamentoClienteStore();
@@ -43,14 +44,17 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
     return cliente.categoriasHabilitadas.includes(produto.categoriaId);
   });
 
-  // Carregar agendamento existente
+  // Carregar agendamento existente ou criar um padrão
   useEffect(() => {
     const carregarDados = async () => {
-      if (!agendamentoCarregado) {
+      if (!agendamentoCarregado && cliente?.id) {
         try {
+          console.log('Carregando agendamento para cliente:', cliente.id);
           const agendamento = await carregarAgendamentoPorCliente(cliente.id.toString());
           
           if (agendamento) {
+            console.log('Agendamento carregado:', agendamento);
+            setAgendamentoId(agendamento.id);
             setStatusAgendamento(agendamento.status_agendamento);
             setProximaDataReposicao(
               agendamento.data_proxima_reposicao 
@@ -64,25 +68,30 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
               setProdutosQuantidades(agendamento.itens_personalizados);
             }
           } else {
-            // Usar dados padrão do cliente se não há agendamento
-            setQuantidadeTotal(cliente.quantidadePadrao);
-            setPeriodicidade(cliente.periodicidadePadrao);
-            setStatusAgendamento(cliente.statusAgendamento as any || 'Agendar');
-            setProximaDataReposicao(
-              cliente.proximaDataReposicao 
-                ? cliente.proximaDataReposicao.toISOString().split('T')[0] 
-                : ''
-            );
+            console.log('Nenhum agendamento encontrado, usando valores padrão');
+            // Valores padrão quando não há agendamento
+            setStatusAgendamento('Agendar');
+            setTipoPedido('Padrão');
+            setQuantidadeTotal(0);
+            setProximaDataReposicao('');
+            setProdutosQuantidades([]);
           }
           setAgendamentoCarregado(true);
         } catch (error) {
           console.error('Erro ao carregar agendamento:', error);
+          // Em caso de erro, usar valores padrão para não travar a interface
+          setStatusAgendamento('Agendar');
+          setTipoPedido('Padrão');
+          setQuantidadeTotal(0);
+          setProximaDataReposicao('');
+          setProdutosQuantidades([]);
+          setAgendamentoCarregado(true);
         }
       }
     };
 
     carregarDados();
-  }, [cliente.id, carregarAgendamentoPorCliente, agendamentoCarregado, cliente]);
+  }, [cliente?.id, carregarAgendamentoPorCliente, agendamentoCarregado]);
 
   // Inicializar produtos com quantidades quando o tipo for "Alterado"
   useEffect(() => {
@@ -158,6 +167,7 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
         itens_personalizados: tipoPedido === 'Alterado' ? produtosQuantidades : undefined
       };
 
+      console.log('Salvando agendamento:', dadosAgendamento);
       await salvarAgendamento(cliente.id.toString(), dadosAgendamento);
       
     } catch (error) {
@@ -166,6 +176,22 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
       setIsLoading(false);
     }
   };
+
+  // Mostrar loading enquanto carrega
+  if (!agendamentoCarregado) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-2 text-sm text-muted-foreground">Carregando agendamento...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -229,7 +255,7 @@ export default function AgendamentoAtual({ cliente }: AgendamentoAtualProps) {
               type="number"
               value={quantidadeTotal}
               onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
-              min="1"
+              min="0"
             />
           </div>
 
