@@ -4,15 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { AgendamentoItem } from "./types";
-import { Edit, Plus } from "lucide-react";
+import { Edit, Plus, Check } from "lucide-react";
 
 interface AgendamentoTableProps {
   agendamentos: AgendamentoItem[];
   onCriarPedido: (clienteId: string) => void;
   onEditarAgendamento: (agendamento: AgendamentoItem) => void;
+  onConfirmarPrevisto?: (agendamento: AgendamentoItem) => void;
 }
 
-export default function AgendamentoTable({ agendamentos, onCriarPedido, onEditarAgendamento }: AgendamentoTableProps) {
+export default function AgendamentoTable({ 
+  agendamentos, 
+  onCriarPedido, 
+  onEditarAgendamento,
+  onConfirmarPrevisto 
+}: AgendamentoTableProps) {
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case "Previsto":
@@ -63,6 +69,17 @@ export default function AgendamentoTable({ agendamentos, onCriarPedido, onEditar
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex gap-2 justify-end">
+                  {agendamento.statusAgendamento === "Previsto" && onConfirmarPrevisto && (
+                    <Button
+                      variant="success"
+                      size="sm"
+                      onClick={() => onConfirmarPrevisto(agendamento)}
+                      className="flex items-center gap-1"
+                    >
+                      <Check className="h-4 w-4" />
+                      Confirmar
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"

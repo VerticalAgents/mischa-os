@@ -9,13 +9,13 @@ import { AgendamentoItem } from "./types";
 import AgendamentoFilters from "./AgendamentoFilters";
 import FiltrosLocalizacao from "./FiltrosLocalizacao";
 import AgendamentoTable from "./AgendamentoTable";
-import EditarAgendamentoDialog from "./EditarAgendamentoDialog";
+import AgendamentoEditModal from "./AgendamentoEditModal";
 import { toast } from "sonner";
 
 export default function TodosAgendamentos() {
   const { clientes, carregarClientes } = useClienteStore();
   const { pedidos, criarNovoPedido } = usePedidoStore();
-  const { carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
+  const { carregarAgendamentoPorCliente, salvarAgendamento } = useAgendamentoClienteStore();
   
   const [abaAtiva, setAbaAtiva] = useState("todos");
   const [filtroRota, setFiltroRota] = useState<{ rota?: string }>({});
@@ -120,7 +120,6 @@ export default function TodosAgendamentos() {
   };
 
   const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
-    // Aqui você implementaria a lógica para salvar as alterações
     toast.success("Agendamento atualizado com sucesso!");
     setAgendamentoEditando(null);
     
@@ -130,6 +129,29 @@ export default function TodosAgendamentos() {
         ag.cliente.id === agendamentoAtualizado.cliente.id ? agendamentoAtualizado : ag
       )
     );
+  };
+
+  const handleConfirmarPrevisto = async (agendamento: AgendamentoItem) => {
+    try {
+      // Salvar como "Agendado" no banco
+      await salvarAgendamento(agendamento.cliente.id, {
+        status_agendamento: 'Agendado'
+      });
+
+      // Atualizar estado local
+      setAgendamentos(prev => 
+        prev.map(ag => 
+          ag.cliente.id === agendamento.cliente.id 
+            ? { ...ag, statusAgendamento: 'Agendado' }
+            : ag
+        )
+      );
+
+      toast.success(`Agendamento de ${agendamento.cliente.nome} confirmado com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao confirmar agendamento:', error);
+      toast.error("Erro ao confirmar agendamento");
+    }
   };
 
   if (loading) {
@@ -167,16 +189,15 @@ export default function TodosAgendamentos() {
         agendamentos={agendamentosFiltrados}
         onCriarPedido={handleCriarPedido}
         onEditarAgendamento={handleEditarAgendamento}
+        onConfirmarPrevisto={handleConfirmarPrevisto}
       />
 
-      {agendamentoEditando && (
-        <EditarAgendamentoDialog
-          agendamento={agendamentoEditando}
-          open={!!agendamentoEditando}
-          onOpenChange={(open) => !open && setAgendamentoEditando(null)}
-          onSalvar={handleSalvarAgendamento}
-        />
-      )}
+      <AgendamentoEditModal
+        agendamento={agendamentoEditando}
+        open={!!agendamentoEditando}
+        onOpenChange={(open) => !open && setAgendamentoEditando(null)}
+        onSalvar={handleSalvarAgendamento}
+      />
     </div>
   );
 }
