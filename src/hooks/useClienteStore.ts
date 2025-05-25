@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { Cliente, StatusCliente } from '../types';
@@ -193,6 +192,23 @@ export const useClienteStore = create<ClienteStore>()(
             return;
           }
 
+          // Encontrar o registro no Supabase usando o ID
+          const { data: clienteSupabase, error: fetchError } = await supabase
+            .from('clientes')
+            .select('id')
+            .eq('id', clienteExistente.id.toString())
+            .single();
+
+          if (fetchError) {
+            console.error('Erro ao buscar cliente:', fetchError);
+            toast({
+              title: "Erro",
+              description: "Cliente não encontrado no banco de dados",
+              variant: "destructive"
+            });
+            return;
+          }
+
           // Converter dadosCliente para formato Supabase
           const dadosSupabase: any = {};
           
@@ -210,7 +226,7 @@ export const useClienteStore = create<ClienteStore>()(
           const { error } = await supabase
             .from('clientes')
             .update(dadosSupabase)
-            .eq('id', clienteExistente.id);
+            .eq('id', clienteSupabase.id);
 
           if (error) {
             console.error('Erro ao atualizar cliente:', error);
@@ -251,10 +267,27 @@ export const useClienteStore = create<ClienteStore>()(
 
         set({ loading: true });
         try {
+          // Encontrar o registro no Supabase usando o ID
+          const { data: clienteSupabase, error: fetchError } = await supabase
+            .from('clientes')
+            .select('id')
+            .eq('id', cliente.id.toString())
+            .single();
+
+          if (fetchError) {
+            console.error('Erro ao buscar cliente:', fetchError);
+            toast({
+              title: "Erro",
+              description: "Cliente não encontrado no banco de dados",
+              variant: "destructive"
+            });
+            return;
+          }
+
           const { error } = await supabase
             .from('clientes')
             .delete()
-            .eq('id', cliente.id);
+            .eq('id', clienteSupabase.id);
 
           if (error) {
             console.error('Erro ao remover cliente:', error);
