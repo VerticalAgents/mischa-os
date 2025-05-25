@@ -25,15 +25,21 @@ interface CategoriaStore {
   // Verification methods
   categoriaTemProdutos: (categoriaId: number) => boolean;
   subcategoriaTemProdutos: (subcategoriaId: number) => boolean;
+  
+  // Protection methods
+  isCategoriaProtegida: (categoriaId: number) => boolean;
 }
+
+// Protected category IDs that cannot be deleted
+const CATEGORIAS_PROTEGIDAS = [1, 2]; // Revenda Padrão (formerly Doces) and Food Service
 
 export const useCategoriaStore = create<CategoriaStore>()(
   immer((set, get) => ({
     categorias: [
       {
         id: 1,
-        nome: "Doces",
-        descricao: "Produtos da linha de doces",
+        nome: "Revenda Padrão",
+        descricao: "Produtos da linha de revenda padrão",
         subcategorias: [
           { id: 1, nome: "Brownie 38g", categoriaId: 1, quantidadeProdutos: 1 },
           { id: 2, nome: "Brownie 55g", categoriaId: 1, quantidadeProdutos: 0 }
@@ -76,7 +82,13 @@ export const useCategoriaStore = create<CategoriaStore>()(
     }),
     
     removerCategoria: (id) => {
-      const { categoriaTemProdutos } = get();
+      const { categoriaTemProdutos, isCategoriaProtegida } = get();
+      
+      // Check if category is protected
+      if (isCategoriaProtegida(id)) {
+        return false;
+      }
+      
       if (categoriaTemProdutos(id)) {
         return false;
       }
@@ -158,6 +170,10 @@ export const useCategoriaStore = create<CategoriaStore>()(
     subcategoriaTemProdutos: (subcategoriaId) => {
       const produtos = useProdutoStore.getState().produtos;
       return produtos.some(p => p.subcategoriaId === subcategoriaId);
+    },
+    
+    isCategoriaProtegida: (categoriaId) => {
+      return CATEGORIAS_PROTEGIDAS.includes(categoriaId);
     }
   }))
 );
