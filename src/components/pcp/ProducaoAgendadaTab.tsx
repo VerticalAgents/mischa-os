@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Calendar, Plus, Edit, Info } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { useSaborStore } from "@/hooks/useSaborStore";
+import { useHistoricoProducaoStore } from "@/hooks/useHistoricoProducaoStore";
 
 interface ProducaoAgendadaItem {
   id: number;
@@ -20,6 +21,7 @@ interface ProducaoAgendadaItem {
 
 export default function ProducaoAgendadaTab() {
   const { sabores } = useSaborStore();
+  const { adicionarRegistroHistorico } = useHistoricoProducaoStore();
   
   // Mock data for scheduled production - in a real app, this would come from a store
   const [producaoAgendada, setProducaoAgendada] = useState<ProducaoAgendadaItem[]>([
@@ -90,6 +92,23 @@ export default function ProducaoAgendadaTab() {
     console.log("Editar produção agendada", id);
   };
 
+  const confirmarProducao = (item: ProducaoAgendadaItem) => {
+    // Add to production history when production is confirmed
+    adicionarRegistroHistorico({
+      dataProducao: item.data,
+      produtoId: item.idSabor,
+      produtoNome: item.nomeSabor,
+      formasProducidas: item.formasAgendadas,
+      unidadesCalculadas: item.formasAgendadas * 30, // Assuming 30 units per form
+      turno: 'Automático', // Default turno for scheduled production
+      observacoes: 'Produção executada conforme agendamento',
+      origem: 'Agendada'
+    });
+    
+    // Remove from scheduled production
+    setProducaoAgendada(prev => prev.filter(p => p.id !== item.id));
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -116,7 +135,7 @@ export default function ProducaoAgendadaTab() {
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          As produções agendadas aqui impactam a projeção de disponibilidade futura e a verificação de risco de ruptura.
+          As produções agendadas aqui impactam a projeção de disponibilidade futura e são automaticamente registradas no histórico quando executadas.
         </AlertDescription>
       </Alert>
 
@@ -160,15 +179,25 @@ export default function ProducaoAgendadaTab() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => editarProducao(item.id)}
-                            className="flex items-center gap-1"
-                          >
-                            <Edit className="h-3 w-3" />
-                            Editar
-                          </Button>
+                          <div className="flex gap-2 justify-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => editarProducao(item.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <Edit className="h-3 w-3" />
+                              Editar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => confirmarProducao(item)}
+                              className="flex items-center gap-1"
+                            >
+                              Confirmar
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ));

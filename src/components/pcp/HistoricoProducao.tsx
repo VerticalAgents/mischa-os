@@ -1,6 +1,6 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { useHistoricoProducaoStore } from '@/hooks/useHistoricoProducaoStore';
 import { 
   Card, 
   CardContent, 
@@ -31,7 +31,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -48,40 +47,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-
-// Dummy data for the component
-const historicoProducao = [
-  {
-    id: 1,
-    dataProducao: new Date(2023, 4, 15),
-    produtoId: 1,
-    produtoNome: 'Tradicional',
-    formasProducidas: 10,
-    unidadesCalculadas: 300,
-    turno: 'Matutino',
-    observacoes: 'Produção regular',
-  },
-  {
-    id: 2,
-    dataProducao: new Date(2023, 4, 16),
-    produtoId: 2,
-    produtoNome: 'Choco Duo',
-    formasProducidas: 8,
-    unidadesCalculadas: 240,
-    turno: 'Vespertino',
-    observacoes: 'Produção especial para evento',
-  },
-  {
-    id: 3,
-    dataProducao: new Date(2023, 4, 17),
-    produtoId: 3,
-    produtoNome: 'Mesclado',
-    formasProducidas: 5,
-    unidadesCalculadas: 150,
-    turno: 'Noturno',
-    observacoes: '',
-  },
-];
+import { Badge } from '@/components/ui/badge';
 
 type FiltroHistoricoForm = {
   periodo: 'ultimos7dias' | 'mesAtual' | 'personalizado';
@@ -99,8 +65,8 @@ type EditarRegistroForm = {
 };
 
 export default function HistoricoProducao() {
-  const [registros, setRegistros] = useState(historicoProducao);
-  const [filtrados, setFiltrados] = useState(historicoProducao);
+  const { historico, editarRegistroHistorico } = useHistoricoProducaoStore();
+  const [filtrados, setFiltrados] = useState(historico);
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [dialogAberta, setDialogAberta] = useState(false);
   const { toast } = useToast();
@@ -128,7 +94,7 @@ export default function HistoricoProducao() {
 
   // Função para aplicar filtros
   const aplicarFiltros = (data: FiltroHistoricoForm) => {
-    let resultados = [...registros];
+    let resultados = [...historico];
     
     // Aplicar filtro de período
     const hoje = new Date();
@@ -170,7 +136,7 @@ export default function HistoricoProducao() {
 
   // Função para preparar edição
   const prepararEdicao = (id: number) => {
-    const registro = registros.find(r => r.id === id);
+    const registro = historico.find(r => r.id === id);
     if (registro) {
       editarForm.reset({
         produtoId: registro.produtoId,
@@ -187,23 +153,15 @@ export default function HistoricoProducao() {
   // Função para salvar edição
   const salvarEdicao = (data: EditarRegistroForm) => {
     if (editandoId !== null) {
-      // Atualiza o registro editado
-      setRegistros(prevRegistros => 
-        prevRegistros.map(registro => 
-          registro.id === editandoId 
-            ? {
-                ...registro,
-                produtoId: data.produtoId,
-                produtoNome: 'Produto ' + data.produtoId, // Mockup - deveria buscar nome real
-                formasProducidas: data.formasProducidas,
-                unidadesCalculadas: data.formasProducidas * 30, // Mockup - usar valor real de unidadesPorForma
-                dataProducao: data.dataProducao,
-                turno: data.turno,
-                observacoes: data.observacoes || ''
-              }
-            : registro
-        )
-      );
+      editarRegistroHistorico(editandoId, {
+        produtoId: data.produtoId,
+        produtoNome: 'Produto ' + data.produtoId, // Mockup - deveria buscar nome real
+        formasProducidas: data.formasProducidas,
+        unidadesCalculadas: data.formasProducidas * 30, // Mockup - usar valor real de unidadesPorForma
+        dataProducao: data.dataProducao,
+        turno: data.turno,
+        observacoes: data.observacoes || ''
+      });
       
       // Refaz a filtragem com os novos dados
       aplicarFiltros(filtroForm.getValues());
@@ -356,7 +314,7 @@ export default function HistoricoProducao() {
                           <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
                         </div>
                       </FormControl>
-                      <FormMessage>{field.value}</FormMessage>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -385,6 +343,7 @@ export default function HistoricoProducao() {
                     <TableHead>Formas</TableHead>
                     <TableHead>Unidades</TableHead>
                     <TableHead>Turno</TableHead>
+                    <TableHead>Origem</TableHead>
                     <TableHead>Observações</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -397,6 +356,11 @@ export default function HistoricoProducao() {
                       <TableCell>{registro.formasProducidas}</TableCell>
                       <TableCell>{registro.unidadesCalculadas}</TableCell>
                       <TableCell>{registro.turno}</TableCell>
+                      <TableCell>
+                        <Badge variant={registro.origem === 'Agendada' ? 'default' : 'secondary'}>
+                          {registro.origem}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{registro.observacoes || '—'}</TableCell>
                       <TableCell className="text-right">
                         <Button 
@@ -455,33 +419,6 @@ export default function HistoricoProducao() {
               ) : (
                 <Form {...editarForm}>
                   <form onSubmit={editarForm.handleSubmit(salvarEdicao)} className="space-y-4">
-                    {/* Form fields for editing go here */}
-                    <FormField
-                      control={editarForm.control}
-                      name="produtoId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Produto</FormLabel>
-                          <Select 
-                            onValueChange={(value) => field.onChange(parseInt(value))} 
-                            value={field.value ? field.value.toString() : ''}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione um produto" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="1">Tradicional</SelectItem>
-                              <SelectItem value="2">Choco Duo</SelectItem>
-                              <SelectItem value="3">Mesclado</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
                     <FormField
                       control={editarForm.control}
                       name="formasProducidas"
@@ -495,67 +432,6 @@ export default function HistoricoProducao() {
                               onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                             />
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={editarForm.control}
-                      name="dataProducao"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Data de produção</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "dd/MM/yyyy")
-                                  ) : (
-                                    <span>Selecione uma data</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={editarForm.control}
-                      name="turno"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Turno</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione um turno" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Matutino">Matutino</SelectItem>
-                              <SelectItem value="Vespertino">Vespertino</SelectItem>
-                              <SelectItem value="Noturno">Noturno</SelectItem>
-                            </SelectContent>
-                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}

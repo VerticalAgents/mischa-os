@@ -1,4 +1,3 @@
-
 export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby';
 
 // Adding new types for client configuration
@@ -56,6 +55,9 @@ export interface Cliente {
   tipoCobranca: TipoCobranca;
   formaPagamento: FormaPagamentoNome;
   observacoes?: string;
+  
+  // New field for category selection
+  categoriasHabilitadas?: number[]; // Array of category IDs that client can purchase
 }
 
 // Representantes, Rotas e Categorias para configuração
@@ -256,6 +258,19 @@ export interface PlanejamentoProducao {
   // Additional properties needed for usePlanejamentoProducaoStore
   totalUnidadesAgendadas?: number;
   formasNecessarias?: number;
+}
+
+// Add new type for production history
+export interface HistoricoProducao {
+  id: number;
+  dataProducao: Date;
+  produtoId: number;
+  produtoNome: string;
+  formasProducidas: number;
+  unidadesCalculadas: number;
+  turno: string;
+  observacoes?: string;
+  origem: 'Agendada' | 'Manual'; // Track where the production came from
 }
 
 export type TipoAlerta = 

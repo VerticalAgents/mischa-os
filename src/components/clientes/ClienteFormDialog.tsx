@@ -32,6 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import DiasSemanaPicker from "./DiasSemanaPicker";
 import { Textarea } from "@/components/ui/textarea";
+import CategoriasProdutoSelector from "./CategoriasProdutoSelector";
 
 type ClienteFormValues = {
   nome: string;
@@ -51,10 +52,11 @@ type ClienteFormValues = {
   categoriaEstabelecimentoId?: number;
   instrucoesEntrega?: string;
   contabilizarGiroMedio: boolean;
-  tipoLogistica: TipoLogisticaNome;  // Changed to TipoLogisticaNome
+  tipoLogistica: TipoLogisticaNome;
   emiteNotaFiscal: boolean;
   tipoCobranca: TipoCobranca;
-  formaPagamento: FormaPagamentoNome;  // Changed to FormaPagamentoNome
+  formaPagamento: FormaPagamentoNome;
+  categoriasHabilitadas: number[]; // New field for enabled categories
 };
 
 interface ClienteFormDialogProps {
@@ -105,6 +107,7 @@ export default function ClienteFormDialog({
       emiteNotaFiscal: true,
       tipoCobranca: "À vista",
       formaPagamento: "Boleto",
+      categoriasHabilitadas: [1], // Default to "Revenda Padrão"
     },
   });
 
@@ -135,6 +138,7 @@ export default function ClienteFormDialog({
           emiteNotaFiscal: cliente.emiteNotaFiscal ?? true,
           tipoCobranca: cliente.tipoCobranca || "À vista",
           formaPagamento: cliente.formaPagamento,
+          categoriasHabilitadas: cliente.categoriasHabilitadas || [1],
         });
       }
     }
@@ -160,7 +164,8 @@ export default function ClienteFormDialog({
           ...data,
           quantidadePadrao: Number(data.quantidadePadrao),
           periodicidadePadrao: Number(data.periodicidadePadrao),
-          ativo: data.statusCliente === 'Ativo'
+          ativo: data.statusCliente === 'Ativo',
+          giroMedioSemanal: 0 // Add required field
         });
         
         toast({
@@ -242,6 +247,25 @@ export default function ClienteFormDialog({
                 )}
               />
 
+              {/* Categories Section */}
+              <h3 className="text-lg font-medium pt-2">Categorias de Produtos</h3>
+              <FormField
+                control={form.control}
+                name="categoriasHabilitadas"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <CategoriasProdutoSelector 
+                        value={field.value} 
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* ... keep existing code (contact data section) */}
               <h3 className="text-lg font-medium pt-2">Dados de Contato</h3>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <FormField
@@ -287,6 +311,7 @@ export default function ClienteFormDialog({
                 />
               </div>
 
+              {/* ... keep existing code (reposition configuration section) */}
               <h3 className="text-lg font-medium pt-2">Configuração de Reposição</h3>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <FormField
@@ -341,7 +366,7 @@ export default function ClienteFormDialog({
                 />
               </div>
 
-              {/* Novo: Janela de Entrega */}
+              {/* ... keep existing code (delivery window section and other fields) */}
               <h3 className="text-lg font-medium pt-2">Janela de Entrega</h3>
               <FormField
                 control={form.control}
