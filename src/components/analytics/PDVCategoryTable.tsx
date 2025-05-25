@@ -47,7 +47,7 @@ export function PDVCategoryTable({ clientes, baseDRE }: PDVCategoryTableProps) {
     
     // Group by category establishment (we'll use a fallback if no category is set)
     clientes.forEach(cliente => {
-      // Use categoryEstabelecimentoId or fallback
+      // Use categoriaEstabelecimentoId or fallback
       const categoryId = cliente.categoriaEstabelecimentoId || 0;
       const categoryName = getCategoryNameById(categoryId);
       

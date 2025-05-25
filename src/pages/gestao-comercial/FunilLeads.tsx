@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -251,7 +250,9 @@ export default function FunilLeads() {
       emiteNotaFiscal: true,
       tipoCobranca: "À vista" as const,
       formaPagamento: "PIX" as const,
-      ativo: true
+      ativo: true,
+      categoriaId: 1,
+      subcategoriaId: 1
     };
 
     adicionarCliente(novoCliente);

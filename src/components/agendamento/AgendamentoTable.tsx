@@ -1,58 +1,78 @@
 
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import AgendamentoRow from "./AgendamentoRow";
-
-interface AgendamentoItem {
-  cliente: { 
-    id: number; 
-    nome: string; 
-    contatoNome?: string; 
-    contatoTelefone?: string;
-    quantidadePadrao?: number;
-  };
-  pedido?: any;
-  dataReposicao: Date;
-  statusAgendamento: string;
-  isPedidoUnico: boolean;
-}
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/utils";
+import { AgendamentoItem } from "./types";
+import { Edit } from "lucide-react";
 
 interface AgendamentoTableProps {
   agendamentos: AgendamentoItem[];
-  onEditAgendamento: (agendamento: AgendamentoItem) => void;
+  onEditarAgendamento: (agendamento: AgendamentoItem) => void;
 }
 
-export default function AgendamentoTable({ agendamentos, onEditAgendamento }: AgendamentoTableProps) {
+export default function AgendamentoTable({ agendamentos, onEditarAgendamento }: AgendamentoTableProps) {
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case "Previsto":
+        return "outline";
+      case "Agendado":
+        return "default";
+      case "Reagendar":
+        return "destructive";
+      default:
+        return "secondary";
+    }
+  };
+
   return (
-    <>
+    <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>PDV / Cliente</TableHead>
-            <TableHead>Data da Reposição</TableHead>
+            <TableHead>Cliente</TableHead>
+            <TableHead>Data</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Quantidade</TableHead>
             <TableHead>Tipo</TableHead>
-            <TableHead>Tipo de Pedido</TableHead>
-            <TableHead>Ações</TableHead>
+            <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {agendamentos.map((agendamento, index) => (
-            <AgendamentoRow
-              key={`${agendamento.cliente.id}-${index}`}
-              agendamento={agendamento}
-              index={index}
-              onEdit={onEditAgendamento}
-            />
+            <TableRow key={`${agendamento.cliente.id}-${index}`}>
+              <TableCell className="font-medium">
+                {agendamento.cliente.nome}
+              </TableCell>
+              <TableCell>
+                {formatDate(agendamento.dataReposicao)}
+              </TableCell>
+              <TableCell>
+                <Badge variant={getStatusBadgeVariant(agendamento.statusAgendamento)}>
+                  {agendamento.statusAgendamento}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                {agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao}
+              </TableCell>
+              <TableCell>
+                <Badge variant={agendamento.isPedidoUnico ? "secondary" : "outline"}>
+                  {agendamento.isPedidoUnico ? "Único" : "Padrão"}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onEditarAgendamento(agendamento)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </TableCell>
+            </TableRow>
           ))}
         </TableBody>
       </Table>
-      
-      {agendamentos.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground">
-          <p>Nenhum agendamento encontrado para esta categoria</p>
-        </div>
-      )}
-    </>
+    </div>
   );
 }

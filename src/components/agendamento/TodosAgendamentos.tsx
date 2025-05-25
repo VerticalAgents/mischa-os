@@ -9,14 +9,7 @@ import FiltrosLocalizacao from "./FiltrosLocalizacao";
 import EditarAgendamentoDialog from "./EditarAgendamentoDialog";
 import AgendamentoFilters from "./AgendamentoFilters";
 import AgendamentoTable from "./AgendamentoTable";
-
-interface AgendamentoItem {
-  cliente: Cliente;
-  pedido?: Pedido;
-  dataReposicao: Date;
-  statusAgendamento: string;
-  isPedidoUnico: boolean;
-}
+import { AgendamentoItem } from "./types";
 
 export default function TodosAgendamentos() {
   const { clientes } = useClienteStore();
@@ -159,30 +152,34 @@ export default function TodosAgendamentos() {
       <CardHeader>
         <CardTitle>Todos os Agendamentos</CardTitle>
         <CardDescription>
-          Visão panorâmica de todos os PDVs com pedidos agendados e pedidos únicos
+          Gerencie todos os agendamentos de reposição dos clientes
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <FiltrosLocalizacao onFiltroChange={handleFiltroChange} />
-        
-        <AgendamentoFilters
-          abaAtiva={abaAtiva}
-          setAbaAtiva={setAbaAtiva}
-          agendamentos={agendamentos}
-        >
-          <AgendamentoTable
+        <div className="space-y-4">
+          <FiltrosLocalizacao onFiltroChange={handleFiltroChange} />
+          
+          <AgendamentoFilters 
+            abaAtiva={abaAtiva}
+            onAbaChange={setAbaAtiva}
             agendamentos={agendamentosFiltrados}
-            onEditAgendamento={handleEditarAgendamento}
           />
-        </AgendamentoFilters>
+          
+          <AgendamentoTable 
+            agendamentos={agendamentosFiltrados}
+            onEditarAgendamento={handleEditarAgendamento}
+          />
+        </div>
+      </CardContent>
 
+      {agendamentoSelecionado && (
         <EditarAgendamentoDialog
           agendamento={agendamentoSelecionado}
           open={dialogAberto}
           onOpenChange={setDialogAberto}
-          onSave={handleSalvarAgendamento}
+          onSalvar={handleSalvarAgendamento}
         />
-      </CardContent>
+      )}
     </Card>
   );
 }

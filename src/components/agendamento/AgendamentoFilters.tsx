@@ -1,73 +1,42 @@
 
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-interface AgendamentoItem {
-  cliente: { id: number; nome: string; contatoNome?: string; contatoTelefone?: string };
-  pedido?: any;
-  dataReposicao: Date;
-  statusAgendamento: string;
-  isPedidoUnico: boolean;
-}
+import { AgendamentoItem } from "./types";
 
 interface AgendamentoFiltersProps {
   abaAtiva: string;
-  setAbaAtiva: (aba: string) => void;
+  onAbaChange: (aba: string) => void;
   agendamentos: AgendamentoItem[];
-  children: React.ReactNode;
 }
 
-export default function AgendamentoFilters({
-  abaAtiva,
-  setAbaAtiva,
-  agendamentos,
-  children
-}: AgendamentoFiltersProps) {
-  const getContadorAba = (aba: string) => {
-    switch (aba) {
-      case "previstos":
-        return agendamentos.filter(a => a.statusAgendamento === "Previsto").length;
-      case "agendados":
-        return agendamentos.filter(a => a.statusAgendamento === "Agendado").length;
-      case "pedidos-unicos":
-        return agendamentos.filter(a => a.isPedidoUnico).length;
-      default:
-        return agendamentos.length;
-    }
+export default function AgendamentoFilters({ abaAtiva, onAbaChange, agendamentos }: AgendamentoFiltersProps) {
+  const contadores = {
+    todos: agendamentos.length,
+    previstos: agendamentos.filter(a => a.statusAgendamento === "Previsto").length,
+    agendados: agendamentos.filter(a => a.statusAgendamento === "Agendado").length,
+    pedidosUnicos: agendamentos.filter(a => a.isPedidoUnico).length
   };
 
   return (
-    <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full">
-      <TabsList className="grid w-full grid-cols-4">
+    <Tabs value={abaAtiva} onValueChange={onAbaChange}>
+      <TabsList>
         <TabsTrigger value="todos" className="flex items-center gap-2">
           Todos
-          <Badge variant="secondary" className="text-xs">
-            {getContadorAba("todos")}
-          </Badge>
+          <Badge variant="secondary">{contadores.todos}</Badge>
         </TabsTrigger>
         <TabsTrigger value="previstos" className="flex items-center gap-2">
           Previstos
-          <Badge variant="secondary" className="text-xs">
-            {getContadorAba("previstos")}
-          </Badge>
+          <Badge variant="secondary">{contadores.previstos}</Badge>
         </TabsTrigger>
         <TabsTrigger value="agendados" className="flex items-center gap-2">
           Agendados
-          <Badge variant="secondary" className="text-xs">
-            {getContadorAba("agendados")}
-          </Badge>
+          <Badge variant="secondary">{contadores.agendados}</Badge>
         </TabsTrigger>
         <TabsTrigger value="pedidos-unicos" className="flex items-center gap-2">
           Pedidos Únicos
-          <Badge variant="secondary" className="text-xs">
-            {getContadorAba("pedidos-unicos")}
-          </Badge>
+          <Badge variant="secondary">{contadores.pedidosUnicos}</Badge>
         </TabsTrigger>
       </TabsList>
-      
-      <TabsContent value={abaAtiva} className="space-y-4">
-        {children}
-      </TabsContent>
     </Tabs>
   );
 }
