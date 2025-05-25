@@ -2,23 +2,13 @@
 import { useState, useEffect } from "react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
-import { format, compareAsc } from "date-fns";
+import { compareAsc } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare } from "lucide-react";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
 import { Cliente, Pedido } from "@/types";
 import FiltrosLocalizacao from "./FiltrosLocalizacao";
 import EditarAgendamentoDialog from "./EditarAgendamentoDialog";
+import AgendamentoFilters from "./AgendamentoFilters";
+import AgendamentoTable from "./AgendamentoTable";
 
 interface AgendamentoItem {
   cliente: Cliente;
@@ -161,55 +151,6 @@ export default function TodosAgendamentos() {
     );
   };
 
-  const handleWhatsAppClick = (agendamento: AgendamentoItem) => {
-    if (agendamento.isPedidoUnico) return;
-    
-    const cliente = agendamento.cliente;
-    if (!cliente.contatoTelefone) return;
-    
-    let phone = cliente.contatoTelefone.replace(/\D/g, '');
-    if (phone.startsWith('0')) phone = phone.substring(1);
-    if (!phone.startsWith('55')) phone = '55' + phone;
-    
-    const dataFormatada = format(agendamento.dataReposicao, 'dd/MM/yyyy');
-    
-    const message = encodeURIComponent(
-      `Olá ${cliente.nome}, tudo bem? Gostaríamos de confirmar a entrega prevista para o dia ${dataFormatada}. Por favor, nos confirme a necessidade da reposição.`
-    );
-    
-    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Previsto": return "bg-amber-500";
-      case "Agendado": return "bg-green-500";
-      case "Reagendar": return "bg-purple-500";
-      default: return "bg-gray-500";
-    }
-  };
-
-  const getTipoPedidoColor = (tipoPedido?: string) => {
-    switch (tipoPedido) {
-      case "Padrão": return "bg-green-100 text-green-800";
-      case "Alterado": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getContadorAba = (aba: string) => {
-    switch (aba) {
-      case "previstos":
-        return agendamentos.filter(a => a.statusAgendamento === "Previsto").length;
-      case "agendados":
-        return agendamentos.filter(a => a.statusAgendamento === "Agendado").length;
-      case "pedidos-unicos":
-        return agendamentos.filter(a => a.isPedidoUnico).length;
-      default:
-        return agendamentos.length;
-    }
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -221,113 +162,16 @@ export default function TodosAgendamentos() {
       <CardContent>
         <FiltrosLocalizacao onFiltroChange={handleFiltroChange} />
         
-        <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="todos" className="flex items-center gap-2">
-              Todos
-              <Badge variant="secondary" className="text-xs">
-                {getContadorAba("todos")}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="previstos" className="flex items-center gap-2">
-              Previstos
-              <Badge variant="secondary" className="text-xs">
-                {getContadorAba("previstos")}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="agendados" className="flex items-center gap-2">
-              Agendados
-              <Badge variant="secondary" className="text-xs">
-                {getContadorAba("agendados")}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="pedidos-unicos" className="flex items-center gap-2">
-              Pedidos Únicos
-              <Badge variant="secondary" className="text-xs">
-                {getContadorAba("pedidos-unicos")}
-              </Badge>
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value={abaAtiva} className="space-y-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>PDV / Cliente</TableHead>
-                  <TableHead>Data da Reposição</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Quantidade</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Tipo de Pedido</TableHead>
-                  <TableHead>Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {agendamentosFiltrados.map((agendamento, index) => (
-                  <TableRow 
-                    key={`${agendamento.cliente.id}-${index}`}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleEditarAgendamento(agendamento)}
-                  >
-                    <TableCell className="font-medium">
-                      <div>
-                        <div>{agendamento.cliente.nome}</div>
-                        {!agendamento.isPedidoUnico && agendamento.cliente.contatoNome && (
-                          <div className="text-xs text-muted-foreground">
-                            {agendamento.cliente.contatoNome}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {format(agendamento.dataReposicao, 'dd/MM/yyyy')}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`${getStatusColor(agendamento.statusAgendamento)} text-white`}>
-                        {agendamento.statusAgendamento}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao} un
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={agendamento.isPedidoUnico ? "destructive" : "default"}>
-                        {agendamento.isPedidoUnico ? "Pedido Único" : "PDV"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getTipoPedidoColor(agendamento.pedido?.tipoPedido)}>
-                        {agendamento.pedido?.tipoPedido || "Padrão"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {!agendamento.isPedidoUnico && agendamento.cliente.contatoTelefone && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleWhatsAppClick(agendamento);
-                          }}
-                          className="flex items-center gap-1"
-                        >
-                          <MessageSquare className="h-4 w-4 text-green-500" />
-                          <span className="hidden sm:inline">WhatsApp</span>
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            
-            {agendamentosFiltrados.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>Nenhum agendamento encontrado para esta categoria</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+        <AgendamentoFilters
+          abaAtiva={abaAtiva}
+          setAbaAtiva={setAbaAtiva}
+          agendamentos={agendamentos}
+        >
+          <AgendamentoTable
+            agendamentos={agendamentosFiltrados}
+            onEditAgendamento={handleEditarAgendamento}
+          />
+        </AgendamentoFilters>
 
         <EditarAgendamentoDialog
           agendamento={agendamentoSelecionado}
