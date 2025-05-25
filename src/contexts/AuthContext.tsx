@@ -57,8 +57,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           toast.info("Você foi desconectado");
         }
 
-        if (event === 'SIGNED_UP') {
-          toast.success("Conta criada com sucesso! Verifique seu email se necessário.");
+        if (event === 'INITIAL_SESSION') {
+          // Handle initial session setup
+          console.log('Initial session established');
         }
       }
     );
@@ -127,6 +128,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (error) {
         throw error;
       }
+      
+      toast.success("Conta criada com sucesso! Verifique seu email se necessário.");
     } catch (error: any) {
       toast.error("Erro ao criar conta: " + error.message);
       throw error;
