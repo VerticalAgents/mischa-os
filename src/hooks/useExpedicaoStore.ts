@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "sonner";
@@ -375,11 +376,15 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             )
           }));
 
-          // 4. Atualizar store de agendamento SEM recarregar tudo
+          // 4. Atualizar store de agendamento SEM recarregar tudo - com tipo correto
           const agendamentoStore = useAgendamentoClienteStore.getState();
           const agendamentosAtualizados = agendamentoStore.agendamentos.map(ag => 
             ag.id === pedidoId 
-              ? { ...ag, substatus_pedido: 'Entregue' as any, status_agendamento: 'Reagendar' }
+              ? { 
+                  ...ag, 
+                  substatus_pedido: 'Entregue' as any, 
+                  status_agendamento: 'Reagendar' as 'Agendar' | 'Previsto' | 'Agendado'
+                }
               : ag
           );
           
@@ -435,11 +440,15 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             )
           }));
 
-          // 4. Atualizar store de agendamento SEM recarregar tudo
+          // 4. Atualizar store de agendamento SEM recarregar tudo - com tipo correto
           const agendamentoStore = useAgendamentoClienteStore.getState();
           const agendamentosAtualizados = agendamentoStore.agendamentos.map(ag => 
             ag.id === pedidoId 
-              ? { ...ag, substatus_pedido: 'Retorno' as any, status_agendamento: 'Reagendar' }
+              ? { 
+                  ...ag, 
+                  substatus_pedido: 'Retorno' as any, 
+                  status_agendamento: 'Reagendar' as 'Agendar' | 'Previsto' | 'Agendado'
+                }
               : ag
           );
           
