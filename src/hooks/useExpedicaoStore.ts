@@ -50,12 +50,12 @@ const getProximoDiaUtil = (data: Date): Date => {
   return isWeekend(proximaData) ? getProximoDiaUtil(proximaData) : proximaData;
 };
 
-// Função auxiliar para criar novo agendamento APENAS quando necessário
-const criarNovoAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entrega' | 'retorno') => {
-  console.log('🔄 === CRIANDO NOVO AGENDAMENTO ===');
+// Função auxiliar para reagendar agendamento existente
+const reagendarAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entrega' | 'retorno') => {
+  console.log('🔄 === REAGENDANDO AGENDAMENTO EXISTENTE ===');
   console.log('🔄 Cliente:', pedido.cliente_nome);
+  console.log('🔄 ID do agendamento:', pedido.id);
   console.log('🔄 Tipo operação:', tipoOperacao);
-  console.log('🔄 Data anterior:', format(new Date(pedido.data_prevista_entrega), 'yyyy-MM-dd'));
 
   // Buscar dados do cliente para obter periodicidade
   const { data: cliente, error: clienteError } = await supabase
@@ -94,32 +94,28 @@ const criarNovoAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entr
 
   const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
-  console.log(`📋 Dados do novo agendamento:`, {
+  console.log(`📋 Reagendando agendamento existente:`, {
+    id: pedido.id,
     cliente: pedido.cliente_nome,
     cliente_id: pedido.cliente_id,
     data_proxima_reposicao: proximaDataFormatada,
     status_agendamento: 'Previsto',
-    substatus_pedido: 'Agendado',
-    quantidade_total: pedido.quantidade_total,
-    tipo_pedido: pedido.tipo_pedido
+    substatus_pedido: 'Agendado'
   });
 
-  // Criar novo agendamento
-  const { error: novoAgendamentoError } = await supabase
+  // ATUALIZAR o agendamento existente ao invés de criar um novo
+  const { error: updateError } = await supabase
     .from('agendamentos_clientes')
-    .insert({
-      cliente_id: pedido.cliente_id,
+    .update({
       data_proxima_reposicao: proximaDataFormatada,
-      quantidade_total: pedido.quantidade_total,
-      tipo_pedido: pedido.tipo_pedido,
       status_agendamento: 'Previsto',
-      substatus_pedido: 'Agendado',
-      itens_personalizados: pedido.itens_personalizados
-    });
+      substatus_pedido: 'Agendado'
+    })
+    .eq('id', pedido.id);
 
-  if (novoAgendamentoError) {
-    console.error('❌ Erro ao criar novo agendamento:', novoAgendamentoError);
-    throw novoAgendamentoError;
+  if (updateError) {
+    console.error('❌ Erro ao reagendar agendamento:', updateError);
+    throw updateError;
   }
 
   // Atualizar dados do cliente
@@ -142,13 +138,14 @@ const criarNovoAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entr
     throw clienteUpdateError;
   }
 
-  console.log(`✅ Novo agendamento criado com sucesso:`, {
+  console.log(`✅ Agendamento reagendado com sucesso:`, {
+    id: pedido.id,
     cliente: pedido.cliente_nome,
     novaData: proximaDataFormatada,
     status: 'Previsto',
     substatus: 'Agendado'
   });
-  console.log('🔄 === FIM CRIAÇÃO NOVO AGENDAMENTO ===');
+  console.log('🔄 === FIM REAGENDAMENTO ===');
 
   return proximaData;
 };
@@ -343,54 +340,20 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           console.log('📦 Cliente:', pedido.cliente_nome);
           console.log('📦 ID do pedido:', pedidoId);
 
-          // 1. Atualizar APENAS o agendamento específico para Entregue/Reagendar
-          console.log('🔄 Atualizando agendamento específico para Entregue...');
-          const { error: updateError } = await supabase
-            .from('agendamentos_clientes')
-            .update({ 
-              substatus_pedido: 'Entregue',
-              status_agendamento: 'Reagendar'
-            })
-            .eq('id', pedidoId);
+          // Reagendar o agendamento existente
+          console.log('🔄 Reagendando agendamento existente...');
+          const proximaData = await reagendarAgendamento(pedido, 'entrega');
 
-          if (updateError) {
-            console.error('❌ Erro ao atualizar agendamento:', updateError);
-            throw updateError;
-          }
-
-          console.log('✅ Agendamento específico marcado como Entregue/Reagendar');
-
-          // 2. Criar novo agendamento
-          console.log('🆕 Criando novo agendamento...');
-          const proximaData = await criarNovoAgendamento(pedido, 'entrega');
-
-          // 3. Atualizar APENAS o estado local deste pedido específico
+          // Atualizar APENAS o estado local deste pedido específico para remover da aba
           set(state => ({
-            pedidos: state.pedidos.map(p => 
-              p.id === pedidoId ? { 
-                ...p, 
-                substatus_pedido: 'Entregue',
-                status_agendamento: 'Reagendar'
-              } : p
-            )
+            pedidos: state.pedidos.filter(p => p.id !== pedidoId)
           }));
 
-          // 4. Atualizar store de agendamento SEM recarregar tudo - com tipo correto
-          const agendamentoStore = useAgendamentoClienteStore.getState();
-          const agendamentosAtualizados = agendamentoStore.agendamentos.map(ag => 
-            ag.id === pedidoId 
-              ? { 
-                  ...ag, 
-                  substatus_pedido: 'Entregue' as any, 
-                  status_agendamento: 'Reagendar' as 'Agendar' | 'Previsto' | 'Agendado'
-                }
-              : ag
-          );
-          
-          useAgendamentoClienteStore.setState({ agendamentos: agendamentosAtualizados });
+          // Recarregar agendamentos para refletir as mudanças
+          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
           console.log('📦 === ENTREGA INDIVIDUAL CONCLUÍDA ===');
-          toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Novo agendamento criado para ${proximaData.toLocaleDateString()}.`);
+          toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Reagendado para ${proximaData.toLocaleDateString()}.`);
           
         } catch (error) {
           console.error('❌ Erro ao confirmar entrega individual:', error);
@@ -407,51 +370,17 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           console.log('🔄 Cliente:', pedido.cliente_nome);
           console.log('🔄 ID do pedido:', pedidoId);
 
-          // 1. Atualizar APENAS o agendamento específico para Retorno/Reagendar
-          console.log('🔄 Atualizando agendamento específico para Retorno...');
-          const { error: updateError } = await supabase
-            .from('agendamentos_clientes')
-            .update({ 
-              substatus_pedido: 'Retorno',
-              status_agendamento: 'Reagendar'
-            })
-            .eq('id', pedidoId);
+          // Reagendar o agendamento existente
+          console.log('🔄 Reagendando agendamento existente...');
+          const proximaData = await reagendarAgendamento(pedido, 'retorno');
 
-          if (updateError) {
-            console.error('❌ Erro ao atualizar agendamento:', updateError);
-            throw updateError;
-          }
-
-          console.log('✅ Agendamento específico marcado como Retorno/Reagendar');
-
-          // 2. Criar novo agendamento para próximo dia útil
-          console.log('🆕 Criando novo agendamento para próximo dia útil...');
-          const proximaData = await criarNovoAgendamento(pedido, 'retorno');
-
-          // 3. Atualizar APENAS o estado local deste pedido específico
+          // Atualizar APENAS o estado local deste pedido específico para remover da aba
           set(state => ({
-            pedidos: state.pedidos.map(p => 
-              p.id === pedidoId ? { 
-                ...p, 
-                substatus_pedido: 'Retorno',
-                status_agendamento: 'Reagendar'
-              } : p
-            )
+            pedidos: state.pedidos.filter(p => p.id !== pedidoId)
           }));
 
-          // 4. Atualizar store de agendamento SEM recarregar tudo - com tipo correto
-          const agendamentoStore = useAgendamentoClienteStore.getState();
-          const agendamentosAtualizados = agendamentoStore.agendamentos.map(ag => 
-            ag.id === pedidoId 
-              ? { 
-                  ...ag, 
-                  substatus_pedido: 'Retorno' as any, 
-                  status_agendamento: 'Reagendar' as 'Agendar' | 'Previsto' | 'Agendado'
-                }
-              : ag
-          );
-          
-          useAgendamentoClienteStore.setState({ agendamentos: agendamentosAtualizados });
+          // Recarregar agendamentos para refletir as mudanças
+          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
           console.log('🔄 === RETORNO INDIVIDUAL CONCLUÍDO ===');
           toast.success(`Retorno registrado para ${pedido.cliente_nome}. Reagendado para ${proximaData.toLocaleDateString()}.`);
@@ -588,23 +517,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           console.log('📦 === INICIANDO ENTREGA EM MASSA ===');
           console.log('📦 Quantidade de pedidos:', pedidosParaEntregar.length);
 
-          // Processar cada pedido individualmente para criar novos agendamentos
+          // Processar cada pedido individualmente para reagendar
           const resultados = [];
           for (const pedido of pedidosParaEntregar) {
             try {
               console.log(`📦 Processando entrega: ${pedido.cliente_nome}`);
               
-              // 1. Atualizar agendamento atual
-              await supabase
-                .from('agendamentos_clientes')
-                .update({ 
-                  substatus_pedido: 'Entregue',
-                  status_agendamento: 'Reagendar'
-                })
-                .eq('id', pedido.id);
-
-              // 2. Criar novo agendamento com status Previsto
-              const proximaData = await criarNovoAgendamento(pedido, 'entrega');
+              // Reagendar o agendamento existente
+              const proximaData = await reagendarAgendamento(pedido, 'entrega');
               resultados.push({ cliente: pedido.cliente_nome, proximaData });
 
             } catch (error) {
@@ -612,23 +532,19 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             }
           }
 
-          // 3. Atualizar estado local
+          // Remover pedidos entregues do estado local
           set(state => ({
-            pedidos: state.pedidos.map(p => 
-              pedidosParaEntregar.some(pe => pe.id === p.id) 
-                ? { ...p, substatus_pedido: 'Entregue', status_agendamento: 'Reagendar' } 
-                : p
+            pedidos: state.pedidos.filter(p => 
+              !pedidosParaEntregar.some(pe => pe.id === p.id)
             )
           }));
 
-          // 4. Recarregar agendamentos
+          // Recarregar agendamentos
           await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
           console.log('📦 === ENTREGA EM MASSA CONCLUÍDA ===');
-          toast.success(`${pedidosParaEntregar.length} entregas confirmadas. Novos agendamentos criados com status Previsto.`);
+          toast.success(`${pedidosParaEntregar.length} entregas confirmadas. Reagendamentos criados com status Previsto.`);
           
-          // Recarregar pedidos
-          setTimeout(() => get().carregarPedidos(), 1000);
         } catch (error) {
           console.error('❌ Erro na entrega em massa:', error);
           toast.error("Erro na entrega em massa");
@@ -655,17 +571,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             try {
               console.log(`🔄 Processando retorno: ${pedido.cliente_nome}`);
               
-              // 1. Atualizar agendamento atual
-              await supabase
-                .from('agendamentos_clientes')
-                .update({ 
-                  substatus_pedido: 'Retorno',
-                  status_agendamento: 'Reagendar'
-                })
-                .eq('id', pedido.id);
-
-              // 2. Criar novo agendamento para próximo dia útil
-              const proximaData = await criarNovoAgendamento(pedido, 'retorno');
+              // Reagendar o agendamento existente
+              const proximaData = await reagendarAgendamento(pedido, 'retorno');
               resultados.push({ cliente: pedido.cliente_nome, proximaData });
 
             } catch (error) {
@@ -673,23 +580,19 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             }
           }
 
-          // 3. Atualizar estado local
+          // Remover pedidos com retorno do estado local
           set(state => ({
-            pedidos: state.pedidos.map(p => 
-              pedidosParaRetorno.some(pr => pr.id === p.id) 
-                ? { ...p, substatus_pedido: 'Retorno', status_agendamento: 'Reagendar' } 
-                : p
+            pedidos: state.pedidos.filter(p => 
+              !pedidosParaRetorno.some(pr => pr.id === p.id)
             )
           }));
 
-          // 4. Recarregar agendamentos
+          // Recarregar agendamentos
           await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
           console.log('🔄 === RETORNO EM MASSA CONCLUÍDO ===');
           toast.success(`${pedidosParaRetorno.length} retornos registrados. Reagendamentos criados com status Previsto.`);
           
-          // Recarregar pedidos
-          setTimeout(() => get().carregarPedidos(), 1000);
         } catch (error) {
           console.error('❌ Erro no retorno em massa:', error);
           toast.error("Erro no retorno em massa");
