@@ -4,8 +4,9 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import StatusBadge from "@/components/common/StatusBadge";
-import { usePedidoStore } from "@/hooks/usePedidoStore";
-import { useToast } from "@/hooks/use-toast";
+import { useClienteStore } from "@/hooks/useClienteStore";
+import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
+import { toast } from "sonner";
 import { Printer, FileText, Check, Undo } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { addBusinessDays, isWeekend, isSameDay } from "date-fns";
@@ -16,14 +17,30 @@ const getProximoDiaUtil = (data: Date): Date => {
   return isWeekend(proximaData) ? getProximoDiaUtil(proximaData) : proximaData;
 };
 
+// Interface para pedidos virtuais baseados em agendamentos
+interface PedidoVirtual {
+  id: string;
+  cliente: {
+    id: string;
+    nome: string;
+  };
+  totalPedidoUnidades: number;
+  dataPrevistaEntrega: Date;
+  tipoPedido: "Padrão" | "Alterado";
+  statusPedido: "Agendado";
+  substatusPedido: "Agendado" | "Separado";
+  itensPedido: Array<{
+    nomeSabor: string;
+    quantidadeSabor: number;
+  }>;
+}
+
 export const SeparacaoPedidos = () => {
-  const { toast } = useToast();
   const [activeSubTab, setActiveSubTab] = useState<string>("todos");
   const printFrameRef = useRef<HTMLIFrameElement>(null);
   
-  // Use individual selectors instead of calling the function directly
-  const pedidos = usePedidoStore(state => state.pedidos);
-  const atualizarSubstatusPedido = usePedidoStore(state => state.atualizarSubstatusPedido);
+  const { clientes } = useClienteStore();
+  const { salvarAgendamento } = useAgendamentoClienteStore();
   
   // Get today's date with time set to beginning of day for comparison
   const hoje = new Date();
@@ -32,31 +49,68 @@ export const SeparacaoPedidos = () => {
   // Calculate next business day
   const proximoDiaUtil = getProximoDiaUtil(hoje);
   
-  // Filtrar pedidos agendados para HOJE
-  const pedidosHoje = pedidos.filter(p => {
-    if (p.statusPedido !== "Agendado") return false;
-    
-    const dataPedido = new Date(p.dataPrevistaEntrega);
-    dataPedido.setHours(0, 0, 0, 0);
-    
-    return isSameDay(dataPedido, hoje);
-  });
+  // Converter agendamentos em pedidos virtuais para HOJE
+  const pedidosHoje: PedidoVirtual[] = clientes
+    .filter(cliente => {
+      if (cliente.statusCliente !== "Ativo" || !cliente.proximaDataReposicao) return false;
+      
+      const dataReposicao = new Date(cliente.proximaDataReposicao);
+      dataReposicao.setHours(0, 0, 0, 0);
+      
+      return cliente.statusAgendamento === "Agendado" && isSameDay(dataReposicao, hoje);
+    })
+    .map(cliente => ({
+      id: `agendamento-${cliente.id}`,
+      cliente: {
+        id: cliente.id,
+        nome: cliente.nome
+      },
+      totalPedidoUnidades: cliente.quantidadePadrao || 0,
+      dataPrevistaEntrega: cliente.proximaDataReposicao!,
+      tipoPedido: "Padrão" as const,
+      statusPedido: "Agendado" as const,
+      substatusPedido: (cliente.statusAgendamento === "Separado" ? "Separado" : "Agendado") as "Agendado" | "Separado",
+      itensPedido: [
+        // Simulação de distribuição de sabores - em produção viria de uma distribuição real
+        { nomeSabor: "Brigadeiro", quantidadeSabor: Math.floor((cliente.quantidadePadrao || 0) * 0.4) },
+        { nomeSabor: "Beijinho", quantidadeSabor: Math.floor((cliente.quantidadePadrao || 0) * 0.3) },
+        { nomeSabor: "Bicho-de-pé", quantidadeSabor: Math.floor((cliente.quantidadePadrao || 0) * 0.3) }
+      ].filter(item => item.quantidadeSabor > 0)
+    }));
   
   // Separar pedidos de hoje por tipo
   const pedidosPadraoHoje = pedidosHoje.filter(p => p.tipoPedido === "Padrão");
   const pedidosAlteradosHoje = pedidosHoje.filter(p => p.tipoPedido === "Alterado");
 
-  // Filtrar pedidos para o próximo dia útil que ainda não foram separados
-  const pedidosProximoDia = pedidos.filter(p => {
-    if (p.statusPedido !== "Agendado") return false;
-    
-    // Converter a data do pedido para o início do dia para comparação consistente
-    const dataPedido = new Date(p.dataPrevistaEntrega);
-    dataPedido.setHours(0, 0, 0, 0);
-    
-    // Verificar se o pedido é para o próximo dia útil
-    return isSameDay(dataPedido, proximoDiaUtil) && p.substatusPedido !== "Separado";
-  });
+  // Converter agendamentos em pedidos virtuais para o PRÓXIMO DIA ÚTIL
+  const pedidosProximoDia: PedidoVirtual[] = clientes
+    .filter(cliente => {
+      if (cliente.statusCliente !== "Ativo" || !cliente.proximaDataReposicao) return false;
+      
+      const dataReposicao = new Date(cliente.proximaDataReposicao);
+      dataReposicao.setHours(0, 0, 0, 0);
+      
+      return cliente.statusAgendamento === "Agendado" && 
+             isSameDay(dataReposicao, proximoDiaUtil) && 
+             cliente.statusAgendamento !== "Separado";
+    })
+    .map(cliente => ({
+      id: `agendamento-${cliente.id}`,
+      cliente: {
+        id: cliente.id,
+        nome: cliente.nome
+      },
+      totalPedidoUnidades: cliente.quantidadePadrao || 0,
+      dataPrevistaEntrega: cliente.proximaDataReposicao!,
+      tipoPedido: "Padrão" as const,
+      statusPedido: "Agendado" as const,
+      substatusPedido: "Agendado" as "Agendado" | "Separado",
+      itensPedido: [
+        { nomeSabor: "Brigadeiro", quantidadeSabor: Math.floor((cliente.quantidadePadrao || 0) * 0.4) },
+        { nomeSabor: "Beijinho", quantidadeSabor: Math.floor((cliente.quantidadePadrao || 0) * 0.3) },
+        { nomeSabor: "Bicho-de-pé", quantidadeSabor: Math.floor((cliente.quantidadePadrao || 0) * 0.3) }
+      ].filter(item => item.quantidadeSabor > 0)
+    }));
   
   // Ordenar pedidos pelo tamanho do pacote (total de unidades)
   const pedidosPadraoOrdenados = [...pedidosPadraoHoje].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
@@ -69,24 +123,58 @@ export const SeparacaoPedidos = () => {
     ...pedidosAlteradosOrdenados
   ];
 
-  const confirmarSeparacaoPedido = (idPedido: number) => {
-    atualizarSubstatusPedido(idPedido, "Separado", "Separação confirmada manualmente");
-    toast({
-      title: "Separação confirmada",
-      description: "O pedido foi marcado como Separado.",
-    });
+  const confirmarSeparacaoPedido = async (idPedido: string) => {
+    try {
+      // Extrair o ID do cliente do ID do pedido virtual
+      const clienteId = idPedido.replace('agendamento-', '');
+      const cliente = clientes.find(c => c.id === clienteId);
+      
+      if (!cliente) {
+        toast.error("Cliente não encontrado");
+        return;
+      }
+
+      // Atualizar o status no agendamento
+      await salvarAgendamento(clienteId, {
+        status_agendamento: 'Separado',
+        data_proxima_reposicao: cliente.proximaDataReposicao!,
+        quantidade_total: cliente.quantidadePadrao || 0,
+        tipo_pedido: 'Padrão'
+      });
+
+      toast.success("Separação confirmada para " + cliente.nome);
+    } catch (error) {
+      console.error('Erro ao confirmar separação:', error);
+      toast.error("Erro ao confirmar separação");
+    }
   };
   
-  const desfazerSeparacao = (idPedido: number) => {
-    atualizarSubstatusPedido(idPedido, "Agendado", "Separação desfeita manualmente");
-    toast({
-      title: "Separação desfeita",
-      description: "O pedido voltou para o status Agendado.",
-    });
+  const desfazerSeparacao = async (idPedido: string) => {
+    try {
+      const clienteId = idPedido.replace('agendamento-', '');
+      const cliente = clientes.find(c => c.id === clienteId);
+      
+      if (!cliente) {
+        toast.error("Cliente não encontrado");
+        return;
+      }
+
+      await salvarAgendamento(clienteId, {
+        status_agendamento: 'Agendado',
+        data_proxima_reposicao: cliente.proximaDataReposicao!,
+        quantidade_total: cliente.quantidadePadrao || 0,
+        tipo_pedido: 'Padrão'
+      });
+
+      toast.success("Separação desfeita para " + cliente.nome);
+    } catch (error) {
+      console.error('Erro ao desfazer separação:', error);
+      toast.error("Erro ao desfazer separação");
+    }
   };
   
-  const marcarTodosSeparados = () => {
-    let listaAtual: Array<any> = [];
+  const marcarTodosSeparados = async () => {
+    let listaAtual: PedidoVirtual[] = [];
     
     if (activeSubTab === "padrao") {
       listaAtual = pedidosPadraoOrdenados;
@@ -99,28 +187,26 @@ export const SeparacaoPedidos = () => {
     }
     
     if (listaAtual.length === 0) {
-      toast({
-        title: "Sem pedidos para separação",
-        description: "Não há pedidos para separar nesta categoria.",
-        variant: "destructive"
-      });
+      toast.error("Não há pedidos para separar nesta categoria.");
       return;
     }
     
-    listaAtual.forEach(pedido => {
-      if (pedido.substatusPedido !== "Separado") {
-        atualizarSubstatusPedido(pedido.id, "Separado", "Separação confirmada em massa");
+    try {
+      for (const pedido of listaAtual) {
+        if (pedido.substatusPedido !== "Separado") {
+          await confirmarSeparacaoPedido(pedido.id);
+        }
       }
-    });
-    
-    toast({
-      title: "Separação em massa concluída",
-      description: `${listaAtual.length} pedidos foram marcados como Separados.`,
-    });
+      
+      toast.success(`${listaAtual.length} pedidos foram marcados como Separados.`);
+    } catch (error) {
+      console.error('Erro na separação em massa:', error);
+      toast.error("Erro na separação em massa");
+    }
   };
 
   const imprimirListaSeparacao = () => {
-    let listaAtual: Array<any> = [];
+    let listaAtual: PedidoVirtual[] = [];
     let tipoLista = "";
     
     if (activeSubTab === "padrao") {
@@ -138,11 +224,7 @@ export const SeparacaoPedidos = () => {
     }
     
     if (listaAtual.length === 0) {
-      toast({
-        title: "Sem pedidos para separação",
-        description: "Não há pedidos para separar nesta categoria.",
-        variant: "destructive"
-      });
+      toast.error("Não há pedidos para separar nesta categoria.");
       return;
     }
     
@@ -178,13 +260,13 @@ export const SeparacaoPedidos = () => {
     `;
     
     listaAtual.forEach(pedido => {
-      const sabores = pedido.itensPedido?.map(item => 
-        `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
-      ).join(", ") || "N/A";
+      const sabores = pedido.itensPedido.map(item => 
+        `${item.nomeSabor}: ${item.quantidadeSabor}`
+      ).join(", ");
       
       printContent += `
         <tr>
-          <td>${pedido.cliente?.nome || "Pedido Único"}</td>
+          <td>${pedido.cliente.nome}</td>
           <td>${pedido.totalPedidoUnidades}</td>
           <td>${formatDate(new Date(pedido.dataPrevistaEntrega))}</td>
           <td>${sabores}</td>
@@ -213,36 +295,26 @@ export const SeparacaoPedidos = () => {
         
         setTimeout(() => {
           iframeWindow.print();
-          toast({
-            title: "Impressão iniciada",
-            description: "A lista de separação foi enviada para impressão."
-          });
+          toast.success("A lista de separação foi enviada para impressão.");
         }, 500);
       }
     }
   };
   
   const imprimirEtiquetas = () => {
-    let listaAtual: Array<any> = [];
+    let listaAtual: PedidoVirtual[] = [];
     let tipoLista = "";
     
     if (activeSubTab === "padrao") {
       listaAtual = pedidosPadraoOrdenados;
-      tipoLista = "Pedidos Padrão";
     } else if (activeSubTab === "alterados") {
       listaAtual = pedidosAlteradosOrdenados;
-      tipoLista = "Pedidos Alterados";
     } else {
       listaAtual = todosPedidosHoje;
-      tipoLista = "Todos os Pedidos";
     }
     
     if (listaAtual.length === 0) {
-      toast({
-        title: "Sem pedidos para etiquetagem",
-        description: "Não há pedidos para gerar etiquetas nesta categoria.",
-        variant: "destructive"
-      });
+      toast.error("Não há pedidos para gerar etiquetas nesta categoria.");
       return;
     }
     
@@ -273,13 +345,13 @@ export const SeparacaoPedidos = () => {
     `;
     
     listaAtual.forEach(pedido => {
-      const sabores = pedido.itensPedido?.map(item => 
-        `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
-      ).join(", ") || "N/A";
+      const sabores = pedido.itensPedido.map(item => 
+        `${item.nomeSabor}: ${item.quantidadeSabor}`
+      ).join(", ");
       
       printContent += `
         <div class="etiqueta">
-          <div class="cliente">${pedido.cliente?.nome || "Pedido Único"}</div>
+          <div class="cliente">${pedido.cliente.nome}</div>
           <div class="data">Entrega: ${formatDate(new Date(pedido.dataPrevistaEntrega))}</div>
           <div class="unidades">Total: ${pedido.totalPedidoUnidades} unidades</div>
           <div class="detalhes">Pedido #${pedido.id} - ${pedido.tipoPedido || "Padrão"}</div>
@@ -307,10 +379,7 @@ export const SeparacaoPedidos = () => {
         
         setTimeout(() => {
           iframeWindow.print();
-          toast({
-            title: "Impressão de etiquetas iniciada",
-            description: "As etiquetas foram enviadas para impressão."
-          });
+          toast.success("As etiquetas foram enviadas para impressão.");
         }, 500);
       }
     }
@@ -373,7 +442,7 @@ export const SeparacaoPedidos = () => {
                 <TableBody>
                   {todosPedidosHoje.map((pedido) => (
                     <TableRow key={pedido.id}>
-                      <TableCell>{pedido.cliente?.nome || "Pedido Único"}</TableCell>
+                      <TableCell>{pedido.cliente.nome}</TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           pedido.tipoPedido === "Padrão" 
@@ -394,7 +463,7 @@ export const SeparacaoPedidos = () => {
                       </TableCell>
                       <TableCell className="max-w-[300px] truncate">
                         {pedido.itensPedido.map(item => 
-                          `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
+                          `${item.nomeSabor}: ${item.quantidadeSabor}`
                         ).join(", ")}
                       </TableCell>
                       <TableCell className="text-right">
@@ -449,7 +518,7 @@ export const SeparacaoPedidos = () => {
                 <TableBody>
                   {pedidosPadraoOrdenados.map((pedido) => (
                     <TableRow key={pedido.id}>
-                      <TableCell>{pedido.cliente?.nome || "Pedido Único"}</TableCell>
+                      <TableCell>{pedido.cliente.nome}</TableCell>
                       <TableCell>{formatDate(new Date(pedido.dataPrevistaEntrega))}</TableCell>
                       <TableCell>{pedido.totalPedidoUnidades}</TableCell>
                       <TableCell>
@@ -462,7 +531,7 @@ export const SeparacaoPedidos = () => {
                       </TableCell>
                       <TableCell className="max-w-[300px] truncate">
                         {pedido.itensPedido.map(item => 
-                          `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
+                          `${item.nomeSabor}: ${item.quantidadeSabor}`
                         ).join(", ")}
                       </TableCell>
                       <TableCell className="text-right">
@@ -502,71 +571,9 @@ export const SeparacaoPedidos = () => {
           </TabsContent>
           
           <TabsContent value="alterados">
-            {pedidosAlteradosOrdenados.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Data Entrega</TableHead>
-                    <TableHead>Total Unidades</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Sabores</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pedidosAlteradosOrdenados.map((pedido) => (
-                    <TableRow key={pedido.id}>
-                      <TableCell>{pedido.cliente?.nome || "Pedido Único"}</TableCell>
-                      <TableCell>{formatDate(new Date(pedido.dataPrevistaEntrega))}</TableCell>
-                      <TableCell>{pedido.totalPedidoUnidades}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={pedido.statusPedido} />
-                        {pedido.substatusPedido && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            ({pedido.substatusPedido})
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-[300px] truncate">
-                        {pedido.itensPedido.map(item => 
-                          `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
-                        ).join(", ")}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          {pedido.substatusPedido === "Separado" ? (
-                            <Button
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => desfazerSeparacao(pedido.id)}
-                              className="flex items-center gap-1"
-                            >
-                              <Undo className="h-4 w-4" />
-                              Desfazer
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => confirmarSeparacaoPedido(pedido.id)}
-                              className="flex items-center gap-1"
-                            >
-                              <Check className="h-4 w-4" />
-                              Confirmar Separação
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-6 text-muted-foreground">
-                Não há pedidos alterados agendados para hoje.
-              </div>
-            )}
+            <div className="text-center py-6 text-muted-foreground">
+              Não há pedidos alterados agendados para hoje.
+            </div>
           </TabsContent>
           
           <TabsContent value="proximos">
@@ -585,7 +592,7 @@ export const SeparacaoPedidos = () => {
                 <TableBody>
                   {pedidosProximoDiaOrdenados.map((pedido) => (
                     <TableRow key={pedido.id}>
-                      <TableCell>{pedido.cliente?.nome || "Pedido Único"}</TableCell>
+                      <TableCell>{pedido.cliente.nome}</TableCell>
                       <TableCell>{formatDate(new Date(pedido.dataPrevistaEntrega))}</TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs ${
@@ -599,7 +606,7 @@ export const SeparacaoPedidos = () => {
                       <TableCell>{pedido.totalPedidoUnidades}</TableCell>
                       <TableCell className="max-w-[300px] truncate">
                         {pedido.itensPedido.map(item => 
-                          `${item.nomeSabor || (item.sabor?.nome || "")}: ${item.quantidadeSabor}`
+                          `${item.nomeSabor}: ${item.quantidadeSabor}`
                         ).join(", ")}
                       </TableCell>
                       <TableCell className="text-right">

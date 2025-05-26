@@ -12,14 +12,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Clock, AlertTriangle, AlertCircle, ArrowRight } from "lucide-react";
 import { useClienteStore } from "@/hooks/useClienteStore";
-import { useStatusAgendamentoStore } from "@/hooks/useStatusAgendamentoStore";
-import { differenceInBusinessDays } from "date-fns";
-import { Cliente } from "@/types";
+import { differenceInBusinessDays, isSameDay } from "date-fns";
 
 export default function ConfirmacaoReposicaoWidget() {
   const navigate = useNavigate();
   const { clientes } = useClienteStore();
-  const { statusConfirmacao } = useStatusAgendamentoStore();
   const [contadores, setContadores] = useState({
     contatoHoje: 0,
     contatoPendente: 0,
@@ -28,32 +25,35 @@ export default function ConfirmacaoReposicaoWidget() {
   });
   
   useEffect(() => {
-    // Contabilizar clientes por status de confirmação
+    // Contabilizar clientes por status de confirmação baseado nos dados reais de agendamento
     const clientesAtivos = clientes.filter(cliente => 
-      cliente.statusCliente === "Ativo" && cliente.proximaDataReposicao
+      cliente.statusCliente === "Ativo" && 
+      cliente.proximaDataReposicao &&
+      cliente.statusAgendamento
     );
     
-    // Simular categorizações por status
     const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
     
+    // Clientes com status "Previsto" para hoje (precisam de confirmação)
     const contatoNecessarioHoje = clientesAtivos.filter(cliente => {
-      if (!cliente.proximaDataReposicao) return false;
+      if (!cliente.proximaDataReposicao || cliente.statusAgendamento !== "Previsto") return false;
       const dataReposicao = new Date(cliente.proximaDataReposicao);
-      const diffDias = differenceInBusinessDays(dataReposicao, hoje);
-      return diffDias === 2; // Contato necessário 2 dias antes
+      dataReposicao.setHours(0, 0, 0, 0);
+      return isSameDay(dataReposicao, hoje);
     }).length;
     
+    // Clientes com agendamentos atrasados (data já passou e ainda não confirmado)
     const contatoPendente = clientesAtivos.filter(cliente => {
-      if (!cliente.proximaDataReposicao) return false;
+      if (!cliente.proximaDataReposicao || cliente.statusAgendamento === "Agendado") return false;
       const dataReposicao = new Date(cliente.proximaDataReposicao);
-      const diffDias = differenceInBusinessDays(dataReposicao, hoje);
-      return diffDias < 0; // Data já passou
+      dataReposicao.setHours(0, 0, 0, 0);
+      return dataReposicao < hoje;
     }).length;
     
-    // Para fins de demonstração, vamos simular os outros contadores
-    // Em uma implementação real, esses dados viriam do status real dos clientes
-    const semRespostaPrimeiro = Math.floor(clientesAtivos.length * 0.15);
-    const semRespostaSegundo = Math.floor(clientesAtivos.length * 0.05);
+    // Para fins de demonstração, simulamos os outros contadores baseados nos dados reais
+    const semRespostaPrimeiro = Math.floor(contatoNecessarioHoje * 0.3);
+    const semRespostaSegundo = Math.floor(contatoNecessarioHoje * 0.1);
     
     setContadores({
       contatoHoje: contatoNecessarioHoje,
@@ -62,7 +62,7 @@ export default function ConfirmacaoReposicaoWidget() {
       semRespostaSegundo
     });
     
-  }, [clientes, statusConfirmacao]);
+  }, [clientes]);
   
   const navigateToConfirmacao = () => {
     navigate("/agendamento?tab=confirmacao");
@@ -77,7 +77,7 @@ export default function ConfirmacaoReposicaoWidget() {
       <CardContent className="p-4">
         <div className="grid grid-cols-2 gap-4">
           <div 
-            className="flex flex-col border rounded-lg p-3 space-y-2 bg-green-50 border-green-200"
+            className="flex flex-col border rounded-lg p-3 space-y-2 bg-green-50 border-green-200 cursor-pointer hover:bg-green-100"
             onClick={navigateToConfirmacao}
           >
             <div className="flex items-center justify-between">
@@ -91,7 +91,7 @@ export default function ConfirmacaoReposicaoWidget() {
           </div>
           
           <div 
-            className="flex flex-col border rounded-lg p-3 space-y-2 bg-amber-50 border-amber-200"
+            className="flex flex-col border rounded-lg p-3 space-y-2 bg-amber-50 border-amber-200 cursor-pointer hover:bg-amber-100"
             onClick={navigateToConfirmacao}
           >
             <div className="flex items-center justify-between">
@@ -105,7 +105,7 @@ export default function ConfirmacaoReposicaoWidget() {
           </div>
           
           <div 
-            className="flex flex-col border rounded-lg p-3 space-y-2 bg-amber-50 border-amber-200"
+            className="flex flex-col border rounded-lg p-3 space-y-2 bg-amber-50 border-amber-200 cursor-pointer hover:bg-amber-100"
             onClick={navigateToConfirmacao}
           >
             <div className="flex items-center justify-between">
@@ -119,7 +119,7 @@ export default function ConfirmacaoReposicaoWidget() {
           </div>
           
           <div 
-            className="flex flex-col border rounded-lg p-3 space-y-2 bg-red-50 border-red-200"
+            className="flex flex-col border rounded-lg p-3 space-y-2 bg-red-50 border-red-200 cursor-pointer hover:bg-red-100"
             onClick={navigateToConfirmacao}
           >
             <div className="flex items-center justify-between">
