@@ -13,6 +13,7 @@ import { formatDate } from "@/lib/utils";
 export const SeparacaoPedidos = () => {
   const [activeSubTab, setActiveSubTab] = useState<string>("todos");
   const printFrameRef = useRef<HTMLIFrameElement>(null);
+  const mountedRef = useRef(false);
   
   const {
     pedidos,
@@ -21,16 +22,21 @@ export const SeparacaoPedidos = () => {
     desfazerSeparacao,
     marcarTodosSeparados,
     getPedidosParaSeparacao,
-    getPedidosProximoDia
+    getPedidosProximoDia,
+    carregarPedidos
   } = useExpedicaoStore();
 
   // Usar hook de sincronização
-  const { carregarPedidos } = useExpedicaoSync();
+  useExpedicaoSync();
 
-  // Carregar pedidos ao montar o componente
+  // Carregar pedidos apenas uma vez ao montar
   useEffect(() => {
-    carregarPedidos();
-  }, [carregarPedidos]);
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      console.log('🔄 Carregando pedidos inicial');
+      carregarPedidos();
+    }
+  }, []);
 
   
   // Obter pedidos filtrados

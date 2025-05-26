@@ -24,6 +24,7 @@ interface PedidoExpedicao {
 interface ExpedicaoStore {
   pedidos: PedidoExpedicao[];
   isLoading: boolean;
+  lastSyncTime: number;
   
   // Actions
   carregarPedidos: () => Promise<void>;
@@ -52,47 +53,36 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
     (set, get) => ({
       pedidos: [],
       isLoading: false,
+      lastSyncTime: 0,
       
       carregarPedidos: async () => {
-        set({ isLoading: true });
+        const currentTime = Date.now();
+        const { lastSyncTime } = get();
+        
+        // Evitar chamadas muito frequentes (menos de 500ms)
+        if (currentTime - lastSyncTime < 500) {
+          console.log('⏭️ Pulando carregamento - muito recente');
+          return;
+        }
+        
+        set({ isLoading: true, lastSyncTime: currentTime });
         try {
-          // Usar o store de agendamento como fonte única de dados
-          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
+          // Usar dados já carregados do store de agendamento sem recarregar
           const agendamentos = useAgendamentoClienteStore.getState().agendamentos;
           
-          console.log('📋 Agendamentos carregados do store principal:', agendamentos.length);
+          console.log('📋 Usando agendamentos já carregados:', agendamentos.length);
           
-          // Carregar dados dos clientes para complementar as informações
-          const { data: clientes, error: clientesError } = await supabase
-            .from('clientes')
-            .select('id, nome, endereco_entrega, contato_telefone');
+          // Se não há agendamentos carregados, carregar uma única vez
+          if (agendamentos.length === 0) {
+            console.log('📥 Carregando agendamentos iniciais...');
+            await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
+            // Usar os dados recém carregados
+            const novosAgendamentos = useAgendamentoClienteStore.getState().agendamentos;
+            await formatarPedidos(novosAgendamentos);
+          } else {
+            await formatarPedidos(agendamentos);
+          }
 
-          if (clientesError) throw clientesError;
-
-          const clientesMap = new Map(clientes?.map(c => [c.id, c]) || []);
-
-          const pedidosFormatados = agendamentos
-            .filter(agendamento => agendamento.status_agendamento === 'Agendado')
-            .map(agendamento => {
-              const cliente = clientesMap.get(agendamento.cliente_id);
-              return {
-                id: agendamento.id,
-                cliente_id: agendamento.cliente_id,
-                cliente_nome: cliente?.nome || 'Cliente não encontrado',
-                cliente_endereco: cliente?.endereco_entrega,
-                cliente_telefone: cliente?.contato_telefone,
-                data_prevista_entrega: agendamento.data_proxima_reposicao || new Date(),
-                quantidade_total: agendamento.quantidade_total,
-                tipo_pedido: agendamento.tipo_pedido,
-                status_agendamento: agendamento.status_agendamento,
-                substatus_pedido: (agendamento as any).substatus_pedido as SubstatusPedidoAgendado || 'Agendado',
-                itens_personalizados: agendamento.itens_personalizados,
-                created_at: agendamento.created_at
-              };
-            });
-
-          console.log('✅ Pedidos formatados para expedição:', pedidosFormatados.length);
-          set({ pedidos: pedidosFormatados });
         } catch (error) {
           console.error('Erro ao carregar pedidos:', error);
           toast.error("Erro ao carregar pedidos");
@@ -117,7 +107,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             )
           }));
 
-          // Sincronizar com o store de agendamento
+          // Sincronizar com o store de agendamento SEM recarregar tudo
           await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
           const pedido = get().pedidos.find(p => p.id === pedidoId);
@@ -144,7 +134,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             )
           }));
 
-          // Sincronizar com o store de agendamento
+          // Sincronizar com o store de agendamento SEM recarregar tudo
           await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
           const pedido = get().pedidos.find(p => p.id === pedidoId);
@@ -171,7 +161,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             )
           }));
 
-          // Sincronizar com o store de agendamento
+          // Sincronizar com o store de agendamento SEM recarregar tudo
           await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
           const pedido = get().pedidos.find(p => p.id === pedidoId);
@@ -251,7 +241,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Novo agendamento criado.`);
           
           // Recarregar pedidos para mostrar o novo agendamento
-          get().carregarPedidos();
+          setTimeout(() => get().carregarPedidos(), 1000);
         } catch (error) {
           console.error('Erro ao confirmar entrega:', error);
           toast.error("Erro ao confirmar entrega");
@@ -317,7 +307,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           toast.success(`Retorno registrado para ${pedido.cliente_nome}. Reagendado para ${proximoDiaUtil.toLocaleDateString()}.`);
           
           // Recarregar pedidos
-          get().carregarPedidos();
+          setTimeout(() => get().carregarPedidos(), 1000);
         } catch (error) {
           console.error('Erro ao confirmar retorno:', error);
           toast.error("Erro ao confirmar retorno");
@@ -517,3 +507,40 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
     { name: 'expedicao-store' }
   )
 );
+
+// Função auxiliar para formatar pedidos (extraída para evitar repetição)
+async function formatarPedidos(agendamentos: any[]) {
+  // Carregar dados dos clientes para complementar as informações
+  const { data: clientes, error: clientesError } = await supabase
+    .from('clientes')
+    .select('id, nome, endereco_entrega, contato_telefone');
+
+  if (clientesError) throw clientesError;
+
+  const clientesMap = new Map(clientes?.map(c => [c.id, c]) || []);
+
+  const pedidosFormatados = agendamentos
+    .filter(agendamento => agendamento.status_agendamento === 'Agendado')
+    .map(agendamento => {
+      const cliente = clientesMap.get(agendamento.cliente_id);
+      return {
+        id: agendamento.id,
+        cliente_id: agendamento.cliente_id,
+        cliente_nome: cliente?.nome || 'Cliente não encontrado',
+        cliente_endereco: cliente?.endereco_entrega,
+        cliente_telefone: cliente?.contato_telefone,
+        data_prevista_entrega: agendamento.data_proxima_reposicao || new Date(),
+        quantidade_total: agendamento.quantidade_total,
+        tipo_pedido: agendamento.tipo_pedido,
+        status_agendamento: agendamento.status_agendamento,
+        substatus_pedido: (agendamento as any).substatus_pedido as SubstatusPedidoAgendado || 'Agendado',
+        itens_personalizados: agendamento.itens_personalizados,
+        created_at: agendamento.created_at
+      };
+    });
+
+  console.log('✅ Pedidos formatados para expedição:', pedidosFormatados.length);
+  
+  // Atualizar o estado do store
+  useExpedicaoStore.setState({ pedidos: pedidosFormatados });
+}

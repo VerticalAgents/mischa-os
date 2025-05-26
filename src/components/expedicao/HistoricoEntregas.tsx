@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,15 +10,21 @@ import { formatDate } from "@/lib/utils";
 
 export const HistoricoEntregas = () => {
   const [filtroHistorico, setFiltroHistorico] = useState<string>("todos");
+  const mountedRef = useRef(false);
   
-  const { pedidos } = useExpedicaoStore();
+  const { pedidos, carregarPedidos } = useExpedicaoStore();
   
   // Usar hook de sincronização
-  const { carregarPedidos } = useExpedicaoSync();
+  useExpedicaoSync();
 
+  // Carregar pedidos apenas uma vez ao montar
   useEffect(() => {
-    carregarPedidos();
-  }, [carregarPedidos]);
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      console.log('🔄 Carregando histórico inicial');
+      carregarPedidos();
+    }
+  }, []);
   
   // Filtrar pedidos conforme requisitos: apenas os com substatus Entregue ou Retorno
   const pedidosHistorico = pedidos.filter(pedido => 
