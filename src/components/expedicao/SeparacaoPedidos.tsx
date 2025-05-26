@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -39,6 +38,7 @@ interface PedidoVirtual {
 
 export const SeparacaoPedidos = () => {
   const [activeSubTab, setActiveSubTab] = useState<string>("todos");
+  const [pedidosSeparados, setPedidosSeparados] = useState<Set<string>>(new Set());
   const printFrameRef = useRef<HTMLIFrameElement>(null);
   
   const { clientes } = useClienteStore();
@@ -59,7 +59,7 @@ export const SeparacaoPedidos = () => {
       const dataReposicao = new Date(cliente.proximaDataReposicao);
       dataReposicao.setHours(0, 0, 0, 0);
       
-      return (cliente.statusAgendamento === "Agendado" || cliente.statusAgendamento === "Separado") && 
+      return cliente.statusAgendamento === "Agendado" && 
              isSameDay(dataReposicao, hoje);
     })
     .map(cliente => ({
@@ -72,7 +72,7 @@ export const SeparacaoPedidos = () => {
       dataPrevistaEntrega: cliente.proximaDataReposicao!,
       tipoPedido: "Padrão" as const,
       statusPedido: "Agendado" as const,
-      substatusPedido: (cliente.statusAgendamento === "Separado" ? "Separado" : "Agendado") as SubstatusPedidoAgendado,
+      substatusPedido: (pedidosSeparados.has(`agendamento-${cliente.id}`) ? "Separado" : "Agendado") as SubstatusPedidoAgendado,
       itensPedido: [
         // Simulação de distribuição de sabores - em produção viria de uma distribuição real
         { nomeSabor: "Brigadeiro", quantidadeSabor: Math.floor((cliente.quantidadePadrao || 0) * 0.4) },
@@ -93,9 +93,8 @@ export const SeparacaoPedidos = () => {
       const dataReposicao = new Date(cliente.proximaDataReposicao);
       dataReposicao.setHours(0, 0, 0, 0);
       
-      return (cliente.statusAgendamento === "Agendado" || cliente.statusAgendamento === "Separado") && 
-             isSameDay(dataReposicao, proximoDiaUtil) && 
-             cliente.statusAgendamento !== "Separado";
+      return cliente.statusAgendamento === "Agendado" && 
+             isSameDay(dataReposicao, proximoDiaUtil);
     })
     .map(cliente => ({
       id: `agendamento-${cliente.id}`,
@@ -137,13 +136,8 @@ export const SeparacaoPedidos = () => {
         return;
       }
 
-      // Atualizar o status no agendamento
-      await salvarAgendamento(clienteId, {
-        status_agendamento: 'Separado',
-        data_proxima_reposicao: cliente.proximaDataReposicao!,
-        quantidade_total: cliente.quantidadePadrao || 0,
-        tipo_pedido: 'Padrão'
-      });
+      // Marcar como separado localmente (não alterar o status no banco)
+      setPedidosSeparados(prev => new Set([...prev, idPedido]));
 
       toast.success("Separação confirmada para " + cliente.nome);
     } catch (error) {
@@ -162,11 +156,11 @@ export const SeparacaoPedidos = () => {
         return;
       }
 
-      await salvarAgendamento(clienteId, {
-        status_agendamento: 'Agendado',
-        data_proxima_reposicao: cliente.proximaDataReposicao!,
-        quantidade_total: cliente.quantidadePadrao || 0,
-        tipo_pedido: 'Padrão'
+      // Remover da lista de separados localmente
+      setPedidosSeparados(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(idPedido);
+        return newSet;
       });
 
       toast.success("Separação desfeita para " + cliente.nome);
@@ -195,11 +189,11 @@ export const SeparacaoPedidos = () => {
     }
     
     try {
-      for (const pedido of listaAtual) {
-        if (pedido.substatusPedido !== "Separado") {
-          await confirmarSeparacaoPedido(pedido.id);
-        }
-      }
+      const novosIds = listaAtual
+        .filter(pedido => !pedidosSeparados.has(pedido.id))
+        .map(pedido => pedido.id);
+      
+      setPedidosSeparados(prev => new Set([...prev, ...novosIds]));
       
       toast.success(`${listaAtual.length} pedidos foram marcados como Separados.`);
     } catch (error) {
