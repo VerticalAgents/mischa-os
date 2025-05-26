@@ -57,7 +57,8 @@ export const SeparacaoPedidos = () => {
       const dataReposicao = new Date(cliente.proximaDataReposicao);
       dataReposicao.setHours(0, 0, 0, 0);
       
-      return cliente.statusAgendamento === "Agendado" && isSameDay(dataReposicao, hoje);
+      return (cliente.statusAgendamento === "Agendado" || cliente.statusAgendamento === "Separado") && 
+             isSameDay(dataReposicao, hoje);
     })
     .map(cliente => ({
       id: `agendamento-${cliente.id}`,
@@ -90,7 +91,7 @@ export const SeparacaoPedidos = () => {
       const dataReposicao = new Date(cliente.proximaDataReposicao);
       dataReposicao.setHours(0, 0, 0, 0);
       
-      return cliente.statusAgendamento === "Agendado" && 
+      return (cliente.statusAgendamento === "Agendado" || cliente.statusAgendamento === "Separado") && 
              isSameDay(dataReposicao, proximoDiaUtil) && 
              cliente.statusAgendamento !== "Separado";
     })
@@ -303,7 +304,6 @@ export const SeparacaoPedidos = () => {
   
   const imprimirEtiquetas = () => {
     let listaAtual: PedidoVirtual[] = [];
-    let tipoLista = "";
     
     if (activeSubTab === "padrao") {
       listaAtual = pedidosPadraoOrdenados;
@@ -425,6 +425,8 @@ export const SeparacaoPedidos = () => {
               <span className="h-2 w-2 rounded-full bg-blue-500"></span> Próximas Separações ({pedidosProximoDiaOrdenados.length})
             </TabsTrigger>
           </TabsList>
+          
+          
           
           <TabsContent value="todos">
             {todosPedidosHoje.length > 0 ? (

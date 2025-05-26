@@ -1,4 +1,3 @@
-
 export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby';
 
 // Adding new types for client configuration
@@ -22,8 +21,8 @@ export type TipoLogisticaNome = 'Própria' | 'Distribuição';
 export type TipoCobranca = 'À vista' | 'Consignado';
 export type FormaPagamentoNome = 'Boleto' | 'PIX' | 'Dinheiro';
 
-// Status de agendamento do cliente
-export type StatusAgendamentoCliente = 'Agendar' | 'Previsto' | 'Agendado' | 'Reagendar' | string;
+// Status de agendamento do cliente - updated to include Separado
+export type StatusAgendamentoCliente = 'Agendar' | 'Previsto' | 'Agendado' | 'Separado' | 'Reagendar' | string;
 
 export interface Cliente {
   id: string; // UUID from Supabase
