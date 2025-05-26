@@ -3,7 +3,7 @@ import { devtools } from 'zustand/middleware';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { SubstatusPedidoAgendado } from '@/types';
-import { addBusinessDays, isWeekend } from 'date-fns';
+import { addBusinessDays, isWeekend, format } from 'date-fns';
 
 interface PedidoExpedicao {
   id: string;
@@ -372,62 +372,127 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       },
 
       getPedidosParaSeparacao: () => {
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
+        const hoje = format(new Date(), 'yyyy-MM-dd');
+        console.log('🔍 getPedidosParaSeparacao - Data de hoje:', hoje);
         
-        return get().pedidos.filter(p => {
-          const dataEntrega = new Date(p.data_prevista_entrega);
-          dataEntrega.setHours(0, 0, 0, 0);
+        const todosPedidos = get().pedidos;
+        console.log('📋 Total de pedidos:', todosPedidos.length);
+        
+        const pedidosFiltrados = todosPedidos.filter(p => {
+          const dataEntrega = format(new Date(p.data_prevista_entrega), 'yyyy-MM-dd');
           
-          return p.status_agendamento === 'Agendado' && 
-                 (!p.substatus_pedido || p.substatus_pedido === 'Agendado') &&
-                 dataEntrega.getTime() === hoje.getTime();
+          const isStatusAgendado = p.status_agendamento === 'Agendado';
+          const isSubstatusValido = !p.substatus_pedido || p.substatus_pedido === 'Agendado';
+          const isDataHoje = dataEntrega === hoje;
+          
+          console.log(`📦 Pedido ${p.cliente_nome}:`, {
+            dataEntrega,
+            status: p.status_agendamento,
+            substatus: p.substatus_pedido,
+            isStatusAgendado,
+            isSubstatusValido,
+            isDataHoje,
+            incluir: isStatusAgendado && isSubstatusValido && isDataHoje
+          });
+          
+          return isStatusAgendado && isSubstatusValido && isDataHoje;
         });
+        
+        console.log('✅ Pedidos para separação:', pedidosFiltrados.length);
+        return pedidosFiltrados;
       },
 
       getPedidosParaDespacho: () => {
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
+        const hoje = format(new Date(), 'yyyy-MM-dd');
+        console.log('🚚 getPedidosParaDespacho - Data de hoje:', hoje);
         
-        return get().pedidos.filter(p => {
-          const dataEntrega = new Date(p.data_prevista_entrega);
-          dataEntrega.setHours(0, 0, 0, 0);
+        const todosPedidos = get().pedidos;
+        const pedidosFiltrados = todosPedidos.filter(p => {
+          const dataEntrega = format(new Date(p.data_prevista_entrega), 'yyyy-MM-dd');
           
-          return p.status_agendamento === 'Agendado' && 
-                 (p.substatus_pedido === 'Separado' || p.substatus_pedido === 'Despachado') &&
-                 dataEntrega.getTime() === hoje.getTime();
+          const isStatusAgendado = p.status_agendamento === 'Agendado';
+          const isSubstatusValido = p.substatus_pedido === 'Separado' || p.substatus_pedido === 'Despachado';
+          const isDataHoje = dataEntrega === hoje;
+          
+          console.log(`🚛 Pedido ${p.cliente_nome}:`, {
+            dataEntrega,
+            status: p.status_agendamento,
+            substatus: p.substatus_pedido,
+            isStatusAgendado,
+            isSubstatusValido,
+            isDataHoje,
+            incluir: isStatusAgendado && isSubstatusValido && isDataHoje
+          });
+          
+          return isStatusAgendado && isSubstatusValido && isDataHoje;
         });
+        
+        console.log('✅ Pedidos para despacho:', pedidosFiltrados.length);
+        return pedidosFiltrados;
       },
 
       getPedidosProximoDia: () => {
         const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
         const proximoDiaUtil = getProximoDiaUtil(hoje);
+        const proximoDiaStr = format(proximoDiaUtil, 'yyyy-MM-dd');
         
-        return get().pedidos.filter(p => {
-          const dataEntrega = new Date(p.data_prevista_entrega);
-          dataEntrega.setHours(0, 0, 0, 0);
+        console.log('📅 getPedidosProximoDia - Próximo dia útil:', proximoDiaStr);
+        
+        const todosPedidos = get().pedidos;
+        const pedidosFiltrados = todosPedidos.filter(p => {
+          const dataEntrega = format(new Date(p.data_prevista_entrega), 'yyyy-MM-dd');
           
-          return p.status_agendamento === 'Agendado' && 
-                 dataEntrega.getTime() === proximoDiaUtil.getTime();
+          const isStatusAgendado = p.status_agendamento === 'Agendado';
+          const isDataProximoDia = dataEntrega === proximoDiaStr;
+          
+          console.log(`📅 Pedido ${p.cliente_nome}:`, {
+            dataEntrega,
+            proximoDiaStr,
+            status: p.status_agendamento,
+            isStatusAgendado,
+            isDataProximoDia,
+            incluir: isStatusAgendado && isDataProximoDia
+          });
+          
+          return isStatusAgendado && isDataProximoDia;
         });
+        
+        console.log('✅ Pedidos próximo dia:', pedidosFiltrados.length);
+        return pedidosFiltrados;
       },
 
       getPedidosAtrasados: () => {
         const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
         const ontem = new Date(hoje);
         ontem.setDate(ontem.getDate() - 1);
+        const ontemStr = format(ontem, 'yyyy-MM-dd');
         
-        return get().pedidos.filter(p => {
-          const dataEntrega = new Date(p.data_prevista_entrega);
-          dataEntrega.setHours(0, 0, 0, 0);
+        console.log('⏰ getPedidosAtrasados - Data limite (ontem):', ontemStr);
+        
+        const todosPedidos = get().pedidos;
+        const pedidosFiltrados = todosPedidos.filter(p => {
+          const dataEntrega = format(new Date(p.data_prevista_entrega), 'yyyy-MM-dd');
           
-          return p.status_agendamento === 'Agendado' && 
-                 dataEntrega.getTime() <= ontem.getTime() &&
-                 p.substatus_pedido !== 'Entregue' && 
-                 p.substatus_pedido !== 'Retorno';
+          const isStatusAgendado = p.status_agendamento === 'Agendado';
+          const isAtrasado = dataEntrega <= ontemStr;
+          const naoFinalizado = p.substatus_pedido !== 'Entregue' && p.substatus_pedido !== 'Retorno';
+          
+          console.log(`⏰ Pedido ${p.cliente_nome}:`, {
+            dataEntrega,
+            ontemStr,
+            status: p.status_agendamento,
+            substatus: p.substatus_pedido,
+            isStatusAgendado,
+            isAtrasado,
+            naoFinalizado,
+            incluir: isStatusAgendado && isAtrasado && naoFinalizado
+          });
+          
+          return isStatusAgendado && isAtrasado && naoFinalizado;
         });
+        
+        console.log('✅ Pedidos atrasados:', pedidosFiltrados.length);
+        return pedidosFiltrados;
       }
     }),
     { name: 'expedicao-store' }
