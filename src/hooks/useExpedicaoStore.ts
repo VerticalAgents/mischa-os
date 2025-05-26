@@ -59,24 +59,22 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         const currentTime = Date.now();
         const { lastSyncTime } = get();
         
-        // Evitar chamadas muito frequentes (menos de 500ms)
-        if (currentTime - lastSyncTime < 500) {
+        // Evitar chamadas muito frequentes (menos de 1000ms)
+        if (currentTime - lastSyncTime < 1000) {
           console.log('⏭️ Pulando carregamento - muito recente');
           return;
         }
         
         set({ isLoading: true, lastSyncTime: currentTime });
         try {
-          // Usar dados já carregados do store de agendamento sem recarregar
+          // Usar dados do store de agendamento sem recarregar
           const agendamentos = useAgendamentoClienteStore.getState().agendamentos;
           
-          console.log('📋 Usando agendamentos já carregados:', agendamentos.length);
+          console.log('📋 Usando agendamentos carregados:', agendamentos.length);
           
-          // Se não há agendamentos carregados, carregar uma única vez
           if (agendamentos.length === 0) {
             console.log('📥 Carregando agendamentos iniciais...');
             await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
-            // Usar os dados recém carregados
             const novosAgendamentos = useAgendamentoClienteStore.getState().agendamentos;
             await formatarPedidos(novosAgendamentos);
           } else {
@@ -93,24 +91,48 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
       confirmarSeparacao: async (pedidoId: string) => {
         try {
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Separado' } as any)
-            .eq('id', pedidoId);
-
-          if (error) throw error;
-
-          // Atualizar store local
+          // 1. Atualizar estado local IMEDIATAMENTE
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' } : p
             )
           }));
 
-          // Sincronizar com o store de agendamento SEM recarregar tudo
-          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
-
           const pedido = get().pedidos.find(p => p.id === pedidoId);
+          console.log('🔄 Confirmando separação para:', pedido?.cliente_nome);
+
+          // 2. Salvar no banco
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ substatus_pedido: 'Separado' } as any)
+            .eq('id', pedidoId);
+
+          if (error) {
+            console.error('❌ Erro ao salvar separação:', error);
+            
+            // Reverter estado local em caso de erro
+            set(state => ({
+              pedidos: state.pedidos.map(p => 
+                p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' } : p
+              )
+            }));
+            
+            throw error;
+          }
+
+          console.log('✅ Separação salva no banco');
+
+          // 3. Atualizar store de agendamento SEM recarregar tudo
+          const agendamentoStore = useAgendamentoClienteStore.getState();
+          const agendamentosAtualizados = agendamentoStore.agendamentos.map(ag => 
+            ag.id === pedidoId 
+              ? { ...ag, substatus_pedido: 'Separado' as any }
+              : ag
+          );
+          
+          // Atualizar diretamente o estado do agendamento
+          useAgendamentoClienteStore.setState({ agendamentos: agendamentosAtualizados });
+
           toast.success(`Separação confirmada para ${pedido?.cliente_nome}`);
         } catch (error) {
           console.error('Erro ao confirmar separação:', error);
@@ -120,22 +142,38 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
       desfazerSeparacao: async (pedidoId: string) => {
         try {
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Agendado' } as any)
-            .eq('id', pedidoId);
-
-          if (error) throw error;
-
-          // Atualizar store local
+          // 1. Atualizar estado local IMEDIATAMENTE
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' } : p
             )
           }));
 
-          // Sincronizar com o store de agendamento SEM recarregar tudo
-          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
+          // 2. Salvar no banco
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ substatus_pedido: 'Agendado' } as any)
+            .eq('id', pedidoId);
+
+          if (error) {
+            // Reverter estado local em caso de erro
+            set(state => ({
+              pedidos: state.pedidos.map(p => 
+                p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' } : p
+              )
+            }));
+            throw error;
+          }
+
+          // 3. Atualizar store de agendamento
+          const agendamentoStore = useAgendamentoClienteStore.getState();
+          const agendamentosAtualizados = agendamentoStore.agendamentos.map(ag => 
+            ag.id === pedidoId 
+              ? { ...ag, substatus_pedido: 'Agendado' as any }
+              : ag
+          );
+          
+          useAgendamentoClienteStore.setState({ agendamentos: agendamentosAtualizados });
 
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           toast.success(`Separação desfeita para ${pedido?.cliente_nome}`);
@@ -147,22 +185,38 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
       confirmarDespacho: async (pedidoId: string) => {
         try {
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Despachado' } as any)
-            .eq('id', pedidoId);
-
-          if (error) throw error;
-
-          // Atualizar store local
+          // 1. Atualizar estado local IMEDIATAMENTE
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { ...p, substatus_pedido: 'Despachado' } : p
             )
           }));
 
-          // Sincronizar com o store de agendamento SEM recarregar tudo
-          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
+          // 2. Salvar no banco
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ substatus_pedido: 'Despachado' } as any)
+            .eq('id', pedidoId);
+
+          if (error) {
+            // Reverter estado local em caso de erro
+            set(state => ({
+              pedidos: state.pedidos.map(p => 
+                p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' } : p
+              )
+            }));
+            throw error;
+          }
+
+          // 3. Atualizar store de agendamento
+          const agendamentoStore = useAgendamentoClienteStore.getState();
+          const agendamentosAtualizados = agendamentoStore.agendamentos.map(ag => 
+            ag.id === pedidoId 
+              ? { ...ag, substatus_pedido: 'Despachado' as any }
+              : ag
+          );
+          
+          useAgendamentoClienteStore.setState({ agendamentos: agendamentosAtualizados });
 
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           toast.success(`Despacho confirmado para ${pedido?.cliente_nome}`);
@@ -523,6 +577,17 @@ async function formatarPedidos(agendamentos: any[]) {
     .filter(agendamento => agendamento.status_agendamento === 'Agendado')
     .map(agendamento => {
       const cliente = clientesMap.get(agendamento.cliente_id);
+      
+      // MAPEAMENTO CORRETO DO SUBSTATUS
+      const substatus = (agendamento as any).substatus_pedido || 'Agendado';
+      
+      console.log(`📦 Formatando pedido ${agendamento.id}:`, {
+        cliente_nome: cliente?.nome,
+        substatus_original: (agendamento as any).substatus_pedido,
+        substatus_mapeado: substatus,
+        data_prevista: agendamento.data_proxima_reposicao
+      });
+      
       return {
         id: agendamento.id,
         cliente_id: agendamento.cliente_id,
@@ -533,13 +598,18 @@ async function formatarPedidos(agendamentos: any[]) {
         quantidade_total: agendamento.quantidade_total,
         tipo_pedido: agendamento.tipo_pedido,
         status_agendamento: agendamento.status_agendamento,
-        substatus_pedido: (agendamento as any).substatus_pedido as SubstatusPedidoAgendado || 'Agendado',
+        substatus_pedido: substatus as SubstatusPedidoAgendado,
         itens_personalizados: agendamento.itens_personalizados,
         created_at: agendamento.created_at
       };
     });
 
   console.log('✅ Pedidos formatados para expedição:', pedidosFormatados.length);
+  console.log('📊 Substatus dos pedidos:', pedidosFormatados.map(p => ({
+    id: p.id,
+    cliente: p.cliente_nome,
+    substatus: p.substatus_pedido
+  })));
   
   // Atualizar o estado do store
   useExpedicaoStore.setState({ pedidos: pedidosFormatados });
