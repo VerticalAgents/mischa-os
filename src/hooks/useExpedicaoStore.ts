@@ -50,13 +50,12 @@ const getProximoDiaUtil = (data: Date): Date => {
   return isWeekend(proximaData) ? getProximoDiaUtil(proximaData) : proximaData;
 };
 
-// Função auxiliar corrigida para criar novo agendamento
+// Função auxiliar para criar novo agendamento APENAS quando necessário
 const criarNovoAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entrega' | 'retorno') => {
-  console.log('🔄 Iniciando criação de novo agendamento:', {
-    cliente: pedido.cliente_nome,
-    tipoOperacao,
-    dataAnterior: pedido.data_prevista_entrega
-  });
+  console.log('🔄 === CRIANDO NOVO AGENDAMENTO ===');
+  console.log('🔄 Cliente:', pedido.cliente_nome);
+  console.log('🔄 Tipo operação:', tipoOperacao);
+  console.log('🔄 Data anterior:', format(new Date(pedido.data_prevista_entrega), 'yyyy-MM-dd'));
 
   // Buscar dados do cliente para obter periodicidade
   const { data: cliente, error: clienteError } = await supabase
@@ -95,7 +94,7 @@ const criarNovoAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entr
 
   const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
-  console.log(`📋 Criando novo agendamento:`, {
+  console.log(`📋 Dados do novo agendamento:`, {
     cliente: pedido.cliente_nome,
     cliente_id: pedido.cliente_id,
     data_proxima_reposicao: proximaDataFormatada,
@@ -105,53 +104,22 @@ const criarNovoAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entr
     tipo_pedido: pedido.tipo_pedido
   });
 
-  // Verificar se já existe um agendamento para este cliente
-  const { data: agendamentoExistente } = await supabase
+  // Criar novo agendamento
+  const { error: novoAgendamentoError } = await supabase
     .from('agendamentos_clientes')
-    .select('id')
-    .eq('cliente_id', pedido.cliente_id)
-    .maybeSingle();
+    .insert({
+      cliente_id: pedido.cliente_id,
+      data_proxima_reposicao: proximaDataFormatada,
+      quantidade_total: pedido.quantidade_total,
+      tipo_pedido: pedido.tipo_pedido,
+      status_agendamento: 'Previsto',
+      substatus_pedido: 'Agendado',
+      itens_personalizados: pedido.itens_personalizados
+    });
 
-  if (agendamentoExistente) {
-    console.log(`🔄 Atualizando agendamento existente ID: ${agendamentoExistente.id}`);
-    
-    // Atualizar agendamento existente
-    const { error: updateError } = await supabase
-      .from('agendamentos_clientes')
-      .update({
-        data_proxima_reposicao: proximaDataFormatada,
-        status_agendamento: 'Previsto',
-        substatus_pedido: 'Agendado',
-        quantidade_total: pedido.quantidade_total,
-        tipo_pedido: pedido.tipo_pedido,
-        itens_personalizados: pedido.itens_personalizados
-      })
-      .eq('id', agendamentoExistente.id);
-
-    if (updateError) {
-      console.error('❌ Erro ao atualizar agendamento existente:', updateError);
-      throw updateError;
-    }
-  } else {
-    console.log(`➕ Criando novo agendamento`);
-    
-    // Criar novo agendamento
-    const { error: novoAgendamentoError } = await supabase
-      .from('agendamentos_clientes')
-      .insert({
-        cliente_id: pedido.cliente_id,
-        data_proxima_reposicao: proximaDataFormatada,
-        quantidade_total: pedido.quantidade_total,
-        tipo_pedido: pedido.tipo_pedido,
-        status_agendamento: 'Previsto',
-        substatus_pedido: 'Agendado',
-        itens_personalizados: pedido.itens_personalizados
-      });
-
-    if (novoAgendamentoError) {
-      console.error('❌ Erro ao criar novo agendamento:', novoAgendamentoError);
-      throw novoAgendamentoError;
-    }
+  if (novoAgendamentoError) {
+    console.error('❌ Erro ao criar novo agendamento:', novoAgendamentoError);
+    throw novoAgendamentoError;
   }
 
   // Atualizar dados do cliente
@@ -174,12 +142,13 @@ const criarNovoAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entr
     throw clienteUpdateError;
   }
 
-  console.log(`✅ Agendamento criado/atualizado com sucesso:`, {
+  console.log(`✅ Novo agendamento criado com sucesso:`, {
     cliente: pedido.cliente_nome,
     novaData: proximaDataFormatada,
     status: 'Previsto',
     substatus: 'Agendado'
   });
+  console.log('🔄 === FIM CRIAÇÃO NOVO AGENDAMENTO ===');
 
   return proximaData;
 };
@@ -370,12 +339,12 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           if (!pedido) throw new Error('Pedido não encontrado');
 
-          console.log('📦 === INICIANDO CONFIRMAÇÃO DE ENTREGA ===');
+          console.log('📦 === CONFIRMAÇÃO INDIVIDUAL DE ENTREGA ===');
           console.log('📦 Cliente:', pedido.cliente_nome);
-          console.log('📦 Data do pedido original:', format(new Date(pedido.data_prevista_entrega), 'yyyy-MM-dd'));
+          console.log('📦 ID do pedido:', pedidoId);
 
-          // 1. Atualizar agendamento atual para Entregue/Reagendar
-          console.log('🔄 Atualizando agendamento atual para Entregue...');
+          // 1. Atualizar APENAS o agendamento específico para Entregue/Reagendar
+          console.log('🔄 Atualizando agendamento específico para Entregue...');
           const { error: updateError } = await supabase
             .from('agendamentos_clientes')
             .update({ 
@@ -389,13 +358,13 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             throw updateError;
           }
 
-          console.log('✅ Agendamento atual marcado como Entregue/Reagendar');
+          console.log('✅ Agendamento específico marcado como Entregue/Reagendar');
 
-          // 2. Criar novo agendamento com status Previsto
+          // 2. Criar novo agendamento
           console.log('🆕 Criando novo agendamento...');
           const proximaData = await criarNovoAgendamento(pedido, 'entrega');
 
-          // 3. Atualizar estado local
+          // 3. Atualizar APENAS o estado local deste pedido específico
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { 
@@ -406,17 +375,21 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             )
           }));
 
-          // 4. Atualizar store de agendamento e recarregar
-          console.log('🔄 Recarregando agendamentos...');
-          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
-
-          console.log('📦 === ENTREGA CONCLUÍDA COM SUCESSO ===');
-          toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Novo agendamento criado para ${proximaData.toLocaleDateString()} com status Previsto.`);
+          // 4. Atualizar store de agendamento SEM recarregar tudo
+          const agendamentoStore = useAgendamentoClienteStore.getState();
+          const agendamentosAtualizados = agendamentoStore.agendamentos.map(ag => 
+            ag.id === pedidoId 
+              ? { ...ag, substatus_pedido: 'Entregue' as any, status_agendamento: 'Reagendar' }
+              : ag
+          );
           
-          // Recarregar pedidos para mostrar o novo agendamento
-          setTimeout(() => get().carregarPedidos(), 1000);
+          useAgendamentoClienteStore.setState({ agendamentos: agendamentosAtualizados });
+
+          console.log('📦 === ENTREGA INDIVIDUAL CONCLUÍDA ===');
+          toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Novo agendamento criado para ${proximaData.toLocaleDateString()}.`);
+          
         } catch (error) {
-          console.error('❌ Erro ao confirmar entrega:', error);
+          console.error('❌ Erro ao confirmar entrega individual:', error);
           toast.error("Erro ao confirmar entrega");
         }
       },
@@ -426,12 +399,12 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           if (!pedido) throw new Error('Pedido não encontrado');
 
-          console.log('🔄 === INICIANDO CONFIRMAÇÃO DE RETORNO ===');
+          console.log('🔄 === CONFIRMAÇÃO INDIVIDUAL DE RETORNO ===');
           console.log('🔄 Cliente:', pedido.cliente_nome);
-          console.log('🔄 Data do pedido original:', format(new Date(pedido.data_prevista_entrega), 'yyyy-MM-dd'));
+          console.log('🔄 ID do pedido:', pedidoId);
 
-          // 1. Atualizar agendamento atual para Retorno/Reagendar
-          console.log('🔄 Atualizando agendamento atual para Retorno...');
+          // 1. Atualizar APENAS o agendamento específico para Retorno/Reagendar
+          console.log('🔄 Atualizando agendamento específico para Retorno...');
           const { error: updateError } = await supabase
             .from('agendamentos_clientes')
             .update({ 
@@ -445,13 +418,13 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             throw updateError;
           }
 
-          console.log('✅ Agendamento atual marcado como Retorno/Reagendar');
+          console.log('✅ Agendamento específico marcado como Retorno/Reagendar');
 
           // 2. Criar novo agendamento para próximo dia útil
           console.log('🆕 Criando novo agendamento para próximo dia útil...');
           const proximaData = await criarNovoAgendamento(pedido, 'retorno');
 
-          // 3. Atualizar estado local
+          // 3. Atualizar APENAS o estado local deste pedido específico
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { 
@@ -462,17 +435,21 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             )
           }));
 
-          // 4. Atualizar store de agendamento e recarregar
-          console.log('🔄 Recarregando agendamentos...');
-          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
-
-          console.log('🔄 === RETORNO CONCLUÍDO COM SUCESSO ===');
-          toast.success(`Retorno registrado para ${pedido.cliente_nome}. Reagendado para ${proximaData.toLocaleDateString()} com status Previsto.`);
+          // 4. Atualizar store de agendamento SEM recarregar tudo
+          const agendamentoStore = useAgendamentoClienteStore.getState();
+          const agendamentosAtualizados = agendamentoStore.agendamentos.map(ag => 
+            ag.id === pedidoId 
+              ? { ...ag, substatus_pedido: 'Retorno' as any, status_agendamento: 'Reagendar' }
+              : ag
+          );
           
-          // Recarregar pedidos
-          setTimeout(() => get().carregarPedidos(), 1000);
+          useAgendamentoClienteStore.setState({ agendamentos: agendamentosAtualizados });
+
+          console.log('🔄 === RETORNO INDIVIDUAL CONCLUÍDO ===');
+          toast.success(`Retorno registrado para ${pedido.cliente_nome}. Reagendado para ${proximaData.toLocaleDateString()}.`);
+          
         } catch (error) {
-          console.error('❌ Erro ao confirmar retorno:', error);
+          console.error('❌ Erro ao confirmar retorno individual:', error);
           toast.error("Erro ao confirmar retorno");
         }
       },
