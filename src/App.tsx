@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -20,6 +19,7 @@ import { applyTheme } from "./lib/theme";
 import AgentesIA from "./pages/AgentesIA";
 import AgenteIAPage from "./pages/AgenteIAPage";
 import EstoqueInsumos from "./pages/EstoqueInsumos";
+import { useRoutePersistence } from "./hooks/useRoutePersistence";
 
 // Auth pages
 import LoginPage from "./pages/auth/LoginPage";
@@ -50,6 +50,165 @@ const initializeTheme = () => {
   }
 };
 
+// Componente interno para usar os hooks após o Router estar disponível
+const AppContent = () => {
+  const { restoreRoute } = useRoutePersistence();
+
+  // Restaura a rota salva na inicialização
+  useEffect(() => {
+    restoreRoute();
+  }, []);
+
+  return (
+    <Routes>
+      {/* Auth Routes - redirect /login to /auth */}
+      <Route path="/login" element={<Navigate to="/auth" replace />} />
+      <Route path="/auth" element={<AuthPage />} />
+      
+      {/* Protected Routes */}
+      <Route path="/" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <DashboardAnalytics />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/clientes" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Clientes />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/precificacao" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Precificacao />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/agendamento" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Agendamento />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/expedicao" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Expedicao />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/estoque" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Estoque />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/estoque/insumos" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <EstoqueInsumos />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/configuracoes" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Configuracoes />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/pcp" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <PCP />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/projecoes" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Projections />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/analytics" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <DashboardAnalytics />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/agentes-ia" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <AgentesIA />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/agentes-ia/:id" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <AgenteIAPage />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/gestao-comercial" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <GestaoComercial />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/gestao-comercial/funil-leads" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <GestaoComercial />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/gestao-comercial/distribuidores" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <GestaoComercial />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/gestao-comercial/parceiros" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <GestaoComercial />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/gestao-financeira" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <GestaoFinanceira />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/custos" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Custos />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      
+      {/* Not Found Route */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
+
 const App = () => {
   // Initialize theme on app load
   React.useEffect(() => {
@@ -63,152 +222,7 @@ const App = () => {
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <Routes>
-              {/* Auth Routes - redirect /login to /auth */}
-              <Route path="/login" element={<Navigate to="/auth" replace />} />
-              <Route path="/auth" element={<AuthPage />} />
-              
-              {/* Protected Routes */}
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <DashboardAnalytics />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/clientes" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Clientes />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/precificacao" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Precificacao />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/agendamento" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Agendamento />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/expedicao" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Expedicao />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/estoque" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Estoque />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/estoque/insumos" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <EstoqueInsumos />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/configuracoes" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Configuracoes />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/pcp" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <PCP />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/projecoes" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Projections />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/analytics" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <DashboardAnalytics />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/agentes-ia" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <AgentesIA />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/agentes-ia/:id" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <AgenteIAPage />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/gestao-comercial" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <GestaoComercial />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/gestao-comercial/funil-leads" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <GestaoComercial />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/gestao-comercial/distribuidores" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <GestaoComercial />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/gestao-comercial/parceiros" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <GestaoComercial />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/gestao-financeira" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <GestaoFinanceira />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/custos" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Custos />
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-              
-              {/* Not Found Route */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AppContent />
           </TooltipProvider>
         </AuthProvider>
       </QueryClientProvider>
