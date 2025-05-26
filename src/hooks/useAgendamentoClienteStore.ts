@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +24,8 @@ interface AgendamentoClienteStore {
   salvarAgendamento: (clienteId: string, dados: Partial<AgendamentoCliente>) => Promise<void>;
   removerAgendamento: (clienteId: string) => Promise<void>;
   criarAgendamentoPadrao: (clienteId: string) => Promise<AgendamentoCliente>;
+  carregarTodosAgendamentos: () => Promise<void>; // New method to load all schedules
+  atualizarAgendamentoLocal: (agendamento: AgendamentoCliente) => void; // New method for local updates
 }
 
 // Helper para converter data local para formato de data sem timezone
@@ -48,6 +49,47 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
       agendamentos: [],
       loading: false,
       
+      carregarTodosAgendamentos: async () => {
+        set({ loading: true });
+        try {
+          const { data, error } = await supabase
+            .from('agendamentos_clientes')
+            .select('*')
+            .order('updated_at', { ascending: false });
+
+          if (error) {
+            console.error('Erro ao carregar todos os agendamentos:', error);
+            return;
+          }
+
+          const agendamentosConvertidos = data?.map(item => ({
+            id: item.id,
+            cliente_id: item.cliente_id,
+            status_agendamento: item.status_agendamento as 'Agendar' | 'Previsto' | 'Agendado',
+            data_proxima_reposicao: item.data_proxima_reposicao ? parseDateFromDatabase(item.data_proxima_reposicao) : undefined,
+            quantidade_total: item.quantidade_total,
+            tipo_pedido: item.tipo_pedido as 'Padrão' | 'Alterado',
+            itens_personalizados: item.itens_personalizados as Array<{ produto: string; quantidade: number }> | undefined,
+            created_at: new Date(item.created_at),
+            updated_at: new Date(item.updated_at)
+          })) || [];
+
+          set({ agendamentos: agendamentosConvertidos });
+        } catch (error) {
+          console.error('Erro ao carregar todos os agendamentos:', error);
+        } finally {
+          set({ loading: false });
+        }
+      },
+
+      atualizarAgendamentoLocal: (agendamento: AgendamentoCliente) => {
+        set(state => ({
+          agendamentos: state.agendamentos.map(item => 
+            item.cliente_id === agendamento.cliente_id ? agendamento : item
+          )
+        }));
+      },
+
       carregarAgendamentoPorCliente: async (clienteId: string) => {
         set({ loading: true });
         try {
@@ -126,7 +168,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           set({ loading: false });
         }
       },
-
+      
       criarAgendamentoPadrao: async (clienteId: string) => {
         try {
           const dadosDefault = {
@@ -188,31 +230,59 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             .eq('cliente_id', clienteId)
             .maybeSingle();
 
+          let agendamentoSalvo;
+
           if (existente) {
             // Atualizar agendamento existente
-            const { error } = await supabase
+            const { data, error } = await supabase
               .from('agendamentos_clientes')
               .update(dadosSupabase)
-              .eq('cliente_id', clienteId);
+              .eq('cliente_id', clienteId)
+              .select()
+              .single();
 
             if (error) {
               throw error;
             }
+            agendamentoSalvo = data;
           } else {
             // Criar novo agendamento
-            const { error } = await supabase
+            const { data, error } = await supabase
               .from('agendamentos_clientes')
-              .insert([dadosSupabase]);
+              .insert([dadosSupabase])
+              .select()
+              .single();
 
             if (error) {
               throw error;
             }
+            agendamentoSalvo = data;
+          }
+
+          // Update local state immediately
+          if (agendamentoSalvo) {
+            const agendamentoConvertido: AgendamentoCliente = {
+              id: agendamentoSalvo.id,
+              cliente_id: agendamentoSalvo.cliente_id,
+              status_agendamento: agendamentoSalvo.status_agendamento as 'Agendar' | 'Previsto' | 'Agendado',
+              data_proxima_reposicao: agendamentoSalvo.data_proxima_reposicao ? parseDateFromDatabase(agendamentoSalvo.data_proxima_reposicao) : undefined,
+              quantidade_total: agendamentoSalvo.quantidade_total,
+              tipo_pedido: agendamentoSalvo.tipo_pedido as 'Padrão' | 'Alterado',
+              itens_personalizados: agendamentoSalvo.itens_personalizados as Array<{ produto: string; quantidade: number }> | undefined,
+              created_at: new Date(agendamentoSalvo.created_at),
+              updated_at: new Date(agendamentoSalvo.updated_at)
+            };
+
+            get().atualizarAgendamentoLocal(agendamentoConvertido);
           }
 
           toast({
             title: "Sucesso",
             description: "Agendamento salvo com sucesso"
           });
+
+          // Reload all schedules to ensure consistency
+          await get().carregarTodosAgendamentos();
         } catch (error) {
           console.error('Erro ao salvar agendamento:', error);
           toast({

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -12,7 +11,8 @@ import ClientesBulkActions from "@/components/clientes/ClientesBulkActions";
 export default function Clientes() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedClienteIds, setSelectedClienteIds] = useState<string[]>([]); // Changed from number[] to string[]
+  const [selectedClienteIds, setSelectedClienteIds] = useState<string[]>([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const {
     filtros,
@@ -28,7 +28,7 @@ export default function Clientes() {
   // Carregar clientes ao montar o componente
   useEffect(() => {
     carregarClientes();
-  }, [carregarClientes]);
+  }, [carregarClientes, refreshTrigger]);
 
   // Column visibility state
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
@@ -56,13 +56,21 @@ export default function Clientes() {
   const handleOpenForm = () => {
     setIsFormOpen(true);
   };
+
+  const handleFormClose = () => {
+    setIsFormOpen(false);
+    // Trigger a refresh of the client list after closing the form
+    setRefreshTrigger(prev => prev + 1);
+  };
   
-  const handleSelectCliente = (id: string) => { // Changed from number to string
+  const handleSelectCliente = (id: string) => {
     selecionarCliente(id);
   };
   
   const handleBackToList = () => {
     selecionarCliente(null);
+    // Reload clients when returning to list to ensure data is fresh
+    setRefreshTrigger(prev => prev + 1);
   };
 
   // Toggle selection mode
@@ -72,7 +80,7 @@ export default function Clientes() {
   };
 
   // Toggle client selection
-  const toggleClienteSelection = (id: string) => { // Changed from number to string
+  const toggleClienteSelection = (id: string) => {
     setSelectedClienteIds(prev => 
       prev.includes(id) 
         ? prev.filter(clienteId => clienteId !== id)
@@ -150,7 +158,8 @@ export default function Clientes() {
 
       <ClienteFormDialog 
         open={isFormOpen} 
-        onOpenChange={setIsFormOpen} 
+        onOpenChange={handleFormClose}
+        onClienteUpdate={() => setRefreshTrigger(prev => prev + 1)}
       />
     </>
   );

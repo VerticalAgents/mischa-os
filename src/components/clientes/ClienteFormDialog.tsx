@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -63,14 +64,16 @@ interface ClienteFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clienteId?: string; // Changed from number to string
+  onClienteUpdate?: () => void; // New callback for when client is updated
 }
 
 export default function ClienteFormDialog({
   open,
   onOpenChange,
   clienteId,
+  onClienteUpdate,
 }: ClienteFormDialogProps) {
-  const { adicionarCliente, atualizarCliente, getClientePorId } = useClienteStore();
+  const { adicionarCliente, atualizarCliente, getClientePorId, carregarClientes } = useClienteStore();
   const { 
     getRepresentanteAtivo,
     getRotaAtiva,
@@ -161,6 +164,11 @@ export default function ClienteFormDialog({
           title: "Cliente atualizado com sucesso",
           description: `O cliente ${data.nome} foi atualizado.`,
         });
+
+        // Call the update callback if provided
+        if (onClienteUpdate) {
+          onClienteUpdate();
+        }
       } else {
         await adicionarCliente({
           ...data,
@@ -178,6 +186,9 @@ export default function ClienteFormDialog({
           description: `O cliente ${data.nome} foi adicionado.`,
         });
       }
+
+      // Reload clients to ensure data consistency
+      await carregarClientes();
       
       form.reset();
       onOpenChange(false);
