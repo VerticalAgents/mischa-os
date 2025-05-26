@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "sonner";
@@ -53,6 +52,12 @@ const getProximoDiaUtil = (data: Date): Date => {
 
 // Função auxiliar corrigida para criar novo agendamento
 const criarNovoAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entrega' | 'retorno') => {
+  console.log('🔄 Iniciando criação de novo agendamento:', {
+    cliente: pedido.cliente_nome,
+    tipoOperacao,
+    dataAnterior: pedido.data_prevista_entrega
+  });
+
   // Buscar dados do cliente para obter periodicidade
   const { data: cliente, error: clienteError } = await supabase
     .from('clientes')
@@ -61,7 +66,7 @@ const criarNovoAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entr
     .single();
 
   if (clienteError) {
-    console.error('Erro ao buscar cliente:', clienteError);
+    console.error('❌ Erro ao buscar cliente:', clienteError);
     throw clienteError;
   }
 
@@ -74,41 +79,85 @@ const criarNovoAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entr
   if (tipoOperacao === 'entrega') {
     // Para entrega: próxima data = data do pedido anterior + periodicidade do cliente
     proximaData = addDays(dataAnterior, periodicidade);
+    console.log(`📅 Cálculo para ENTREGA:`, {
+      dataAnterior: format(dataAnterior, 'yyyy-MM-dd'),
+      periodicidade,
+      proximaData: format(proximaData, 'yyyy-MM-dd')
+    });
   } else {
     // Para retorno: próximo dia útil a partir da data do pedido anterior
     proximaData = getProximoDiaUtil(dataAnterior);
+    console.log(`📅 Cálculo para RETORNO:`, {
+      dataAnterior: format(dataAnterior, 'yyyy-MM-dd'),
+      proximaData: format(proximaData, 'yyyy-MM-dd')
+    });
   }
 
-  console.log(`📅 Criando novo agendamento:`, {
+  const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
+
+  console.log(`📋 Criando novo agendamento:`, {
     cliente: pedido.cliente_nome,
-    dataAnterior: format(dataAnterior, 'yyyy-MM-dd'),
-    periodicidade,
-    proximaData: format(proximaData, 'yyyy-MM-dd'),
-    tipoOperacao
+    cliente_id: pedido.cliente_id,
+    data_proxima_reposicao: proximaDataFormatada,
+    status_agendamento: 'Previsto',
+    substatus_pedido: 'Agendado',
+    quantidade_total: pedido.quantidade_total,
+    tipo_pedido: pedido.tipo_pedido
   });
 
-  // Criar novo agendamento com status Previsto
-  const { error: novoAgendamentoError } = await supabase
+  // Verificar se já existe um agendamento para este cliente
+  const { data: agendamentoExistente } = await supabase
     .from('agendamentos_clientes')
-    .insert({
-      cliente_id: pedido.cliente_id,
-      data_proxima_reposicao: format(proximaData, 'yyyy-MM-dd'),
-      quantidade_total: pedido.quantidade_total,
-      tipo_pedido: pedido.tipo_pedido,
-      status_agendamento: 'Previsto', // Status correto
-      itens_personalizados: pedido.itens_personalizados,
-      substatus_pedido: 'Agendado'
-    });
+    .select('id')
+    .eq('cliente_id', pedido.cliente_id)
+    .maybeSingle();
 
-  if (novoAgendamentoError) {
-    console.error('Erro ao criar novo agendamento:', novoAgendamentoError);
-    throw novoAgendamentoError;
+  if (agendamentoExistente) {
+    console.log(`🔄 Atualizando agendamento existente ID: ${agendamentoExistente.id}`);
+    
+    // Atualizar agendamento existente
+    const { error: updateError } = await supabase
+      .from('agendamentos_clientes')
+      .update({
+        data_proxima_reposicao: proximaDataFormatada,
+        status_agendamento: 'Previsto',
+        substatus_pedido: 'Agendado',
+        quantidade_total: pedido.quantidade_total,
+        tipo_pedido: pedido.tipo_pedido,
+        itens_personalizados: pedido.itens_personalizados
+      })
+      .eq('id', agendamentoExistente.id);
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar agendamento existente:', updateError);
+      throw updateError;
+    }
+  } else {
+    console.log(`➕ Criando novo agendamento`);
+    
+    // Criar novo agendamento
+    const { error: novoAgendamentoError } = await supabase
+      .from('agendamentos_clientes')
+      .insert({
+        cliente_id: pedido.cliente_id,
+        data_proxima_reposicao: proximaDataFormatada,
+        quantidade_total: pedido.quantidade_total,
+        tipo_pedido: pedido.tipo_pedido,
+        status_agendamento: 'Previsto',
+        substatus_pedido: 'Agendado',
+        itens_personalizados: pedido.itens_personalizados
+      });
+
+    if (novoAgendamentoError) {
+      console.error('❌ Erro ao criar novo agendamento:', novoAgendamentoError);
+      throw novoAgendamentoError;
+    }
   }
 
   // Atualizar dados do cliente
   const updateData: any = { 
-    proxima_data_reposicao: format(proximaData, 'yyyy-MM-dd'),
-    status_agendamento: 'Previsto' // Status correto no cliente
+    proxima_data_reposicao: proximaDataFormatada,
+    status_agendamento: 'Previsto'
   };
 
   if (tipoOperacao === 'entrega') {
@@ -121,11 +170,17 @@ const criarNovoAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entr
     .eq('id', pedido.cliente_id);
 
   if (clienteUpdateError) {
-    console.error('Erro ao atualizar cliente:', clienteUpdateError);
+    console.error('❌ Erro ao atualizar cliente:', clienteUpdateError);
     throw clienteUpdateError;
   }
 
-  console.log(`✅ Novo agendamento criado com sucesso para ${proximaData.toLocaleDateString()}`);
+  console.log(`✅ Agendamento criado/atualizado com sucesso:`, {
+    cliente: pedido.cliente_nome,
+    novaData: proximaDataFormatada,
+    status: 'Previsto',
+    substatus: 'Agendado'
+  });
+
   return proximaData;
 };
 
@@ -315,9 +370,12 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           if (!pedido) throw new Error('Pedido não encontrado');
 
-          console.log('📦 Confirmando entrega para:', pedido.cliente_nome);
+          console.log('📦 === INICIANDO CONFIRMAÇÃO DE ENTREGA ===');
+          console.log('📦 Cliente:', pedido.cliente_nome);
+          console.log('📦 Data do pedido original:', format(new Date(pedido.data_prevista_entrega), 'yyyy-MM-dd'));
 
           // 1. Atualizar agendamento atual para Entregue/Reagendar
+          console.log('🔄 Atualizando agendamento atual para Entregue...');
           const { error: updateError } = await supabase
             .from('agendamentos_clientes')
             .update({ 
@@ -327,11 +385,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .eq('id', pedidoId);
 
           if (updateError) {
-            console.error('Erro ao atualizar agendamento:', updateError);
+            console.error('❌ Erro ao atualizar agendamento:', updateError);
             throw updateError;
           }
 
+          console.log('✅ Agendamento atual marcado como Entregue/Reagendar');
+
           // 2. Criar novo agendamento com status Previsto
+          console.log('🆕 Criando novo agendamento...');
           const proximaData = await criarNovoAgendamento(pedido, 'entrega');
 
           // 3. Atualizar estado local
@@ -346,14 +407,16 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           }));
 
           // 4. Atualizar store de agendamento e recarregar
+          console.log('🔄 Recarregando agendamentos...');
           await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
-          toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Novo agendamento criado para ${proximaData.toLocaleDateString()}.`);
+          console.log('📦 === ENTREGA CONCLUÍDA COM SUCESSO ===');
+          toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Novo agendamento criado para ${proximaData.toLocaleDateString()} com status Previsto.`);
           
           // Recarregar pedidos para mostrar o novo agendamento
           setTimeout(() => get().carregarPedidos(), 1000);
         } catch (error) {
-          console.error('Erro ao confirmar entrega:', error);
+          console.error('❌ Erro ao confirmar entrega:', error);
           toast.error("Erro ao confirmar entrega");
         }
       },
@@ -363,9 +426,12 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           if (!pedido) throw new Error('Pedido não encontrado');
 
-          console.log('🔄 Confirmando retorno para:', pedido.cliente_nome);
+          console.log('🔄 === INICIANDO CONFIRMAÇÃO DE RETORNO ===');
+          console.log('🔄 Cliente:', pedido.cliente_nome);
+          console.log('🔄 Data do pedido original:', format(new Date(pedido.data_prevista_entrega), 'yyyy-MM-dd'));
 
           // 1. Atualizar agendamento atual para Retorno/Reagendar
+          console.log('🔄 Atualizando agendamento atual para Retorno...');
           const { error: updateError } = await supabase
             .from('agendamentos_clientes')
             .update({ 
@@ -375,11 +441,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .eq('id', pedidoId);
 
           if (updateError) {
-            console.error('Erro ao atualizar agendamento:', updateError);
+            console.error('❌ Erro ao atualizar agendamento:', updateError);
             throw updateError;
           }
 
+          console.log('✅ Agendamento atual marcado como Retorno/Reagendar');
+
           // 2. Criar novo agendamento para próximo dia útil
+          console.log('🆕 Criando novo agendamento para próximo dia útil...');
           const proximaData = await criarNovoAgendamento(pedido, 'retorno');
 
           // 3. Atualizar estado local
@@ -394,14 +463,16 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           }));
 
           // 4. Atualizar store de agendamento e recarregar
+          console.log('🔄 Recarregando agendamentos...');
           await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
-          toast.success(`Retorno registrado para ${pedido.cliente_nome}. Reagendado para ${proximaData.toLocaleDateString()}.`);
+          console.log('🔄 === RETORNO CONCLUÍDO COM SUCESSO ===');
+          toast.success(`Retorno registrado para ${pedido.cliente_nome}. Reagendado para ${proximaData.toLocaleDateString()} com status Previsto.`);
           
           // Recarregar pedidos
           setTimeout(() => get().carregarPedidos(), 1000);
         } catch (error) {
-          console.error('Erro ao confirmar retorno:', error);
+          console.error('❌ Erro ao confirmar retorno:', error);
           toast.error("Erro ao confirmar retorno");
         }
       },
@@ -529,12 +600,15 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
-          console.log('📦 Confirmando entrega em massa:', pedidosParaEntregar.length, 'pedidos');
+          console.log('📦 === INICIANDO ENTREGA EM MASSA ===');
+          console.log('📦 Quantidade de pedidos:', pedidosParaEntregar.length);
 
           // Processar cada pedido individualmente para criar novos agendamentos
           const resultados = [];
           for (const pedido of pedidosParaEntregar) {
             try {
+              console.log(`📦 Processando entrega: ${pedido.cliente_nome}`);
+              
               // 1. Atualizar agendamento atual
               await supabase
                 .from('agendamentos_clientes')
@@ -549,7 +623,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               resultados.push({ cliente: pedido.cliente_nome, proximaData });
 
             } catch (error) {
-              console.error(`Erro ao processar entrega do pedido ${pedido.cliente_nome}:`, error);
+              console.error(`❌ Erro ao processar entrega do pedido ${pedido.cliente_nome}:`, error);
             }
           }
 
@@ -565,12 +639,13 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           // 4. Recarregar agendamentos
           await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
+          console.log('📦 === ENTREGA EM MASSA CONCLUÍDA ===');
           toast.success(`${pedidosParaEntregar.length} entregas confirmadas. Novos agendamentos criados com status Previsto.`);
           
           // Recarregar pedidos
           setTimeout(() => get().carregarPedidos(), 1000);
         } catch (error) {
-          console.error('Erro na entrega em massa:', error);
+          console.error('❌ Erro na entrega em massa:', error);
           toast.error("Erro na entrega em massa");
         }
       },
@@ -586,12 +661,15 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
-          console.log('🔄 Confirmando retorno em massa:', pedidosParaRetorno.length, 'pedidos');
+          console.log('🔄 === INICIANDO RETORNO EM MASSA ===');
+          console.log('🔄 Quantidade de pedidos:', pedidosParaRetorno.length);
 
           // Processar cada pedido individualmente
           const resultados = [];
           for (const pedido of pedidosParaRetorno) {
             try {
+              console.log(`🔄 Processando retorno: ${pedido.cliente_nome}`);
+              
               // 1. Atualizar agendamento atual
               await supabase
                 .from('agendamentos_clientes')
@@ -606,7 +684,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               resultados.push({ cliente: pedido.cliente_nome, proximaData });
 
             } catch (error) {
-              console.error(`Erro ao processar retorno do pedido ${pedido.cliente_nome}:`, error);
+              console.error(`❌ Erro ao processar retorno do pedido ${pedido.cliente_nome}:`, error);
             }
           }
 
@@ -622,12 +700,13 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           // 4. Recarregar agendamentos
           await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
+          console.log('🔄 === RETORNO EM MASSA CONCLUÍDO ===');
           toast.success(`${pedidosParaRetorno.length} retornos registrados. Reagendamentos criados com status Previsto.`);
           
           // Recarregar pedidos
           setTimeout(() => get().carregarPedidos(), 1000);
         } catch (error) {
-          console.error('Erro no retorno em massa:', error);
+          console.error('❌ Erro no retorno em massa:', error);
           toast.error("Erro no retorno em massa");
         }
       },
