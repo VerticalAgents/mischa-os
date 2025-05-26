@@ -35,6 +35,8 @@ interface ExpedicaoStore {
   confirmarRetorno: (pedidoId: string, observacao?: string) => Promise<void>;
   marcarTodosSeparados: (pedidos: PedidoExpedicao[]) => Promise<void>;
   confirmarDespachoEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
+  confirmarEntregaEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
+  confirmarRetornoEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
   
   // Getters
   getPedidosParaSeparacao: () => PedidoExpedicao[];
@@ -48,6 +50,62 @@ const getProximoDiaUtil = (data: Date): Date => {
   return isWeekend(proximaData) ? getProximoDiaUtil(proximaData) : proximaData;
 };
 
+// Função auxiliar para criar novo agendamento
+const criarNovoAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entrega' | 'retorno') => {
+  // Buscar dados do cliente para obter periodicidade
+  const { data: cliente, error: clienteError } = await supabase
+    .from('clientes')
+    .select('periodicidade_padrao')
+    .eq('id', pedido.cliente_id)
+    .single();
+
+  if (clienteError) throw clienteError;
+
+  let proximaData: Date;
+  
+  if (tipoOperacao === 'entrega') {
+    // Para entrega: próxima data = hoje + periodicidade do cliente
+    proximaData = addBusinessDays(new Date(), cliente.periodicidade_padrao || 7);
+  } else {
+    // Para retorno: próximo dia útil
+    proximaData = getProximoDiaUtil(new Date());
+  }
+
+  // Criar novo agendamento
+  const { error: novoAgendamentoError } = await supabase
+    .from('agendamentos_clientes')
+    .insert({
+      cliente_id: pedido.cliente_id,
+      data_proxima_reposicao: proximaData.toISOString().split('T')[0],
+      quantidade_total: pedido.quantidade_total,
+      tipo_pedido: pedido.tipo_pedido,
+      status_agendamento: 'Previsto',
+      itens_personalizados: pedido.itens_personalizados,
+      substatus_pedido: 'Agendado'
+    });
+
+  if (novoAgendamentoError) throw novoAgendamentoError;
+
+  // Atualizar dados do cliente
+  const updateData: any = { 
+    proxima_data_reposicao: proximaData.toISOString().split('T')[0],
+    status_agendamento: 'Previsto'
+  };
+
+  if (tipoOperacao === 'entrega') {
+    updateData.ultima_data_reposicao_efetiva = new Date().toISOString().split('T')[0];
+  }
+
+  const { error: clienteUpdateError } = await supabase
+    .from('clientes')
+    .update(updateData)
+    .eq('id', pedido.cliente_id);
+
+  if (clienteUpdateError) throw clienteUpdateError;
+
+  return proximaData;
+};
+
 export const useExpedicaoStore = create<ExpedicaoStore>()(
   devtools(
     (set, get) => ({
@@ -59,18 +117,18 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         const currentTime = Date.now();
         const { lastSyncTime } = get();
         
-        // Evitar chamadas muito frequentes (menos de 1000ms)
-        if (currentTime - lastSyncTime < 1000) {
+        // Evitar chamadas muito frequentes (menos de 2000ms)
+        if (currentTime - lastSyncTime < 2000) {
           console.log('⏭️ Pulando carregamento - muito recente');
           return;
         }
         
         set({ isLoading: true, lastSyncTime: currentTime });
         try {
-          // Usar dados do store de agendamento sem recarregar
+          // Usar dados do store de agendamento
           const agendamentos = useAgendamentoClienteStore.getState().agendamentos;
           
-          console.log('📋 Usando agendamentos carregados:', agendamentos.length);
+          console.log('📋 Carregando pedidos da expedição, agendamentos disponíveis:', agendamentos.length);
           
           if (agendamentos.length === 0) {
             console.log('📥 Carregando agendamentos iniciais...');
@@ -91,6 +149,9 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
       confirmarSeparacao: async (pedidoId: string) => {
         try {
+          const pedido = get().pedidos.find(p => p.id === pedidoId);
+          console.log('🔄 Confirmando separação para:', pedido?.cliente_nome);
+
           // 1. Atualizar estado local IMEDIATAMENTE
           set(state => ({
             pedidos: state.pedidos.map(p => 
@@ -98,13 +159,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             )
           }));
 
-          const pedido = get().pedidos.find(p => p.id === pedidoId);
-          console.log('🔄 Confirmando separação para:', pedido?.cliente_nome);
-
           // 2. Salvar no banco
           const { error } = await supabase
             .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Separado' } as any)
+            .update({ substatus_pedido: 'Separado' })
             .eq('id', pedidoId);
 
           if (error) {
@@ -122,7 +180,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
           console.log('✅ Separação salva no banco');
 
-          // 3. Atualizar store de agendamento SEM recarregar tudo
+          // 3. Atualizar store de agendamento
           const agendamentoStore = useAgendamentoClienteStore.getState();
           const agendamentosAtualizados = agendamentoStore.agendamentos.map(ag => 
             ag.id === pedidoId 
@@ -130,7 +188,6 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               : ag
           );
           
-          // Atualizar diretamente o estado do agendamento
           useAgendamentoClienteStore.setState({ agendamentos: agendamentosAtualizados });
 
           toast.success(`Separação confirmada para ${pedido?.cliente_nome}`);
@@ -142,6 +199,9 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
       desfazerSeparacao: async (pedidoId: string) => {
         try {
+          const pedido = get().pedidos.find(p => p.id === pedidoId);
+          console.log('🔄 Desfazendo separação para:', pedido?.cliente_nome);
+
           // 1. Atualizar estado local IMEDIATAMENTE
           set(state => ({
             pedidos: state.pedidos.map(p => 
@@ -152,7 +212,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           // 2. Salvar no banco
           const { error } = await supabase
             .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Agendado' } as any)
+            .update({ substatus_pedido: 'Agendado' })
             .eq('id', pedidoId);
 
           if (error) {
@@ -175,7 +235,6 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           
           useAgendamentoClienteStore.setState({ agendamentos: agendamentosAtualizados });
 
-          const pedido = get().pedidos.find(p => p.id === pedidoId);
           toast.success(`Separação desfeita para ${pedido?.cliente_nome}`);
         } catch (error) {
           console.error('Erro ao desfazer separação:', error);
@@ -185,6 +244,9 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
       confirmarDespacho: async (pedidoId: string) => {
         try {
+          const pedido = get().pedidos.find(p => p.id === pedidoId);
+          console.log('🚚 Confirmando despacho para:', pedido?.cliente_nome);
+
           // 1. Atualizar estado local IMEDIATAMENTE
           set(state => ({
             pedidos: state.pedidos.map(p => 
@@ -195,7 +257,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           // 2. Salvar no banco
           const { error } = await supabase
             .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Despachado' } as any)
+            .update({ substatus_pedido: 'Despachado' })
             .eq('id', pedidoId);
 
           if (error) {
@@ -218,7 +280,6 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           
           useAgendamentoClienteStore.setState({ agendamentos: agendamentosAtualizados });
 
-          const pedido = get().pedidos.find(p => p.id === pedidoId);
           toast.success(`Despacho confirmado para ${pedido?.cliente_nome}`);
         } catch (error) {
           console.error('Erro ao confirmar despacho:', error);
@@ -231,57 +292,23 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           if (!pedido) throw new Error('Pedido não encontrado');
 
-          // 1. Atualizar substatus para Entregue e status para Reagendar
+          console.log('📦 Confirmando entrega para:', pedido.cliente_nome);
+
+          // 1. Atualizar agendamento atual para Entregue/Reagendar
           const { error: updateError } = await supabase
             .from('agendamentos_clientes')
             .update({ 
               substatus_pedido: 'Entregue',
               status_agendamento: 'Reagendar'
-            } as any)
+            })
             .eq('id', pedidoId);
 
           if (updateError) throw updateError;
 
-          // 2. Buscar dados do cliente para criar novo agendamento
-          const { data: cliente, error: clienteError } = await supabase
-            .from('clientes')
-            .select('*')
-            .eq('id', pedido.cliente_id)
-            .single();
+          // 2. Criar novo agendamento
+          const proximaData = await criarNovoAgendamento(pedido, 'entrega');
 
-          if (clienteError) throw clienteError;
-
-          // 3. Calcular próxima data de reposição
-          const proximaData = addBusinessDays(new Date(), cliente.periodicidade_padrao || 7);
-
-          // 4. Criar novo agendamento
-          const { error: novoAgendamentoError } = await supabase
-            .from('agendamentos_clientes')
-            .insert({
-              cliente_id: pedido.cliente_id,
-              data_proxima_reposicao: proximaData.toISOString().split('T')[0],
-              quantidade_total: pedido.quantidade_total,
-              tipo_pedido: pedido.tipo_pedido,
-              status_agendamento: 'Previsto',
-              itens_personalizados: pedido.itens_personalizados,
-              substatus_pedido: 'Agendado'
-            } as any);
-
-          if (novoAgendamentoError) throw novoAgendamentoError;
-
-          // 5. Atualizar cliente
-          const { error: clienteUpdateError } = await supabase
-            .from('clientes')
-            .update({ 
-              ultima_data_reposicao_efetiva: new Date().toISOString().split('T')[0],
-              proxima_data_reposicao: proximaData.toISOString().split('T')[0],
-              status_agendamento: 'Previsto'
-            })
-            .eq('id', pedido.cliente_id);
-
-          if (clienteUpdateError) throw clienteUpdateError;
-
-          // Atualizar estado local
+          // 3. Atualizar estado local
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { 
@@ -292,7 +319,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             )
           }));
 
-          toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Novo agendamento criado.`);
+          // 4. Atualizar store de agendamento e recarregar
+          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
+
+          toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Novo agendamento criado para ${proximaData.toLocaleDateString()}.`);
           
           // Recarregar pedidos para mostrar o novo agendamento
           setTimeout(() => get().carregarPedidos(), 1000);
@@ -307,47 +337,23 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           if (!pedido) throw new Error('Pedido não encontrado');
 
-          // 1. Atualizar substatus para Retorno e status para Reagendar
+          console.log('🔄 Confirmando retorno para:', pedido.cliente_nome);
+
+          // 1. Atualizar agendamento atual para Retorno/Reagendar
           const { error: updateError } = await supabase
             .from('agendamentos_clientes')
             .update({ 
               substatus_pedido: 'Retorno',
               status_agendamento: 'Reagendar'
-            } as any)
+            })
             .eq('id', pedidoId);
 
           if (updateError) throw updateError;
 
-          // 2. Calcular próximo dia útil
-          const proximoDiaUtil = getProximoDiaUtil(new Date());
+          // 2. Criar novo agendamento para próximo dia útil
+          const proximaData = await criarNovoAgendamento(pedido, 'retorno');
 
-          // 3. Criar novo agendamento para o próximo dia útil
-          const { error: novoAgendamentoError } = await supabase
-            .from('agendamentos_clientes')
-            .insert({
-              cliente_id: pedido.cliente_id,
-              data_proxima_reposicao: proximoDiaUtil.toISOString().split('T')[0],
-              quantidade_total: pedido.quantidade_total,
-              tipo_pedido: pedido.tipo_pedido,
-              status_agendamento: 'Previsto',
-              itens_personalizados: pedido.itens_personalizados,
-              substatus_pedido: 'Agendado'
-            } as any);
-
-          if (novoAgendamentoError) throw novoAgendamentoError;
-
-          // 4. Atualizar cliente
-          const { error: clienteUpdateError } = await supabase
-            .from('clientes')
-            .update({ 
-              proxima_data_reposicao: proximoDiaUtil.toISOString().split('T')[0],
-              status_agendamento: 'Previsto'
-            })
-            .eq('id', pedido.cliente_id);
-
-          if (clienteUpdateError) throw clienteUpdateError;
-
-          // Atualizar estado local
+          // 3. Atualizar estado local
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { 
@@ -358,7 +364,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             )
           }));
 
-          toast.success(`Retorno registrado para ${pedido.cliente_nome}. Reagendado para ${proximoDiaUtil.toLocaleDateString()}.`);
+          // 4. Atualizar store de agendamento e recarregar
+          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
+
+          toast.success(`Retorno registrado para ${pedido.cliente_nome}. Reagendado para ${proximaData.toLocaleDateString()}.`);
           
           // Recarregar pedidos
           setTimeout(() => get().carregarPedidos(), 1000);
@@ -379,13 +388,9 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Separado' } as any)
-            .in('id', pedidosParaSeparar.map(p => p.id));
+          console.log('📦 Marcando como separados:', pedidosParaSeparar.length, 'pedidos');
 
-          if (error) throw error;
-
+          // 1. Atualizar estado local IMEDIATAMENTE
           set(state => ({
             pedidos: state.pedidos.map(p => 
               pedidosParaSeparar.some(ps => ps.id === p.id) 
@@ -393,6 +398,34 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                 : p
             )
           }));
+
+          // 2. Salvar no banco
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ substatus_pedido: 'Separado' })
+            .in('id', pedidosParaSeparar.map(p => p.id));
+
+          if (error) {
+            // Reverter em caso de erro
+            set(state => ({
+              pedidos: state.pedidos.map(p => 
+                pedidosParaSeparar.some(ps => ps.id === p.id) 
+                  ? { ...p, substatus_pedido: 'Agendado' } 
+                  : p
+              )
+            }));
+            throw error;
+          }
+
+          // 3. Atualizar store de agendamento
+          const agendamentoStore = useAgendamentoClienteStore.getState();
+          const agendamentosAtualizados = agendamentoStore.agendamentos.map(ag => 
+            pedidosParaSeparar.some(ps => ps.id === ag.id)
+              ? { ...ag, substatus_pedido: 'Separado' as any }
+              : ag
+          );
+          
+          useAgendamentoClienteStore.setState({ agendamentos: agendamentosAtualizados });
 
           toast.success(`${pedidosParaSeparar.length} pedidos marcados como separados`);
         } catch (error) {
@@ -410,13 +443,9 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Despachado' } as any)
-            .in('id', pedidosParaDespachar.map(p => p.id));
+          console.log('🚚 Despachando em massa:', pedidosParaDespachar.length, 'pedidos');
 
-          if (error) throw error;
-
+          // 1. Atualizar estado local IMEDIATAMENTE
           set(state => ({
             pedidos: state.pedidos.map(p => 
               pedidosParaDespachar.some(pd => pd.id === p.id) 
@@ -425,10 +454,148 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             )
           }));
 
+          // 2. Salvar no banco
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ substatus_pedido: 'Despachado' })
+            .in('id', pedidosParaDespachar.map(p => p.id));
+
+          if (error) {
+            // Reverter em caso de erro
+            set(state => ({
+              pedidos: state.pedidos.map(p => 
+                pedidosParaDespachar.some(pd => pd.id === p.id) 
+                  ? { ...p, substatus_pedido: 'Separado' } 
+                  : p
+              )
+            }));
+            throw error;
+          }
+
+          // 3. Atualizar store de agendamento
+          const agendamentoStore = useAgendamentoClienteStore.getState();
+          const agendamentosAtualizados = agendamentoStore.agendamentos.map(ag => 
+            pedidosParaDespachar.some(pd => pd.id === ag.id)
+              ? { ...ag, substatus_pedido: 'Despachado' as any }
+              : ag
+          );
+          
+          useAgendamentoClienteStore.setState({ agendamentos: agendamentosAtualizados });
+
           toast.success(`${pedidosParaDespachar.length} pedidos despachados`);
         } catch (error) {
           console.error('Erro no despacho em massa:', error);
           toast.error("Erro no despacho em massa");
+        }
+      },
+
+      confirmarEntregaEmMassa: async (pedidos: PedidoExpedicao[]) => {
+        try {
+          const pedidosParaEntregar = pedidos.filter(p => 
+            p.substatus_pedido === 'Separado' || p.substatus_pedido === 'Despachado'
+          );
+          
+          if (pedidosParaEntregar.length === 0) {
+            toast.error("Não há pedidos para entregar");
+            return;
+          }
+
+          console.log('📦 Confirmando entrega em massa:', pedidosParaEntregar.length, 'pedidos');
+
+          // Processar cada pedido individualmente para criar novos agendamentos
+          for (const pedido of pedidosParaEntregar) {
+            try {
+              // 1. Atualizar agendamento atual
+              await supabase
+                .from('agendamentos_clientes')
+                .update({ 
+                  substatus_pedido: 'Entregue',
+                  status_agendamento: 'Reagendar'
+                })
+                .eq('id', pedido.id);
+
+              // 2. Criar novo agendamento
+              await criarNovoAgendamento(pedido, 'entrega');
+
+            } catch (error) {
+              console.error(`Erro ao processar entrega do pedido ${pedido.cliente_nome}:`, error);
+            }
+          }
+
+          // 3. Atualizar estado local
+          set(state => ({
+            pedidos: state.pedidos.map(p => 
+              pedidosParaEntregar.some(pe => pe.id === p.id) 
+                ? { ...p, substatus_pedido: 'Entregue', status_agendamento: 'Reagendar' } 
+                : p
+            )
+          }));
+
+          // 4. Recarregar agendamentos
+          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
+
+          toast.success(`${pedidosParaEntregar.length} entregas confirmadas. Novos agendamentos criados.`);
+          
+          // Recarregar pedidos
+          setTimeout(() => get().carregarPedidos(), 1000);
+        } catch (error) {
+          console.error('Erro na entrega em massa:', error);
+          toast.error("Erro na entrega em massa");
+        }
+      },
+
+      confirmarRetornoEmMassa: async (pedidos: PedidoExpedicao[]) => {
+        try {
+          const pedidosParaRetorno = pedidos.filter(p => 
+            p.substatus_pedido === 'Separado' || p.substatus_pedido === 'Despachado'
+          );
+          
+          if (pedidosParaRetorno.length === 0) {
+            toast.error("Não há pedidos para retorno");
+            return;
+          }
+
+          console.log('🔄 Confirmando retorno em massa:', pedidosParaRetorno.length, 'pedidos');
+
+          // Processar cada pedido individualmente
+          for (const pedido of pedidosParaRetorno) {
+            try {
+              // 1. Atualizar agendamento atual
+              await supabase
+                .from('agendamentos_clientes')
+                .update({ 
+                  substatus_pedido: 'Retorno',
+                  status_agendamento: 'Reagendar'
+                })
+                .eq('id', pedido.id);
+
+              // 2. Criar novo agendamento para próximo dia útil
+              await criarNovoAgendamento(pedido, 'retorno');
+
+            } catch (error) {
+              console.error(`Erro ao processar retorno do pedido ${pedido.cliente_nome}:`, error);
+            }
+          }
+
+          // 3. Atualizar estado local
+          set(state => ({
+            pedidos: state.pedidos.map(p => 
+              pedidosParaRetorno.some(pr => pr.id === p.id) 
+                ? { ...p, substatus_pedido: 'Retorno', status_agendamento: 'Reagendar' } 
+                : p
+            )
+          }));
+
+          // 4. Recarregar agendamentos
+          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
+
+          toast.success(`${pedidosParaRetorno.length} retornos registrados. Reagendamentos criados.`);
+          
+          // Recarregar pedidos
+          setTimeout(() => get().carregarPedidos(), 1000);
+        } catch (error) {
+          console.error('Erro no retorno em massa:', error);
+          toast.error("Erro no retorno em massa");
         }
       },
 
@@ -562,7 +729,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
   )
 );
 
-// Função auxiliar para formatar pedidos (extraída para evitar repetição)
+// Função auxiliar para formatar pedidos
 async function formatarPedidos(agendamentos: any[]) {
   // Carregar dados dos clientes para complementar as informações
   const { data: clientes, error: clientesError } = await supabase
@@ -578,7 +745,7 @@ async function formatarPedidos(agendamentos: any[]) {
     .map(agendamento => {
       const cliente = clientesMap.get(agendamento.cliente_id);
       
-      // MAPEAMENTO CORRETO DO SUBSTATUS
+      // Mapear substatus corretamente
       const substatus = (agendamento as any).substatus_pedido || 'Agendado';
       
       console.log(`📦 Formatando pedido ${agendamento.id}:`, {
