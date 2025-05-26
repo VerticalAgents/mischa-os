@@ -4,13 +4,17 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
+import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
 import { Check, X } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const HistoricoEntregas = () => {
   const [filtroHistorico, setFiltroHistorico] = useState<string>("todos");
   
-  const { pedidos, carregarPedidos } = useExpedicaoStore();
+  const { pedidos } = useExpedicaoStore();
+  
+  // Usar hook de sincronização
+  const { carregarPedidos } = useExpedicaoSync();
 
   useEffect(() => {
     carregarPedidos();

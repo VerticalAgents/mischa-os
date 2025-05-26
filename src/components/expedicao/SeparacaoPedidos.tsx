@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -6,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import StatusBadge from "@/components/common/StatusBadge";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
+import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
 import { toast } from "sonner";
 import { Printer, FileText, Check, Undo } from "lucide-react";
 import { formatDate } from "@/lib/utils";
@@ -17,7 +17,6 @@ export const SeparacaoPedidos = () => {
   const {
     pedidos,
     isLoading,
-    carregarPedidos,
     confirmarSeparacao,
     desfazerSeparacao,
     marcarTodosSeparados,
@@ -25,11 +24,15 @@ export const SeparacaoPedidos = () => {
     getPedidosProximoDia
   } = useExpedicaoStore();
 
+  // Usar hook de sincronização
+  const { carregarPedidos } = useExpedicaoSync();
+
   // Carregar pedidos ao montar o componente
   useEffect(() => {
     carregarPedidos();
   }, [carregarPedidos]);
 
+  
   // Obter pedidos filtrados
   const pedidosParaSeparacao = getPedidosParaSeparacao();
   const pedidosProximoDia = getPedidosProximoDia();
@@ -355,6 +358,7 @@ export const SeparacaoPedidos = () => {
               </div>
             )}
           </TabsContent>
+          
           
           <TabsContent value="padrao">
             {pedidosPadrao.length > 0 ? (

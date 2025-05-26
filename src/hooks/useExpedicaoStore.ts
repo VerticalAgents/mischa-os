@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { SubstatusPedidoAgendado } from '@/types';
 import { addBusinessDays, isWeekend, format } from 'date-fns';
+import { useAgendamentoClienteStore } from './useAgendamentoClienteStore';
 
 interface PedidoExpedicao {
   id: string;
@@ -55,38 +56,42 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       carregarPedidos: async () => {
         set({ isLoading: true });
         try {
-          const { data: agendamentos, error } = await supabase
-            .from('agendamentos_clientes')
-            .select(`
-              *,
-              clientes (
-                id,
-                nome,
-                endereco_entrega,
-                contato_telefone,
-                quantidade_padrao,
-                periodicidade_padrao
-              )
-            `)
-            .eq('status_agendamento', 'Agendado');
+          // Usar o store de agendamento como fonte única de dados
+          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
+          const agendamentos = useAgendamentoClienteStore.getState().agendamentos;
+          
+          console.log('📋 Agendamentos carregados do store principal:', agendamentos.length);
+          
+          // Carregar dados dos clientes para complementar as informações
+          const { data: clientes, error: clientesError } = await supabase
+            .from('clientes')
+            .select('id, nome, endereco_entrega, contato_telefone');
 
-          if (error) throw error;
+          if (clientesError) throw clientesError;
 
-          const pedidosFormatados = agendamentos?.map(agendamento => ({
-            id: agendamento.id,
-            cliente_id: agendamento.cliente_id,
-            cliente_nome: agendamento.clientes?.nome || 'Cliente não encontrado',
-            cliente_endereco: agendamento.clientes?.endereco_entrega,
-            cliente_telefone: agendamento.clientes?.contato_telefone,
-            data_prevista_entrega: new Date(agendamento.data_proxima_reposicao),
-            quantidade_total: agendamento.quantidade_total,
-            tipo_pedido: agendamento.tipo_pedido,
-            status_agendamento: agendamento.status_agendamento,
-            substatus_pedido: (agendamento as any).substatus_pedido as SubstatusPedidoAgendado || 'Agendado',
-            itens_personalizados: agendamento.itens_personalizados,
-            created_at: new Date(agendamento.created_at)
-          })) || [];
+          const clientesMap = new Map(clientes?.map(c => [c.id, c]) || []);
 
+          const pedidosFormatados = agendamentos
+            .filter(agendamento => agendamento.status_agendamento === 'Agendado')
+            .map(agendamento => {
+              const cliente = clientesMap.get(agendamento.cliente_id);
+              return {
+                id: agendamento.id,
+                cliente_id: agendamento.cliente_id,
+                cliente_nome: cliente?.nome || 'Cliente não encontrado',
+                cliente_endereco: cliente?.endereco_entrega,
+                cliente_telefone: cliente?.contato_telefone,
+                data_prevista_entrega: agendamento.data_proxima_reposicao || new Date(),
+                quantidade_total: agendamento.quantidade_total,
+                tipo_pedido: agendamento.tipo_pedido,
+                status_agendamento: agendamento.status_agendamento,
+                substatus_pedido: (agendamento as any).substatus_pedido as SubstatusPedidoAgendado || 'Agendado',
+                itens_personalizados: agendamento.itens_personalizados,
+                created_at: agendamento.created_at
+              };
+            });
+
+          console.log('✅ Pedidos formatados para expedição:', pedidosFormatados.length);
           set({ pedidos: pedidosFormatados });
         } catch (error) {
           console.error('Erro ao carregar pedidos:', error);
@@ -105,11 +110,15 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
           if (error) throw error;
 
+          // Atualizar store local
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' } : p
             )
           }));
+
+          // Sincronizar com o store de agendamento
+          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           toast.success(`Separação confirmada para ${pedido?.cliente_nome}`);
@@ -128,11 +137,15 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
           if (error) throw error;
 
+          // Atualizar store local
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' } : p
             )
           }));
+
+          // Sincronizar com o store de agendamento
+          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           toast.success(`Separação desfeita para ${pedido?.cliente_nome}`);
@@ -151,11 +164,15 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
           if (error) throw error;
 
+          // Atualizar store local
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { ...p, substatus_pedido: 'Despachado' } : p
             )
           }));
+
+          // Sincronizar com o store de agendamento
+          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
 
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           toast.success(`Despacho confirmado para ${pedido?.cliente_nome}`);
@@ -376,7 +393,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         console.log('🔍 getPedidosParaSeparacao - Data de hoje:', hoje);
         
         const todosPedidos = get().pedidos;
-        console.log('📋 Total de pedidos:', todosPedidos.length);
+        console.log('📋 Total de pedidos carregados:', todosPedidos.length);
         
         const pedidosFiltrados = todosPedidos.filter(p => {
           const dataEntrega = format(new Date(p.data_prevista_entrega), 'yyyy-MM-dd');
@@ -387,6 +404,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           
           console.log(`📦 Pedido ${p.cliente_nome}:`, {
             dataEntrega,
+            hoje,
             status: p.status_agendamento,
             substatus: p.substatus_pedido,
             isStatusAgendado,
@@ -398,7 +416,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           return isStatusAgendado && isSubstatusValido && isDataHoje;
         });
         
-        console.log('✅ Pedidos para separação:', pedidosFiltrados.length);
+        console.log('✅ Pedidos filtrados para separação:', pedidosFiltrados.length);
         return pedidosFiltrados;
       },
 
@@ -416,6 +434,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           
           console.log(`🚛 Pedido ${p.cliente_nome}:`, {
             dataEntrega,
+            hoje,
             status: p.status_agendamento,
             substatus: p.substatus_pedido,
             isStatusAgendado,
