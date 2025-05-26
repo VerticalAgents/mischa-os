@@ -21,7 +21,7 @@ export default function TodosAgendamentos() {
   const [agendamentoEditando, setAgendamentoEditando] = useState<AgendamentoItem | null>(null);
   const [agendamentos, setAgendamentos] = useState<AgendamentoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshTrigger, setRefreshTrigger] = useState(0); // Trigger para recarregar dados
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     carregarClientes();
@@ -46,7 +46,7 @@ export default function TodosAgendamentos() {
           let dataReposicao = new Date();
           let statusAgendamento = 'Agendar';
           let quantidadeTotal = cliente.quantidadePadrao || 0;
-          let tipoPedido: 'Padrão' | 'Alterado' = 'Padrão'; // Fix: properly type the variable
+          let tipoPedido: 'Padrão' | 'Alterado' = 'Padrão';
           
           // Usar EXCLUSIVAMENTE dados da tabela agendamentos_clientes
           if (agendamentoCliente) {
@@ -97,7 +97,7 @@ export default function TodosAgendamentos() {
     };
 
     carregarAgendamentos();
-  }, [clientes, pedidos, carregarAgendamentoPorCliente, refreshTrigger]); // Incluir refreshTrigger
+  }, [clientes, pedidos, carregarAgendamentoPorCliente, refreshTrigger]);
 
   const agendamentosFiltrados = agendamentos
     .filter(agendamento => {
@@ -140,10 +140,14 @@ export default function TodosAgendamentos() {
   const handleConfirmarPrevisto = async (agendamento: AgendamentoItem) => {
     try {
       console.log('TodosAgendamentos: Confirmando agendamento previsto para cliente:', agendamento.cliente.nome);
+      console.log('TodosAgendamentos: Data atual do agendamento:', agendamento.dataReposicao);
       
-      // Salvar como "Agendado" na tabela unificada
+      // PRESERVAR a data existente ao confirmar
       await salvarAgendamento(agendamento.cliente.id, {
-        status_agendamento: 'Agendado'
+        status_agendamento: 'Agendado',
+        data_proxima_reposicao: agendamento.dataReposicao, // Manter a data atual
+        quantidade_total: agendamento.cliente.quantidadePadrao || 0,
+        tipo_pedido: 'Padrão'
       });
 
       // Recarregar dados da tabela unificada
@@ -191,7 +195,7 @@ export default function TodosAgendamentos() {
         agendamentos={agendamentosFiltrados}
         onCriarPedido={handleCriarPedido}
         onEditarAgendamento={handleEditarAgendamento}
-        onConfirmarPrevisto={handleConfirmarPrevisto}
+        onConfirmarPrevisto={onConfirmarPrevisto}
       />
 
       <AgendamentoEditModal
