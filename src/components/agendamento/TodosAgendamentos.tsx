@@ -32,6 +32,14 @@ export default function TodosAgendamentos() {
     carregarDados();
   }, [carregarClientes, carregarTodosAgendamentos, refreshTrigger]);
 
+  // Helper function to ensure status is valid
+  const normalizeStatusAgendamento = (status: string | undefined): "Agendar" | "Previsto" | "Agendado" => {
+    if (status === "Previsto" || status === "Agendado" || status === "Agendar") {
+      return status;
+    }
+    return "Agendar"; // Default fallback
+  };
+
   // Construir agendamentos baseado nos dados SINCRONIZADOS dos clientes
   useEffect(() => {
     if (clientes.length === 0) {
@@ -48,7 +56,7 @@ export default function TodosAgendamentos() {
       
       // Usar os dados já sincronizados do cliente
       let dataReposicao = cliente.proximaDataReposicao || new Date();
-      let statusAgendamento = cliente.statusAgendamento || 'Agendar';
+      let statusAgendamento = normalizeStatusAgendamento(cliente.statusAgendamento);
       
       console.log('TodosAgendamentos: Cliente', cliente.nome, '- Status:', statusAgendamento, 'Data:', dataReposicao);
       
