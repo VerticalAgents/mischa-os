@@ -60,42 +60,40 @@ function convertSupabaseToCliente(data: any): Cliente {
     tipoCobranca: data.tipo_cobranca || 'À vista',
     formaPagamento: data.forma_pagamento || 'Boleto',
     observacoes: data.observacoes,
-    categoriaId: data.categoria_id || 1,
-    subcategoriaId: data.subcategoria_id || 1
+    categoriaId: 1, // Default value
+    subcategoriaId: 1, // Default value
+    categoriasHabilitadas: [1] // Default value
   };
 }
 
 // Helper para converter Cliente para dados do Supabase
 function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>) {
+  const giroCalculado = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
+  
   return {
     nome: cliente.nome,
-    cnpj_cpf: cliente.cnpjCpf,
-    endereco_entrega: cliente.enderecoEntrega,
-    contato_nome: cliente.contatoNome,
-    contato_telefone: cliente.contatoTelefone,
-    contato_email: cliente.contatoEmail,
-    quantidade_padrao: cliente.quantidadePadrao,
-    periodicidade_padrao: cliente.periodicidadePadrao,
-    status_cliente: cliente.statusCliente,
-    ativo: cliente.ativo,
-    giro_medio_semanal: cliente.giroMedioSemanal || calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao),
-    meta_giro_semanal: Math.round(calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao) * 1.2),
-    ultima_data_reposicao_efetiva: cliente.ultimaDataReposicaoEfetiva?.toISOString().split('T')[0],
-    proxima_data_reposicao: cliente.proximaDataReposicao?.toISOString().split('T')[0],
-    status_agendamento: cliente.statusAgendamento,
-    janelas_entrega: cliente.janelasEntrega,
-    representante_id: cliente.representanteId,
-    rota_entrega_id: cliente.rotaEntregaId,
-    categoria_estabelecimento_id: cliente.categoriaEstabelecimentoId,
-    instrucoes_entrega: cliente.instrucoesEntrega,
-    contabilizar_giro_medio: cliente.contabilizarGiroMedio,
-    tipo_logistica: cliente.tipoLogistica,
-    emite_nota_fiscal: cliente.emiteNotaFiscal,
-    tipo_cobranca: cliente.tipoCobranca,
-    forma_pagamento: cliente.formaPagamento,
-    observacoes: cliente.observacoes,
-    categoria_id: cliente.categoriaId,
-    subcategoria_id: cliente.subcategoriaId
+    cnpj_cpf: cliente.cnpjCpf || null,
+    endereco_entrega: cliente.enderecoEntrega || null,
+    contato_nome: cliente.contatoNome || null,
+    contato_telefone: cliente.contatoTelefone || null,
+    contato_email: cliente.contatoEmail || null,
+    quantidade_padrao: cliente.quantidadePadrao || 0,
+    periodicidade_padrao: cliente.periodicidadePadrao || 7,
+    status_cliente: cliente.statusCliente || 'Ativo',
+    ativo: cliente.ativo !== undefined ? cliente.ativo : true,
+    giro_medio_semanal: giroCalculado,
+    meta_giro_semanal: Math.round(giroCalculado * 1.2),
+    janelas_entrega: cliente.janelasEntrega || null,
+    representante_id: cliente.representanteId || null,
+    rota_entrega_id: cliente.rotaEntregaId || null,
+    categoria_estabelecimento_id: cliente.categoriaEstabelecimentoId || null,
+    instrucoes_entrega: cliente.instrucoesEntrega || null,
+    contabilizar_giro_medio: cliente.contabilizarGiroMedio !== undefined ? cliente.contabilizarGiroMedio : true,
+    tipo_logistica: cliente.tipoLogistica || 'Própria',
+    emite_nota_fiscal: cliente.emiteNotaFiscal !== undefined ? cliente.emiteNotaFiscal : true,
+    tipo_cobranca: cliente.tipoCobranca || 'À vista',
+    forma_pagamento: cliente.formaPagamento || 'Boleto',
+    observacoes: cliente.observacoes || null
   };
 }
 
@@ -145,7 +143,10 @@ export const useClienteStore = create<ClienteStore>()(
       adicionarCliente: async (cliente) => {
         set({ loading: true });
         try {
+          console.log('Dados do cliente a serem enviados:', cliente);
+          
           const dadosSupabase = convertClienteToSupabase(cliente);
+          console.log('Dados convertidos para Supabase:', dadosSupabase);
           
           const { data, error } = await supabase
             .from('clientes')
@@ -156,8 +157,8 @@ export const useClienteStore = create<ClienteStore>()(
           if (error) {
             console.error('Erro ao adicionar cliente:', error);
             toast({
-              title: "Erro",
-              description: "Não foi possível cadastrar o cliente",
+              title: "Erro ao cadastrar cliente",
+              description: `Erro: ${error.message}`,
               variant: "destructive"
             });
             return;

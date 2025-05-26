@@ -144,12 +144,14 @@ export default function ClienteFormDialog({
     }
   }, [clienteId, open, getClientePorId, form]);
 
-  const onSubmit = (data: ClienteFormValues) => {
+  const onSubmit = async (data: ClienteFormValues) => {
     setIsSubmitting(true);
     
     try {
+      console.log('Dados do formulário:', data);
+      
       if (clienteId) {
-        atualizarCliente(clienteId, {
+        await atualizarCliente(clienteId, {
           ...data,
           quantidadePadrao: Number(data.quantidadePadrao),
           periodicidadePadrao: Number(data.periodicidadePadrao),
@@ -160,14 +162,15 @@ export default function ClienteFormDialog({
           description: `O cliente ${data.nome} foi atualizado.`,
         });
       } else {
-        adicionarCliente({
+        await adicionarCliente({
           ...data,
           quantidadePadrao: Number(data.quantidadePadrao),
           periodicidadePadrao: Number(data.periodicidadePadrao),
           ativo: data.statusCliente === 'Ativo',
           giroMedioSemanal: 0,
           categoriaId: 1, // Add required field
-          subcategoriaId: 1 // Add required field
+          subcategoriaId: 1, // Add required field
+          contabilizarGiroMedio: data.contabilizarGiroMedio
         });
         
         toast({
@@ -179,12 +182,12 @@ export default function ClienteFormDialog({
       form.reset();
       onOpenChange(false);
     } catch (error) {
+      console.error("Erro ao salvar cliente:", error);
       toast({
         title: clienteId ? "Erro ao atualizar cliente" : "Erro ao cadastrar cliente",
         description: "Ocorreu um erro ao tentar salvar os dados do cliente.",
         variant: "destructive",
       });
-      console.error("Erro ao salvar cliente:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -267,7 +270,6 @@ export default function ClienteFormDialog({
                 )}
               />
 
-              {/* ... keep existing code (contact data section) */}
               <h3 className="text-lg font-medium pt-2">Dados de Contato</h3>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <FormField
@@ -313,7 +315,6 @@ export default function ClienteFormDialog({
                 />
               </div>
 
-              {/* ... keep existing code (reposition configuration section) */}
               <h3 className="text-lg font-medium pt-2">Configuração de Reposição</h3>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <FormField
@@ -368,7 +369,6 @@ export default function ClienteFormDialog({
                 />
               </div>
 
-              {/* ... keep existing code (delivery window section and other fields) */}
               <h3 className="text-lg font-medium pt-2">Janela de Entrega</h3>
               <FormField
                 control={form.control}
@@ -387,10 +387,8 @@ export default function ClienteFormDialog({
                 )}
               />
 
-              {/* Novo: Configuração de Entrega */}
               <h3 className="text-lg font-medium pt-2">Configuração de Entrega</h3>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* Representante */}
                 <FormField
                   control={form.control}
                   name="representanteId"
@@ -414,7 +412,6 @@ export default function ClienteFormDialog({
                   )}
                 />
 
-                {/* Rota */}
                 <FormField
                   control={form.control}
                   name="rotaEntregaId"
@@ -439,9 +436,7 @@ export default function ClienteFormDialog({
                 />
               </div>
 
-              {/* Categoria e Instruções */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* Categoria */}
                 <FormField
                   control={form.control}
                   name="categoriaEstabelecimentoId"
@@ -465,7 +460,6 @@ export default function ClienteFormDialog({
                   )}
                 />
 
-                {/* Toggle Contabilizar Giro */}
                 <FormField
                   control={form.control}
                   name="contabilizarGiroMedio"
@@ -488,7 +482,6 @@ export default function ClienteFormDialog({
                 />
               </div>
 
-              {/* Instruções de Entrega */}
               <FormField
                 control={form.control}
                 name="instrucoesEntrega"
@@ -507,11 +500,9 @@ export default function ClienteFormDialog({
                 )}
               />
 
-              {/* Novo: Configurações Adicionais */}
               <h3 className="text-lg font-medium pt-2">Configurações Adicionais</h3>
               
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                {/* Tipo de Logística */}
                 <FormField
                   control={form.control}
                   name="tipoLogistica"
@@ -532,7 +523,6 @@ export default function ClienteFormDialog({
                   )}
                 />
 
-                {/* Tipo de Nota Fiscal */}
                 <FormField
                   control={form.control}
                   name="emiteNotaFiscal"
@@ -554,7 +544,6 @@ export default function ClienteFormDialog({
                   )}
                 />
 
-                {/* Tipo de Cobrança */}
                 <FormField
                   control={form.control}
                   name="tipoCobranca"
@@ -576,7 +565,6 @@ export default function ClienteFormDialog({
                 />
               </div>
 
-              {/* Forma de Pagamento */}
               <FormField
                 control={form.control}
                 name="formaPagamento"
@@ -598,7 +586,6 @@ export default function ClienteFormDialog({
                 )}
               />
 
-              {/* Observações */}
               <FormField
                 control={form.control}
                 name="observacoes"
