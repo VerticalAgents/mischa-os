@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,7 +8,7 @@ import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { useToast } from "@/hooks/use-toast";
 import { Printer, FileText, Check, Undo } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { addBusinessDays, isWeekend } from "date-fns";
+import { addBusinessDays, isWeekend, isSameDay } from "date-fns";
 
 // Helper function to get the next business day
 const getProximoDiaUtil = (data: Date): Date => {
@@ -33,41 +32,43 @@ export const SeparacaoPedidos = () => {
   // Calculate next business day
   const proximoDiaUtil = getProximoDiaUtil(hoje);
   
-  // Filtrar pedidos em separação/agendados e separá-los por tipo
-  const pedidosPadrao = pedidos.filter(p => 
-    (p.statusPedido === "Agendado") && 
-    p.tipoPedido === "Padrão"
-  );
+  // Filtrar pedidos agendados para HOJE
+  const pedidosHoje = pedidos.filter(p => {
+    if (p.statusPedido !== "Agendado") return false;
+    
+    const dataPedido = new Date(p.dataPrevistaEntrega);
+    dataPedido.setHours(0, 0, 0, 0);
+    
+    return isSameDay(dataPedido, hoje);
+  });
   
-  const pedidosAlterados = pedidos.filter(p => 
-    (p.statusPedido === "Agendado") && 
-    p.tipoPedido === "Alterado"
-  );
+  // Separar pedidos de hoje por tipo
+  const pedidosPadraoHoje = pedidosHoje.filter(p => p.tipoPedido === "Padrão");
+  const pedidosAlteradosHoje = pedidosHoje.filter(p => p.tipoPedido === "Alterado");
 
   // Filtrar pedidos para o próximo dia útil que ainda não foram separados
   const pedidosProximoDia = pedidos.filter(p => {
+    if (p.statusPedido !== "Agendado") return false;
+    
     // Converter a data do pedido para o início do dia para comparação consistente
     const dataPedido = new Date(p.dataPrevistaEntrega);
     dataPedido.setHours(0, 0, 0, 0);
     
-    // Verificar se o pedido é para o próximo dia útil e não foi separado ainda
-    return dataPedido.getTime() === proximoDiaUtil.getTime() && 
-           p.substatusPedido !== "Separado" &&
-           p.statusPedido === "Agendado";
+    // Verificar se o pedido é para o próximo dia útil
+    return isSameDay(dataPedido, proximoDiaUtil) && p.substatusPedido !== "Separado";
   });
   
   // Ordenar pedidos pelo tamanho do pacote (total de unidades)
-  const pedidosPadraoOrdenados = [...pedidosPadrao].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
-  const pedidosAlteradosOrdenados = [...pedidosAlterados].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
+  const pedidosPadraoOrdenados = [...pedidosPadraoHoje].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
+  const pedidosAlteradosOrdenados = [...pedidosAlteradosHoje].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
   const pedidosProximoDiaOrdenados = [...pedidosProximoDia].sort((a, b) => a.totalPedidoUnidades - b.totalPedidoUnidades);
   
-  // Nova lista combinada para a subaba "Todos os Pedidos"
-  const todosPedidos = [
+  // Lista combinada para a subaba "Todos os Pedidos" (apenas pedidos de hoje)
+  const todosPedidosHoje = [
     ...pedidosPadraoOrdenados,
     ...pedidosAlteradosOrdenados
   ];
 
-  // Nova função para confirmar separação - Atualiza diretamente para "Separado" conforme requisito
   const confirmarSeparacaoPedido = (idPedido: number) => {
     atualizarSubstatusPedido(idPedido, "Separado", "Separação confirmada manualmente");
     toast({
@@ -76,7 +77,6 @@ export const SeparacaoPedidos = () => {
     });
   };
   
-  // Nova função para desfazer a separação
   const desfazerSeparacao = (idPedido: number) => {
     atualizarSubstatusPedido(idPedido, "Agendado", "Separação desfeita manualmente");
     toast({
@@ -85,7 +85,6 @@ export const SeparacaoPedidos = () => {
     });
   };
   
-  // Nova função para marcar todos como separados
   const marcarTodosSeparados = () => {
     let listaAtual: Array<any> = [];
     
@@ -96,7 +95,7 @@ export const SeparacaoPedidos = () => {
     } else if (activeSubTab === "proximos") {
       listaAtual = pedidosProximoDiaOrdenados;
     } else {
-      listaAtual = todosPedidos;
+      listaAtual = todosPedidosHoje;
     }
     
     if (listaAtual.length === 0) {
@@ -108,7 +107,6 @@ export const SeparacaoPedidos = () => {
       return;
     }
     
-    // Confirmar separação de todos os pedidos listados
     listaAtual.forEach(pedido => {
       if (pedido.substatusPedido !== "Separado") {
         atualizarSubstatusPedido(pedido.id, "Separado", "Separação confirmada em massa");
@@ -121,7 +119,6 @@ export const SeparacaoPedidos = () => {
     });
   };
 
-  // Função para imprimir lista de separação
   const imprimirListaSeparacao = () => {
     let listaAtual: Array<any> = [];
     let tipoLista = "";
@@ -136,7 +133,7 @@ export const SeparacaoPedidos = () => {
       listaAtual = pedidosProximoDiaOrdenados;
       tipoLista = "Próximas Separações";
     } else {
-      listaAtual = todosPedidos;
+      listaAtual = todosPedidosHoje;
       tipoLista = "Todos os Pedidos";
     }
     
@@ -149,7 +146,6 @@ export const SeparacaoPedidos = () => {
       return;
     }
     
-    // Criar conteúdo para impressão
     let printContent = `
       <html>
         <head>
@@ -203,7 +199,6 @@ export const SeparacaoPedidos = () => {
       </html>
     `;
     
-    // Criar iframe para impressão
     if (printFrameRef.current) {
       const iframe = printFrameRef.current;
       const iframeWindow = iframe.contentWindow;
@@ -227,7 +222,6 @@ export const SeparacaoPedidos = () => {
     }
   };
   
-  // Função para imprimir etiquetas
   const imprimirEtiquetas = () => {
     let listaAtual: Array<any> = [];
     let tipoLista = "";
@@ -239,7 +233,7 @@ export const SeparacaoPedidos = () => {
       listaAtual = pedidosAlteradosOrdenados;
       tipoLista = "Pedidos Alterados";
     } else {
-      listaAtual = todosPedidos;
+      listaAtual = todosPedidosHoje;
       tipoLista = "Todos os Pedidos";
     }
     
@@ -252,7 +246,6 @@ export const SeparacaoPedidos = () => {
       return;
     }
     
-    // Criar conteúdo para impressão de etiquetas
     let printContent = `
       <html>
         <head>
@@ -300,7 +293,6 @@ export const SeparacaoPedidos = () => {
       </html>
     `;
     
-    // Criar iframe para impressão
     if (printFrameRef.current) {
       const iframe = printFrameRef.current;
       const iframeWindow = iframe.contentWindow;
@@ -353,20 +345,20 @@ export const SeparacaoPedidos = () => {
           className="w-full"
         >
           <TabsList className="mb-4">
-            <TabsTrigger value="todos">Todos os Pedidos</TabsTrigger>
+            <TabsTrigger value="todos">Todos os Pedidos ({todosPedidosHoje.length})</TabsTrigger>
             <TabsTrigger value="padrao" className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-green-500"></span> Pedidos Padrão
+              <span className="h-2 w-2 rounded-full bg-green-500"></span> Pedidos Padrão ({pedidosPadraoOrdenados.length})
             </TabsTrigger>
             <TabsTrigger value="alterados" className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-red-500"></span> Pedidos Alterados
+              <span className="h-2 w-2 rounded-full bg-red-500"></span> Pedidos Alterados ({pedidosAlteradosOrdenados.length})
             </TabsTrigger>
             <TabsTrigger value="proximos" className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-blue-500"></span> Próximas Separações
+              <span className="h-2 w-2 rounded-full bg-blue-500"></span> Próximas Separações ({pedidosProximoDiaOrdenados.length})
             </TabsTrigger>
           </TabsList>
           
           <TabsContent value="todos">
-            {todosPedidos.length > 0 ? (
+            {todosPedidosHoje.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -379,7 +371,7 @@ export const SeparacaoPedidos = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {todosPedidos.map((pedido) => (
+                  {todosPedidosHoje.map((pedido) => (
                     <TableRow key={pedido.id}>
                       <TableCell>{pedido.cliente?.nome || "Pedido Único"}</TableCell>
                       <TableCell>
@@ -436,7 +428,7 @@ export const SeparacaoPedidos = () => {
               </Table>
             ) : (
               <div className="text-center py-6 text-muted-foreground">
-                Não há pedidos para separação.
+                Não há pedidos agendados para hoje.
               </div>
             )}
           </TabsContent>
@@ -504,7 +496,7 @@ export const SeparacaoPedidos = () => {
               </Table>
             ) : (
               <div className="text-center py-6 text-muted-foreground">
-                Não há pedidos padrão para separação.
+                Não há pedidos padrão agendados para hoje.
               </div>
             )}
           </TabsContent>
@@ -572,12 +564,11 @@ export const SeparacaoPedidos = () => {
               </Table>
             ) : (
               <div className="text-center py-6 text-muted-foreground">
-                Não há pedidos alterados para separação.
+                Não há pedidos alterados agendados para hoje.
               </div>
             )}
           </TabsContent>
           
-          {/* Nova aba "Próximas Separações" */}
           <TabsContent value="proximos">
             {pedidosProximoDiaOrdenados.length > 0 ? (
               <Table>
