@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,7 @@ import { toast } from "sonner";
 export default function TodosAgendamentos() {
   const { clientes, carregarClientes } = useClienteStore();
   const { pedidos, criarNovoPedido } = usePedidoStore();
-  const { carregarAgendamentoPorCliente, salvarAgendamento } = useAgendamentoClienteStore();
+  const { carregarTodosAgendamentos, agendamentos: agendamentosStore, salvarAgendamento } = useAgendamentoClienteStore();
   
   const [abaAtiva, setAbaAtiva] = useState("todos");
   const [filtroRota, setFiltroRota] = useState<{ rota?: string }>({});
@@ -25,80 +24,47 @@ export default function TodosAgendamentos() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
-    carregarClientes();
-  }, [carregarClientes]);
-
-  // Carregar agendamentos EXCLUSIVAMENTE da tabela agendamentos_clientes
-  useEffect(() => {
-    const carregarAgendamentos = async () => {
-      if (clientes.length === 0) return;
-      
-      setLoading(true);
-      console.log('TodosAgendamentos: Carregando agendamentos da tabela unificada para', clientes.length, 'clientes');
-      
-      const agendamentosCarregados: AgendamentoItem[] = [];
-      
-      for (const cliente of clientes.filter(c => c.statusCliente === 'Ativo')) {
-        try {
-          // Carregar EXCLUSIVAMENTE da tabela agendamentos_clientes
-          const agendamentoCliente = await carregarAgendamentoPorCliente(cliente.id);
-          const pedidoCliente = pedidos.find(p => p.cliente?.id === cliente.id && p.statusPedido === 'Agendado');
-          
-          let dataReposicao = new Date();
-          let statusAgendamento = 'Agendar';
-          let quantidadeTotal = cliente.quantidadePadrao || 0;
-          let tipoPedido: 'Padrão' | 'Alterado' = 'Padrão';
-          
-          // Usar EXCLUSIVAMENTE dados da tabela agendamentos_clientes
-          if (agendamentoCliente) {
-            console.log('TodosAgendamentos: Agendamento da tabela encontrado para cliente', cliente.nome, ':', agendamentoCliente);
-            dataReposicao = agendamentoCliente.data_proxima_reposicao || new Date();
-            statusAgendamento = agendamentoCliente.status_agendamento;
-            quantidadeTotal = agendamentoCliente.quantidade_total;
-            tipoPedido = agendamentoCliente.tipo_pedido;
-          } else {
-            console.log('TodosAgendamentos: Nenhum agendamento encontrado na tabela para cliente', cliente.nome);
-            // Valores padrão quando não há agendamento (será criado automaticamente)
-            dataReposicao = new Date();
-            statusAgendamento = 'Agendar';
-            quantidadeTotal = cliente.quantidadePadrao || 0;
-            tipoPedido = 'Padrão';
-          }
-          
-          console.log('TodosAgendamentos: Dados finais para', cliente.nome, ':', {
-            dataReposicao,
-            statusAgendamento,
-            quantidadeTotal,
-            tipoPedido
-          });
-          
-          agendamentosCarregados.push({
-            cliente,
-            pedido: pedidoCliente,
-            dataReposicao,
-            statusAgendamento,
-            isPedidoUnico: false
-          });
-        } catch (error) {
-          console.error('TodosAgendamentos: Erro ao carregar agendamento do cliente', cliente.nome, ':', error);
-          // Em caso de erro, usar dados básicos
-          agendamentosCarregados.push({
-            cliente,
-            pedido: undefined,
-            dataReposicao: new Date(),
-            statusAgendamento: 'Agendar',
-            isPedidoUnico: false
-          });
-        }
-      }
-      
-      console.log('TodosAgendamentos: Total de agendamentos carregados da tabela unificada:', agendamentosCarregados.length);
-      setAgendamentos(agendamentosCarregados);
-      setLoading(false);
+    const carregarDados = async () => {
+      console.log('TodosAgendamentos: Carregando dados...');
+      await carregarClientes();
+      await carregarTodosAgendamentos();
     };
+    carregarDados();
+  }, [carregarClientes, carregarTodosAgendamentos, refreshTrigger]);
 
-    carregarAgendamentos();
-  }, [clientes, pedidos, carregarAgendamentoPorCliente, refreshTrigger]);
+  // Construir agendamentos baseado nos dados SINCRONIZADOS dos clientes
+  useEffect(() => {
+    if (clientes.length === 0) {
+      setLoading(true);
+      return;
+    }
+    
+    console.log('TodosAgendamentos: Construindo lista de agendamentos baseada nos clientes sincronizados...');
+    
+    const agendamentosCarregados: AgendamentoItem[] = [];
+    
+    for (const cliente of clientes.filter(c => c.statusCliente === 'Ativo')) {
+      const pedidoCliente = pedidos.find(p => p.cliente?.id === cliente.id && p.statusPedido === 'Agendado');
+      
+      // Usar os dados já sincronizados do cliente
+      let dataReposicao = cliente.proximaDataReposicao || new Date();
+      let statusAgendamento = cliente.statusAgendamento || 'Agendar';
+      
+      console.log('TodosAgendamentos: Cliente', cliente.nome, '- Status:', statusAgendamento, 'Data:', dataReposicao);
+      
+      agendamentosCarregados.push({
+        cliente,
+        pedido: pedidoCliente,
+        dataReposicao,
+        statusAgendamento,
+        isPedidoUnico: false
+      });
+    }
+    
+    console.log('TodosAgendamentos: Total de agendamentos construídos:', agendamentosCarregados.length);
+    setAgendamentos(agendamentosCarregados);
+    setLoading(false);
+  }, [clientes, pedidos]);
 
   const agendamentosFiltrados = agendamentos
     .filter(agendamento => {
@@ -129,29 +95,41 @@ export default function TodosAgendamentos() {
     setAgendamentoEditando(agendamento);
   };
 
-  const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
-    toast.success("Agendamento atualizado com sucesso!");
-    setAgendamentoEditando(null);
-    
-    // Recarregar todos os agendamentos da tabela unificada
-    console.log('TodosAgendamentos: Recarregando dados após salvamento');
-    setRefreshTrigger(prev => prev + 1);
+  const handleSalvarAgendamento = async (agendamentoAtualizado: AgendamentoItem) => {
+    try {
+      // Salvar o agendamento atualizado
+      await salvarAgendamento(agendamentoAtualizado.cliente.id, {
+        status_agendamento: agendamentoAtualizado.statusAgendamento,
+        data_proxima_reposicao: agendamentoAtualizado.dataReposicao,
+        quantidade_total: agendamentoAtualizado.cliente.quantidadePadrao || 0,
+        tipo_pedido: 'Padrão'
+      });
+
+      toast.success("Agendamento atualizado com sucesso!");
+      setAgendamentoEditando(null);
+      
+      // Recarregar todos os dados para garantir sincronização
+      console.log('TodosAgendamentos: Recarregando dados após salvamento...');
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('TodosAgendamentos: Erro ao salvar agendamento:', error);
+      toast.error("Erro ao salvar agendamento");
+    }
   };
 
   const handleConfirmarPrevisto = async (agendamento: AgendamentoItem) => {
     try {
       console.log('TodosAgendamentos: Confirmando agendamento previsto para cliente:', agendamento.cliente.nome);
-      console.log('TodosAgendamentos: Data atual do agendamento:', agendamento.dataReposicao);
       
       // PRESERVAR a data existente ao confirmar
       await salvarAgendamento(agendamento.cliente.id, {
         status_agendamento: 'Agendado',
-        data_proxima_reposicao: agendamento.dataReposicao, // Manter a data atual
+        data_proxima_reposicao: agendamento.dataReposicao,
         quantidade_total: agendamento.cliente.quantidadePadrao || 0,
         tipo_pedido: 'Padrão'
       });
 
-      // Recarregar dados da tabela unificada
+      // Recarregar dados para sincronização
       setRefreshTrigger(prev => prev + 1);
 
       toast.success(`Agendamento de ${agendamento.cliente.nome} confirmado com sucesso!`);

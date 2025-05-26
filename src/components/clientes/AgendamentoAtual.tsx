@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Cliente } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
 import { useAgendamentoClienteStore, AgendamentoCliente } from "@/hooks/useAgendamentoClienteStore";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import { toast } from "@/hooks/use-toast";
 import { AlertTriangle, Save, Calendar } from "lucide-react";
 
@@ -49,6 +49,7 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
   
   const { produtos } = useProdutoStore();
   const { carregarAgendamentoPorCliente, salvarAgendamento, loading } = useAgendamentoClienteStore();
+  const { carregarClientes } = useClienteStore();
 
   // Filtrar produtos baseado nas categorias habilitadas do cliente
   const produtosFiltrados = produtos.filter(produto => {
@@ -191,6 +192,10 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
 
       console.log('AgendamentoAtual: Salvando na tabela agendamentos_clientes:', dadosAgendamento);
       await salvarAgendamento(cliente.id, dadosAgendamento);
+      
+      // Recarregar dados dos clientes para atualizar a visualização geral
+      console.log('AgendamentoAtual: Recarregando lista de clientes após salvamento...');
+      await carregarClientes();
       
       // Notificar componente pai sobre a atualização (para recarregar dados se necessário)
       if (onAgendamentoUpdate) {

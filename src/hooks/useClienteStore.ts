@@ -29,8 +29,14 @@ interface ClienteStore {
   getClientePorId: (id: string) => Cliente | undefined;
 }
 
+// Helper para converter string de data do banco para Date local
+const parseDateFromDatabase = (dateString: string): Date => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
 // Helper para converter dados do Supabase para o tipo Cliente
-function convertSupabaseToCliente(data: any): Cliente {
+function convertSupabaseToCliente(data: any, agendamento?: any): Cliente {
   return {
     id: data.id,
     nome: data.nome,
@@ -45,8 +51,11 @@ function convertSupabaseToCliente(data: any): Cliente {
     dataCadastro: new Date(data.created_at),
     metaGiroSemanal: data.meta_giro_semanal || 0,
     ultimaDataReposicaoEfetiva: data.ultima_data_reposicao_efetiva ? new Date(data.ultima_data_reposicao_efetiva) : undefined,
-    statusAgendamento: data.status_agendamento,
-    proximaDataReposicao: data.proxima_data_reposicao ? new Date(data.proxima_data_reposicao) : undefined,
+    // Usar dados do agendamento se disponível, senão usar dados do cliente (fallback)
+    statusAgendamento: agendamento?.status_agendamento || data.status_agendamento || 'Não Agendado',
+    proximaDataReposicao: agendamento?.data_proxima_reposicao 
+      ? parseDateFromDatabase(agendamento.data_proxima_reposicao) 
+      : (data.proxima_data_reposicao ? new Date(data.proxima_data_reposicao) : undefined),
     ativo: data.ativo || true,
     giroMedioSemanal: data.giro_medio_semanal || calcularGiroSemanal(data.quantidade_padrao || 0, data.periodicidade_padrao || 7),
     janelasEntrega: data.janelas_entrega,
@@ -111,13 +120,16 @@ export const useClienteStore = create<ClienteStore>()(
       carregarClientes: async () => {
         set({ loading: true });
         try {
-          const { data, error } = await supabase
+          console.log('useClienteStore: Carregando clientes com dados de agendamento...');
+          
+          // Carregar clientes junto com seus agendamentos
+          const { data: clientesData, error: clientesError } = await supabase
             .from('clientes')
             .select('*')
             .order('created_at', { ascending: false });
 
-          if (error) {
-            console.error('Erro ao carregar clientes:', error);
+          if (clientesError) {
+            console.error('Erro ao carregar clientes:', clientesError);
             toast({
               title: "Erro",
               description: "Não foi possível carregar os clientes",
@@ -126,7 +138,32 @@ export const useClienteStore = create<ClienteStore>()(
             return;
           }
 
-          const clientesConvertidos = data?.map(convertSupabaseToCliente) || [];
+          // Carregar todos os agendamentos
+          const { data: agendamentosData, error: agendamentosError } = await supabase
+            .from('agendamentos_clientes')
+            .select('*');
+
+          if (agendamentosError) {
+            console.error('Erro ao carregar agendamentos:', agendamentosError);
+            // Continuar mesmo se houver erro nos agendamentos
+          }
+
+          // Mapear agendamentos por cliente_id para fácil acesso
+          const agendamentosPorCliente = new Map();
+          if (agendamentosData) {
+            agendamentosData.forEach(agendamento => {
+              agendamentosPorCliente.set(agendamento.cliente_id, agendamento);
+            });
+          }
+
+          // Converter clientes incluindo dados de agendamento
+          const clientesConvertidos = clientesData?.map(cliente => {
+            const agendamento = agendamentosPorCliente.get(cliente.id);
+            console.log(`useClienteStore: Cliente ${cliente.nome} - Agendamento:`, agendamento);
+            return convertSupabaseToCliente(cliente, agendamento);
+          }) || [];
+
+          console.log('useClienteStore: Total de clientes carregados:', clientesConvertidos.length);
           set({ clientes: clientesConvertidos });
         } catch (error) {
           console.error('Erro ao carregar clientes:', error);
@@ -299,6 +336,9 @@ export const useClienteStore = create<ClienteStore>()(
         }
         
         const cliente = get().clientes.find(c => c.id === id);
+        if (cliente) {
+          console.log('useClienteStore: Cliente selecionado:', cliente.nome, 'Status agendamento:', cliente.statusAgendamento, 'Próxima data:', cliente.proximaDataReposicao);
+        }
         set({ clienteAtual: cliente || null });
       },
       

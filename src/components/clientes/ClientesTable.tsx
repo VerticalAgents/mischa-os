@@ -1,4 +1,3 @@
-
 import { ExternalLink, Calendar, ArrowUp, ArrowDown, Check } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,10 +16,10 @@ interface ClientesTableProps {
   clientes: Cliente[];
   visibleColumns: string[];
   columnOptions: ColumnOption[];
-  onSelectCliente: (id: string) => void; // Changed from number to string
-  selectedClientes?: string[]; // Changed from number[] to string[]
+  onSelectCliente: (id: string) => void;
+  selectedClientes?: string[];
   onSelectAllClientes?: () => void;
-  onToggleClienteSelection?: (id: string) => void; // Changed from number to string
+  onToggleClienteSelection?: (id: string) => void;
   showSelectionControls?: boolean;
 }
 
@@ -317,7 +316,8 @@ export default function ClientesTable({
                             <TableCell key={`${cliente.id}-${columnId}`}>
                               <Badge variant={
                                 cliente.statusAgendamento === "Agendado" ? "default" : 
-                                cliente.statusAgendamento === "Pendente" ? "secondary" : "outline"
+                                cliente.statusAgendamento === "Previsto" ? "secondary" : 
+                                cliente.statusAgendamento === "Agendar" ? "outline" : "outline"
                               }>
                                 {cliente.statusAgendamento || "Não Agendado"}
                               </Badge>
@@ -333,7 +333,7 @@ export default function ClientesTable({
                                     {format(cliente.proximaDataReposicao, "dd/MM/yyyy", { locale: ptBR })}
                                   </span>
                                 </div>
-                              ) : "-"}
+                              ) : "—"}
                             </TableCell>
                           );
                         case "acoes":
