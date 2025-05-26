@@ -18,6 +18,7 @@ export type Database = {
           itens_personalizados: Json | null
           quantidade_total: number
           status_agendamento: string
+          substatus_pedido: string | null
           tipo_pedido: string
           updated_at: string
         }
@@ -29,6 +30,7 @@ export type Database = {
           itens_personalizados?: Json | null
           quantidade_total?: number
           status_agendamento?: string
+          substatus_pedido?: string | null
           tipo_pedido?: string
           updated_at?: string
         }
@@ -40,6 +42,7 @@ export type Database = {
           itens_personalizados?: Json | null
           quantidade_total?: number
           status_agendamento?: string
+          substatus_pedido?: string | null
           tipo_pedido?: string
           updated_at?: string
         }

@@ -83,7 +83,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             quantidade_total: agendamento.quantidade_total,
             tipo_pedido: agendamento.tipo_pedido,
             status_agendamento: agendamento.status_agendamento,
-            substatus_pedido: agendamento.substatus_pedido as SubstatusPedidoAgendado,
+            substatus_pedido: (agendamento as any).substatus_pedido as SubstatusPedidoAgendado,
             itens_personalizados: agendamento.itens_personalizados,
             created_at: new Date(agendamento.created_at)
           })) || [];
@@ -101,7 +101,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         try {
           const { error } = await supabase
             .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Separado' })
+            .update({ substatus_pedido: 'Separado' } as any)
             .eq('id', pedidoId);
 
           if (error) throw error;
@@ -124,7 +124,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         try {
           const { error } = await supabase
             .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Agendado' })
+            .update({ substatus_pedido: 'Agendado' } as any)
             .eq('id', pedidoId);
 
           if (error) throw error;
@@ -147,7 +147,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         try {
           const { error } = await supabase
             .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Despachado' })
+            .update({ substatus_pedido: 'Despachado' } as any)
             .eq('id', pedidoId);
 
           if (error) throw error;
@@ -177,7 +177,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .update({ 
               substatus_pedido: 'Entregue',
               status_agendamento: 'Reagendar'
-            })
+            } as any)
             .eq('id', pedidoId);
 
           if (updateError) throw updateError;
@@ -203,8 +203,9 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               quantidade_total: pedido.quantidade_total,
               tipo_pedido: pedido.tipo_pedido,
               status_agendamento: 'Previsto',
-              itens_personalizados: pedido.itens_personalizados
-            });
+              itens_personalizados: pedido.itens_personalizados,
+              substatus_pedido: 'Agendado'
+            } as any);
 
           if (novoAgendamentoError) throw novoAgendamentoError;
 
@@ -252,7 +253,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .update({ 
               substatus_pedido: 'Retorno',
               status_agendamento: 'Reagendar'
-            })
+            } as any)
             .eq('id', pedidoId);
 
           if (updateError) throw updateError;
@@ -269,8 +270,9 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               quantidade_total: pedido.quantidade_total,
               tipo_pedido: pedido.tipo_pedido,
               status_agendamento: 'Previsto',
-              itens_personalizados: pedido.itens_personalizados
-            });
+              itens_personalizados: pedido.itens_personalizados,
+              substatus_pedido: 'Agendado'
+            } as any);
 
           if (novoAgendamentoError) throw novoAgendamentoError;
 
@@ -317,7 +319,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
           const { error } = await supabase
             .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Separado' })
+            .update({ substatus_pedido: 'Separado' } as any)
             .in('id', pedidosParaSeparar.map(p => p.id));
 
           if (error) throw error;
@@ -348,7 +350,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
           const { error } = await supabase
             .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Despachado' })
+            .update({ substatus_pedido: 'Despachado' } as any)
             .in('id', pedidosParaDespachar.map(p => p.id));
 
           if (error) throw error;
