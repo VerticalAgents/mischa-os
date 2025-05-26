@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "sonner";
@@ -395,7 +394,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           
         } catch (error) {
           console.error('❌ Erro ao confirmar entrega individual:', error);
-          toast.error("Erro ao confirmar entrega");
+          toast.error(`Erro ao confirmar entrega: ${error.message}`);
         }
       },
 
@@ -459,7 +458,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           
         } catch (error) {
           console.error('❌ Erro ao confirmar retorno individual:', error);
-          toast.error("Erro ao confirmar retorno");
+          toast.error(`Erro ao confirmar retorno: ${error.message}`);
         }
       },
 
