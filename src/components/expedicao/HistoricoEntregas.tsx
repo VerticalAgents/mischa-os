@@ -1,30 +1,33 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { usePedidoStore } from "@/hooks/usePedidoStore";
+import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { Check, X } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const HistoricoEntregas = () => {
   const [filtroHistorico, setFiltroHistorico] = useState<string>("todos");
   
-  // Obter pedidos do store
-  const pedidos = usePedidoStore(state => state.pedidos);
+  const { pedidos, carregarPedidos } = useExpedicaoStore();
+
+  useEffect(() => {
+    carregarPedidos();
+  }, [carregarPedidos]);
   
-  // Filtrar pedidos conforme requisitos: apenas os com status Entregue ou Retorno
+  // Filtrar pedidos conforme requisitos: apenas os com substatus Entregue ou Retorno
   const pedidosHistorico = pedidos.filter(pedido => 
-    pedido.substatusPedido === "Entregue" || 
-    pedido.substatusPedido === "Retorno"
+    pedido.substatus_pedido === "Entregue" || 
+    pedido.substatus_pedido === "Retorno"
   );
   
   // Filtrar com base na tab selecionada
   const pedidosFiltrados = pedidosHistorico.filter(pedido => {
     if (filtroHistorico === "entregues") {
-      return pedido.substatusPedido === "Entregue";
+      return pedido.substatus_pedido === "Entregue";
     } else if (filtroHistorico === "retornos") {
-      return pedido.substatusPedido === "Retorno";
+      return pedido.substatus_pedido === "Retorno";
     } else {
       return true; // "todos"
     }
@@ -32,9 +35,7 @@ export const HistoricoEntregas = () => {
   
   // Ordenar por data (do mais recente para o mais antigo)
   const pedidosOrdenados = [...pedidosFiltrados].sort((a, b) => {
-    const dataA = a.dataEfetivaEntrega ? new Date(a.dataEfetivaEntrega) : new Date(a.dataPrevistaEntrega);
-    const dataB = b.dataEfetivaEntrega ? new Date(b.dataEfetivaEntrega) : new Date(b.dataPrevistaEntrega);
-    return dataB.getTime() - dataA.getTime();
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
   return (
@@ -53,12 +54,12 @@ export const HistoricoEntregas = () => {
         className="w-full"
       >
         <TabsList className="mb-4">
-          <TabsTrigger value="todos">Todos</TabsTrigger>
+          <TabsTrigger value="todos">Todos ({pedidosOrdenados.length})</TabsTrigger>
           <TabsTrigger value="entregues" className="flex items-center gap-1">
-            <Check className="h-4 w-4 text-green-600" /> Entregas Confirmadas
+            <Check className="h-4 w-4 text-green-600" /> Entregas Confirmadas ({pedidosHistorico.filter(p => p.substatus_pedido === "Entregue").length})
           </TabsTrigger>
           <TabsTrigger value="retornos" className="flex items-center gap-1">
-            <X className="h-4 w-4 text-red-600" /> Retornos
+            <X className="h-4 w-4 text-red-600" /> Retornos ({pedidosHistorico.filter(p => p.substatus_pedido === "Retorno").length})
           </TabsTrigger>
         </TabsList>
         
@@ -92,25 +93,21 @@ const HistoricoTable = ({ pedidos }: { pedidos: any[] }) => {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Data da Entrega</TableHead>
+          <TableHead>Data da Operação</TableHead>
           <TableHead>PDV</TableHead>
           <TableHead>Status Final</TableHead>
-          <TableHead>Turno</TableHead>
-          <TableHead>Observações</TableHead>
+          <TableHead>Quantidade</TableHead>
+          <TableHead>Tipo Pedido</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {pedidos.map((pedido) => {
-          const dataExibicao = pedido.dataEfetivaEntrega 
-            ? formatDate(new Date(pedido.dataEfetivaEntrega)) 
-            : formatDate(new Date(pedido.dataPrevistaEntrega));
-            
           return (
             <TableRow key={pedido.id}>
-              <TableCell>{dataExibicao}</TableCell>
-              <TableCell>{pedido.cliente?.nome || "Pedido Único"}</TableCell>
+              <TableCell>{formatDate(new Date(pedido.created_at))}</TableCell>
+              <TableCell>{pedido.cliente_nome}</TableCell>
               <TableCell>
-                {pedido.substatusPedido === "Entregue" ? (
+                {pedido.substatus_pedido === "Entregue" ? (
                   <span className="flex items-center gap-1 text-green-600 font-medium">
                     <Check className="h-4 w-4" /> Entregue
                   </span>
@@ -120,13 +117,15 @@ const HistoricoTable = ({ pedidos }: { pedidos: any[] }) => {
                   </span>
                 )}
               </TableCell>
-              <TableCell>{pedido.turno || "—"}</TableCell>
+              <TableCell>{pedido.quantidade_total} unidades</TableCell>
               <TableCell>
-                {pedido.observacoes ? (
-                  <div className="max-w-[250px] truncate">{pedido.observacoes}</div>
-                ) : (
-                  "—"
-                )}
+                <span className={`px-2 py-1 rounded-full text-xs ${
+                  pedido.tipo_pedido === "Padrão" 
+                    ? "bg-green-100 text-green-800" 
+                    : "bg-red-100 text-red-800"
+                }`}>
+                  {pedido.tipo_pedido}
+                </span>
               </TableCell>
             </TableRow>
           );
