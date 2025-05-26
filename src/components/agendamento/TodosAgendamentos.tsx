@@ -40,7 +40,6 @@ export default function TodosAgendamentos() {
     return "Agendar"; // Default fallback
   };
 
-  // Construir agendamentos baseado nos dados SINCRONIZADOS dos clientes
   useEffect(() => {
     if (clientes.length === 0) {
       setLoading(true);
