@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { toast } from "sonner";
 import { Printer, FileText, Check, Undo } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { addBusinessDays, isWeekend, isSameDay } from "date-fns";
+import { SubstatusPedidoAgendado } from "@/types";
 
 // Helper function to get the next business day
 const getProximoDiaUtil = (data: Date): Date => {
@@ -28,7 +30,7 @@ interface PedidoVirtual {
   dataPrevistaEntrega: Date;
   tipoPedido: "Padrão" | "Alterado";
   statusPedido: "Agendado";
-  substatusPedido: "Agendado" | "Separado";
+  substatusPedido: SubstatusPedidoAgendado;
   itensPedido: Array<{
     nomeSabor: string;
     quantidadeSabor: number;
@@ -70,7 +72,7 @@ export const SeparacaoPedidos = () => {
       dataPrevistaEntrega: cliente.proximaDataReposicao!,
       tipoPedido: "Padrão" as const,
       statusPedido: "Agendado" as const,
-      substatusPedido: (cliente.statusAgendamento === "Separado" ? "Separado" : "Agendado") as "Agendado" | "Separado",
+      substatusPedido: (cliente.statusAgendamento === "Separado" ? "Separado" : "Agendado") as SubstatusPedidoAgendado,
       itensPedido: [
         // Simulação de distribuição de sabores - em produção viria de uma distribuição real
         { nomeSabor: "Brigadeiro", quantidadeSabor: Math.floor((cliente.quantidadePadrao || 0) * 0.4) },
@@ -105,7 +107,7 @@ export const SeparacaoPedidos = () => {
       dataPrevistaEntrega: cliente.proximaDataReposicao!,
       tipoPedido: "Padrão" as const,
       statusPedido: "Agendado" as const,
-      substatusPedido: "Agendado" as "Agendado" | "Separado",
+      substatusPedido: "Agendado" as SubstatusPedidoAgendado,
       itensPedido: [
         { nomeSabor: "Brigadeiro", quantidadeSabor: Math.floor((cliente.quantidadePadrao || 0) * 0.4) },
         { nomeSabor: "Beijinho", quantidadeSabor: Math.floor((cliente.quantidadePadrao || 0) * 0.3) },
