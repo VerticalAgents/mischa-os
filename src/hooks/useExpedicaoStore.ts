@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "sonner";
@@ -83,7 +82,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             quantidade_total: agendamento.quantidade_total,
             tipo_pedido: agendamento.tipo_pedido,
             status_agendamento: agendamento.status_agendamento,
-            substatus_pedido: (agendamento as any).substatus_pedido as SubstatusPedidoAgendado,
+            substatus_pedido: (agendamento as any).substatus_pedido as SubstatusPedidoAgendado || 'Agendado',
             itens_personalizados: agendamento.itens_personalizados,
             created_at: new Date(agendamento.created_at)
           })) || [];
@@ -310,7 +309,9 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
       marcarTodosSeparados: async (pedidos: PedidoExpedicao[]) => {
         try {
-          const pedidosParaSeparar = pedidos.filter(p => p.substatus_pedido !== 'Separado');
+          const pedidosParaSeparar = pedidos.filter(p => 
+            !p.substatus_pedido || p.substatus_pedido === 'Agendado'
+          );
           
           if (pedidosParaSeparar.length === 0) {
             toast.error("Não há pedidos para separar");
