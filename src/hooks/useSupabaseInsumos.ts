@@ -38,7 +38,7 @@ export const useSupabaseInsumos = () => {
         return;
       }
 
-      setInsumos(data as InsumoSupabase[] || []);
+      setInsumos((data as InsumoSupabase[]) || []);
     } catch (error) {
       console.error('Erro ao carregar insumos:', error);
     } finally {

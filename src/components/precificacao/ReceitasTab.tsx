@@ -83,7 +83,15 @@ export default function ReceitasTab() {
   });
 
   const onSubmitReceita = async (values: ReceitaFormValues) => {
-    const sucesso = await adicionarReceita(values);
+    // Garantir que todos os campos obrigatórios estão presentes
+    const receitaData = {
+      nome: values.nome,
+      descricao: values.descricao || "",
+      rendimento: values.rendimento,
+      unidade_rendimento: values.unidade_rendimento,
+    };
+    
+    const sucesso = await adicionarReceita(receitaData);
     if (sucesso) {
       setIsReceitaDialogOpen(false);
       receitaForm.reset();

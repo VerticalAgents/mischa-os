@@ -90,8 +90,13 @@ export default function ProdutosTab() {
   });
 
   const onSubmitProduto = async (values: ProdutoFormValues) => {
+    // Garantir que todos os campos obrigatórios estão presentes
     const produtoData = {
-      ...values,
+      nome: values.nome,
+      descricao: values.descricao || "",
+      unidades_producao: values.unidades_producao,
+      peso_unitario: values.peso_unitario,
+      preco_venda: values.preco_venda,
       ativo: true,
     };
     

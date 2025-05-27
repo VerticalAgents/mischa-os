@@ -92,7 +92,7 @@ export const useSupabaseProdutos = () => {
               .single();
             
             if (insumoData) {
-              item = insumoData;
+              item = insumoData as InsumoSupabase;
               custo_unitario = insumoData.volume_bruto > 0 ? insumoData.custo_medio / insumoData.volume_bruto : 0;
               nome_item = insumoData.nome;
               peso_total += componente.quantidade;
@@ -105,7 +105,7 @@ export const useSupabaseProdutos = () => {
               .single();
 
             if (receitaData) {
-              item = receitaData;
+              item = receitaData as ReceitaBaseSupabase;
               // Para receitas, precisamos calcular o custo unitário baseado nos insumos
               const { data: itensReceita } = await supabase
                 .from('itens_receita' as any)

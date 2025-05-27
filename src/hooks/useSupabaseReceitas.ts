@@ -70,7 +70,7 @@ export const useSupabaseReceitas = () => {
           continue;
         }
 
-        const itensCompletos = (itensData || []).map(item => {
+        const itensCompletos = (itensData || []).map((item: any) => {
           const insumo = item.insumos as InsumoSupabase;
           const custoUnitario = insumo.volume_bruto > 0 ? insumo.custo_medio / insumo.volume_bruto : 0;
           return {
