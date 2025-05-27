@@ -152,6 +152,30 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes_sistema: {
+        Row: {
+          configuracoes: Json
+          created_at: string
+          id: string
+          modulo: string
+          updated_at: string
+        }
+        Insert: {
+          configuracoes?: Json
+          created_at?: string
+          id?: string
+          modulo: string
+          updated_at?: string
+        }
+        Update: {
+          configuracoes?: Json
+          created_at?: string
+          id?: string
+          modulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       historico_producao: {
         Row: {
           created_at: string

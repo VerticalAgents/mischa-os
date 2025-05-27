@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -26,6 +26,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { DollarSign, CreditCard } from "lucide-react";
 import FormasPagamentoList from "../listas/FormasPagamentoList";
+import { useConfiguracoesStore } from "@/hooks/useConfiguracoesStore";
 
 // Schema for form validation
 const financeiroSchema = z.object({
@@ -42,33 +43,40 @@ const financeiroSchema = z.object({
 
 export default function FinanceiroTab() {
   const [activeTab, setActiveTab] = useState("parametros");
-  
-  // Load saved values from localStorage
-  const savedFinanceiro = localStorage.getItem("configFinanceiro")
-    ? JSON.parse(localStorage.getItem("configFinanceiro")!)
-    : {
-        moeda: "BRL",
-        formatoDecimais: 2,
-        margemLucroPadrao: 40,
-        custoLogisticaPerc: 7.5,
-        impostosPadrao: 6.0,
-        taxaDescontos: 0,
-        prazoPagamento: 30,
-        valorMinimoPedido: 0,
-        taxaEntrega: 0,
-      };
+  const { obterConfiguracao, salvarConfiguracao, loading } = useConfiguracoesStore();
   
   const financeiroForm = useForm<z.infer<typeof financeiroSchema>>({
     resolver: zodResolver(financeiroSchema),
-    defaultValues: savedFinanceiro,
+    defaultValues: {
+      moeda: "BRL",
+      formatoDecimais: 2,
+      margemLucroPadrao: 40,
+      custoLogisticaPerc: 7.5,
+      impostosPadrao: 6.0,
+      taxaDescontos: 0,
+      prazoPagamento: 30,
+      valorMinimoPedido: 0,
+      taxaEntrega: 0,
+    },
   });
+
+  // Carregar dados salvos quando o componente monta
+  useEffect(() => {
+    const configFinanceiro = obterConfiguracao('financeiro');
+    if (configFinanceiro && Object.keys(configFinanceiro).length > 0) {
+      financeiroForm.reset(configFinanceiro);
+    }
+  }, [financeiroForm, obterConfiguracao]);
   
-  const onFinanceiroSubmit = (data: z.infer<typeof financeiroSchema>) => {
-    localStorage.setItem("configFinanceiro", JSON.stringify(data));
-    toast({
-      title: "Configurações salvas",
-      description: "Configurações financeiras foram atualizadas com sucesso",
-    });
+  const onFinanceiroSubmit = async (data: z.infer<typeof financeiroSchema>) => {
+    const sucesso = await salvarConfiguracao('financeiro', data);
+    
+    if (sucesso) {
+      toast({
+        title: "Configurações salvas",
+        description: "Configurações financeiras foram atualizadas com sucesso",
+      });
+    }
   };
   
   return (
@@ -318,7 +326,9 @@ export default function FinanceiroTab() {
       </CardContent>
       <CardFooter className="flex justify-end">
         {activeTab === "parametros" && (
-          <Button type="submit" form="financeiro-form">Salvar Alterações</Button>
+          <Button type="submit" form="financeiro-form" disabled={loading}>
+            {loading ? "Salvando..." : "Salvar Alterações"}
+          </Button>
         )}
       </CardFooter>
     </Card>

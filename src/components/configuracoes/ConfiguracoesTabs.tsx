@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
@@ -16,6 +15,7 @@ import ProducaoTab from "./tabs/ProducaoTab";
 import AgendamentoTab from "./tabs/AgendamentoTab";
 import CategoriasProdutoTab from "./tabs/CategoriasProdutoTab";
 import ProporcoesTab from "./tabs/ProporcoesTab";
+import MigracaoDados from "./MigracaoDados";
 import { useSearchParams } from "react-router-dom";
 
 const TabTriggerWithTooltip = ({ value, icon: Icon, label, tooltip }: {
@@ -64,6 +64,9 @@ export default function ConfiguracoesTabs() {
           Configure todos os parâmetros e regras do sistema organizados por categoria
         </p>
       </div>
+
+      {/* Componente de migração de dados */}
+      <MigracaoDados />
 
       <Tabs defaultValue="empresa" value={activeTab} onValueChange={setActiveTab}>
         <div className="flex mb-8 overflow-x-auto">

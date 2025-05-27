@@ -2,6 +2,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
 import { UserCog } from "lucide-react";
+import { useConfiguracoesStore } from "@/hooks/useConfiguracoesStore";
 
 // Schema for form validation
 const empresaSchema = z.object({
@@ -35,29 +37,37 @@ const empresaSchema = z.object({
 });
 
 export default function EmpresaTab() {
-  // Load saved values from localStorage
-  const savedEmpresa = localStorage.getItem("configEmpresa")
-    ? JSON.parse(localStorage.getItem("configEmpresa")!)
-    : {
-        nomeEmpresa: "Minha Empresa",
-        cnpj: "",
-        logoUrl: "",
-        telefone: "",
-        email: "",
-        endereco: "",
-      };
+  const { obterConfiguracao, salvarConfiguracao, loading } = useConfiguracoesStore();
   
-  const empresaForm = useForm<z.infer<typeof empresaSchema>>({
+  const form = useForm<z.infer<typeof empresaSchema>>({
     resolver: zodResolver(empresaSchema),
-    defaultValues: savedEmpresa,
+    defaultValues: {
+      nomeEmpresa: "",
+      cnpj: "",
+      logoUrl: "",
+      telefone: "",
+      email: "",
+      endereco: "",
+    },
   });
   
-  const onEmpresaSubmit = (data: z.infer<typeof empresaSchema>) => {
-    localStorage.setItem("configEmpresa", JSON.stringify(data));
-    toast({
-      title: "Configurações salvas",
-      description: "Dados da empresa foram atualizados com sucesso",
-    });
+  // Carregar dados salvos quando o componente monta
+  useEffect(() => {
+    const configEmpresa = obterConfiguracao('empresa');
+    if (configEmpresa && Object.keys(configEmpresa).length > 0) {
+      form.reset(configEmpresa);
+    }
+  }, [form, obterConfiguracao]);
+  
+  const onEmpresaSubmit = async (data: z.infer<typeof empresaSchema>) => {
+    const sucesso = await salvarConfiguracao('empresa', data);
+    
+    if (sucesso) {
+      toast({
+        title: "Configurações salvas",
+        description: "Dados da empresa foram atualizados com sucesso",
+      });
+    }
   };
   
   return (
@@ -72,14 +82,14 @@ export default function EmpresaTab() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...empresaForm}>
+        <Form {...form}>
           <form 
             id="empresa-form" 
-            onSubmit={empresaForm.handleSubmit(onEmpresaSubmit)}
+            onSubmit={form.handleSubmit(onEmpresaSubmit)}
             className="space-y-6"
           >
             <FormField
-              control={empresaForm.control}
+              control={form.control}
               name="nomeEmpresa"
               render={({ field }) => (
                 <FormItem>
@@ -94,7 +104,7 @@ export default function EmpresaTab() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
-                control={empresaForm.control}
+                control={form.control}
                 name="cnpj"
                 render={({ field }) => (
                   <FormItem>
@@ -108,7 +118,7 @@ export default function EmpresaTab() {
               />
               
               <FormField
-                control={empresaForm.control}
+                control={form.control}
                 name="telefone"
                 render={({ field }) => (
                   <FormItem>
@@ -123,7 +133,7 @@ export default function EmpresaTab() {
             </div>
             
             <FormField
-              control={empresaForm.control}
+              control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
@@ -141,7 +151,7 @@ export default function EmpresaTab() {
             />
             
             <FormField
-              control={empresaForm.control}
+              control={form.control}
               name="endereco"
               render={({ field }) => (
                 <FormItem>
@@ -155,7 +165,7 @@ export default function EmpresaTab() {
             />
             
             <FormField
-              control={empresaForm.control}
+              control={form.control}
               name="logoUrl"
               render={({ field }) => (
                 <FormItem>
@@ -174,7 +184,9 @@ export default function EmpresaTab() {
         </Form>
       </CardContent>
       <CardFooter className="flex justify-end">
-        <Button type="submit" form="empresa-form">Salvar Alterações</Button>
+        <Button type="submit" form="empresa-form" disabled={loading}>
+          {loading ? "Salvando..." : "Salvar Alterações"}
+        </Button>
       </CardFooter>
     </Card>
   );
