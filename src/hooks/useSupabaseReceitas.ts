@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -56,21 +55,21 @@ export const useSupabaseReceitas = () => {
 
       const receitasCompletas: ReceitaCompleta[] = [];
 
-      for (const receita of receitasData || []) {
+      for (const receita of (receitasData as any as ReceitaBaseSupabase[]) || []) {
         const { data: itensData, error: itensError } = await supabase
           .from('itens_receita' as any)
           .select(`
             *,
             insumos (*)
           `)
-          .eq('receita_id', receita.id);
+          .eq('receita_id', (receita as any).id);
 
         if (itensError) {
           console.error('Erro ao carregar itens da receita:', itensError);
           continue;
         }
 
-        const itensCompletos = (itensData || []).map((item: any) => {
+        const itensCompletos = ((itensData as any) || []).map((item: any) => {
           const insumo = item.insumos as InsumoSupabase;
           const custoUnitario = insumo.volume_bruto > 0 ? insumo.custo_medio / insumo.volume_bruto : 0;
           return {
@@ -82,10 +81,10 @@ export const useSupabaseReceitas = () => {
 
         const peso_total = itensCompletos.reduce((sum, item) => sum + item.quantidade, 0);
         const custo_total = itensCompletos.reduce((sum, item) => sum + item.custo_item, 0);
-        const custo_unitario = receita.rendimento > 0 ? custo_total / receita.rendimento : 0;
+        const custo_unitario = (receita as any).rendimento > 0 ? custo_total / (receita as any).rendimento : 0;
 
         receitasCompletas.push({
-          ...receita,
+          ...(receita as any as ReceitaBaseSupabase),
           itens: itensCompletos,
           peso_total,
           custo_total,
