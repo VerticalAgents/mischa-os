@@ -2,7 +2,7 @@
 import { useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import InsumosTab from "@/components/precificacao/InsumosTab";
+import InsumosSupabaseTab from "@/components/precificacao/InsumosSupabaseTab";
 import ReceitasTab from "@/components/precificacao/ReceitasTab";
 import ProdutosTab from "@/components/precificacao/ProdutosTab";
 
@@ -13,7 +13,7 @@ export default function Precificacao() {
     <>
       <PageHeader 
         title="Precificação"
-        description="Gerenciamento de insumos, receitas e produtos"
+        description="Sistema integrado de gestão de insumos, receitas e produtos com banco de dados unificado"
       />
       
       <div className="mt-8">
@@ -25,7 +25,7 @@ export default function Precificacao() {
           </TabsList>
           
           <TabsContent value="insumos">
-            <InsumosTab />
+            <InsumosSupabaseTab />
           </TabsContent>
           
           <TabsContent value="receitas">
