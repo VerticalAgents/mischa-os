@@ -152,6 +152,41 @@ export type Database = {
         }
         Relationships: []
       }
+      componentes_produto: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          produto_id: string
+          quantidade: number
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          produto_id: string
+          quantidade: number
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          produto_id?: string
+          quantidade?: number
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "componentes_produto_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos_finais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracoes_sistema: {
         Row: {
           configuracoes: Json
@@ -226,6 +261,84 @@ export type Database = {
           },
         ]
       }
+      insumos: {
+        Row: {
+          categoria: string
+          created_at: string
+          custo_medio: number
+          estoque_atual: number | null
+          estoque_minimo: number | null
+          id: string
+          nome: string
+          unidade_medida: string
+          updated_at: string
+          volume_bruto: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          custo_medio: number
+          estoque_atual?: number | null
+          estoque_minimo?: number | null
+          id?: string
+          nome: string
+          unidade_medida: string
+          updated_at?: string
+          volume_bruto: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          custo_medio?: number
+          estoque_atual?: number | null
+          estoque_minimo?: number | null
+          id?: string
+          nome?: string
+          unidade_medida?: string
+          updated_at?: string
+          volume_bruto?: number
+        }
+        Relationships: []
+      }
+      itens_receita: {
+        Row: {
+          created_at: string
+          id: string
+          insumo_id: string
+          quantidade: number
+          receita_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          insumo_id: string
+          quantidade: number
+          receita_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          insumo_id?: string
+          quantidade?: number
+          receita_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itens_receita_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itens_receita_receita_id_fkey"
+            columns: ["receita_id"]
+            isOneToOne: false
+            referencedRelation: "receitas_base"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       produtos: {
         Row: {
           ativo: boolean | null
@@ -286,6 +399,48 @@ export type Database = {
         }
         Relationships: []
       }
+      produtos_finais: {
+        Row: {
+          ativo: boolean
+          categoria_id: number | null
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          peso_unitario: number | null
+          preco_venda: number | null
+          subcategoria_id: number | null
+          unidades_producao: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria_id?: number | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          peso_unitario?: number | null
+          preco_venda?: number | null
+          subcategoria_id?: number | null
+          unidades_producao?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria_id?: number | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          peso_unitario?: number | null
+          preco_venda?: number | null
+          subcategoria_id?: number | null
+          unidades_producao?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -309,6 +464,36 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      receitas_base: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          rendimento: number
+          unidade_rendimento: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          rendimento: number
+          unidade_rendimento: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          rendimento?: number
+          unidade_rendimento?: string
           updated_at?: string
         }
         Relationships: []
