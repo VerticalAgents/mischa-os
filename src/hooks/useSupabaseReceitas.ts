@@ -40,7 +40,7 @@ export const useSupabaseReceitas = () => {
     setLoading(true);
     try {
       const { data: receitasData, error: receitasError } = await supabase
-        .from('receitas_base')
+        .from('receitas_base' as any)
         .select('*')
         .order('nome');
 
@@ -58,7 +58,7 @@ export const useSupabaseReceitas = () => {
 
       for (const receita of receitasData || []) {
         const { data: itensData, error: itensError } = await supabase
-          .from('itens_receita')
+          .from('itens_receita' as any)
           .select(`
             *,
             insumos (*)
@@ -104,7 +104,7 @@ export const useSupabaseReceitas = () => {
   const adicionarReceita = async (receita: Omit<ReceitaBaseSupabase, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
-        .from('receitas_base')
+        .from('receitas_base' as any)
         .insert([receita])
         .select()
         .single();
@@ -134,7 +134,7 @@ export const useSupabaseReceitas = () => {
   const adicionarItemReceita = async (receita_id: string, insumo_id: string, quantidade: number) => {
     try {
       const { error } = await supabase
-        .from('itens_receita')
+        .from('itens_receita' as any)
         .insert([{ receita_id, insumo_id, quantidade }]);
 
       if (error) {
@@ -158,7 +158,7 @@ export const useSupabaseReceitas = () => {
   const removerItemReceita = async (item_id: string) => {
     try {
       const { error } = await supabase
-        .from('itens_receita')
+        .from('itens_receita' as any)
         .delete()
         .eq('id', item_id);
 
@@ -183,7 +183,7 @@ export const useSupabaseReceitas = () => {
   const removerReceita = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('receitas_base')
+        .from('receitas_base' as any)
         .delete()
         .eq('id', id);
 

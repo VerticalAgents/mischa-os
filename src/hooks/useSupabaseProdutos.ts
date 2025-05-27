@@ -48,7 +48,7 @@ export const useSupabaseProdutos = () => {
     setLoading(true);
     try {
       const { data: produtosData, error: produtosError } = await supabase
-        .from('produtos_finais')
+        .from('produtos_finais' as any)
         .select('*')
         .order('nome');
 
@@ -66,7 +66,7 @@ export const useSupabaseProdutos = () => {
 
       for (const produto of produtosData || []) {
         const { data: componentesData, error: componentesError } = await supabase
-          .from('componentes_produto')
+          .from('componentes_produto' as any)
           .select('*')
           .eq('produto_id', produto.id);
 
@@ -86,7 +86,7 @@ export const useSupabaseProdutos = () => {
 
           if (componente.tipo === 'insumo') {
             const { data: insumoData } = await supabase
-              .from('insumos')
+              .from('insumos' as any)
               .select('*')
               .eq('id', componente.item_id)
               .single();
@@ -99,7 +99,7 @@ export const useSupabaseProdutos = () => {
             }
           } else if (componente.tipo === 'receita') {
             const { data: receitaData } = await supabase
-              .from('receitas_base')
+              .from('receitas_base' as any)
               .select('*')
               .eq('id', componente.item_id)
               .single();
@@ -108,7 +108,7 @@ export const useSupabaseProdutos = () => {
               item = receitaData;
               // Para receitas, precisamos calcular o custo unitário baseado nos insumos
               const { data: itensReceita } = await supabase
-                .from('itens_receita')
+                .from('itens_receita' as any)
                 .select(`
                   *,
                   insumos (*)
@@ -168,7 +168,7 @@ export const useSupabaseProdutos = () => {
   const adicionarProduto = async (produto: Omit<ProdutoFinalSupabase, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
-        .from('produtos_finais')
+        .from('produtos_finais' as any)
         .insert([produto])
         .select()
         .single();
@@ -198,7 +198,7 @@ export const useSupabaseProdutos = () => {
   const adicionarComponenteProduto = async (produto_id: string, item_id: string, tipo: 'receita' | 'insumo', quantidade: number) => {
     try {
       const { error } = await supabase
-        .from('componentes_produto')
+        .from('componentes_produto' as any)
         .insert([{ produto_id, item_id, tipo, quantidade }]);
 
       if (error) {
@@ -222,7 +222,7 @@ export const useSupabaseProdutos = () => {
   const removerComponenteProduto = async (componente_id: string) => {
     try {
       const { error } = await supabase
-        .from('componentes_produto')
+        .from('componentes_produto' as any)
         .delete()
         .eq('id', componente_id);
 
@@ -247,7 +247,7 @@ export const useSupabaseProdutos = () => {
   const atualizarProduto = async (id: string, produto: Partial<ProdutoFinalSupabase>) => {
     try {
       const { error } = await supabase
-        .from('produtos_finais')
+        .from('produtos_finais' as any)
         .update(produto)
         .eq('id', id);
 
@@ -276,7 +276,7 @@ export const useSupabaseProdutos = () => {
   const removerProduto = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('produtos_finais')
+        .from('produtos_finais' as any)
         .delete()
         .eq('id', id);
 

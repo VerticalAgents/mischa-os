@@ -105,13 +105,24 @@ export default function InsumosSupabaseTab() {
   };
   
   const onSubmit = async (values: FormValues) => {
+    // Criar objeto com todos os campos obrigatórios
+    const insumoData = {
+      nome: values.nome,
+      categoria: values.categoria,
+      volume_bruto: values.volume_bruto,
+      unidade_medida: values.unidade_medida,
+      custo_medio: values.custo_medio,
+      estoque_atual: values.estoque_atual,
+      estoque_minimo: values.estoque_minimo,
+    };
+
     if (editingInsumo) {
-      const sucesso = await atualizarInsumo(editingInsumo.id, values);
+      const sucesso = await atualizarInsumo(editingInsumo.id, insumoData);
       if (sucesso) {
         setIsDialogOpen(false);
       }
     } else {
-      const sucesso = await adicionarInsumo(values);
+      const sucesso = await adicionarInsumo(insumoData);
       if (sucesso) {
         setIsDialogOpen(false);
       }

@@ -24,7 +24,7 @@ export const useSupabaseInsumos = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('insumos')
+        .from('insumos' as any)
         .select('*')
         .order('nome');
 
@@ -38,7 +38,7 @@ export const useSupabaseInsumos = () => {
         return;
       }
 
-      setInsumos(data || []);
+      setInsumos(data as InsumoSupabase[] || []);
     } catch (error) {
       console.error('Erro ao carregar insumos:', error);
     } finally {
@@ -49,7 +49,7 @@ export const useSupabaseInsumos = () => {
   const adicionarInsumo = async (insumo: Omit<InsumoSupabase, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
-        .from('insumos')
+        .from('insumos' as any)
         .insert([insumo])
         .select()
         .single();
@@ -64,7 +64,7 @@ export const useSupabaseInsumos = () => {
         return false;
       }
 
-      setInsumos(prev => [...prev, data]);
+      setInsumos(prev => [...prev, data as InsumoSupabase]);
       toast({
         title: "Insumo adicionado",
         description: "Insumo criado com sucesso"
@@ -79,7 +79,7 @@ export const useSupabaseInsumos = () => {
   const atualizarInsumo = async (id: string, insumo: Partial<InsumoSupabase>) => {
     try {
       const { data, error } = await supabase
-        .from('insumos')
+        .from('insumos' as any)
         .update(insumo)
         .eq('id', id)
         .select()
@@ -95,7 +95,7 @@ export const useSupabaseInsumos = () => {
         return false;
       }
 
-      setInsumos(prev => prev.map(i => i.id === id ? data : i));
+      setInsumos(prev => prev.map(i => i.id === id ? data as InsumoSupabase : i));
       toast({
         title: "Insumo atualizado",
         description: "Insumo atualizado com sucesso"
@@ -110,7 +110,7 @@ export const useSupabaseInsumos = () => {
   const removerInsumo = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('insumos')
+        .from('insumos' as any)
         .delete()
         .eq('id', id);
 
