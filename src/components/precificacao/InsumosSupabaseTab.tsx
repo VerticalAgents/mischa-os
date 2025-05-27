@@ -43,9 +43,9 @@ import { Plus, Pencil, Trash } from "lucide-react";
 const insumoSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
   categoria: z.enum(["Matéria Prima", "Embalagem", "Outros"]),
-  volume_bruto: z.number().positive("Volume deve ser positivo"),
+  volume_bruto: z.number().min(0.01, "Volume deve ser maior que zero"),
   unidade_medida: z.enum(["g", "kg", "ml", "l", "un", "pct"]),
-  custo_medio: z.number().positive("Custo deve ser positivo"),
+  custo_medio: z.number().min(0.01, "Custo deve ser maior que zero"),
 });
 
 type InsumoFormValues = z.infer<typeof insumoSchema>;
@@ -253,7 +253,7 @@ export default function InsumosSupabaseTab() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Categoria</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione uma categoria" />
@@ -297,7 +297,7 @@ export default function InsumosSupabaseTab() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Unidade de Medida</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione unidade" />
