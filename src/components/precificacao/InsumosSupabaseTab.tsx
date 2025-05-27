@@ -62,9 +62,9 @@ export default function InsumosSupabaseTab() {
     defaultValues: {
       nome: "",
       categoria: "Matéria Prima",
-      volume_bruto: 0,
+      volume_bruto: 1,
       unidade_medida: "g",
-      custo_medio: 0,
+      custo_medio: 0.01,
     }
   });
 
@@ -72,9 +72,9 @@ export default function InsumosSupabaseTab() {
     form.reset({
       nome: "",
       categoria: "Matéria Prima",
-      volume_bruto: 0,
+      volume_bruto: 1,
       unidade_medida: "g",
-      custo_medio: 0,
+      custo_medio: 0.01,
     });
     setEditingInsumo(null);
     setIsDialogOpen(true);
@@ -95,10 +95,19 @@ export default function InsumosSupabaseTab() {
   const onSubmit = async (values: InsumoFormValues) => {
     let sucesso = false;
     
+    // Type assertion to ensure all required fields are present
+    const insumoData = {
+      nome: values.nome,
+      categoria: values.categoria,
+      volume_bruto: values.volume_bruto,
+      unidade_medida: values.unidade_medida,
+      custo_medio: values.custo_medio,
+    };
+    
     if (editingInsumo) {
-      sucesso = await atualizarInsumo(editingInsumo, values);
+      sucesso = await atualizarInsumo(editingInsumo, insumoData);
     } else {
-      sucesso = await adicionarInsumo(values);
+      sucesso = await adicionarInsumo(insumoData);
     }
     
     if (sucesso) {
