@@ -64,11 +64,11 @@ export const useSupabaseProdutos = () => {
 
       const produtosCompletos: ProdutoCompleto[] = [];
 
-      for (const produto of produtosData || []) {
+      for (const produto of (produtosData as any[]) || []) {
         const { data: componentesData, error: componentesError } = await supabase
           .from('componentes_produto' as any)
           .select('*')
-          .eq('produto_id', produto.id);
+          .eq('produto_id', (produto as any).id);
 
         if (componentesError) {
           console.error('Erro ao carregar componentes do produto:', componentesError);
@@ -79,33 +79,33 @@ export const useSupabaseProdutos = () => {
         let custo_total = 0;
         let peso_total = 0;
 
-        for (const componente of componentesData || []) {
+        for (const componente of (componentesData as any[]) || []) {
           let item: InsumoSupabase | ReceitaBaseSupabase | null = null;
           let custo_unitario = 0;
           let nome_item = '';
 
-          if (componente.tipo === 'insumo') {
+          if ((componente as any).tipo === 'insumo') {
             const { data: insumoData } = await supabase
               .from('insumos' as any)
               .select('*')
-              .eq('id', componente.item_id)
+              .eq('id', (componente as any).item_id)
               .single();
             
             if (insumoData) {
-              item = insumoData as InsumoSupabase;
-              custo_unitario = insumoData.volume_bruto > 0 ? insumoData.custo_medio / insumoData.volume_bruto : 0;
-              nome_item = insumoData.nome;
-              peso_total += componente.quantidade;
+              item = insumoData as any as InsumoSupabase;
+              custo_unitario = (insumoData as any).volume_bruto > 0 ? (insumoData as any).custo_medio / (insumoData as any).volume_bruto : 0;
+              nome_item = (insumoData as any).nome;
+              peso_total += (componente as any).quantidade;
             }
-          } else if (componente.tipo === 'receita') {
+          } else if ((componente as any).tipo === 'receita') {
             const { data: receitaData } = await supabase
               .from('receitas_base' as any)
               .select('*')
-              .eq('id', componente.item_id)
+              .eq('id', (componente as any).item_id)
               .single();
 
             if (receitaData) {
-              item = receitaData as ReceitaBaseSupabase;
+              item = receitaData as any as ReceitaBaseSupabase;
               // Para receitas, precisamos calcular o custo unitário baseado nos insumos
               const { data: itensReceita } = await supabase
                 .from('itens_receita' as any)
@@ -113,28 +113,28 @@ export const useSupabaseProdutos = () => {
                   *,
                   insumos (*)
                 `)
-                .eq('receita_id', receitaData.id);
+                .eq('receita_id', (receitaData as any).id);
 
               let custoTotalReceita = 0;
               if (itensReceita) {
-                for (const itemReceita of itensReceita) {
-                  const insumo = itemReceita.insumos as InsumoSupabase;
+                for (const itemReceita of (itensReceita as any[])) {
+                  const insumo = (itemReceita as any).insumos as InsumoSupabase;
                   const custoUnitarioInsumo = insumo.volume_bruto > 0 ? insumo.custo_medio / insumo.volume_bruto : 0;
-                  custoTotalReceita += itemReceita.quantidade * custoUnitarioInsumo;
+                  custoTotalReceita += (itemReceita as any).quantidade * custoUnitarioInsumo;
                 }
               }
-              custo_unitario = receitaData.rendimento > 0 ? custoTotalReceita / receitaData.rendimento : 0;
-              nome_item = receitaData.nome;
-              peso_total += componente.quantidade;
+              custo_unitario = (receitaData as any).rendimento > 0 ? custoTotalReceita / (receitaData as any).rendimento : 0;
+              nome_item = (receitaData as any).nome;
+              peso_total += (componente as any).quantidade;
             }
           }
 
-          const custo_item = componente.quantidade * custo_unitario;
+          const custo_item = (componente as any).quantidade * custo_unitario;
           custo_total += custo_item;
 
           if (item) {
             componentesCompletos.push({
-              ...componente,
+              ...(componente as ComponenteProdutoSupabase),
               item,
               custo_item,
               nome_item
@@ -142,13 +142,13 @@ export const useSupabaseProdutos = () => {
           }
         }
 
-        const custo_unitario_produto = produto.unidades_producao > 0 ? custo_total / produto.unidades_producao : 0;
-        const margem_lucro = produto.preco_venda && produto.preco_venda > 0 
-          ? ((produto.preco_venda - custo_unitario_produto) / produto.preco_venda) * 100 
+        const custo_unitario_produto = (produto as any).unidades_producao > 0 ? custo_total / (produto as any).unidades_producao : 0;
+        const margem_lucro = (produto as any).preco_venda && (produto as any).preco_venda > 0 
+          ? (((produto as any).preco_venda - custo_unitario_produto) / (produto as any).preco_venda) * 100 
           : 0;
 
         produtosCompletos.push({
-          ...produto,
+          ...(produto as ProdutoFinalSupabase),
           componentes: componentesCompletos,
           custo_total,
           custo_unitario: custo_unitario_produto,

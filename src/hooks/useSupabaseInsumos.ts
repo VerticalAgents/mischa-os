@@ -38,7 +38,7 @@ export const useSupabaseInsumos = () => {
         return;
       }
 
-      setInsumos((data as InsumoSupabase[]) || []);
+      setInsumos((data as any as InsumoSupabase[]) || []);
     } catch (error) {
       console.error('Erro ao carregar insumos:', error);
     } finally {
@@ -64,7 +64,7 @@ export const useSupabaseInsumos = () => {
         return false;
       }
 
-      setInsumos(prev => [...prev, data as InsumoSupabase]);
+      setInsumos(prev => [...prev, data as any as InsumoSupabase]);
       toast({
         title: "Insumo adicionado",
         description: "Insumo criado com sucesso"
@@ -95,7 +95,7 @@ export const useSupabaseInsumos = () => {
         return false;
       }
 
-      setInsumos(prev => prev.map(i => i.id === id ? data as InsumoSupabase : i));
+      setInsumos(prev => prev.map(i => i.id === id ? data as any as InsumoSupabase : i));
       toast({
         title: "Insumo atualizado",
         description: "Insumo atualizado com sucesso"
