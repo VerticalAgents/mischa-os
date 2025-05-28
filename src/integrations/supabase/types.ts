@@ -267,9 +267,11 @@ export type Database = {
           created_at: string
           custo_medio: number
           estoque_atual: number | null
+          estoque_ideal: number | null
           estoque_minimo: number | null
           id: string
           nome: string
+          ultima_entrada: string | null
           unidade_medida: string
           updated_at: string
           volume_bruto: number
@@ -279,9 +281,11 @@ export type Database = {
           created_at?: string
           custo_medio: number
           estoque_atual?: number | null
+          estoque_ideal?: number | null
           estoque_minimo?: number | null
           id?: string
           nome: string
+          ultima_entrada?: string | null
           unidade_medida: string
           updated_at?: string
           volume_bruto: number
@@ -291,9 +295,11 @@ export type Database = {
           created_at?: string
           custo_medio?: number
           estoque_atual?: number | null
+          estoque_ideal?: number | null
           estoque_minimo?: number | null
           id?: string
           nome?: string
+          ultima_entrada?: string | null
           unidade_medida?: string
           updated_at?: string
           volume_bruto?: number
@@ -335,6 +341,44 @@ export type Database = {
             columns: ["receita_id"]
             isOneToOne: false
             referencedRelation: "receitas_base"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      movimentacoes_estoque_insumos: {
+        Row: {
+          created_at: string
+          data_movimentacao: string
+          id: string
+          insumo_id: string
+          observacao: string | null
+          quantidade: number
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          data_movimentacao?: string
+          id?: string
+          insumo_id: string
+          observacao?: string | null
+          quantidade: number
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          data_movimentacao?: string
+          id?: string
+          insumo_id?: string
+          observacao?: string | null
+          quantidade?: number
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimentacoes_estoque_insumos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
             referencedColumns: ["id"]
           },
         ]
@@ -405,6 +449,7 @@ export type Database = {
           categoria_id: number | null
           created_at: string
           descricao: string | null
+          estoque_atual: number | null
           id: string
           nome: string
           peso_unitario: number | null
@@ -418,6 +463,7 @@ export type Database = {
           categoria_id?: number | null
           created_at?: string
           descricao?: string | null
+          estoque_atual?: number | null
           id?: string
           nome: string
           peso_unitario?: number | null
@@ -431,6 +477,7 @@ export type Database = {
           categoria_id?: number | null
           created_at?: string
           descricao?: string | null
+          estoque_atual?: number | null
           id?: string
           nome?: string
           peso_unitario?: number | null

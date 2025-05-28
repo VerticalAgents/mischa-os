@@ -1,11 +1,12 @@
 
-import { ReactNode } from "react";
-import EstoqueTab from "./tabs/EstoqueTab";
+import EstoqueProdutosTab from "./tabs/EstoqueProdutosTab";
+import EstoqueInsumosTab from "./tabs/EstoqueInsumosTab";
 import CotacoesTab from "./tabs/CotacoesTab";
 import PedidosTab from "./tabs/PedidosTab";
 
 const InsumosTabs = {
-  EstoqueTab,
+  EstoqueProdutosTab,
+  EstoqueInsumosTab,
   CotacoesTab,
   PedidosTab
 };

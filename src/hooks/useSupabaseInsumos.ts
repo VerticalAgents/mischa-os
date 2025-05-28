@@ -12,6 +12,8 @@ export interface InsumoSupabase {
   custo_medio: number;
   estoque_atual?: number;
   estoque_minimo?: number;
+  estoque_ideal?: number;
+  ultima_entrada?: string;
   created_at: string;
   updated_at: string;
 }
@@ -24,7 +26,7 @@ export const useSupabaseInsumos = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('insumos' as any)
+        .from('insumos')
         .select('*')
         .order('nome');
 
@@ -38,7 +40,7 @@ export const useSupabaseInsumos = () => {
         return;
       }
 
-      setInsumos((data as any as InsumoSupabase[]) || []);
+      setInsumos((data as InsumoSupabase[]) || []);
     } catch (error) {
       console.error('Erro ao carregar insumos:', error);
     } finally {
@@ -49,7 +51,7 @@ export const useSupabaseInsumos = () => {
   const adicionarInsumo = async (insumo: Omit<InsumoSupabase, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
-        .from('insumos' as any)
+        .from('insumos')
         .insert([insumo])
         .select()
         .single();
@@ -64,7 +66,7 @@ export const useSupabaseInsumos = () => {
         return false;
       }
 
-      setInsumos(prev => [...prev, data as any as InsumoSupabase]);
+      setInsumos(prev => [...prev, data as InsumoSupabase]);
       toast({
         title: "Insumo adicionado",
         description: "Insumo criado com sucesso"
@@ -79,7 +81,7 @@ export const useSupabaseInsumos = () => {
   const atualizarInsumo = async (id: string, insumo: Partial<InsumoSupabase>) => {
     try {
       const { data, error } = await supabase
-        .from('insumos' as any)
+        .from('insumos')
         .update(insumo)
         .eq('id', id)
         .select()
@@ -95,7 +97,7 @@ export const useSupabaseInsumos = () => {
         return false;
       }
 
-      setInsumos(prev => prev.map(i => i.id === id ? data as any as InsumoSupabase : i));
+      setInsumos(prev => prev.map(i => i.id === id ? data as InsumoSupabase : i));
       toast({
         title: "Insumo atualizado",
         description: "Insumo atualizado com sucesso"
@@ -110,7 +112,7 @@ export const useSupabaseInsumos = () => {
   const removerInsumo = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('insumos' as any)
+        .from('insumos')
         .delete()
         .eq('id', id);
 
