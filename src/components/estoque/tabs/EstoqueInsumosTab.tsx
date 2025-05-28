@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { Button } from "@/components/ui/button";
@@ -73,9 +72,9 @@ const configurarEstoqueSchema = z.object({
 
 const editarInsumoSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
-  categoria: z.string().min(1, "Categoria é obrigatória"),
+  categoria: z.enum(["Matéria Prima", "Embalagem", "Outros"]),
   volume_bruto: z.number().min(0.01, "Volume bruto deve ser maior que zero"),
-  unidade_medida: z.string().min(1, "Unidade de medida é obrigatória"),
+  unidade_medida: z.enum(["g", "kg", "ml", "l", "un", "pct"]),
   custo_medio: z.number().min(0.01, "Custo médio deve ser maior que zero"),
 });
 
@@ -113,9 +112,9 @@ export default function EstoqueInsumosTab() {
     resolver: zodResolver(editarInsumoSchema),
     defaultValues: {
       nome: "",
-      categoria: "",
+      categoria: "Matéria Prima",
       volume_bruto: 0,
-      unidade_medida: "",
+      unidade_medida: "g",
       custo_medio: 0,
     },
   });
@@ -165,9 +164,9 @@ export default function EstoqueInsumosTab() {
     setInsumoSelecionado(insumo);
     editarInsumoForm.reset({
       nome: insumo.nome,
-      categoria: insumo.categoria,
+      categoria: insumo.categoria as "Matéria Prima" | "Embalagem" | "Outros",
       volume_bruto: insumo.volume_bruto,
-      unidade_medida: insumo.unidade_medida,
+      unidade_medida: insumo.unidade_medida as "g" | "kg" | "ml" | "l" | "un" | "pct",
       custo_medio: insumo.custo_medio,
     });
     setIsEditarInsumoOpen(true);
@@ -255,7 +254,7 @@ export default function EstoqueInsumosTab() {
     const success = await atualizarInsumo(insumoSelecionado.id, values);
 
     if (success) {
-      setIsEditarInsumoOpen(true);
+      setIsEditarInsumoOpen(false);
       toast({
         title: "Insumo atualizado",
         description: "Dados do insumo atualizados com sucesso"
@@ -660,7 +659,7 @@ export default function EstoqueInsumosTab() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Categoria</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione a categoria" />
@@ -702,7 +701,7 @@ export default function EstoqueInsumosTab() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Unidade de Medida</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione a unidade" />
