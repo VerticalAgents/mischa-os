@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -56,13 +55,69 @@ export default function AgendamentoEditModal({
   const { produtos } = useProdutoStore();
   const { salvarAgendamento } = useAgendamentoClienteStore();
 
+  // Debug: Log completo dos produtos e cliente
+  useEffect(() => {
+    if (agendamento && open) {
+      console.log('🔍 DEBUG - Modal aberto para cliente:', agendamento.cliente.nome);
+      console.log('🔍 DEBUG - Categorias habilitadas do cliente:', agendamento.cliente.categoriasHabilitadas);
+      console.log('🔍 DEBUG - Total de produtos carregados:', produtos.length);
+      console.log('🔍 DEBUG - Produtos carregados:', produtos.map(p => ({
+        id: p.id,
+        nome: p.nome,
+        categoria: p.categoria,
+        categoriaId: p.categoriaId,
+        ativo: p.ativo
+      })));
+    }
+  }, [agendamento, open, produtos]);
+
   // Filtrar produtos baseado nas categorias habilitadas do cliente
   const produtosFiltrados = produtos.filter(produto => {
-    if (!agendamento?.cliente.categoriasHabilitadas || agendamento.cliente.categoriasHabilitadas.length === 0) {
+    // Debug detalhado do filtro
+    console.log('🔍 DEBUG - Verificando produto:', {
+      nome: produto.nome,
+      categoriaId: produto.categoriaId,
+      categoria: produto.categoria,
+      ativo: produto.ativo,
+      clienteCategorias: agendamento?.cliente.categoriasHabilitadas
+    });
+
+    // Se não há produtos ou cliente, retornar array vazio
+    if (!agendamento?.cliente || !produto) {
+      console.log('❌ DEBUG - Cliente ou produto inválido');
+      return false;
+    }
+
+    // Se produto não está ativo, filtrar fora
+    if (!produto.ativo) {
+      console.log('❌ DEBUG - Produto inativo:', produto.nome);
+      return false;
+    }
+
+    // Se cliente não tem categorias habilitadas, mostrar todos os produtos ativos
+    if (!agendamento.cliente.categoriasHabilitadas || agendamento.cliente.categoriasHabilitadas.length === 0) {
+      console.log('✅ DEBUG - Cliente sem categorias específicas, produto incluído:', produto.nome);
       return true;
     }
-    return agendamento.cliente.categoriasHabilitadas.includes(produto.categoriaId);
+
+    // Verificar se o produto está em uma categoria habilitada
+    const categoriaHabilitada = agendamento.cliente.categoriasHabilitadas.includes(produto.categoriaId);
+    console.log(`${categoriaHabilitada ? '✅' : '❌'} DEBUG - Produto ${produto.nome} categoria ${produto.categoriaId} habilitada:`, categoriaHabilitada);
+    
+    return categoriaHabilitada;
   });
+
+  // Debug dos produtos filtrados
+  useEffect(() => {
+    if (agendamento && open) {
+      console.log('🔍 DEBUG - Produtos após filtro:', produtosFiltrados.length);
+      console.log('🔍 DEBUG - Produtos filtrados:', produtosFiltrados.map(p => ({
+        nome: p.nome,
+        categoriaId: p.categoriaId,
+        categoria: p.categoria
+      })));
+    }
+  }, [produtosFiltrados, agendamento, open]);
 
   // Carregar dados do agendamento ao abrir o modal - usando EXATAMENTE os dados da tabela
   useEffect(() => {
@@ -120,6 +175,7 @@ export default function AgendamentoEditModal({
         quantidade: 0
       }));
       setProdutosQuantidades(produtosIniciais);
+      console.log('🔍 DEBUG - Inicializando produtos para tipo Alterado:', produtosIniciais.length);
     }
   }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length]);
 
@@ -318,6 +374,14 @@ export default function AgendamentoEditModal({
                   </div>
                 </div>
 
+                {/* Informações de debug - temporário */}
+                <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                  DEBUG: Cliente {agendamento.cliente.nome} | 
+                  Categorias: {JSON.stringify(agendamento.cliente.categoriasHabilitadas)} | 
+                  Produtos filtrados: {produtosFiltrados.length} | 
+                  Total produtos: {produtos.length}
+                </div>
+
                 {agendamento.cliente.categoriasHabilitadas && agendamento.cliente.categoriasHabilitadas.length > 0 && (
                   <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
                     Exibindo apenas produtos das categorias habilitadas para este cliente
@@ -337,8 +401,14 @@ export default function AgendamentoEditModal({
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      Nenhum produto disponível para as categorias habilitadas deste cliente.
-                      Verifique as configurações de categoria do cliente.
+                      <div className="space-y-2">
+                        <p>Nenhum produto disponível para as categorias habilitadas deste cliente.</p>
+                        <p className="text-xs">
+                          Categorias habilitadas: {JSON.stringify(agendamento.cliente.categoriasHabilitadas)}<br />
+                          Total de produtos no sistema: {produtos.length}<br />
+                          Produtos ativos: {produtos.filter(p => p.ativo).length}
+                        </p>
+                      </div>
                     </AlertDescription>
                   </Alert>
                 ) : (
@@ -351,7 +421,7 @@ export default function AgendamentoEditModal({
                             <span className="font-medium">{produto.nome}</span>
                             {produto.categoria && (
                               <span className="text-xs text-muted-foreground">
-                                Categoria: {produto.categoria}
+                                Categoria: {produto.categoria} (ID: {produto.categoriaId})
                               </span>
                             )}
                           </div>
