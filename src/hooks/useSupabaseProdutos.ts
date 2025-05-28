@@ -15,6 +15,7 @@ export interface ProdutoFinalSupabase {
   peso_unitario?: number;
   preco_venda?: number;
   ativo: boolean;
+  estoque_atual?: number;
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +39,7 @@ export interface ProdutoCompleto extends ProdutoFinalSupabase {
   custo_unitario: number;
   peso_total: number;
   margem_lucro: number;
+  estoque_atual: number;
 }
 
 export const useSupabaseProdutos = () => {
@@ -153,7 +155,8 @@ export const useSupabaseProdutos = () => {
           custo_total,
           custo_unitario: custo_unitario_produto,
           peso_total,
-          margem_lucro
+          margem_lucro,
+          estoque_atual: (produto as any).estoque_atual || 0
         });
       }
 
