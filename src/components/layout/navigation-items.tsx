@@ -36,7 +36,7 @@ export const menuGroups: MenuGroup[] = [
       },
       {
         label: "Estoque",
-        path: "/estoque",
+        path: "/estoque/insumos",
         icon: <PackageCheck className="h-4 w-4" />,
       },
       {
