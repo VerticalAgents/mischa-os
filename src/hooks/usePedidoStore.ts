@@ -13,7 +13,7 @@ interface PedidoStore {
   filtros: {
     dataInicio?: Date;
     dataFim?: Date;
-    idCliente?: string; // Changed from number to string
+    idCliente?: string;
     status?: StatusPedido | 'Todos';
     substatus?: SubstatusPedidoAgendado | 'Todos';
   };
@@ -36,7 +36,7 @@ interface PedidoStore {
   // Ações de filtro
   setFiltroDataInicio: (data?: Date) => void;
   setFiltroDataFim: (data?: Date) => void;
-  setFiltroCliente: (idCliente?: string) => void; // Changed from number to string
+  setFiltroCliente: (idCliente?: string) => void;
   setFiltroStatus: (status?: StatusPedido | 'Todos') => void;
   setFiltroSubstatus: (substatus?: SubstatusPedidoAgendado | 'Todos') => void;
   limparFiltros: () => void;
@@ -44,7 +44,7 @@ interface PedidoStore {
   // Getters
   getPedidosFiltrados: () => Pedido[];
   getPedidoPorId: (id: number) => Pedido | undefined;
-  getPedidosPorCliente: (idCliente: string) => Pedido[]; // Changed from number to string
+  getPedidosPorCliente: (idCliente: string) => Pedido[];
   getPedidosPorStatus: (status: StatusPedido) => Pedido[];
   getPedidosPorSubstatus: (substatus: SubstatusPedidoAgendado) => Pedido[];
   getPedidosFuturos: () => Pedido[];
@@ -89,7 +89,7 @@ export const usePedidoStore = create<PedidoStore>()(
         }
         
         const novoPedido: Omit<Pedido, 'id'> = {
-          idCliente: 0, // For string client IDs, we'll need to adjust this
+          idCliente: idCliente, // Changed to use string idCliente directly
           cliente,
           dataPedido: new Date(),
           dataPrevistaEntrega,
@@ -143,8 +143,8 @@ export const usePedidoStore = create<PedidoStore>()(
         const novoId = Math.max(0, ...get().pedidos.map(p => p.id)) + 1;
         
         let cliente = undefined;
-        if (pedido.idCliente > 0) {
-          cliente = useClienteStore.getState().getClientePorId(pedido.idCliente.toString());
+        if (pedido.idCliente && pedido.idCliente !== '') { // Changed condition to check for non-empty string
+          cliente = useClienteStore.getState().getClientePorId(pedido.idCliente);
         }
         
         const novoPedido = {
@@ -514,7 +514,7 @@ export const usePedidoStore = create<PedidoStore>()(
       
       getPedidosUnicos: () => {
         return get().pedidos.filter(p => 
-          p.idCliente === 0 || 
+          !p.idCliente || // Changed condition - if idCliente is empty/null
           !p.cliente
         );
       }
