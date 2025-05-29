@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "sonner";
@@ -169,19 +170,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         
         set({ isLoading: true, lastSyncTime: currentTime });
         try {
-          // Usar dados do store de agendamento
+          console.log('📋 Carregando pedidos da expedição...');
+          
+          // Carregar agendamentos diretamente do banco para garantir dados atualizados
+          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
           const agendamentos = useAgendamentoClienteStore.getState().agendamentos;
           
-          console.log('📋 Carregando pedidos da expedição, agendamentos disponíveis:', agendamentos.length);
-          
-          if (agendamentos.length === 0) {
-            console.log('📥 Carregando agendamentos iniciais...');
-            await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
-            const novosAgendamentos = useAgendamentoClienteStore.getState().agendamentos;
-            await formatarPedidos(novosAgendamentos);
-          } else {
-            await formatarPedidos(agendamentos);
-          }
+          console.log('📥 Agendamentos disponíveis:', agendamentos.length);
+          await formatarPedidos(agendamentos);
 
         } catch (error) {
           console.error('Erro ao carregar pedidos:', error);
@@ -729,30 +725,55 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
   )
 );
 
-// Função auxiliar para formatar pedidos
+// Função auxiliar para formatar pedidos - CORRIGIDA
 async function formatarPedidos(agendamentos: any[]) {
+  console.log('🔄 formatarPedidos - Iniciando com agendamentos:', agendamentos.length);
+  
   // Carregar dados dos clientes para complementar as informações
   const { data: clientes, error: clientesError } = await supabase
     .from('clientes')
     .select('id, nome, endereco_entrega, contato_telefone');
 
-  if (clientesError) throw clientesError;
+  if (clientesError) {
+    console.error('❌ Erro ao carregar clientes:', clientesError);
+    throw clientesError;
+  }
 
   const clientesMap = new Map(clientes?.map(c => [c.id, c]) || []);
+  console.log('👥 Clientes carregados:', clientes?.length || 0);
 
   const pedidosFormatados = agendamentos
-    .filter(agendamento => agendamento.status_agendamento === 'Agendado')
+    .filter(agendamento => {
+      const isAgendado = agendamento.status_agendamento === 'Agendado';
+      console.log(`🔍 Agendamento ${agendamento.id} - ${agendamento.cliente_id}:`, {
+        status: agendamento.status_agendamento,
+        isAgendado,
+        data: agendamento.data_proxima_reposicao
+      });
+      return isAgendado;
+    })
     .map(agendamento => {
       const cliente = clientesMap.get(agendamento.cliente_id);
       
-      // Mapear substatus corretamente
-      const substatus = (agendamento as any).substatus_pedido || 'Agendado';
+      // Garantir que substatus tenha um valor válido
+      const substatus = agendamento.substatus_pedido || 'Agendado';
+      
+      // Converter data corretamente
+      let dataPrevisao = new Date();
+      if (agendamento.data_proxima_reposicao) {
+        if (typeof agendamento.data_proxima_reposicao === 'string') {
+          dataPrevisao = new Date(agendamento.data_proxima_reposicao + 'T00:00:00');
+        } else {
+          dataPrevisao = new Date(agendamento.data_proxima_reposicao);
+        }
+      }
       
       console.log(`📦 Formatando pedido ${agendamento.id}:`, {
         cliente_nome: cliente?.nome,
-        substatus_original: (agendamento as any).substatus_pedido,
+        substatus_original: agendamento.substatus_pedido,
         substatus_mapeado: substatus,
-        data_prevista: agendamento.data_proxima_reposicao
+        data_prevista: dataPrevisao,
+        data_original: agendamento.data_proxima_reposicao
       });
       
       return {
@@ -761,13 +782,13 @@ async function formatarPedidos(agendamentos: any[]) {
         cliente_nome: cliente?.nome || 'Cliente não encontrado',
         cliente_endereco: cliente?.endereco_entrega,
         cliente_telefone: cliente?.contato_telefone,
-        data_prevista_entrega: agendamento.data_proxima_reposicao || new Date(),
-        quantidade_total: agendamento.quantidade_total,
-        tipo_pedido: agendamento.tipo_pedido,
+        data_prevista_entrega: dataPrevisao,
+        quantidade_total: agendamento.quantidade_total || 0,
+        tipo_pedido: agendamento.tipo_pedido || 'Padrão',
         status_agendamento: agendamento.status_agendamento,
         substatus_pedido: substatus as SubstatusPedidoAgendado,
         itens_personalizados: agendamento.itens_personalizados,
-        created_at: agendamento.created_at
+        created_at: agendamento.created_at || new Date()
       };
     });
 
@@ -775,7 +796,8 @@ async function formatarPedidos(agendamentos: any[]) {
   console.log('📊 Substatus dos pedidos:', pedidosFormatados.map(p => ({
     id: p.id,
     cliente: p.cliente_nome,
-    substatus: p.substatus_pedido
+    substatus: p.substatus_pedido,
+    data: format(p.data_prevista_entrega, 'yyyy-MM-dd')
   })));
   
   // Atualizar o estado do store

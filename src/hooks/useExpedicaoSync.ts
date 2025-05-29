@@ -9,8 +9,9 @@ export const useExpedicaoSync = () => {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastAgendamentosLength = useRef(0);
   const lastSyncTimestamp = useRef(0);
+  const hasInitialLoad = useRef(false);
 
-  // Debounced sync function com maior debounce para evitar loops
+  // Debounced sync function
   const debouncedSync = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -18,27 +19,36 @@ export const useExpedicaoSync = () => {
     
     timeoutRef.current = setTimeout(() => {
       const now = Date.now();
-      // Evitar sincronizações muito frequentes (mínimo 3 segundos entre calls)
-      if (now - lastSyncTimestamp.current > 3000) {
+      // Reduzir tempo mínimo entre sincronizações para 1 segundo
+      if (now - lastSyncTimestamp.current > 1000) {
         console.log('🔄 Sincronizando expedição (debounced)');
         lastSyncTimestamp.current = now;
         carregarPedidos();
       } else {
         console.log('⏭️ Pulando sincronização - muito recente');
       }
-    }, 1000); // Debounce de 1 segundo
+    }, 500); // Reduzir debounce para 500ms
   }, [carregarPedidos]);
 
-  // Sincronizar apenas quando agendamentos mudarem efetivamente
+  // Carregar dados inicialmente quando o componente monta
   useEffect(() => {
-    // Verificar se realmente houve mudança significativa
+    if (!hasInitialLoad.current) {
+      console.log('🚀 Carregamento inicial da expedição');
+      hasInitialLoad.current = true;
+      carregarPedidos();
+    }
+  }, [carregarPedidos]);
+
+  // Sincronizar quando agendamentos mudarem
+  useEffect(() => {
     const currentLength = agendamentos.length;
     const hasRealChange = currentLength !== lastAgendamentosLength.current;
     
-    if (agendamentos.length > 0 && hasRealChange) {
+    if (hasRealChange || currentLength > 0) {
       console.log('📊 Mudança detectada nos agendamentos:', {
         anterior: lastAgendamentosLength.current,
-        atual: currentLength
+        atual: currentLength,
+        hasRealChange
       });
       
       lastAgendamentosLength.current = currentLength;
