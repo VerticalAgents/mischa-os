@@ -80,9 +80,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             setQuantidadeTotal(agendamento.quantidade_total);
             setTipoPedido(agendamento.tipo_pedido);
             
-            // Usar periodicidade do cliente como referência, mas o agendamento prevalece
-            setPeriodicidade(cliente.periodicidadePadrao || 7);
-            
             if (agendamento.itens_personalizados && agendamento.tipo_pedido === 'Alterado') {
               setProdutosQuantidades(agendamento.itens_personalizados);
             } else {
@@ -95,7 +92,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             setTipoPedido('Padrão');
             setQuantidadeTotal(cliente.quantidadePadrao || 0);
             setProximaDataReposicao('');
-            setPeriodicidade(cliente.periodicidadePadrao || 7);
             setProdutosQuantidades([]);
           }
           setAgendamentoCarregado(true);
@@ -106,7 +102,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
           setTipoPedido('Padrão');
           setQuantidadeTotal(cliente.quantidadePadrao || 0);
           setProximaDataReposicao('');
-          setPeriodicidade(cliente.periodicidadePadrao || 7);
           setProdutosQuantidades([]);
           setAgendamentoCarregado(true);
         }
