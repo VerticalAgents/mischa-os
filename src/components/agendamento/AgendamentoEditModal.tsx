@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -397,91 +398,92 @@ export default function AgendamentoEditModal({
               </RadioGroup>
             </div>
 
-          {/* Lista de Produtos (apenas se tipo for "Alterado") */}
-          {tipoPedido === 'Alterado' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Quantidades por Produto</Label>
-                <div className="text-sm text-muted-foreground">
-                  Total: {somaQuantidadesProdutos} / {quantidadeTotal}
+            {/* Lista de Produtos (apenas se tipo for "Alterado") */}
+            {tipoPedido === 'Alterado' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Quantidades por Produto</Label>
+                  <div className="text-sm text-muted-foreground">
+                    Total: {somaQuantidadesProdutos} / {quantidadeTotal}
+                  </div>
                 </div>
-              </div>
 
-              {/* Informações de debug expandidas */}
-              <div className="text-xs text-blue-600 bg-blue-50 p-3 rounded space-y-1">
-                <div><strong>DEBUG EXPANDIDO:</strong></div>
-                <div>Cliente: {agendamento.cliente.nome}</div>
-                <div>Categorias habilitadas: {JSON.stringify(agendamento.cliente.categoriasHabilitadas)}</div>
-                <div>Produtos Supabase: {produtosSupabase.length} | Loading: {loadingSupabase ? 'SIM' : 'NÃO'}</div>
-                <div>Produtos Local: {produtosLocal.length}</div>
-                <div>Produtos escolhidos: {produtos.length}</div>
-                <div>Produtos filtrados: {produtosFiltrados.length}</div>
-                {produtosSupabase.length > 0 && (
-                  <div>Produtos Supabase ativos: {produtosSupabase.filter(p => p.ativo).length}</div>
+                {/* Informações de debug expandidas */}
+                <div className="text-xs text-blue-600 bg-blue-50 p-3 rounded space-y-1">
+                  <div><strong>DEBUG EXPANDIDO:</strong></div>
+                  <div>Cliente: {agendamento.cliente.nome}</div>
+                  <div>Categorias habilitadas: {JSON.stringify(agendamento.cliente.categoriasHabilitadas)}</div>
+                  <div>Produtos Supabase: {produtosSupabase.length} | Loading: {loadingSupabase ? 'SIM' : 'NÃO'}</div>
+                  <div>Produtos Local: {produtosLocal.length}</div>
+                  <div>Produtos escolhidos: {produtos.length}</div>
+                  <div>Produtos filtrados: {produtosFiltrados.length}</div>
+                  {produtosSupabase.length > 0 && (
+                    <div>Produtos Supabase ativos: {produtosSupabase.filter(p => p.ativo).length}</div>
+                  )}
+                </div>
+
+                {agendamento.cliente.categoriasHabilitadas && agendamento.cliente.categoriasHabilitadas.length > 0 && (
+                  <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                    Exibindo apenas produtos das categorias habilitadas para este cliente
+                  </div>
+                )}
+                
+                {hasValidationError && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      A soma das quantidades dos produtos deve ser igual ao total do pedido ({quantidadeTotal})
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {produtosFiltrados.length === 0 ? (
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p>Nenhum produto disponível para as categorias habilitadas deste cliente.</p>
+                        <p className="text-xs">
+                          <strong>Debug detalhado:</strong><br />
+                          Categorias habilitadas: {JSON.stringify(agendamento.cliente.categoriasHabilitadas)}<br />
+                          Produtos no sistema (Supabase): {produtosSupabase.length}<br />
+                          Produtos no sistema (Local): {produtosLocal.length}<br />
+                          Produtos ativos (Supabase): {produtosSupabase.filter(p => p.ativo).length}<br />
+                          Produtos ativos (Local): {produtosLocal.filter(p => p.ativo).length}<br />
+                          Loading Supabase: {loadingSupabase ? 'SIM' : 'NÃO'}
+                        </p>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="grid gap-3 max-h-60 overflow-y-auto">
+                    {produtosFiltrados.map((produto) => {
+                      const produtoQuantidade = produtosQuantidades.find(p => p.produto === produto.nome);
+                      return (
+                        <div key={produto.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex flex-col">
+                            <span className="font-medium">{produto.nome}</span>
+                            {produto.categoria && (
+                              <span className="text-xs text-muted-foreground">
+                                Categoria: {produto.categoria} (ID: {produto.categoriaId})
+                              </span>
+                            )}
+                          </div>
+                          <Input
+                            type="number"
+                            value={produtoQuantidade?.quantidade || 0}
+                            onChange={(e) => atualizarQuantidadeProduto(produto.nome, Number(e.target.value))}
+                            min="0"
+                            className="w-20"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
-
-              {agendamento.cliente.categoriasHabilitadas && agendamento.cliente.categoriasHabilitadas.length > 0 && (
-                <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                  Exibindo apenas produtos das categorias habilitadas para este cliente
-                </div>
-              )}
-              
-              {hasValidationError && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    A soma das quantidades dos produtos deve ser igual ao total do pedido ({quantidadeTotal})
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {produtosFiltrados.length === 0 ? (
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    <div className="space-y-2">
-                      <p>Nenhum produto disponível para as categorias habilitadas deste cliente.</p>
-                      <p className="text-xs">
-                        <strong>Debug detalhado:</strong><br />
-                        Categorias habilitadas: {JSON.stringify(agendamento.cliente.categoriasHabilitadas)}<br />
-                        Produtos no sistema (Supabase): {produtosSupabase.length}<br />
-                        Produtos no sistema (Local): {produtosLocal.length}<br />
-                        Produtos ativos (Supabase): {produtosSupabase.filter(p => p.ativo).length}<br />
-                        Produtos ativos (Local): {produtosLocal.filter(p => p.ativo).length}<br />
-                        Loading Supabase: {loadingSupabase ? 'SIM' : 'NÃO'}
-                      </p>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <div className="grid gap-3 max-h-60 overflow-y-auto">
-                  {produtosFiltrados.map((produto) => {
-                    const produtoQuantidade = produtosQuantidades.find(p => p.produto === produto.nome);
-                    return (
-                      <div key={produto.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex flex-col">
-                          <span className="font-medium">{produto.nome}</span>
-                          {produto.categoria && (
-                            <span className="text-xs text-muted-foreground">
-                              Categoria: {produto.categoria} (ID: {produto.categoriaId})
-                            </span>
-                          )}
-                        </div>
-                        <Input
-                          type="number"
-                          value={produtoQuantidade?.quantidade || 0}
-                          onChange={(e) => atualizarQuantidadeProduto(produto.nome, Number(e.target.value))}
-                          min="0"
-                          className="w-20"
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
         
         <DialogFooter>
