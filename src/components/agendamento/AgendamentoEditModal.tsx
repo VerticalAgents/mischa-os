@@ -66,7 +66,6 @@ export default function AgendamentoEditModal({
     categoria: p.categoria_id ? `Categoria ${p.categoria_id}` : 'Sem categoria',
     categoriaId: p.categoria_id || 0,
     ativo: p.ativo,
-    // ... outros campos necessários
     descricao: p.descricao,
     precoVenda: Number(p.preco_venda) || 0,
     custoTotal: Number(p.custo_total) || 0,
@@ -79,72 +78,67 @@ export default function AgendamentoEditModal({
     subcategoriaId: p.subcategoria_id || 0
   })) : produtosLocal;
 
-  // Debug detalhado dos produtos carregados
+  // Debug apenas no console em desenvolvimento
   useEffect(() => {
-    if (agendamento && open) {
+    if (agendamento && open && process.env.NODE_ENV === 'development') {
       console.log('🔍 DEBUG DETALHADO - Modal aberto para cliente:', agendamento.cliente.nome);
       console.log('🔍 DEBUG - Categorias habilitadas do cliente:', agendamento.cliente.categoriasHabilitadas);
       console.log('🔍 DEBUG - Produtos Supabase carregados:', produtosSupabase.length);
       console.log('🔍 DEBUG - Produtos Local carregados:', produtosLocal.length);
       console.log('🔍 DEBUG - Produtos finais escolhidos:', produtos.length);
       console.log('🔍 DEBUG - Loading Supabase:', loadingSupabase);
-      
-      console.log('🔍 DEBUG - Produtos Supabase detalhado:', produtosSupabase.map(p => ({
-        id: p.id,
-        nome: p.nome,
-        categoria_id: p.categoria_id,
-        ativo: p.ativo
-      })));
-      
-      console.log('🔍 DEBUG - Produtos Local detalhado:', produtosLocal.map(p => ({
-        id: p.id,
-        nome: p.nome,
-        categoriaId: p.categoriaId,
-        categoria: p.categoria,
-        ativo: p.ativo
-      })));
     }
   }, [agendamento, open, produtos.length, produtosSupabase.length, produtosLocal.length, loadingSupabase]);
 
   // Filtrar produtos baseado nas categorias habilitadas do cliente
   const produtosFiltrados = produtos.filter(produto => {
-    // Debug detalhado do filtro
-    console.log('🔍 DEBUG FILTRO - Verificando produto:', {
-      nome: produto.nome,
-      categoriaId: produto.categoriaId,
-      categoria: produto.categoria,
-      ativo: produto.ativo,
-      clienteCategorias: agendamento?.cliente.categoriasHabilitadas
-    });
+    // Debug apenas no console em desenvolvimento
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 DEBUG FILTRO - Verificando produto:', {
+        nome: produto.nome,
+        categoriaId: produto.categoriaId,
+        categoria: produto.categoria,
+        ativo: produto.ativo,
+        clienteCategorias: agendamento?.cliente.categoriasHabilitadas
+      });
+    }
 
     // Se não há produtos ou cliente, retornar array vazio
     if (!agendamento?.cliente || !produto) {
-      console.log('❌ DEBUG FILTRO - Cliente ou produto inválido');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('❌ DEBUG FILTRO - Cliente ou produto inválido');
+      }
       return false;
     }
 
     // Se produto não está ativo, filtrar fora
     if (!produto.ativo) {
-      console.log('❌ DEBUG FILTRO - Produto inativo:', produto.nome);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('❌ DEBUG FILTRO - Produto inativo:', produto.nome);
+      }
       return false;
     }
 
     // Se cliente não tem categorias habilitadas, mostrar todos os produtos ativos
     if (!agendamento.cliente.categoriasHabilitadas || agendamento.cliente.categoriasHabilitadas.length === 0) {
-      console.log('✅ DEBUG FILTRO - Cliente sem categorias específicas, produto incluído:', produto.nome);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ DEBUG FILTRO - Cliente sem categorias específicas, produto incluído:', produto.nome);
+      }
       return true;
     }
 
     // Verificar se o produto está em uma categoria habilitada
     const categoriaHabilitada = agendamento.cliente.categoriasHabilitadas.includes(produto.categoriaId);
-    console.log(`${categoriaHabilitada ? '✅' : '❌'} DEBUG FILTRO - Produto ${produto.nome} categoria ${produto.categoriaId} habilitada:`, categoriaHabilitada);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`${categoriaHabilitada ? '✅' : '❌'} DEBUG FILTRO - Produto ${produto.nome} categoria ${produto.categoriaId} habilitada:`, categoriaHabilitada);
+    }
     
     return categoriaHabilitada;
   });
 
-  // Debug dos produtos filtrados
+  // Debug dos produtos filtrados apenas no console
   useEffect(() => {
-    if (agendamento && open) {
+    if (agendamento && open && process.env.NODE_ENV === 'development') {
       console.log('🔍 DEBUG FINAL - Produtos após filtro:', produtosFiltrados.length);
       console.log('🔍 DEBUG FINAL - Produtos filtrados:', produtosFiltrados.map(p => ({
         nome: p.nome,
@@ -210,7 +204,9 @@ export default function AgendamentoEditModal({
         quantidade: 0
       }));
       setProdutosQuantidades(produtosIniciais);
-      console.log('🔍 DEBUG - Inicializando produtos para tipo Alterado:', produtosIniciais.length);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 DEBUG - Inicializando produtos para tipo Alterado:', produtosIniciais.length);
+      }
     }
   }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length]);
 
@@ -272,7 +268,16 @@ export default function AgendamentoEditModal({
           ...agendamento.pedido,
           totalPedidoUnidades: quantidadeTotal,
           tipoPedido
-        } : undefined
+        } : {
+          totalPedidoUnidades: quantidadeTotal,
+          tipoPedido,
+          id: 0,
+          idCliente: agendamento.cliente.id,
+          dataPedido: new Date(),
+          dataPrevistaEntrega: agendamento.dataReposicao,
+          statusPedido: 'Agendado',
+          itensPedido: []
+        }
       };
 
       onSalvar(agendamentoAtualizado);
@@ -408,20 +413,6 @@ export default function AgendamentoEditModal({
                   </div>
                 </div>
 
-                {/* Informações de debug expandidas */}
-                <div className="text-xs text-blue-600 bg-blue-50 p-3 rounded space-y-1">
-                  <div><strong>DEBUG EXPANDIDO:</strong></div>
-                  <div>Cliente: {agendamento.cliente.nome}</div>
-                  <div>Categorias habilitadas: {JSON.stringify(agendamento.cliente.categoriasHabilitadas)}</div>
-                  <div>Produtos Supabase: {produtosSupabase.length} | Loading: {loadingSupabase ? 'SIM' : 'NÃO'}</div>
-                  <div>Produtos Local: {produtosLocal.length}</div>
-                  <div>Produtos escolhidos: {produtos.length}</div>
-                  <div>Produtos filtrados: {produtosFiltrados.length}</div>
-                  {produtosSupabase.length > 0 && (
-                    <div>Produtos Supabase ativos: {produtosSupabase.filter(p => p.ativo).length}</div>
-                  )}
-                </div>
-
                 {agendamento.cliente.categoriasHabilitadas && agendamento.cliente.categoriasHabilitadas.length > 0 && (
                   <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
                     Exibindo apenas produtos das categorias habilitadas para este cliente
@@ -441,18 +432,8 @@ export default function AgendamentoEditModal({
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      <div className="space-y-2">
-                        <p>Nenhum produto disponível para as categorias habilitadas deste cliente.</p>
-                        <p className="text-xs">
-                          <strong>Debug detalhado:</strong><br />
-                          Categorias habilitadas: {JSON.stringify(agendamento.cliente.categoriasHabilitadas)}<br />
-                          Produtos no sistema (Supabase): {produtosSupabase.length}<br />
-                          Produtos no sistema (Local): {produtosLocal.length}<br />
-                          Produtos ativos (Supabase): {produtosSupabase.filter(p => p.ativo).length}<br />
-                          Produtos ativos (Local): {produtosLocal.filter(p => p.ativo).length}<br />
-                          Loading Supabase: {loadingSupabase ? 'SIM' : 'NÃO'}
-                        </p>
-                      </div>
+                      Nenhum produto disponível para as categorias habilitadas deste cliente.
+                      Verifique as configurações de categoria do cliente.
                     </AlertDescription>
                   </Alert>
                 ) : (

@@ -53,15 +53,35 @@ export default function TodosAgendamentos() {
     for (const cliente of clientes.filter(c => c.statusCliente === 'Ativo')) {
       const pedidoCliente = pedidos.find(p => p.cliente?.id === cliente.id && p.statusPedido === 'Agendado');
       
+      // Buscar agendamento da store para obter tipo_pedido correto
+      const agendamentoClienteStore = agendamentosStore.find(a => a.cliente_id === cliente.id);
+      
       // Usar os dados já sincronizados do cliente
       let dataReposicao = cliente.proximaDataReposicao || new Date();
       let statusAgendamento = normalizeStatusAgendamento(cliente.statusAgendamento);
       
       console.log('TodosAgendamentos: Cliente', cliente.nome, '- Status:', statusAgendamento, 'Data:', dataReposicao);
       
+      // Criar um pedido virtual com o tipo correto
+      let pedidoVirtual = pedidoCliente;
+      if (agendamentoClienteStore) {
+        pedidoVirtual = {
+          id: pedidoCliente?.id || 0,
+          idCliente: cliente.id,
+          cliente: cliente,
+          dataPedido: new Date(),
+          dataPrevistaEntrega: dataReposicao,
+          totalPedidoUnidades: agendamentoClienteStore.quantidade_total,
+          tipoPedido: agendamentoClienteStore.tipo_pedido as 'Padrão' | 'Alterado',
+          statusPedido: 'Agendado',
+          itensPedido: [],
+          historicoAlteracoesStatus: []
+        };
+      }
+      
       agendamentosCarregados.push({
         cliente,
-        pedido: pedidoCliente,
+        pedido: pedidoVirtual,
         dataReposicao,
         statusAgendamento,
         isPedidoUnico: false
@@ -71,7 +91,7 @@ export default function TodosAgendamentos() {
     console.log('TodosAgendamentos: Total de agendamentos construídos:', agendamentosCarregados.length);
     setAgendamentos(agendamentosCarregados);
     setLoading(false);
-  }, [clientes, pedidos]);
+  }, [clientes, pedidos, agendamentosStore]);
 
   const agendamentosFiltrados = agendamentos
     .filter(agendamento => {
@@ -108,8 +128,8 @@ export default function TodosAgendamentos() {
       await salvarAgendamento(agendamentoAtualizado.cliente.id, {
         status_agendamento: agendamentoAtualizado.statusAgendamento,
         data_proxima_reposicao: agendamentoAtualizado.dataReposicao,
-        quantidade_total: agendamentoAtualizado.cliente.quantidadePadrao || 0,
-        tipo_pedido: 'Padrão'
+        quantidade_total: agendamentoAtualizado.pedido?.totalPedidoUnidades || agendamentoAtualizado.cliente.quantidadePadrao || 0,
+        tipo_pedido: agendamentoAtualizado.pedido?.tipoPedido || 'Padrão'
       });
 
       toast.success("Agendamento atualizado com sucesso!");

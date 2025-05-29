@@ -32,6 +32,21 @@ export default function AgendamentoTable({
     }
   };
 
+  const getTipoPedidoBadge = (tipoPedido?: string) => {
+    if (tipoPedido === 'Alterado') {
+      return (
+        <Badge variant="destructive" className="bg-red-500 text-white">
+          Alterado
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="default" className="bg-green-500 text-white">
+        Padrão
+      </Badge>
+    );
+  };
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -42,6 +57,7 @@ export default function AgendamentoTable({
             <TableHead>Status</TableHead>
             <TableHead>Quantidade</TableHead>
             <TableHead>Tipo</TableHead>
+            <TableHead>Tipo Pedido</TableHead>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -64,17 +80,20 @@ export default function AgendamentoTable({
               </TableCell>
               <TableCell>
                 <Badge variant={agendamento.isPedidoUnico ? "secondary" : "outline"}>
-                  {agendamento.isPedidoUnico ? "Único" : "Padrão"}
+                  {agendamento.isPedidoUnico ? "Único" : "PDV"}
                 </Badge>
+              </TableCell>
+              <TableCell>
+                {getTipoPedidoBadge(agendamento.pedido?.tipoPedido)}
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex gap-2 justify-end">
                   {agendamento.statusAgendamento === "Previsto" && onConfirmarPrevisto && (
                     <Button
-                      variant="success"
+                      variant="default"
                       size="sm"
                       onClick={() => onConfirmarPrevisto(agendamento)}
-                      className="flex items-center gap-1"
+                      className="flex items-center gap-1 bg-green-500 hover:bg-green-600"
                     >
                       <Check className="h-4 w-4" />
                       Confirmar
