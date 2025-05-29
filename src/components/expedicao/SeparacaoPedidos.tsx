@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import StatusBadge from "@/components/common/StatusBadge";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
+import { DebugPanel } from "./DebugPanel";
 import { toast } from "sonner";
 import { Printer, FileText, Check, Undo } from "lucide-react";
 import { formatDate } from "@/lib/utils";
@@ -254,6 +255,9 @@ export const SeparacaoPedidos = () => {
 
   return (
     <div className="space-y-4">
+      {/* Painel de Debug - NOVO */}
+      <DebugPanel />
+      
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <h2 className="text-lg font-semibold">Separação de Pedidos</h2>
@@ -292,6 +296,7 @@ export const SeparacaoPedidos = () => {
               <span className="h-2 w-2 rounded-full bg-blue-500"></span> Próximas Separações ({pedidosProximoDia.length})
             </TabsTrigger>
           </TabsList>
+          
           
           <TabsContent value="todos">
             {todosPedidos.length > 0 ? (
