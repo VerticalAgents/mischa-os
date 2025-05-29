@@ -30,14 +30,17 @@ export const SeparacaoPedidos = () => {
   // Usar hook de sincronização
   useExpedicaoSync();
 
-  // Carregar pedidos apenas uma vez ao montar
+  // Carregar pedidos apenas uma vez ao montar - CORRIGIDO
   useEffect(() => {
     if (!mountedRef.current) {
       mountedRef.current = true;
-      console.log('🔄 Carregando pedidos inicial');
-      carregarPedidos();
+      console.log('🔄 Carregando pedidos inicial da SeparacaoPedidos');
+      // Timeout para evitar carregamento imediato que pode causar loop
+      setTimeout(() => {
+        carregarPedidos();
+      }, 500);
     }
-  }, []);
+  }, [carregarPedidos]);
 
   
   // Obter pedidos filtrados
@@ -255,7 +258,7 @@ export const SeparacaoPedidos = () => {
 
   return (
     <div className="space-y-4">
-      {/* Painel de Debug - NOVO */}
+      {/* Painel de Debug */}
       <DebugPanel />
       
       <Card className="p-4">

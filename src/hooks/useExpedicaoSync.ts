@@ -10,49 +10,67 @@ export const useExpedicaoSync = () => {
   const lastAgendamentosLength = useRef(0);
   const lastSyncTimestamp = useRef(0);
   const hasInitialLoad = useRef(false);
+  const isSyncingRef = useRef(false);
 
-  // Debounced sync function
+  // Debounced sync function - CORRIGIDO para evitar loops
   const debouncedSync = useCallback(() => {
+    // Evitar múltiplas sincronizações simultâneas
+    if (isSyncingRef.current) {
+      console.log('⏭️ Sincronização já em andamento, pulando...');
+      return;
+    }
+
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     
-    timeoutRef.current = setTimeout(() => {
+    timeoutRef.current = setTimeout(async () => {
       const now = Date.now();
-      // Reduzir tempo mínimo entre sincronizações para 1 segundo
-      if (now - lastSyncTimestamp.current > 1000) {
+      // Aumentar tempo mínimo entre sincronizações para 3 segundos
+      if (now - lastSyncTimestamp.current > 3000) {
         console.log('🔄 === SINCRONIZAÇÃO EXPEDIÇÃO (DEBOUNCED) ===');
         console.log('🔄 Quantidade de agendamentos:', agendamentos.length);
+        
+        isSyncingRef.current = true;
         lastSyncTimestamp.current = now;
-        carregarPedidos();
+        
+        try {
+          await carregarPedidos();
+        } catch (error) {
+          console.error('❌ Erro na sincronização:', error);
+        } finally {
+          isSyncingRef.current = false;
+        }
       } else {
         console.log('⏭️ Pulando sincronização - muito recente');
       }
-    }, 500); // Reduzir debounce para 500ms
-  }, [carregarPedidos, agendamentos.length]);
+    }, 1000); // Aumentar debounce para 1 segundo
+  }, [carregarPedidos]); // REMOVIDO agendamentos.length da dependência
 
-  // Carregar dados inicialmente quando o componente monta
+  // Carregar dados inicialmente quando o componente monta - SIMPLIFICADO
   useEffect(() => {
-    if (!hasInitialLoad.current) {
+    if (!hasInitialLoad.current && !isSyncingRef.current) {
       console.log('🚀 === CARREGAMENTO INICIAL DA EXPEDIÇÃO ===');
-      console.log('🚀 Iniciando carregamento...');
       hasInitialLoad.current = true;
-      carregarPedidos();
+      isSyncingRef.current = true;
+      
+      carregarPedidos().finally(() => {
+        isSyncingRef.current = false;
+      });
     }
   }, [carregarPedidos]);
 
-  // Sincronizar quando agendamentos mudarem
+  // Sincronizar quando agendamentos mudarem - CORRIGIDO
   useEffect(() => {
     const currentLength = agendamentos.length;
     const hasRealChange = currentLength !== lastAgendamentosLength.current;
     
-    console.log('📊 === VERIFICAÇÃO DE MUDANÇAS ===');
-    console.log('📊 Agendamentos anterior:', lastAgendamentosLength.current);
-    console.log('📊 Agendamentos atual:', currentLength);
-    console.log('📊 Há mudança real:', hasRealChange);
-    
-    if (hasRealChange || currentLength > 0) {
-      console.log('📊 Mudança detectada nos agendamentos - disparando sincronização');
+    // Só processar se houve mudança real E não estamos carregando inicialmente
+    if (hasRealChange && hasInitialLoad.current && !isSyncingRef.current) {
+      console.log('📊 === VERIFICAÇÃO DE MUDANÇAS ===');
+      console.log('📊 Agendamentos anterior:', lastAgendamentosLength.current);
+      console.log('📊 Agendamentos atual:', currentLength);
+      console.log('📊 Disparando sincronização...');
       
       lastAgendamentosLength.current = currentLength;
       debouncedSync();
@@ -64,6 +82,16 @@ export const useExpedicaoSync = () => {
       }
     };
   }, [agendamentos.length, debouncedSync]);
+
+  // Cleanup ao desmontar
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      isSyncingRef.current = false;
+    };
+  }, []);
 
   return { carregarPedidos };
 };

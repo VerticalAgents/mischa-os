@@ -26,6 +26,7 @@ interface ExpedicaoStore {
   isLoading: boolean;
   lastSyncTime: number;
   debugLogs: string[];
+  isProcessing: boolean; // NOVO: flag para evitar processamento simultâneo
   
   // Actions
   carregarPedidos: () => Promise<void>;
@@ -55,7 +56,7 @@ const getProximoDiaUtil = (data: Date): Date => {
   return isWeekend(proximaData) ? getProximoDiaUtil(proximaData) : proximaData;
 };
 
-// FUNÇÃO CRÍTICA: Parse de data com logs detalhados
+// FUNÇÃO CRÍTICA: Parse de data com logs detalhados - OTIMIZADA
 const parseDataSegura = (dataString: string | Date, origem: string = 'unknown'): Date => {
   let resultado: Date;
   
@@ -72,18 +73,8 @@ const parseDataSegura = (dataString: string | Date, origem: string = 'unknown'):
     resultado = new Date(dataString);
   }
   
-  // Log crítico para debug
-  const debugInfo = {
-    origem,
-    dataOriginal: dataString,
-    tipoOriginal: typeof dataString,
-    dataConvertida: resultado,
-    formatoIso: resultado.toISOString(),
-    formatoLocal: resultado.toLocaleDateString('pt-BR'),
-    timestampLocal: resultado.getTime()
-  };
-  
-  console.log(`🔍 PARSE DATA [${origem}]:`, debugInfo);
+  // Log simplificado para evitar spam
+  console.log(`🔍 PARSE DATA [${origem}]: ${dataString} -> ${format(resultado, 'yyyy-MM-dd')}`);
   return resultado;
 };
 
@@ -194,11 +185,12 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       isLoading: false,
       lastSyncTime: 0,
       debugLogs: [],
+      isProcessing: false, // NOVO
       
       addDebugLog: (message: string) => {
         const timestamp = new Date().toLocaleTimeString('pt-BR');
         set(state => ({
-          debugLogs: [...state.debugLogs.slice(-49), `[${timestamp}] ${message}`]
+          debugLogs: [...state.debugLogs.slice(-29), `[${timestamp}] ${message}`] // Reduzido para 30 logs máximo
         }));
         console.log(`🔍 DEBUG LOG: ${message}`);
       },
@@ -207,32 +199,32 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       
       carregarPedidos: async () => {
         const currentTime = Date.now();
-        const { lastSyncTime, addDebugLog } = get();
+        const { lastSyncTime, addDebugLog, isProcessing } = get();
         
-        // Evitar chamadas muito frequentes (menos de 2000ms)
-        if (currentTime - lastSyncTime < 2000) {
+        // CRÍTICO: Evitar múltiplas chamadas simultâneas
+        if (isProcessing) {
+          console.log('⏭️ Carregamento já em andamento, pulando...');
+          return;
+        }
+        
+        // Evitar chamadas muito frequentes (menos de 5 segundos)
+        if (currentTime - lastSyncTime < 5000) {
           console.log('⏭️ Pulando carregamento - muito recente');
           return;
         }
         
-        set({ isLoading: true, lastSyncTime: currentTime });
+        set({ isLoading: true, lastSyncTime: currentTime, isProcessing: true });
         
         try {
           const hoje = new Date();
           const hojeFormatado = format(hoje, 'yyyy-MM-dd');
           
-          addDebugLog(`🚀 INICIANDO CARREGAMENTO - Data atual: ${hojeFormatado} (${hoje.toLocaleString('pt-BR')})`);
+          addDebugLog(`🚀 INICIANDO CARREGAMENTO - Data atual: ${hojeFormatado}`);
           
-          // Carregar agendamentos diretamente do banco para garantir dados atualizados
-          await useAgendamentoClienteStore.getState().carregarTodosAgendamentos();
+          // Carregar agendamentos diretamente do banco - SEM forçar novo carregamento para evitar loop
           const agendamentos = useAgendamentoClienteStore.getState().agendamentos;
           
-          addDebugLog(`📥 Agendamentos carregados: ${agendamentos.length}`);
-          
-          // Log detalhado de cada agendamento
-          agendamentos.forEach(ag => {
-            addDebugLog(`📋 Agendamento: ${ag.cliente_id} - Status: ${ag.status_agendamento} - Data: ${ag.data_proxima_reposicao}`);
-          });
+          addDebugLog(`📥 Agendamentos encontrados: ${agendamentos.length}`);
           
           await formatarPedidos(agendamentos, addDebugLog);
 
@@ -241,7 +233,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           get().addDebugLog(`❌ ERRO: ${error.message}`);
           toast.error("Erro ao carregar pedidos");
         } finally {
-          set({ isLoading: false });
+          set({ isLoading: false, isProcessing: false });
         }
       },
 
@@ -658,14 +650,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         const hojeFormatado = format(hoje, 'yyyy-MM-dd');
         const { addDebugLog } = get();
         
-        addDebugLog(`🔍 FILTRO SEPARAÇÃO - Data atual: ${hojeFormatado} (${hoje.toLocaleString('pt-BR')})`);
-        
         const todosPedidos = get().pedidos;
-        addDebugLog(`📋 Total pedidos carregados: ${todosPedidos.length}`);
         
         const pedidosFiltrados = todosPedidos.filter(p => {
-          // CRÍTICO: Usar parseDataSegura para garantir consistência
-          const dataEntregaParsed = parseDataSegura(p.data_prevista_entrega, `getPedidosParaSeparacao-${p.cliente_nome}`);
+          const dataEntregaParsed = parseDataSegura(p.data_prevista_entrega, `separacao-${p.cliente_nome}`);
           const dataEntregaFormatada = format(dataEntregaParsed, 'yyyy-MM-dd');
           
           const isStatusAgendado = p.status_agendamento === 'Agendado';
@@ -674,67 +662,48 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           
           const incluir = isStatusAgendado && isSubstatusValido && isDataHoje;
           
-          addDebugLog(`📦 [${p.cliente_nome}] Status:${p.status_agendamento} Sub:${p.substatus_pedido} Data:${dataEntregaFormatada} vs Hoje:${hojeFormatado} = ${incluir ? 'INCLUIR' : 'EXCLUIR'}`);
+          if (incluir) {
+            addDebugLog(`✅ [${p.cliente_nome}] INCLUÍDO para separação`);
+          }
           
           return incluir;
         });
         
-        addDebugLog(`✅ Pedidos para separação: ${pedidosFiltrados.length}`);
         return pedidosFiltrados;
       },
 
       getPedidosParaDespacho: () => {
         const hoje = new Date();
         const hojeFormatado = format(hoje, 'yyyy-MM-dd');
-        const { addDebugLog } = get();
-        
-        addDebugLog(`🚚 FILTRO DESPACHO - Data atual: ${hojeFormatado}`);
         
         const todosPedidos = get().pedidos;
-        const pedidosFiltrados = todosPedidos.filter(p => {
-          const dataEntregaParsed = parseDataSegura(p.data_prevista_entrega, `getPedidosParaDespacho-${p.cliente_nome}`);
+        return todosPedidos.filter(p => {
+          const dataEntregaParsed = parseDataSegura(p.data_prevista_entrega, `despacho-${p.cliente_nome}`);
           const dataEntregaFormatada = format(dataEntregaParsed, 'yyyy-MM-dd');
           
           const isStatusAgendado = p.status_agendamento === 'Agendado';
           const isSubstatusValido = p.substatus_pedido === 'Separado' || p.substatus_pedido === 'Despachado';
           const isDataHoje = dataEntregaFormatada === hojeFormatado;
           
-          const incluir = isStatusAgendado && isSubstatusValido && isDataHoje;
-          
-          addDebugLog(`🚛 [${p.cliente_nome}] ${dataEntregaFormatada} vs ${hojeFormatado} = ${incluir ? 'INCLUIR' : 'EXCLUIR'}`);
-          
-          return incluir;
+          return isStatusAgendado && isSubstatusValido && isDataHoje;
         });
-        
-        addDebugLog(`✅ Pedidos para despacho: ${pedidosFiltrados.length}`);
-        return pedidosFiltrados;
       },
 
       getPedidosProximoDia: () => {
         const hoje = new Date();
         const proximoDiaUtil = getProximoDiaUtil(hoje);
         const proximoDiaStr = format(proximoDiaUtil, 'yyyy-MM-dd');
-        const { addDebugLog } = get();
-        
-        addDebugLog(`📅 FILTRO PRÓXIMO DIA - Próximo útil: ${proximoDiaStr}`);
         
         const todosPedidos = get().pedidos;
-        const pedidosFiltrados = todosPedidos.filter(p => {
-          const dataEntregaParsed = parseDataSegura(p.data_prevista_entrega, `getPedidosProximoDia-${p.cliente_nome}`);
+        return todosPedidos.filter(p => {
+          const dataEntregaParsed = parseDataSegura(p.data_prevista_entrega, `proximo-${p.cliente_nome}`);
           const dataEntregaFormatada = format(dataEntregaParsed, 'yyyy-MM-dd');
           
           const isStatusAgendado = p.status_agendamento === 'Agendado';
           const isDataProximoDia = dataEntregaFormatada === proximoDiaStr;
           
-          const incluir = isStatusAgendado && isDataProximoDia;
-          
-          addDebugLog(`📅 [${p.cliente_nome}] ${dataEntregaFormatada} vs ${proximoDiaStr} = ${incluir ? 'INCLUIR' : 'EXCLUIR'}`);
-          
-          return incluir;
+          return isStatusAgendado && isDataProximoDia;
         });
-        
-        addDebugLog(`✅ Pedidos próximo dia: ${pedidosFiltrados.length}`);
-        return pedidosFiltrados;
       },
 
       getPedidosAtrasados: () => {
@@ -742,78 +711,58 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         const ontem = new Date(hoje);
         ontem.setDate(ontem.getDate() - 1);
         const ontemStr = format(ontem, 'yyyy-MM-dd');
-        const { addDebugLog } = get();
-        
-        addDebugLog(`⏰ FILTRO ATRASADOS - Limite (ontem): ${ontemStr}`);
         
         const todosPedidos = get().pedidos;
-        const pedidosFiltrados = todosPedidos.filter(p => {
-          const dataEntregaParsed = parseDataSegura(p.data_prevista_entrega, `getPedidosAtrasados-${p.cliente_nome}`);
+        return todosPedidos.filter(p => {
+          const dataEntregaParsed = parseDataSegura(p.data_prevista_entrega, `atrasado-${p.cliente_nome}`);
           const dataEntregaFormatada = format(dataEntregaParsed, 'yyyy-MM-dd');
           
           const isStatusAgendado = p.status_agendamento === 'Agendado';
           const isAtrasado = dataEntregaFormatada <= ontemStr;
           const naoFinalizado = p.substatus_pedido !== 'Entregue' && p.substatus_pedido !== 'Retorno';
           
-          const incluir = isStatusAgendado && isAtrasado && naoFinalizado;
-          
-          addDebugLog(`⏰ [${p.cliente_nome}] ${dataEntregaFormatada} <= ${ontemStr} = ${incluir ? 'INCLUIR' : 'EXCLUIR'}`);
-          
-          return incluir;
+          return isStatusAgendado && isAtrasado && naoFinalizado;
         });
-        
-        addDebugLog(`✅ Pedidos atrasados: ${pedidosFiltrados.length}`);
-        return pedidosFiltrados;
       }
     }),
     { name: 'expedicao-store' }
   )
 );
 
-// Função auxiliar para formatar pedidos - COMPLETAMENTE REVISADA
+// Função auxiliar para formatar pedidos - OTIMIZADA
 async function formatarPedidos(agendamentos: any[], addDebugLog: (msg: string) => void) {
-  addDebugLog('🔄 === FORMATANDO PEDIDOS PARA EXPEDIÇÃO ===');
-  addDebugLog(`🔄 Agendamentos recebidos: ${agendamentos.length}`);
+  addDebugLog(`🔄 Formatando ${agendamentos.length} agendamentos`);
   
-  // Carregar dados dos clientes para complementar as informações
+  // Carregar dados dos clientes APENAS UMA VEZ
   const { data: clientes, error: clientesError } = await supabase
     .from('clientes')
     .select('id, nome, endereco_entrega, contato_telefone');
 
   if (clientesError) {
     console.error('❌ Erro ao carregar clientes:', clientesError);
-    addDebugLog(`❌ Erro ao carregar clientes: ${clientesError.message}`);
     throw clientesError;
   }
 
   const clientesMap = new Map(clientes?.map(c => [c.id, c]) || []);
-  addDebugLog(`👥 Clientes carregados: ${clientes?.length || 0}`);
 
   const pedidosFormatados = agendamentos
-    .filter(agendamento => {
-      const isAgendado = agendamento.status_agendamento === 'Agendado';
-      addDebugLog(`🔍 Agendamento ${agendamento.id}: Status=${agendamento.status_agendamento} ${isAgendado ? 'INCLUIR' : 'EXCLUIR'}`);
-      return isAgendado;
-    })
+    .filter(agendamento => agendamento.status_agendamento === 'Agendado')
     .map(agendamento => {
       const cliente = clientesMap.get(agendamento.cliente_id);
-      
-      // Garantir que substatus tenha um valor válido
       const substatus = agendamento.substatus_pedido || 'Agendado';
       
-      // CRÍTICO: Usar data_proxima_reposicao como data_prevista_entrega com parseDataSegura
       let dataPrevisao = new Date();
       if (agendamento.data_proxima_reposicao) {
-        dataPrevisao = parseDataSegura(agendamento.data_proxima_reposicao, `formatarPedidos-${cliente?.nome || agendamento.cliente_id}`);
+        dataPrevisao = parseDataSegura(agendamento.data_proxima_reposicao, `formatacao-${cliente?.nome || agendamento.cliente_id}`);
       }
       
-      const pedidoFormatado = {
+      return {
         id: agendamento.id,
         cliente_id: agendamento.cliente_id,
         cliente_nome: cliente?.nome || 'Cliente não encontrado',
         cliente_endereco: cliente?.endereco_entrega,
         cliente_telefone: cliente?.contato_telefone,
-        data_prevista_entrega: dataPrevisao, // USANDO A DATA CORRETA E PARSEADA
+        data_prevista_entrega: dataPrevisao,
         quantidade_total: agendamento.quantidade_total || 0,
         tipo_pedido: agendamento.tipo_pedido || 'Padrão',
         status_agendamento: agendamento.status_agendamento,
@@ -821,14 +770,9 @@ async function formatarPedidos(agendamentos: any[], addDebugLog: (msg: string) =
         itens_personalizados: agendamento.itens_personalizados,
         created_at: agendamento.created_at ? parseDataSegura(agendamento.created_at, `created_at-${cliente?.nome}`) : new Date()
       };
-      
-      addDebugLog(`📦 Pedido formatado: ${pedidoFormatado.cliente_nome} - Data: ${format(dataPrevisao, 'yyyy-MM-dd')} - Status: ${pedidoFormatado.status_agendamento}/${pedidoFormatado.substatus_pedido}`);
-      
-      return pedidoFormatado;
     });
 
-  addDebugLog(`✅ Total formatados: ${pedidosFormatados.length}`);
-  addDebugLog('🔄 === FIM FORMATAÇÃO ===');
+  addDebugLog(`✅ Formatados: ${pedidosFormatados.length} pedidos`);
   
   // Atualizar o estado do store
   useExpedicaoStore.setState({ pedidos: pedidosFormatados });
