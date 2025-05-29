@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 
 interface ReagendamentoDialogProps {
   cliente: Cliente;
@@ -28,6 +29,7 @@ export default function ReagendamentoDialog({
   const [step, setStep] = useState<1 | 2>(1);
   const [tipoReagendamento, setTipoReagendamento] = useState<"automatico" | "manual">("automatico");
   const [dataSelecionada, setDataSelecionada] = useState<Date | undefined>(undefined);
+  const { obterAgendamento } = useAgendamentoClienteStore();
   
   // Calculate 5 business days from today
   const calcularCincoDiasUteis = (): Date => {
@@ -61,13 +63,34 @@ export default function ReagendamentoDialog({
     setStep(2);
   };
   
-  const handleConfirmar = () => {
+  const handleConfirmar = async () => {
     const novaData = tipoReagendamento === "automatico" ? dataAutomatica : dataSelecionada!;
     
     // Reset the hours to make sure the date is set to the beginning of the day
     const dataFormatada = setHours(new Date(novaData), 0);
     
-    onConfirm(cliente, dataFormatada);
+    try {
+      // Obter o agendamento atual do cliente para preservar tipo de pedido e itens personalizados
+      const agendamentoAtual = await obterAgendamento(cliente.id);
+      
+      // Reagendar preservando o tipo de pedido e itens personalizados se existirem
+      await useAgendamentoClienteStore.getState().salvarAgendamento(cliente.id, {
+        status_agendamento: 'Agendado',
+        data_proxima_reposicao: dataFormatada,
+        quantidade_total: agendamentoAtual?.quantidade_total || cliente.quantidadePadrao || 0,
+        tipo_pedido: agendamentoAtual?.tipo_pedido || 'Padrão', // Preservar tipo anterior
+        itens_personalizados: agendamentoAtual?.itens_personalizados || undefined // Preservar itens personalizados
+      });
+      
+      console.log('Reagendamento preservando tipo de pedido:', agendamentoAtual?.tipo_pedido, 'e itens personalizados:', !!agendamentoAtual?.itens_personalizados);
+      
+      onConfirm(cliente, dataFormatada);
+    } catch (error) {
+      console.error('Erro ao reagendar com preservação de dados:', error);
+      // Fallback para o comportamento anterior
+      onConfirm(cliente, dataFormatada);
+    }
+    
     resetForm();
   };
   
@@ -190,6 +213,9 @@ export default function ReagendamentoDialog({
             <div className="text-center p-4 border rounded-md bg-muted/30">
               <p>Deseja reagendar a próxima reposição para</p>
               <p className="text-xl font-semibold mt-2">{getDataExibicao()}</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                O tipo de pedido e configurações personalizadas serão preservados.
+              </p>
             </div>
             
             <DialogFooter className="mt-6">

@@ -50,7 +50,6 @@ export default function AgendamentoEditModal({
   const [statusAgendamento, setStatusAgendamento] = useState<'Agendar' | 'Previsto' | 'Agendado'>('Agendar');
   const [proximaDataReposicao, setProximaDataReposicao] = useState('');
   const [quantidadeTotal, setQuantidadeTotal] = useState(0);
-  const [periodicidade, setPeriodicidade] = useState(7);
   const [tipoPedido, setTipoPedido] = useState<TipoPedidoAgendamento>('Padrão');
   const [produtosQuantidades, setProdutosQuantidades] = useState<ProdutoQuantidade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -127,9 +126,6 @@ export default function AgendamentoEditModal({
       const tipoPedidoExibido = (agendamento.pedido?.tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão') as TipoPedidoAgendamento;
       setTipoPedido(tipoPedidoExibido);
       
-      // Usar a periodicidade do cliente
-      setPeriodicidade(agendamento.cliente.periodicidadePadrao || 7);
-      
       // Inicializar produtos com quantidades se for tipo "Alterado"
       if (tipoPedidoExibido === 'Alterado' && produtosFiltrados.length > 0) {
         const produtosIniciais = produtosFiltrados.map(produto => ({
@@ -160,18 +156,6 @@ export default function AgendamentoEditModal({
       setProdutosQuantidades(produtosIniciais);
     }
   }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length]);
-
-  // Formatar periodicidade em texto
-  const formatPeriodicidade = (dias: number): string => {
-    if (dias % 7 === 0) {
-      const semanas = dias / 7;
-      return semanas === 1 ? "1 semana" : `${semanas} semanas`;
-    } else if (dias === 3) {
-      return "3x semana";
-    } else {
-      return `${dias} dias`;
-    }
-  };
 
   // Atualizar quantidade de um produto específico
   const atualizarQuantidadeProduto = (produtoNome: string, novaQuantidade: number) => {
@@ -315,26 +299,6 @@ export default function AgendamentoEditModal({
                 onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
                 min="0"
               />
-            </div>
-
-            {/* Periodicidade */}
-            <div className="space-y-2">
-              <Label htmlFor="periodicidade">Periodicidade</Label>
-              <Select value={periodicidade.toString()} onValueChange={(value) => setPeriodicidade(Number(value))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3">3x por semana</SelectItem>
-                  <SelectItem value="7">1 semana</SelectItem>
-                  <SelectItem value="14">2 semanas</SelectItem>
-                  <SelectItem value="21">3 semanas</SelectItem>
-                  <SelectItem value="30">1 mês</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">
-                Atualmente: {formatPeriodicidade(periodicidade)}
-              </p>
             </div>
 
             {/* Tipo de Pedido */}

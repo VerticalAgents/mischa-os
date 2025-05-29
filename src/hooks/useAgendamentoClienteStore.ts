@@ -1,329 +1,176 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 export interface AgendamentoCliente {
-  id: string;
+  id?: string;
   cliente_id: string;
+  tipo_pedido: 'Padrão' | 'Alterado';
   status_agendamento: 'Agendar' | 'Previsto' | 'Agendado';
   data_proxima_reposicao?: Date;
   quantidade_total: number;
-  tipo_pedido: 'Padrão' | 'Alterado';
-  itens_personalizados?: Array<{ produto: string; quantidade: number }>;
-  created_at: Date;
-  updated_at: Date;
+  itens_personalizados?: { produto: string; quantidade: number }[];
+  substatus_pedido?: string;
+  created_at?: Date;
+  updated_at?: Date;
 }
 
 interface AgendamentoClienteStore {
   agendamentos: AgendamentoCliente[];
   loading: boolean;
+  error: string | null;
   
   // Actions
-  carregarAgendamentoPorCliente: (clienteId: string) => Promise<AgendamentoCliente | null>;
-  salvarAgendamento: (clienteId: string, dados: Partial<AgendamentoCliente>) => Promise<void>;
-  removerAgendamento: (clienteId: string) => Promise<void>;
-  criarAgendamentoPadrao: (clienteId: string) => Promise<AgendamentoCliente>;
-  carregarTodosAgendamentos: () => Promise<void>; // New method to load all schedules
-  atualizarAgendamentoLocal: (agendamento: AgendamentoCliente) => void; // New method for local updates
+  carregarTodosAgendamentos: () => Promise<void>;
+  obterAgendamento: (clienteId: string) => Promise<AgendamentoCliente | null>;
+  salvarAgendamento: (clienteId: string, dadosAgendamento: Partial<AgendamentoCliente>) => Promise<void>;
+  criarAgendamentoSeNaoExiste: (clienteId: string, dadosIniciais: Partial<AgendamentoCliente>) => Promise<void>;
+  limparErro: () => void;
 }
-
-// Helper para converter data local para formato de data sem timezone
-const formatDateForDatabase = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-// Helper para converter string de data do banco para Date local
-const parseDateFromDatabase = (dateString: string): Date => {
-  // Parse a data como local, sem considerar timezone
-  const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year, month - 1, day);
-};
 
 export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
   devtools(
     (set, get) => ({
       agendamentos: [],
       loading: false,
-      
+      error: null,
+
       carregarTodosAgendamentos: async () => {
-        set({ loading: true });
+        set({ loading: true, error: null });
         try {
-          const { data, error } = await supabase
-            .from('agendamentos_clientes')
-            .select('*')
-            .order('updated_at', { ascending: false });
-
-          if (error) {
-            console.error('Erro ao carregar todos os agendamentos:', error);
-            return;
-          }
-
-          const agendamentosConvertidos = data?.map(item => ({
-            id: item.id,
-            cliente_id: item.cliente_id,
-            status_agendamento: item.status_agendamento as 'Agendar' | 'Previsto' | 'Agendado',
-            data_proxima_reposicao: item.data_proxima_reposicao ? parseDateFromDatabase(item.data_proxima_reposicao) : undefined,
-            quantidade_total: item.quantidade_total,
-            tipo_pedido: item.tipo_pedido as 'Padrão' | 'Alterado',
-            itens_personalizados: item.itens_personalizados as Array<{ produto: string; quantidade: number }> | undefined,
-            created_at: new Date(item.created_at),
-            updated_at: new Date(item.updated_at)
-          })) || [];
-
-          set({ agendamentos: agendamentosConvertidos });
-        } catch (error) {
-          console.error('Erro ao carregar todos os agendamentos:', error);
-        } finally {
-          set({ loading: false });
-        }
-      },
-
-      atualizarAgendamentoLocal: (agendamento: AgendamentoCliente) => {
-        set(state => ({
-          agendamentos: state.agendamentos.map(item => 
-            item.cliente_id === agendamento.cliente_id ? agendamento : item
-          )
-        }));
-      },
-
-      carregarAgendamentoPorCliente: async (clienteId: string) => {
-        set({ loading: true });
-        try {
-          console.log('Carregando agendamento para cliente:', clienteId);
+          console.log('useAgendamentoClienteStore: Carregando todos os agendamentos...');
           
-          // Primeiro, verificar se o cliente existe na tabela clientes
-          const { data: clienteData, error: clienteError } = await supabase
-            .from('clientes')
-            .select('id')
-            .eq('id', clienteId)
-            .maybeSingle();
-
-          if (clienteError) {
-            console.error('Erro ao verificar cliente:', clienteError);
-            toast({
-              title: "Erro",
-              description: "Não foi possível verificar o cliente",
-              variant: "destructive"
-            });
-            return null;
-          }
-
-          if (!clienteData) {
-            console.error('Cliente não encontrado:', clienteId);
-            toast({
-              title: "Erro",
-              description: "Cliente não encontrado",
-              variant: "destructive"
-            });
-            return null;
-          }
-
           const { data, error } = await supabase
             .from('agendamentos_clientes')
-            .select('*')
-            .eq('cliente_id', clienteId)
-            .maybeSingle();
+            .select('*');
 
           if (error) {
-            console.error('Erro ao carregar agendamento:', error);
-            toast({
-              title: "Erro",
-              description: "Não foi possível carregar o agendamento do cliente",
-              variant: "destructive"
-            });
-            return null;
-          }
-
-          if (data) {
-            const agendamento: AgendamentoCliente = {
-              id: data.id,
-              cliente_id: data.cliente_id,
-              status_agendamento: data.status_agendamento as 'Agendar' | 'Previsto' | 'Agendado',
-              data_proxima_reposicao: data.data_proxima_reposicao ? parseDateFromDatabase(data.data_proxima_reposicao) : undefined,
-              quantidade_total: data.quantidade_total,
-              tipo_pedido: data.tipo_pedido as 'Padrão' | 'Alterado',
-              itens_personalizados: data.itens_personalizados as Array<{ produto: string; quantidade: number }> | undefined,
-              created_at: new Date(data.created_at),
-              updated_at: new Date(data.updated_at)
-            };
-            console.log('Agendamento carregado com data:', data.data_proxima_reposicao, '-> convertida para:', agendamento.data_proxima_reposicao);
-            return agendamento;
-          }
-
-          // Se não existe agendamento, criar um padrão automaticamente
-          return await get().criarAgendamentoPadrao(clienteId);
-        } catch (error) {
-          console.error('Erro ao carregar agendamento:', error);
-          toast({
-            title: "Erro",
-            description: "Erro inesperado ao carregar agendamento",
-            variant: "destructive"
-          });
-          return null;
-        } finally {
-          set({ loading: false });
-        }
-      },
-      
-      criarAgendamentoPadrao: async (clienteId: string) => {
-        try {
-          const dadosDefault = {
-            cliente_id: clienteId,
-            status_agendamento: 'Agendar' as const,
-            quantidade_total: 0,
-            tipo_pedido: 'Padrão' as const,
-            itens_personalizados: null
-          };
-
-          const { data, error } = await supabase
-            .from('agendamentos_clientes')
-            .insert([dadosDefault])
-            .select()
-            .single();
-
-          if (error) {
-            console.error('Erro ao criar agendamento padrão:', error);
+            console.error('useAgendamentoClienteStore: Erro ao carregar agendamentos:', error);
             throw error;
           }
 
-          const agendamento: AgendamentoCliente = {
-            id: data.id,
-            cliente_id: data.cliente_id,
-            status_agendamento: data.status_agendamento as 'Agendar' | 'Previsto' | 'Agendado',
-            data_proxima_reposicao: data.data_proxima_reposicao ? parseDateFromDatabase(data.data_proxima_reposicao) : undefined,
-            quantidade_total: data.quantidade_total,
-            tipo_pedido: data.tipo_pedido as 'Padrão' | 'Alterado',
-            itens_personalizados: data.itens_personalizados as Array<{ produto: string; quantidade: number }> | undefined,
-            created_at: new Date(data.created_at),
-            updated_at: new Date(data.updated_at)
-          };
-
-          return agendamento;
+          console.log('useAgendamentoClienteStore: Agendamentos carregados:', data?.length || 0);
+          set({ agendamentos: data || [], loading: false });
         } catch (error) {
-          console.error('Erro ao criar agendamento padrão:', error);
-          throw error;
+          console.error('useAgendamentoClienteStore: Erro:', error);
+          set({ error: error instanceof Error ? error.message : 'Erro desconhecido', loading: false });
         }
       },
-      
-      salvarAgendamento: async (clienteId: string, dados: Partial<AgendamentoCliente>) => {
-        set({ loading: true });
+
+      obterAgendamento: async (clienteId: string) => {
         try {
-          const dadosSupabase = {
+          console.log('useAgendamentoClienteStore: Obtendo agendamento para cliente:', clienteId);
+          
+          const { data, error } = await supabase
+            .from('agendamentos_clientes')
+            .select('*')
+            .eq('cliente_id', clienteId)
+            .single();
+
+          if (error && error.code !== 'PGRST116') {
+            console.error('useAgendamentoClienteStore: Erro ao obter agendamento:', error);
+            throw error;
+          }
+
+          console.log('useAgendamentoClienteStore: Agendamento obtido:', data);
+          return data || null;
+        } catch (error) {
+          console.error('useAgendamentoClienteStore: Erro ao obter agendamento:', error);
+          return null;
+        }
+      },
+
+      salvarAgendamento: async (clienteId: string, dadosAgendamento: Partial<AgendamentoCliente>) => {
+        try {
+          console.log('useAgendamentoClienteStore: Salvando agendamento para cliente:', clienteId, dadosAgendamento);
+          
+          // Verificar se o agendamento já existe
+          const agendamentoExistente = await get().obterAgendamento(clienteId);
+          
+          const dadosParaSalvar = {
             cliente_id: clienteId,
-            status_agendamento: dados.status_agendamento,
-            data_proxima_reposicao: dados.data_proxima_reposicao ? formatDateForDatabase(dados.data_proxima_reposicao) : null,
-            quantidade_total: dados.quantidade_total,
-            tipo_pedido: dados.tipo_pedido,
-            itens_personalizados: dados.itens_personalizados || null
+            ...dadosAgendamento,
+            updated_at: new Date().toISOString()
           };
 
-          console.log('Salvando agendamento com data:', dados.data_proxima_reposicao, '-> formatada para:', dadosSupabase.data_proxima_reposicao);
-
-          // Verificar se já existe um agendamento para este cliente
-          const { data: existente } = await supabase
-            .from('agendamentos_clientes')
-            .select('id')
-            .eq('cliente_id', clienteId)
-            .maybeSingle();
-
-          let agendamentoSalvo;
-
-          if (existente) {
-            // Atualizar agendamento existente
+          let result;
+          if (agendamentoExistente) {
+            // Atualizar agendamento existente, preservando dados anteriores se não especificados
+            const dadosAtualizacao = {
+              ...dadosParaSalvar,
+              // Preservar tipo de pedido anterior se não especificado
+              tipo_pedido: dadosAgendamento.tipo_pedido || agendamentoExistente.tipo_pedido,
+              // Preservar itens personalizados anteriores se não especificados
+              itens_personalizados: dadosAgendamento.itens_personalizados !== undefined 
+                ? dadosAgendamento.itens_personalizados 
+                : agendamentoExistente.itens_personalizados
+            };
+            
+            console.log('useAgendamentoClienteStore: Atualizando agendamento existente com preservação:', dadosAtualizacao);
+            
             const { data, error } = await supabase
               .from('agendamentos_clientes')
-              .update(dadosSupabase)
+              .update(dadosAtualizacao)
               .eq('cliente_id', clienteId)
               .select()
               .single();
-
-            if (error) {
-              throw error;
-            }
-            agendamentoSalvo = data;
+            
+            result = { data, error };
           } else {
             // Criar novo agendamento
             const { data, error } = await supabase
               .from('agendamentos_clientes')
-              .insert([dadosSupabase])
+              .insert({
+                ...dadosParaSalvar,
+                created_at: new Date().toISOString()
+              })
               .select()
               .single();
-
-            if (error) {
-              throw error;
-            }
-            agendamentoSalvo = data;
+            
+            result = { data, error };
           }
 
-          // Update local state immediately
-          if (agendamentoSalvo) {
-            const agendamentoConvertido: AgendamentoCliente = {
-              id: agendamentoSalvo.id,
-              cliente_id: agendamentoSalvo.cliente_id,
-              status_agendamento: agendamentoSalvo.status_agendamento as 'Agendar' | 'Previsto' | 'Agendado',
-              data_proxima_reposicao: agendamentoSalvo.data_proxima_reposicao ? parseDateFromDatabase(agendamentoSalvo.data_proxima_reposicao) : undefined,
-              quantidade_total: agendamentoSalvo.quantidade_total,
-              tipo_pedido: agendamentoSalvo.tipo_pedido as 'Padrão' | 'Alterado',
-              itens_personalizados: agendamentoSalvo.itens_personalizados as Array<{ produto: string; quantidade: number }> | undefined,
-              created_at: new Date(agendamentoSalvo.created_at),
-              updated_at: new Date(agendamentoSalvo.updated_at)
-            };
-
-            get().atualizarAgendamentoLocal(agendamentoConvertido);
+          if (result.error) {
+            console.error('useAgendamentoClienteStore: Erro ao salvar agendamento:', result.error);
+            throw result.error;
           }
 
-          toast({
-            title: "Sucesso",
-            description: "Agendamento salvo com sucesso"
+          console.log('useAgendamentoClienteStore: Agendamento salvo com sucesso:', result.data);
+          
+          // Atualizar o estado local
+          set(state => ({
+            agendamentos: agendamentoExistente
+              ? state.agendamentos.map(a => a.cliente_id === clienteId ? result.data : a)
+              : [...state.agendamentos, result.data]
+          }));
+
+          // Atualizar também os dados do cliente na store de clientes
+          const { useClienteStore } = await import('./useClienteStore');
+          const clienteStore = useClienteStore.getState();
+          
+          clienteStore.atualizarCliente(clienteId, {
+            statusAgendamento: dadosAgendamento.status_agendamento,
+            proximaDataReposicao: dadosAgendamento.data_proxima_reposicao
           });
 
-          // Reload all schedules to ensure consistency
-          await get().carregarTodosAgendamentos();
         } catch (error) {
-          console.error('Erro ao salvar agendamento:', error);
-          toast({
-            title: "Erro",
-            description: "Não foi possível salvar o agendamento",
-            variant: "destructive"
-          });
+          console.error('useAgendamentoClienteStore: Erro ao salvar agendamento:', error);
+          toast.error('Erro ao salvar agendamento');
           throw error;
-        } finally {
-          set({ loading: false });
         }
       },
-      
-      removerAgendamento: async (clienteId: string) => {
-        set({ loading: true });
-        try {
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .delete()
-            .eq('cliente_id', clienteId);
 
-          if (error) {
-            throw error;
-          }
-
-          toast({
-            title: "Agendamento removido",
-            description: "Agendamento removido com sucesso"
-          });
-        } catch (error) {
-          console.error('Erro ao remover agendamento:', error);
-          toast({
-            title: "Erro",
-            description: "Não foi possível remover o agendamento",
-            variant: "destructive"
-          });
-          throw error;
-        } finally {
-          set({ loading: false });
+      criarAgendamentoSeNaoExiste: async (clienteId: string, dadosIniciais: Partial<AgendamentoCliente>) => {
+        const agendamentoExistente = await get().obterAgendamento(clienteId);
+        
+        if (!agendamentoExistente) {
+          await get().salvarAgendamento(clienteId, dadosIniciais);
         }
-      }
+      },
+
+      limparErro: () => set({ error: null })
     }),
     { name: 'agendamento-cliente-store' }
   )
