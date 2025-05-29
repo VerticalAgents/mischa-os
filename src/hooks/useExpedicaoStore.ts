@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "sonner";
@@ -26,7 +27,7 @@ interface ExpedicaoStore {
   isLoading: boolean;
   lastSyncTime: number;
   debugLogs: string[];
-  isProcessing: boolean; // NOVO: flag para evitar processamento simultâneo
+  isProcessing: boolean;
   
   // Actions
   carregarPedidos: () => Promise<void>;
@@ -56,14 +57,14 @@ const getProximoDiaUtil = (data: Date): Date => {
   return isWeekend(proximaData) ? getProximoDiaUtil(proximaData) : proximaData;
 };
 
-// FUNÇÃO CRÍTICA: Parse de data com logs detalhados - OTIMIZADA
+// FUNÇÃO CORRIGIDA: Parse de data sem timezone para comparação precisa
 const parseDataSegura = (dataString: string | Date, origem: string = 'unknown'): Date => {
   let resultado: Date;
   
   if (dataString instanceof Date) {
     resultado = dataString;
   } else if (typeof dataString === 'string' && dataString.includes('-')) {
-    // Data no formato YYYY-MM-DD - criar Date no timezone local
+    // CRÍTICO: Para comparação de datas (YYYY-MM-DD), usar sempre timezone local
     const parts = dataString.split('-');
     const year = parseInt(parts[0]);
     const month = parseInt(parts[1]) - 1; // Mês é 0-indexed
@@ -73,8 +74,6 @@ const parseDataSegura = (dataString: string | Date, origem: string = 'unknown'):
     resultado = new Date(dataString);
   }
   
-  // Log simplificado para evitar spam
-  console.log(`🔍 PARSE DATA [${origem}]: ${dataString} -> ${format(resultado, 'yyyy-MM-dd')}`);
   return resultado;
 };
 
@@ -84,6 +83,7 @@ const reagendarAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entr
   console.log('🔄 Cliente:', pedido.cliente_nome);
   console.log('🔄 ID do agendamento:', pedido.id);
   console.log('🔄 Tipo operação:', tipoOperacao);
+  console.log('🔄 Tipo pedido atual:', pedido.tipo_pedido);
 
   // Buscar dados do cliente para obter periodicidade
   const { data: cliente, error: clienteError } = await supabase
@@ -122,22 +122,24 @@ const reagendarAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entr
 
   const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
-  console.log(`📋 Reagendando agendamento existente:`, {
+  console.log(`📋 Reagendando agendamento existente com preservação do tipo:`, {
     id: pedido.id,
     cliente: pedido.cliente_nome,
     cliente_id: pedido.cliente_id,
     data_proxima_reposicao: proximaDataFormatada,
     status_agendamento: 'Previsto',
-    substatus_pedido: 'Agendado'
+    substatus_pedido: 'Agendado',
+    tipo_pedido: pedido.tipo_pedido // PRESERVAR TIPO ORIGINAL
   });
 
-  // ATUALIZAR o agendamento existente ao invés de criar um novo
+  // CRÍTICO: PRESERVAR o tipo de pedido original ao reagendar
   const { error: updateError } = await supabase
     .from('agendamentos_clientes')
     .update({
       data_proxima_reposicao: proximaDataFormatada,
       status_agendamento: 'Previsto',
-      substatus_pedido: 'Agendado'
+      substatus_pedido: 'Agendado',
+      tipo_pedido: pedido.tipo_pedido // MANTER O TIPO ORIGINAL
     })
     .eq('id', pedido.id);
 
@@ -166,12 +168,13 @@ const reagendarAgendamento = async (pedido: PedidoExpedicao, tipoOperacao: 'entr
     throw clienteUpdateError;
   }
 
-  console.log(`✅ Agendamento reagendado com sucesso:`, {
+  console.log(`✅ Agendamento reagendado com sucesso preservando tipo "${pedido.tipo_pedido}":`, {
     id: pedido.id,
     cliente: pedido.cliente_nome,
     novaData: proximaDataFormatada,
     status: 'Previsto',
-    substatus: 'Agendado'
+    substatus: 'Agendado',
+    tipoPedido: pedido.tipo_pedido
   });
   console.log('🔄 === FIM REAGENDAMENTO ===');
 
@@ -185,12 +188,12 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       isLoading: false,
       lastSyncTime: 0,
       debugLogs: [],
-      isProcessing: false, // NOVO
+      isProcessing: false,
       
       addDebugLog: (message: string) => {
         const timestamp = new Date().toLocaleTimeString('pt-BR');
         set(state => ({
-          debugLogs: [...state.debugLogs.slice(-29), `[${timestamp}] ${message}`] // Reduzido para 30 logs máximo
+          debugLogs: [...state.debugLogs.slice(-19), `[${timestamp}] ${message}`] // Máximo 20 logs
         }));
         console.log(`🔍 DEBUG LOG: ${message}`);
       },
@@ -207,8 +210,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           return;
         }
         
-        // Evitar chamadas muito frequentes (menos de 5 segundos)
-        if (currentTime - lastSyncTime < 5000) {
+        // Evitar chamadas muito frequentes (menos de 3 segundos)
+        if (currentTime - lastSyncTime < 3000) {
           console.log('⏭️ Pulando carregamento - muito recente');
           return;
         }
@@ -221,7 +224,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           
           addDebugLog(`🚀 INICIANDO CARREGAMENTO - Data atual: ${hojeFormatado}`);
           
-          // Carregar agendamentos diretamente do banco - SEM forçar novo carregamento para evitar loop
+          // Carregar agendamentos diretamente do banco
           const agendamentos = useAgendamentoClienteStore.getState().agendamentos;
           
           addDebugLog(`📥 Agendamentos encontrados: ${agendamentos.length}`);
@@ -385,6 +388,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           console.log('📦 === CONFIRMAÇÃO INDIVIDUAL DE ENTREGA ===');
           console.log('📦 Cliente:', pedido.cliente_nome);
           console.log('📦 ID do pedido:', pedidoId);
+          console.log('📦 Tipo pedido:', pedido.tipo_pedido);
 
           // Reagendar o agendamento existente
           console.log('🔄 Reagendando agendamento existente...');
@@ -415,6 +419,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           console.log('🔄 === CONFIRMAÇÃO INDIVIDUAL DE RETORNO ===');
           console.log('🔄 Cliente:', pedido.cliente_nome);
           console.log('🔄 ID do pedido:', pedidoId);
+          console.log('🔄 Tipo pedido:', pedido.tipo_pedido);
 
           // Reagendar o agendamento existente
           console.log('🔄 Reagendando agendamento existente...');
@@ -652,6 +657,9 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         
         const todosPedidos = get().pedidos;
         
+        addDebugLog(`🔍 INICIANDO FILTRO SEPARAÇÃO - Data hoje: ${hojeFormatado}`);
+        addDebugLog(`🔍 Total pedidos disponíveis: ${todosPedidos.length}`);
+        
         const pedidosFiltrados = todosPedidos.filter(p => {
           const dataEntregaParsed = parseDataSegura(p.data_prevista_entrega, `separacao-${p.cliente_nome}`);
           const dataEntregaFormatada = format(dataEntregaParsed, 'yyyy-MM-dd');
@@ -662,12 +670,12 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           
           const incluir = isStatusAgendado && isSubstatusValido && isDataHoje;
           
-          if (incluir) {
-            addDebugLog(`✅ [${p.cliente_nome}] INCLUÍDO para separação`);
-          }
+          addDebugLog(`🔍 [${p.cliente_nome}] Data: ${dataEntregaFormatada} | Status: ${p.status_agendamento} | Substatus: ${p.substatus_pedido} | Incluir: ${incluir ? 'SIM' : 'NÃO'}`);
           
           return incluir;
         });
+        
+        addDebugLog(`✅ FILTRO CONCLUÍDO - Pedidos para separação: ${pedidosFiltrados.length}`);
         
         return pedidosFiltrados;
       },
@@ -729,7 +737,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
   )
 );
 
-// Função auxiliar para formatar pedidos - OTIMIZADA
+// Função auxiliar para formatar pedidos - CORRIGIDA
 async function formatarPedidos(agendamentos: any[], addDebugLog: (msg: string) => void) {
   addDebugLog(`🔄 Formatando ${agendamentos.length} agendamentos`);
   
@@ -755,6 +763,8 @@ async function formatarPedidos(agendamentos: any[], addDebugLog: (msg: string) =
       if (agendamento.data_proxima_reposicao) {
         dataPrevisao = parseDataSegura(agendamento.data_proxima_reposicao, `formatacao-${cliente?.nome || agendamento.cliente_id}`);
       }
+      
+      addDebugLog(`📋 Formatando pedido: ${cliente?.nome} | Data: ${format(dataPrevisao, 'yyyy-MM-dd')} | Tipo: ${agendamento.tipo_pedido || 'Padrão'}`);
       
       return {
         id: agendamento.id,

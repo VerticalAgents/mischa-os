@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -6,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import StatusBadge from "@/components/common/StatusBadge";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
-import { DebugPanel } from "./DebugPanel";
+import { TipoPedidoBadge } from "./TipoPedidoBadge";
 import { toast } from "sonner";
 import { Printer, FileText, Check, Undo } from "lucide-react";
 import { formatDate } from "@/lib/utils";
@@ -30,7 +31,7 @@ export const SeparacaoPedidos = () => {
   // Usar hook de sincronização
   useExpedicaoSync();
 
-  // Carregar pedidos apenas uma vez ao montar - CORRIGIDO
+  // Carregar pedidos apenas uma vez ao montar
   useEffect(() => {
     if (!mountedRef.current) {
       mountedRef.current = true;
@@ -47,7 +48,7 @@ export const SeparacaoPedidos = () => {
   const pedidosParaSeparacao = getPedidosParaSeparacao();
   const pedidosProximoDia = getPedidosProximoDia();
   
-  // Separar por tipo (assumindo que todos são padrão por enquanto)
+  // Separar por tipo
   const pedidosPadrao = pedidosParaSeparacao.filter(p => p.tipo_pedido === "Padrão");
   const pedidosAlterados = pedidosParaSeparacao.filter(p => p.tipo_pedido === "Alterado");
   
@@ -258,9 +259,6 @@ export const SeparacaoPedidos = () => {
 
   return (
     <div className="space-y-4">
-      {/* Painel de Debug */}
-      <DebugPanel />
-      
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <h2 className="text-lg font-semibold">Separação de Pedidos</h2>
@@ -319,13 +317,7 @@ export const SeparacaoPedidos = () => {
                     <TableRow key={pedido.id}>
                       <TableCell>{pedido.cliente_nome}</TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          pedido.tipo_pedido === "Padrão" 
-                            ? "bg-green-100 text-green-800" 
-                            : "bg-red-100 text-red-800"
-                        }`}>
-                          {pedido.tipo_pedido}
-                        </span>
+                        <TipoPedidoBadge tipo={pedido.tipo_pedido} />
                       </TableCell>
                       <TableCell>{pedido.quantidade_total}</TableCell>
                       <TableCell>{formatDate(new Date(pedido.data_prevista_entrega))}</TableCell>
@@ -516,13 +508,7 @@ export const SeparacaoPedidos = () => {
                       <TableCell>{pedido.cliente_nome}</TableCell>
                       <TableCell>{formatDate(new Date(pedido.data_prevista_entrega))}</TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          pedido.tipo_pedido === "Padrão" 
-                            ? "bg-green-100 text-green-800" 
-                            : "bg-red-100 text-red-800"
-                        }`}>
-                          {pedido.tipo_pedido}
-                        </span>
+                        <TipoPedidoBadge tipo={pedido.tipo_pedido} />
                       </TableCell>
                       <TableCell>{pedido.quantidade_total}</TableCell>
                       <TableCell className="text-right">

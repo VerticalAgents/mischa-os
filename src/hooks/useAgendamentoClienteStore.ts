@@ -137,18 +137,20 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
 
           let result;
           if (agendamentoExistente) {
-            // Atualizar agendamento existente, preservando dados anteriores se não especificados
+            // CRÍTICO: Preservar tipo de pedido original se não especificado explicitamente
             const dadosAtualizacao = {
               ...dadosParaSalvar,
-              // Preservar tipo de pedido anterior se não especificado
-              tipo_pedido: dadosAgendamento.tipo_pedido || agendamentoExistente.tipo_pedido,
+              // Se tipo_pedido não foi especificado na atualização, manter o original
+              tipo_pedido: dadosAgendamento.tipo_pedido !== undefined 
+                ? dadosAgendamento.tipo_pedido 
+                : agendamentoExistente.tipo_pedido,
               // Preservar itens personalizados anteriores se não especificados
               itens_personalizados: dadosAgendamento.itens_personalizados !== undefined 
                 ? dadosAgendamento.itens_personalizados 
                 : agendamentoExistente.itens_personalizados
             };
             
-            console.log('useAgendamentoClienteStore: Atualizando agendamento existente com preservação:', dadosAtualizacao);
+            console.log('useAgendamentoClienteStore: Atualizando agendamento com preservação:', dadosAtualizacao);
             
             const { data, error } = await supabase
               .from('agendamentos_clientes')
