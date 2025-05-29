@@ -1,3 +1,4 @@
+
 export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby';
 
 // Adding new types for client configuration
@@ -99,6 +100,7 @@ export interface ConfiguracoesProducao {
 
 export type StatusPedido = 'Agendado' | 'Em Separação' | 'Despachado' | 'Entregue' | 'Cancelado';
 export type TipoPedido = 'Padrão' | 'Alterado' | 'Único';
+export type TipoPedidoAgendamento = 'Padrão' | 'Alterado'; // Specific type for agendamento context
 export type SubstatusPedidoAgendado = 'Agendado' | 'Separado' | 'Despachado' | 'Entregue' | 'Retorno';
 
 export interface AlteracaoStatusPedido {
@@ -127,7 +129,7 @@ export interface ItemPedido {
 
 export interface Pedido {
   id: number;
-  idCliente: number;
+  idCliente: string; // Changed to string to match Cliente.id (UUID)
   cliente?: Cliente;
   dataPedido: Date;
   dataPrevistaEntrega: Date;

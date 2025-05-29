@@ -72,7 +72,7 @@ export default function TodosAgendamentos() {
           dataPedido: new Date(),
           dataPrevistaEntrega: dataReposicao,
           totalPedidoUnidades: agendamentoClienteStore.quantidade_total,
-          tipoPedido: agendamentoClienteStore.tipo_pedido as 'Padrão' | 'Alterado',
+          tipoPedido: agendamentoClienteStore.tipo_pedido as 'Padrão' | 'Alterado' | 'Único',
           statusPedido: 'Agendado',
           itensPedido: [],
           historicoAlteracoesStatus: []
@@ -129,7 +129,7 @@ export default function TodosAgendamentos() {
         status_agendamento: agendamentoAtualizado.statusAgendamento,
         data_proxima_reposicao: agendamentoAtualizado.dataReposicao,
         quantidade_total: agendamentoAtualizado.pedido?.totalPedidoUnidades || agendamentoAtualizado.cliente.quantidadePadrao || 0,
-        tipo_pedido: agendamentoAtualizado.pedido?.tipoPedido || 'Padrão'
+        tipo_pedido: (agendamentoAtualizado.pedido?.tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão') as 'Padrão' | 'Alterado'
       });
 
       toast.success("Agendamento atualizado com sucesso!");

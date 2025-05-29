@@ -11,6 +11,7 @@ import { useProdutoStore } from "@/hooks/useProdutoStore";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useAgendamentoClienteStore, AgendamentoCliente } from "@/hooks/useAgendamentoClienteStore";
 import { AgendamentoItem } from "./types";
+import { TipoPedidoAgendamento } from "@/types";
 import { toast } from "sonner";
 import { AlertTriangle, Save, Calendar } from "lucide-react";
 
@@ -50,7 +51,7 @@ export default function AgendamentoEditModal({
   const [proximaDataReposicao, setProximaDataReposicao] = useState('');
   const [quantidadeTotal, setQuantidadeTotal] = useState(0);
   const [periodicidade, setPeriodicidade] = useState(7);
-  const [tipoPedido, setTipoPedido] = useState<'Padrão' | 'Alterado'>('Padrão');
+  const [tipoPedido, setTipoPedido] = useState<TipoPedidoAgendamento>('Padrão');
   const [produtosQuantidades, setProdutosQuantidades] = useState<ProdutoQuantidade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -78,75 +79,28 @@ export default function AgendamentoEditModal({
     subcategoriaId: p.subcategoria_id || 0
   })) : produtosLocal;
 
-  // Debug apenas no console em desenvolvimento
-  useEffect(() => {
-    if (agendamento && open && process.env.NODE_ENV === 'development') {
-      console.log('🔍 DEBUG DETALHADO - Modal aberto para cliente:', agendamento.cliente.nome);
-      console.log('🔍 DEBUG - Categorias habilitadas do cliente:', agendamento.cliente.categoriasHabilitadas);
-      console.log('🔍 DEBUG - Produtos Supabase carregados:', produtosSupabase.length);
-      console.log('🔍 DEBUG - Produtos Local carregados:', produtosLocal.length);
-      console.log('🔍 DEBUG - Produtos finais escolhidos:', produtos.length);
-      console.log('🔍 DEBUG - Loading Supabase:', loadingSupabase);
-    }
-  }, [agendamento, open, produtos.length, produtosSupabase.length, produtosLocal.length, loadingSupabase]);
-
   // Filtrar produtos baseado nas categorias habilitadas do cliente
   const produtosFiltrados = produtos.filter(produto => {
-    // Debug apenas no console em desenvolvimento
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 DEBUG FILTRO - Verificando produto:', {
-        nome: produto.nome,
-        categoriaId: produto.categoriaId,
-        categoria: produto.categoria,
-        ativo: produto.ativo,
-        clienteCategorias: agendamento?.cliente.categoriasHabilitadas
-      });
-    }
-
     // Se não há produtos ou cliente, retornar array vazio
     if (!agendamento?.cliente || !produto) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('❌ DEBUG FILTRO - Cliente ou produto inválido');
-      }
       return false;
     }
 
     // Se produto não está ativo, filtrar fora
     if (!produto.ativo) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('❌ DEBUG FILTRO - Produto inativo:', produto.nome);
-      }
       return false;
     }
 
     // Se cliente não tem categorias habilitadas, mostrar todos os produtos ativos
     if (!agendamento.cliente.categoriasHabilitadas || agendamento.cliente.categoriasHabilitadas.length === 0) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ DEBUG FILTRO - Cliente sem categorias específicas, produto incluído:', produto.nome);
-      }
       return true;
     }
 
     // Verificar se o produto está em uma categoria habilitada
     const categoriaHabilitada = agendamento.cliente.categoriasHabilitadas.includes(produto.categoriaId);
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`${categoriaHabilitada ? '✅' : '❌'} DEBUG FILTRO - Produto ${produto.nome} categoria ${produto.categoriaId} habilitada:`, categoriaHabilitada);
-    }
     
     return categoriaHabilitada;
   });
-
-  // Debug dos produtos filtrados apenas no console
-  useEffect(() => {
-    if (agendamento && open && process.env.NODE_ENV === 'development') {
-      console.log('🔍 DEBUG FINAL - Produtos após filtro:', produtosFiltrados.length);
-      console.log('🔍 DEBUG FINAL - Produtos filtrados:', produtosFiltrados.map(p => ({
-        nome: p.nome,
-        categoriaId: p.categoriaId,
-        categoria: p.categoria
-      })));
-    }
-  }, [produtosFiltrados.length, agendamento, open]);
 
   // Carregar dados do agendamento ao abrir o modal - usando EXATAMENTE os dados da tabela
   useEffect(() => {
@@ -170,7 +124,7 @@ export default function AgendamentoEditModal({
       setQuantidadeTotal(quantidadeExibida);
       
       // Usar o tipo de pedido EXATO da tabela
-      const tipoPedidoExibido = agendamento.pedido?.tipoPedido as 'Padrão' | 'Alterado' || 'Padrão';
+      const tipoPedidoExibido = (agendamento.pedido?.tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão') as TipoPedidoAgendamento;
       setTipoPedido(tipoPedidoExibido);
       
       // Usar a periodicidade do cliente
@@ -204,9 +158,6 @@ export default function AgendamentoEditModal({
         quantidade: 0
       }));
       setProdutosQuantidades(produtosIniciais);
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 DEBUG - Inicializando produtos para tipo Alterado:', produtosIniciais.length);
-      }
     }
   }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length]);
 
@@ -267,16 +218,17 @@ export default function AgendamentoEditModal({
         pedido: agendamento.pedido ? {
           ...agendamento.pedido,
           totalPedidoUnidades: quantidadeTotal,
-          tipoPedido
+          tipoPedido: tipoPedido as 'Padrão' | 'Alterado' | 'Único'
         } : {
           totalPedidoUnidades: quantidadeTotal,
-          tipoPedido,
+          tipoPedido: tipoPedido as 'Padrão' | 'Alterado' | 'Único',
           id: 0,
           idCliente: agendamento.cliente.id,
           dataPedido: new Date(),
           dataPrevistaEntrega: agendamento.dataReposicao,
           statusPedido: 'Agendado',
-          itensPedido: []
+          itensPedido: [],
+          historicoAlteracoesStatus: []
         }
       };
 
@@ -390,7 +342,7 @@ export default function AgendamentoEditModal({
               <Label>Tipo de Pedido</Label>
               <RadioGroup 
                 value={tipoPedido} 
-                onValueChange={(value: 'Padrão' | 'Alterado') => setTipoPedido(value)}
+                onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="Padrão" id="padrao" />
