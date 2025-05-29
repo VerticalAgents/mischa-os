@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
+import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useAgendamentoClienteStore, AgendamentoCliente } from "@/hooks/useAgendamentoClienteStore";
 import { AgendamentoItem } from "./types";
 import { toast } from "sonner";
@@ -52,29 +53,62 @@ export default function AgendamentoEditModal({
   const [produtosQuantidades, setProdutosQuantidades] = useState<ProdutoQuantidade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
-  const { produtos } = useProdutoStore();
+  // Usar tanto o store local quanto o Supabase para garantir que temos produtos
+  const { produtos: produtosLocal } = useProdutoStore();
+  const { produtos: produtosSupabase, loading: loadingSupabase } = useSupabaseProdutos();
   const { salvarAgendamento } = useAgendamentoClienteStore();
 
-  // Debug: Log completo dos produtos e cliente
+  // Decidir qual fonte de produtos usar - priorizar Supabase se disponível
+  const produtos = produtosSupabase.length > 0 ? produtosSupabase.map(p => ({
+    id: parseInt(p.id) || 0,
+    nome: p.nome,
+    categoria: p.categoria_id ? `Categoria ${p.categoria_id}` : 'Sem categoria',
+    categoriaId: p.categoria_id || 0,
+    ativo: p.ativo,
+    // ... outros campos necessários
+    descricao: p.descricao,
+    precoVenda: Number(p.preco_venda) || 0,
+    custoTotal: Number(p.custo_total) || 0,
+    margemLucro: Number(p.margem_lucro) || 0,
+    componentes: [],
+    pesoUnitario: Number(p.peso_unitario) || 0,
+    custoUnitario: Number(p.custo_unitario) || 0,
+    unidadesProducao: p.unidades_producao || 1,
+    estoqueMinimo: 0,
+    subcategoriaId: p.subcategoria_id || 0
+  })) : produtosLocal;
+
+  // Debug detalhado dos produtos carregados
   useEffect(() => {
     if (agendamento && open) {
-      console.log('🔍 DEBUG - Modal aberto para cliente:', agendamento.cliente.nome);
+      console.log('🔍 DEBUG DETALHADO - Modal aberto para cliente:', agendamento.cliente.nome);
       console.log('🔍 DEBUG - Categorias habilitadas do cliente:', agendamento.cliente.categoriasHabilitadas);
-      console.log('🔍 DEBUG - Total de produtos carregados:', produtos.length);
-      console.log('🔍 DEBUG - Produtos carregados:', produtos.map(p => ({
+      console.log('🔍 DEBUG - Produtos Supabase carregados:', produtosSupabase.length);
+      console.log('🔍 DEBUG - Produtos Local carregados:', produtosLocal.length);
+      console.log('🔍 DEBUG - Produtos finais escolhidos:', produtos.length);
+      console.log('🔍 DEBUG - Loading Supabase:', loadingSupabase);
+      
+      console.log('🔍 DEBUG - Produtos Supabase detalhado:', produtosSupabase.map(p => ({
         id: p.id,
         nome: p.nome,
-        categoria: p.categoria,
+        categoria_id: p.categoria_id,
+        ativo: p.ativo
+      })));
+      
+      console.log('🔍 DEBUG - Produtos Local detalhado:', produtosLocal.map(p => ({
+        id: p.id,
+        nome: p.nome,
         categoriaId: p.categoriaId,
+        categoria: p.categoria,
         ativo: p.ativo
       })));
     }
-  }, [agendamento, open, produtos]);
+  }, [agendamento, open, produtos.length, produtosSupabase.length, produtosLocal.length, loadingSupabase]);
 
   // Filtrar produtos baseado nas categorias habilitadas do cliente
   const produtosFiltrados = produtos.filter(produto => {
     // Debug detalhado do filtro
-    console.log('🔍 DEBUG - Verificando produto:', {
+    console.log('🔍 DEBUG FILTRO - Verificando produto:', {
       nome: produto.nome,
       categoriaId: produto.categoriaId,
       categoria: produto.categoria,
@@ -84,25 +118,25 @@ export default function AgendamentoEditModal({
 
     // Se não há produtos ou cliente, retornar array vazio
     if (!agendamento?.cliente || !produto) {
-      console.log('❌ DEBUG - Cliente ou produto inválido');
+      console.log('❌ DEBUG FILTRO - Cliente ou produto inválido');
       return false;
     }
 
     // Se produto não está ativo, filtrar fora
     if (!produto.ativo) {
-      console.log('❌ DEBUG - Produto inativo:', produto.nome);
+      console.log('❌ DEBUG FILTRO - Produto inativo:', produto.nome);
       return false;
     }
 
     // Se cliente não tem categorias habilitadas, mostrar todos os produtos ativos
     if (!agendamento.cliente.categoriasHabilitadas || agendamento.cliente.categoriasHabilitadas.length === 0) {
-      console.log('✅ DEBUG - Cliente sem categorias específicas, produto incluído:', produto.nome);
+      console.log('✅ DEBUG FILTRO - Cliente sem categorias específicas, produto incluído:', produto.nome);
       return true;
     }
 
     // Verificar se o produto está em uma categoria habilitada
     const categoriaHabilitada = agendamento.cliente.categoriasHabilitadas.includes(produto.categoriaId);
-    console.log(`${categoriaHabilitada ? '✅' : '❌'} DEBUG - Produto ${produto.nome} categoria ${produto.categoriaId} habilitada:`, categoriaHabilitada);
+    console.log(`${categoriaHabilitada ? '✅' : '❌'} DEBUG FILTRO - Produto ${produto.nome} categoria ${produto.categoriaId} habilitada:`, categoriaHabilitada);
     
     return categoriaHabilitada;
   });
@@ -110,14 +144,14 @@ export default function AgendamentoEditModal({
   // Debug dos produtos filtrados
   useEffect(() => {
     if (agendamento && open) {
-      console.log('🔍 DEBUG - Produtos após filtro:', produtosFiltrados.length);
-      console.log('🔍 DEBUG - Produtos filtrados:', produtosFiltrados.map(p => ({
+      console.log('🔍 DEBUG FINAL - Produtos após filtro:', produtosFiltrados.length);
+      console.log('🔍 DEBUG FINAL - Produtos filtrados:', produtosFiltrados.map(p => ({
         nome: p.nome,
         categoriaId: p.categoriaId,
         categoria: p.categoria
       })));
     }
-  }, [produtosFiltrados, agendamento, open]);
+  }, [produtosFiltrados.length, agendamento, open]);
 
   // Carregar dados do agendamento ao abrir o modal - usando EXATAMENTE os dados da tabela
   useEffect(() => {
@@ -179,16 +213,6 @@ export default function AgendamentoEditModal({
     }
   }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length]);
 
-  // Calcular soma das quantidades dos produtos
-  const somaQuantidadesProdutos = produtosQuantidades.reduce((soma, produto) => soma + produto.quantidade, 0);
-  
-  // Verificar se há erro de validação
-  const hasValidationError = tipoPedido === 'Alterado' && somaQuantidadesProdutos !== quantidadeTotal;
-
-  // Verificar se data é obrigatória
-  const isDataObrigatoria = statusAgendamento === 'Previsto' || statusAgendamento === 'Agendado';
-  const hasDataError = isDataObrigatoria && !proximaDataReposicao;
-
   // Formatar periodicidade em texto
   const formatPeriodicidade = (dias: number): string => {
     if (dias % 7 === 0) {
@@ -212,7 +236,6 @@ export default function AgendamentoEditModal({
     );
   };
 
-  // Salvar alterações
   const handleSalvar = async () => {
     if (!agendamento) return;
 
@@ -262,6 +285,16 @@ export default function AgendamentoEditModal({
   };
 
   if (!agendamento) return null;
+
+  // Calcular soma das quantidades dos produtos
+  const somaQuantidadesProdutos = produtosQuantidades.reduce((soma, produto) => soma + produto.quantidade, 0);
+  
+  // Verificar se há erro de validação
+  const hasValidationError = tipoPedido === 'Alterado' && somaQuantidadesProdutos !== quantidadeTotal;
+
+  // Verificar se data é obrigatória
+  const isDataObrigatoria = statusAgendamento === 'Previsto' || statusAgendamento === 'Agendado';
+  const hasDataError = isDataObrigatoria && !proximaDataReposicao;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -364,82 +397,91 @@ export default function AgendamentoEditModal({
               </RadioGroup>
             </div>
 
-            {/* Lista de Produtos (apenas se tipo for "Alterado") */}
-            {tipoPedido === 'Alterado' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Quantidades por Produto</Label>
-                  <div className="text-sm text-muted-foreground">
-                    Total: {somaQuantidadesProdutos} / {quantidadeTotal}
-                  </div>
+          {/* Lista de Produtos (apenas se tipo for "Alterado") */}
+          {tipoPedido === 'Alterado' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label>Quantidades por Produto</Label>
+                <div className="text-sm text-muted-foreground">
+                  Total: {somaQuantidadesProdutos} / {quantidadeTotal}
                 </div>
+              </div>
 
-                {/* Informações de debug - temporário */}
-                <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                  DEBUG: Cliente {agendamento.cliente.nome} | 
-                  Categorias: {JSON.stringify(agendamento.cliente.categoriasHabilitadas)} | 
-                  Produtos filtrados: {produtosFiltrados.length} | 
-                  Total produtos: {produtos.length}
-                </div>
-
-                {agendamento.cliente.categoriasHabilitadas && agendamento.cliente.categoriasHabilitadas.length > 0 && (
-                  <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                    Exibindo apenas produtos das categorias habilitadas para este cliente
-                  </div>
-                )}
-                
-                {hasValidationError && (
-                  <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      A soma das quantidades dos produtos deve ser igual ao total do pedido ({quantidadeTotal})
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {produtosFiltrados.length === 0 ? (
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      <div className="space-y-2">
-                        <p>Nenhum produto disponível para as categorias habilitadas deste cliente.</p>
-                        <p className="text-xs">
-                          Categorias habilitadas: {JSON.stringify(agendamento.cliente.categoriasHabilitadas)}<br />
-                          Total de produtos no sistema: {produtos.length}<br />
-                          Produtos ativos: {produtos.filter(p => p.ativo).length}
-                        </p>
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="grid gap-3 max-h-60 overflow-y-auto">
-                    {produtosFiltrados.map((produto) => {
-                      const produtoQuantidade = produtosQuantidades.find(p => p.produto === produto.nome);
-                      return (
-                        <div key={produto.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex flex-col">
-                            <span className="font-medium">{produto.nome}</span>
-                            {produto.categoria && (
-                              <span className="text-xs text-muted-foreground">
-                                Categoria: {produto.categoria} (ID: {produto.categoriaId})
-                              </span>
-                            )}
-                          </div>
-                          <Input
-                            type="number"
-                            value={produtoQuantidade?.quantidade || 0}
-                            onChange={(e) => atualizarQuantidadeProduto(produto.nome, Number(e.target.value))}
-                            min="0"
-                            className="w-20"
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
+              {/* Informações de debug expandidas */}
+              <div className="text-xs text-blue-600 bg-blue-50 p-3 rounded space-y-1">
+                <div><strong>DEBUG EXPANDIDO:</strong></div>
+                <div>Cliente: {agendamento.cliente.nome}</div>
+                <div>Categorias habilitadas: {JSON.stringify(agendamento.cliente.categoriasHabilitadas)}</div>
+                <div>Produtos Supabase: {produtosSupabase.length} | Loading: {loadingSupabase ? 'SIM' : 'NÃO'}</div>
+                <div>Produtos Local: {produtosLocal.length}</div>
+                <div>Produtos escolhidos: {produtos.length}</div>
+                <div>Produtos filtrados: {produtosFiltrados.length}</div>
+                {produtosSupabase.length > 0 && (
+                  <div>Produtos Supabase ativos: {produtosSupabase.filter(p => p.ativo).length}</div>
                 )}
               </div>
-            )}
-          </div>
+
+              {agendamento.cliente.categoriasHabilitadas && agendamento.cliente.categoriasHabilitadas.length > 0 && (
+                <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                  Exibindo apenas produtos das categorias habilitadas para este cliente
+                </div>
+              )}
+              
+              {hasValidationError && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    A soma das quantidades dos produtos deve ser igual ao total do pedido ({quantidadeTotal})
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {produtosFiltrados.length === 0 ? (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="space-y-2">
+                      <p>Nenhum produto disponível para as categorias habilitadas deste cliente.</p>
+                      <p className="text-xs">
+                        <strong>Debug detalhado:</strong><br />
+                        Categorias habilitadas: {JSON.stringify(agendamento.cliente.categoriasHabilitadas)}<br />
+                        Produtos no sistema (Supabase): {produtosSupabase.length}<br />
+                        Produtos no sistema (Local): {produtosLocal.length}<br />
+                        Produtos ativos (Supabase): {produtosSupabase.filter(p => p.ativo).length}<br />
+                        Produtos ativos (Local): {produtosLocal.filter(p => p.ativo).length}<br />
+                        Loading Supabase: {loadingSupabase ? 'SIM' : 'NÃO'}
+                      </p>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="grid gap-3 max-h-60 overflow-y-auto">
+                  {produtosFiltrados.map((produto) => {
+                    const produtoQuantidade = produtosQuantidades.find(p => p.produto === produto.nome);
+                    return (
+                      <div key={produto.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex flex-col">
+                          <span className="font-medium">{produto.nome}</span>
+                          {produto.categoria && (
+                            <span className="text-xs text-muted-foreground">
+                              Categoria: {produto.categoria} (ID: {produto.categoriaId})
+                            </span>
+                          )}
+                        </div>
+                        <Input
+                          type="number"
+                          value={produtoQuantidade?.quantidade || 0}
+                          onChange={(e) => atualizarQuantidadeProduto(produto.nome, Number(e.target.value))}
+                          min="0"
+                          className="w-20"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         
         <DialogFooter>
