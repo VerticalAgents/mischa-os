@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "sonner";
@@ -120,7 +119,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               quantidade_total: agendamento.quantidade_total || 0,
               tipo_pedido: agendamento.tipo_pedido || 'Padrão',
               status_agendamento: agendamento.status_agendamento,
-              substatus_pedido: agendamento.substatus_pedido || 'Agendado',
+              substatus_pedido: (agendamento.substatus_pedido || 'Agendado') as SubstatusPedidoAgendado,
               itens_personalizados: agendamento.itens_personalizados,
               created_at: agendamento.created_at ? new Date(agendamento.created_at) : new Date()
             };
@@ -143,7 +142,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           
           set(state => ({
             pedidos: state.pedidos.map(p => 
-              p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' } : p
+              p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } : p
             )
           }));
 
@@ -155,7 +154,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           if (error) {
             set(state => ({
               pedidos: state.pedidos.map(p => 
-                p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' } : p
+                p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } : p
               )
             }));
             throw error;
@@ -174,7 +173,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           
           set(state => ({
             pedidos: state.pedidos.map(p => 
-              p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' } : p
+              p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } : p
             )
           }));
 
@@ -186,7 +185,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           if (error) {
             set(state => ({
               pedidos: state.pedidos.map(p => 
-                p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' } : p
+                p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } : p
               )
             }));
             throw error;
@@ -205,7 +204,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           
           set(state => ({
             pedidos: state.pedidos.map(p => 
-              p.id === pedidoId ? { ...p, substatus_pedido: 'Despachado' } : p
+              p.id === pedidoId ? { ...p, substatus_pedido: 'Despachado' as SubstatusPedidoAgendado } : p
             )
           }));
 
@@ -217,7 +216,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           if (error) {
             set(state => ({
               pedidos: state.pedidos.map(p => 
-                p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' } : p
+                p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } : p
               )
             }));
             throw error;
@@ -310,7 +309,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           set(state => ({
             pedidos: state.pedidos.map(p => 
               pedidosParaSeparar.some(ps => ps.id === p.id) 
-                ? { ...p, substatus_pedido: 'Separado' } 
+                ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } 
                 : p
             )
           }));
@@ -324,7 +323,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             set(state => ({
               pedidos: state.pedidos.map(p => 
                 pedidosParaSeparar.some(ps => ps.id === p.id) 
-                  ? { ...p, substatus_pedido: 'Agendado' } 
+                  ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } 
                   : p
               )
             }));
@@ -350,7 +349,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           set(state => ({
             pedidos: state.pedidos.map(p => 
               pedidosParaDespachar.some(pd => pd.id === p.id) 
-                ? { ...p, substatus_pedido: 'Despachado' } 
+                ? { ...p, substatus_pedido: 'Despachado' as SubstatusPedidoAgendado } 
                 : p
             )
           }));
@@ -364,7 +363,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             set(state => ({
               pedidos: state.pedidos.map(p => 
                 pedidosParaDespachar.some(pd => pd.id === p.id) 
-                  ? { ...p, substatus_pedido: 'Separado' } 
+                  ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } 
                   : p
               )
             }));
