@@ -137,20 +137,18 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
 
           let result;
           if (agendamentoExistente) {
-            // CRÍTICO: Preservar tipo de pedido original se não especificado explicitamente
+            // PRESERVAR tipo de pedido original se não especificado explicitamente
             const dadosAtualizacao = {
               ...dadosParaSalvar,
-              // Se tipo_pedido não foi especificado na atualização, manter o original
               tipo_pedido: dadosAgendamento.tipo_pedido !== undefined 
                 ? dadosAgendamento.tipo_pedido 
                 : agendamentoExistente.tipo_pedido,
-              // Preservar itens personalizados anteriores se não especificados
               itens_personalizados: dadosAgendamento.itens_personalizados !== undefined 
                 ? dadosAgendamento.itens_personalizados 
                 : agendamentoExistente.itens_personalizados
             };
             
-            console.log('useAgendamentoClienteStore: Atualizando agendamento com preservação:', dadosAtualizacao);
+            console.log('useAgendamentoClienteStore: Atualizando agendamento:', dadosAtualizacao);
             
             const { data, error } = await supabase
               .from('agendamentos_clientes')
@@ -190,15 +188,6 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
               ? state.agendamentos.map(a => a.cliente_id === clienteId ? agendamentoConvertido : a)
               : [...state.agendamentos, agendamentoConvertido]
           }));
-
-          // Atualizar também os dados do cliente na store de clientes
-          const { useClienteStore } = await import('./useClienteStore');
-          const clienteStore = useClienteStore.getState();
-          
-          clienteStore.atualizarCliente(clienteId, {
-            statusAgendamento: dadosAgendamento.status_agendamento,
-            proximaDataReposicao: dadosAgendamento.data_proxima_reposicao
-          });
 
         } catch (error) {
           console.error('useAgendamentoClienteStore: Erro ao salvar agendamento:', error);

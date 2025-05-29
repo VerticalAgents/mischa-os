@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -36,10 +35,7 @@ export const SeparacaoPedidos = () => {
     if (!mountedRef.current) {
       mountedRef.current = true;
       console.log('🔄 Carregando pedidos inicial da SeparacaoPedidos');
-      // Timeout para evitar carregamento imediato que pode causar loop
-      setTimeout(() => {
-        carregarPedidos();
-      }, 500);
+      carregarPedidos();
     }
   }, [carregarPedidos]);
 
