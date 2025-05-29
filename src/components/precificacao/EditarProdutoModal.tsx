@@ -41,12 +41,14 @@ import { z } from "zod";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { useSupabaseReceitas } from "@/hooks/useSupabaseReceitas";
 import { useSupabaseProdutos, ProdutoCompleto } from "@/hooks/useSupabaseProdutos";
+import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const editarProdutoSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
   descricao: z.string().optional(),
+  categoria_id: z.number().min(1, "Categoria é obrigatória"),
   unidades_producao: z.number().min(1, "Unidades de produção deve ser maior que zero"),
   peso_unitario: z.number().min(0, "Peso unitário deve ser maior ou igual a zero").optional(),
   preco_venda: z.number().min(0, "Preço de venda deve ser maior ou igual a zero").optional(),
@@ -77,6 +79,7 @@ export default function EditarProdutoModal({
   const { insumos } = useSupabaseInsumos();
   const { receitas } = useSupabaseReceitas();
   const { adicionarComponenteProduto, removerComponenteProduto } = useSupabaseProdutos();
+  const { categorias } = useSupabaseCategoriasProduto();
   const [isAdicionandoComponente, setIsAdicionandoComponente] = useState(false);
 
   const produtoForm = useForm<EditarProdutoFormValues>({
@@ -84,6 +87,7 @@ export default function EditarProdutoModal({
     defaultValues: {
       nome: "",
       descricao: "",
+      categoria_id: 0,
       unidades_producao: 1,
       peso_unitario: 0,
       preco_venda: 0,
@@ -104,6 +108,7 @@ export default function EditarProdutoModal({
       produtoForm.reset({
         nome: produto.nome,
         descricao: produto.descricao || "",
+        categoria_id: produto.categoria_id || 0,
         unidades_producao: produto.unidades_producao,
         peso_unitario: produto.peso_unitario || 0,
         preco_venda: produto.preco_venda || 0,
@@ -208,6 +213,36 @@ export default function EditarProdutoModal({
                 />
                 <FormField
                   control={produtoForm.control}
+                  name="categoria_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoria do Produto</FormLabel>
+                      <Select 
+                        onValueChange={(value) => field.onChange(Number(value))} 
+                        value={field.value > 0 ? field.value.toString() : ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma categoria" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categorias.map((categoria) => (
+                            <SelectItem key={categoria.id} value={categoria.id.toString()}>
+                              {categoria.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={produtoForm.control}
                   name="unidades_producao"
                   render={({ field }) => (
                     <FormItem>
@@ -226,9 +261,6 @@ export default function EditarProdutoModal({
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={produtoForm.control}
                   name="peso_unitario"
@@ -249,27 +281,28 @@ export default function EditarProdutoModal({
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={produtoForm.control}
-                  name="preco_venda"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Preço de Venda (R$)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="Ex: 25.90"
-                          {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
+
+              <FormField
+                control={produtoForm.control}
+                name="preco_venda"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Preço de Venda (R$)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Ex: 25.90"
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={produtoForm.control}

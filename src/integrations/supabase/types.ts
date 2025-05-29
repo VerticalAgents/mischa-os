@@ -56,6 +56,33 @@ export type Database = {
           },
         ]
       }
+      categorias_produto: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          descricao: string | null
+          id: number
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          descricao?: string | null
+          id?: number
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          descricao?: string | null
+          id?: number
+          nome?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       clientes: {
         Row: {
           ativo: boolean | null
