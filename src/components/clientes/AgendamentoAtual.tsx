@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Cliente } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,7 @@ import { AlertTriangle, Save, Calendar } from "lucide-react";
 
 interface AgendamentoAtualProps {
   cliente: Cliente;
-  onAgendamentoUpdate?: () => void; // Callback para notificar atualizações
+  onAgendamentoUpdate?: () => void;
 }
 
 interface ProdutoQuantidade {
@@ -41,7 +42,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
   const [statusAgendamento, setStatusAgendamento] = useState<'Agendar' | 'Previsto' | 'Agendado'>('Agendar');
   const [proximaDataReposicao, setProximaDataReposicao] = useState('');
   const [quantidadeTotal, setQuantidadeTotal] = useState(0);
-  const [periodicidade, setPeriodicidade] = useState(7);
   const [tipoPedido, setTipoPedido] = useState<'Padrão' | 'Alterado'>('Padrão');
   const [produtosQuantidades, setProdutosQuantidades] = useState<ProdutoQuantidade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,18 +59,23 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
     return cliente.categoriasHabilitadas.includes(produto.categoriaId);
   });
 
-  // Carregar dados EXCLUSIVAMENTE da tabela agendamentos_clientes
+  // Carregar dados da tabela agendamentos_clientes
   useEffect(() => {
     const carregarDados = async () => {
       if (!agendamentoCarregado && cliente?.id) {
         try {
-          console.log('AgendamentoAtual: Carregando dados da tabela agendamentos_clientes para cliente:', cliente.id);
+          console.log('🔄 Carregando agendamento do cliente:', cliente.id);
           const agendamento = await carregarAgendamentoPorCliente(cliente.id);
           
           if (agendamento) {
-            console.log('AgendamentoAtual: Dados carregados da tabela:', agendamento);
+            console.log('✅ Agendamento carregado:', {
+              tipo: agendamento.tipo_pedido,
+              status: agendamento.status_agendamento,
+              itens: agendamento.itens_personalizados,
+              quantidade: agendamento.quantidade_total
+            });
             
-            // Usar EXCLUSIVAMENTE os dados da tabela agendamentos_clientes
+            // Carregar dados exatos da tabela
             setStatusAgendamento(agendamento.status_agendamento);
             setProximaDataReposicao(
               agendamento.data_proxima_reposicao 
@@ -80,14 +85,16 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             setQuantidadeTotal(agendamento.quantidade_total);
             setTipoPedido(agendamento.tipo_pedido);
             
-            if (agendamento.itens_personalizados && agendamento.tipo_pedido === 'Alterado') {
+            // Carregar itens personalizados se existirem
+            if (agendamento.tipo_pedido === 'Alterado' && agendamento.itens_personalizados) {
+              console.log('🎯 Carregando itens personalizados:', agendamento.itens_personalizados);
               setProdutosQuantidades(agendamento.itens_personalizados);
             } else {
               setProdutosQuantidades([]);
             }
           } else {
-            console.log('AgendamentoAtual: Nenhum agendamento encontrado, será criado automaticamente');
-            // Valores padrão quando não há agendamento (será criado automaticamente pela store)
+            console.log('⚠️ Nenhum agendamento encontrado, usando valores padrão');
+            // Valores padrão
             setStatusAgendamento('Agendar');
             setTipoPedido('Padrão');
             setQuantidadeTotal(cliente.quantidadePadrao || 0);
@@ -96,8 +103,8 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
           }
           setAgendamentoCarregado(true);
         } catch (error) {
-          console.error('AgendamentoAtual: Erro ao carregar agendamento:', error);
-          // Em caso de erro, usar valores padrão
+          console.error('❌ Erro ao carregar agendamento:', error);
+          // Valores padrão em caso de erro
           setStatusAgendamento('Agendar');
           setTipoPedido('Padrão');
           setQuantidadeTotal(cliente.quantidadePadrao || 0);
@@ -119,6 +126,9 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
         quantidade: 0
       }));
       setProdutosQuantidades(produtosIniciais);
+    } else if (tipoPedido === 'Padrão') {
+      // Limpar produtos quando voltar para Padrão
+      setProdutosQuantidades([]);
     }
   }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length]);
 
@@ -132,18 +142,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
   const isDataObrigatoria = statusAgendamento === 'Previsto' || statusAgendamento === 'Agendado';
   const hasDataError = isDataObrigatoria && !proximaDataReposicao;
 
-  // Formatar periodicidade em texto
-  const formatPeriodicidade = (dias: number): string => {
-    if (dias % 7 === 0) {
-      const semanas = dias / 7;
-      return semanas === 1 ? "1 semana" : `${semanas} semanas`;
-    } else if (dias === 3) {
-      return "3x semana";
-    } else {
-      return `${dias} dias`;
-    }
-  };
-
   // Atualizar quantidade de um produto específico
   const atualizarQuantidadeProduto = (produtoNome: string, novaQuantidade: number) => {
     setProdutosQuantidades(prev => 
@@ -155,7 +153,7 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
     );
   };
 
-  // Salvar alterações EXCLUSIVAMENTE na tabela agendamentos_clientes
+  // Salvar alterações na tabela agendamentos_clientes
   const handleSalvar = async () => {
     if (hasValidationError) {
       toast({
@@ -185,20 +183,34 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
         itens_personalizados: tipoPedido === 'Alterado' ? produtosQuantidades : undefined
       };
 
-      console.log('AgendamentoAtual: Salvando na tabela agendamentos_clientes:', dadosAgendamento);
+      console.log('💾 Salvando agendamento:', {
+        cliente: cliente.nome,
+        dados: dadosAgendamento
+      });
+
       await salvarAgendamento(cliente.id, dadosAgendamento);
       
-      // Recarregar dados dos clientes para atualizar a visualização geral
-      console.log('AgendamentoAtual: Recarregando lista de clientes após salvamento...');
+      // Recarregar dados dos clientes
+      console.log('🔄 Recarregando lista de clientes...');
       await carregarClientes();
       
-      // Notificar componente pai sobre a atualização (para recarregar dados se necessário)
+      // Notificar componente pai
       if (onAgendamentoUpdate) {
         onAgendamentoUpdate();
       }
+
+      toast({
+        title: "Sucesso",
+        description: "Agendamento salvo com sucesso",
+      });
       
     } catch (error) {
-      console.error('AgendamentoAtual: Erro ao salvar agendamento:', error);
+      console.error('❌ Erro ao salvar agendamento:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar agendamento",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -284,26 +296,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
               onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
               min="0"
             />
-          </div>
-
-          {/* Periodicidade */}
-          <div className="space-y-2">
-            <Label htmlFor="periodicidade">Periodicidade</Label>
-            <Select value={periodicidade.toString()} onValueChange={(value) => setPeriodicidade(Number(value))}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="3">3x por semana</SelectItem>
-                <SelectItem value="7">1 semana</SelectItem>
-                <SelectItem value="14">2 semanas</SelectItem>
-                <SelectItem value="21">3 semanas</SelectItem>
-                <SelectItem value="30">1 mês</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-sm text-muted-foreground">
-              Atualmente: {formatPeriodicidade(periodicidade)}
-            </p>
           </div>
 
           {/* Tipo de Pedido */}

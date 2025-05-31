@@ -111,6 +111,16 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
 
           const agendamento = data ? convertDbRowToAgendamento(data) : null;
           console.log('useAgendamentoClienteStore: Agendamento carregado:', agendamento);
+          
+          // Log específico para depuração de itens personalizados
+          if (agendamento && agendamento.tipo_pedido === 'Alterado') {
+            console.log('🔍 Agendamento Alterado carregado:', {
+              tipo: agendamento.tipo_pedido,
+              itens_personalizados: agendamento.itens_personalizados,
+              quantidade_total: agendamento.quantidade_total
+            });
+          }
+          
           return agendamento;
         } catch (error) {
           console.error('useAgendamentoClienteStore: Erro ao carregar agendamento:', error);
@@ -137,18 +147,27 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
 
           let result;
           if (agendamentoExistente) {
-            // PRESERVAR tipo de pedido original se não especificado explicitamente
+            // PRESERVAR dados existentes quando não especificado explicitamente
             const dadosAtualizacao = {
               ...dadosParaSalvar,
+              // Preservar tipo de pedido se não especificado
               tipo_pedido: dadosAgendamento.tipo_pedido !== undefined 
                 ? dadosAgendamento.tipo_pedido 
                 : agendamentoExistente.tipo_pedido,
+              // Preservar itens personalizados se não especificado e tipo for Alterado
               itens_personalizados: dadosAgendamento.itens_personalizados !== undefined 
                 ? dadosAgendamento.itens_personalizados 
-                : agendamentoExistente.itens_personalizados
+                : (dadosAgendamento.tipo_pedido === 'Alterado' || agendamentoExistente.tipo_pedido === 'Alterado')
+                  ? agendamentoExistente.itens_personalizados 
+                  : null
             };
             
-            console.log('useAgendamentoClienteStore: Atualizando agendamento:', dadosAtualizacao);
+            console.log('🔄 Atualizando agendamento existente:', {
+              id: agendamentoExistente.id,
+              tipoAnterior: agendamentoExistente.tipo_pedido,
+              tipoNovo: dadosAtualizacao.tipo_pedido,
+              itensPersonalizados: dadosAtualizacao.itens_personalizados
+            });
             
             const { data, error } = await supabase
               .from('agendamentos_clientes')
@@ -160,6 +179,8 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             result = { data, error };
           } else {
             // Criar novo agendamento
+            console.log('➕ Criando novo agendamento:', dadosParaSalvar);
+            
             const { data, error } = await supabase
               .from('agendamentos_clientes')
               .insert({
@@ -177,7 +198,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             throw result.error;
           }
 
-          console.log('useAgendamentoClienteStore: Agendamento salvo com sucesso:', result.data);
+          console.log('✅ Agendamento salvo com sucesso:', result.data);
           
           // Converter o resultado do banco para o formato da interface
           const agendamentoConvertido = convertDbRowToAgendamento(result.data);

@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "sonner";
@@ -48,7 +49,7 @@ const getProximoDiaUtil = (data: Date): Date => {
   return isWeekend(proximaData) ? getProximoDiaUtil(proximaData) : proximaData;
 };
 
-// Função simples para parsing de data
+// Função para parsing de data que preserva o fuso horário local
 const parseDataSegura = (dataString: string | Date): Date => {
   if (dataString instanceof Date) {
     return dataString;
@@ -75,7 +76,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         set({ isLoading: true });
         
         try {
-          console.log('🔄 Carregando agendamentos...');
+          console.log('🔄 Carregando agendamentos para expedição...');
           
           const { data: agendamentos, error } = await supabase
             .from('agendamentos_clientes')
@@ -125,7 +126,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             };
           });
 
-          console.log('✅ Pedidos formatados:', pedidosFormatados.length);
+          console.log('✅ Pedidos formatados para expedição:', pedidosFormatados.length);
           set({ pedidos: pedidosFormatados });
           
         } catch (error) {
@@ -234,12 +235,18 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           if (!pedido) throw new Error('Pedido não encontrado');
 
+          console.log('🚚 Processando entrega com preservação de dados:', {
+            pedidoId,
+            tipoPedido: pedido.tipo_pedido,
+            itensPersonalizados: !!pedido.itens_personalizados
+          });
+
           // Remover do estado local
           set(state => ({
             pedidos: state.pedidos.filter(p => p.id !== pedidoId)
           }));
 
-          // Reagendar para próxima entrega
+          // Carregar dados do cliente para periodicidade
           const { data: cliente } = await supabase
             .from('clientes')
             .select('periodicidade_padrao')
@@ -249,16 +256,31 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const proximaData = addDays(pedido.data_prevista_entrega, cliente?.periodicidade_padrao || 7);
           const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
+          // PRESERVAR tipo de pedido e itens personalizados no reagendamento
+          const dadosAtualizacao: any = {
+            data_proxima_reposicao: proximaDataFormatada,
+            status_agendamento: 'Agendado',
+            substatus_pedido: 'Agendado'
+          };
+
+          // Se o pedido original era Alterado, preservar o tipo e itens
+          if (pedido.tipo_pedido === 'Alterado') {
+            dadosAtualizacao.tipo_pedido = 'Alterado';
+            if (pedido.itens_personalizados) {
+              dadosAtualizacao.itens_personalizados = pedido.itens_personalizados;
+            }
+            console.log('✅ Preservando configuração alterada no reagendamento:', {
+              tipo_pedido: dadosAtualizacao.tipo_pedido,
+              itens_personalizados: !!dadosAtualizacao.itens_personalizados
+            });
+          }
+
           await supabase
             .from('agendamentos_clientes')
-            .update({
-              data_proxima_reposicao: proximaDataFormatada,
-              status_agendamento: 'Previsto',
-              substatus_pedido: 'Agendado'
-            })
+            .update(dadosAtualizacao)
             .eq('id', pedidoId);
 
-          toast.success(`Entrega confirmada para ${pedido.cliente_nome}`);
+          toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Reagendado preservando configurações.`);
         } catch (error) {
           console.error('Erro ao confirmar entrega:', error);
           toast.error("Erro ao confirmar entrega");
@@ -270,6 +292,12 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           if (!pedido) throw new Error('Pedido não encontrado');
 
+          console.log('🔄 Processando retorno com preservação de dados:', {
+            pedidoId,
+            tipoPedido: pedido.tipo_pedido,
+            itensPersonalizados: !!pedido.itens_personalizados
+          });
+
           // Remover do estado local
           set(state => ({
             pedidos: state.pedidos.filter(p => p.id !== pedidoId)
@@ -279,16 +307,31 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const proximaData = getProximoDiaUtil(pedido.data_prevista_entrega);
           const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
+          // PRESERVAR tipo de pedido e itens personalizados no reagendamento
+          const dadosAtualizacao: any = {
+            data_proxima_reposicao: proximaDataFormatada,
+            status_agendamento: 'Agendado',
+            substatus_pedido: 'Agendado'
+          };
+
+          // Se o pedido original era Alterado, preservar o tipo e itens
+          if (pedido.tipo_pedido === 'Alterado') {
+            dadosAtualizacao.tipo_pedido = 'Alterado';
+            if (pedido.itens_personalizados) {
+              dadosAtualizacao.itens_personalizados = pedido.itens_personalizados;
+            }
+            console.log('✅ Preservando configuração alterada no retorno:', {
+              tipo_pedido: dadosAtualizacao.tipo_pedido,
+              itens_personalizados: !!dadosAtualizacao.itens_personalizados
+            });
+          }
+
           await supabase
             .from('agendamentos_clientes')
-            .update({
-              data_proxima_reposicao: proximaDataFormatada,
-              status_agendamento: 'Previsto',
-              substatus_pedido: 'Agendado'
-            })
+            .update(dadosAtualizacao)
             .eq('id', pedidoId);
 
-          toast.success(`Retorno registrado para ${pedido.cliente_nome}`);
+          toast.success(`Retorno registrado para ${pedido.cliente_nome}. Reagendado preservando configurações.`);
         } catch (error) {
           console.error('Erro ao confirmar retorno:', error);
           toast.error("Erro ao confirmar retorno");

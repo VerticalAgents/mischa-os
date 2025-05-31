@@ -29,7 +29,7 @@ export default function ReagendamentoDialog({
   const [step, setStep] = useState<1 | 2>(1);
   const [tipoReagendamento, setTipoReagendamento] = useState<"automatico" | "manual">("automatico");
   const [dataSelecionada, setDataSelecionada] = useState<Date | undefined>(undefined);
-  const { obterAgendamento } = useAgendamentoClienteStore();
+  const { obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
   
   // Calculate 5 business days from today
   const calcularCincoDiasUteis = (): Date => {
@@ -70,23 +70,44 @@ export default function ReagendamentoDialog({
     const dataFormatada = setHours(new Date(novaData), 0);
     
     try {
-      // Obter o agendamento atual do cliente para preservar tipo de pedido e itens personalizados
+      console.log('🔄 Iniciando reagendamento com preservação de dados:', {
+        cliente: cliente.nome,
+        novaData: format(dataFormatada, 'yyyy-MM-dd')
+      });
+
+      // Obter o agendamento atual do cliente para preservar TODOS os dados
       const agendamentoAtual = await obterAgendamento(cliente.id);
       
-      // Reagendar preservando o tipo de pedido e itens personalizados se existirem
-      await useAgendamentoClienteStore.getState().salvarAgendamento(cliente.id, {
-        status_agendamento: 'Agendado',
-        data_proxima_reposicao: dataFormatada,
-        quantidade_total: agendamentoAtual?.quantidade_total || cliente.quantidadePadrao || 0,
-        tipo_pedido: agendamentoAtual?.tipo_pedido || 'Padrão', // Preservar tipo anterior
-        itens_personalizados: agendamentoAtual?.itens_personalizados || undefined // Preservar itens personalizados
-      });
-      
-      console.log('Reagendamento preservando tipo de pedido:', agendamentoAtual?.tipo_pedido, 'e itens personalizados:', !!agendamentoAtual?.itens_personalizados);
+      if (agendamentoAtual) {
+        console.log('✅ Preservando dados do agendamento:', {
+          tipo: agendamentoAtual.tipo_pedido,
+          itens: !!agendamentoAtual.itens_personalizados,
+          quantidade: agendamentoAtual.quantidade_total
+        });
+
+        // Reagendar preservando TODOS os dados originais
+        await salvarAgendamento(cliente.id, {
+          status_agendamento: 'Agendado',
+          data_proxima_reposicao: dataFormatada,
+          quantidade_total: agendamentoAtual.quantidade_total,
+          tipo_pedido: agendamentoAtual.tipo_pedido, // Preservar tipo original
+          itens_personalizados: agendamentoAtual.itens_personalizados // Preservar itens personalizados
+        });
+
+        console.log('✅ Reagendamento concluído preservando configurações originais');
+      } else {
+        // Fallback se não houver agendamento existente
+        await salvarAgendamento(cliente.id, {
+          status_agendamento: 'Agendado',
+          data_proxima_reposicao: dataFormatada,
+          quantidade_total: cliente.quantidadePadrao || 0,
+          tipo_pedido: 'Padrão'
+        });
+      }
       
       onConfirm(cliente, dataFormatada);
     } catch (error) {
-      console.error('Erro ao reagendar com preservação de dados:', error);
+      console.error('❌ Erro ao reagendar com preservação de dados:', error);
       // Fallback para o comportamento anterior
       onConfirm(cliente, dataFormatada);
     }
