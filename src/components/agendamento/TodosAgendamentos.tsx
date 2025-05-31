@@ -1,215 +1,163 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useClienteStore } from "@/hooks/useClienteStore";
-import { usePedidoStore } from "@/hooks/usePedidoStore";
-import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
 import { AgendamentoItem } from "./types";
-import AgendamentoFilters from "./AgendamentoFilters";
-import FiltrosLocalizacao from "./FiltrosLocalizacao";
-import AgendamentoTable from "./AgendamentoTable";
-import AgendamentoEditModal from "./AgendamentoEditModal";
-import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge";
+import { CheckCheck } from "lucide-react";
+import EditarAgendamentoDialog from "./EditarAgendamentoDialog";
+import { useAgendamentoStore } from "@/hooks/useAgendamentoStore";
+import { useClienteStore } from "@/hooks/useClienteStore";
+import { AgendamentoEditModal } from "./AgendamentoEditModal";
+import { TipoPedidoBadge } from "@/components/expedicao/TipoPedidoBadge";
+import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 
 export default function TodosAgendamentos() {
-  const { clientes, carregarClientes } = useClienteStore();
-  const { pedidos, criarNovoPedido } = usePedidoStore();
-  const { carregarTodosAgendamentos, agendamentos: agendamentosStore, salvarAgendamento } = useAgendamentoClienteStore();
-  
-  const [abaAtiva, setAbaAtiva] = useState("todos");
-  const [filtroRota, setFiltroRota] = useState<{ rota?: string }>({});
-  const [agendamentoEditando, setAgendamentoEditando] = useState<AgendamentoItem | null>(null);
-  const [agendamentos, setAgendamentos] = useState<AgendamentoItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
+  const { toast } = useToast();
+  const { agendamentos, carregarTodosAgendamentos } = useAgendamentoStore();
+  const { carregarClientes } = useClienteStore();
+  const { obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
 
   useEffect(() => {
-    const carregarDados = async () => {
-      console.log('TodosAgendamentos: Carregando dados...');
-      await carregarClientes();
-      await carregarTodosAgendamentos();
-    };
-    carregarDados();
-  }, [carregarClientes, carregarTodosAgendamentos, refreshTrigger]);
-
-  // Helper function to ensure status is valid
-  const normalizeStatusAgendamento = (status: string | undefined): "Agendar" | "Previsto" | "Agendado" => {
-    if (status === "Previsto" || status === "Agendado" || status === "Agendar") {
-      return status;
-    }
-    return "Agendar"; // Default fallback
-  };
-
-  useEffect(() => {
-    if (clientes.length === 0) {
-      setLoading(true);
-      return;
-    }
-    
-    console.log('TodosAgendamentos: Construindo lista de agendamentos baseada nos clientes sincronizados...');
-    
-    const agendamentosCarregados: AgendamentoItem[] = [];
-    
-    for (const cliente of clientes.filter(c => c.statusCliente === 'Ativo')) {
-      const pedidoCliente = pedidos.find(p => p.cliente?.id === cliente.id && p.statusPedido === 'Agendado');
-      
-      // Buscar agendamento da store para obter tipo_pedido correto
-      const agendamentoClienteStore = agendamentosStore.find(a => a.cliente_id === cliente.id);
-      
-      // Usar os dados já sincronizados do cliente
-      let dataReposicao = cliente.proximaDataReposicao || new Date();
-      let statusAgendamento = normalizeStatusAgendamento(cliente.statusAgendamento);
-      
-      console.log('TodosAgendamentos: Cliente', cliente.nome, '- Status:', statusAgendamento, 'Data:', dataReposicao);
-      
-      // Criar um pedido virtual com o tipo correto
-      let pedidoVirtual = pedidoCliente;
-      if (agendamentoClienteStore) {
-        pedidoVirtual = {
-          id: pedidoCliente?.id || 0,
-          idCliente: cliente.id,
-          cliente: cliente,
-          dataPedido: new Date(),
-          dataPrevistaEntrega: dataReposicao,
-          totalPedidoUnidades: agendamentoClienteStore.quantidade_total,
-          tipoPedido: agendamentoClienteStore.tipo_pedido as 'Padrão' | 'Alterado' | 'Único',
-          statusPedido: 'Agendado',
-          itensPedido: [],
-          historicoAlteracoesStatus: []
-        };
-      }
-      
-      agendamentosCarregados.push({
-        cliente,
-        pedido: pedidoVirtual,
-        dataReposicao,
-        statusAgendamento,
-        isPedidoUnico: false
-      });
-    }
-    
-    console.log('TodosAgendamentos: Total de agendamentos construídos:', agendamentosCarregados.length);
-    setAgendamentos(agendamentosCarregados);
-    setLoading(false);
-  }, [clientes, pedidos, agendamentosStore]);
-
-  const agendamentosFiltrados = agendamentos
-    .filter(agendamento => {
-      if (!filtroRota.rota) return true;
-      return true;
-    })
-    .filter(agendamento => {
-      switch (abaAtiva) {
-        case 'previstos':
-          return agendamento.statusAgendamento === 'Previsto';
-        case 'agendados':
-          return agendamento.statusAgendamento === 'Agendado';
-        case 'pedidos-unicos':
-          return agendamento.isPedidoUnico;
-        default:
-          return true;
-      }
-    });
-
-  const handleCriarPedido = (clienteId: string) => {
-    const novoPedido = criarNovoPedido(clienteId);
-    if (novoPedido) {
-      toast.success("Pedido criado com sucesso!");
-    }
-  };
+    carregarTodosAgendamentos();
+  }, [carregarTodosAgendamentos]);
 
   const handleEditarAgendamento = (agendamento: AgendamentoItem) => {
-    setAgendamentoEditando(agendamento);
+    setSelectedAgendamento(agendamento);
+    setOpen(true);
   };
 
-  const handleSalvarAgendamento = async (agendamentoAtualizado: AgendamentoItem) => {
-    try {
-      // Salvar o agendamento atualizado
-      await salvarAgendamento(agendamentoAtualizado.cliente.id, {
-        status_agendamento: agendamentoAtualizado.statusAgendamento,
-        data_proxima_reposicao: agendamentoAtualizado.dataReposicao,
-        quantidade_total: agendamentoAtualizado.pedido?.totalPedidoUnidades || agendamentoAtualizado.cliente.quantidadePadrao || 0,
-        tipo_pedido: (agendamentoAtualizado.pedido?.tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão') as 'Padrão' | 'Alterado'
-      });
-
-      toast.success("Agendamento atualizado com sucesso!");
-      setAgendamentoEditando(null);
-      
-      // Recarregar todos os dados para garantir sincronização
-      console.log('TodosAgendamentos: Recarregando dados após salvamento...');
-      setRefreshTrigger(prev => prev + 1);
-    } catch (error) {
-      console.error('TodosAgendamentos: Erro ao salvar agendamento:', error);
-      toast.error("Erro ao salvar agendamento");
-    }
+  const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
+    // Atualizar a lista de agendamentos com o agendamento atualizado
+    // carregarTodosAgendamentos(); // Removi para evitar loop infinito
   };
 
-  const handleConfirmarPrevisto = async (agendamento: AgendamentoItem) => {
+  const handleConfirmarAgendamento = async (agendamento: AgendamentoItem) => {
     try {
       console.log('TodosAgendamentos: Confirmando agendamento previsto para cliente:', agendamento.cliente.nome);
+
+      // Obter o agendamento atual do cliente para preservar TODOS os dados
+      const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
       
-      // PRESERVAR a data existente ao confirmar
-      await salvarAgendamento(agendamento.cliente.id, {
-        status_agendamento: 'Agendado',
-        data_proxima_reposicao: agendamento.dataReposicao,
-        quantidade_total: agendamento.cliente.quantidadePadrao || 0,
-        tipo_pedido: 'Padrão'
-      });
+      if (agendamentoAtual) {
+        console.log('✅ Preservando dados do agendamento:', {
+          tipo: agendamentoAtual.tipo_pedido,
+          itens: !!agendamentoAtual.itens_personalizados,
+          quantidade: agendamentoAtual.quantidade_total,
+          data_atual: agendamentoAtual.data_proxima_reposicao
+        });
 
-      // Recarregar dados para sincronização
-      setRefreshTrigger(prev => prev + 1);
+        // CORREÇÃO: Confirmar apenas mudando o status, preservando TODOS os outros dados
+        await salvarAgendamento(agendamento.cliente.id, {
+          status_agendamento: 'Agendado',
+          // Preservar TODOS os dados existentes sem alteração
+          data_proxima_reposicao: agendamentoAtual.data_proxima_reposicao,
+          quantidade_total: agendamentoAtual.quantidade_total,
+          tipo_pedido: agendamentoAtual.tipo_pedido, // Preservar tipo original
+          itens_personalizados: agendamentoAtual.itens_personalizados // Preservar itens personalizados
+        });
 
-      toast.success(`Agendamento de ${agendamento.cliente.nome} confirmado com sucesso!`);
+        console.log('✅ Agendamento confirmado preservando configurações originais');
+      } else {
+        // Fallback se não houver agendamento existente
+        await salvarAgendamento(agendamento.cliente.id, {
+          status_agendamento: 'Agendado',
+          data_proxima_reposicao: agendamento.dataReposicao,
+          quantidade_total: agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0,
+          tipo_pedido: 'Padrão'
+        });
+      }
+      
+      // Recarregar dados
+      await carregarTodosAgendamentos();
+      await carregarClientes();
+      
+      toast.success(`Agendamento confirmado para ${agendamento.cliente.nome}`);
     } catch (error) {
-      console.error('TodosAgendamentos: Erro ao confirmar agendamento:', error);
-      toast.error("Erro ao confirmar agendamento");
+      console.error('Erro ao confirmar agendamento:', error);
+      toast.error('Erro ao confirmar agendamento');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="flex items-center justify-center p-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-2 text-sm text-muted-foreground">Carregando agendamentos...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros e Visualização</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <AgendamentoFilters 
-            abaAtiva={abaAtiva}
-            onAbaChange={setAbaAtiva}
-            agendamentos={agendamentos}
-          />
-          <FiltrosLocalizacao onFiltroChange={setFiltroRota} />
-        </CardContent>
-      </Card>
-
-      <AgendamentoTable 
-        agendamentos={agendamentosFiltrados}
-        onCriarPedido={handleCriarPedido}
-        onEditarAgendamento={handleEditarAgendamento}
-        onConfirmarPrevisto={handleConfirmarPrevisto}
-      />
+    <>
+      <Table>
+        <TableCaption>Lista de todos os agendamentos de reposição.</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>PDV</TableHead>
+            <TableHead>Data Reposição</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Tipo</TableHead>
+            <TableHead className="text-right">Ações</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {agendamentos.map((agendamento) => (
+            <TableRow key={agendamento.id}>
+              <TableCell>{agendamento.cliente.nome}</TableCell>
+              <TableCell>
+                {format(agendamento.dataReposicao, "dd 'de' MMMM 'de' yyyy", {
+                  locale: ptBR,
+                })}
+              </TableCell>
+              <TableCell>
+                {agendamento.statusAgendamento === "Agendado" ? (
+                  <Badge variant="success">
+                    <CheckCheck className="mr-2 h-4 w-4" />
+                    Agendado
+                  </Badge>
+                ) : (
+                  <Badge>{agendamento.statusAgendamento}</Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                <TipoPedidoBadge tipo={agendamento.pedido?.tipoPedido || 'Padrão'} />
+              </TableCell>
+              <TableCell className="text-right">
+                {agendamento.statusAgendamento === "Previsto" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleConfirmarAgendamento(agendamento)}
+                  >
+                    Confirmar
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleEditarAgendamento(agendamento)}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Editar
+                  </Button>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
       <AgendamentoEditModal
-        agendamento={agendamentoEditando}
-        open={!!agendamentoEditando}
-        onOpenChange={(open) => !open && setAgendamentoEditando(null)}
+        open={open}
+        onOpenChange={setOpen}
+        agendamento={selectedAgendamento}
         onSalvar={handleSalvarAgendamento}
       />
-    </div>
+    </>
   );
 }

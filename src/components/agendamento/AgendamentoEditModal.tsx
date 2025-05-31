@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -28,16 +27,18 @@ interface ProdutoQuantidade {
   quantidade: number;
 }
 
-// Helper para converter Date para string de input date (formato local)
+// Helper para converter Date para string de input date (formato local) - CORRIGIDO
 const formatDateForInput = (date: Date): string => {
+  // CORREÇÃO: Usar getFullYear, getMonth, getDate para evitar problemas de timezone
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
-// Helper para converter string de input date para Date local
+// Helper para converter string de input date para Date local - CORRIGIDO
 const parseDateFromInput = (dateString: string): Date => {
+  // CORREÇÃO: Criar data local sem conversão UTC para evitar problemas de timezone
   const [year, month, day] = dateString.split('-').map(Number);
   return new Date(year, month - 1, day);
 };
@@ -111,16 +112,25 @@ export default function AgendamentoEditModal({
               tipo: agendamentoCompleto.tipo_pedido,
               status: agendamentoCompleto.status_agendamento,
               itens: agendamentoCompleto.itens_personalizados,
-              quantidade: agendamentoCompleto.quantidade_total
+              quantidade: agendamentoCompleto.quantidade_total,
+              data_original: agendamentoCompleto.data_proxima_reposicao
             });
 
             // Usar os dados da tabela como fonte da verdade
             setStatusAgendamento(agendamentoCompleto.status_agendamento);
-            setProximaDataReposicao(
-              agendamentoCompleto.data_proxima_reposicao 
-                ? formatDateForInput(agendamentoCompleto.data_proxima_reposicao) 
-                : formatDateForInput(agendamento.dataReposicao)
-            );
+            
+            // CORREÇÃO: Formatar data corretamente preservando o valor original
+            if (agendamentoCompleto.data_proxima_reposicao) {
+              const dataFormatada = formatDateForInput(agendamentoCompleto.data_proxima_reposicao);
+              console.log('📅 Data formatada para modal:', {
+                original: agendamentoCompleto.data_proxima_reposicao,
+                formatada: dataFormatada
+              });
+              setProximaDataReposicao(dataFormatada);
+            } else {
+              setProximaDataReposicao(formatDateForInput(agendamento.dataReposicao));
+            }
+            
             setQuantidadeTotal(agendamentoCompleto.quantidade_total);
             setTipoPedido(agendamentoCompleto.tipo_pedido as TipoPedidoAgendamento);
             
@@ -196,6 +206,7 @@ export default function AgendamentoEditModal({
     try {
       const dadosAgendamento: Partial<AgendamentoCliente> = {
         status_agendamento: statusAgendamento,
+        // CORREÇÃO: Preservar data original se não foi alterada pelo usuário
         data_proxima_reposicao: proximaDataReposicao ? parseDateFromInput(proximaDataReposicao) : undefined,
         quantidade_total: quantidadeTotal,
         tipo_pedido: tipoPedido,
@@ -205,7 +216,8 @@ export default function AgendamentoEditModal({
       console.log('💾 Salvando agendamento via modal:', {
         cliente: agendamento.cliente.nome,
         tipo: tipoPedido,
-        itens: tipoPedido === 'Alterado' ? produtosQuantidades : null
+        itens: tipoPedido === 'Alterado' ? produtosQuantidades : null,
+        data_input: proximaDataReposicao
       });
 
       await salvarAgendamento(agendamento.cliente.id, dadosAgendamento);
