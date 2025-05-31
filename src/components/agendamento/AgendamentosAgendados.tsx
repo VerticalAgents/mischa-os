@@ -5,7 +5,7 @@ import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { AgendamentoItem } from "./types";
 import { Button } from "@/components/ui/button";
-import { Calendar, Edit } from "lucide-react";
+import { Edit } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -22,13 +22,18 @@ import AgendamentoEditModal from "./AgendamentoEditModal";
 import { TipoPedidoBadge } from "@/components/expedicao/TipoPedidoBadge";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 
-export default function TodosAgendamentos() {
+export default function AgendamentosAgendados() {
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
   const { toast } = useToast();
   const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
   const { carregarClientes } = useClienteStore();
   const { obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
+
+  // Filtrar apenas agendamentos confirmados/agendados
+  const agendamentosAgendados = agendamentos.filter(
+    agendamento => agendamento.statusAgendamento === "Agendado"
+  );
 
   useEffect(() => {
     carregarTodosAgendamentos();
@@ -40,65 +45,43 @@ export default function TodosAgendamentos() {
   };
 
   const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
-    // Recarregar dados após salvar
     carregarTodosAgendamentos();
   };
 
-  const handleConfirmarAgendamento = async (agendamento: AgendamentoItem) => {
+  const handleConfirmarEntrega = async (agendamento: AgendamentoItem) => {
     try {
-      console.log('TodosAgendamentos: Confirmando agendamento previsto para cliente:', agendamento.cliente.nome);
+      console.log('AgendamentosAgendados: Confirmando entrega para cliente:', agendamento.cliente.nome);
 
-      // Obter o agendamento atual do cliente para preservar TODOS os dados
       const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
       
       if (agendamentoAtual) {
-        console.log('✅ Preservando dados do agendamento:', {
-          tipo: agendamentoAtual.tipo_pedido,
-          itens: !!agendamentoAtual.itens_personalizados,
-          quantidade: agendamentoAtual.quantidade_total,
-          data_atual: agendamentoAtual.data_proxima_reposicao
-        });
-
-        // CORREÇÃO: Calcular próxima data (exemplo: adicionar 7 dias) e alterar status para "Previsto"
+        // Calcular próxima data (adicionar 7 dias) e alterar status para "Previsto"
         const proximaData = new Date(agendamentoAtual.data_proxima_reposicao || new Date());
-        proximaData.setDate(proximaData.getDate() + 7); // Adiciona 7 dias como exemplo
+        proximaData.setDate(proximaData.getDate() + 7);
 
         await salvarAgendamento(agendamento.cliente.id, {
-          status_agendamento: 'Previsto', // CORREÇÃO: Alterar para "Previsto"
-          data_proxima_reposicao: proximaData, // Nova data de reposição
-          // Preservar TODOS os dados existentes sem alteração
+          status_agendamento: 'Previsto',
+          data_proxima_reposicao: proximaData,
           quantidade_total: agendamentoAtual.quantidade_total,
           tipo_pedido: agendamentoAtual.tipo_pedido,
           itens_personalizados: agendamentoAtual.itens_personalizados
         });
 
-        console.log('✅ Agendamento confirmado e reagendado para:', proximaData);
-      } else {
-        // Fallback se não houver agendamento existente
-        const proximaData = new Date();
-        proximaData.setDate(proximaData.getDate() + 7);
-        
-        await salvarAgendamento(agendamento.cliente.id, {
-          status_agendamento: 'Previsto',
-          data_proxima_reposicao: proximaData,
-          quantidade_total: agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0,
-          tipo_pedido: 'Padrão'
-        });
+        console.log('✅ Entrega confirmada e reagendada para:', proximaData);
       }
       
-      // Recarregar dados
       await carregarTodosAgendamentos();
       await carregarClientes();
       
       toast({
         title: "Sucesso",
-        description: `Agendamento confirmado e reagendado para ${agendamento.cliente.nome}`,
+        description: `Entrega confirmada e reagendamento criado para ${agendamento.cliente.nome}`,
       });
     } catch (error) {
-      console.error('Erro ao confirmar agendamento:', error);
+      console.error('Erro ao confirmar entrega:', error);
       toast({
         title: "Erro",
-        description: "Erro ao confirmar agendamento",
+        description: "Erro ao confirmar entrega",
         variant: "destructive",
       });
     }
@@ -107,7 +90,7 @@ export default function TodosAgendamentos() {
   return (
     <>
       <Table>
-        <TableCaption>Lista de todos os agendamentos de reposição.</TableCaption>
+        <TableCaption>Lista de agendamentos confirmados.</TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead>PDV</TableHead>
@@ -118,7 +101,7 @@ export default function TodosAgendamentos() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {agendamentos.map((agendamento) => (
+          {agendamentosAgendados.map((agendamento) => (
             <TableRow key={agendamento.cliente.id}>
               <TableCell>{agendamento.cliente.nome}</TableCell>
               <TableCell>
@@ -127,29 +110,23 @@ export default function TodosAgendamentos() {
                 })}
               </TableCell>
               <TableCell>
-                {agendamento.statusAgendamento === "Agendado" ? (
-                  <Badge variant="default" className="bg-green-500 text-white">
-                    <CheckCheck className="mr-2 h-4 w-4" />
-                    Agendado
-                  </Badge>
-                ) : (
-                  <Badge>{agendamento.statusAgendamento}</Badge>
-                )}
+                <Badge variant="default" className="bg-green-500 text-white">
+                  <CheckCheck className="mr-2 h-4 w-4" />
+                  Agendado
+                </Badge>
               </TableCell>
               <TableCell>
                 <TipoPedidoBadge tipo={agendamento.pedido?.tipoPedido || 'Padrão'} />
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex gap-2 justify-end">
-                  {agendamento.statusAgendamento === "Agendado" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleConfirmarAgendamento(agendamento)}
-                    >
-                      Confirmar Entrega
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleConfirmarEntrega(agendamento)}
+                  >
+                    Confirmar Entrega
+                  </Button>
                   <Button
                     variant="secondary"
                     size="sm"
