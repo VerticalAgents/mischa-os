@@ -5,7 +5,7 @@ import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { AgendamentoItem } from "./types";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "lucide-react";
+import { Calendar, Edit } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -134,24 +134,25 @@ export default function TodosAgendamentos() {
                 <TipoPedidoBadge tipo={agendamento.pedido?.tipoPedido || 'Padrão'} />
               </TableCell>
               <TableCell className="text-right">
-                {agendamento.statusAgendamento === "Previsto" ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleConfirmarAgendamento(agendamento)}
-                  >
-                    Confirmar
-                  </Button>
-                ) : (
+                <div className="flex gap-2 justify-end">
+                  {agendamento.statusAgendamento === "Previsto" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleConfirmarAgendamento(agendamento)}
+                    >
+                      Confirmar
+                    </Button>
+                  )}
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => handleEditarAgendamento(agendamento)}
                   >
-                    <Calendar className="mr-2 h-4 w-4" />
+                    <Edit className="mr-2 h-4 w-4" />
                     Editar
                   </Button>
-                )}
+                </div>
               </TableCell>
             </TableRow>
           ))}
