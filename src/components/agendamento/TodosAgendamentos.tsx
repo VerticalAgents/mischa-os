@@ -40,8 +40,8 @@ export default function TodosAgendamentos() {
   };
 
   const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
-    // Atualizar a lista de agendamentos com o agendamento atualizado
-    // carregarTodosAgendamentos(); // Removi para evitar loop infinito
+    // Recarregar dados após salvar
+    carregarTodosAgendamentos();
   };
 
   const handleConfirmarAgendamento = async (agendamento: AgendamentoItem) => {
