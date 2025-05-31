@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { AgendamentoItem } from '@/components/agendamento/types';
 
 export interface AgendamentoCliente {
   id?: string;
@@ -18,7 +19,7 @@ export interface AgendamentoCliente {
 }
 
 interface AgendamentoClienteStore {
-  agendamentos: AgendamentoCliente[];
+  agendamentos: AgendamentoItem[]; // Changed to AgendamentoItem for the list view
   loading: boolean;
   error: string | null;
   
@@ -44,6 +45,58 @@ const convertDbRowToAgendamento = (row: any): AgendamentoCliente => {
     substatus_pedido: row.substatus_pedido,
     created_at: row.created_at ? new Date(row.created_at) : undefined,
     updated_at: row.updated_at ? new Date(row.updated_at) : undefined,
+  };
+};
+
+// Helper function to convert AgendamentoCliente to AgendamentoItem format
+const convertToAgendamentoItem = (agendamento: any, cliente: any): AgendamentoItem => {
+  return {
+    cliente: {
+      id: cliente.id,
+      nome: cliente.nome,
+      cnpjCpf: cliente.cnpj_cpf,
+      enderecoEntrega: cliente.endereco_entrega,
+      contatoNome: cliente.contato_nome,
+      contatoTelefone: cliente.contato_telefone,
+      contatoEmail: cliente.contato_email,
+      quantidadePadrao: cliente.quantidade_padrao || 0,
+      periodicidadePadrao: cliente.periodicidade_padrao || 7,
+      statusCliente: cliente.status_cliente || 'Ativo',
+      dataCadastro: new Date(cliente.created_at),
+      metaGiroSemanal: cliente.meta_giro_semanal,
+      ultimaDataReposicaoEfetiva: cliente.ultima_data_reposicao_efetiva ? new Date(cliente.ultima_data_reposicao_efetiva) : undefined,
+      statusAgendamento: agendamento.status_agendamento,
+      proximaDataReposicao: agendamento.data_proxima_reposicao ? new Date(agendamento.data_proxima_reposicao) : undefined,
+      ativo: cliente.ativo !== false,
+      giroMedioSemanal: cliente.giro_medio_semanal,
+      janelasEntrega: cliente.janelas_entrega,
+      representanteId: cliente.representante_id,
+      rotaEntregaId: cliente.rota_entrega_id,
+      categoriaEstabelecimentoId: cliente.categoria_estabelecimento_id,
+      instrucoesEntrega: cliente.instrucoes_entrega,
+      contabilizarGiroMedio: cliente.contabilizar_giro_medio !== false,
+      tipoLogistica: cliente.tipo_logistica || 'Própria',
+      emiteNotaFiscal: cliente.emite_nota_fiscal !== false,
+      tipoCobranca: cliente.tipo_cobranca || 'À vista',
+      formaPagamento: cliente.forma_pagamento || 'Boleto',
+      observacoes: cliente.observacoes,
+      categoriaId: cliente.categoria_id || 1,
+      subcategoriaId: cliente.subcategoria_id || 1,
+      categoriasHabilitadas: cliente.categorias_habilitadas
+    },
+    dataReposicao: agendamento.data_proxima_reposicao ? new Date(agendamento.data_proxima_reposicao) : new Date(),
+    statusAgendamento: agendamento.status_agendamento,
+    isPedidoUnico: false,
+    pedido: agendamento.tipo_pedido === 'Alterado' ? {
+      id: 0,
+      idCliente: cliente.id,
+      dataPedido: new Date(),
+      dataPrevistaEntrega: agendamento.data_proxima_reposicao ? new Date(agendamento.data_proxima_reposicao) : new Date(),
+      statusPedido: 'Agendado',
+      itensPedido: [],
+      totalPedidoUnidades: agendamento.quantidade_total,
+      tipoPedido: agendamento.tipo_pedido
+    } : undefined
   };
 };
 
@@ -76,16 +129,23 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
         try {
           console.log('useAgendamentoClienteStore: Carregando todos os agendamentos...');
           
+          // Join with clientes table to get client information
           const { data, error } = await supabase
             .from('agendamentos_clientes')
-            .select('*');
+            .select(`
+              *,
+              clientes (*)
+            `);
 
           if (error) {
             console.error('useAgendamentoClienteStore: Erro ao carregar agendamentos:', error);
             throw error;
           }
 
-          const agendamentosConvertidos = data?.map(convertDbRowToAgendamento) || [];
+          const agendamentosConvertidos = data?.map(row => 
+            convertToAgendamentoItem(row, row.clientes)
+          ) || [];
+          
           console.log('useAgendamentoClienteStore: Agendamentos carregados:', agendamentosConvertidos.length);
           set({ agendamentos: agendamentosConvertidos, loading: false });
         } catch (error) {
@@ -200,15 +260,8 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
 
           console.log('✅ Agendamento salvo com sucesso:', result.data);
           
-          // Converter o resultado do banco para o formato da interface
-          const agendamentoConvertido = convertDbRowToAgendamento(result.data);
-          
-          // Atualizar o estado local
-          set(state => ({
-            agendamentos: agendamentoExistente
-              ? state.agendamentos.map(a => a.cliente_id === clienteId ? agendamentoConvertido : a)
-              : [...state.agendamentos, agendamentoConvertido]
-          }));
+          // Recarregar todos os agendamentos para atualizar a lista
+          await get().carregarTodosAgendamentos();
 
         } catch (error) {
           console.error('useAgendamentoClienteStore: Erro ao salvar agendamento:', error);

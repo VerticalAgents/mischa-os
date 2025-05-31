@@ -113,7 +113,7 @@ export default function TodosAgendamentos() {
         </TableHeader>
         <TableBody>
           {agendamentos.map((agendamento) => (
-            <TableRow key={agendamento.id}>
+            <TableRow key={agendamento.cliente.id}>
               <TableCell>{agendamento.cliente.nome}</TableCell>
               <TableCell>
                 {format(agendamento.dataReposicao, "dd 'de' MMMM 'de' yyyy", {
