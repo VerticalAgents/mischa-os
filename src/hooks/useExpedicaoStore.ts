@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "sonner";
@@ -256,14 +255,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const proximaData = addDays(pedido.data_prevista_entrega, cliente?.periodicidade_padrao || 7);
           const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
-          // PRESERVAR tipo de pedido e itens personalizados no reagendamento
+          // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido e itens personalizados
           const dadosAtualizacao: any = {
             data_proxima_reposicao: proximaDataFormatada,
-            status_agendamento: 'Agendado',
+            status_agendamento: 'Previsto', // CORREÇÃO: Alterar para "Previsto"
             substatus_pedido: 'Agendado'
           };
 
-          // Se o pedido original era Alterado, preservar o tipo e itens
+          // PRESERVAR tipo de pedido e itens personalizados no reagendamento
           if (pedido.tipo_pedido === 'Alterado') {
             dadosAtualizacao.tipo_pedido = 'Alterado';
             if (pedido.itens_personalizados) {
@@ -273,6 +272,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               tipo_pedido: dadosAtualizacao.tipo_pedido,
               itens_personalizados: !!dadosAtualizacao.itens_personalizados
             });
+          } else {
+            dadosAtualizacao.tipo_pedido = 'Padrão';
           }
 
           await supabase
@@ -280,7 +281,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .update(dadosAtualizacao)
             .eq('id', pedidoId);
 
-          toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Reagendado preservando configurações.`);
+          toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Reagendado como Previsto preservando configurações.`);
         } catch (error) {
           console.error('Erro ao confirmar entrega:', error);
           toast.error("Erro ao confirmar entrega");
@@ -307,14 +308,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const proximaData = getProximoDiaUtil(pedido.data_prevista_entrega);
           const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
-          // PRESERVAR tipo de pedido e itens personalizados no reagendamento
+          // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido e itens personalizados
           const dadosAtualizacao: any = {
             data_proxima_reposicao: proximaDataFormatada,
-            status_agendamento: 'Agendado',
+            status_agendamento: 'Previsto', // CORREÇÃO: Alterar para "Previsto"
             substatus_pedido: 'Agendado'
           };
 
-          // Se o pedido original era Alterado, preservar o tipo e itens
+          // PRESERVAR tipo de pedido e itens personalizados no reagendamento
           if (pedido.tipo_pedido === 'Alterado') {
             dadosAtualizacao.tipo_pedido = 'Alterado';
             if (pedido.itens_personalizados) {
@@ -324,6 +325,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               tipo_pedido: dadosAtualizacao.tipo_pedido,
               itens_personalizados: !!dadosAtualizacao.itens_personalizados
             });
+          } else {
+            dadosAtualizacao.tipo_pedido = 'Padrão';
           }
 
           await supabase
@@ -331,7 +334,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .update(dadosAtualizacao)
             .eq('id', pedidoId);
 
-          toast.success(`Retorno registrado para ${pedido.cliente_nome}. Reagendado preservando configurações.`);
+          toast.success(`Retorno registrado para ${pedido.cliente_nome}. Reagendado como Previsto preservando configurações.`);
         } catch (error) {
           console.error('Erro ao confirmar retorno:', error);
           toast.error("Erro ao confirmar retorno");
@@ -447,17 +450,30 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             const proximaData = addDays(pedido.data_prevista_entrega, cliente?.periodicidade_padrao || 7);
             const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
+            // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido
+            const dadosAtualizacao: any = {
+              data_proxima_reposicao: proximaDataFormatada,
+              status_agendamento: 'Previsto', // CORREÇÃO: Alterar para "Previsto"
+              substatus_pedido: 'Agendado'
+            };
+
+            // PRESERVAR tipo de pedido e itens personalizados
+            if (pedido.tipo_pedido === 'Alterado') {
+              dadosAtualizacao.tipo_pedido = 'Alterado';
+              if (pedido.itens_personalizados) {
+                dadosAtualizacao.itens_personalizados = pedido.itens_personalizados;
+              }
+            } else {
+              dadosAtualizacao.tipo_pedido = 'Padrão';
+            }
+
             await supabase
               .from('agendamentos_clientes')
-              .update({
-                data_proxima_reposicao: proximaDataFormatada,
-                status_agendamento: 'Previsto',
-                substatus_pedido: 'Agendado'
-              })
+              .update(dadosAtualizacao)
               .eq('id', pedido.id);
           }
 
-          toast.success(`${pedidosParaEntregar.length} entregas confirmadas`);
+          toast.success(`${pedidosParaEntregar.length} entregas confirmadas e reagendadas como Previsto`);
         } catch (error) {
           console.error('Erro na entrega em massa:', error);
           toast.error("Erro na entrega em massa");
@@ -485,17 +501,30 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             const proximaData = getProximoDiaUtil(pedido.data_prevista_entrega);
             const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
+            // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido
+            const dadosAtualizacao: any = {
+              data_proxima_reposicao: proximaDataFormatada,
+              status_agendamento: 'Previsto', // CORREÇÃO: Alterar para "Previsto"
+              substatus_pedido: 'Agendado'
+            };
+
+            // PRESERVAR tipo de pedido e itens personalizados
+            if (pedido.tipo_pedido === 'Alterado') {
+              dadosAtualizacao.tipo_pedido = 'Alterado';
+              if (pedido.itens_personalizados) {
+                dadosAtualizacao.itens_personalizados = pedido.itens_personalizados;
+              }
+            } else {
+              dadosAtualizacao.tipo_pedido = 'Padrão';
+            }
+
             await supabase
               .from('agendamentos_clientes')
-              .update({
-                data_proxima_reposicao: proximaDataFormatada,
-                status_agendamento: 'Previsto',
-                substatus_pedido: 'Agendado'
-              })
+              .update(dadosAtualizacao)
               .eq('id', pedido.id);
           }
 
-          toast.success(`${pedidosParaRetorno.length} retornos registrados`);
+          toast.success(`${pedidosParaRetorno.length} retornos registrados e reagendados como Previsto`);
         } catch (error) {
           console.error('Erro no retorno em massa:', error);
           toast.error("Erro no retorno em massa");

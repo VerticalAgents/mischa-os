@@ -5,7 +5,7 @@ import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { AgendamentoItem } from "./types";
 import { Button } from "@/components/ui/button";
-import { Calendar, Edit } from "lucide-react";
+import { Edit } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -40,7 +40,6 @@ export default function TodosAgendamentos() {
   };
 
   const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
-    // Recarregar dados após salvar
     carregarTodosAgendamentos();
   };
 
@@ -48,7 +47,6 @@ export default function TodosAgendamentos() {
     try {
       console.log('TodosAgendamentos: Confirmando agendamento previsto para cliente:', agendamento.cliente.nome);
 
-      // Obter o agendamento atual do cliente para preservar TODOS os dados
       const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
       
       if (agendamentoAtual) {
@@ -59,40 +57,25 @@ export default function TodosAgendamentos() {
           data_atual: agendamentoAtual.data_proxima_reposicao
         });
 
-        // CORREÇÃO: Calcular próxima data (exemplo: adicionar 7 dias) e alterar status para "Previsto"
-        const proximaData = new Date(agendamentoAtual.data_proxima_reposicao || new Date());
-        proximaData.setDate(proximaData.getDate() + 7); // Adiciona 7 dias como exemplo
-
+        // Alterar apenas o status para "Agendado", preservando todos os outros dados
         await salvarAgendamento(agendamento.cliente.id, {
-          status_agendamento: 'Previsto', // CORREÇÃO: Alterar para "Previsto"
-          data_proxima_reposicao: proximaData, // Nova data de reposição
+          status_agendamento: 'Agendado',
           // Preservar TODOS os dados existentes sem alteração
+          data_proxima_reposicao: agendamentoAtual.data_proxima_reposicao,
           quantidade_total: agendamentoAtual.quantidade_total,
           tipo_pedido: agendamentoAtual.tipo_pedido,
           itens_personalizados: agendamentoAtual.itens_personalizados
         });
 
-        console.log('✅ Agendamento confirmado e reagendado para:', proximaData);
-      } else {
-        // Fallback se não houver agendamento existente
-        const proximaData = new Date();
-        proximaData.setDate(proximaData.getDate() + 7);
-        
-        await salvarAgendamento(agendamento.cliente.id, {
-          status_agendamento: 'Previsto',
-          data_proxima_reposicao: proximaData,
-          quantidade_total: agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0,
-          tipo_pedido: 'Padrão'
-        });
+        console.log('✅ Agendamento confirmado (Previsto → Agendado)');
       }
       
-      // Recarregar dados
       await carregarTodosAgendamentos();
       await carregarClientes();
       
       toast({
         title: "Sucesso",
-        description: `Agendamento confirmado e reagendado para ${agendamento.cliente.nome}`,
+        description: `Agendamento confirmado para ${agendamento.cliente.nome}`,
       });
     } catch (error) {
       console.error('Erro ao confirmar agendamento:', error);
@@ -133,7 +116,7 @@ export default function TodosAgendamentos() {
                     Agendado
                   </Badge>
                 ) : (
-                  <Badge>{agendamento.statusAgendamento}</Badge>
+                  <Badge variant="outline">{agendamento.statusAgendamento}</Badge>
                 )}
               </TableCell>
               <TableCell>
@@ -141,13 +124,15 @@ export default function TodosAgendamentos() {
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex gap-2 justify-end">
-                  {agendamento.statusAgendamento === "Agendado" && (
+                  {agendamento.statusAgendamento === "Previsto" && (
                     <Button
-                      variant="outline"
+                      variant="default"
                       size="sm"
                       onClick={() => handleConfirmarAgendamento(agendamento)}
+                      className="bg-green-500 hover:bg-green-600"
                     >
-                      Confirmar Entrega
+                      <CheckCheck className="mr-2 h-4 w-4" />
+                      Confirmar
                     </Button>
                   )}
                   <Button
