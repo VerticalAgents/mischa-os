@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { SubstatusPedidoAgendado } from '@/types';
 import { addBusinessDays, isWeekend, format, addDays } from 'date-fns';
+import { useHistoricoEntregasStore } from './useHistoricoEntregasStore';
 
 interface PedidoExpedicao {
   id: string;
@@ -240,6 +241,18 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             itensPersonalizados: !!pedido.itens_personalizados
           });
 
+          // Gravar no histórico ANTES de alterar o agendamento
+          const historicoStore = useHistoricoEntregasStore.getState();
+          await historicoStore.adicionarRegistro({
+            cliente_id: pedido.cliente_id,
+            data: new Date(),
+            tipo: 'entrega',
+            quantidade: pedido.quantidade_total,
+            itens: pedido.itens_personalizados || [],
+            status_anterior: pedido.substatus_pedido || 'Agendado',
+            observacao: observacao || undefined
+          });
+
           // Remover do estado local
           set(state => ({
             pedidos: state.pedidos.filter(p => p.id !== pedidoId)
@@ -297,6 +310,18 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             pedidoId,
             tipoPedido: pedido.tipo_pedido,
             itensPersonalizados: !!pedido.itens_personalizados
+          });
+
+          // Gravar no histórico ANTES de alterar o agendamento
+          const historicoStore = useHistoricoEntregasStore.getState();
+          await historicoStore.adicionarRegistro({
+            cliente_id: pedido.cliente_id,
+            data: new Date(),
+            tipo: 'retorno',
+            quantidade: pedido.quantidade_total,
+            itens: pedido.itens_personalizados || [],
+            status_anterior: pedido.substatus_pedido || 'Agendado',
+            observacao: observacao || undefined
           });
 
           // Remover do estado local
@@ -434,6 +459,9 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
+          // Gravar histórico para todos os pedidos
+          const historicoStore = useHistoricoEntregasStore.getState();
+          
           set(state => ({
             pedidos: state.pedidos.filter(p => 
               !pedidosParaEntregar.some(pe => pe.id === p.id)
@@ -441,6 +469,16 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           }));
 
           for (const pedido of pedidosParaEntregar) {
+            // Gravar no histórico
+            await historicoStore.adicionarRegistro({
+              cliente_id: pedido.cliente_id,
+              data: new Date(),
+              tipo: 'entrega',
+              quantidade: pedido.quantidade_total,
+              itens: pedido.itens_personalizados || [],
+              status_anterior: pedido.substatus_pedido || 'Agendado'
+            });
+
             const { data: cliente } = await supabase
               .from('clientes')
               .select('periodicidade_padrao')
@@ -491,6 +529,9 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
+          // Gravar histórico para todos os pedidos
+          const historicoStore = useHistoricoEntregasStore.getState();
+
           set(state => ({
             pedidos: state.pedidos.filter(p => 
               !pedidosParaRetorno.some(pr => pr.id === p.id)
@@ -498,6 +539,16 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           }));
 
           for (const pedido of pedidosParaRetorno) {
+            // Gravar no histórico
+            await historicoStore.adicionarRegistro({
+              cliente_id: pedido.cliente_id,
+              data: new Date(),
+              tipo: 'retorno',
+              quantidade: pedido.quantidade_total,
+              itens: pedido.itens_personalizados || [],
+              status_anterior: pedido.substatus_pedido || 'Agendado'
+            });
+
             const proximaData = getProximoDiaUtil(pedido.data_prevista_entrega);
             const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 

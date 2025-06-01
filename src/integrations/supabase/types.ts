@@ -238,6 +238,48 @@ export type Database = {
         }
         Relationships: []
       }
+      historico_entregas: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          data: string
+          editado_manualmente: boolean | null
+          id: string
+          itens: Json
+          observacao: string | null
+          quantidade: number
+          status_anterior: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          data?: string
+          editado_manualmente?: boolean | null
+          id?: string
+          itens?: Json
+          observacao?: string | null
+          quantidade: number
+          status_anterior?: string | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          data?: string
+          editado_manualmente?: boolean | null
+          id?: string
+          itens?: Json
+          observacao?: string | null
+          quantidade?: number
+          status_anterior?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       historico_producao: {
         Row: {
           created_at: string

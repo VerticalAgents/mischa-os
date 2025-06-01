@@ -4,6 +4,7 @@ import { Cliente } from "@/types";
 import ClienteDetalhesInfo from "./ClienteDetalhesInfo";
 import AgendamentoAtual from "./AgendamentoAtual";
 import AnaliseGiro from "./AnaliseGiro";
+import { HistoricoEntregasCliente } from "./HistoricoEntregasCliente";
 
 interface ClienteDetalhesTabsProps {
   cliente: Cliente;
@@ -22,7 +23,7 @@ export default function ClienteDetalhesTabs({
         <TabsTrigger value="informacoes">Informações</TabsTrigger>
         <TabsTrigger value="agendamento">Agendamento Atual</TabsTrigger>
         <TabsTrigger value="analise">Análise de Giro</TabsTrigger>
-        <TabsTrigger value="historico">Histórico</TabsTrigger>
+        <TabsTrigger value="historico">Histórico de Entregas</TabsTrigger>
       </TabsList>
 
       <TabsContent value="informacoes">
@@ -33,7 +34,7 @@ export default function ClienteDetalhesTabs({
         <AgendamentoAtual 
           cliente={cliente} 
           onAgendamentoUpdate={onAgendamentoUpdate}
-          key={refreshTrigger} // Force re-render when refreshTrigger changes
+          key={refreshTrigger}
         />
       </TabsContent>
 
@@ -42,9 +43,7 @@ export default function ClienteDetalhesTabs({
       </TabsContent>
 
       <TabsContent value="historico">
-        <div className="text-center text-muted-foreground py-8">
-          Histórico do cliente em desenvolvimento
-        </div>
+        <HistoricoEntregasCliente cliente={cliente} />
       </TabsContent>
     </Tabs>
   );
