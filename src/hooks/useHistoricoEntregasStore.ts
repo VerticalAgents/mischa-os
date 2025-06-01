@@ -90,12 +90,17 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
           
           const clientesMap = new Map(clientes?.map(c => [c.id, c.nome]) || []);
           
-          const registrosFormatados = (historico || []).map(registro => ({
+          const registrosFormatados: HistoricoEntrega[] = (historico || []).map(registro => ({
             ...registro,
             data: new Date(registro.data),
             created_at: new Date(registro.created_at),
             updated_at: new Date(registro.updated_at),
-            cliente_nome: clientesMap.get(registro.cliente_id) || 'Cliente não encontrado'
+            cliente_nome: clientesMap.get(registro.cliente_id) || 'Cliente não encontrado',
+            tipo: registro.tipo as 'entrega' | 'retorno',
+            editado_manualmente: registro.editado_manualmente || false,
+            itens: Array.isArray(registro.itens) ? registro.itens : [],
+            status_anterior: registro.status_anterior || undefined,
+            observacao: registro.observacao || undefined
           }));
           
           console.log('✅ Histórico carregado:', registrosFormatados.length, 'registros');
@@ -111,9 +116,19 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
       
       adicionarRegistro: async (registro) => {
         try {
+          const registroParaInserir = {
+            cliente_id: registro.cliente_id,
+            data: registro.data.toISOString(),
+            tipo: registro.tipo,
+            quantidade: registro.quantidade,
+            itens: registro.itens,
+            status_anterior: registro.status_anterior || null,
+            observacao: registro.observacao || null
+          };
+
           const { data, error } = await supabase
             .from('historico_entregas')
-            .insert([registro])
+            .insert([registroParaInserir])
             .select()
             .single();
           
@@ -126,12 +141,17 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             .eq('id', registro.cliente_id)
             .single();
           
-          const novoRegistro = {
+          const novoRegistro: HistoricoEntrega = {
             ...data,
             data: new Date(data.data),
             created_at: new Date(data.created_at),
             updated_at: new Date(data.updated_at),
-            cliente_nome: cliente?.nome || 'Cliente não encontrado'
+            cliente_nome: cliente?.nome || 'Cliente não encontrado',
+            tipo: data.tipo as 'entrega' | 'retorno',
+            editado_manualmente: data.editado_manualmente || false,
+            itens: Array.isArray(data.itens) ? data.itens : [],
+            status_anterior: data.status_anterior || undefined,
+            observacao: data.observacao || undefined
           };
           
           set(state => ({
@@ -148,13 +168,22 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
       
       editarRegistro: async (id, dados) => {
         try {
+          const dadosParaAtualizar: any = {
+            editado_manualmente: true,
+            updated_at: new Date().toISOString()
+          };
+
+          // Apenas incluir campos que foram fornecidos
+          if (dados.quantidade !== undefined) {
+            dadosParaAtualizar.quantidade = dados.quantidade;
+          }
+          if (dados.observacao !== undefined) {
+            dadosParaAtualizar.observacao = dados.observacao;
+          }
+
           const { error } = await supabase
             .from('historico_entregas')
-            .update({
-              ...dados,
-              editado_manualmente: true,
-              updated_at: new Date().toISOString()
-            })
+            .update(dadosParaAtualizar)
             .eq('id', id);
           
           if (error) throw error;
@@ -162,7 +191,12 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
           set(state => ({
             registros: state.registros.map(registro =>
               registro.id === id
-                ? { ...registro, ...dados, editado_manualmente: true, updated_at: new Date() }
+                ? { 
+                    ...registro, 
+                    ...dados, 
+                    editado_manualmente: true, 
+                    updated_at: new Date() 
+                  }
                 : registro
             )
           }));
