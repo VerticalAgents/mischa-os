@@ -63,7 +63,7 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
         set({ isLoading: true });
         
         try {
-          console.log('🔄 Carregando histórico de entregas...');
+          console.log('🔄 Carregando histórico de entregas...', clienteId ? `para cliente ${clienteId}` : 'geral');
           
           let query = supabase
             .from('historico_entregas')
@@ -72,6 +72,10 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
           
           if (clienteId) {
             query = query.eq('cliente_id', clienteId);
+            // Atualizar filtro para cliente específico
+            set(state => ({
+              filtros: { ...state.filtros, clienteId }
+            }));
           }
           
           const { data: historico, error } = await query;
@@ -91,16 +95,18 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
           const clientesMap = new Map(clientes?.map(c => [c.id, c.nome]) || []);
           
           const registrosFormatados: HistoricoEntrega[] = (historico || []).map(registro => ({
-            ...registro,
+            id: registro.id,
+            cliente_id: registro.cliente_id,
             data: new Date(registro.data),
-            created_at: new Date(registro.created_at),
-            updated_at: new Date(registro.updated_at),
-            cliente_nome: clientesMap.get(registro.cliente_id) || 'Cliente não encontrado',
             tipo: registro.tipo as 'entrega' | 'retorno',
-            editado_manualmente: registro.editado_manualmente || false,
+            quantidade: registro.quantidade,
             itens: Array.isArray(registro.itens) ? registro.itens : [],
             status_anterior: registro.status_anterior || undefined,
-            observacao: registro.observacao || undefined
+            observacao: registro.observacao || undefined,
+            editado_manualmente: registro.editado_manualmente || false,
+            created_at: new Date(registro.created_at),
+            updated_at: new Date(registro.updated_at),
+            cliente_nome: clientesMap.get(registro.cliente_id) || 'Cliente não encontrado'
           }));
           
           console.log('✅ Histórico carregado:', registrosFormatados.length, 'registros');
@@ -116,25 +122,38 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
       
       adicionarRegistro: async (registro) => {
         try {
+          console.log('📝 Adicionando novo registro no histórico:', {
+            cliente_id: registro.cliente_id,
+            tipo: registro.tipo,
+            quantidade: registro.quantidade,
+            data: registro.data
+          });
+
+          // Preparar dados para inserção - sempre criar um NOVO registro
           const registroParaInserir = {
             cliente_id: registro.cliente_id,
             data: registro.data.toISOString(),
             tipo: registro.tipo,
             quantidade: registro.quantidade,
-            itens: registro.itens,
+            itens: registro.itens || [],
             status_anterior: registro.status_anterior || null,
-            observacao: registro.observacao || null
+            observacao: registro.observacao || null,
+            editado_manualmente: false // Sempre false para novos registros automáticos
           };
 
+          // INSERT - NUNCA UPDATE - para garantir múltiplos registros por cliente
           const { data, error } = await supabase
             .from('historico_entregas')
             .insert([registroParaInserir])
             .select()
             .single();
           
-          if (error) throw error;
+          if (error) {
+            console.error('Erro ao inserir no histórico:', error);
+            throw error;
+          }
           
-          // Carregar nome do cliente
+          // Carregar nome do cliente para o novo registro
           const { data: cliente } = await supabase
             .from('clientes')
             .select('nome')
@@ -142,32 +161,43 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             .single();
           
           const novoRegistro: HistoricoEntrega = {
-            ...data,
+            id: data.id,
+            cliente_id: data.cliente_id,
             data: new Date(data.data),
-            created_at: new Date(data.created_at),
-            updated_at: new Date(data.updated_at),
-            cliente_nome: cliente?.nome || 'Cliente não encontrado',
             tipo: data.tipo as 'entrega' | 'retorno',
-            editado_manualmente: data.editado_manualmente || false,
+            quantidade: data.quantidade,
             itens: Array.isArray(data.itens) ? data.itens : [],
             status_anterior: data.status_anterior || undefined,
-            observacao: data.observacao || undefined
+            observacao: data.observacao || undefined,
+            editado_manualmente: data.editado_manualmente || false,
+            created_at: new Date(data.created_at),
+            updated_at: new Date(data.updated_at),
+            cliente_nome: cliente?.nome || 'Cliente não encontrado'
           };
           
+          // Adicionar ao início da lista (mais recente primeiro)
           set(state => ({
             registros: [novoRegistro, ...state.registros]
           }));
           
-          console.log('✅ Registro adicionado ao histórico:', registro.tipo);
+          console.log('✅ Novo registro adicionado ao histórico:', {
+            id: data.id,
+            cliente: cliente?.nome,
+            tipo: registro.tipo,
+            quantidade: registro.quantidade
+          });
           
         } catch (error) {
-          console.error('Erro ao adicionar registro:', error);
+          console.error('❌ Erro ao adicionar registro ao histórico:', error);
           toast.error("Erro ao adicionar registro ao histórico");
+          throw error; // Re-throw para permitir tratamento upstream
         }
       },
       
       editarRegistro: async (id, dados) => {
         try {
+          console.log('✏️ Editando registro do histórico:', { id, dados });
+
           const dadosParaAtualizar: any = {
             editado_manualmente: true,
             updated_at: new Date().toISOString()
@@ -186,8 +216,12 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             .update(dadosParaAtualizar)
             .eq('id', id);
           
-          if (error) throw error;
+          if (error) {
+            console.error('Erro ao editar registro:', error);
+            throw error;
+          }
           
+          // Atualizar no estado local
           set(state => ({
             registros: state.registros.map(registro =>
               registro.id === id
@@ -201,11 +235,13 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             )
           }));
           
+          console.log('✅ Registro editado com sucesso');
           toast.success("Registro editado com sucesso");
           
         } catch (error) {
-          console.error('Erro ao editar registro:', error);
+          console.error('❌ Erro ao editar registro:', error);
           toast.error("Erro ao editar registro");
+          throw error;
         }
       },
       
@@ -241,7 +277,15 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
         
         return registros.filter(registro => {
           const dataRegistro = new Date(registro.data);
-          const dataMatch = dataRegistro >= filtros.dataInicio && dataRegistro <= filtros.dataFim;
+          dataRegistro.setHours(0, 0, 0, 0); // Resetar horas para comparação de data
+          
+          const dataInicio = new Date(filtros.dataInicio);
+          dataInicio.setHours(0, 0, 0, 0);
+          
+          const dataFim = new Date(filtros.dataFim);
+          dataFim.setHours(23, 59, 59, 999);
+          
+          const dataMatch = dataRegistro >= dataInicio && dataRegistro <= dataFim;
           const tipoMatch = filtros.tipo === 'todos' || registro.tipo === filtros.tipo;
           const clienteMatch = !filtros.clienteId || registro.cliente_id === filtros.clienteId;
           

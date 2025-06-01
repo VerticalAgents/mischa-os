@@ -241,11 +241,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             itensPersonalizados: !!pedido.itens_personalizados
           });
 
-          // Gravar no histórico ANTES de alterar o agendamento
+          // CRÍTICO: Gravar no histórico ANTES de alterar o agendamento
           const historicoStore = useHistoricoEntregasStore.getState();
+          
+          console.log('📝 Criando NOVO registro de entrega no histórico...');
           await historicoStore.adicionarRegistro({
             cliente_id: pedido.cliente_id,
-            data: new Date(),
+            cliente_nome: pedido.cliente_nome,
+            data: new Date(), // Data/hora atual da confirmação
             tipo: 'entrega',
             quantidade: pedido.quantidade_total,
             itens: pedido.itens_personalizados || [],
@@ -253,7 +256,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             observacao: observacao || undefined
           });
 
-          // Remover do estado local
+          // Remover do estado local da expedição
           set(state => ({
             pedidos: state.pedidos.filter(p => p.id !== pedidoId)
           }));
@@ -271,7 +274,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido e itens personalizados
           const dadosAtualizacao: any = {
             data_proxima_reposicao: proximaDataFormatada,
-            status_agendamento: 'Previsto', // CORREÇÃO: Alterar para "Previsto"
+            status_agendamento: 'Previsto',
             substatus_pedido: 'Agendado'
           };
 
@@ -294,9 +297,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .update(dadosAtualizacao)
             .eq('id', pedidoId);
 
+          console.log('✅ Entrega confirmada - NOVO registro criado no histórico');
           toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Reagendado como Previsto preservando configurações.`);
         } catch (error) {
-          console.error('Erro ao confirmar entrega:', error);
+          console.error('❌ Erro ao confirmar entrega:', error);
           toast.error("Erro ao confirmar entrega");
         }
       },
@@ -312,11 +316,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             itensPersonalizados: !!pedido.itens_personalizados
           });
 
-          // Gravar no histórico ANTES de alterar o agendamento
+          // CRÍTICO: Gravar no histórico ANTES de alterar o agendamento
           const historicoStore = useHistoricoEntregasStore.getState();
+          
+          console.log('📝 Criando NOVO registro de retorno no histórico...');
           await historicoStore.adicionarRegistro({
             cliente_id: pedido.cliente_id,
-            data: new Date(),
+            cliente_nome: pedido.cliente_nome,
+            data: new Date(), // Data/hora atual da confirmação
             tipo: 'retorno',
             quantidade: pedido.quantidade_total,
             itens: pedido.itens_personalizados || [],
@@ -324,7 +331,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             observacao: observacao || undefined
           });
 
-          // Remover do estado local
+          // Remover do estado local da expedição
           set(state => ({
             pedidos: state.pedidos.filter(p => p.id !== pedidoId)
           }));
@@ -336,7 +343,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido e itens personalizados
           const dadosAtualizacao: any = {
             data_proxima_reposicao: proximaDataFormatada,
-            status_agendamento: 'Previsto', // CORREÇÃO: Alterar para "Previsto"
+            status_agendamento: 'Previsto',
             substatus_pedido: 'Agendado'
           };
 
@@ -359,9 +366,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .update(dadosAtualizacao)
             .eq('id', pedidoId);
 
+          console.log('✅ Retorno confirmado - NOVO registro criado no histórico');
           toast.success(`Retorno registrado para ${pedido.cliente_nome}. Reagendado como Previsto preservando configurações.`);
         } catch (error) {
-          console.error('Erro ao confirmar retorno:', error);
+          console.error('❌ Erro ao confirmar retorno:', error);
           toast.error("Erro ao confirmar retorno");
         }
       },
@@ -459,7 +467,9 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
-          // Gravar histórico para todos os pedidos
+          console.log('🚚 Processando entregas em massa - criando registros no histórico...');
+          
+          // Gravar histórico para todos os pedidos - CADA UM UM NOVO REGISTRO
           const historicoStore = useHistoricoEntregasStore.getState();
           
           set(state => ({
@@ -469,10 +479,13 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           }));
 
           for (const pedido of pedidosParaEntregar) {
-            // Gravar no histórico
+            console.log(`📝 Criando registro de entrega para ${pedido.cliente_nome}...`);
+            
+            // Gravar no histórico - NOVO registro para cada pedido
             await historicoStore.adicionarRegistro({
               cliente_id: pedido.cliente_id,
-              data: new Date(),
+              cliente_nome: pedido.cliente_nome,
+              data: new Date(), // Data/hora atual da confirmação em massa
               tipo: 'entrega',
               quantidade: pedido.quantidade_total,
               itens: pedido.itens_personalizados || [],
@@ -491,7 +504,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido
             const dadosAtualizacao: any = {
               data_proxima_reposicao: proximaDataFormatada,
-              status_agendamento: 'Previsto', // CORREÇÃO: Alterar para "Previsto"
+              status_agendamento: 'Previsto',
               substatus_pedido: 'Agendado'
             };
 
@@ -511,9 +524,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               .eq('id', pedido.id);
           }
 
+          console.log(`✅ ${pedidosParaEntregar.length} entregas confirmadas - NOVOS registros criados no histórico`);
           toast.success(`${pedidosParaEntregar.length} entregas confirmadas e reagendadas como Previsto`);
         } catch (error) {
-          console.error('Erro na entrega em massa:', error);
+          console.error('❌ Erro na entrega em massa:', error);
           toast.error("Erro na entrega em massa");
         }
       },
@@ -529,7 +543,9 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
-          // Gravar histórico para todos os pedidos
+          console.log('🔄 Processando retornos em massa - criando registros no histórico...');
+
+          // Gravar histórico para todos os pedidos - CADA UM UM NOVO REGISTRO
           const historicoStore = useHistoricoEntregasStore.getState();
 
           set(state => ({
@@ -539,10 +555,13 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           }));
 
           for (const pedido of pedidosParaRetorno) {
-            // Gravar no histórico
+            console.log(`📝 Criando registro de retorno para ${pedido.cliente_nome}...`);
+            
+            // Gravar no histórico - NOVO registro para cada pedido
             await historicoStore.adicionarRegistro({
               cliente_id: pedido.cliente_id,
-              data: new Date(),
+              cliente_nome: pedido.cliente_nome,
+              data: new Date(), // Data/hora atual da confirmação em massa
               tipo: 'retorno',
               quantidade: pedido.quantidade_total,
               itens: pedido.itens_personalizados || [],
@@ -555,7 +574,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido
             const dadosAtualizacao: any = {
               data_proxima_reposicao: proximaDataFormatada,
-              status_agendamento: 'Previsto', // CORREÇÃO: Alterar para "Previsto"
+              status_agendamento: 'Previsto',
               substatus_pedido: 'Agendado'
             };
 
@@ -575,9 +594,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               .eq('id', pedido.id);
           }
 
+          console.log(`✅ ${pedidosParaRetorno.length} retornos confirmados - NOVOS registros criados no histórico`);
           toast.success(`${pedidosParaRetorno.length} retornos registrados e reagendados como Previsto`);
         } catch (error) {
-          console.error('Erro no retorno em massa:', error);
+          console.error('❌ Erro no retorno em massa:', error);
           toast.error("Erro no retorno em massa");
         }
       },
