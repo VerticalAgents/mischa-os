@@ -19,7 +19,7 @@ export interface AgendamentoCliente {
 }
 
 interface AgendamentoClienteStore {
-  agendamentos: AgendamentoItem[]; // Changed to AgendamentoItem for the list view
+  agendamentos: AgendamentoItem[];
   loading: boolean;
   error: string | null;
   
@@ -48,7 +48,6 @@ const convertDbRowToAgendamento = (row: any): AgendamentoCliente => {
   };
 };
 
-// Helper function to convert AgendamentoCliente to AgendamentoItem format
 const convertToAgendamentoItem = (agendamento: any, cliente: any): AgendamentoItem => {
   return {
     cliente: {
@@ -100,17 +99,36 @@ const convertToAgendamentoItem = (agendamento: any, cliente: any): AgendamentoIt
   };
 };
 
-// Helper function to convert AgendamentoCliente to database format
+// Helper function para formatação correta de data para o banco
+const formatDateForDatabase = (date: Date): string => {
+  // CORREÇÃO: Usar formato ISO YYYY-MM-DD sem timezone
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const convertAgendamentoToDbFormat = (agendamento: Partial<AgendamentoCliente>) => {
   const dbData: any = {};
   
   if (agendamento.cliente_id) dbData.cliente_id = agendamento.cliente_id;
   if (agendamento.tipo_pedido) dbData.tipo_pedido = agendamento.tipo_pedido;
   if (agendamento.status_agendamento) dbData.status_agendamento = agendamento.status_agendamento;
-  if (agendamento.data_proxima_reposicao) dbData.data_proxima_reposicao = agendamento.data_proxima_reposicao.toISOString().split('T')[0];
+  
+  // CORREÇÃO: Garantir formatação correta da data
+  if (agendamento.data_proxima_reposicao) {
+    dbData.data_proxima_reposicao = formatDateForDatabase(agendamento.data_proxima_reposicao);
+    console.log('🗓️ Data formatada para banco:', {
+      original: agendamento.data_proxima_reposicao,
+      formatted: dbData.data_proxima_reposicao
+    });
+  }
+  
   if (agendamento.quantidade_total !== undefined) dbData.quantidade_total = agendamento.quantidade_total;
   if (agendamento.itens_personalizados !== undefined) dbData.itens_personalizados = agendamento.itens_personalizados;
   if (agendamento.substatus_pedido) dbData.substatus_pedido = agendamento.substatus_pedido;
+  
+  // Timestamps automáticos
   if (agendamento.created_at) dbData.created_at = agendamento.created_at.toISOString();
   if (agendamento.updated_at) dbData.updated_at = agendamento.updated_at.toISOString();
   
@@ -129,7 +147,6 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
         try {
           console.log('useAgendamentoClienteStore: Carregando todos os agendamentos...');
           
-          // Join with clientes table to get client information
           const { data, error } = await supabase
             .from('agendamentos_clientes')
             .select(`
@@ -172,12 +189,12 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           const agendamento = data ? convertDbRowToAgendamento(data) : null;
           console.log('useAgendamentoClienteStore: Agendamento carregado:', agendamento);
           
-          // Log específico para depuração de itens personalizados
           if (agendamento && agendamento.tipo_pedido === 'Alterado') {
             console.log('🔍 Agendamento Alterado carregado:', {
               tipo: agendamento.tipo_pedido,
               itens_personalizados: agendamento.itens_personalizados,
-              quantidade_total: agendamento.quantidade_total
+              quantidade_total: agendamento.quantidade_total,
+              data_proxima_reposicao: agendamento.data_proxima_reposicao
             });
           }
           
@@ -205,16 +222,16 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             updated_at: new Date().toISOString()
           };
 
+          console.log('💾 Dados formatados para salvar:', dadosParaSalvar);
+
           let result;
           if (agendamentoExistente) {
             // PRESERVAR dados existentes quando não especificado explicitamente
             const dadosAtualizacao = {
               ...dadosParaSalvar,
-              // Preservar tipo de pedido se não especificado
               tipo_pedido: dadosAgendamento.tipo_pedido !== undefined 
                 ? dadosAgendamento.tipo_pedido 
                 : agendamentoExistente.tipo_pedido,
-              // Preservar itens personalizados se não especificado e tipo for Alterado
               itens_personalizados: dadosAgendamento.itens_personalizados !== undefined 
                 ? dadosAgendamento.itens_personalizados 
                 : (dadosAgendamento.tipo_pedido === 'Alterado' || agendamentoExistente.tipo_pedido === 'Alterado')
@@ -226,6 +243,8 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
               id: agendamentoExistente.id,
               tipoAnterior: agendamentoExistente.tipo_pedido,
               tipoNovo: dadosAtualizacao.tipo_pedido,
+              dataAnterior: agendamentoExistente.data_proxima_reposicao,
+              dataNova: dadosAtualizacao.data_proxima_reposicao,
               itensPersonalizados: dadosAtualizacao.itens_personalizados
             });
             
@@ -238,7 +257,6 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             
             result = { data, error };
           } else {
-            // Criar novo agendamento
             console.log('➕ Criando novo agendamento:', dadosParaSalvar);
             
             const { data, error } = await supabase

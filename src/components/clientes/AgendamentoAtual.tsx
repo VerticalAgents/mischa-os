@@ -23,18 +23,16 @@ interface ProdutoQuantidade {
   quantidade: number;
 }
 
-// Helper para converter Date para string de input date (formato local) - CORRIGIDO
+// Helper para converter Date para string de input date (formato ISO YYYY-MM-DD)
 const formatDateForInput = (date: Date): string => {
-  // CORREÇÃO: Usar getFullYear, getMonth, getDate para evitar problemas de timezone
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
-// Helper para converter string de input date para Date local - CORRIGIDO
+// Helper para converter string de input date para Date local
 const parseDateFromInput = (dateString: string): Date => {
-  // CORREÇÃO: Criar data local sem conversão UTC para evitar problemas de timezone
   const [year, month, day] = dateString.split('-').map(Number);
   return new Date(year, month - 1, day);
 };
@@ -52,13 +50,24 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
   const { carregarAgendamentoPorCliente, salvarAgendamento, loading } = useAgendamentoClienteStore();
   const { carregarClientes } = useClienteStore();
 
-  // Filtrar produtos baseado nas categorias habilitadas do cliente
   const produtosFiltrados = produtos.filter(produto => {
     if (!cliente.categoriasHabilitadas || cliente.categoriasHabilitadas.length === 0) {
       return true;
     }
     return cliente.categoriasHabilitadas.includes(produto.categoriaId);
   });
+
+  useEffect(() => {
+    if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0 && produtosQuantidades.length === 0) {
+      const produtosIniciais = produtosFiltrados.map(produto => ({
+        produto: produto.nome,
+        quantidade: 0
+      }));
+      setProdutosQuantidades(produtosIniciais);
+    } else if (tipoPedido === 'Padrão') {
+      setProdutosQuantidades([]);
+    }
+  }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length]);
 
   // Carregar dados da tabela agendamentos_clientes
   useEffect(() => {
@@ -77,13 +86,12 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
               data_original: agendamento.data_proxima_reposicao
             });
             
-            // Carregar dados exatos da tabela
             setStatusAgendamento(agendamento.status_agendamento);
             
-            // CORREÇÃO: Formatar data corretamente preservando o valor original
+            // CORREÇÃO: Formatação correta da data preservando o valor original
             if (agendamento.data_proxima_reposicao) {
               const dataFormatada = formatDateForInput(agendamento.data_proxima_reposicao);
-              console.log('📅 Data formatada para input:', {
+              console.log('📅 Data formatada para input no cliente:', {
                 original: agendamento.data_proxima_reposicao,
                 formatada: dataFormatada
               });
@@ -95,7 +103,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             setQuantidadeTotal(agendamento.quantidade_total);
             setTipoPedido(agendamento.tipo_pedido);
             
-            // Carregar itens personalizados se existirem
             if (agendamento.tipo_pedido === 'Alterado' && agendamento.itens_personalizados) {
               console.log('🎯 Carregando itens personalizados:', agendamento.itens_personalizados);
               setProdutosQuantidades(agendamento.itens_personalizados);
@@ -104,7 +111,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             }
           } else {
             console.log('⚠️ Nenhum agendamento encontrado, usando valores padrão');
-            // Valores padrão
             setStatusAgendamento('Agendar');
             setTipoPedido('Padrão');
             setQuantidadeTotal(cliente.quantidadePadrao || 0);
@@ -114,7 +120,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
           setAgendamentoCarregado(true);
         } catch (error) {
           console.error('❌ Erro ao carregar agendamento:', error);
-          // Valores padrão em caso de erro
           setStatusAgendamento('Agendar');
           setTipoPedido('Padrão');
           setQuantidadeTotal(cliente.quantidadePadrao || 0);
@@ -128,31 +133,11 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
     carregarDados();
   }, [cliente?.id, carregarAgendamentoPorCliente, agendamentoCarregado]);
 
-  // Inicializar produtos com quantidades quando o tipo for "Alterado"
-  useEffect(() => {
-    if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0 && produtosQuantidades.length === 0) {
-      const produtosIniciais = produtosFiltrados.map(produto => ({
-        produto: produto.nome,
-        quantidade: 0
-      }));
-      setProdutosQuantidades(produtosIniciais);
-    } else if (tipoPedido === 'Padrão') {
-      // Limpar produtos quando voltar para Padrão
-      setProdutosQuantidades([]);
-    }
-  }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length]);
-
-  // Calcular soma das quantidades dos produtos
   const somaQuantidadesProdutos = produtosQuantidades.reduce((soma, produto) => soma + produto.quantidade, 0);
-  
-  // Verificar se há erro de validação
   const hasValidationError = tipoPedido === 'Alterado' && somaQuantidadesProdutos !== quantidadeTotal;
-
-  // Verificar se data é obrigatória
   const isDataObrigatoria = statusAgendamento === 'Previsto' || statusAgendamento === 'Agendado';
   const hasDataError = isDataObrigatoria && !proximaDataReposicao;
 
-  // Atualizar quantidade de um produto específico
   const atualizarQuantidadeProduto = (produtoNome: string, novaQuantidade: number) => {
     setProdutosQuantidades(prev => 
       prev.map(produto => 
@@ -185,16 +170,26 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
 
     setIsLoading(true);
     try {
+      // CORREÇÃO: Garantir conversão correta da data
+      let dataParaBanco: Date | undefined;
+      if (proximaDataReposicao) {
+        dataParaBanco = parseDateFromInput(proximaDataReposicao);
+        console.log('💾 Data sendo salva no cliente:', {
+          input_string: proximaDataReposicao,
+          parsed_date: dataParaBanco,
+          iso_format: dataParaBanco.toISOString()
+        });
+      }
+
       const dadosAgendamento: Partial<AgendamentoCliente> = {
         status_agendamento: statusAgendamento,
-        // CORREÇÃO: Preservar data original se não foi alterada pelo usuário
-        data_proxima_reposicao: proximaDataReposicao ? parseDateFromInput(proximaDataReposicao) : undefined,
+        data_proxima_reposicao: dataParaBanco,
         quantidade_total: quantidadeTotal,
         tipo_pedido: tipoPedido,
         itens_personalizados: tipoPedido === 'Alterado' ? produtosQuantidades : undefined
       };
 
-      console.log('💾 Salvando agendamento:', {
+      console.log('💾 Salvando agendamento do cliente:', {
         cliente: cliente.nome,
         dados: dadosAgendamento,
         data_input: proximaDataReposicao
@@ -202,11 +197,9 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
 
       await salvarAgendamento(cliente.id, dadosAgendamento);
       
-      // Recarregar dados dos clientes
       console.log('🔄 Recarregando lista de clientes...');
       await carregarClientes();
       
-      // Notificar componente pai
       if (onAgendamentoUpdate) {
         onAgendamentoUpdate();
       }
@@ -228,7 +221,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
     }
   };
 
-  // Mostrar loading enquanto carrega
   if (!agendamentoCarregado) {
     return (
       <div className="space-y-6">
@@ -279,7 +271,10 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
                 id="proxima-data"
                 type="date"
                 value={proximaDataReposicao}
-                onChange={(e) => setProximaDataReposicao(e.target.value)}
+                onChange={(e) => {
+                  console.log('📅 Data alterada no input do cliente:', e.target.value);
+                  setProximaDataReposicao(e.target.value);
+                }}
                 className={hasDataError ? "border-red-500" : ""}
               />
               {hasDataError && (
@@ -298,7 +293,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
           <CardTitle>Configurações de Reposição</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Quantidade Total */}
           <div className="space-y-2">
             <Label htmlFor="quantidade-total">Quantidade Total do Pedido</Label>
             <Input
@@ -310,7 +304,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             />
           </div>
 
-          {/* Tipo de Pedido */}
           <div className="space-y-3">
             <Label>Tipo de Pedido</Label>
             <RadioGroup 
@@ -328,7 +321,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             </RadioGroup>
           </div>
 
-          {/* Lista de Produtos (apenas se tipo for "Alterado") */}
           {tipoPedido === 'Alterado' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -390,7 +382,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             </div>
           )}
 
-          {/* Botão Salvar */}
           <div className="flex justify-end pt-4">
             <Button 
               onClick={handleSalvar}

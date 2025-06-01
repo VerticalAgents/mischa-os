@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -27,18 +28,16 @@ interface ProdutoQuantidade {
   quantidade: number;
 }
 
-// Helper para converter Date para string de input date (formato local) - CORRIGIDO
+// Helper para converter Date para string de input date (formato ISO YYYY-MM-DD)
 const formatDateForInput = (date: Date): string => {
-  // CORREÇÃO: Usar getFullYear, getMonth, getDate para evitar problemas de timezone
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
-// Helper para converter string de input date para Date local - CORRIGIDO
+// Helper para converter string de input date para Date local
 const parseDateFromInput = (dateString: string): Date => {
-  // CORREÇÃO: Criar data local sem conversão UTC para evitar problemas de timezone
   const [year, month, day] = dateString.split('-').map(Number);
   return new Date(year, month - 1, day);
 };
@@ -61,7 +60,6 @@ export default function AgendamentoEditModal({
   const { produtos: produtosSupabase, loading: loadingSupabase } = useSupabaseProdutos();
   const { salvarAgendamento, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
 
-  // Decidir qual fonte de produtos usar - priorizar Supabase se disponível
   const produtos = produtosSupabase.length > 0 ? produtosSupabase.map(p => ({
     id: parseInt(p.id) || 0,
     nome: p.nome,
@@ -80,7 +78,6 @@ export default function AgendamentoEditModal({
     subcategoriaId: p.subcategoria_id || 0
   })) : produtosLocal;
 
-  // Filtrar produtos baseado nas categorias habilitadas do cliente
   const produtosFiltrados = produtos.filter(produto => {
     if (!agendamento?.cliente || !produto) {
       return false;
@@ -108,18 +105,17 @@ export default function AgendamentoEditModal({
           const agendamentoCompleto = await carregarAgendamentoPorCliente(agendamento.cliente.id);
           
           if (agendamentoCompleto) {
-            console.log('✅ Dados completos carregados:', {
+            console.log('✅ Dados completos carregados no modal:', {
               tipo: agendamentoCompleto.tipo_pedido,
               status: agendamentoCompleto.status_agendamento,
-              itens: agendamentoCompleto.itens_personalizados,
-              quantidade: agendamentoCompleto.quantidade_total,
-              data_original: agendamentoCompleto.data_proxima_reposicao
+              data_original: agendamentoCompleto.data_proxima_reposicao,
+              quantidade: agendamentoCompleto.quantidade_total
             });
 
             // Usar os dados da tabela como fonte da verdade
             setStatusAgendamento(agendamentoCompleto.status_agendamento);
             
-            // CORREÇÃO: Formatar data corretamente preservando o valor original
+            // CORREÇÃO: Garantir formatação correta da data para o input
             if (agendamentoCompleto.data_proxima_reposicao) {
               const dataFormatada = formatDateForInput(agendamentoCompleto.data_proxima_reposicao);
               console.log('📅 Data formatada para modal:', {
@@ -128,6 +124,7 @@ export default function AgendamentoEditModal({
               });
               setProximaDataReposicao(dataFormatada);
             } else {
+              // Se não há data na base, usar a data do agendamento da lista
               setProximaDataReposicao(formatDateForInput(agendamento.dataReposicao));
             }
             
@@ -204,10 +201,20 @@ export default function AgendamentoEditModal({
 
     setIsLoading(true);
     try {
+      // CORREÇÃO: Garantir que a data seja enviada no formato correto para o Supabase
+      let dataParaBanco: Date | undefined;
+      if (proximaDataReposicao) {
+        dataParaBanco = parseDateFromInput(proximaDataReposicao);
+        console.log('💾 Data sendo salva:', {
+          input_string: proximaDataReposicao,
+          parsed_date: dataParaBanco,
+          iso_format: dataParaBanco.toISOString()
+        });
+      }
+
       const dadosAgendamento: Partial<AgendamentoCliente> = {
         status_agendamento: statusAgendamento,
-        // CORREÇÃO: Preservar data original se não foi alterada pelo usuário
-        data_proxima_reposicao: proximaDataReposicao ? parseDateFromInput(proximaDataReposicao) : undefined,
+        data_proxima_reposicao: dataParaBanco,
         quantidade_total: quantidadeTotal,
         tipo_pedido: tipoPedido,
         itens_personalizados: tipoPedido === 'Alterado' ? produtosQuantidades : undefined
@@ -215,9 +222,8 @@ export default function AgendamentoEditModal({
 
       console.log('💾 Salvando agendamento via modal:', {
         cliente: agendamento.cliente.nome,
-        tipo: tipoPedido,
-        itens: tipoPedido === 'Alterado' ? produtosQuantidades : null,
-        data_input: proximaDataReposicao
+        dados: dadosAgendamento,
+        data_input_original: proximaDataReposicao
       });
 
       await salvarAgendamento(agendamento.cliente.id, dadosAgendamento);
@@ -226,7 +232,7 @@ export default function AgendamentoEditModal({
       const agendamentoAtualizado: AgendamentoItem = {
         ...agendamento,
         statusAgendamento,
-        dataReposicao: proximaDataReposicao ? parseDateFromInput(proximaDataReposicao) : agendamento.dataReposicao,
+        dataReposicao: dataParaBanco || agendamento.dataReposicao,
         pedido: agendamento.pedido ? {
           ...agendamento.pedido,
           totalPedidoUnidades: quantidadeTotal,
@@ -261,11 +267,7 @@ export default function AgendamentoEditModal({
 
   // Calcular soma das quantidades dos produtos
   const somaQuantidadesProdutos = produtosQuantidades.reduce((soma, produto) => soma + produto.quantidade, 0);
-  
-  // Verificar se há erro de validação
   const hasValidationError = tipoPedido === 'Alterado' && somaQuantidadesProdutos !== quantidadeTotal;
-
-  // Verificar se data é obrigatória
   const isDataObrigatoria = statusAgendamento === 'Previsto' || statusAgendamento === 'Agendado';
   const hasDataError = isDataObrigatoria && !proximaDataReposicao;
 
@@ -307,7 +309,10 @@ export default function AgendamentoEditModal({
                   id="proxima-data"
                   type="date"
                   value={proximaDataReposicao}
-                  onChange={(e) => setProximaDataReposicao(e.target.value)}
+                  onChange={(e) => {
+                    console.log('📅 Data alterada no input:', e.target.value);
+                    setProximaDataReposicao(e.target.value);
+                  }}
                   className={hasDataError ? "border-red-500" : ""}
                 />
                 {hasDataError && (
@@ -321,7 +326,6 @@ export default function AgendamentoEditModal({
 
           {/* Configurações de Reposição */}
           <div className="space-y-6">
-            {/* Quantidade Total */}
             <div className="space-y-2">
               <Label htmlFor="quantidade-total">Quantidade Total do Pedido</Label>
               <Input
@@ -333,7 +337,6 @@ export default function AgendamentoEditModal({
               />
             </div>
 
-            {/* Tipo de Pedido */}
             <div className="space-y-3">
               <Label>Tipo de Pedido</Label>
               <RadioGroup 
@@ -351,7 +354,6 @@ export default function AgendamentoEditModal({
               </RadioGroup>
             </div>
 
-            {/* Lista de Produtos (apenas se tipo for "Alterado") */}
             {tipoPedido === 'Alterado' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
