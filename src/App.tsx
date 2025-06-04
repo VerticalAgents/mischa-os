@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -54,10 +55,15 @@ const initializeTheme = () => {
 const AppContent = () => {
   const { restoreRoute } = useRoutePersistence();
 
-  // Restaura a rota salva na inicialização
+  // Restaura a rota salva APENAS na primeira inicialização
   useEffect(() => {
-    restoreRoute();
-  }, []);
+    // Usar setTimeout para garantir que seja executado após a montagem inicial
+    const timeoutId = setTimeout(() => {
+      restoreRoute();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, []); // Array de dependências vazio para executar apenas uma vez
 
   return (
     <Routes>

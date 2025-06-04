@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const ROUTE_STORAGE_KEY = 'rotaAtual';
@@ -7,6 +7,7 @@ const ROUTE_STORAGE_KEY = 'rotaAtual';
 export const useRoutePersistence = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const hasRestoredRef = useRef(false);
 
   // Salva a rota atual no localStorage sempre que a rota muda
   useEffect(() => {
@@ -16,13 +17,21 @@ export const useRoutePersistence = () => {
     }
   }, [location.pathname]);
 
-  // Restaura a rota salva na inicialização do app
+  // Restaura a rota salva APENAS na inicialização do app (uma única vez)
   const restoreRoute = () => {
+    // Se já restaurou uma vez, não fazer nada
+    if (hasRestoredRef.current) {
+      return;
+    }
+
     const savedRoute = localStorage.getItem(ROUTE_STORAGE_KEY);
     
     // Se existe uma rota salva e não estamos já nela, navegar para ela
     if (savedRoute && savedRoute !== location.pathname && savedRoute !== '/auth' && savedRoute !== '/login') {
+      hasRestoredRef.current = true;
       navigate(savedRoute, { replace: true });
+    } else {
+      hasRestoredRef.current = true;
     }
   };
 
