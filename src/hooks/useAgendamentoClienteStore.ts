@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
@@ -98,13 +99,20 @@ const convertToAgendamentoItem = (agendamento: any, cliente: any): AgendamentoIt
   };
 };
 
-// CORREÇÃO DEFINITIVA: Função que converte Date para o formato de banco sem problemas de timezone
+// Função que converte Date para string no formato YYYY-MM-DD preservando o valor local
 const formatDateForDatabase = (date: Date): string => {
-  // Usar métodos locais (getFullYear, getMonth, getDate) em vez de toISOString para evitar problemas de timezone
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const formatted = `${year}-${month}-${day}`;
+  console.log('🗓️ Data formatada para banco:', {
+    original: date,
+    dia_original: date.getDate(),
+    mes_original: date.getMonth() + 1,
+    ano_original: date.getFullYear(),
+    formatted: formatted
+  });
+  return formatted;
 };
 
 const convertAgendamentoToDbFormat = (agendamento: Partial<AgendamentoCliente>) => {
@@ -114,16 +122,9 @@ const convertAgendamentoToDbFormat = (agendamento: Partial<AgendamentoCliente>) 
   if (agendamento.tipo_pedido) dbData.tipo_pedido = agendamento.tipo_pedido;
   if (agendamento.status_agendamento) dbData.status_agendamento = agendamento.status_agendamento;
   
-  // CORREÇÃO: Garantir formatação correta da data sem problemas de timezone
+  // Conversão correta da data preservando o valor exato
   if (agendamento.data_proxima_reposicao) {
     dbData.data_proxima_reposicao = formatDateForDatabase(agendamento.data_proxima_reposicao);
-    console.log('🗓️ Data formatada para banco (CORRIGIDA):', {
-      original: agendamento.data_proxima_reposicao,
-      dia_original: agendamento.data_proxima_reposicao.getDate(),
-      mes_original: agendamento.data_proxima_reposicao.getMonth() + 1,
-      ano_original: agendamento.data_proxima_reposicao.getFullYear(),
-      formatted: dbData.data_proxima_reposicao
-    });
   }
   
   if (agendamento.quantidade_total !== undefined) dbData.quantidade_total = agendamento.quantidade_total;
@@ -213,7 +214,8 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
 
       salvarAgendamento: async (clienteId: string, dadosAgendamento: Partial<AgendamentoCliente>) => {
         try {
-          console.log('useAgendamentoClienteStore: Salvando agendamento para cliente:', clienteId, dadosAgendamento);
+          console.log('useAgendamentoClienteStore: Salvando agendamento para cliente:', clienteId);
+          console.log('📊 Dados originais recebidos:', dadosAgendamento);
           
           // Verificar se o agendamento já existe
           const agendamentoExistente = await get().obterAgendamento(clienteId);
@@ -224,7 +226,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             updated_at: new Date().toISOString()
           };
 
-          console.log('💾 Dados formatados para salvar (CORRIGIDO):', dadosParaSalvar);
+          console.log('💾 Dados formatados para salvar:', dadosParaSalvar);
 
           let result;
           if (agendamentoExistente) {
@@ -241,7 +243,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
                   : null
             };
             
-            console.log('🔄 Atualizando agendamento existente (CORRIGIDO):', {
+            console.log('🔄 Atualizando agendamento existente:', {
               id: agendamentoExistente.id,
               tipoAnterior: agendamentoExistente.tipo_pedido,
               tipoNovo: dadosAtualizacao.tipo_pedido,
@@ -278,7 +280,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             throw result.error;
           }
 
-          console.log('✅ Agendamento salvo com sucesso (CORRIGIDO):', result.data);
+          console.log('✅ Agendamento salvo com sucesso:', result.data);
           
           // Recarregar todos os agendamentos para atualizar a lista
           await get().carregarTodosAgendamentos();

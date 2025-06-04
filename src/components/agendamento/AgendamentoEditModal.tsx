@@ -28,20 +28,27 @@ interface ProdutoQuantidade {
   quantidade: number;
 }
 
-// CORREÇÃO DEFINITIVA: Funções que preservam exatamente a data sem problemas de timezone
+// Função para formatar data para input (YYYY-MM-DD)
 const formatDateForInput = (date: Date): string => {
-  // Usar getFullYear, getMonth, getDate (métodos locais) para evitar problemas de timezone
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const formatted = `${year}-${month}-${day}`;
+  console.log('📅 Formatando data para input:', { original: date, formatted });
+  return formatted;
 };
 
+// Função para converter string do input para Date
 const parseDateFromInput = (dateString: string): Date => {
-  // Usar new Date(year, month, day) em vez de Date.parse para evitar timezone issues
+  if (!dateString) {
+    console.log('⚠️ String de data vazia');
+    return new Date();
+  }
+  
   const [year, month, day] = dateString.split('-').map(Number);
-  // month - 1 porque Date() usa meses 0-based (0 = Janeiro)
-  return new Date(year, month - 1, day);
+  const date = new Date(year, month - 1, day);
+  console.log('📅 Convertendo string para Date:', { input: dateString, parsed: date });
+  return date;
 };
 
 export default function AgendamentoEditModal({ 
@@ -117,16 +124,9 @@ export default function AgendamentoEditModal({
             // Usar os dados da tabela como fonte da verdade
             setStatusAgendamento(agendamentoCompleto.status_agendamento);
             
-            // CORREÇÃO: Formatação segura da data preservando o valor exato
+            // Formatação da data
             if (agendamentoCompleto.data_proxima_reposicao) {
               const dataFormatada = formatDateForInput(agendamentoCompleto.data_proxima_reposicao);
-              console.log('📅 Data formatada para modal (CORRIGIDA):', {
-                original: agendamentoCompleto.data_proxima_reposicao,
-                formatada: dataFormatada,
-                dia_original: agendamentoCompleto.data_proxima_reposicao.getDate(),
-                mes_original: agendamentoCompleto.data_proxima_reposicao.getMonth() + 1,
-                ano_original: agendamentoCompleto.data_proxima_reposicao.getFullYear()
-              });
               setProximaDataReposicao(dataFormatada);
             } else {
               // Se não há data na base, usar a data do agendamento da lista
@@ -206,17 +206,19 @@ export default function AgendamentoEditModal({
 
     setIsLoading(true);
     try {
-      // CORREÇÃO: Conversão segura da data preservando o valor exato
+      console.log('💾 Iniciando salvamento do agendamento');
+      console.log('📅 Data no estado antes de salvar:', proximaDataReposicao);
+      
+      // Converter a data string para Date object
       let dataParaBanco: Date | undefined;
       if (proximaDataReposicao) {
         dataParaBanco = parseDateFromInput(proximaDataReposicao);
-        console.log('💾 Data sendo salva (CORRIGIDA):', {
+        console.log('💾 Data convertida para salvamento:', {
           input_string: proximaDataReposicao,
           parsed_date: dataParaBanco,
-          dia_parsed: dataParaBanco.getDate(),
-          mes_parsed: dataParaBanco.getMonth() + 1,
-          ano_parsed: dataParaBanco.getFullYear(),
-          iso_format: dataParaBanco.toISOString()
+          dia: dataParaBanco.getDate(),
+          mes: dataParaBanco.getMonth() + 1,
+          ano: dataParaBanco.getFullYear()
         });
       }
 
@@ -228,10 +230,9 @@ export default function AgendamentoEditModal({
         itens_personalizados: tipoPedido === 'Alterado' ? produtosQuantidades : undefined
       };
 
-      console.log('💾 Salvando agendamento via modal:', {
+      console.log('💾 Dados completos para salvamento:', {
         cliente: agendamento.cliente.nome,
-        dados: dadosAgendamento,
-        data_input_original: proximaDataReposicao
+        dados: dadosAgendamento
       });
 
       await salvarAgendamento(agendamento.cliente.id, dadosAgendamento);
@@ -318,7 +319,7 @@ export default function AgendamentoEditModal({
                   type="date"
                   value={proximaDataReposicao}
                   onChange={(e) => {
-                    console.log('📅 Data alterada no input (CORRIGIDA):', e.target.value);
+                    console.log('📅 Data alterada no modal:', e.target.value);
                     setProximaDataReposicao(e.target.value);
                   }}
                   className={hasDataError ? "border-red-500" : ""}
