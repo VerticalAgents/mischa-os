@@ -332,7 +332,11 @@ export default function Custos() {
                     min="0"
                     step="0.01"
                     value={novoCusto.valor || ""}
-                    onChange={(e) => setNovoCusto({...novoCusto, valor: parseFloat(e.target.value)})}
+                    onChange={(e) => {
+                      const valorStr = e.target.value;
+                      const valor = valorStr === "" ? undefined : parseFloat(valorStr);
+                      setNovoCusto({ ...novoCusto, valor });
+                    }}
                   />
                 </div>
                 <div>
