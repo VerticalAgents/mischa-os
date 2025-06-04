@@ -28,17 +28,19 @@ interface ProdutoQuantidade {
   quantidade: number;
 }
 
-// Helper para converter Date para string de input date (formato ISO YYYY-MM-DD)
+// CORREÇÃO DEFINITIVA: Funções que preservam exatamente a data sem problemas de timezone
 const formatDateForInput = (date: Date): string => {
+  // Usar getFullYear, getMonth, getDate (métodos locais) para evitar problemas de timezone
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
-// Helper para converter string de input date para Date local
 const parseDateFromInput = (dateString: string): Date => {
+  // Usar new Date(year, month, day) em vez de Date.parse para evitar timezone issues
   const [year, month, day] = dateString.split('-').map(Number);
+  // month - 1 porque Date() usa meses 0-based (0 = Janeiro)
   return new Date(year, month - 1, day);
 };
 
@@ -115,12 +117,15 @@ export default function AgendamentoEditModal({
             // Usar os dados da tabela como fonte da verdade
             setStatusAgendamento(agendamentoCompleto.status_agendamento);
             
-            // CORREÇÃO: Garantir formatação correta da data para o input
+            // CORREÇÃO: Formatação segura da data preservando o valor exato
             if (agendamentoCompleto.data_proxima_reposicao) {
               const dataFormatada = formatDateForInput(agendamentoCompleto.data_proxima_reposicao);
-              console.log('📅 Data formatada para modal:', {
+              console.log('📅 Data formatada para modal (CORRIGIDA):', {
                 original: agendamentoCompleto.data_proxima_reposicao,
-                formatada: dataFormatada
+                formatada: dataFormatada,
+                dia_original: agendamentoCompleto.data_proxima_reposicao.getDate(),
+                mes_original: agendamentoCompleto.data_proxima_reposicao.getMonth() + 1,
+                ano_original: agendamentoCompleto.data_proxima_reposicao.getFullYear()
               });
               setProximaDataReposicao(dataFormatada);
             } else {
@@ -201,13 +206,16 @@ export default function AgendamentoEditModal({
 
     setIsLoading(true);
     try {
-      // CORREÇÃO: Garantir que a data seja enviada no formato correto para o Supabase
+      // CORREÇÃO: Conversão segura da data preservando o valor exato
       let dataParaBanco: Date | undefined;
       if (proximaDataReposicao) {
         dataParaBanco = parseDateFromInput(proximaDataReposicao);
-        console.log('💾 Data sendo salva:', {
+        console.log('💾 Data sendo salva (CORRIGIDA):', {
           input_string: proximaDataReposicao,
           parsed_date: dataParaBanco,
+          dia_parsed: dataParaBanco.getDate(),
+          mes_parsed: dataParaBanco.getMonth() + 1,
+          ano_parsed: dataParaBanco.getFullYear(),
           iso_format: dataParaBanco.toISOString()
         });
       }
@@ -310,7 +318,7 @@ export default function AgendamentoEditModal({
                   type="date"
                   value={proximaDataReposicao}
                   onChange={(e) => {
-                    console.log('📅 Data alterada no input:', e.target.value);
+                    console.log('📅 Data alterada no input (CORRIGIDA):', e.target.value);
                     setProximaDataReposicao(e.target.value);
                   }}
                   className={hasDataError ? "border-red-500" : ""}

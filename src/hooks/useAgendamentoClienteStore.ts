@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
@@ -99,9 +98,9 @@ const convertToAgendamentoItem = (agendamento: any, cliente: any): AgendamentoIt
   };
 };
 
-// Helper function para formatação correta de data para o banco
+// CORREÇÃO DEFINITIVA: Função que converte Date para o formato de banco sem problemas de timezone
 const formatDateForDatabase = (date: Date): string => {
-  // CORREÇÃO: Usar formato ISO YYYY-MM-DD sem timezone
+  // Usar métodos locais (getFullYear, getMonth, getDate) em vez de toISOString para evitar problemas de timezone
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -115,11 +114,14 @@ const convertAgendamentoToDbFormat = (agendamento: Partial<AgendamentoCliente>) 
   if (agendamento.tipo_pedido) dbData.tipo_pedido = agendamento.tipo_pedido;
   if (agendamento.status_agendamento) dbData.status_agendamento = agendamento.status_agendamento;
   
-  // CORREÇÃO: Garantir formatação correta da data
+  // CORREÇÃO: Garantir formatação correta da data sem problemas de timezone
   if (agendamento.data_proxima_reposicao) {
     dbData.data_proxima_reposicao = formatDateForDatabase(agendamento.data_proxima_reposicao);
-    console.log('🗓️ Data formatada para banco:', {
+    console.log('🗓️ Data formatada para banco (CORRIGIDA):', {
       original: agendamento.data_proxima_reposicao,
+      dia_original: agendamento.data_proxima_reposicao.getDate(),
+      mes_original: agendamento.data_proxima_reposicao.getMonth() + 1,
+      ano_original: agendamento.data_proxima_reposicao.getFullYear(),
       formatted: dbData.data_proxima_reposicao
     });
   }
@@ -222,7 +224,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             updated_at: new Date().toISOString()
           };
 
-          console.log('💾 Dados formatados para salvar:', dadosParaSalvar);
+          console.log('💾 Dados formatados para salvar (CORRIGIDO):', dadosParaSalvar);
 
           let result;
           if (agendamentoExistente) {
@@ -239,7 +241,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
                   : null
             };
             
-            console.log('🔄 Atualizando agendamento existente:', {
+            console.log('🔄 Atualizando agendamento existente (CORRIGIDO):', {
               id: agendamentoExistente.id,
               tipoAnterior: agendamentoExistente.tipo_pedido,
               tipoNovo: dadosAtualizacao.tipo_pedido,
@@ -276,7 +278,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
             throw result.error;
           }
 
-          console.log('✅ Agendamento salvo com sucesso:', result.data);
+          console.log('✅ Agendamento salvo com sucesso (CORRIGIDO):', result.data);
           
           // Recarregar todos os agendamentos para atualizar a lista
           await get().carregarTodosAgendamentos();

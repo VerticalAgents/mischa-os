@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Cliente } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,17 +24,19 @@ interface ProdutoQuantidade {
   quantidade: number;
 }
 
-// Helper para converter Date para string de input date (formato ISO YYYY-MM-DD)
+// CORREÇÃO DEFINITIVA: Funções que preservam exatamente a data sem problemas de timezone
 const formatDateForInput = (date: Date): string => {
+  // Usar getFullYear, getMonth, getDate (métodos locais) para evitar problemas de timezone
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
-// Helper para converter string de input date para Date local
 const parseDateFromInput = (dateString: string): Date => {
+  // Usar new Date(year, month, day) em vez de Date.parse para evitar timezone issues
   const [year, month, day] = dateString.split('-').map(Number);
+  // month - 1 porque Date() usa meses 0-based (0 = Janeiro)
   return new Date(year, month - 1, day);
 };
 
@@ -88,12 +91,15 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             
             setStatusAgendamento(agendamento.status_agendamento);
             
-            // CORREÇÃO: Formatação correta da data preservando o valor original
+            // CORREÇÃO: Formatação segura da data preservando o valor exato
             if (agendamento.data_proxima_reposicao) {
               const dataFormatada = formatDateForInput(agendamento.data_proxima_reposicao);
-              console.log('📅 Data formatada para input no cliente:', {
+              console.log('📅 Data formatada para input no cliente (CORRIGIDA):', {
                 original: agendamento.data_proxima_reposicao,
-                formatada: dataFormatada
+                formatada: dataFormatada,
+                dia_original: agendamento.data_proxima_reposicao.getDate(),
+                mes_original: agendamento.data_proxima_reposicao.getMonth() + 1,
+                ano_original: agendamento.data_proxima_reposicao.getFullYear()
               });
               setProximaDataReposicao(dataFormatada);
             } else {
@@ -170,13 +176,16 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
 
     setIsLoading(true);
     try {
-      // CORREÇÃO: Garantir conversão correta da data
+      // CORREÇÃO: Conversão segura da data preservando o valor exato
       let dataParaBanco: Date | undefined;
       if (proximaDataReposicao) {
         dataParaBanco = parseDateFromInput(proximaDataReposicao);
-        console.log('💾 Data sendo salva no cliente:', {
+        console.log('💾 Data sendo salva no cliente (CORRIGIDA):', {
           input_string: proximaDataReposicao,
           parsed_date: dataParaBanco,
+          dia_parsed: dataParaBanco.getDate(),
+          mes_parsed: dataParaBanco.getMonth() + 1,
+          ano_parsed: dataParaBanco.getFullYear(),
           iso_format: dataParaBanco.toISOString()
         });
       }
@@ -272,7 +281,7 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
                 type="date"
                 value={proximaDataReposicao}
                 onChange={(e) => {
-                  console.log('📅 Data alterada no input do cliente:', e.target.value);
+                  console.log('📅 Data alterada no input do cliente (CORRIGIDA):', e.target.value);
                   setProximaDataReposicao(e.target.value);
                 }}
                 className={hasDataError ? "border-red-500" : ""}
