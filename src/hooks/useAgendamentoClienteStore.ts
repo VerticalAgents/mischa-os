@@ -19,7 +19,7 @@ export interface AgendamentoCliente {
 }
 
 interface AgendamentoClienteStore {
-  agendamentos: AgendamentoItem[];
+  agendamentos: AgendamentoItem[]; // Changed from AgendamentoCliente[] to AgendamentoItem[]
   loading: boolean;
   error: string | null;
   
