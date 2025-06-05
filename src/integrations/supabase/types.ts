@@ -238,6 +238,45 @@ export type Database = {
         }
         Relationships: []
       }
+      confirmacoes_reposicao: {
+        Row: {
+          agendamento_id: string | null
+          cliente_id: string
+          confirmado_por: string | null
+          created_at: string
+          data_contato: string
+          id: string
+          observacoes: string | null
+          status_contato: string
+          ultimo_contato_em: string | null
+          updated_at: string
+        }
+        Insert: {
+          agendamento_id?: string | null
+          cliente_id: string
+          confirmado_por?: string | null
+          created_at?: string
+          data_contato?: string
+          id?: string
+          observacoes?: string | null
+          status_contato?: string
+          ultimo_contato_em?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agendamento_id?: string | null
+          cliente_id?: string
+          confirmado_por?: string | null
+          created_at?: string
+          data_contato?: string
+          id?: string
+          observacoes?: string | null
+          status_contato?: string
+          ultimo_contato_em?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       historico_entregas: {
         Row: {
           cliente_id: string

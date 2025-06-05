@@ -11,12 +11,11 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Clock, AlertTriangle, AlertCircle, ArrowRight } from "lucide-react";
-import { useClienteStore } from "@/hooks/useClienteStore";
-import { differenceInBusinessDays, isSameDay } from "date-fns";
+import { useConfirmacaoReposicaoStore } from "@/hooks/useConfirmacaoReposicaoStore";
 
 export default function ConfirmacaoReposicaoWidget() {
   const navigate = useNavigate();
-  const { clientes } = useClienteStore();
+  const { clientesParaConfirmacao, carregarClientesParaConfirmacao } = useConfirmacaoReposicaoStore();
   const [contadores, setContadores] = useState({
     contatoHoje: 0,
     contatoPendente: 0,
@@ -25,44 +24,35 @@ export default function ConfirmacaoReposicaoWidget() {
   });
   
   useEffect(() => {
-    // Contabilizar clientes por status de confirmação baseado nos dados reais de agendamento
-    const clientesAtivos = clientes.filter(cliente => 
-      cliente.statusCliente === "Ativo" && 
-      cliente.proximaDataReposicao &&
-      cliente.statusAgendamento
-    );
+    carregarClientesParaConfirmacao();
+  }, [carregarClientesParaConfirmacao]);
+  
+  useEffect(() => {
+    // Calcular contadores baseados nos dados reais
+    const contatoHoje = clientesParaConfirmacao.filter(cliente => 
+      cliente.status_contato === 'aguardando_retorno'
+    ).length;
     
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    const contatoPendente = clientesParaConfirmacao.filter(cliente => 
+      cliente.status_contato === 'reenviado'
+    ).length;
     
-    // Clientes com status "Previsto" para hoje (precisam de confirmação)
-    const contatoNecessarioHoje = clientesAtivos.filter(cliente => {
-      if (!cliente.proximaDataReposicao || cliente.statusAgendamento !== "Previsto") return false;
-      const dataReposicao = new Date(cliente.proximaDataReposicao);
-      dataReposicao.setHours(0, 0, 0, 0);
-      return isSameDay(dataReposicao, hoje);
-    }).length;
+    const semRespostaPrimeiro = clientesParaConfirmacao.filter(cliente => 
+      cliente.pode_reenviar && cliente.status_contato === 'aguardando_retorno'
+    ).length;
     
-    // Clientes com agendamentos atrasados (data já passou e ainda não confirmado)
-    const contatoPendente = clientesAtivos.filter(cliente => {
-      if (!cliente.proximaDataReposicao || cliente.statusAgendamento === "Agendado") return false;
-      const dataReposicao = new Date(cliente.proximaDataReposicao);
-      dataReposicao.setHours(0, 0, 0, 0);
-      return dataReposicao < hoje;
-    }).length;
-    
-    // Para fins de demonstração, simulamos os outros contadores baseados nos dados reais
-    const semRespostaPrimeiro = Math.floor(contatoNecessarioHoje * 0.3);
-    const semRespostaSegundo = Math.floor(contatoNecessarioHoje * 0.1);
+    const semRespostaSegundo = clientesParaConfirmacao.filter(cliente => 
+      cliente.em_atraso || cliente.status_contato === 'nao_respondeu'
+    ).length;
     
     setContadores({
-      contatoHoje: contatoNecessarioHoje,
+      contatoHoje,
       contatoPendente,
       semRespostaPrimeiro,
       semRespostaSegundo
     });
     
-  }, [clientes]);
+  }, [clientesParaConfirmacao]);
   
   const navigateToConfirmacao = () => {
     navigate("/agendamento?tab=confirmacao");

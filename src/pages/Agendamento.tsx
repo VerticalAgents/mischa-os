@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TodosAgendamentos from "@/components/agendamento/TodosAgendamentos";
 import AgendamentosPrevistos from "@/components/agendamento/AgendamentosPrevistos";
 import AgendamentosAgendados from "@/components/agendamento/AgendamentosAgendados";
-import ConfirmacaoReposicaoTab from "@/components/agendamento/ConfirmacaoReposicaoTab";
+import NovaConfirmacaoReposicaoTab from "@/components/agendamento/NovaConfirmacaoReposicaoTab";
 import { useSearchParams } from "react-router-dom";
 
 export default function Agendamento() {
@@ -47,7 +47,7 @@ export default function Agendamento() {
         </TabsContent>
         
         <TabsContent value="confirmacao" className="space-y-4">
-          <ConfirmacaoReposicaoTab />
+          <NovaConfirmacaoReposicaoTab />
         </TabsContent>
       </Tabs>
     </div>
