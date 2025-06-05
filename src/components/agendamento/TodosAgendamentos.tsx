@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useToast } from "@/hooks/use-toast";
 import { AgendamentoItem } from "./types";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
@@ -21,11 +20,11 @@ import { useClienteStore } from "@/hooks/useClienteStore";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import { TipoPedidoBadge } from "@/components/expedicao/TipoPedidoBadge";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
+import { toast } from "sonner";
 
 export default function TodosAgendamentos() {
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
-  const { toast } = useToast();
   const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
   const { carregarClientes } = useClienteStore();
   const { obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
@@ -73,17 +72,10 @@ export default function TodosAgendamentos() {
       await carregarTodosAgendamentos();
       await carregarClientes();
       
-      toast({
-        title: "Sucesso",
-        description: `Agendamento confirmado para ${agendamento.cliente.nome}`,
-      });
+      toast.success(`Agendamento confirmado para ${agendamento.cliente.nome}`);
     } catch (error) {
       console.error('Erro ao confirmar agendamento:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao confirmar agendamento",
-        variant: "destructive",
-      });
+      toast.error("Erro ao confirmar agendamento");
     }
   };
 
