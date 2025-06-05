@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
@@ -91,11 +90,12 @@ export const useConfirmacaoReposicaoStore = create<ConfirmacaoReposicaoStore>()(
             throw confirmacoesError;
           }
 
-          // Converter strings de data para Date objects
+          // Converter strings de data para Date objects e fazer type casting correto
           const confirmacoes = confirmacoesRaw?.map(confirmacao => ({
             ...confirmacao,
             data_contato: new Date(confirmacao.data_contato),
             ultimo_contato_em: confirmacao.ultimo_contato_em ? new Date(confirmacao.ultimo_contato_em) : undefined,
+            status_contato: confirmacao.status_contato as 'aguardando_retorno' | 'confirmado' | 'reenviado' | 'nao_respondeu',
             created_at: new Date(confirmacao.created_at),
             updated_at: new Date(confirmacao.updated_at)
           })) || [];
