@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,7 +18,7 @@ export interface AgendamentoCliente {
 }
 
 interface AgendamentoClienteStore {
-  agendamentos: AgendamentoItem[]; // Changed from AgendamentoCliente[] to AgendamentoItem[]
+  agendamentos: AgendamentoItem[];
   loading: boolean;
   error: string | null;
   
@@ -32,6 +31,20 @@ interface AgendamentoClienteStore {
   limparErro: () => void;
 }
 
+// Função para converter data do banco preservando o valor local
+const parseLocalDate = (dateString: string): Date => {
+  if (!dateString) return new Date();
+  
+  // Para strings no formato YYYY-MM-DD, forçar interpretação como horário local
+  if (dateString.includes('-') && dateString.length === 10) {
+    const [ano, mes, dia] = dateString.split('-');
+    return new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+  }
+  
+  // Para outros formatos, usar o padrão
+  return new Date(dateString);
+};
+
 // Helper function to convert database row to AgendamentoCliente
 const convertDbRowToAgendamento = (row: any): AgendamentoCliente => {
   return {
@@ -39,7 +52,7 @@ const convertDbRowToAgendamento = (row: any): AgendamentoCliente => {
     cliente_id: row.cliente_id,
     tipo_pedido: row.tipo_pedido as 'Padrão' | 'Alterado',
     status_agendamento: row.status_agendamento as 'Agendar' | 'Previsto' | 'Agendado',
-    data_proxima_reposicao: row.data_proxima_reposicao ? new Date(row.data_proxima_reposicao) : undefined,
+    data_proxima_reposicao: row.data_proxima_reposicao ? parseLocalDate(row.data_proxima_reposicao) : undefined,
     quantidade_total: row.quantidade_total,
     itens_personalizados: row.itens_personalizados as { produto: string; quantidade: number }[] | undefined,
     substatus_pedido: row.substatus_pedido,
@@ -63,9 +76,9 @@ const convertToAgendamentoItem = (agendamento: any, cliente: any): AgendamentoIt
       statusCliente: cliente.status_cliente || 'Ativo',
       dataCadastro: new Date(cliente.created_at),
       metaGiroSemanal: cliente.meta_giro_semanal,
-      ultimaDataReposicaoEfetiva: cliente.ultima_data_reposicao_efetiva ? new Date(cliente.ultima_data_reposicao_efetiva) : undefined,
+      ultimaDataReposicaoEfetiva: cliente.ultima_data_reposicao_efetiva ? parseLocalDate(cliente.ultima_data_reposicao_efetiva) : undefined,
       statusAgendamento: agendamento.status_agendamento,
-      proximaDataReposicao: agendamento.data_proxima_reposicao ? new Date(agendamento.data_proxima_reposicao) : undefined,
+      proximaDataReposicao: agendamento.data_proxima_reposicao ? parseLocalDate(agendamento.data_proxima_reposicao) : undefined,
       ativo: cliente.ativo !== false,
       giroMedioSemanal: cliente.giro_medio_semanal,
       janelasEntrega: cliente.janelas_entrega,
@@ -83,14 +96,14 @@ const convertToAgendamentoItem = (agendamento: any, cliente: any): AgendamentoIt
       subcategoriaId: cliente.subcategoria_id || 1,
       categoriasHabilitadas: cliente.categorias_habilitadas
     },
-    dataReposicao: agendamento.data_proxima_reposicao ? new Date(agendamento.data_proxima_reposicao) : new Date(),
+    dataReposicao: agendamento.data_proxima_reposicao ? parseLocalDate(agendamento.data_proxima_reposicao) : new Date(),
     statusAgendamento: agendamento.status_agendamento,
     isPedidoUnico: false,
     pedido: agendamento.tipo_pedido === 'Alterado' ? {
       id: 0,
       idCliente: cliente.id,
       dataPedido: new Date(),
-      dataPrevistaEntrega: agendamento.data_proxima_reposicao ? new Date(agendamento.data_proxima_reposicao) : new Date(),
+      dataPrevistaEntrega: agendamento.data_proxima_reposicao ? parseLocalDate(agendamento.data_proxima_reposicao) : new Date(),
       statusPedido: 'Agendado',
       itensPedido: [],
       totalPedidoUnidades: agendamento.quantidade_total,
@@ -173,7 +186,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           set({ error: error instanceof Error ? error.message : 'Erro desconhecido', loading: false });
         }
       },
-
+      
       carregarAgendamentoPorCliente: async (clienteId: string) => {
         try {
           console.log('useAgendamentoClienteStore: Carregando agendamento para cliente:', clienteId);
