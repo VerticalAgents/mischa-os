@@ -57,12 +57,8 @@ const AppContent = () => {
 
   // Restaura a rota salva APENAS na primeira inicialização
   useEffect(() => {
-    // Usar setTimeout para garantir que seja executado após a montagem inicial
-    const timeoutId = setTimeout(() => {
-      restoreRoute();
-    }, 0);
-
-    return () => clearTimeout(timeoutId);
+    // Restaura a rota previamente salva logo após a montagem
+    restoreRoute();
   }, []); // Array de dependências vazio para executar apenas uma vez
 
   return (
