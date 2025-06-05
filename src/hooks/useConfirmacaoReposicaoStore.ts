@@ -82,7 +82,7 @@ export const useConfirmacaoReposicaoStore = create<ConfirmacaoReposicaoStore>()(
           }
 
           // Buscar confirmações existentes
-          const { data: confirmacoes, error: confirmacoesError } = await supabase
+          const { data: confirmacoesRaw, error: confirmacoesError } = await supabase
             .from('confirmacoes_reposicao')
             .select('*');
 
@@ -91,12 +91,21 @@ export const useConfirmacaoReposicaoStore = create<ConfirmacaoReposicaoStore>()(
             throw confirmacoesError;
           }
 
+          // Converter strings de data para Date objects
+          const confirmacoes = confirmacoesRaw?.map(confirmacao => ({
+            ...confirmacao,
+            data_contato: new Date(confirmacao.data_contato),
+            ultimo_contato_em: confirmacao.ultimo_contato_em ? new Date(confirmacao.ultimo_contato_em) : undefined,
+            created_at: new Date(confirmacao.created_at),
+            updated_at: new Date(confirmacao.updated_at)
+          })) || [];
+
           // Processar clientes com dados de confirmação
           const clientesComConfirmacao = agendamentos?.map(agendamento => {
             const cliente = agendamento.clientes;
-            const confirmacao = confirmacoes?.find(c => c.cliente_id === cliente.id);
+            const confirmacao = confirmacoes.find(c => c.cliente_id === cliente.id);
             
-            const ultimoContato = confirmacao?.ultimo_contato_em ? new Date(confirmacao.ultimo_contato_em) : undefined;
+            const ultimoContato = confirmacao?.ultimo_contato_em;
             const horasDesdeUltimoContato = ultimoContato ? differenceInHours(new Date(), ultimoContato) : 0;
             
             return {
@@ -116,7 +125,7 @@ export const useConfirmacaoReposicaoStore = create<ConfirmacaoReposicaoStore>()(
           console.log('useConfirmacaoReposicaoStore: Clientes para confirmação carregados:', clientesComConfirmacao.length);
           set({ 
             clientesParaConfirmacao: clientesComConfirmacao,
-            confirmacoes: confirmacoes || [],
+            confirmacoes,
             loading: false 
           });
         } catch (error) {
