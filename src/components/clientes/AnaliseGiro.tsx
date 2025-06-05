@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { 
   Card, 
   CardContent, 
@@ -7,13 +7,7 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { 
-  ChartContainer, 
-  ChartTooltip, 
-  ChartTooltipContent 
-} from "@/components/ui/chart";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
   ResponsiveContainer, 
@@ -25,126 +19,83 @@ import {
   Tooltip, 
   Legend
 } from "recharts";
-import { ArrowUp, ArrowDown, Filter } from "lucide-react";
+import { ArrowUp, ArrowDown, Filter, AlertCircle } from "lucide-react";
 import { Cliente } from "@/types";
-import { AnaliseGiroData } from "@/types/giro";
 import GiroMetricCard from "./GiroMetricCard";
 import GiroMetaForm from "./GiroMetaForm";
-
-// Mock data generator
-function gerarDadosHistoricosGiro(cliente: Cliente): AnaliseGiroData {
-  const giroSemanalBase = calcularGiroSemanalBase(cliente);
-  
-  // Gerar histórico de 12 semanas
-  const historico: { semana: string; valor: number }[] = [];
-  const hoje = new Date();
-  
-  for (let i = 11; i >= 0; i--) {
-    const data = new Date();
-    data.setDate(hoje.getDate() - (i * 7));
-    
-    // Semana no formato "YYYY-WW"
-    const ano = data.getFullYear();
-    const numeroSemana = getWeekNumber(data);
-    const semana = `${ano}-${numeroSemana.toString().padStart(2, '0')}`;
-    
-    // Adicionar variação aleatória para dados históricos +/- 30%
-    const variacao = (Math.random() * 0.6) - 0.3; // -30% a +30%
-    const valor = Math.max(1, Math.round(giroSemanalBase * (1 + variacao)));
-    
-    historico.push({ semana, valor });
-  }
-  
-  // Calcular média histórica (últimas 4 semanas)
-  const ultimasSemanas = historico.slice(-4);
-  const mediaHistorica = Math.round(
-    ultimasSemanas.reduce((acc, item) => acc + item.valor, 0) / ultimasSemanas.length
-  );
-  
-  // Última semana
-  const ultimaSemana = historico[historico.length - 1].valor;
-  
-  // Variação percentual
-  const variacaoPercentual = mediaHistorica > 0 
-    ? Math.round(((ultimaSemana - mediaHistorica) / mediaHistorica) * 100)
-    : 0;
-  
-  // Meta (10% acima da média histórica)
-  const meta = Math.round(mediaHistorica * 1.1);
-  
-  // Achievement
-  const achievement = meta > 0 ? Math.round((ultimaSemana / meta) * 100) : 0;
-  
-  // Semáforo
-  let semaforo: 'vermelho' | 'amarelo' | 'verde' = 'vermelho';
-  if (achievement >= 95) {
-    semaforo = 'verde';
-  } else if (achievement >= 80) {
-    semaforo = 'amarelo';
-  }
-  
-  return {
-    mediaHistorica,
-    ultimaSemana,
-    variacaoPercentual,
-    meta,
-    achievement,
-    historico,
-    semaforo
-  };
-}
-
-function calcularGiroSemanalBase(cliente: Cliente): number {
-  // Para periodicidade em dias, converter para semanas
-  if (cliente.periodicidadePadrao === 3) {
-    // Caso especial: 3x por semana
-    return cliente.quantidadePadrao * 3;
-  }
-  
-  // Para outros casos, calcular giro semanal
-  const periodicidadeSemanas = cliente.periodicidadePadrao / 7;
-  return Math.round(cliente.quantidadePadrao / periodicidadeSemanas);
-}
-
-function getWeekNumber(date: Date): number {
-  const d = new Date(date);
-  // Define o domingo como o primeiro dia da semana
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
-  // Primeiro dia do ano
-  const firstDay = new Date(d.getFullYear(), 0, 4);
-  // Ajusta para quinta-feira da primeira semana do ano
-  firstDay.setDate(firstDay.getDate() + 3 - (firstDay.getDay() + 6) % 7);
-  // Calcula o número da semana
-  return Math.round(((d.getTime() - firstDay.getTime()) / 86400000 - 3 + (firstDay.getDay() + 6) % 7) / 7) + 1;
-}
-
-function formatarSemana(semana: string): string {
-  // Formatar "YYYY-WW" para "Sem WW"
-  const [_, weekNum] = semana.split("-");
-  return `Sem ${weekNum}`;
-}
+import { useGiroAnalise } from "@/hooks/useGiroAnalise";
 
 interface AnaliseGiroProps {
   cliente: Cliente;
 }
 
 export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
-  const [dadosGiro, setDadosGiro] = useState<AnaliseGiroData | null>(null);
   const [isEditingMeta, setIsEditingMeta] = useState(false);
+  const { dadosGiro, isLoading, error, atualizarMeta } = useGiroAnalise(cliente);
   
-  useEffect(() => {
-    // Em um cenário real, buscaríamos estes dados de uma API
-    const dados = gerarDadosHistoricosGiro(cliente);
-    setDadosGiro(dados);
-  }, [cliente]);
-  
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center h-80">
+            <div className="text-center space-y-2">
+              <div className="animate-spin h-8 w-8 border-b-2 border-primary rounded-full mx-auto"></div>
+              <p className="text-muted-foreground">Carregando análise de giro...</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center h-80">
+            <div className="text-center space-y-2">
+              <AlertCircle className="h-8 w-8 text-red-500 mx-auto" />
+              <p className="text-red-600">Erro ao carregar dados: {error}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!dadosGiro) {
     return (
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-center h-80">
-            <p>Carregando dados de análise...</p>
+            <div className="text-center space-y-2">
+              <AlertCircle className="h-8 w-8 text-yellow-500 mx-auto" />
+              <p className="text-muted-foreground">Ainda não há entregas suficientes para gerar o gráfico de giro.</p>
+              <p className="text-sm text-muted-foreground">
+                Realize algumas entregas para este cliente para visualizar a análise.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Verificar se há dados suficientes (pelo menos uma entrega)
+  const temDados = dadosGiro.historico.some(item => item.valor > 0);
+  
+  if (!temDados) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center h-80">
+            <div className="text-center space-y-2">
+              <AlertCircle className="h-8 w-8 text-yellow-500 mx-auto" />
+              <p className="text-muted-foreground">Ainda não há entregas registradas para este cliente.</p>
+              <p className="text-sm text-muted-foreground">
+                O gráfico de giro será exibido após as primeiras entregas serem confirmadas.
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -153,7 +104,7 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
   
   // Preparar dados para o gráfico
   const dadosGrafico = dadosGiro.historico.map(item => ({
-    semana: formatarSemana(item.semana),
+    semana: item.semana,
     giro: item.valor,
     meta: dadosGiro.meta
   }));
@@ -211,7 +162,7 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
         <CardHeader>
           <CardTitle>Giro Semanal - Últimas 12 semanas</CardTitle>
           <CardDescription>
-            Evolução do giro semanal comparado com a meta estabelecida
+            Evolução do giro semanal baseado no histórico real de entregas
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -259,7 +210,7 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
                 <Line
                   type="monotone"
                   dataKey="giro"
-                  name="Giro Semanal"
+                  name="Giro Semanal (Real)"
                   stroke="#2563eb"
                   strokeWidth={2}
                   dot={{ r: 4 }}
@@ -286,11 +237,7 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
           metaAtual={dadosGiro.meta}
           onClose={() => setIsEditingMeta(false)}
           onSave={(novaMeta) => {
-            setDadosGiro({
-              ...dadosGiro,
-              meta: novaMeta,
-              achievement: Math.round((dadosGiro.ultimaSemana / novaMeta) * 100)
-            });
+            atualizarMeta(novaMeta);
             setIsEditingMeta(false);
           }}
         />
