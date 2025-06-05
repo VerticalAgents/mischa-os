@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -28,17 +27,24 @@ interface ProdutoQuantidade {
   quantidade: number;
 }
 
-// Função para formatar data para input (YYYY-MM-DD)
+// Função segura para formatar data para input preservando o valor local
 const formatDateForInput = (date: Date): string => {
+  // Usar métodos locais para evitar problemas de timezone
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   const formatted = `${year}-${month}-${day}`;
-  console.log('📅 Formatando data para input:', { original: date, formatted });
+  console.log('📅 Formatando data para input:', { 
+    original: date, 
+    dia: date.getDate(),
+    mes: date.getMonth() + 1,
+    ano: date.getFullYear(),
+    formatted 
+  });
   return formatted;
 };
 
-// Função para converter string do input para Date
+// Função segura para converter string do input para Date preservando o valor local
 const parseDateFromInput = (dateString: string): Date => {
   if (!dateString) {
     console.log('⚠️ String de data vazia');
@@ -46,8 +52,18 @@ const parseDateFromInput = (dateString: string): Date => {
   }
   
   const [year, month, day] = dateString.split('-').map(Number);
+  // Usar new Date(year, month-1, day) para criar data local
   const date = new Date(year, month - 1, day);
-  console.log('📅 Convertendo string para Date:', { input: dateString, parsed: date });
+  console.log('📅 Convertendo string para Date:', { 
+    input: dateString, 
+    yearParsed: year,
+    monthParsed: month,
+    dayParsed: day,
+    resultDate: date,
+    resultDay: date.getDate(),
+    resultMonth: date.getMonth() + 1,
+    resultYear: date.getFullYear()
+  });
   return date;
 };
 
@@ -124,7 +140,7 @@ export default function AgendamentoEditModal({
             // Usar os dados da tabela como fonte da verdade
             setStatusAgendamento(agendamentoCompleto.status_agendamento);
             
-            // Formatação da data
+            // Formatação da data usando função segura
             if (agendamentoCompleto.data_proxima_reposicao) {
               const dataFormatada = formatDateForInput(agendamentoCompleto.data_proxima_reposicao);
               setProximaDataReposicao(dataFormatada);
@@ -209,7 +225,7 @@ export default function AgendamentoEditModal({
       console.log('💾 Iniciando salvamento do agendamento');
       console.log('📅 Data no estado antes de salvar:', proximaDataReposicao);
       
-      // Converter a data string para Date object
+      // Converter a data string para Date object usando função segura
       let dataParaBanco: Date | undefined;
       if (proximaDataReposicao) {
         dataParaBanco = parseDateFromInput(proximaDataReposicao);
@@ -319,7 +335,7 @@ export default function AgendamentoEditModal({
                   type="date"
                   value={proximaDataReposicao}
                   onChange={(e) => {
-                    console.log('📅 Data alterada no modal:', e.target.value);
+                    console.log('📅 Data alterada no modal (CORRIGIDA):', e.target.value);
                     setProximaDataReposicao(e.target.value);
                   }}
                   className={hasDataError ? "border-red-500" : ""}
