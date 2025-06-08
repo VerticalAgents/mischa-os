@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +33,7 @@ interface HistoricoEntregasStore {
   carregarHistorico: (clienteId?: string) => Promise<void>;
   adicionarRegistro: (registro: Omit<HistoricoEntrega, 'id' | 'created_at' | 'updated_at' | 'editado_manualmente'>) => Promise<void>;
   editarRegistro: (id: string, dados: Partial<HistoricoEntrega>) => Promise<void>;
+  excluirRegistro: (id: string) => Promise<void>;
   setFiltroDataInicio: (data: Date) => void;
   setFiltroDataFim: (data: Date) => void;
   setFiltroTipo: (tipo: 'todos' | 'entrega' | 'retorno') => void;
@@ -138,7 +138,7 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             itens: registro.itens || [],
             status_anterior: registro.status_anterior || null,
             observacao: registro.observacao || null,
-            editado_manualmente: false // Sempre false para novos registros automáticos
+            editado_manualmente: registro.status_anterior === 'Manual' // Manual se criado manualmente
           };
 
           // INSERT - NUNCA UPDATE - para garantir múltiplos registros por cliente
@@ -210,6 +210,12 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
           if (dados.observacao !== undefined) {
             dadosParaAtualizar.observacao = dados.observacao;
           }
+          if (dados.data !== undefined) {
+            dadosParaAtualizar.data = dados.data.toISOString();
+          }
+          if (dados.tipo !== undefined) {
+            dadosParaAtualizar.tipo = dados.tipo;
+          }
 
           const { error } = await supabase
             .from('historico_entregas')
@@ -241,6 +247,35 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
         } catch (error) {
           console.error('❌ Erro ao editar registro:', error);
           toast.error("Erro ao editar registro");
+          throw error;
+        }
+      },
+
+      excluirRegistro: async (id) => {
+        try {
+          console.log('🗑️ Excluindo registro do histórico:', { id });
+
+          const { error } = await supabase
+            .from('historico_entregas')
+            .delete()
+            .eq('id', id);
+          
+          if (error) {
+            console.error('Erro ao excluir registro:', error);
+            throw error;
+          }
+          
+          // Remover do estado local
+          set(state => ({
+            registros: state.registros.filter(registro => registro.id !== id)
+          }));
+          
+          console.log('✅ Registro excluído com sucesso');
+          toast.success("Registro excluído com sucesso");
+          
+        } catch (error) {
+          console.error('❌ Erro ao excluir registro:', error);
+          toast.error("Erro ao excluir registro");
           throw error;
         }
       },

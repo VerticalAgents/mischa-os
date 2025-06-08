@@ -8,15 +8,17 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
-import { Check, X, Calendar, Edit, RotateCcw, Eye } from "lucide-react";
+import { Check, X, Calendar, Edit, RotateCcw, Eye, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { HistoricoEditModal } from "./HistoricoEditModal";
 import { HistoricoDetalhesModal } from "./HistoricoDetalhesModal";
+import { NovaEntregaManualModal } from "./NovaEntregaManualModal";
 
 export const HistoricoGeralEntregas = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [detalhesModalOpen, setDetalhesModalOpen] = useState(false);
+  const [novaEntregaModalOpen, setNovaEntregaModalOpen] = useState(false);
   const [registroSelecionado, setRegistroSelecionado] = useState<any>(null);
   
   const {
@@ -58,11 +60,17 @@ export const HistoricoGeralEntregas = () => {
   return (
     <Card className="p-6">
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold mb-2">Histórico Geral de Entregas</h2>
-          <p className="text-muted-foreground">
-            Visualize todas as entregas e retornos confirmados no sistema.
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold mb-2">Histórico Geral de Entregas</h2>
+            <p className="text-muted-foreground">
+              Visualize todas as entregas e retornos confirmados no sistema.
+            </p>
+          </div>
+          <Button onClick={() => setNovaEntregaModalOpen(true)} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Nova Entrega Manual
+          </Button>
         </div>
 
         {/* Filtros */}
@@ -162,6 +170,11 @@ export const HistoricoGeralEntregas = () => {
         open={detalhesModalOpen}
         onOpenChange={setDetalhesModalOpen}
         registro={registroSelecionado}
+      />
+
+      <NovaEntregaManualModal
+        open={novaEntregaModalOpen}
+        onOpenChange={setNovaEntregaModalOpen}
       />
     </Card>
   );

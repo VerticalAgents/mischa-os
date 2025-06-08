@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PDVCategoryTable } from "@/components/analytics/PDVCategoryTable";
 import { PaymentTypeChart } from "@/components/analytics/PaymentTypeChart";
 import { LogisticsTypeChart } from "@/components/analytics/LogisticsTypeChart";
+import AnaliseGiroPDV from "./AnaliseGiroPDV";
 import { Cliente } from "@/types";
 import { DREData } from "@/types/projections";
 
@@ -18,7 +19,11 @@ export default function CustomerBehavior({
   baseDRE
 }: CustomerBehaviorProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Novo bloco de Análise de Giro */}
+      <AnaliseGiroPDV clientes={clientes} baseDRE={baseDRE} />
+      
+      {/* Conteúdo existente */}
       <div className="grid gap-6 mb-8">
         <div className="flex flex-col">
           <PDVCategoryTable clientes={clientes} baseDRE={baseDRE} />

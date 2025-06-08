@@ -106,7 +106,7 @@ export default function DashboardAnalytics() {
           <TabsList className="w-full justify-start mb-6 overflow-x-auto">
             <TabsTrigger value="operational-summary">Resumo Operacional</TabsTrigger>
             <TabsTrigger value="financial-analysis">Análise Financeira</TabsTrigger>
-            <TabsTrigger value="customer-behavior">Comportamento dos Clientes</TabsTrigger>
+            <TabsTrigger value="customer-behavior">Análise de PDV e Giro</TabsTrigger>
             <TabsTrigger value="production-indicators">Indicadores de Produção</TabsTrigger>
             <TabsTrigger value="producao-simulada">Produção Simulada (Mensal)</TabsTrigger>
             <TabsTrigger value="alerts-risks">Alertas e Riscos</TabsTrigger>
