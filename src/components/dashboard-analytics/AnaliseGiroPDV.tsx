@@ -8,7 +8,7 @@ import { Cliente } from "@/types";
 import { DREData } from "@/types/projections";
 import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
 import { supabase } from "@/integrations/supabase/client";
-import { differenceInWeeks, subWeeks, format } from "date-fns";
+import { subDays, format } from "date-fns";
 
 interface AnaliseGiroPDVProps {
   clientes: Cliente[];
@@ -18,27 +18,42 @@ interface AnaliseGiroPDVProps {
 interface GiroPDV {
   clienteId: string;
   clienteNome: string;
-  mediaSemanal: number;
-  mediaQuinzenal: number;
-  mediaMensal: number;
-  totalEntregas: number;
+  giroPrevisto: number; // From cliente.giroMedioSemanal
+  giroRealizado: number; // From historico_entregas last 28 days
+  totalEntregasRealizadas: number;
   ultimaEntrega?: Date;
 }
 
 interface GiroGlobal {
-  giroSemanal: number;
-  giroQuinzenal: number;
-  giroMensal: number;
-  totalPDVsAtivos: number;
+  previsto: {
+    giroSemanal: number;
+    giroQuinzenal: number;
+    giroMensal: number;
+    totalPDVsAtivos: number;
+  };
+  realizado: {
+    giroSemanal: number;
+    giroQuinzenal: number;
+    giroMensal: number;
+    totalEntregasUltimos28Dias: number;
+  };
 }
 
 export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProps) {
   const [dadosGiro, setDadosGiro] = useState<GiroPDV[]>([]);
   const [giroGlobal, setGiroGlobal] = useState<GiroGlobal>({
-    giroSemanal: 0,
-    giroQuinzenal: 0,
-    giroMensal: 0,
-    totalPDVsAtivos: 0
+    previsto: {
+      giroSemanal: 0,
+      giroQuinzenal: 0,
+      giroMensal: 0,
+      totalPDVsAtivos: 0
+    },
+    realizado: {
+      giroSemanal: 0,
+      giroQuinzenal: 0,
+      giroMensal: 0,
+      totalEntregasUltimos28Dias: 0
+    }
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -50,10 +65,10 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
     try {
       setIsLoading(true);
       
-      // Data limite: 4 semanas atrás
-      const dataLimite = subWeeks(new Date(), 4);
+      // Data limite: 28 dias atrás
+      const dataLimite = subDays(new Date(), 28);
       
-      // Buscar histórico de entregas das últimas 4 semanas
+      // Buscar histórico de entregas dos últimos 28 dias
       const { data: historico, error } = await supabase
         .from('historico_entregas')
         .select('cliente_id, data, quantidade, tipo')
@@ -66,74 +81,86 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
       }
 
       // Processar dados por cliente
-      const girosPorCliente = new Map<string, { totalEntregas: number; semanas: Set<string>; ultimaEntrega?: Date }>();
+      const entregasPorCliente = new Map<string, { totalEntregas: number; ultimaEntrega?: Date }>();
       
       historico?.forEach(entrega => {
         const clienteId = entrega.cliente_id;
         const dataEntrega = new Date(entrega.data);
-        const semanaAno = format(dataEntrega, 'yyyy-ww'); // Ano-semana
         
-        if (!girosPorCliente.has(clienteId)) {
-          girosPorCliente.set(clienteId, { 
-            totalEntregas: 0, 
-            semanas: new Set(), 
+        if (!entregasPorCliente.has(clienteId)) {
+          entregasPorCliente.set(clienteId, { 
+            totalEntregas: 0,
             ultimaEntrega: dataEntrega 
           });
         }
         
-        const dadosCliente = girosPorCliente.get(clienteId)!;
+        const dadosCliente = entregasPorCliente.get(clienteId)!;
         dadosCliente.totalEntregas += entrega.quantidade;
-        dadosCliente.semanas.add(semanaAno);
         
         if (!dadosCliente.ultimaEntrega || dataEntrega > dadosCliente.ultimaEntrega) {
           dadosCliente.ultimaEntrega = dataEntrega;
         }
       });
 
+      // Filtrar apenas clientes ativos
+      const clientesAtivos = clientes.filter(cliente => 
+        cliente.ativo && cliente.statusCliente === 'Ativo'
+      );
+
       // Calcular giro por PDV
       const giroPDVs: GiroPDV[] = [];
-      let totalGiroSemanal = 0;
+      let totalGiroPrevistoSemanal = 0;
+      let totalGiroRealizadoUltimos28Dias = 0;
 
-      clientes
-        .filter(cliente => cliente.ativo && cliente.statusCliente === 'Ativo')
-        .forEach(cliente => {
-          const dadosCliente = girosPorCliente.get(cliente.id);
-          
-          if (dadosCliente && dadosCliente.semanas.size >= 2) { // Pelo menos 2 semanas de dados
-            const semanasComDados = dadosCliente.semanas.size;
-            const mediaSemanal = Math.round(dadosCliente.totalEntregas / semanasComDados);
-            const mediaQuinzenal = mediaSemanal * 2;
-            const mediaMensal = mediaSemanal * 4;
-            
-            giroPDVs.push({
-              clienteId: cliente.id,
-              clienteNome: cliente.nome,
-              mediaSemanal,
-              mediaQuinzenal,
-              mediaMensal,
-              totalEntregas: dadosCliente.totalEntregas,
-              ultimaEntrega: dadosCliente.ultimaEntrega
-            });
-            
-            totalGiroSemanal += mediaSemanal;
-          }
+      clientesAtivos.forEach(cliente => {
+        const dadosEntregas = entregasPorCliente.get(cliente.id);
+        
+        // Giro previsto vem direto do campo giroMedioSemanal do cliente
+        const giroPrevisto = cliente.giroMedioSemanal || 0;
+        
+        // Giro realizado = total entregue nos últimos 28 dias / 4 semanas
+        const giroRealizado = dadosEntregas ? Math.round(dadosEntregas.totalEntregas / 4) : 0;
+        
+        giroPDVs.push({
+          clienteId: cliente.id,
+          clienteNome: cliente.nome,
+          giroPrevisto,
+          giroRealizado,
+          totalEntregasRealizadas: dadosEntregas?.totalEntregas || 0,
+          ultimaEntrega: dadosEntregas?.ultimaEntrega
         });
+        
+        totalGiroPrevistoSemanal += giroPrevisto;
+        totalGiroRealizadoUltimos28Dias += dadosEntregas?.totalEntregas || 0;
+      });
 
-      // Ordenar por média semanal decrescente
-      giroPDVs.sort((a, b) => b.mediaSemanal - a.mediaSemanal);
+      // Ordenar por giro previsto decrescente
+      giroPDVs.sort((a, b) => b.giroPrevisto - a.giroPrevisto);
 
       // Calcular giro global
       const giroGlobalData: GiroGlobal = {
-        giroSemanal: totalGiroSemanal,
-        giroQuinzenal: totalGiroSemanal * 2,
-        giroMensal: totalGiroSemanal * 4,
-        totalPDVsAtivos: giroPDVs.length
+        previsto: {
+          giroSemanal: totalGiroPrevistoSemanal,
+          giroQuinzenal: totalGiroPrevistoSemanal * 2,
+          giroMensal: totalGiroPrevistoSemanal * 4,
+          totalPDVsAtivos: clientesAtivos.length
+        },
+        realizado: {
+          giroSemanal: Math.round(totalGiroRealizadoUltimos28Dias / 4), // Total dos últimos 28 dias / 4 semanas
+          giroQuinzenal: Math.round((totalGiroRealizadoUltimos28Dias / 4) * 2),
+          giroMensal: Math.round((totalGiroRealizadoUltimos28Dias / 4) * 4),
+          totalEntregasUltimos28Dias: totalGiroRealizadoUltimos28Dias
+        }
       };
 
       setDadosGiro(giroPDVs);
       setGiroGlobal(giroGlobalData);
       
-      console.log('✅ Dados de giro carregados:', { giroPDVs: giroPDVs.length, giroGlobal: giroGlobalData });
+      console.log('✅ Dados de giro carregados:', { 
+        giroPDVs: giroPDVs.length, 
+        giroGlobal: giroGlobalData,
+        clientesAtivos: clientesAtivos.length 
+      });
       
     } catch (error) {
       console.error('Erro ao carregar dados de giro:', error);
@@ -153,68 +180,132 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
     );
   }
 
+  // Calcular média por PDV (previsto e realizado)
+  const mediaPorPDVPrevisto = giroGlobal.previsto.totalPDVsAtivos > 0 
+    ? Math.round(giroGlobal.previsto.giroSemanal / giroGlobal.previsto.totalPDVsAtivos) 
+    : 0;
+  
+  const mediaPorPDVRealizado = giroGlobal.previsto.totalPDVsAtivos > 0 
+    ? Math.round(giroGlobal.realizado.giroSemanal / giroGlobal.previsto.totalPDVsAtivos) 
+    : 0;
+
   return (
     <div className="space-y-6">
-      {/* Bloco de Giro Previsto */}
+      {/* Blocos de Giro Previsto */}
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Giro Previsto por PDV</CardTitle>
-            <CardDescription>Média baseada nas últimas 4 semanas</CardDescription>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-blue-500" />
+              Giro Previsto por PDV
+            </CardTitle>
+            <CardDescription>Baseado no cadastro dos clientes</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {dadosGiro.length > 0 ? (
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Média Semanal</span>
-                    <span className="font-semibold">
-                      {Math.round(giroGlobal.giroSemanal / giroGlobal.totalPDVsAtivos || 0)} un
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Média Quinzenal</span>
-                    <span className="font-semibold">
-                      {Math.round((giroGlobal.giroSemanal * 2) / giroGlobal.totalPDVsAtivos || 0)} un
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Média Mensal</span>
-                    <span className="font-semibold">
-                      {Math.round((giroGlobal.giroSemanal * 4) / giroGlobal.totalPDVsAtivos || 0)} un
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">Dados insuficientes</p>
-              )}
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Média Semanal</span>
+                <span className="font-semibold">{mediaPorPDVPrevisto} un</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Média Quinzenal</span>
+                <span className="font-semibold">{mediaPorPDVPrevisto * 2} un</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Média Mensal</span>
+                <span className="font-semibold">{mediaPorPDVPrevisto * 4} un</span>
+              </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Giro Previsto Geral</CardTitle>
-            <CardDescription>Somatório de todos os PDVs ativos</CardDescription>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-blue-500" />
+              Giro Previsto Geral
+            </CardTitle>
+            <CardDescription>Soma de todos os PDVs ativos</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Giro Semanal</span>
-                <span className="font-semibold">{giroGlobal.giroSemanal.toLocaleString()} un</span>
+                <span className="font-semibold">{giroGlobal.previsto.giroSemanal.toLocaleString()} un</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Giro Quinzenal</span>
-                <span className="font-semibold">{giroGlobal.giroQuinzenal.toLocaleString()} un</span>
+                <span className="font-semibold">{giroGlobal.previsto.giroQuinzenal.toLocaleString()} un</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Giro Mensal</span>
-                <span className="font-semibold">{giroGlobal.giroMensal.toLocaleString()} un</span>
+                <span className="font-semibold">{giroGlobal.previsto.giroMensal.toLocaleString()} un</span>
               </div>
               <div className="pt-2 border-t">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">PDVs Ativos</span>
-                  <Badge variant="outline">{giroGlobal.totalPDVsAtivos}</Badge>
+                  <Badge variant="outline">{giroGlobal.previsto.totalPDVsAtivos}</Badge>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Blocos de Giro Realizado */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingDown className="h-5 w-5 text-green-500" />
+              Giro Realizado por PDV
+            </CardTitle>
+            <CardDescription>Baseado nas entregas dos últimos 28 dias</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Média Semanal</span>
+                <span className="font-semibold">{mediaPorPDVRealizado} un</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Média Quinzenal</span>
+                <span className="font-semibold">{mediaPorPDVRealizado * 2} un</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Média Mensal</span>
+                <span className="font-semibold">{mediaPorPDVRealizado * 4} un</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingDown className="h-5 w-5 text-green-500" />
+              Giro Realizado Geral
+            </CardTitle>
+            <CardDescription>Total entregue nos últimos 28 dias</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Giro Semanal</span>
+                <span className="font-semibold">{giroGlobal.realizado.giroSemanal.toLocaleString()} un</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Giro Quinzenal</span>
+                <span className="font-semibold">{giroGlobal.realizado.giroQuinzenal.toLocaleString()} un</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Giro Mensal</span>
+                <span className="font-semibold">{giroGlobal.realizado.giroMensal.toLocaleString()} un</span>
+              </div>
+              <div className="pt-2 border-t">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Total Últimos 28 Dias</span>
+                  <Badge variant="secondary">{giroGlobal.realizado.totalEntregasUltimos28Dias.toLocaleString()}</Badge>
                 </div>
               </div>
             </div>
@@ -227,7 +318,7 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
         <CardHeader>
           <CardTitle>Análise Individual por PDV</CardTitle>
           <CardDescription>
-            Giro detalhado por cliente baseado nas entregas das últimas 4 semanas
+            Comparação entre giro previsto (cadastro) e realizado (entregas últimos 28 dias)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -236,45 +327,56 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
-                  <TableHead className="text-center">Média Semanal</TableHead>
-                  <TableHead className="text-center">Média Quinzenal</TableHead>
-                  <TableHead className="text-center">Média Mensal</TableHead>
-                  <TableHead className="text-center">Total Entregas</TableHead>
+                  <TableHead className="text-center">Giro Previsto (Sem.)</TableHead>
+                  <TableHead className="text-center">Giro Realizado (Sem.)</TableHead>
+                  <TableHead className="text-center">Variação</TableHead>
+                  <TableHead className="text-center">Total Entregue (28d)</TableHead>
                   <TableHead className="text-center">Última Entrega</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dadosGiro.map((pdv, index) => (
-                  <TableRow key={pdv.clienteId}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          #{index + 1}
+                {dadosGiro.map((pdv, index) => {
+                  const variacao = pdv.giroPrevisto > 0 
+                    ? ((pdv.giroRealizado - pdv.giroPrevisto) / pdv.giroPrevisto * 100)
+                    : 0;
+                  
+                  return (
+                    <TableRow key={pdv.clienteId}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            #{index + 1}
+                          </Badge>
+                          {pdv.clienteNome}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="font-semibold text-blue-600">{pdv.giroPrevisto}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="font-semibold text-green-600">{pdv.giroRealizado}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge 
+                          variant={variacao >= 0 ? "default" : "destructive"}
+                          className="text-xs"
+                        >
+                          {variacao >= 0 ? '+' : ''}{variacao.toFixed(1)}%
                         </Badge>
-                        {pdv.clienteNome}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className="font-semibold">{pdv.mediaSemanal}</span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className="font-semibold">{pdv.mediaQuinzenal}</span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className="font-semibold">{pdv.mediaMensal}</span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">{pdv.totalEntregas}</Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {pdv.ultimaEntrega && (
-                        <span className="text-sm text-muted-foreground">
-                          {format(pdv.ultimaEntrega, 'dd/MM/yyyy')}
-                        </span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary">{pdv.totalEntregasRealizadas}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {pdv.ultimaEntrega && (
+                          <span className="text-sm text-muted-foreground">
+                            {format(pdv.ultimaEntrega, 'dd/MM/yyyy')}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           ) : (
@@ -284,7 +386,7 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
                 Ainda não há dados suficientes para análise de giro.
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                É necessário pelo menos 2 semanas de entregas registradas.
+                É necessário pelo menos algumas entregas registradas nos últimos 28 dias.
               </p>
             </div>
           )}
