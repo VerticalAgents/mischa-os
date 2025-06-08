@@ -15,9 +15,24 @@ export interface ProdutoSupabase {
   estoque_atual?: number;
   estoque_minimo?: number;
   estoque_ideal?: number;
+  custo_total?: number;
+  custo_unitario?: number;
+  margem_lucro?: number;
   ativo: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProdutoCompleto extends ProdutoSupabase {
+  componentes: ComponenteProduto[];
+}
+
+export interface ComponenteProduto {
+  id: string;
+  tipo: 'receita' | 'insumo';
+  nome_item: string;
+  quantidade: number;
+  custo_item: number;
 }
 
 export const useSupabaseProdutos = () => {
@@ -141,6 +156,71 @@ export const useSupabaseProdutos = () => {
     }
   };
 
+  const adicionarComponenteProduto = async (
+    produtoId: string,
+    itemId: string,
+    tipo: 'receita' | 'insumo',
+    quantidade: number
+  ) => {
+    try {
+      const { error } = await supabase
+        .from('componentes_produto')
+        .insert({
+          produto_id: produtoId,
+          item_id: itemId,
+          tipo,
+          quantidade
+        });
+
+      if (error) {
+        console.error('Erro ao adicionar componente:', error);
+        toast({
+          title: "Erro ao adicionar componente",
+          description: error.message,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      toast({
+        title: "Componente adicionado",
+        description: "Componente adicionado com sucesso"
+      });
+      return true;
+    } catch (error) {
+      console.error('Erro ao adicionar componente:', error);
+      return false;
+    }
+  };
+
+  const removerComponenteProduto = async (componenteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('componentes_produto')
+        .delete()
+        .eq('id', componenteId);
+
+      if (error) {
+        console.error('Erro ao remover componente:', error);
+        toast({
+          title: "Erro ao remover componente",
+          description: error.message,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      toast({
+        title: "Componente removido",
+        description: "Componente removido com sucesso"
+      });
+      return true;
+    } catch (error) {
+      console.error('Erro ao remover componente:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     carregarProdutos();
   }, []);
@@ -151,6 +231,8 @@ export const useSupabaseProdutos = () => {
     carregarProdutos,
     adicionarProduto,
     atualizarProduto,
-    removerProduto
+    removerProduto,
+    adicionarComponenteProduto,
+    removerComponenteProduto
   };
 };

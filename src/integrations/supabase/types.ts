@@ -491,6 +491,36 @@ export type Database = {
           },
         ]
       }
+      movimentacoes_estoque_produtos: {
+        Row: {
+          created_at: string
+          data_movimentacao: string
+          id: string
+          observacao: string | null
+          produto_id: string
+          quantidade: number
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          data_movimentacao?: string
+          id?: string
+          observacao?: string | null
+          produto_id: string
+          quantidade: number
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          data_movimentacao?: string
+          id?: string
+          observacao?: string | null
+          produto_id?: string
+          quantidade?: number
+          tipo?: string
+        }
+        Relationships: []
+      }
       produtos: {
         Row: {
           ativo: boolean | null
@@ -556,9 +586,14 @@ export type Database = {
           ativo: boolean
           categoria_id: number | null
           created_at: string
+          custo_total: number | null
+          custo_unitario: number | null
           descricao: string | null
           estoque_atual: number | null
+          estoque_ideal: number | null
+          estoque_minimo: number | null
           id: string
+          margem_lucro: number | null
           nome: string
           peso_unitario: number | null
           preco_venda: number | null
@@ -570,9 +605,14 @@ export type Database = {
           ativo?: boolean
           categoria_id?: number | null
           created_at?: string
+          custo_total?: number | null
+          custo_unitario?: number | null
           descricao?: string | null
           estoque_atual?: number | null
+          estoque_ideal?: number | null
+          estoque_minimo?: number | null
           id?: string
+          margem_lucro?: number | null
           nome: string
           peso_unitario?: number | null
           preco_venda?: number | null
@@ -584,9 +624,14 @@ export type Database = {
           ativo?: boolean
           categoria_id?: number | null
           created_at?: string
+          custo_total?: number | null
+          custo_unitario?: number | null
           descricao?: string | null
           estoque_atual?: number | null
+          estoque_ideal?: number | null
+          estoque_minimo?: number | null
           id?: string
+          margem_lucro?: number | null
           nome?: string
           peso_unitario?: number | null
           preco_venda?: number | null

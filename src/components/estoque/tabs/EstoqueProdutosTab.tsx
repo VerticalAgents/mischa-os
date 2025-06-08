@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { Button } from "@/components/ui/button";
