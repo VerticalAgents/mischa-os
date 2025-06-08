@@ -35,6 +35,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -46,24 +47,56 @@ import {
   Boxes,
   Edit3,
   Search,
+  Plus,
+  Settings,
 } from "lucide-react";
 
 const ajusteEstoqueSchema = z.object({
   estoque_atual: z.number().min(0, "Estoque não pode ser negativo"),
 });
 
+const entradaManualSchema = z.object({
+  quantidade: z.number().min(0.01, "Quantidade deve ser maior que zero"),
+  observacao: z.string().optional(),
+});
+
+const configurarEstoqueSchema = z.object({
+  estoque_minimo: z.number().min(0, "Estoque mínimo deve ser maior ou igual a zero"),
+  estoque_ideal: z.number().min(0, "Estoque ideal deve ser maior ou igual a zero"),
+});
+
 type AjusteEstoqueFormValues = z.infer<typeof ajusteEstoqueSchema>;
+type EntradaManualFormValues = z.infer<typeof entradaManualSchema>;
+type ConfigurarEstoqueFormValues = z.infer<typeof configurarEstoqueSchema>;
 
 export default function EstoqueProdutosTab() {
   const { produtos, loading, carregarProdutos, atualizarProduto } = useSupabaseProdutos();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAjusteOpen, setIsAjusteOpen] = useState(false);
+  const [isEntradaManualOpen, setIsEntradaManualOpen] = useState(false);
+  const [isConfigurarEstoqueOpen, setIsConfigurarEstoqueOpen] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState<any>(null);
 
-  const form = useForm<AjusteEstoqueFormValues>({
+  const ajusteForm = useForm<AjusteEstoqueFormValues>({
     resolver: zodResolver(ajusteEstoqueSchema),
     defaultValues: {
       estoque_atual: 0,
+    },
+  });
+
+  const entradaForm = useForm<EntradaManualFormValues>({
+    resolver: zodResolver(entradaManualSchema),
+    defaultValues: {
+      quantidade: 0,
+      observacao: "",
+    },
+  });
+
+  const configurarForm = useForm<ConfigurarEstoqueFormValues>({
+    resolver: zodResolver(configurarEstoqueSchema),
+    defaultValues: {
+      estoque_minimo: 0,
+      estoque_ideal: 0,
     },
   });
 
@@ -79,10 +112,28 @@ export default function EstoqueProdutosTab() {
 
   const abrirAjusteEstoque = (produto: any) => {
     setProdutoSelecionado(produto);
-    form.reset({
+    ajusteForm.reset({
       estoque_atual: produto.estoque_atual || 0,
     });
     setIsAjusteOpen(true);
+  };
+
+  const abrirEntradaManual = (produto: any) => {
+    setProdutoSelecionado(produto);
+    entradaForm.reset({
+      quantidade: 0,
+      observacao: "",
+    });
+    setIsEntradaManualOpen(true);
+  };
+
+  const abrirConfigurarEstoque = (produto: any) => {
+    setProdutoSelecionado(produto);
+    configurarForm.reset({
+      estoque_minimo: produto.estoque_minimo || 0,
+      estoque_ideal: produto.estoque_ideal || 0,
+    });
+    setIsConfigurarEstoqueOpen(true);
   };
 
   const onSubmitAjuste = async (values: AjusteEstoqueFormValues) => {
@@ -109,12 +160,106 @@ export default function EstoqueProdutosTab() {
       });
 
       setIsAjusteOpen(false);
-      carregarProdutos(); // Recarregar dados
+      carregarProdutos();
     } catch (error) {
       console.error('Erro ao ajustar estoque:', error);
       toast({
         title: "Erro inesperado",
         description: "Ocorreu um erro ao atualizar o estoque",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const onSubmitEntradaManual = async (values: EntradaManualFormValues) => {
+    if (!produtoSelecionado) return;
+
+    try {
+      // Registrar movimentação de entrada
+      const { error: movError } = await supabase
+        .from('movimentacoes_estoque_produtos')
+        .insert({
+          produto_id: produtoSelecionado.id,
+          tipo: 'entrada',
+          quantidade: values.quantidade,
+          observacao: values.observacao,
+        });
+
+      if (movError) {
+        toast({
+          title: "Erro ao registrar entrada",
+          description: movError.message,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Atualizar estoque atual
+      const novoEstoque = (produtoSelecionado.estoque_atual || 0) + values.quantidade;
+      const { error: updateError } = await supabase
+        .from('produtos_finais')
+        .update({ estoque_atual: novoEstoque })
+        .eq('id', produtoSelecionado.id);
+
+      if (updateError) {
+        toast({
+          title: "Erro ao atualizar estoque",
+          description: updateError.message,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Entrada registrada",
+        description: `Entrada de ${values.quantidade} unidades registrada com sucesso`
+      });
+
+      setIsEntradaManualOpen(false);
+      carregarProdutos();
+    } catch (error) {
+      console.error('Erro ao registrar entrada:', error);
+      toast({
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao registrar a entrada",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const onSubmitConfigurarEstoque = async (values: ConfigurarEstoqueFormValues) => {
+    if (!produtoSelecionado) return;
+
+    try {
+      const { error } = await supabase
+        .from('produtos_finais')
+        .update({
+          estoque_minimo: values.estoque_minimo,
+          estoque_ideal: values.estoque_ideal,
+        })
+        .eq('id', produtoSelecionado.id);
+
+      if (error) {
+        toast({
+          title: "Erro ao configurar estoque",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Estoque configurado",
+        description: "Configurações de estoque atualizadas com sucesso"
+      });
+
+      setIsConfigurarEstoqueOpen(false);
+      carregarProdutos();
+    } catch (error) {
+      console.error('Erro ao configurar estoque:', error);
+      toast({
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao configurar o estoque",
         variant: "destructive"
       });
     }
@@ -201,26 +346,29 @@ export default function EstoqueProdutosTab() {
                 <TableHead>Nome do Produto</TableHead>
                 <TableHead>Peso Unitário</TableHead>
                 <TableHead className="text-center">Estoque Atual</TableHead>
+                <TableHead className="text-center">Est. Mínimo</TableHead>
+                <TableHead className="text-center">Est. Ideal</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">
+                  <TableCell colSpan={6} className="text-center py-8">
                     Carregando...
                   </TableCell>
                 </TableRow>
               ) : produtosFiltrados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">
+                  <TableCell colSpan={6} className="text-center py-8">
                     Nenhum produto encontrado
                   </TableCell>
                 </TableRow>
               ) : (
                 produtosFiltrados.map((produto) => {
                   const estoqueAtual = produto.estoque_atual || 0;
-                  const isBaixoEstoque = estoqueAtual <= 5 && estoqueAtual > 0;
+                  const estoqueMinimo = produto.estoque_minimo || 0;
+                  const isBaixoEstoque = estoqueAtual <= estoqueMinimo && estoqueAtual > 0;
                   const semEstoque = estoqueAtual === 0;
 
                   return (
@@ -258,15 +406,34 @@ export default function EstoqueProdutosTab() {
                           {estoqueAtual} unidades
                         </Badge>
                       </TableCell>
+                      <TableCell className="text-center">
+                        {produto.estoque_minimo || 0}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {produto.estoque_ideal || 0}
+                      </TableCell>
                       <TableCell>
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => abrirConfigurarEstoque(produto)}
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => abrirEntradaManual(produto)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => abrirAjusteEstoque(produto)}
                           >
-                            <Edit3 className="h-4 w-4 mr-1" />
-                            Ajustar Estoque
+                            <Edit3 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -288,10 +455,10 @@ export default function EstoqueProdutosTab() {
               Ajuste o estoque atual do produto "{produtoSelecionado?.nome}"
             </DialogDescription>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmitAjuste)} className="space-y-4">
+          <Form {...ajusteForm}>
+            <form onSubmit={ajusteForm.handleSubmit(onSubmitAjuste)} className="space-y-4">
               <FormField
-                control={form.control}
+                control={ajusteForm.control}
                 name="estoque_atual"
                 render={({ field }) => (
                   <FormItem>
@@ -318,6 +485,132 @@ export default function EstoqueProdutosTab() {
                   Cancelar
                 </Button>
                 <Button type="submit">Salvar</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Entrada Manual */}
+      <Dialog open={isEntradaManualOpen} onOpenChange={setIsEntradaManualOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Entrada Manual de Estoque</DialogTitle>
+            <DialogDescription>
+              Registre uma entrada manual para "{produtoSelecionado?.nome}"
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...entradaForm}>
+            <form onSubmit={entradaForm.handleSubmit(onSubmitEntradaManual)} className="space-y-4">
+              <FormField
+                control={entradaForm.control}
+                name="quantidade"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quantidade (unidades)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="Ex: 50"
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={entradaForm.control}
+                name="observacao"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Observação (opcional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Ex: Produção do dia 15/01..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEntradaManualOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit">Registrar Entrada</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Configurar Estoque */}
+      <Dialog open={isConfigurarEstoqueOpen} onOpenChange={setIsConfigurarEstoqueOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Configurar Estoque</DialogTitle>
+            <DialogDescription>
+              Configure os níveis de estoque para "{produtoSelecionado?.nome}"
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...configurarForm}>
+            <form onSubmit={configurarForm.handleSubmit(onSubmitConfigurarEstoque)} className="space-y-4">
+              <FormField
+                control={configurarForm.control}
+                name="estoque_minimo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estoque Mínimo</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="Ex: 10"
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={configurarForm.control}
+                name="estoque_ideal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estoque Ideal</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="Ex: 50"
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsConfigurarEstoqueOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit">Salvar Configurações</Button>
               </DialogFooter>
             </form>
           </Form>

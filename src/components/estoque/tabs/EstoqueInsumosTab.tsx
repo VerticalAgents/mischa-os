@@ -57,7 +57,7 @@ import {
   TrendingUp,
   TrendingDown,
   Settings,
-  Edit,
+  Edit3,
 } from "lucide-react";
 
 const movimentacaoSchema = z.object({
@@ -70,17 +70,13 @@ const configurarEstoqueSchema = z.object({
   estoque_ideal: z.number().min(0, "Estoque ideal deve ser maior ou igual a zero"),
 });
 
-const editarInsumoSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
-  categoria: z.enum(["Matéria Prima", "Embalagem", "Outros"]),
-  volume_bruto: z.number().min(0.01, "Volume bruto deve ser maior que zero"),
-  unidade_medida: z.enum(["g", "kg", "ml", "l", "un", "pct"]),
-  custo_medio: z.number().min(0.01, "Custo médio deve ser maior que zero"),
+const ajusteEstoqueSchema = z.object({
+  estoque_atual: z.number().min(0, "Estoque não pode ser negativo"),
 });
 
 type MovimentacaoFormValues = z.infer<typeof movimentacaoSchema>;
 type ConfigurarEstoqueFormValues = z.infer<typeof configurarEstoqueSchema>;
-type EditarInsumoFormValues = z.infer<typeof editarInsumoSchema>;
+type AjusteEstoqueFormValues = z.infer<typeof ajusteEstoqueSchema>;
 
 export default function EstoqueInsumosTab() {
   const { insumos, loading, carregarInsumos, atualizarInsumo } = useSupabaseInsumos();
@@ -89,7 +85,7 @@ export default function EstoqueInsumosTab() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [isMovimentacaoOpen, setIsMovimentacaoOpen] = useState(false);
   const [isConfigurarEstoqueOpen, setIsConfigurarEstoqueOpen] = useState(false);
-  const [isEditarInsumoOpen, setIsEditarInsumoOpen] = useState(false);
+  const [isAjusteEstoqueOpen, setIsAjusteEstoqueOpen] = useState(false);
   const [insumoSelecionado, setInsumoSelecionado] = useState<any>(null);
 
   const movimentacaoForm = useForm<MovimentacaoFormValues>({
@@ -108,14 +104,10 @@ export default function EstoqueInsumosTab() {
     },
   });
 
-  const editarInsumoForm = useForm<EditarInsumoFormValues>({
-    resolver: zodResolver(editarInsumoSchema),
+  const ajusteEstoqueForm = useForm<AjusteEstoqueFormValues>({
+    resolver: zodResolver(ajusteEstoqueSchema),
     defaultValues: {
-      nome: "",
-      categoria: "Matéria Prima",
-      volume_bruto: 0,
-      unidade_medida: "g",
-      custo_medio: 0,
+      estoque_atual: 0,
     },
   });
 
@@ -160,16 +152,12 @@ export default function EstoqueInsumosTab() {
     setIsConfigurarEstoqueOpen(true);
   };
 
-  const abrirEditarInsumo = (insumo: any) => {
+  const abrirAjusteEstoque = (insumo: any) => {
     setInsumoSelecionado(insumo);
-    editarInsumoForm.reset({
-      nome: insumo.nome,
-      categoria: insumo.categoria as "Matéria Prima" | "Embalagem" | "Outros",
-      volume_bruto: insumo.volume_bruto,
-      unidade_medida: insumo.unidade_medida as "g" | "kg" | "ml" | "l" | "un" | "pct",
-      custo_medio: insumo.custo_medio,
+    ajusteEstoqueForm.reset({
+      estoque_atual: insumo.estoque_atual || 0,
     });
-    setIsEditarInsumoOpen(true);
+    setIsAjusteEstoqueOpen(true);
   };
 
   const onSubmitMovimentacao = async (values: MovimentacaoFormValues) => {
@@ -248,16 +236,18 @@ export default function EstoqueInsumosTab() {
     }
   };
 
-  const onSubmitEditarInsumo = async (values: EditarInsumoFormValues) => {
+  const onSubmitAjusteEstoque = async (values: AjusteEstoqueFormValues) => {
     if (!insumoSelecionado) return;
 
-    const success = await atualizarInsumo(insumoSelecionado.id, values);
+    const success = await atualizarInsumo(insumoSelecionado.id, {
+      estoque_atual: values.estoque_atual,
+    });
 
     if (success) {
-      setIsEditarInsumoOpen(false);
+      setIsAjusteEstoqueOpen(false);
       toast({
-        title: "Insumo atualizado",
-        description: "Dados do insumo atualizados com sucesso"
+        title: "Estoque ajustado",
+        description: "Estoque atual atualizado com sucesso"
       });
     }
   };
@@ -470,13 +460,6 @@ export default function EstoqueInsumosTab() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => abrirEditarInsumo(insumo)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
                             onClick={() => abrirConfigurarEstoque(insumo)}
                           >
                             <Settings className="h-4 w-4" />
@@ -487,6 +470,13 @@ export default function EstoqueInsumosTab() {
                             onClick={() => abrirMovimentacao(insumo)}
                           >
                             <Plus className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => abrirAjusteEstoque(insumo)}
+                          >
+                            <Edit3 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -629,109 +619,31 @@ export default function EstoqueInsumosTab() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Editar Insumo */}
-      <Dialog open={isEditarInsumoOpen} onOpenChange={setIsEditarInsumoOpen}>
+      {/* Modal de Ajuste de Estoque */}
+      <Dialog open={isAjusteEstoqueOpen} onOpenChange={setIsAjusteEstoqueOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Editar Insumo</DialogTitle>
+            <DialogTitle>Ajustar Estoque</DialogTitle>
             <DialogDescription>
-              Edite os dados do insumo "{insumoSelecionado?.nome}"
+              Ajuste o estoque atual do insumo "{insumoSelecionado?.nome}"
             </DialogDescription>
           </DialogHeader>
-          <Form {...editarInsumoForm}>
-            <form onSubmit={editarInsumoForm.handleSubmit(onSubmitEditarInsumo)} className="space-y-4">
+          <Form {...ajusteEstoqueForm}>
+            <form onSubmit={ajusteEstoqueForm.handleSubmit(onSubmitAjusteEstoque)} className="space-y-4">
               <FormField
-                control={editarInsumoForm.control}
-                name="nome"
+                control={ajusteEstoqueForm.control}
+                name="estoque_atual"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nome do insumo" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editarInsumoForm.control}
-                name="categoria"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Categoria</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a categoria" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Matéria Prima">Matéria Prima</SelectItem>
-                        <SelectItem value="Embalagem">Embalagem</SelectItem>
-                        <SelectItem value="Outros">Outros</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editarInsumoForm.control}
-                name="volume_bruto"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Volume Bruto</FormLabel>
+                    <FormLabel>
+                      Estoque Atual ({insumoSelecionado?.unidade_medida})
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         min="0"
                         step="0.01"
-                        placeholder="Ex: 1000"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editarInsumoForm.control}
-                name="unidade_medida"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unidade de Medida</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a unidade" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="g">g (gramas)</SelectItem>
-                        <SelectItem value="kg">kg (quilogramas)</SelectItem>
-                        <SelectItem value="ml">ml (mililitros)</SelectItem>
-                        <SelectItem value="l">l (litros)</SelectItem>
-                        <SelectItem value="un">un (unidades)</SelectItem>
-                        <SelectItem value="pct">pct (pacotes)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editarInsumoForm.control}
-                name="custo_medio"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Custo Médio (R$)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="Ex: 10.50"
+                        placeholder="Ex: 1500"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
@@ -744,11 +656,11 @@ export default function EstoqueInsumosTab() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsEditarInsumoOpen(false)}
+                  onClick={() => setIsAjusteEstoqueOpen(false)}
                 >
                   Cancelar
                 </Button>
-                <Button type="submit">Salvar Alterações</Button>
+                <Button type="submit">Ajustar Estoque</Button>
               </DialogFooter>
             </form>
           </Form>
