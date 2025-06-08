@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,25 +6,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { useProdutoStore } from "@/hooks/useProdutoStore";
+import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
+import { useConfiguracoesStore } from "@/hooks/useConfiguracoesStore";
 import { toast } from "@/hooks/use-toast";
 
 interface ProporcoesConfig {
-  [produtoId: number]: number;
+  [produtoId: string]: number;
 }
 
 export default function ProporcoesTab() {
-  const { produtos } = useProdutoStore();
+  const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
+  const { salvarConfiguracao, obterConfiguracao, loading } = useConfiguracoesStore();
   const [proporcoes, setProporcoes] = useState<ProporcoesConfig>({});
-  const [loading, setLoading] = useState(false);
 
-  // Carregar configurações salvas do localStorage
+  // Carregar configurações salvas ao montar o componente
   useEffect(() => {
-    const savedProporcoes = localStorage.getItem('proporcoes-padrao');
-    if (savedProporcoes) {
-      setProporcoes(JSON.parse(savedProporcoes));
+    const configSalva = obterConfiguracao('proporcoes-padrao');
+    if (configSalva && Object.keys(configSalva).length > 0) {
+      setProporcoes(configSalva);
     }
-  }, []);
+  }, [obterConfiguracao]);
 
   // Filtrar apenas produtos ativos
   const produtosAtivos = produtos.filter(p => p.ativo);
@@ -31,15 +33,15 @@ export default function ProporcoesTab() {
   // Calcular total dos percentuais
   const totalPercentual = Object.values(proporcoes).reduce((sum, value) => sum + (value || 0), 0);
 
-  const handleProporçãoChange = (produtoId: number, valor: string) => {
-    const valorNumerico = parseFloat(valor) || 0;
+  const handleProporçãoChange = (produtoId: string, valor: string) => {
+    const valorNumerico = parseInt(valor) || 0;
     setProporcoes(prev => ({
       ...prev,
       [produtoId]: valorNumerico
     }));
   };
 
-  const salvarConfiguracoes = () => {
+  const salvarConfiguracoes = async () => {
     if (totalPercentual !== 100) {
       toast({
         title: "Erro ao salvar",
@@ -49,28 +51,35 @@ export default function ProporcoesTab() {
       return;
     }
 
-    setLoading(true);
+    const sucesso = await salvarConfiguracao('proporcoes-padrao', proporcoes);
     
-    // Salvar no localStorage (em um sistema real, seria salvo no backend)
-    localStorage.setItem('proporcoes-padrao', JSON.stringify(proporcoes));
-    
-    setTimeout(() => {
-      setLoading(false);
+    if (sucesso) {
       toast({
         title: "Configurações salvas",
         description: "Proporções padrão atualizadas com sucesso!"
       });
-    }, 500);
+    }
   };
 
   const limparConfiguracoes = () => {
     setProporcoes({});
-    localStorage.removeItem('proporcoes-padrao');
     toast({
       title: "Configurações limpas",
       description: "Todas as proporções foram zeradas."
     });
   };
+
+  if (loadingProdutos) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <div className="text-muted-foreground">Carregando produtos...</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -85,7 +94,7 @@ export default function ProporcoesTab() {
           {produtosAtivos.length === 0 ? (
             <Alert>
               <AlertDescription>
-                Nenhum produto ativo encontrado. Cadastre produtos em "Precificação &gt; Produtos" primeiro.
+                Nenhum produto ativo encontrado. Cadastre produtos em "Estoque &gt; Produtos Acabados" primeiro.
               </AlertDescription>
             </Alert>
           ) : (
@@ -97,6 +106,9 @@ export default function ProporcoesTab() {
                       <Label htmlFor={`produto-${produto.id}`} className="text-sm font-medium">
                         {produto.nome}
                       </Label>
+                      {produto.descricao && (
+                        <p className="text-xs text-muted-foreground">{produto.descricao}</p>
+                      )}
                     </div>
                     <div className="w-24">
                       <div className="relative">
@@ -105,7 +117,7 @@ export default function ProporcoesTab() {
                           type="number"
                           min="0"
                           max="100"
-                          step="0.1"
+                          step="1"
                           value={proporcoes[produto.id] || ''}
                           onChange={(e) => handleProporçãoChange(produto.id, e.target.value)}
                           placeholder="0"
@@ -129,7 +141,7 @@ export default function ProporcoesTab() {
                     totalPercentual === 100 ? 'text-green-600' : 
                     totalPercentual > 100 ? 'text-red-600' : 'text-amber-600'
                   }`}>
-                    {totalPercentual.toFixed(1)}%
+                    {totalPercentual}%
                   </span>
                 </div>
                 
@@ -154,8 +166,8 @@ export default function ProporcoesTab() {
                 <Alert variant={totalPercentual > 100 ? "destructive" : "default"}>
                   <AlertDescription>
                     {totalPercentual > 100 
-                      ? `O total está ${(totalPercentual - 100).toFixed(1)}% acima de 100%.`
-                      : `Faltam ${(100 - totalPercentual).toFixed(1)}% para completar 100%.`
+                      ? `O total está ${totalPercentual - 100}% acima de 100%.`
+                      : `Faltam ${100 - totalPercentual}% para completar 100%.`
                     }
                   </AlertDescription>
                 </Alert>

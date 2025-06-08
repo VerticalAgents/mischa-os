@@ -14,6 +14,7 @@ import { TipoPedidoAgendamento } from "@/types";
 import { toast } from "sonner";
 import { AlertTriangle, Save, Calendar } from "lucide-react";
 import { TipoPedidoBadge } from "@/components/expedicao/TipoPedidoBadge";
+import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
 
 interface AgendamentoEditModalProps {
   agendamento: AgendamentoItem | null;
@@ -58,7 +59,7 @@ const parseDateFromInput = (dateString: string): Date => {
     input: dateString, 
     yearParsed: year,
     monthParsed: month,
-    dayParsed: day,
+    dayParsed: day.
     resultDate: date,
     resultDay: date.getDate(),
     resultMonth: date.getMonth() + 1,
@@ -80,6 +81,8 @@ export default function AgendamentoEditModal({
   const [produtosQuantidades, setProdutosQuantidades] = useState<ProdutoQuantidade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
+  const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
+
   // Usar tanto o store local quanto o Supabase para garantir que temos produtos
   const { produtos: produtosLocal } = useProdutoStore();
   const { produtos: produtosSupabase, loading: loadingSupabase } = useSupabaseProdutos();
@@ -183,7 +186,7 @@ export default function AgendamentoEditModal({
     carregarDadosCompletos();
   }, [agendamento, open, carregarAgendamentoPorCliente]);
 
-  // Inicializar produtos com quantidades quando o tipo for "Alterado"
+  // Atualizar produtos com quantidades quando o tipo for "Alterado"
   useEffect(() => {
     if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0 && produtosQuantidades.length === 0) {
       const produtosIniciais = produtosFiltrados.map(produto => ({
@@ -192,9 +195,15 @@ export default function AgendamentoEditModal({
       }));
       setProdutosQuantidades(produtosIniciais);
     } else if (tipoPedido === 'Padrão') {
-      setProdutosQuantidades([]);
+      // Para pedidos padrão, calcular automaticamente as quantidades
+      if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
+        const quantidadesCalculadas = calcularQuantidadesPorProporcao(quantidadeTotal);
+        setProdutosQuantidades(quantidadesCalculadas);
+      } else {
+        setProdutosQuantidades([]);
+      }
     }
-  }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length]);
+  }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length, quantidadeTotal, calcularQuantidadesPorProporcao, temProporcoesConfiguradas]);
 
   // Atualizar quantidade de um produto específico
   const atualizarQuantidadeProduto = (produtoNome: string, novaQuantidade: number) => {
@@ -295,6 +304,7 @@ export default function AgendamentoEditModal({
   const hasValidationError = tipoPedido === 'Alterado' && somaQuantidadesProdutos !== quantidadeTotal;
   const isDataObrigatoria = statusAgendamento === 'Previsto' || statusAgendamento === 'Agendado';
   const hasDataError = isDataObrigatoria && !proximaDataReposicao;
+  const hasProporcaoError = tipoPedido === 'Padrão' && !temProporcoesConfiguradas();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -369,8 +379,15 @@ export default function AgendamentoEditModal({
                 onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}
               >
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="Padrão" id="padrao" />
-                  <Label htmlFor="padrao">Padrão (usa proporção padrão do sistema)</Label>
+                  <RadioGroupItem value="Padrão" id="padrao" disabled={!temProporcoesConfiguradas()} />
+                  <Label htmlFor="padrao" className={!temProporcoesConfiguradas() ? 'text-muted-foreground' : ''}>
+                    Padrão (usa proporção padrão do sistema)
+                    {!temProporcoesConfiguradas() && (
+                      <span className="text-red-500 text-xs ml-2">
+                        - Configure as proporções em Configurações primeiro
+                      </span>
+                    )}
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="Alterado" id="alterado" />
@@ -378,6 +395,35 @@ export default function AgendamentoEditModal({
                 </div>
               </RadioGroup>
             </div>
+
+            {hasProporcaoError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Para usar pedidos do tipo "Padrão", você precisa configurar as proporções padrão em 
+                  Configurações &gt; % Proporção Padrão primeiro.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {tipoPedido === 'Padrão' && temProporcoesConfiguradas() && produtosQuantidades.length > 0 && (
+              <div className="space-y-4">
+                <Label>Quantidades Calculadas (Proporção Padrão)</Label>
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="grid gap-2">
+                    {produtosQuantidades.map((produto, index) => (
+                      <div key={index} className="flex justify-between items-center">
+                        <span className="font-medium">{produto.produto}</span>
+                        <span className="font-bold">{produto.quantidade} unidades</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 pt-2 border-t text-sm text-muted-foreground">
+                    Quantidades calculadas automaticamente com base na proporção padrão configurada
+                  </div>
+                </div>
+              </div>
+            )}
 
             {tipoPedido === 'Alterado' && (
               <div className="space-y-4">
@@ -448,7 +494,7 @@ export default function AgendamentoEditModal({
           </Button>
           <Button 
             onClick={handleSalvar}
-            disabled={isLoading || hasValidationError || hasDataError}
+            disabled={isLoading || hasValidationError || hasDataError || hasProporcaoError}
             className="flex items-center gap-2"
           >
             <Save className="h-4 w-4" />
