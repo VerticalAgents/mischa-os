@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,10 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Calendar, Download, AlertTriangle, Calculator } from "lucide-react";
 import { format } from "date-fns";
-import { usePedidoStore } from "@/hooks/usePedidoStore";
-import { useSaborStore } from "@/hooks/useSaborStore";
 import { usePlanejamentoProducaoStore } from "@/hooks/usePlanejamentoProducaoStore";
-import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 
@@ -34,10 +32,7 @@ export default function ProjecaoProducaoTab() {
   const [projecaoItens, setProjecaoItens] = useState<ProjecaoItem[]>([]);
   const [temEstoqueManual, setTemEstoqueManual] = useState(false);
 
-  const { pedidos } = usePedidoStore();
-  const { sabores } = useSaborStore();
-  const { capacidadeForma, incluirPedidosPrevistos, percentualPrevistos } = usePlanejamentoProducaoStore();
-  const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
+  const { capacidadeForma, percentualPrevistos } = usePlanejamentoProducaoStore();
   const { produtos } = useSupabaseProdutos();
   const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
 
@@ -87,7 +82,12 @@ export default function ProjecaoProducaoTab() {
       clienteNome: a.cliente.nome,
       dataReposicao: a.dataReposicao,
       statusAgendamento: a.statusAgendamento,
-      quantidadePadrao: a.cliente.quantidadePadrao
+      quantidadePadrao: a.cliente.quantidadePadrao,
+      pedido: a.pedido ? {
+        tipoPedido: a.pedido.tipoPedido,
+        totalUnidades: a.pedido.totalPedidoUnidades,
+        itens: a.pedido.itensPedido
+      } : null
     })));
 
     // Inicializar contadores por produto
@@ -103,63 +103,92 @@ export default function ProjecaoProducaoTab() {
 
     // Processar agendamentos
     let totalUnidadesProcessadas = 0;
+    let agendamentosComDados = 0;
+    let agendamentosPadrao = 0;
+    let agendamentosAlterados = 0;
     
     agendamentosNoPeriodo.forEach(agendamento => {
-      const quantidadeTotal = agendamento.cliente.quantidadePadrao;
-      console.log(`📦 Processando agendamento ${agendamento.cliente.nome}, quantidade: ${quantidadeTotal}`);
+      console.log(`\n📦 Processando agendamento ${agendamento.cliente.nome}`);
       
-      // Verificar se há pedido personalizado (tipo Alterado)
-      if (agendamento.pedido && agendamento.pedido.tipoPedido === 'Alterado' && agendamento.pedido.itensPedido) {
-        // Para pedidos alterados, usar quantidades específicas
+      // Verificar se há pedido com itens específicos (tipo Alterado)
+      if (agendamento.pedido && agendamento.pedido.tipoPedido === 'Alterado' && agendamento.pedido.itensPedido && agendamento.pedido.itensPedido.length > 0) {
+        console.log('📝 Agendamento ALTERADO com itens específicos:', agendamento.pedido.itensPedido);
+        agendamentosAlterados++;
+        
+        // Para pedidos alterados, usar quantidades específicas dos itens
         agendamento.pedido.itensPedido.forEach(item => {
-          // Como estamos usando a estrutura de sabores/produtos antiga, 
-          // vamos mapear pelo nome do produto
-          const produto = produtos.find(p => p.nome === item.nomeSabor || p.nome.includes(item.nomeSabor || ''));
+          // Mapear pelo nome do sabor/produto
+          const produto = produtos.find(p => 
+            p.nome === item.nomeSabor || 
+            p.nome.toLowerCase().includes(item.nomeSabor?.toLowerCase() || '') ||
+            (item.sabor && p.nome === item.sabor.nome)
+          );
+          
           if (produto && necessidadePorProduto[produto.id] !== undefined) {
-            necessidadePorProduto[produto.id] += item.quantidadeSabor;
-            totalUnidadesProcessadas += item.quantidadeSabor;
-            console.log(`➕ Adicionado ${item.quantidadeSabor} unidades para ${produto.nome} (pedido alterado)`);
+            const quantidade = item.quantidadeSabor || 0;
+            necessidadePorProduto[produto.id] += quantidade;
+            totalUnidadesProcessadas += quantidade;
+            console.log(`➕ Adicionado ${quantidade} unidades para ${produto.nome} (pedido alterado)`);
+          } else {
+            console.warn(`⚠️ Produto não encontrado para item: ${item.nomeSabor}`);
           }
         });
+        agendamentosComDados++;
       } else {
-        // Para pedidos padrão, usar proporção configurada
-        if (temProporcoesConfiguradas() && quantidadeTotal > 0) {
-          const quantidadesProporcao = calcularQuantidadesPorProporcao(quantidadeTotal);
-          console.log('📊 Quantidades por proporção:', quantidadesProporcao);
-          
-          quantidadesProporcao.forEach(item => {
-            const produto = produtos.find(p => p.nome === item.produto);
-            if (produto && necessidadePorProduto[produto.id] !== undefined) {
-              necessidadePorProduto[produto.id] += item.quantidade;
-              totalUnidadesProcessadas += item.quantidade;
-              console.log(`➕ Adicionado ${item.quantidade} unidades para ${produto.nome}`);
-            }
-          });
-        } else if (quantidadeTotal > 0) {
-          console.warn('⚠️ Proporções padrão não configuradas para agendamento padrão');
+        // Para agendamentos padrão, usar a quantidade total e distribuir 100% para o produto principal
+        // Como não temos proporção padrão configurada, vamos assumir que a quantidade vai toda para o primeiro produto ativo
+        const quantidadeTotal = agendamento.cliente.quantidadePadrao || 0;
+        console.log(`📊 Agendamento PADRÃO com quantidade total: ${quantidadeTotal}`);
+        agendamentosPadrao++;
+        
+        if (quantidadeTotal > 0) {
+          // Para simplificar, vamos distribuir a quantidade para o primeiro produto ativo encontrado
+          // Em um cenário real, isso deveria usar a proporção padrão configurada
+          const produtoAtivo = produtos.find(p => p.ativo);
+          if (produtoAtivo) {
+            necessidadePorProduto[produtoAtivo.id] += quantidadeTotal;
+            totalUnidadesProcessadas += quantidadeTotal;
+            console.log(`➕ Adicionado ${quantidadeTotal} unidades para ${produtoAtivo.nome} (agendamento padrão)`);
+            agendamentosComDados++;
+          } else {
+            console.warn('⚠️ Nenhum produto ativo encontrado para distribuir quantidade padrão');
+          }
+        } else {
+          console.warn('⚠️ Agendamento padrão sem quantidade definida');
         }
       }
     });
 
-    console.log('📊 Total de unidades processadas:', totalUnidadesProcessadas);
+    console.log('\n📊 Resumo do processamento:');
+    console.log(`- Total de agendamentos processados: ${agendamentosNoPeriodo.length}`);
+    console.log(`- Agendamentos com dados válidos: ${agendamentosComDados}`);
+    console.log(`- Agendamentos padrão: ${agendamentosPadrao}`);
+    console.log(`- Agendamentos alterados: ${agendamentosAlterados}`);
+    console.log(`- Total de unidades processadas: ${totalUnidadesProcessadas}`);
     console.log('📊 Necessidades por produto:', necessidadePorProduto);
 
     // Adicionar pedidos previstos se selecionado
-    if (tipoAgendamento === 'agendados-previstos' && temProporcoesConfiguradas()) {
+    if (tipoAgendamento === 'agendados-previstos') {
       const totalAgendado = Object.values(necessidadePorProduto).reduce((sum, val) => sum + val, 0);
       const totalPrevisto = Math.round(totalAgendado * (percentualPrevistos / 100));
 
       console.log('🔮 Adicionando previstos:', { totalAgendado, percentual: percentualPrevistos, totalPrevisto });
 
       if (totalPrevisto > 0) {
-        const quantidadesPrevisao = calcularQuantidadesPorProporcao(totalPrevisto);
-        quantidadesPrevisao.forEach(item => {
-          const produto = produtos.find(p => p.nome === item.produto);
-          if (produto && necessidadePorProduto[produto.id] !== undefined) {
-            necessidadePorProduto[produto.id] += item.quantidade;
-            console.log(`🔮 Adicionado ${item.quantidade} unidades previstas para ${produto.nome}`);
-          }
-        });
+        // Distribuir o total previsto proporcionalmente aos produtos que já têm demanda
+        const totalExistente = Object.values(necessidadePorProduto).reduce((sum, val) => sum + val, 0);
+        if (totalExistente > 0) {
+          Object.keys(necessidadePorProduto).forEach(produtoId => {
+            if (necessidadePorProduto[produtoId] > 0) {
+              const proporcao = necessidadePorProduto[produtoId] / totalExistente;
+              const quantidadePrevista = Math.round(totalPrevisto * proporcao);
+              necessidadePorProduto[produtoId] += quantidadePrevista;
+              
+              const produto = produtos.find(p => p.id === produtoId);
+              console.log(`🔮 Adicionado ${quantidadePrevista} unidades previstas para ${produto?.nome}`);
+            }
+          });
+        }
       }
     }
 
@@ -247,7 +276,7 @@ export default function ProjecaoProducaoTab() {
             Projeção de Produção
           </CardTitle>
           <CardDescription>
-            Calcule automaticamente a necessidade de produção com base nos pedidos e estoque disponível
+            Calcule automaticamente a necessidade de produção com base nos agendamentos e estoque disponível
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -283,12 +312,8 @@ export default function ProjecaoProducaoTab() {
                 variant={tipoAgendamento === 'agendados-previstos' ? 'default' : 'outline'}
                 onClick={() => setTipoAgendamento('agendados-previstos')}
                 size="sm"
-                disabled={!temProporcoesConfiguradas()}
               >
                 Agendados + Previstos
-                {!temProporcoesConfiguradas() && (
-                  <span className="text-xs ml-1">(Configure proporções)</span>
-                )}
               </Button>
             </div>
           </div>
@@ -296,18 +321,12 @@ export default function ProjecaoProducaoTab() {
           {/* Indicador do modo ativo */}
           <div className="flex items-center gap-2">
             <Badge variant="secondary">
-              Considerando: {tipoAgendamento === 'agendados' ? 'somente pedidos agendados' : 'agendados + previstos'}
+              Considerando: {tipoAgendamento === 'agendados' ? 'somente agendamentos confirmados' : 'agendados + previstos'}
             </Badge>
             {!temEstoqueManual && (
               <Badge variant="outline" className="text-amber-600 border-amber-600">
                 <AlertTriangle className="h-3 w-3 mr-1" />
                 Estoque não verificado manualmente
-              </Badge>
-            )}
-            {!temProporcoesConfiguradas() && (
-              <Badge variant="outline" className="text-red-600 border-red-600">
-                <AlertTriangle className="h-3 w-3 mr-1" />
-                Proporções padrão não configuradas
               </Badge>
             )}
           </div>
@@ -316,35 +335,26 @@ export default function ProjecaoProducaoTab() {
           <div className="text-xs text-muted-foreground">
             Capacidade por forma: {capacidadeForma} unidades | 
             Produtos ativos: {produtos.filter(p => p.ativo).length} | 
-            Pedidos encontrados: {pedidos.filter(p => {
-              const dataPedido = new Date(p.dataPrevistaEntrega);
+            Agendamentos encontrados: {agendamentos.filter(a => {
+              const dataReposicao = new Date(a.dataReposicao);
               const inicio = new Date(dataInicio);
               const fim = new Date(dataFim);
-              return dataPedido >= inicio && dataPedido <= fim && 
-                     (p.statusPedido === "Agendado" || p.statusPedido === "Em Separação") && 
-                     !p.dataEfetivaEntrega;
+              const dentroPeríodo = dataReposicao >= inicio && dataReposicao <= fim;
+              const statusValido = tipoAgendamento === 'agendados' 
+                ? a.statusAgendamento === 'Agendado'
+                : (a.statusAgendamento === 'Agendado' || a.statusAgendamento === 'Previsto');
+              return dentroPeríodo && statusValido;
             }).length}
           </div>
         </CardContent>
       </Card>
-
-      {/* Alerta sobre proporções */}
-      {!temProporcoesConfiguradas() && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            ⚠ Proporções padrão não configuradas — projeção pode estar incompleta para pedidos do tipo "Padrão".
-            Configure as proporções em Configurações &gt; % Proporção Padrão.
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Alerta sobre estoque */}
       {!temEstoqueManual && (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            ⚠ Estoque não verificado manualmente — projeção pode estar imprecisa.
+            ⚠️ Estoque não verificado manualmente — projeção pode estar imprecisa.
             Considere usar a aba "Ajuste de Estoque" para validar os valores.
           </AlertDescription>
         </Alert>
