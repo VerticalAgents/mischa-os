@@ -102,11 +102,11 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
     );
   }
   
-  // Preparar dados para o gráfico
+  // Preparar dados para o gráfico - agora com média histórica ao invés de meta
   const dadosGrafico = dadosGiro.historico.map(item => ({
     semana: item.semana,
     giro: item.valor,
-    meta: dadosGiro.meta
+    mediaHistorica: dadosGiro.mediaHistorica // Linha azul da média histórica
   }));
   
   return (
@@ -118,8 +118,8 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
         </Button>
         
         <div className="flex gap-2 items-center">
-          <span className="text-sm text-muted-foreground">Meta atual:</span>
-          <Badge variant="outline" className="font-medium">{dadosGiro.meta} unidades/semana</Badge>
+          <span className="text-sm text-muted-foreground">Média histórica:</span>
+          <Badge variant="outline" className="font-medium">{dadosGiro.mediaHistorica} unidades/semana</Badge>
           <Button 
             size="sm" 
             variant="secondary"
@@ -162,7 +162,7 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
         <CardHeader>
           <CardTitle>Giro Semanal - Últimas 12 semanas</CardTitle>
           <CardDescription>
-            Evolução do giro semanal baseado no histórico real de entregas
+            Evolução do giro semanal baseado no histórico real de entregas com média histórica
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -194,8 +194,8 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
                             </div>
                             {payload[1] && (
                               <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 bg-red-500 rounded-full" />
-                                <span className="text-muted-foreground">Meta:</span>
+                                <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                                <span className="text-muted-foreground">Média Histórica:</span>
                                 <span className="font-medium">{payload[1].value} unidades</span>
                               </div>
                             )}
@@ -218,9 +218,9 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
                 />
                 <Line
                   type="monotone"
-                  dataKey="meta"
-                  name="Meta"
-                  stroke="#ef4444"
+                  dataKey="mediaHistorica"
+                  name="Média Histórica"
+                  stroke="#3b82f6"
                   strokeDasharray="5 5"
                   strokeWidth={2}
                   dot={false}

@@ -115,8 +115,16 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
       clientesAtivos.forEach(cliente => {
         const dadosEntregas = entregasPorCliente.get(cliente.id);
         
-        // Giro previsto vem direto do campo giroMedioSemanal do cliente
-        const giroPrevisto = cliente.giroMedioSemanal || 0;
+        // Giro previsto: calcular corretamente com base na quantidade padrão e periodicidade
+        let giroPrevisto = 0;
+        if (cliente.quantidadePadrao && cliente.periodicidadePadrao) {
+          // Calcular giro semanal: quantidade / (periodicidade em dias / 7)
+          const semanasPorPeriodo = cliente.periodicidadePadrao / 7;
+          giroPrevisto = Math.round(cliente.quantidadePadrao / semanasPorPeriodo);
+        } else {
+          // Fallback para o valor já calculado no cliente
+          giroPrevisto = cliente.giroMedioSemanal || 0;
+        }
         
         // Giro realizado = total entregue nos últimos 28 dias / 4 semanas
         const giroRealizado = dadosEntregas ? Math.round(dadosEntregas.totalEntregas / 4) : 0;
@@ -141,14 +149,14 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
       const giroGlobalData: GiroGlobal = {
         previsto: {
           giroSemanal: totalGiroPrevistoSemanal,
-          giroQuinzenal: totalGiroPrevistoSemanal * 2,
-          giroMensal: totalGiroPrevistoSemanal * 4,
+          giroQuinzenal: totalGiroPrevistoSemanal * 2, // 14 dias
+          giroMensal: totalGiroPrevistoSemanal * 4, // 28 dias
           totalPDVsAtivos: clientesAtivos.length
         },
         realizado: {
           giroSemanal: Math.round(totalGiroRealizadoUltimos28Dias / 4), // Total dos últimos 28 dias / 4 semanas
-          giroQuinzenal: Math.round((totalGiroRealizadoUltimos28Dias / 4) * 2),
-          giroMensal: Math.round((totalGiroRealizadoUltimos28Dias / 4) * 4),
+          giroQuinzenal: Math.round((totalGiroRealizadoUltimos28Dias / 4) * 2), // 14 dias
+          giroMensal: Math.round((totalGiroRealizadoUltimos28Dias / 4) * 4), // 28 dias
           totalEntregasUltimos28Dias: totalGiroRealizadoUltimos28Dias
         }
       };
@@ -159,7 +167,9 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
       console.log('✅ Dados de giro carregados:', { 
         giroPDVs: giroPDVs.length, 
         giroGlobal: giroGlobalData,
-        clientesAtivos: clientesAtivos.length 
+        clientesAtivos: clientesAtivos.length,
+        totalGiroPrevistoSemanal,
+        mediaPorPDVPrevisto: clientesAtivos.length > 0 ? Math.round(totalGiroPrevistoSemanal / clientesAtivos.length) : 0
       });
       
     } catch (error) {
@@ -180,7 +190,7 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
     );
   }
 
-  // Calcular média por PDV (previsto e realizado)
+  // Calcular média por PDV (previsto e realizado) - sem arredondamento prematuro
   const mediaPorPDVPrevisto = giroGlobal.previsto.totalPDVsAtivos > 0 
     ? Math.round(giroGlobal.previsto.giroSemanal / giroGlobal.previsto.totalPDVsAtivos) 
     : 0;
@@ -199,7 +209,7 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
               <TrendingUp className="h-5 w-5 text-blue-500" />
               Giro Previsto por PDV
             </CardTitle>
-            <CardDescription>Baseado no cadastro dos clientes</CardDescription>
+            <CardDescription>Baseado no cadastro dos clientes (quantidade padrão ÷ periodicidade)</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -208,11 +218,11 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
                 <span className="font-semibold">{mediaPorPDVPrevisto} un</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Média Quinzenal</span>
+                <span className="text-sm text-muted-foreground">Média Quinzenal (14d)</span>
                 <span className="font-semibold">{mediaPorPDVPrevisto * 2} un</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Média Mensal</span>
+                <span className="text-sm text-muted-foreground">Média Mensal (28d)</span>
                 <span className="font-semibold">{mediaPorPDVPrevisto * 4} un</span>
               </div>
             </div>
@@ -234,11 +244,11 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
                 <span className="font-semibold">{giroGlobal.previsto.giroSemanal.toLocaleString()} un</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Giro Quinzenal</span>
+                <span className="text-sm text-muted-foreground">Giro Quinzenal (14d)</span>
                 <span className="font-semibold">{giroGlobal.previsto.giroQuinzenal.toLocaleString()} un</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Giro Mensal</span>
+                <span className="text-sm text-muted-foreground">Giro Mensal (28d)</span>
                 <span className="font-semibold">{giroGlobal.previsto.giroMensal.toLocaleString()} un</span>
               </div>
               <div className="pt-2 border-t">
@@ -269,11 +279,11 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
                 <span className="font-semibold">{mediaPorPDVRealizado} un</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Média Quinzenal</span>
+                <span className="text-sm text-muted-foreground">Média Quinzenal (14d)</span>
                 <span className="font-semibold">{mediaPorPDVRealizado * 2} un</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Média Mensal</span>
+                <span className="text-sm text-muted-foreground">Média Mensal (28d)</span>
                 <span className="font-semibold">{mediaPorPDVRealizado * 4} un</span>
               </div>
             </div>
@@ -295,11 +305,11 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
                 <span className="font-semibold">{giroGlobal.realizado.giroSemanal.toLocaleString()} un</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Giro Quinzenal</span>
+                <span className="text-sm text-muted-foreground">Giro Quinzenal (14d)</span>
                 <span className="font-semibold">{giroGlobal.realizado.giroQuinzenal.toLocaleString()} un</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Giro Mensal</span>
+                <span className="text-sm text-muted-foreground">Giro Mensal (28d)</span>
                 <span className="font-semibold">{giroGlobal.realizado.giroMensal.toLocaleString()} un</span>
               </div>
               <div className="pt-2 border-t">
