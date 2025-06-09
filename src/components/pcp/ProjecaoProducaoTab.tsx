@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,6 +13,7 @@ import { useSaborStore } from "@/hooks/useSaborStore";
 import { usePlanejamentoProducaoStore } from "@/hooks/usePlanejamentoProducaoStore";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
+import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 
 interface ProjecaoItem {
   idProduto: string;
@@ -39,6 +39,12 @@ export default function ProjecaoProducaoTab() {
   const { capacidadeForma, incluirPedidosPrevistos, percentualPrevistos } = usePlanejamentoProducaoStore();
   const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
   const { produtos } = useSupabaseProdutos();
+  const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
+
+  // Carregar agendamentos ao montar o componente
+  useEffect(() => {
+    carregarTodosAgendamentos();
+  }, [carregarTodosAgendamentos]);
 
   // Verificar se há estoque manual configurado
   useEffect(() => {
@@ -49,7 +55,7 @@ export default function ProjecaoProducaoTab() {
   // Calcular projeção quando parâmetros mudarem
   useEffect(() => {
     calcularProjecao();
-  }, [dataInicio, dataFim, tipoAgendamento, pedidos, produtos, capacidadeForma]);
+  }, [dataInicio, dataFim, tipoAgendamento, agendamentos, produtos, capacidadeForma]);
 
   const calcularProjecao = () => {
     console.log('🔄 Iniciando cálculo de projeção...');
@@ -58,24 +64,30 @@ export default function ProjecaoProducaoTab() {
     const fim = new Date(dataFim);
     
     console.log('📅 Período:', { inicio, fim });
-    console.log('📦 Total de pedidos:', pedidos.length);
+    console.log('📦 Total de agendamentos:', agendamentos.length);
 
-    // Filtrar pedidos no período
-    const pedidosNoPeriodo = pedidos.filter(pedido => {
-      const dataPedido = new Date(pedido.dataPrevistaEntrega);
-      const dentroPeríodo = dataPedido >= inicio && dataPedido <= fim;
-      const statusValido = pedido.statusPedido === "Agendado" || pedido.statusPedido === "Em Separação";
-      const naoEntregue = !pedido.dataEfetivaEntrega;
+    // Filtrar agendamentos no período
+    const agendamentosNoPeriodo = agendamentos.filter(agendamento => {
+      const dataReposicao = new Date(agendamento.dataReposicao);
+      const dentroPeríodo = dataReposicao >= inicio && dataReposicao <= fim;
       
-      return dentroPeríodo && statusValido && naoEntregue;
+      // Filtrar por status conforme seleção
+      let statusValido = false;
+      if (tipoAgendamento === 'agendados') {
+        statusValido = agendamento.statusAgendamento === 'Agendado';
+      } else {
+        statusValido = agendamento.statusAgendamento === 'Agendado' || agendamento.statusAgendamento === 'Previsto';
+      }
+      
+      return dentroPeríodo && statusValido;
     });
 
-    console.log('📋 Pedidos no período:', pedidosNoPeriodo.length);
-    console.log('📋 Detalhes dos pedidos:', pedidosNoPeriodo.map(p => ({
-      id: p.id,
-      tipo: p.tipoPedido,
-      total: p.totalPedidoUnidades,
-      data: p.dataPrevistaEntrega
+    console.log('📋 Agendamentos no período:', agendamentosNoPeriodo.length);
+    console.log('📋 Detalhes dos agendamentos:', agendamentosNoPeriodo.map(a => ({
+      clienteNome: a.cliente.nome,
+      dataReposicao: a.dataReposicao,
+      statusAgendamento: a.statusAgendamento,
+      quantidadePadrao: a.cliente.quantidadePadrao
     })));
 
     // Inicializar contadores por produto
@@ -89,16 +101,30 @@ export default function ProjecaoProducaoTab() {
 
     console.log('🏭 Produtos ativos:', produtos.filter(p => p.ativo).length);
 
-    // Processar pedidos agendados
+    // Processar agendamentos
     let totalUnidadesProcessadas = 0;
     
-    pedidosNoPeriodo.forEach(pedido => {
-      console.log(`📦 Processando pedido ${pedido.id}, tipo: ${pedido.tipoPedido}, total: ${pedido.totalPedidoUnidades}`);
+    agendamentosNoPeriodo.forEach(agendamento => {
+      const quantidadeTotal = agendamento.cliente.quantidadePadrao;
+      console.log(`📦 Processando agendamento ${agendamento.cliente.nome}, quantidade: ${quantidadeTotal}`);
       
-      if (pedido.tipoPedido === 'Padrão') {
+      // Verificar se há pedido personalizado (tipo Alterado)
+      if (agendamento.pedido && agendamento.pedido.tipoPedido === 'Alterado' && agendamento.pedido.itensPedido) {
+        // Para pedidos alterados, usar quantidades específicas
+        agendamento.pedido.itensPedido.forEach(item => {
+          // Como estamos usando a estrutura de sabores/produtos antiga, 
+          // vamos mapear pelo nome do produto
+          const produto = produtos.find(p => p.nome === item.nomeSabor || p.nome.includes(item.nomeSabor || ''));
+          if (produto && necessidadePorProduto[produto.id] !== undefined) {
+            necessidadePorProduto[produto.id] += item.quantidadeSabor;
+            totalUnidadesProcessadas += item.quantidadeSabor;
+            console.log(`➕ Adicionado ${item.quantidadeSabor} unidades para ${produto.nome} (pedido alterado)`);
+          }
+        });
+      } else {
         // Para pedidos padrão, usar proporção configurada
-        if (temProporcoesConfiguradas()) {
-          const quantidadesProporcao = calcularQuantidadesPorProporcao(pedido.totalPedidoUnidades);
+        if (temProporcoesConfiguradas() && quantidadeTotal > 0) {
+          const quantidadesProporcao = calcularQuantidadesPorProporcao(quantidadeTotal);
           console.log('📊 Quantidades por proporção:', quantidadesProporcao);
           
           quantidadesProporcao.forEach(item => {
@@ -109,22 +135,9 @@ export default function ProjecaoProducaoTab() {
               console.log(`➕ Adicionado ${item.quantidade} unidades para ${produto.nome}`);
             }
           });
-        } else {
-          console.warn('⚠️ Proporções padrão não configuradas para pedido padrão');
+        } else if (quantidadeTotal > 0) {
+          console.warn('⚠️ Proporções padrão não configuradas para agendamento padrão');
         }
-      } else if (pedido.tipoPedido === 'Alterado' && pedido.itensPedido) {
-        // Para pedidos alterados, usar quantidades específicas
-        pedido.itensPedido.forEach(item => {
-          const sabor = sabores.find(s => s.id === item.idSabor);
-          if (sabor) {
-            const produto = produtos.find(p => p.nome === sabor.nome);
-            if (produto && necessidadePorProduto[produto.id] !== undefined) {
-              necessidadePorProduto[produto.id] += item.quantidadeSabor;
-              totalUnidadesProcessadas += item.quantidadeSabor;
-              console.log(`➕ Adicionado ${item.quantidadeSabor} unidades para ${produto.nome} (pedido alterado)`);
-            }
-          }
-        });
       }
     });
 
