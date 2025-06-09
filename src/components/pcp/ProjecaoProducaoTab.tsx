@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -48,22 +49,34 @@ export default function ProjecaoProducaoTab() {
   // Calcular projeção quando parâmetros mudarem
   useEffect(() => {
     calcularProjecao();
-  }, [dataInicio, dataFim, tipoAgendamento, pedidos, produtos]);
+  }, [dataInicio, dataFim, tipoAgendamento, pedidos, produtos, capacidadeForma]);
 
   const calcularProjecao = () => {
+    console.log('🔄 Iniciando cálculo de projeção...');
+    
     const inicio = new Date(dataInicio);
     const fim = new Date(dataFim);
+    
+    console.log('📅 Período:', { inicio, fim });
+    console.log('📦 Total de pedidos:', pedidos.length);
 
-    // Filtrar pedidos no período usando dados do sistema de agendamento
-    const agendamentosNoPeriodo = pedidos.filter(pedido => {
+    // Filtrar pedidos no período
+    const pedidosNoPeriodo = pedidos.filter(pedido => {
       const dataPedido = new Date(pedido.dataPrevistaEntrega);
-      return (
-        (pedido.statusPedido === "Agendado" || pedido.statusPedido === "Em Separação") &&
-        !pedido.dataEfetivaEntrega &&
-        dataPedido >= inicio &&
-        dataPedido <= fim
-      );
+      const dentroPeríodo = dataPedido >= inicio && dataPedido <= fim;
+      const statusValido = pedido.statusPedido === "Agendado" || pedido.statusPedido === "Em Separação";
+      const naoEntregue = !pedido.dataEfetivaEntrega;
+      
+      return dentroPeríodo && statusValido && naoEntregue;
     });
+
+    console.log('📋 Pedidos no período:', pedidosNoPeriodo.length);
+    console.log('📋 Detalhes dos pedidos:', pedidosNoPeriodo.map(p => ({
+      id: p.id,
+      tipo: p.tipoPedido,
+      total: p.totalPedidoUnidades,
+      data: p.dataPrevistaEntrega
+    })));
 
     // Inicializar contadores por produto
     const necessidadePorProduto: Record<string, number> = {};
@@ -74,37 +87,56 @@ export default function ProjecaoProducaoTab() {
       }
     });
 
+    console.log('🏭 Produtos ativos:', produtos.filter(p => p.ativo).length);
+
     // Processar pedidos agendados
-    agendamentosNoPeriodo.forEach(pedido => {
+    let totalUnidadesProcessadas = 0;
+    
+    pedidosNoPeriodo.forEach(pedido => {
+      console.log(`📦 Processando pedido ${pedido.id}, tipo: ${pedido.tipoPedido}, total: ${pedido.totalPedidoUnidades}`);
+      
       if (pedido.tipoPedido === 'Padrão') {
         // Para pedidos padrão, usar proporção configurada
         if (temProporcoesConfiguradas()) {
           const quantidadesProporcao = calcularQuantidadesPorProporcao(pedido.totalPedidoUnidades);
+          console.log('📊 Quantidades por proporção:', quantidadesProporcao);
+          
           quantidadesProporcao.forEach(item => {
             const produto = produtos.find(p => p.nome === item.produto);
             if (produto && necessidadePorProduto[produto.id] !== undefined) {
               necessidadePorProduto[produto.id] += item.quantidade;
+              totalUnidadesProcessadas += item.quantidade;
+              console.log(`➕ Adicionado ${item.quantidade} unidades para ${produto.nome}`);
             }
           });
+        } else {
+          console.warn('⚠️ Proporções padrão não configuradas para pedido padrão');
         }
       } else if (pedido.tipoPedido === 'Alterado' && pedido.itensPedido) {
         // Para pedidos alterados, usar quantidades específicas
-        // Nota: Assumindo que itensPedido contém informações de produtos
-        // Esta parte pode precisar de ajuste dependendo da estrutura real dos dados
         pedido.itensPedido.forEach(item => {
-          // Aqui seria necessário mapear os itens do pedido para produtos
-          // Por enquanto, usando uma lógica simplificada
-          if (necessidadePorProduto[item.idSabor] !== undefined) {
-            necessidadePorProduto[item.idSabor] += item.quantidadeSabor;
+          const sabor = sabores.find(s => s.id === item.idSabor);
+          if (sabor) {
+            const produto = produtos.find(p => p.nome === sabor.nome);
+            if (produto && necessidadePorProduto[produto.id] !== undefined) {
+              necessidadePorProduto[produto.id] += item.quantidadeSabor;
+              totalUnidadesProcessadas += item.quantidadeSabor;
+              console.log(`➕ Adicionado ${item.quantidadeSabor} unidades para ${produto.nome} (pedido alterado)`);
+            }
           }
         });
       }
     });
 
+    console.log('📊 Total de unidades processadas:', totalUnidadesProcessadas);
+    console.log('📊 Necessidades por produto:', necessidadePorProduto);
+
     // Adicionar pedidos previstos se selecionado
     if (tipoAgendamento === 'agendados-previstos' && temProporcoesConfiguradas()) {
       const totalAgendado = Object.values(necessidadePorProduto).reduce((sum, val) => sum + val, 0);
       const totalPrevisto = Math.round(totalAgendado * (percentualPrevistos / 100));
+
+      console.log('🔮 Adicionando previstos:', { totalAgendado, percentual: percentualPrevistos, totalPrevisto });
 
       if (totalPrevisto > 0) {
         const quantidadesPrevisao = calcularQuantidadesPorProporcao(totalPrevisto);
@@ -112,6 +144,7 @@ export default function ProjecaoProducaoTab() {
           const produto = produtos.find(p => p.nome === item.produto);
           if (produto && necessidadePorProduto[produto.id] !== undefined) {
             necessidadePorProduto[produto.id] += item.quantidade;
+            console.log(`🔮 Adicionado ${item.quantidade} unidades previstas para ${produto.nome}`);
           }
         });
       }
@@ -120,6 +153,8 @@ export default function ProjecaoProducaoTab() {
     // Obter estoque (manual se houver, senão automático)
     const estoqueManualData = localStorage.getItem('estoque-manual-ajustes');
     const estoqueManual = estoqueManualData ? JSON.parse(estoqueManualData) : {};
+
+    console.log('📦 Estoque manual configurado:', !!estoqueManualData);
 
     // Calcular projeção para cada produto
     const projecao: ProjecaoItem[] = produtos
@@ -136,6 +171,15 @@ export default function ProjecaoProducaoTab() {
           ? (formasNecessarias * capacidadeForma) - unidadesProduzir 
           : Math.max(0, estoqueDisponivel - unidadesNecessarias);
 
+        console.log(`🧮 Cálculo para ${produto.nome}:`, {
+          unidadesNecessarias,
+          estoqueDisponivel,
+          unidadesProduzir,
+          formasNecessarias,
+          sobraEstimada,
+          capacidadeForma
+        });
+
         return {
           idProduto: produto.id,
           nomeProduto: produto.nome,
@@ -148,6 +192,7 @@ export default function ProjecaoProducaoTab() {
       })
       .filter(item => item.unidadesNecessarias > 0 || item.unidadesProduzir > 0);
 
+    console.log('✅ Projeção final:', projecao);
     setProjecaoItens(projecao);
   };
 
@@ -181,7 +226,7 @@ export default function ProjecaoProducaoTab() {
 
   return (
     <div className="space-y-6">
-      {/* Controles de filtro - keep existing code */}
+      {/* Controles de filtro */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -253,6 +298,20 @@ export default function ProjecaoProducaoTab() {
               </Badge>
             )}
           </div>
+
+          {/* Debug info */}
+          <div className="text-xs text-muted-foreground">
+            Capacidade por forma: {capacidadeForma} unidades | 
+            Produtos ativos: {produtos.filter(p => p.ativo).length} | 
+            Pedidos encontrados: {pedidos.filter(p => {
+              const dataPedido = new Date(p.dataPrevistaEntrega);
+              const inicio = new Date(dataInicio);
+              const fim = new Date(dataFim);
+              return dataPedido >= inicio && dataPedido <= fim && 
+                     (p.statusPedido === "Agendado" || p.statusPedido === "Em Separação") && 
+                     !p.dataEfetivaEntrega;
+            }).length}
+          </div>
         </CardContent>
       </Card>
 
@@ -267,7 +326,7 @@ export default function ProjecaoProducaoTab() {
         </Alert>
       )}
 
-      {/* Alerta sobre estoque - keep existing code */}
+      {/* Alerta sobre estoque */}
       {!temEstoqueManual && (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
