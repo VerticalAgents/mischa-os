@@ -66,7 +66,7 @@ export default function ProjecaoProducaoTab() {
     setTemEstoqueManual(!!estoqueManual);
   }, []);
 
-  // Processar dados de auditoria (mesma lógica da AuditoriaPCPTab)
+  // Processar dados de auditoria (usando datas inclusive)
   useEffect(() => {
     processarDadosAuditoria();
   }, [agendamentos, produtos, dataInicio, dataFim]);
@@ -81,8 +81,10 @@ export default function ProjecaoProducaoTab() {
     
     const inicio = new Date(dataInicio);
     const fim = new Date(dataFim);
+    // Incluir todo o dia final (23:59:59)
+    fim.setHours(23, 59, 59, 999);
 
-    // Filtrar agendamentos no período (independente do status por enquanto)
+    // Filtrar agendamentos no período (datas inclusive) com clientes ativos apenas
     const agendamentosFiltrados = agendamentos.filter(agendamento => {
       const dataReposicao = new Date(agendamento.dataReposicao);
       const dentroPeríodo = dataReposicao >= inicio && dataReposicao <= fim;
@@ -122,7 +124,7 @@ export default function ProjecaoProducaoTab() {
           }
         });
       } else {
-        // Para agendamentos padrão, usar a quantidade total
+        // Para agendamentos padrão, usar a quantidade total distribuída
         const quantidadeTotal = agendamento.cliente.quantidadePadrao || 0;
         
         if (quantidadeTotal > 0 && produtosAtivos.length > 0) {

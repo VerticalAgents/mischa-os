@@ -7,7 +7,6 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   ResponsiveContainer, 
@@ -22,7 +21,6 @@ import {
 import { ArrowUp, ArrowDown, Filter, AlertCircle } from "lucide-react";
 import { Cliente } from "@/types";
 import GiroMetricCard from "./GiroMetricCard";
-import GiroMetaForm from "./GiroMetaForm";
 import { useGiroAnalise } from "@/hooks/useGiroAnalise";
 
 interface AnaliseGiroProps {
@@ -30,8 +28,11 @@ interface AnaliseGiroProps {
 }
 
 export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
-  const [isEditingMeta, setIsEditingMeta] = useState(false);
-  const { dadosGiro, isLoading, error, atualizarMeta } = useGiroAnalise(cliente);
+  const { dadosGiro, isLoading, error } = useGiroAnalise(cliente);
+  
+  // Giro semanal médio geral (valor simulado - deve vir do dashboard/analytics)
+  // TODO: buscar valor real do dashboard "Análise de PDV e Giro"
+  const giroSemanalMedioGeral = 150; // Valor placeholder
   
   if (isLoading) {
     return (
@@ -102,6 +103,11 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
     );
   }
   
+  // Calcular comparativo com giro geral
+  const comparativoGiroGeral = giroSemanalMedioGeral > 0 
+    ? Math.round((dadosGiro.mediaHistorica / giroSemanalMedioGeral) * 100)
+    : 0;
+  
   // Preparar dados para o gráfico - agora com média histórica ao invés de meta
   const dadosGrafico = dadosGiro.historico.map(item => ({
     semana: item.semana,
@@ -120,13 +126,6 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
         <div className="flex gap-2 items-center">
           <span className="text-sm text-muted-foreground">Média histórica:</span>
           <Badge variant="outline" className="font-medium">{dadosGiro.mediaHistorica} unidades/semana</Badge>
-          <Button 
-            size="sm" 
-            variant="secondary"
-            onClick={() => setIsEditingMeta(true)}
-          >
-            Definir Meta
-          </Button>
         </div>
       </div>
       
@@ -151,10 +150,10 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
         />
         
         <GiroMetricCard
-          title="Achievement"
-          value={`${dadosGiro.achievement}%`}
-          description="vs meta estabelecida"
-          status={dadosGiro.semaforo}
+          title="Comparativo com Giro Geral"
+          value={`${comparativoGiroGeral}%`}
+          description="vs giro médio geral"
+          status={comparativoGiroGeral >= 100 ? 'verde' : 'vermelho'}
         />
       </div>
       
@@ -230,18 +229,6 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
           </div>
         </CardContent>
       </Card>
-      
-      {isEditingMeta && (
-        <GiroMetaForm
-          cliente={cliente}
-          metaAtual={dadosGiro.meta}
-          onClose={() => setIsEditingMeta(false)}
-          onSave={(novaMeta) => {
-            atualizarMeta(novaMeta);
-            setIsEditingMeta(false);
-          }}
-        />
-      )}
     </div>
   );
 }
