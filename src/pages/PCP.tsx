@@ -10,7 +10,6 @@ import ProjecaoProducaoTab from "@/components/pcp/ProjecaoProducaoTab";
 import NecessidadeDiariaTab from "@/components/pcp/NecessidadeDiariaTab";
 import ProducaoAgendadaTab from "@/components/pcp/ProducaoAgendadaTab";
 import HistoricoProducao from "@/components/pcp/HistoricoProducao";
-import BackendPCPTab from "@/components/pcp/BackendPCPTab";
 
 export default function PCP() {
   const [activeTab, setActiveTab] = useState("ajuste-estoque");
@@ -29,7 +28,6 @@ export default function PCP() {
           <TabsTrigger value="projecao-producao">Projeção de Produção</TabsTrigger>
           <TabsTrigger value="necessidade-diaria">Necessidade Diária</TabsTrigger>
           <TabsTrigger value="producao-agendada">Produção Agendada</TabsTrigger>
-          <TabsTrigger value="backend-pcp">Backend PCP</TabsTrigger>
           <TabsTrigger value="historico">Histórico</TabsTrigger>
         </TabsList>
       
@@ -47,10 +45,6 @@ export default function PCP() {
         
         <TabsContent value="producao-agendada" className="space-y-6 mt-6">
           <ProducaoAgendadaTab />
-        </TabsContent>
-
-        <TabsContent value="backend-pcp" className="space-y-6 mt-6">
-          <BackendPCPTab />
         </TabsContent>
 
         <TabsContent value="historico" className="space-y-6 mt-6">
