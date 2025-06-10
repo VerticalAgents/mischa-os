@@ -7,11 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar, Download, AlertTriangle, Calculator } from "lucide-react";
+import { Calculator, Download, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
-import { usePlanejamentoProducaoStore } from "@/hooks/usePlanejamentoProducaoStore";
-import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
+import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 
 interface ProjecaoItem {
   idProduto: string;
@@ -23,6 +22,14 @@ interface ProjecaoItem {
   sobraEstimada: number;
 }
 
+interface AuditoriaItem {
+  clienteNome: string;
+  statusAgendamento: string;
+  dataReposicao: Date;
+  statusCliente: string;
+  quantidadesPorProduto: Record<string, number>;
+}
+
 type TipoAgendamento = 'agendados' | 'agendados-previstos';
 
 export default function ProjecaoProducaoTab() {
@@ -30,16 +37,28 @@ export default function ProjecaoProducaoTab() {
   const [dataFim, setDataFim] = useState(format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [tipoAgendamento, setTipoAgendamento] = useState<TipoAgendamento>('agendados');
   const [projecaoItens, setProjecaoItens] = useState<ProjecaoItem[]>([]);
+  const [dadosAuditoria, setDadosAuditoria] = useState<AuditoriaItem[]>([]);
+  const [produtosAtivos, setProdutosAtivos] = useState<string[]>([]);
   const [temEstoqueManual, setTemEstoqueManual] = useState(false);
 
-  const { capacidadeForma, percentualPrevistos } = usePlanejamentoProducaoStore();
-  const { produtos } = useSupabaseProdutos();
   const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
+  const { produtos } = useSupabaseProdutos();
+
+  const capacidadeForma = 40; // Capacidade fixa de 40 unidades por forma
 
   // Carregar agendamentos ao montar o componente
   useEffect(() => {
     carregarTodosAgendamentos();
   }, [carregarTodosAgendamentos]);
+
+  // Atualizar lista de produtos ativos
+  useEffect(() => {
+    const produtosAtivosLista = produtos
+      .filter(produto => produto.ativo)
+      .map(produto => produto.nome)
+      .sort();
+    setProdutosAtivos(produtosAtivosLista);
+  }, [produtos]);
 
   // Verificar se há estoque manual configurado
   useEffect(() => {
@@ -47,162 +66,125 @@ export default function ProjecaoProducaoTab() {
     setTemEstoqueManual(!!estoqueManual);
   }, []);
 
-  // Calcular projeção quando parâmetros mudarem
+  // Processar dados de auditoria (mesma lógica da AuditoriaPCPTab)
   useEffect(() => {
-    calcularProjecao();
-  }, [dataInicio, dataFim, tipoAgendamento, agendamentos, produtos, capacidadeForma]);
+    processarDadosAuditoria();
+  }, [agendamentos, produtos, dataInicio, dataFim]);
 
-  const calcularProjecao = () => {
-    console.log('🔄 Iniciando cálculo de projeção...');
+  // Calcular projeção baseada nos dados da auditoria
+  useEffect(() => {
+    calcularProjecaoFromAuditoria();
+  }, [dadosAuditoria, tipoAgendamento, produtos]);
+
+  const processarDadosAuditoria = () => {
+    console.log('🔍 Processando dados de auditoria para projeção...');
     
     const inicio = new Date(dataInicio);
     const fim = new Date(dataFim);
-    
-    console.log('📅 Período:', { inicio, fim });
-    console.log('📦 Total de agendamentos:', agendamentos.length);
 
-    // Filtrar agendamentos no período
-    const agendamentosNoPeriodo = agendamentos.filter(agendamento => {
+    // Filtrar agendamentos no período (independente do status por enquanto)
+    const agendamentosFiltrados = agendamentos.filter(agendamento => {
       const dataReposicao = new Date(agendamento.dataReposicao);
       const dentroPeríodo = dataReposicao >= inicio && dataReposicao <= fim;
       
-      // Filtrar por status conforme seleção
-      let statusValido = false;
-      if (tipoAgendamento === 'agendados') {
-        statusValido = agendamento.statusAgendamento === 'Agendado';
-      } else {
-        statusValido = agendamento.statusAgendamento === 'Agendado' || agendamento.statusAgendamento === 'Previsto';
-      }
+      // Filtrar apenas clientes ativos
+      const clienteAtivo = agendamento.cliente.statusCliente === 'Ativo';
       
-      return dentroPeríodo && statusValido;
+      return dentroPeríodo && clienteAtivo;
     });
 
-    console.log('📋 Agendamentos no período:', agendamentosNoPeriodo.length);
-    console.log('📋 Detalhes dos agendamentos:', agendamentosNoPeriodo.map(a => ({
-      clienteNome: a.cliente.nome,
-      dataReposicao: a.dataReposicao,
-      statusAgendamento: a.statusAgendamento,
-      quantidadePadrao: a.cliente.quantidadePadrao,
-      pedido: a.pedido ? {
-        tipoPedido: a.pedido.tipoPedido,
-        totalUnidades: a.pedido.totalPedidoUnidades,
-        itens: a.pedido.itensPedido
-      } : null
-    })));
+    console.log('📋 Agendamentos filtrados por período e cliente ativo:', agendamentosFiltrados.length);
 
-    // Inicializar contadores por produto
-    const necessidadePorProduto: Record<string, number> = {};
-
-    produtos.forEach(produto => {
-      if (produto.ativo) {
-        necessidadePorProduto[produto.id] = 0;
-      }
-    });
-
-    console.log('🏭 Produtos ativos:', produtos.filter(p => p.ativo).length);
-
-    // Processar agendamentos
-    let totalUnidadesProcessadas = 0;
-    let agendamentosComDados = 0;
-    let agendamentosPadrao = 0;
-    let agendamentosAlterados = 0;
-    
-    agendamentosNoPeriodo.forEach(agendamento => {
-      console.log(`\n📦 Processando agendamento ${agendamento.cliente.nome}`);
+    // Processar cada agendamento
+    const dadosProcessados: AuditoriaItem[] = agendamentosFiltrados.map(agendamento => {
+      const quantidadesPorProduto: Record<string, number> = {};
       
+      // Inicializar todas as quantidades como 0
+      produtosAtivos.forEach(nomeProduto => {
+        quantidadesPorProduto[nomeProduto] = 0;
+      });
+
       // Verificar se há pedido com itens específicos (tipo Alterado)
-      if (agendamento.pedido && agendamento.pedido.tipoPedido === 'Alterado' && agendamento.pedido.itensPedido && agendamento.pedido.itensPedido.length > 0) {
-        console.log('📝 Agendamento ALTERADO com itens específicos:', agendamento.pedido.itensPedido);
-        agendamentosAlterados++;
+      if (agendamento.pedido && 
+          agendamento.pedido.tipoPedido === 'Alterado' && 
+          agendamento.pedido.itensPedido && 
+          agendamento.pedido.itensPedido.length > 0) {
         
         // Para pedidos alterados, usar quantidades específicas dos itens
         agendamento.pedido.itensPedido.forEach(item => {
-          // Mapear pelo nome do sabor/produto
-          const produto = produtos.find(p => 
-            p.nome === item.nomeSabor || 
-            p.nome.toLowerCase().includes(item.nomeSabor?.toLowerCase() || '') ||
-            (item.sabor && p.nome === item.sabor.nome)
-          );
+          const nomeProduto = item.nomeSabor || (item.sabor && item.sabor.nome);
+          const quantidade = item.quantidadeSabor || 0;
           
-          if (produto && necessidadePorProduto[produto.id] !== undefined) {
-            const quantidade = item.quantidadeSabor || 0;
-            necessidadePorProduto[produto.id] += quantidade;
-            totalUnidadesProcessadas += quantidade;
-            console.log(`➕ Adicionado ${quantidade} unidades para ${produto.nome} (pedido alterado)`);
-          } else {
-            console.warn(`⚠️ Produto não encontrado para item: ${item.nomeSabor}`);
+          if (nomeProduto && quantidade > 0) {
+            if (quantidadesPorProduto.hasOwnProperty(nomeProduto)) {
+              quantidadesPorProduto[nomeProduto] = quantidade;
+            }
           }
         });
-        agendamentosComDados++;
       } else {
-        // Para agendamentos padrão, usar a quantidade total e distribuir 100% para o produto principal
-        // Como não temos proporção padrão configurada, vamos assumir que a quantidade vai toda para o primeiro produto ativo
+        // Para agendamentos padrão, usar a quantidade total
         const quantidadeTotal = agendamento.cliente.quantidadePadrao || 0;
-        console.log(`📊 Agendamento PADRÃO com quantidade total: ${quantidadeTotal}`);
-        agendamentosPadrao++;
         
-        if (quantidadeTotal > 0) {
-          // Para simplificar, vamos distribuir a quantidade para o primeiro produto ativo encontrado
-          // Em um cenário real, isso deveria usar a proporção padrão configurada
-          const produtoAtivo = produtos.find(p => p.ativo);
-          if (produtoAtivo) {
-            necessidadePorProduto[produtoAtivo.id] += quantidadeTotal;
-            totalUnidadesProcessadas += quantidadeTotal;
-            console.log(`➕ Adicionado ${quantidadeTotal} unidades para ${produtoAtivo.nome} (agendamento padrão)`);
-            agendamentosComDados++;
-          } else {
-            console.warn('⚠️ Nenhum produto ativo encontrado para distribuir quantidade padrão');
-          }
-        } else {
-          console.warn('⚠️ Agendamento padrão sem quantidade definida');
+        if (quantidadeTotal > 0 && produtosAtivos.length > 0) {
+          // Distribuir toda a quantidade para o primeiro produto ativo
+          const primeiroProduto = produtosAtivos[0];
+          quantidadesPorProduto[primeiroProduto] = quantidadeTotal;
         }
+      }
+
+      return {
+        clienteNome: agendamento.cliente.nome,
+        statusAgendamento: agendamento.statusAgendamento,
+        dataReposicao: agendamento.dataReposicao,
+        statusCliente: agendamento.cliente.statusCliente || 'Ativo',
+        quantidadesPorProduto
+      };
+    });
+
+    setDadosAuditoria(dadosProcessados);
+  };
+
+  const calcularProjecaoFromAuditoria = () => {
+    console.log('🧮 Calculando projeção baseada nos dados da auditoria...');
+
+    // Filtrar dados de auditoria por status do agendamento
+    const dadosFiltrados = dadosAuditoria.filter(item => {
+      if (tipoAgendamento === 'agendados') {
+        return item.statusAgendamento === 'Agendado';
+      } else {
+        return item.statusAgendamento === 'Agendado' || item.statusAgendamento === 'Previsto';
       }
     });
 
-    console.log('\n📊 Resumo do processamento:');
-    console.log(`- Total de agendamentos processados: ${agendamentosNoPeriodo.length}`);
-    console.log(`- Agendamentos com dados válidos: ${agendamentosComDados}`);
-    console.log(`- Agendamentos padrão: ${agendamentosPadrao}`);
-    console.log(`- Agendamentos alterados: ${agendamentosAlterados}`);
-    console.log(`- Total de unidades processadas: ${totalUnidadesProcessadas}`);
-    console.log('📊 Necessidades por produto:', necessidadePorProduto);
-
-    // Adicionar pedidos previstos se selecionado
-    if (tipoAgendamento === 'agendados-previstos') {
-      const totalAgendado = Object.values(necessidadePorProduto).reduce((sum, val) => sum + val, 0);
-      const totalPrevisto = Math.round(totalAgendado * (percentualPrevistos / 100));
-
-      console.log('🔮 Adicionando previstos:', { totalAgendado, percentual: percentualPrevistos, totalPrevisto });
-
-      if (totalPrevisto > 0) {
-        // Distribuir o total previsto proporcionalmente aos produtos que já têm demanda
-        const totalExistente = Object.values(necessidadePorProduto).reduce((sum, val) => sum + val, 0);
-        if (totalExistente > 0) {
-          Object.keys(necessidadePorProduto).forEach(produtoId => {
-            if (necessidadePorProduto[produtoId] > 0) {
-              const proporcao = necessidadePorProduto[produtoId] / totalExistente;
-              const quantidadePrevista = Math.round(totalPrevisto * proporcao);
-              necessidadePorProduto[produtoId] += quantidadePrevista;
-              
-              const produto = produtos.find(p => p.id === produtoId);
-              console.log(`🔮 Adicionado ${quantidadePrevista} unidades previstas para ${produto?.nome}`);
-            }
-          });
-        }
-      }
-    }
+    console.log('📊 Dados filtrados por status do agendamento:', dadosFiltrados.length);
 
     // Obter estoque (manual se houver, senão automático)
     const estoqueManualData = localStorage.getItem('estoque-manual-ajustes');
     const estoqueManual = estoqueManualData ? JSON.parse(estoqueManualData) : {};
 
-    console.log('📦 Estoque manual configurado:', !!estoqueManualData);
+    // Calcular necessidades totais por produto
+    const necessidadesTotais: Record<string, number> = {};
+    
+    produtosAtivos.forEach(nomeProduto => {
+      necessidadesTotais[nomeProduto] = 0;
+    });
+
+    dadosFiltrados.forEach(item => {
+      Object.keys(item.quantidadesPorProduto).forEach(nomeProduto => {
+        const quantidade = item.quantidadesPorProduto[nomeProduto] || 0;
+        if (necessidadesTotais[nomeProduto] !== undefined) {
+          necessidadesTotais[nomeProduto] += quantidade;
+        }
+      });
+    });
+
+    console.log('📊 Necessidades totais por produto:', necessidadesTotais);
 
     // Calcular projeção para cada produto
     const projecao: ProjecaoItem[] = produtos
       .filter(produto => produto.ativo)
       .map(produto => {
-        const unidadesNecessarias = necessidadePorProduto[produto.id] || 0;
+        const unidadesNecessarias = necessidadesTotais[produto.nome] || 0;
         const estoqueDisponivel = estoqueManual[produto.id] !== undefined 
           ? estoqueManual[produto.id] 
           : produto.estoque_atual || 0;
@@ -218,8 +200,7 @@ export default function ProjecaoProducaoTab() {
           estoqueDisponivel,
           unidadesProduzir,
           formasNecessarias,
-          sobraEstimada,
-          capacidadeForma
+          sobraEstimada
         });
 
         return {
@@ -241,9 +222,8 @@ export default function ProjecaoProducaoTab() {
   const totalFormas = projecaoItens.reduce((sum, item) => sum + item.formasNecessarias, 0);
 
   const exportarDados = (formato: 'pdf' | 'excel') => {
-    // Implementação básica - em produção usaria bibliotecas específicas
     const dados = projecaoItens.map(item => ({
-      'Sabor': item.nomeProduto,
+      'Produto': item.nomeProduto,
       'Unidades Necessárias': item.unidadesNecessarias,
       'Estoque Disponível': item.estoqueDisponivel,
       'Unidades a Produzir': item.unidadesProduzir,
@@ -276,7 +256,7 @@ export default function ProjecaoProducaoTab() {
             Projeção de Produção
           </CardTitle>
           <CardDescription>
-            Calcule automaticamente a necessidade de produção com base nos agendamentos e estoque disponível
+            Calcule automaticamente a necessidade de produção com base nos dados da Auditoria PCP filtrados
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -323,6 +303,9 @@ export default function ProjecaoProducaoTab() {
             <Badge variant="secondary">
               Considerando: {tipoAgendamento === 'agendados' ? 'somente agendamentos confirmados' : 'agendados + previstos'}
             </Badge>
+            <Badge variant="outline">
+              Clientes ativos apenas
+            </Badge>
             {!temEstoqueManual && (
               <Badge variant="outline" className="text-amber-600 border-amber-600">
                 <AlertTriangle className="h-3 w-3 mr-1" />
@@ -331,19 +314,17 @@ export default function ProjecaoProducaoTab() {
             )}
           </div>
 
-          {/* Debug info */}
+          {/* Info dos filtros aplicados */}
           <div className="text-xs text-muted-foreground">
             Capacidade por forma: {capacidadeForma} unidades | 
             Produtos ativos: {produtos.filter(p => p.ativo).length} | 
-            Agendamentos encontrados: {agendamentos.filter(a => {
-              const dataReposicao = new Date(a.dataReposicao);
-              const inicio = new Date(dataInicio);
-              const fim = new Date(dataFim);
-              const dentroPeríodo = dataReposicao >= inicio && dataReposicao <= fim;
-              const statusValido = tipoAgendamento === 'agendados' 
-                ? a.statusAgendamento === 'Agendado'
-                : (a.statusAgendamento === 'Agendado' || a.statusAgendamento === 'Previsto');
-              return dentroPeríodo && statusValido;
+            Agendamentos na auditoria: {dadosAuditoria.length} |
+            Considerados para cálculo: {dadosAuditoria.filter(item => {
+              if (tipoAgendamento === 'agendados') {
+                return item.statusAgendamento === 'Agendado';
+              } else {
+                return item.statusAgendamento === 'Agendado' || item.statusAgendamento === 'Previsto';
+              }
             }).length}
           </div>
         </CardContent>
@@ -428,8 +409,8 @@ export default function ProjecaoProducaoTab() {
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-6">
                       <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        Nenhuma necessidade de produção identificada no período
+                        <Calculator className="h-4 w-4" />
+                        Nenhuma necessidade de produção identificada com os filtros aplicados
                       </div>
                     </TableCell>
                   </TableRow>
