@@ -323,8 +323,8 @@ export default function BackendPCPTab() {
                         Nenhum agendamento encontrado com os filtros aplicados
                       </div>
                     </TableCell>
-                  )}
-                </TableRow>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
