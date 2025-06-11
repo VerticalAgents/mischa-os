@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -6,8 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calculator, Download, AlertTriangle } from "lucide-react";
+import { Calculator, Download } from "lucide-react";
 import { format } from "date-fns";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
@@ -39,7 +37,6 @@ export default function ProjecaoProducaoTab() {
   const [projecaoItens, setProjecaoItens] = useState<ProjecaoItem[]>([]);
   const [dadosAuditoria, setDadosAuditoria] = useState<AuditoriaItem[]>([]);
   const [produtosAtivos, setProdutosAtivos] = useState<string[]>([]);
-  const [temEstoqueManual, setTemEstoqueManual] = useState(false);
 
   const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
   const { produtos } = useSupabaseProdutos();
@@ -59,12 +56,6 @@ export default function ProjecaoProducaoTab() {
       .sort();
     setProdutosAtivos(produtosAtivosLista);
   }, [produtos]);
-
-  // Verificar se há estoque manual configurado
-  useEffect(() => {
-    const estoqueManual = localStorage.getItem('estoque-manual-ajustes');
-    setTemEstoqueManual(!!estoqueManual);
-  }, []);
 
   // Processar dados de auditoria (usando datas inclusive)
   useEffect(() => {
@@ -308,12 +299,6 @@ export default function ProjecaoProducaoTab() {
             <Badge variant="outline">
               Clientes ativos apenas
             </Badge>
-            {!temEstoqueManual && (
-              <Badge variant="outline" className="text-amber-600 border-amber-600">
-                <AlertTriangle className="h-3 w-3 mr-1" />
-                Estoque não verificado manualmente
-              </Badge>
-            )}
           </div>
 
           {/* Info dos filtros aplicados */}
@@ -331,17 +316,6 @@ export default function ProjecaoProducaoTab() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Alerta sobre estoque */}
-      {!temEstoqueManual && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            ⚠️ Estoque não verificado manualmente — projeção pode estar imprecisa.
-            Considere usar a aba "Ajuste de Estoque" para validar os valores.
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Tabela de projeção */}
       <Card>

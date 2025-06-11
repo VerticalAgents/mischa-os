@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useHistoricoProducaoStore } from '@/hooks/useHistoricoProducaoStore';
@@ -42,12 +43,13 @@ import {
 } from '@/components/ui/form';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Edit, Search } from 'lucide-react';
+import { CalendarIcon, Edit, Search, Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { validateAdminPin } from '@/utils/adminValidation';
 
 type FiltroHistoricoForm = {
   periodo: 'ultimos7dias' | 'mesAtual' | 'personalizado';
@@ -56,8 +58,9 @@ type FiltroHistoricoForm = {
   busca?: string;
 };
 
-type EditarRegistroForm = {
+type RegistroProducaoForm = {
   produtoId: number;
+  produtoNome: string;
   formasProducidas: number;
   dataProducao: Date;
   turno: string;
@@ -65,10 +68,16 @@ type EditarRegistroForm = {
 };
 
 export default function HistoricoProducao() {
-  const { historico, editarRegistroHistorico } = useHistoricoProducaoStore();
+  const { historico, editarRegistroHistorico, adicionarRegistroHistorico, removerRegistroHistorico } = useHistoricoProducaoStore();
   const [filtrados, setFiltrados] = useState(historico);
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [dialogAberta, setDialogAberta] = useState(false);
+  const [dialogCriarAberta, setDialogCriarAberta] = useState(false);
+  const [dialogExcluirAberta, setDialogExcluirAberta] = useState(false);
+  const [idParaExcluir, setIdParaExcluir] = useState<number | null>(null);
+  const [pin, setPin] = useState('');
+  const [pinIncorreto, setPinIncorreto] = useState(false);
+  const [operacaoPendente, setOperacaoPendente] = useState<'editar' | 'criar' | 'excluir' | null>(null);
   const { toast } = useToast();
 
   const filtroForm = useForm<FiltroHistoricoForm>({
@@ -78,19 +87,16 @@ export default function HistoricoProducao() {
     },
   });
 
-  const editarForm = useForm<EditarRegistroForm>({
+  const registroForm = useForm<RegistroProducaoForm>({
     defaultValues: {
       produtoId: 0,
+      produtoNome: '',
       formasProducidas: 0,
       dataProducao: new Date(),
       turno: 'Matutino',
       observacoes: '',
     },
   });
-
-  const [senhaAdmin, setSenhaAdmin] = useState('');
-  const [senhaIncorreta, setSenhaIncorreta] = useState(false);
-  const [senhaValidada, setSenhaValidada] = useState(false);
 
   // Função para aplicar filtros
   const aplicarFiltros = (data: FiltroHistoricoForm) => {
@@ -134,30 +140,104 @@ export default function HistoricoProducao() {
     });
   };
 
+  // Atualizar filtrados quando historico mudar
+  useEffect(() => {
+    setFiltrados(historico);
+  }, [historico]);
+
+  // Função para validar PIN
+  const validarPin = () => {
+    if (validateAdminPin(pin)) {
+      setPinIncorreto(false);
+      executarOperacao();
+    } else {
+      setPinIncorreto(true);
+    }
+  };
+
+  // Executar operação após validação do PIN
+  const executarOperacao = () => {
+    switch (operacaoPendente) {
+      case 'editar':
+        setDialogAberta(true);
+        break;
+      case 'criar':
+        setDialogCriarAberta(true);
+        break;
+      case 'excluir':
+        setDialogExcluirAberta(true);
+        break;
+    }
+    setOperacaoPendente(null);
+    setPin('');
+  };
+
   // Função para preparar edição
   const prepararEdicao = (id: number) => {
     const registro = historico.find(r => r.id === id);
     if (registro) {
-      editarForm.reset({
+      registroForm.reset({
         produtoId: registro.produtoId,
+        produtoNome: registro.produtoNome,
         formasProducidas: registro.formasProducidas,
         dataProducao: registro.dataProducao,
         turno: registro.turno,
         observacoes: registro.observacoes,
       });
       setEditandoId(id);
-      setDialogAberta(true);
+      setOperacaoPendente('editar');
+      solicitarPin();
+    }
+  };
+
+  // Função para preparar criação
+  const prepararCriacao = () => {
+    registroForm.reset({
+      produtoId: 0,
+      produtoNome: '',
+      formasProducidas: 0,
+      dataProducao: new Date(),
+      turno: 'Matutino',
+      observacoes: '',
+    });
+    setOperacaoPendente('criar');
+    solicitarPin();
+  };
+
+  // Função para preparar exclusão
+  const prepararExclusao = (id: number) => {
+    setIdParaExcluir(id);
+    setOperacaoPendente('excluir');
+    solicitarPin();
+  };
+
+  // Função para solicitar PIN
+  const solicitarPin = () => {
+    const pinInput = prompt('Digite o PIN de administrador:');
+    if (pinInput) {
+      setPin(pinInput);
+      if (validateAdminPin(pinInput)) {
+        setPinIncorreto(false);
+        executarOperacao();
+      } else {
+        setPinIncorreto(true);
+        toast({
+          title: "PIN incorreto",
+          description: "PIN de administrador inválido",
+          variant: "destructive",
+        });
+      }
     }
   };
   
   // Função para salvar edição
-  const salvarEdicao = (data: EditarRegistroForm) => {
+  const salvarEdicao = (data: RegistroProducaoForm) => {
     if (editandoId !== null) {
       editarRegistroHistorico(editandoId, {
         produtoId: data.produtoId,
-        produtoNome: 'Produto ' + data.produtoId, // Mockup - deveria buscar nome real
+        produtoNome: data.produtoNome,
         formasProducidas: data.formasProducidas,
-        unidadesCalculadas: data.formasProducidas * 30, // Mockup - usar valor real de unidadesPorForma
+        unidadesCalculadas: data.formasProducidas * 30, // Usar valor real de unidadesPorForma
         dataProducao: data.dataProducao,
         turno: data.turno,
         observacoes: data.observacoes || ''
@@ -172,17 +252,46 @@ export default function HistoricoProducao() {
       });
       
       setDialogAberta(false);
-      setSenhaValidada(false);
+      setEditandoId(null);
     }
   };
-  
-  // Função para validar senha de administrador
-  const validarSenha = () => {
-    if (senhaAdmin === 'mischa') {
-      setSenhaValidada(true);
-      setSenhaIncorreta(false);
-    } else {
-      setSenhaIncorreta(true);
+
+  // Função para criar registro
+  const criarRegistro = (data: RegistroProducaoForm) => {
+    adicionarRegistroHistorico({
+      produtoId: data.produtoId,
+      produtoNome: data.produtoNome,
+      formasProducidas: data.formasProducidas,
+      unidadesCalculadas: data.formasProducidas * 30,
+      dataProducao: data.dataProducao,
+      turno: data.turno,
+      observacoes: data.observacoes || '',
+      origem: 'Manual'
+    });
+
+    aplicarFiltros(filtroForm.getValues());
+    
+    toast({
+      title: "Registro criado",
+      description: "Novo registro de produção foi criado com sucesso."
+    });
+    
+    setDialogCriarAberta(false);
+  };
+
+  // Função para excluir registro
+  const excluirRegistro = () => {
+    if (idParaExcluir !== null) {
+      removerRegistroHistorico(idParaExcluir);
+      aplicarFiltros(filtroForm.getValues());
+      
+      toast({
+        title: "Registro excluído",
+        description: "O registro de produção foi excluído com sucesso."
+      });
+      
+      setDialogExcluirAberta(false);
+      setIdParaExcluir(null);
     }
   };
 
@@ -190,7 +299,13 @@ export default function HistoricoProducao() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Filtros</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Histórico de Produção</CardTitle>
+            <Button onClick={prepararCriacao}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Registro
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Form {...filtroForm}>
@@ -330,7 +445,7 @@ export default function HistoricoProducao() {
       
       <Card>
         <CardHeader>
-          <CardTitle>Histórico de Produção</CardTitle>
+          <CardTitle>Registros de Produção</CardTitle>
         </CardHeader>
         <CardContent>
           {filtrados.length > 0 ? (
@@ -363,14 +478,22 @@ export default function HistoricoProducao() {
                       </TableCell>
                       <TableCell>{registro.observacoes || '—'}</TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => prepararEdicao(registro.id)}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Editar
-                        </Button>
+                        <div className="flex gap-2 justify-end">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => prepararEdicao(registro.id)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => prepararExclusao(registro.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -382,86 +505,185 @@ export default function HistoricoProducao() {
               Nenhum registro encontrado para os filtros aplicados.
             </div>
           )}
-          
+
+          {/* Dialog para editar */}
           <Dialog open={dialogAberta} onOpenChange={setDialogAberta}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Editar Registro de Produção</DialogTitle>
                 <DialogDescription>
-                  {!senhaValidada 
-                    ? "Por favor, insira a senha de administrador para editar este registro."
-                    : "Edite os dados do registro de produção."
-                  }
+                  Edite os dados do registro de produção.
                 </DialogDescription>
               </DialogHeader>
               
-              {!senhaValidada ? (
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <label htmlFor="senha">Senha de administrador</label>
-                    <Input 
-                      id="senha" 
-                      type="password" 
-                      value={senhaAdmin} 
-                      onChange={(e) => setSenhaAdmin(e.target.value)}
-                      className={senhaIncorreta ? "border-red-500" : ""}
-                    />
-                    {senhaIncorreta && (
-                      <p className="text-sm text-red-500">Senha incorreta</p>
+              <Form {...registroForm}>
+                <form onSubmit={registroForm.handleSubmit(salvarEdicao)} className="space-y-4">
+                  <FormField
+                    control={registroForm.control}
+                    name="produtoNome"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome do Produto</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
+                  />
+                  
+                  <FormField
+                    control={registroForm.control}
+                    name="formasProducidas"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Formas produzidas</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={registroForm.control}
+                    name="observacoes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Observações</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Observações sobre esta produção" 
+                            className="resize-none" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setDialogAberta(false)}>Cancelar</Button>
-                    <Button onClick={validarSenha}>Validar</Button>
+                    <Button type="button" variant="outline" onClick={() => setDialogAberta(false)}>Cancelar</Button>
+                    <Button type="submit">Salvar alterações</Button>
                   </DialogFooter>
-                </div>
-              ) : (
-                <Form {...editarForm}>
-                  <form onSubmit={editarForm.handleSubmit(salvarEdicao)} className="space-y-4">
-                    <FormField
-                      control={editarForm.control}
-                      name="formasProducidas"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Formas produzidas</FormLabel>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Dialog para criar */}
+          <Dialog open={dialogCriarAberta} onOpenChange={setDialogCriarAberta}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Novo Registro de Produção</DialogTitle>
+                <DialogDescription>
+                  Crie um novo registro de produção.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <Form {...registroForm}>
+                <form onSubmit={registroForm.handleSubmit(criarRegistro)} className="space-y-4">
+                  <FormField
+                    control={registroForm.control}
+                    name="produtoNome"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome do Produto</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={registroForm.control}
+                    name="formasProducidas"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Formas produzidas</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={registroForm.control}
+                    name="turno"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Turno</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <Input 
-                              type="number" 
-                              {...field} 
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                            />
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um turno" />
+                            </SelectTrigger>
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={editarForm.control}
-                      name="observacoes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Observações</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Observações sobre esta produção" 
-                              className="resize-none" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setDialogAberta(false)}>Cancelar</Button>
-                      <Button type="submit">Salvar alterações</Button>
-                    </DialogFooter>
-                  </form>
-                </Form>
-              )}
+                          <SelectContent>
+                            <SelectItem value="Matutino">Matutino</SelectItem>
+                            <SelectItem value="Vespertino">Vespertino</SelectItem>
+                            <SelectItem value="Noturno">Noturno</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={registroForm.control}
+                    name="observacoes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Observações</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Observações sobre esta produção" 
+                            className="resize-none" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setDialogCriarAberta(false)}>Cancelar</Button>
+                    <Button type="submit">Criar registro</Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Dialog para confirmar exclusão */}
+          <Dialog open={dialogExcluirAberta} onOpenChange={setDialogExcluirAberta}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Confirmar Exclusão</DialogTitle>
+                <DialogDescription>
+                  Tem certeza que deseja excluir este registro de produção? Esta ação não pode ser desfeita.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDialogExcluirAberta(false)}>Cancelar</Button>
+                <Button variant="destructive" onClick={excluirRegistro}>Excluir</Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </CardContent>

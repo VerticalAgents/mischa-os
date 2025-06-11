@@ -16,15 +16,17 @@ import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import EditarProdutoModal from "./EditarProdutoModal";
 import CriarProdutoModal from "./CriarProdutoModal";
-import { Edit, Plus, Search, Trash2 } from "lucide-react";
+import { Edit, Plus, Search, Trash2, Copy } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProdutosTab() {
-  const { produtos, loading, carregarProdutos, removerProduto } = useSupabaseProdutos();
+  const { produtos, loading, carregarProdutos, removerProduto, duplicarProduto } = useSupabaseProdutos();
   const { categorias } = useSupabaseCategoriasProduto();
   const [filtro, setFiltro] = useState("");
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
   const [modalCriarAberto, setModalCriarAberto] = useState(false);
+  const { toast } = useToast();
 
   const produtosFiltrados = produtos.filter(produto =>
     produto.nome.toLowerCase().includes(filtro.toLowerCase())
@@ -44,6 +46,23 @@ export default function ProdutosTab() {
   const handleRemoverProduto = async (produtoId: string) => {
     if (confirm("Tem certeza que deseja remover este produto?")) {
       await removerProduto(produtoId);
+    }
+  };
+
+  const handleDuplicarProduto = async (produto: any) => {
+    try {
+      await duplicarProduto(produto);
+      toast({
+        title: "Produto duplicado",
+        description: "Produto duplicado com sucesso como ativo",
+      });
+      carregarProdutos();
+    } catch (error) {
+      toast({
+        title: "Erro ao duplicar",
+        description: "Não foi possível duplicar o produto",
+        variant: "destructive",
+      });
     }
   };
 
@@ -128,6 +147,14 @@ export default function ProdutosTab() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDuplicarProduto(produto)}
+                              title="Duplicar produto"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"

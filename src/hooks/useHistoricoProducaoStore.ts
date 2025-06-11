@@ -9,6 +9,7 @@ interface HistoricoProducaoStore {
   // Actions
   adicionarRegistroHistorico: (registro: Omit<HistoricoProducao, 'id'>) => void;
   editarRegistroHistorico: (id: number, dadosAtualizados: Partial<HistoricoProducao>) => void;
+  removerRegistroHistorico: (id: number) => void;
   obterHistoricoPorPeriodo: (dataInicio: Date, dataFim: Date) => HistoricoProducao[];
   obterHistoricoPorProduto: (produtoNome: string) => HistoricoProducao[];
 }
@@ -56,6 +57,10 @@ export const useHistoricoProducaoStore = create<HistoricoProducaoStore>()(
       if (index !== -1) {
         Object.assign(state.historico[index], dadosAtualizados);
       }
+    }),
+
+    removerRegistroHistorico: (id) => set(state => {
+      state.historico = state.historico.filter(h => h.id !== id);
     }),
     
     obterHistoricoPorPeriodo: (dataInicio, dataFim) => {

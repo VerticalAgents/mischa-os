@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -24,6 +25,11 @@ export default function Clientes() {
     clienteAtual,
     selecionarCliente
   } = useClienteStore();
+
+  // Clear selected client when component mounts to always show list view
+  useEffect(() => {
+    selecionarCliente(null);
+  }, [selecionarCliente]);
 
   // Carregar clientes ao montar o componente
   useEffect(() => {

@@ -10,13 +10,8 @@ export const useRoutePersistence = () => {
   const hasRestoredRef = useRef(false);
   const isInitialMount = useRef(true);
 
-  // Salva a rota atual no localStorage sempre que a rota muda (exceto na primeira montagem)
+  // Salva a rota atual no localStorage sempre que a rota muda
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return; // Não salvar na primeira montagem para não sobrescrever a rota salva
-    }
-    
     // Não salvar rotas de autenticação
     if (location.pathname !== '/auth' && location.pathname !== '/login') {
       console.log('🔄 Salvando rota atual:', location.pathname);
