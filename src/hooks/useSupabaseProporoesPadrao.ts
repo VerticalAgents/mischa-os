@@ -123,24 +123,39 @@ export const useSupabaseProporoesPadrao = () => {
         return false;
       }
 
-      const { error } = await supabase
-        .from('proporcoes_padrao')
-        .upsert(
-          novasProporcoes.map(p => ({
-            produto_id: p.produto_id,
-            percentual: p.percentual,
-            ativo: true
-          }))
-        );
+      // Processar cada proporção individualmente
+      for (const proporcao of novasProporcoes) {
+        const proporcaoExistente = proporcoes.find(p => p.produto_id === proporcao.produto_id);
+        
+        if (proporcaoExistente && proporcaoExistente.id) {
+          // Atualizar registro existente
+          const { error } = await supabase
+            .from('proporcoes_padrao')
+            .update({
+              percentual: proporcao.percentual,
+              ativo: true
+            })
+            .eq('id', proporcaoExistente.id);
 
-      if (error) {
-        console.error('Erro ao salvar proporções:', error);
-        toast({
-          title: "Erro ao salvar proporções",
-          description: error.message,
-          variant: "destructive"
-        });
-        return false;
+          if (error) {
+            console.error('Erro ao atualizar proporção existente:', error);
+            throw error;
+          }
+        } else {
+          // Criar novo registro
+          const { error } = await supabase
+            .from('proporcoes_padrao')
+            .insert({
+              produto_id: proporcao.produto_id,
+              percentual: proporcao.percentual,
+              ativo: true
+            });
+
+          if (error) {
+            console.error('Erro ao criar nova proporção:', error);
+            throw error;
+          }
+        }
       }
 
       toast({
@@ -152,6 +167,11 @@ export const useSupabaseProporoesPadrao = () => {
       return true;
     } catch (error) {
       console.error('Erro ao salvar proporções:', error);
+      toast({
+        title: "Erro ao salvar proporções",
+        description: "Ocorreu um erro ao salvar as proporções",
+        variant: "destructive"
+      });
       return false;
     }
   };
