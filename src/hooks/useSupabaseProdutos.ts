@@ -54,7 +54,7 @@ export const useSupabaseProdutos = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('produtos')
+        .from('produtos_finais')
         .select('*')
         .order('nome');
 
@@ -72,6 +72,8 @@ export const useSupabaseProdutos = () => {
         peso_unitario: produto.peso_unitario ? Number(produto.peso_unitario) : undefined,
         custo_total: produto.custo_total ? Number(produto.custo_total) : undefined,
         subcategoria_id: produto.subcategoria_id || undefined,
+        estoque_atual: produto.estoque_atual || 0,
+        estoque_minimo: produto.estoque_minimo || 0,
       })) || [];
 
       setProdutos(produtosFormatados);
@@ -85,7 +87,7 @@ export const useSupabaseProdutos = () => {
   const adicionarProduto = async (dadosProduto: ProdutoInput) => {
     try {
       const { data, error } = await supabase
-        .from('produtos')
+        .from('produtos_finais')
         .insert(dadosProduto)
         .select()
         .single();
@@ -121,7 +123,7 @@ export const useSupabaseProdutos = () => {
   const atualizarProduto = async (id: string, dadosAtualizados: Partial<ProdutoInput>) => {
     try {
       const { error } = await supabase
-        .from('produtos')
+        .from('produtos_finais')
         .update(dadosAtualizados)
         .eq('id', id);
 
@@ -233,7 +235,7 @@ export const useSupabaseProdutos = () => {
   const removerProduto = async (produtoId: string) => {
     try {
       const { error } = await supabase
-        .from('produtos')
+        .from('produtos_finais')
         .delete()
         .eq('id', produtoId);
 
@@ -251,7 +253,7 @@ export const useSupabaseProdutos = () => {
 
   const duplicarProduto = async (produto: Produto) => {
     try {
-      // Primeiro, vamos buscar os componentes do produto original
+      // Primeiro, vamos buscar os componentes do produto original se existirem
       const { data: componentes, error: componentesError } = await supabase
         .from('componentes_produto')
         .select('*')
@@ -259,7 +261,7 @@ export const useSupabaseProdutos = () => {
 
       if (componentesError) {
         console.error('Erro ao buscar componentes:', componentesError);
-        throw componentesError;
+        // Não falhar por causa dos componentes
       }
 
       // Criar o produto duplicado
@@ -279,7 +281,7 @@ export const useSupabaseProdutos = () => {
       };
 
       const { data: novoProduto, error: produtoError } = await supabase
-        .from('produtos')
+        .from('produtos_finais')
         .insert(produtoDuplicado)
         .select()
         .single();

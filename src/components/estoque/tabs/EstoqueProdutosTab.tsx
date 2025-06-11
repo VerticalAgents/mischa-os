@@ -138,7 +138,7 @@ export default function EstoqueProdutosTab() {
 
     try {
       const { error } = await supabase
-        .from('produtos')
+        .from('produtos_finais')
         .update({ estoque_atual: values.estoque_atual })
         .eq('id', produtoSelecionado.id);
 
@@ -194,7 +194,7 @@ export default function EstoqueProdutosTab() {
       // Atualizar estoque atual
       const novoEstoque = (produtoSelecionado.estoque_atual || 0) + values.quantidade;
       const { error: updateError } = await supabase
-        .from('produtos')
+        .from('produtos_finais')
         .update({ estoque_atual: novoEstoque })
         .eq('id', produtoSelecionado.id);
 
@@ -229,7 +229,7 @@ export default function EstoqueProdutosTab() {
 
     try {
       const { error } = await supabase
-        .from('produtos')
+        .from('produtos_finais')
         .update({
           estoque_minimo: values.estoque_minimo,
         })
