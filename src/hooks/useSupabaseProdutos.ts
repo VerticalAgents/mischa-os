@@ -30,6 +30,22 @@ export interface ProdutoCompleto extends Produto {
   }[];
 }
 
+type ProdutoInput = {
+  nome: string;
+  categoria_id?: number;
+  descricao?: string;
+  unidades_producao?: number;
+  custo_unitario?: number;
+  preco_venda?: number;
+  margem_lucro?: number;
+  ativo?: boolean;
+  estoque_atual?: number;
+  estoque_minimo?: number;
+  peso_unitario?: number;
+  custo_total?: number;
+  subcategoria_id?: number;
+};
+
 export const useSupabaseProdutos = () => {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +82,7 @@ export const useSupabaseProdutos = () => {
     }
   };
 
-  const adicionarProduto = async (dadosProduto: Partial<Produto>) => {
+  const adicionarProduto = async (dadosProduto: ProdutoInput) => {
     try {
       const { data, error } = await supabase
         .from('produtos')
@@ -102,7 +118,7 @@ export const useSupabaseProdutos = () => {
     }
   };
 
-  const atualizarProduto = async (id: string, dadosAtualizados: Partial<Produto>) => {
+  const atualizarProduto = async (id: string, dadosAtualizados: Partial<ProdutoInput>) => {
     try {
       const { error } = await supabase
         .from('produtos')
@@ -247,7 +263,7 @@ export const useSupabaseProdutos = () => {
       }
 
       // Criar o produto duplicado
-      const produtoDuplicado = {
+      const produtoDuplicado: ProdutoInput = {
         nome: `${produto.nome} (Cópia)`,
         categoria_id: produto.categoria_id,
         descricao: produto.descricao,

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { Button } from "@/components/ui/button";
@@ -61,7 +62,6 @@ const entradaManualSchema = z.object({
 
 const configurarEstoqueSchema = z.object({
   estoque_minimo: z.number().min(0, "Estoque mínimo deve ser maior ou igual a zero"),
-  estoque_ideal: z.number().min(0, "Estoque ideal deve ser maior ou igual a zero"),
 });
 
 type AjusteEstoqueFormValues = z.infer<typeof ajusteEstoqueSchema>;
@@ -69,7 +69,7 @@ type EntradaManualFormValues = z.infer<typeof entradaManualSchema>;
 type ConfigurarEstoqueFormValues = z.infer<typeof configurarEstoqueSchema>;
 
 export default function EstoqueProdutosTab() {
-  const { produtos, loading, carregarProdutos, atualizarProduto } = useSupabaseProdutos();
+  const { produtos, loading, carregarProdutos } = useSupabaseProdutos();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAjusteOpen, setIsAjusteOpen] = useState(false);
   const [isEntradaManualOpen, setIsEntradaManualOpen] = useState(false);
@@ -95,7 +95,6 @@ export default function EstoqueProdutosTab() {
     resolver: zodResolver(configurarEstoqueSchema),
     defaultValues: {
       estoque_minimo: 0,
-      estoque_ideal: 0,
     },
   });
 
@@ -130,7 +129,6 @@ export default function EstoqueProdutosTab() {
     setProdutoSelecionado(produto);
     configurarForm.reset({
       estoque_minimo: produto.estoque_minimo || 0,
-      estoque_ideal: produto.estoque_ideal || 0,
     });
     setIsConfigurarEstoqueOpen(true);
   };
@@ -140,7 +138,7 @@ export default function EstoqueProdutosTab() {
 
     try {
       const { error } = await supabase
-        .from('produtos_finais')
+        .from('produtos')
         .update({ estoque_atual: values.estoque_atual })
         .eq('id', produtoSelecionado.id);
 
@@ -196,7 +194,7 @@ export default function EstoqueProdutosTab() {
       // Atualizar estoque atual
       const novoEstoque = (produtoSelecionado.estoque_atual || 0) + values.quantidade;
       const { error: updateError } = await supabase
-        .from('produtos_finais')
+        .from('produtos')
         .update({ estoque_atual: novoEstoque })
         .eq('id', produtoSelecionado.id);
 
@@ -231,10 +229,9 @@ export default function EstoqueProdutosTab() {
 
     try {
       const { error } = await supabase
-        .from('produtos_finais')
+        .from('produtos')
         .update({
           estoque_minimo: values.estoque_minimo,
-          estoque_ideal: values.estoque_ideal,
         })
         .eq('id', produtoSelecionado.id);
 
@@ -346,20 +343,19 @@ export default function EstoqueProdutosTab() {
                 <TableHead>Peso Unitário</TableHead>
                 <TableHead className="text-center">Estoque Atual</TableHead>
                 <TableHead className="text-center">Est. Mínimo</TableHead>
-                <TableHead className="text-center">Est. Ideal</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={5} className="text-center py-8">
                     Carregando...
                   </TableCell>
                 </TableRow>
               ) : produtosFiltrados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={5} className="text-center py-8">
                     Nenhum produto encontrado
                   </TableCell>
                 </TableRow>
@@ -407,9 +403,6 @@ export default function EstoqueProdutosTab() {
                       </TableCell>
                       <TableCell className="text-center">
                         {produto.estoque_minimo || 0}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {produto.estoque_ideal || 0}
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-2">
@@ -574,25 +567,6 @@ export default function EstoqueProdutosTab() {
                         type="number"
                         min="0"
                         placeholder="Ex: 10"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={configurarForm.control}
-                name="estoque_ideal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estoque Ideal</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="Ex: 50"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
