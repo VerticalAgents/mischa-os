@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -81,6 +80,78 @@ export const useSupabaseProdutos = () => {
       console.error('Erro ao carregar produtos:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const carregarProdutoCompleto = async (produtoId: string): Promise<ProdutoCompleto | null> => {
+    try {
+      // Buscar o produto
+      const { data: produto, error: produtoError } = await supabase
+        .from('produtos_finais')
+        .select('*')
+        .eq('id', produtoId)
+        .single();
+
+      if (produtoError) {
+        console.error('Erro ao carregar produto:', produtoError);
+        return null;
+      }
+
+      // Buscar os componentes do produto
+      const { data: componentes, error: componentesError } = await supabase
+        .from('componentes_produto')
+        .select(`
+          id,
+          tipo,
+          quantidade,
+          insumos:item_id!inner(nome, custo_medio),
+          receitas:item_id!inner(nome)
+        `)
+        .eq('produto_id', produtoId);
+
+      if (componentesError) {
+        console.error('Erro ao carregar componentes:', componentesError);
+      }
+
+      // Formatar os componentes
+      const componentesFormatados = componentes?.map(comp => {
+        let nomeItem = '';
+        let custoItem = 0;
+
+        if (comp.tipo === 'insumo' && comp.insumos) {
+          nomeItem = comp.insumos.nome;
+          custoItem = Number(comp.insumos.custo_medio || 0) * Number(comp.quantidade);
+        } else if (comp.tipo === 'receita' && comp.receitas) {
+          nomeItem = comp.receitas.nome;
+          // Para receitas, você pode calcular o custo baseado nos insumos da receita
+          custoItem = 0; // Implementar cálculo se necessário
+        }
+
+        return {
+          id: comp.id,
+          tipo: comp.tipo,
+          nome_item: nomeItem,
+          quantidade: Number(comp.quantidade),
+          custo_item: custoItem
+        };
+      }) || [];
+
+      return {
+        ...produto,
+        custo_unitario: Number(produto.custo_unitario || 0),
+        preco_venda: produto.preco_venda ? Number(produto.preco_venda) : undefined,
+        margem_lucro: Number(produto.margem_lucro || 0),
+        unidades_producao: produto.unidades_producao || 1,
+        peso_unitario: produto.peso_unitario ? Number(produto.peso_unitario) : undefined,
+        custo_total: produto.custo_total ? Number(produto.custo_total) : undefined,
+        subcategoria_id: produto.subcategoria_id || undefined,
+        estoque_atual: produto.estoque_atual || 0,
+        estoque_minimo: produto.estoque_minimo || 0,
+        componentes: componentesFormatados
+      };
+    } catch (error) {
+      console.error('Erro ao carregar produto completo:', error);
+      return null;
     }
   };
 
@@ -325,6 +396,7 @@ export const useSupabaseProdutos = () => {
     produtos,
     loading,
     carregarProdutos,
+    carregarProdutoCompleto,
     adicionarProduto,
     atualizarProduto,
     removerProduto,

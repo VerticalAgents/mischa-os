@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
+import { useSupabaseProdutos, ProdutoCompleto } from "@/hooks/useSupabaseProdutos";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import EditarProdutoModal from "./EditarProdutoModal";
 import CriarProdutoModal from "./CriarProdutoModal";
@@ -20,12 +20,13 @@ import { Edit, Plus, Search, Trash2, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ProdutosTab() {
-  const { produtos, loading, carregarProdutos, removerProduto, duplicarProduto } = useSupabaseProdutos();
+  const { produtos, loading, carregarProdutos, carregarProdutoCompleto, removerProduto, duplicarProduto } = useSupabaseProdutos();
   const { categorias } = useSupabaseCategoriasProduto();
   const [filtro, setFiltro] = useState("");
-  const [produtoSelecionado, setProdutoSelecionado] = useState(null);
+  const [produtoSelecionado, setProdutoSelecionado] = useState<ProdutoCompleto | null>(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
   const [modalCriarAberto, setModalCriarAberto] = useState(false);
+  const [loadingProdutoCompleto, setLoadingProdutoCompleto] = useState(false);
   const { toast } = useToast();
 
   const produtosFiltrados = produtos.filter(produto =>
@@ -38,9 +39,30 @@ export default function ProdutosTab() {
     return categoria?.nome || "Categoria não encontrada";
   };
 
-  const handleEditarProduto = (produto: any) => {
-    setProdutoSelecionado(produto);
-    setModalEditarAberto(true);
+  const handleEditarProduto = async (produto: any) => {
+    setLoadingProdutoCompleto(true);
+    try {
+      const produtoCompleto = await carregarProdutoCompleto(produto.id);
+      if (produtoCompleto) {
+        setProdutoSelecionado(produtoCompleto);
+        setModalEditarAberto(true);
+      } else {
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os dados do produto",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar produto completo:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados do produto",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingProdutoCompleto(false);
+    }
   };
 
   const handleRemoverProduto = async (produtoId: string) => {
@@ -62,6 +84,18 @@ export default function ProdutosTab() {
         title: "Erro ao duplicar",
         description: "Não foi possível duplicar o produto",
         variant: "destructive",
+      });
+    }
+  };
+
+  const handleModalSuccess = () => {
+    carregarProdutos();
+    // Recarregar o produto selecionado se o modal estiver aberto
+    if (produtoSelecionado && modalEditarAberto) {
+      carregarProdutoCompleto(produtoSelecionado.id).then(produtoAtualizado => {
+        if (produtoAtualizado) {
+          setProdutoSelecionado(produtoAtualizado);
+        }
       });
     }
   };
@@ -159,6 +193,7 @@ export default function ProdutosTab() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleEditarProduto(produto)}
+                              disabled={loadingProdutoCompleto}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -189,7 +224,7 @@ export default function ProdutosTab() {
           setModalEditarAberto(false);
           setProdutoSelecionado(null);
         }}
-        onSuccess={carregarProdutos}
+        onSuccess={handleModalSuccess}
       />
 
       {/* Modal Criar Produto */}

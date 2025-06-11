@@ -177,11 +177,12 @@ export default function EditarProdutoModal({
     return tipo === 'receita' ? receitas : insumos;
   };
 
-  const getItemNome = (itemId: string, tipo: 'receita' | 'insumo') => {
-    const itens = getItensDisponiveis(tipo);
-    const item = itens.find(i => i.id === itemId);
-    return item?.nome || "Item não encontrado";
-  };
+  // Verificar se produto e componentes existem antes de renderizar
+  if (!produto) {
+    return null;
+  }
+
+  const componentes = produto.componentes || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -441,23 +442,31 @@ export default function EditarProdutoModal({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {produto?.componentes.map((componente) => (
-                  <TableRow key={componente.id}>
-                    <TableCell className="capitalize">{componente.tipo}</TableCell>
-                    <TableCell>{componente.nome_item}</TableCell>
-                    <TableCell>{componente.quantidade}</TableCell>
-                    <TableCell>R$ {componente.custo_item.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRemoverComponente(componente.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                {componentes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-gray-500">
+                      Nenhum componente adicionado
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  componentes.map((componente) => (
+                    <TableRow key={componente.id}>
+                      <TableCell className="capitalize">{componente.tipo}</TableCell>
+                      <TableCell>{componente.nome_item}</TableCell>
+                      <TableCell>{componente.quantidade}</TableCell>
+                      <TableCell>R$ {componente.custo_item.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRemoverComponente(componente.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
