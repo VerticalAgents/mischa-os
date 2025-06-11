@@ -34,11 +34,36 @@ export default function ProporcoesTab() {
   const totalPercentual = Object.values(proporcoes).reduce((sum, value) => sum + (value || 0), 0);
 
   const handleProporçãoChange = (produtoId: string, valor: string) => {
+    // Permitir valores vazios durante a edição
+    if (valor === '') {
+      setProporcoes(prev => ({
+        ...prev,
+        [produtoId]: 0
+      }));
+      return;
+    }
+
     const valorNumerico = parseInt(valor) || 0;
+    
+    // Permitir qualquer valor durante a edição, sem validação de limite
+    // A validação será feita apenas no salvamento
     setProporcoes(prev => ({
       ...prev,
       [produtoId]: valorNumerico
     }));
+  };
+
+  const handleRemoverProduto = (produtoId: string) => {
+    setProporcoes(prev => {
+      const novasProporcoes = { ...prev };
+      delete novasProporcoes[produtoId];
+      return novasProporcoes;
+    });
+    
+    toast({
+      title: "Produto removido",
+      description: "Produto removido das proporções."
+    });
   };
 
   const salvarConfiguracoes = async () => {
@@ -51,7 +76,15 @@ export default function ProporcoesTab() {
       return;
     }
 
-    const sucesso = await salvarConfiguracao('proporcoes-padrao', proporcoes);
+    // Filtrar apenas produtos com valor maior que 0
+    const proporcoesLimpas = Object.entries(proporcoes)
+      .filter(([_, valor]) => valor > 0)
+      .reduce((acc, [produtoId, valor]) => {
+        acc[produtoId] = valor;
+        return acc;
+      }, {} as ProporcoesConfig);
+
+    const sucesso = await salvarConfiguracao('proporcoes-padrao', proporcoesLimpas);
     
     if (sucesso) {
       toast({
@@ -128,6 +161,14 @@ export default function ProporcoesTab() {
                         </span>
                       </div>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRemoverProduto(produto.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Remover
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -151,7 +192,7 @@ export default function ProporcoesTab() {
                     onClick={limparConfiguracoes}
                     disabled={loading}
                   >
-                    Limpar
+                    Limpar Tudo
                   </Button>
                   <Button 
                     onClick={salvarConfiguracoes}
@@ -169,6 +210,15 @@ export default function ProporcoesTab() {
                       ? `O total está ${totalPercentual - 100}% acima de 100%.`
                       : `Faltam ${100 - totalPercentual}% para completar 100%.`
                     }
+                    {totalPercentual < 100 && " Você pode continuar editando e salvar quando atingir exatamente 100%."}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {totalPercentual === 100 && (
+                <Alert>
+                  <AlertDescription>
+                    ✅ Proporções configuradas corretamente. Clique em "Salvar Configurações" para confirmar.
                   </AlertDescription>
                 </Alert>
               )}
