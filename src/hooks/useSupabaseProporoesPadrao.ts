@@ -19,40 +19,65 @@ export const useSupabaseProporoesPadrao = () => {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
-        .from('proporcoes_padrao')
-        .select(`
-          id,
-          produto_id,
-          percentual,
-          ativo,
-          produtos_finais!inner(nome, ativo)
-        `)
+      // Primeiro, buscar todos os produtos ativos
+      const { data: produtos, error: produtosError } = await supabase
+        .from('produtos_finais')
+        .select('id, nome')
         .eq('ativo', true)
-        .eq('produtos_finais.ativo', true)
-        .order('produtos_finais.nome');
+        .order('nome');
 
-      if (error) {
-        console.error('Erro ao carregar proporções:', error);
+      if (produtosError) {
+        console.error('Erro ao carregar produtos:', produtosError);
         toast({
-          title: "Erro ao carregar proporções",
-          description: error.message,
+          title: "Erro ao carregar produtos",
+          description: produtosError.message,
           variant: "destructive"
         });
         return;
       }
 
-      const proporcoesFormatadas = data?.map(item => ({
-        id: item.id,
-        produto_id: item.produto_id,
-        produto_nome: (item.produtos_finais as any)?.nome || '',
-        percentual: Number(item.percentual),
-        ativo: item.ativo
-      })) || [];
+      if (!produtos || produtos.length === 0) {
+        console.log('Nenhum produto ativo encontrado');
+        setProporcoes([]);
+        return;
+      }
+
+      // Buscar proporções existentes
+      const { data: proporcoesExistentes, error: proporcoesError } = await supabase
+        .from('proporcoes_padrao')
+        .select('id, produto_id, percentual, ativo')
+        .eq('ativo', true);
+
+      if (proporcoesError) {
+        console.error('Erro ao carregar proporções:', proporcoesError);
+        toast({
+          title: "Erro ao carregar proporções",
+          description: proporcoesError.message,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Combinar produtos com suas proporções (ou 0 se não existir)
+      const proporcoesFormatadas = produtos.map(produto => {
+        const proporcaoExistente = proporcoesExistentes?.find(p => p.produto_id === produto.id);
+        return {
+          id: proporcaoExistente?.id || '',
+          produto_id: produto.id,
+          produto_nome: produto.nome,
+          percentual: proporcaoExistente?.percentual ? Number(proporcaoExistente.percentual) : 0,
+          ativo: proporcaoExistente?.ativo || true
+        };
+      });
 
       setProporcoes(proporcoesFormatadas);
     } catch (error) {
       console.error('Erro ao carregar proporções:', error);
+      toast({
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao carregar as proporções",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
