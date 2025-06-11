@@ -1,6 +1,5 @@
 
-import { useConfiguracoesStore } from "./useConfiguracoesStore";
-import { useSupabaseProdutos } from "./useSupabaseProdutos";
+import { useSupabaseProporoesPadrao } from "./useSupabaseProporoesPadrao";
 
 interface ProporcoesConfig {
   [produtoId: string]: number;
@@ -12,74 +11,27 @@ interface ProdutoQuantidade {
 }
 
 export const useProporoesPadrao = () => {
-  const { obterConfiguracao } = useConfiguracoesStore();
-  const { produtos } = useSupabaseProdutos();
+  const { proporcoes, obterProporcoesParaPedido } = useSupabaseProporoesPadrao();
 
   const obterProporcoes = (): ProporcoesConfig => {
-    return obterConfiguracao('proporcoes-padrao') || {};
+    const config: ProporcoesConfig = {};
+    proporcoes.forEach(proporcao => {
+      config[proporcao.produto_id] = proporcao.percentual;
+    });
+    return config;
   };
 
-  const calcularQuantidadesPorProporcao = (quantidadeTotal: number): ProdutoQuantidade[] => {
-    const proporcoes = obterProporcoes();
-    const produtosAtivos = produtos.filter(p => p.ativo);
-    
-    if (Object.keys(proporcoes).length === 0) {
-      return [];
-    }
-
-    // Verificar se as proporções somam 100%
-    const totalProporcoes = Object.values(proporcoes).reduce((sum, val) => sum + val, 0);
-    if (totalProporcoes !== 100) {
-      return [];
-    }
-
-    // Calcular quantidades usando Math.floor
-    const quantidades: { [produtoId: string]: number } = {};
-    let totalCalculado = 0;
-
-    // Primeiro passo: calcular com Math.floor
-    produtosAtivos.forEach(produto => {
-      const proporcao = proporcoes[produto.id] || 0;
-      if (proporcao > 0) {
-        const quantidade = Math.floor((proporcao / 100) * quantidadeTotal);
-        quantidades[produto.id] = quantidade;
-        totalCalculado += quantidade;
-      }
-    });
-
-    // Segundo passo: distribuir o residual para o produto com maior proporção
-    const residual = quantidadeTotal - totalCalculado;
-    if (residual > 0) {
-      // Encontrar o produto com maior proporção
-      let maiorProporcao = 0;
-      let produtoMaiorProporcao = '';
-      
-      produtosAtivos.forEach(produto => {
-        const proporcao = proporcoes[produto.id] || 0;
-        if (proporcao > maiorProporcao) {
-          maiorProporcao = proporcao;
-          produtoMaiorProporcao = produto.id;
-        }
-      });
-
-      if (produtoMaiorProporcao) {
-        quantidades[produtoMaiorProporcao] += residual;
-      }
-    }
-
-    // Converter para array de resultado
-    return produtosAtivos
-      .filter(produto => quantidades[produto.id] > 0)
-      .map(produto => ({
-        produto: produto.nome,
-        quantidade: quantidades[produto.id]
-      }));
+  const calcularQuantidadesPorProporcao = async (quantidadeTotal: number): Promise<ProdutoQuantidade[]> => {
+    const resultados = await obterProporcoesParaPedido(quantidadeTotal);
+    return resultados.map(item => ({
+      produto: item.produto_nome,
+      quantidade: item.quantidade
+    }));
   };
 
   const temProporcoesConfiguradas = (): boolean => {
-    const proporcoes = obterProporcoes();
-    const totalProporcoes = Object.values(proporcoes).reduce((sum, val) => sum + val, 0);
-    return totalProporcoes === 100;
+    const totalProporcoes = proporcoes.reduce((sum, p) => sum + p.percentual, 0);
+    return Math.abs(totalProporcoes - 100) < 0.01;
   };
 
   return {

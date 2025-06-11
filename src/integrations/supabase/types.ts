@@ -668,6 +668,41 @@ export type Database = {
         }
         Relationships: []
       }
+      proporcoes_padrao: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          percentual: number
+          produto_id: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          percentual: number
+          produto_id: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          percentual?: number
+          produto_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proporcoes_padrao_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: true
+            referencedRelation: "produtos_finais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receitas_base: {
         Row: {
           created_at: string
