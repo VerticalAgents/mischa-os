@@ -188,21 +188,30 @@ export default function AgendamentoEditModal({
 
   // Atualizar produtos com quantidades quando o tipo for "Alterado"
   useEffect(() => {
-    if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0 && produtosQuantidades.length === 0) {
-      const produtosIniciais = produtosFiltrados.map(produto => ({
-        produto: produto.nome,
-        quantidade: 0
-      }));
-      setProdutosQuantidades(produtosIniciais);
-    } else if (tipoPedido === 'Padrão') {
-      // Para pedidos padrão, calcular automaticamente as quantidades
-      if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
-        const quantidadesCalculadas = calcularQuantidadesPorProporcao(quantidadeTotal);
-        setProdutosQuantidades(quantidadesCalculadas);
-      } else {
-        setProdutosQuantidades([]);
+    const atualizarProdutosQuantidades = async () => {
+      if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0 && produtosQuantidades.length === 0) {
+        const produtosIniciais = produtosFiltrados.map(produto => ({
+          produto: produto.nome,
+          quantidade: 0
+        }));
+        setProdutosQuantidades(produtosIniciais);
+      } else if (tipoPedido === 'Padrão') {
+        // Para pedidos padrão, calcular automaticamente as quantidades
+        if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
+          try {
+            const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
+            setProdutosQuantidades(quantidadesCalculadas);
+          } catch (error) {
+            console.error('Erro ao calcular quantidades por proporção:', error);
+            setProdutosQuantidades([]);
+          }
+        } else {
+          setProdutosQuantidades([]);
+        }
       }
-    }
+    };
+
+    atualizarProdutosQuantidades();
   }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length, quantidadeTotal, calcularQuantidadesPorProporcao, temProporcoesConfiguradas]);
 
   // Atualizar quantidade de um produto específico
