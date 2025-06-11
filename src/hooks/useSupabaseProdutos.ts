@@ -17,7 +17,6 @@ interface Produto {
   estoque_minimo?: number;
   peso_unitario?: number;
   custo_total?: number;
-  estoque_ideal?: number;
   subcategoria_id?: number;
 }
 
@@ -56,7 +55,6 @@ export const useSupabaseProdutos = () => {
         unidades_producao: produto.unidades_producao || 1,
         peso_unitario: produto.peso_unitario ? Number(produto.peso_unitario) : undefined,
         custo_total: produto.custo_total ? Number(produto.custo_total) : undefined,
-        estoque_ideal: produto.estoque_ideal || 0,
         subcategoria_id: produto.subcategoria_id || undefined,
       })) || [];
 
@@ -72,7 +70,7 @@ export const useSupabaseProdutos = () => {
     try {
       const { data, error } = await supabase
         .from('produtos')
-        .insert([dadosProduto])
+        .insert(dadosProduto)
         .select()
         .single();
 
@@ -258,17 +256,15 @@ export const useSupabaseProdutos = () => {
         preco_venda: produto.preco_venda,
         margem_lucro: produto.margem_lucro,
         ativo: true, // Sempre ativo por padrão
-        estoque_atual: 0, // Resetar estoque
         estoque_minimo: produto.estoque_minimo || 0,
         peso_unitario: produto.peso_unitario,
         custo_total: produto.custo_total,
-        estoque_ideal: produto.estoque_ideal,
         subcategoria_id: produto.subcategoria_id,
       };
 
       const { data: novoProduto, error: produtoError } = await supabase
         .from('produtos')
-        .insert([produtoDuplicado])
+        .insert(produtoDuplicado)
         .select()
         .single();
 
