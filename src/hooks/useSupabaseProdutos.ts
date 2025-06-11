@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -97,44 +98,60 @@ export const useSupabaseProdutos = () => {
         return null;
       }
 
-      // Buscar os componentes do produto
+      // Buscar os componentes do produto de forma separada
       const { data: componentes, error: componentesError } = await supabase
         .from('componentes_produto')
-        .select(`
-          id,
-          tipo,
-          quantidade,
-          insumos:item_id!inner(nome, custo_medio),
-          receitas:item_id!inner(nome)
-        `)
+        .select('*')
         .eq('produto_id', produtoId);
 
       if (componentesError) {
         console.error('Erro ao carregar componentes:', componentesError);
       }
 
-      // Formatar os componentes
-      const componentesFormatados = componentes?.map(comp => {
-        let nomeItem = '';
-        let custoItem = 0;
+      // Formatar os componentes buscando informações dos insumos e receitas separadamente
+      const componentesFormatados = [];
+      
+      if (componentes && componentes.length > 0) {
+        for (const comp of componentes) {
+          let nomeItem = '';
+          let custoItem = 0;
 
-        if (comp.tipo === 'insumo' && comp.insumos) {
-          nomeItem = comp.insumos.nome;
-          custoItem = Number(comp.insumos.custo_medio || 0) * Number(comp.quantidade);
-        } else if (comp.tipo === 'receita' && comp.receitas) {
-          nomeItem = comp.receitas.nome;
-          // Para receitas, você pode calcular o custo baseado nos insumos da receita
-          custoItem = 0; // Implementar cálculo se necessário
+          if (comp.tipo === 'insumo') {
+            // Buscar dados do insumo
+            const { data: insumo } = await supabase
+              .from('insumos')
+              .select('nome, custo_medio')
+              .eq('id', comp.item_id)
+              .single();
+
+            if (insumo) {
+              nomeItem = insumo.nome;
+              custoItem = Number(insumo.custo_medio || 0) * Number(comp.quantidade);
+            }
+          } else if (comp.tipo === 'receita') {
+            // Buscar dados da receita
+            const { data: receita } = await supabase
+              .from('receitas_base')
+              .select('nome')
+              .eq('id', comp.item_id)
+              .single();
+
+            if (receita) {
+              nomeItem = receita.nome;
+              // Para receitas, você pode calcular o custo baseado nos insumos da receita
+              custoItem = 0; // Implementar cálculo se necessário
+            }
+          }
+
+          componentesFormatados.push({
+            id: comp.id,
+            tipo: comp.tipo as 'receita' | 'insumo',
+            nome_item: nomeItem,
+            quantidade: Number(comp.quantidade),
+            custo_item: custoItem
+          });
         }
-
-        return {
-          id: comp.id,
-          tipo: comp.tipo,
-          nome_item: nomeItem,
-          quantidade: Number(comp.quantidade),
-          custo_item: custoItem
-        };
-      }) || [];
+      }
 
       return {
         ...produto,
