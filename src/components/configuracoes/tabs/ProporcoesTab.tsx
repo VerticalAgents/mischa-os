@@ -18,12 +18,20 @@ export default function ProporcoesTab() {
   const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
   const { salvarConfiguracao, obterConfiguracao, loading } = useConfiguracoesStore();
   const [proporcoes, setProporcoes] = useState<ProporcoesConfig>({});
+  const [inputValues, setInputValues] = useState<{[key: string]: string}>({});
 
   // Carregar configurações salvas ao montar o componente
   useEffect(() => {
     const configSalva = obterConfiguracao('proporcoes-padrao');
+    console.log('🔄 Configuração carregada:', configSalva);
     if (configSalva && Object.keys(configSalva).length > 0) {
       setProporcoes(configSalva);
+      // Inicializar os valores dos inputs com os valores salvos
+      const initialInputs: {[key: string]: string} = {};
+      Object.entries(configSalva).forEach(([produtoId, valor]) => {
+        initialInputs[produtoId] = String(valor);
+      });
+      setInputValues(initialInputs);
     }
   }, [obterConfiguracao]);
 
@@ -33,28 +41,47 @@ export default function ProporcoesTab() {
   // Calcular total dos percentuais
   const totalPercentual = Object.values(proporcoes).reduce((sum, value) => sum + (value || 0), 0);
 
-  const handleProporçãoChange = (produtoId: string, valor: string) => {
-    // Permitir valores vazios durante a edição
-    if (valor === '') {
+  const handleInputChange = (produtoId: string, valorString: string) => {
+    console.log('📝 Alterando valor para produto', produtoId, ':', valorString);
+    
+    // Atualizar o valor do input imediatamente (para controle visual)
+    setInputValues(prev => ({
+      ...prev,
+      [produtoId]: valorString
+    }));
+
+    // Converter para número e atualizar o estado das proporções
+    if (valorString === '') {
+      // Se campo vazio, definir como 0
       setProporcoes(prev => ({
         ...prev,
         [produtoId]: 0
       }));
-      return;
+    } else {
+      const valorNumerico = parseFloat(valorString);
+      if (!isNaN(valorNumerico) && valorNumerico >= 0 && valorNumerico <= 100) {
+        setProporcoes(prev => ({
+          ...prev,
+          [produtoId]: valorNumerico
+        }));
+      }
     }
+  };
 
-    const valorNumerico = parseFloat(valor) || 0;
-    
-    // Permitir qualquer valor durante a edição - sem validação
-    // A validação será feita apenas no momento de salvar
-    setProporcoes(prev => ({
+  const handleInputBlur = (produtoId: string) => {
+    // Quando o usuário sai do campo, garantir que o valor está sincronizado
+    const valorAtual = proporcoes[produtoId] || 0;
+    setInputValues(prev => ({
       ...prev,
-      [produtoId]: valorNumerico
+      [produtoId]: String(valorAtual)
     }));
   };
 
   const salvarConfiguracoes = async () => {
-    if (totalPercentual !== 100) {
+    console.log('💾 Tentando salvar configurações:', proporcoes);
+    console.log('📊 Total percentual:', totalPercentual);
+    
+    if (Math.abs(totalPercentual - 100) > 0.01) { // Tolerância para números decimais
       toast({
         title: "Erro ao salvar",
         description: "A soma dos percentuais precisa ser exatamente 100% para salvar.",
@@ -71,6 +98,8 @@ export default function ProporcoesTab() {
         return acc;
       }, {} as ProporcoesConfig);
 
+    console.log('🧹 Proporções limpas para salvar:', proporcoesLimpas);
+
     const sucesso = await salvarConfiguracao('proporcoes-padrao', proporcoesLimpas);
     
     if (sucesso) {
@@ -82,11 +111,25 @@ export default function ProporcoesTab() {
   };
 
   const limparConfiguracoes = () => {
+    console.log('🗑️ Limpando todas as configurações');
     setProporcoes({});
+    setInputValues({});
     toast({
       title: "Configurações limpas",
       description: "Todas as proporções foram zeradas."
     });
+  };
+
+  const zerarProduto = (produtoId: string) => {
+    console.log('🔄 Zerando produto:', produtoId);
+    setProporcoes(prev => ({
+      ...prev,
+      [produtoId]: 0
+    }));
+    setInputValues(prev => ({
+      ...prev,
+      [produtoId]: '0'
+    }));
   };
 
   if (loadingProdutos) {
@@ -100,6 +143,8 @@ export default function ProporcoesTab() {
       </Card>
     );
   }
+
+  const totalValido = Math.abs(totalPercentual - 100) < 0.01;
 
   return (
     <div className="space-y-6">
@@ -130,23 +175,34 @@ export default function ProporcoesTab() {
                         <p className="text-xs text-muted-foreground">{produto.descricao}</p>
                       )}
                     </div>
-                    <div className="w-24">
-                      <div className="relative">
-                        <Input
-                          id={`produto-${produto.id}`}
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.1"
-                          value={proporcoes[produto.id] || ''}
-                          onChange={(e) => handleProporçãoChange(produto.id, e.target.value)}
-                          placeholder="0"
-                          className="text-center pr-8"
-                        />
-                        <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
-                          %
-                        </span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24">
+                        <div className="relative">
+                          <Input
+                            id={`produto-${produto.id}`}
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value={inputValues[produto.id] || ''}
+                            onChange={(e) => handleInputChange(produto.id, e.target.value)}
+                            onBlur={() => handleInputBlur(produto.id)}
+                            placeholder="0"
+                            className="text-center pr-8"
+                          />
+                          <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
+                            %
+                          </span>
+                        </div>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => zerarProduto(produto.id)}
+                        disabled={!proporcoes[produto.id] || proporcoes[produto.id] === 0}
+                      >
+                        Zerar
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -158,14 +214,14 @@ export default function ProporcoesTab() {
                 <div className="text-sm">
                   <span className="font-medium">Total atual: </span>
                   <span className={`font-bold ${
-                    totalPercentual === 100 ? 'text-green-600' : 'text-red-600'
+                    totalValido ? 'text-green-600' : 'text-red-600'
                   }`}>
                     {totalPercentual.toFixed(1)}%
                   </span>
-                  {totalPercentual === 100 && (
+                  {totalValido && (
                     <span className="ml-2 text-green-600">✅</span>
                   )}
-                  {totalPercentual !== 100 && (
+                  {!totalValido && (
                     <span className="ml-2 text-red-600">⚠️</span>
                   )}
                 </div>
@@ -180,14 +236,14 @@ export default function ProporcoesTab() {
                   </Button>
                   <Button 
                     onClick={salvarConfiguracoes}
-                    disabled={loading || totalPercentual !== 100}
+                    disabled={loading || !totalValido}
                   >
                     {loading ? "Salvando..." : "Salvar Configurações"}
                   </Button>
                 </div>
               </div>
 
-              {totalPercentual !== 100 && (
+              {!totalValido && (
                 <Alert variant="destructive">
                   <AlertDescription>
                     {totalPercentual > 100 
@@ -198,7 +254,7 @@ export default function ProporcoesTab() {
                 </Alert>
               )}
 
-              {totalPercentual === 100 && (
+              {totalValido && (
                 <Alert>
                   <AlertDescription>
                     ✅ Proporções configuradas corretamente! Clique em "Salvar Configurações" para confirmar.
