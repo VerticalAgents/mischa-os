@@ -3,6 +3,7 @@ import { useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Layers } from "lucide-react";
+import { useTabPersistence } from "@/hooks/useTabPersistence";
 
 // Import components
 import AjusteEstoqueTab from "@/components/pcp/AjusteEstoqueTab";
@@ -13,7 +14,7 @@ import HistoricoProducao from "@/components/pcp/HistoricoProducao";
 import AuditoriaPCPTab from "@/components/pcp/AuditoriaPCPTab";
 
 export default function PCP() {
-  const [activeTab, setActiveTab] = useState("ajuste-estoque");
+  const { activeTab, changeTab } = useTabPersistence("ajuste-estoque");
 
   return (
     <div className="container mx-auto py-6">
@@ -23,7 +24,7 @@ export default function PCP() {
         icon={<Layers className="h-6 w-6" />}
       />
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+      <Tabs value={activeTab} onValueChange={changeTab} className="mt-6">
         <TabsList className="w-full justify-start">
           <TabsTrigger value="ajuste-estoque">Ajuste de Estoque</TabsTrigger>
           <TabsTrigger value="projecao-producao">Projeção de Produção</TabsTrigger>

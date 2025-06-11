@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useSupabaseReceitas, ReceitaCompleta } from "@/hooks/useSupabaseReceitas";
 import { Button } from "@/components/ui/button";
@@ -16,19 +17,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Copy } from "lucide-react";
 import EditarReceitaModal from "./EditarReceitaModal";
 
 export default function ReceitasTab() {
-  const { receitas, loading, carregarReceitas, removerReceita } = useSupabaseReceitas();
+  const { receitas, loading, carregarReceitas, removerReceita, duplicarReceita } = useSupabaseReceitas();
   const [editandoReceita, setEditandoReceita] = useState<ReceitaCompleta | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const handleRemoverReceita = async (id: string) => {
-    const success = await removerReceita(id);
-    if (success) {
-      carregarReceitas();
+    if (confirm("Tem certeza que deseja remover esta receita?")) {
+      const success = await removerReceita(id);
+      if (success) {
+        carregarReceitas();
+      }
     }
+  };
+
+  const handleDuplicarReceita = async (receita: ReceitaCompleta) => {
+    await duplicarReceita(receita);
   };
 
   const abrirEdicaoReceita = (receita: ReceitaCompleta) => {
@@ -92,6 +99,14 @@ export default function ReceitasTab() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDuplicarReceita(receita)}
+                          title="Duplicar receita"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"

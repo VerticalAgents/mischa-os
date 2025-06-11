@@ -1,94 +1,84 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { InsumoSupabase } from './useSupabaseInsumos';
 
-export interface ReceitaBaseSupabase {
+export interface ReceitaCompleta {
   id: string;
   nome: string;
   descricao?: string;
   rendimento: number;
   unidade_rendimento: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ItemReceitaSupabase {
-  id: string;
-  receita_id: string;
-  insumo_id: string;
-  quantidade: number;
-  created_at: string;
-}
-
-export interface ReceitaCompleta extends ReceitaBaseSupabase {
-  itens: (ItemReceitaSupabase & { 
-    insumo: InsumoSupabase;
-    custo_item: number;
-  })[];
   peso_total: number;
   custo_total: number;
   custo_unitario: number;
+  itens: {
+    id: string;
+    insumo_id: string;
+    nome_insumo: string;
+    quantidade: number;
+    custo_item: number;
+  }[];
+}
+
+export interface ReceitaInput {
+  nome: string;
+  descricao?: string;
+  rendimento: number;
+  unidade_rendimento: string;
 }
 
 export const useSupabaseReceitas = () => {
   const [receitas, setReceitas] = useState<ReceitaCompleta[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const carregarReceitas = async () => {
-    setLoading(true);
     try {
-      const { data: receitasData, error: receitasError } = await supabase
-        .from('receitas_base' as any)
+      setLoading(true);
+      
+      // Buscar receitas básicas
+      const { data: receitasData, error } = await supabase
+        .from('receitas_base')
         .select('*')
         .order('nome');
 
-      if (receitasError) {
-        console.error('Erro ao carregar receitas:', receitasError);
-        toast({
-          title: "Erro ao carregar receitas",
-          description: receitasError.message,
-          variant: "destructive"
-        });
+      if (error) {
+        console.error('Erro ao carregar receitas:', error);
         return;
       }
 
+      // Para cada receita, buscar seus itens
       const receitasCompletas: ReceitaCompleta[] = [];
-
-      for (const receita of (receitasData as any as ReceitaBaseSupabase[]) || []) {
-        const { data: itensData, error: itensError } = await supabase
-          .from('itens_receita' as any)
+      
+      for (const receita of receitasData || []) {
+        const { data: itensData } = await supabase
+          .from('itens_receita')
           .select(`
-            *,
-            insumos (*)
+            id,
+            insumo_id,
+            quantidade,
+            insumos(nome, custo_medio)
           `)
-          .eq('receita_id', (receita as any).id);
+          .eq('receita_id', receita.id);
 
-        if (itensError) {
-          console.error('Erro ao carregar itens da receita:', itensError);
-          continue;
-        }
+        const itens = itensData?.map(item => ({
+          id: item.id,
+          insumo_id: item.insumo_id,
+          nome_insumo: (item.insumos as any)?.nome || '',
+          quantidade: Number(item.quantidade),
+          custo_item: Number((item.insumos as any)?.custo_medio || 0) * Number(item.quantidade)
+        })) || [];
 
-        const itensCompletos = ((itensData as any) || []).map((item: any) => {
-          const insumo = item.insumos as InsumoSupabase;
-          const custoUnitario = insumo.volume_bruto > 0 ? insumo.custo_medio / insumo.volume_bruto : 0;
-          return {
-            ...item,
-            insumo,
-            custo_item: item.quantidade * custoUnitario
-          };
-        });
-
-        const peso_total = itensCompletos.reduce((sum, item) => sum + item.quantidade, 0);
-        const custo_total = itensCompletos.reduce((sum, item) => sum + item.custo_item, 0);
-        const custo_unitario = (receita as any).rendimento > 0 ? custo_total / (receita as any).rendimento : 0;
+        const pesoTotal = itens.reduce((sum, item) => sum + item.quantidade, 0);
+        const custoTotal = itens.reduce((sum, item) => sum + item.custo_item, 0);
+        const custoUnitario = receita.rendimento > 0 ? custoTotal / receita.rendimento : 0;
 
         receitasCompletas.push({
-          ...(receita as any as ReceitaBaseSupabase),
-          itens: itensCompletos,
-          peso_total,
-          custo_total,
-          custo_unitario
+          ...receita,
+          peso_total: pesoTotal,
+          custo_total: custoTotal,
+          custo_unitario: custoUnitario,
+          itens
         });
       }
 
@@ -100,91 +90,85 @@ export const useSupabaseReceitas = () => {
     }
   };
 
-  const adicionarReceita = async (receita: Omit<ReceitaBaseSupabase, 'id' | 'created_at' | 'updated_at'>) => {
+  const duplicarReceita = async (receitaOriginal: ReceitaCompleta) => {
     try {
-      const { data, error } = await supabase
-        .from('receitas_base' as any)
-        .insert([receita])
+      // Criar nova receita com nome (Cópia)
+      const novaReceita = {
+        nome: `${receitaOriginal.nome} (Cópia)`,
+        descricao: receitaOriginal.descricao,
+        rendimento: receitaOriginal.rendimento,
+        unidade_rendimento: receitaOriginal.unidade_rendimento
+      };
+
+      const { data: receitaCriada, error: receitaError } = await supabase
+        .from('receitas_base')
+        .insert(novaReceita)
         .select()
         .single();
 
-      if (error) {
-        console.error('Erro ao adicionar receita:', error);
+      if (receitaError) {
+        console.error('Erro ao duplicar receita:', receitaError);
         toast({
-          title: "Erro ao adicionar receita",
-          description: error.message,
+          title: "Erro ao duplicar receita",
+          description: receitaError.message,
           variant: "destructive"
         });
         return null;
       }
 
+      // Duplicar todos os itens da receita original
+      if (receitaOriginal.itens.length > 0) {
+        const itensDuplicados = receitaOriginal.itens.map(item => ({
+          receita_id: receitaCriada.id,
+          insumo_id: item.insumo_id,
+          quantidade: item.quantidade
+        }));
+
+        const { error: itensError } = await supabase
+          .from('itens_receita')
+          .insert(itensDuplicados);
+
+        if (itensError) {
+          console.error('Erro ao duplicar itens da receita:', itensError);
+          // Não falhar a operação por causa dos itens
+        }
+      }
+
       toast({
-        title: "Receita adicionada",
-        description: "Receita criada com sucesso"
+        title: "Receita duplicada",
+        description: `${novaReceita.nome} foi criada com sucesso`
       });
+
       await carregarReceitas();
-      return data;
+      return receitaCriada;
     } catch (error) {
-      console.error('Erro ao adicionar receita:', error);
+      console.error('Erro ao duplicar receita:', error);
+      toast({
+        title: "Erro ao duplicar receita",
+        description: "Ocorreu um erro inesperado",
+        variant: "destructive"
+      });
       return null;
     }
   };
 
-  const adicionarItemReceita = async (receita_id: string, insumo_id: string, quantidade: number) => {
+  const removerReceita = async (receitaId: string) => {
     try {
-      const { error } = await supabase
-        .from('itens_receita' as any)
-        .insert([{ receita_id, insumo_id, quantidade }]);
+      // Primeiro remover os itens da receita
+      const { error: itensError } = await supabase
+        .from('itens_receita')
+        .delete()
+        .eq('receita_id', receitaId);
 
-      if (error) {
-        console.error('Erro ao adicionar item à receita:', error);
-        toast({
-          title: "Erro ao adicionar item",
-          description: error.message,
-          variant: "destructive"
-        });
-        return false;
+      if (itensError) {
+        console.error('Erro ao remover itens da receita:', itensError);
       }
 
-      await carregarReceitas();
-      return true;
-    } catch (error) {
-      console.error('Erro ao adicionar item à receita:', error);
-      return false;
-    }
-  };
-
-  const removerItemReceita = async (item_id: string) => {
-    try {
+      // Depois remover a receita
       const { error } = await supabase
-        .from('itens_receita' as any)
+        .from('receitas_base')
         .delete()
-        .eq('id', item_id);
-
-      if (error) {
-        console.error('Erro ao remover item da receita:', error);
-        toast({
-          title: "Erro ao remover item",
-          description: error.message,
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      await carregarReceitas();
-      return true;
-    } catch (error) {
-      console.error('Erro ao remover item da receita:', error);
-      return false;
-    }
-  };
-
-  const removerReceita = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('receitas_base' as any)
-        .delete()
-        .eq('id', id);
+        .eq('id', receitaId);
 
       if (error) {
         console.error('Erro ao remover receita:', error);
@@ -196,14 +180,19 @@ export const useSupabaseReceitas = () => {
         return false;
       }
 
-      setReceitas(prev => prev.filter(r => r.id !== id));
       toast({
         title: "Receita removida",
         description: "Receita removida com sucesso"
       });
+
       return true;
     } catch (error) {
       console.error('Erro ao remover receita:', error);
+      toast({
+        title: "Erro ao remover receita",
+        description: "Ocorreu um erro inesperado",
+        variant: "destructive"
+      });
       return false;
     }
   };
@@ -216,9 +205,7 @@ export const useSupabaseReceitas = () => {
     receitas,
     loading,
     carregarReceitas,
-    adicionarReceita,
-    adicionarItemReceita,
-    removerItemReceita,
+    duplicarReceita,
     removerReceita
   };
 };

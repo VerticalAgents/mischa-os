@@ -6,9 +6,10 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import InsumosSupabaseTab from "@/components/precificacao/InsumosSupabaseTab";
 import ReceitasTab from "@/components/precificacao/ReceitasTab";
 import ProdutosTab from "@/components/precificacao/ProdutosTab";
+import { useTabPersistence } from "@/hooks/useTabPersistence";
 
 export default function Precificacao() {
-  const [activeTab, setActiveTab] = useState("insumos");
+  const { activeTab, changeTab } = useTabPersistence("insumos");
   
   return (
     <>
@@ -18,7 +19,7 @@ export default function Precificacao() {
       />
       
       <div className="mt-8">
-        <Tabs defaultValue="insumos" value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={changeTab}>
           <TabsList className="grid grid-cols-3 mb-8">
             <TabsTrigger value="insumos">Insumos</TabsTrigger>
             <TabsTrigger value="receitas">Receitas Base</TabsTrigger>

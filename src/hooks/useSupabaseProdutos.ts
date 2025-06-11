@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -138,8 +137,23 @@ export const useSupabaseProdutos = () => {
 
             if (receita) {
               nomeItem = receita.nome;
-              // Para receitas, você pode calcular o custo baseado nos insumos da receita
-              custoItem = 0; // Implementar cálculo se necessário
+              
+              // Calcular o custo da receita baseado nos seus insumos
+              const { data: itensReceita } = await supabase
+                .from('itens_receita')
+                .select(`
+                  quantidade,
+                  insumos(custo_medio)
+                `)
+                .eq('receita_id', comp.item_id);
+
+              if (itensReceita) {
+                const custoReceita = itensReceita.reduce((total, item) => {
+                  const custoInsumo = (item.insumos as any)?.custo_medio || 0;
+                  return total + (Number(item.quantidade) * Number(custoInsumo));
+                }, 0);
+                custoItem = custoReceita * Number(comp.quantidade);
+              }
             }
           }
 
@@ -153,14 +167,18 @@ export const useSupabaseProdutos = () => {
         }
       }
 
+      // Calcular custo unitário automático baseado nos componentes
+      const custoTotalComponentes = componentesFormatados.reduce((total, comp) => total + comp.custo_item, 0);
+      const custoUnitarioCalculado = produto.unidades_producao > 0 ? custoTotalComponentes / produto.unidades_producao : 0;
+
       return {
         ...produto,
-        custo_unitario: Number(produto.custo_unitario || 0),
+        custo_unitario: Number(custoUnitarioCalculado.toFixed(4)),
         preco_venda: produto.preco_venda ? Number(produto.preco_venda) : undefined,
         margem_lucro: Number(produto.margem_lucro || 0),
         unidades_producao: produto.unidades_producao || 1,
         peso_unitario: produto.peso_unitario ? Number(produto.peso_unitario) : undefined,
-        custo_total: produto.custo_total ? Number(produto.custo_total) : undefined,
+        custo_total: Number(custoTotalComponentes.toFixed(4)),
         subcategoria_id: produto.subcategoria_id || undefined,
         estoque_atual: produto.estoque_atual || 0,
         estoque_minimo: produto.estoque_minimo || 0,
@@ -352,7 +370,7 @@ export const useSupabaseProdutos = () => {
         // Não falhar por causa dos componentes
       }
 
-      // Criar o produto duplicado
+      // Criar o produto duplicado com um novo ID único
       const produtoDuplicado: ProdutoInput = {
         nome: `${produto.nome} (Cópia)`,
         categoria_id: produto.categoria_id,
@@ -379,11 +397,11 @@ export const useSupabaseProdutos = () => {
         throw produtoError;
       }
 
-      // Duplicar os componentes se existirem
+      // Duplicar os componentes se existirem, gerando novos IDs únicos
       if (componentes && componentes.length > 0) {
         const componentesDuplicados = componentes.map(componente => ({
-          produto_id: novoProduto.id,
-          item_id: componente.item_id,
+          produto_id: novoProduto.id, // Usar o ID do novo produto
+          item_id: componente.item_id, // Manter referência ao mesmo insumo/receita
           quantidade: componente.quantidade,
           tipo: componente.tipo,
         }));
@@ -397,6 +415,12 @@ export const useSupabaseProdutos = () => {
           // Não falhar a operação por causa dos componentes
         }
       }
+
+      console.log('✅ Produto duplicado com sucesso:', {
+        produtoOriginal: produto.id,
+        novoProduto: novoProduto.id,
+        componentesDuplicados: componentes?.length || 0
+      });
 
       return novoProduto;
     } catch (error) {
