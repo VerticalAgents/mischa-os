@@ -43,14 +43,10 @@ export default function ProporcoesTab() {
       return;
     }
 
-    const valorNumerico = parseInt(valor) || 0;
+    const valorNumerico = parseFloat(valor) || 0;
     
-    // Validar que o valor está entre 0 e 100
-    if (valorNumerico < 0 || valorNumerico > 100) {
-      return; // Não permitir valores fora do range
-    }
-    
-    // Permitir qualquer valor válido durante a edição
+    // Permitir qualquer valor durante a edição - sem validação
+    // A validação será feita apenas no momento de salvar
     setProporcoes(prev => ({
       ...prev,
       [produtoId]: valorNumerico
@@ -141,7 +137,7 @@ export default function ProporcoesTab() {
                           type="number"
                           min="0"
                           max="100"
-                          step="1"
+                          step="0.1"
                           value={proporcoes[produto.id] || ''}
                           onChange={(e) => handleProporçãoChange(produto.id, e.target.value)}
                           placeholder="0"
@@ -162,16 +158,15 @@ export default function ProporcoesTab() {
                 <div className="text-sm">
                   <span className="font-medium">Total atual: </span>
                   <span className={`font-bold ${
-                    totalPercentual === 100 ? 'text-green-600' : 
-                    totalPercentual > 100 ? 'text-red-600' : 'text-amber-600'
+                    totalPercentual === 100 ? 'text-green-600' : 'text-red-600'
                   }`}>
-                    {totalPercentual}%
+                    {totalPercentual.toFixed(1)}%
                   </span>
                   {totalPercentual === 100 && (
                     <span className="ml-2 text-green-600">✅</span>
                   )}
-                  {totalPercentual !== 100 && totalPercentual > 0 && (
-                    <span className="ml-2 text-amber-600">⚠️</span>
+                  {totalPercentual !== 100 && (
+                    <span className="ml-2 text-red-600">⚠️</span>
                   )}
                 </div>
                 
@@ -192,12 +187,12 @@ export default function ProporcoesTab() {
                 </div>
               </div>
 
-              {totalPercentual !== 100 && totalPercentual > 0 && (
-                <Alert variant={totalPercentual > 100 ? "destructive" : "default"}>
+              {totalPercentual !== 100 && (
+                <Alert variant="destructive">
                   <AlertDescription>
                     {totalPercentual > 100 
-                      ? `O total está ${totalPercentual - 100}% acima de 100%. Reduza os percentuais para salvar.`
-                      : `Faltam ${100 - totalPercentual}% para completar 100%. Continue editando até atingir exatamente 100%.`
+                      ? `O total está ${(totalPercentual - 100).toFixed(1)}% acima de 100%. Reduza os percentuais para salvar.`
+                      : `Faltam ${(100 - totalPercentual).toFixed(1)}% para completar 100%. Continue editando até atingir exatamente 100%.`
                     }
                   </AlertDescription>
                 </Alert>
