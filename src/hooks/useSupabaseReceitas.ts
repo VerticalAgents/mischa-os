@@ -90,6 +90,77 @@ export const useSupabaseReceitas = () => {
     }
   };
 
+  const adicionarItemReceita = async (receitaId: string, insumoId: string, quantidade: number) => {
+    try {
+      const { error } = await supabase
+        .from('itens_receita')
+        .insert({
+          receita_id: receitaId,
+          insumo_id: insumoId,
+          quantidade: quantidade
+        });
+
+      if (error) {
+        console.error('Erro ao adicionar item à receita:', error);
+        toast({
+          title: "Erro ao adicionar item",
+          description: error.message,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      toast({
+        title: "Item adicionado",
+        description: "Item adicionado à receita com sucesso"
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao adicionar item à receita:', error);
+      toast({
+        title: "Erro ao adicionar item",
+        description: "Ocorreu um erro inesperado",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
+  const removerItemReceita = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from('itens_receita')
+        .delete()
+        .eq('id', itemId);
+
+      if (error) {
+        console.error('Erro ao remover item da receita:', error);
+        toast({
+          title: "Erro ao remover item",
+          description: error.message,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      toast({
+        title: "Item removido",
+        description: "Item removido da receita com sucesso"
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao remover item da receita:', error);
+      toast({
+        title: "Erro ao remover item",
+        description: "Ocorreu um erro inesperado",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
   const duplicarReceita = async (receitaOriginal: ReceitaCompleta) => {
     try {
       // Criar nova receita com nome (Cópia)
@@ -206,6 +277,8 @@ export const useSupabaseReceitas = () => {
     loading,
     carregarReceitas,
     duplicarReceita,
-    removerReceita
+    removerReceita,
+    adicionarItemReceita,
+    removerItemReceita
   };
 };

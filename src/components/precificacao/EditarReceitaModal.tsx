@@ -159,9 +159,12 @@ export default function EditarReceitaModal({
     }
   };
 
-  const getInsumoNome = (insumoId: string) => {
+  const getInsumoInfo = (insumoId: string) => {
     const insumo = insumos.find(i => i.id === insumoId);
-    return insumo?.nome || "Insumo não encontrado";
+    return {
+      nome: insumo?.nome || "Insumo não encontrado",
+      unidade_medida: insumo?.unidade_medida || ""
+    };
   };
 
   return (
@@ -343,24 +346,27 @@ export default function EditarReceitaModal({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {receita?.itens.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{getInsumoNome(item.insumo_id)}</TableCell>
-                    <TableCell>
-                      {item.quantidade} {item.insumo.unidade_medida}
-                    </TableCell>
-                    <TableCell>R$ {item.custo_item.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRemoverItem(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {receita?.itens.map((item) => {
+                  const insumoInfo = getInsumoInfo(item.insumo_id);
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell>{insumoInfo.nome}</TableCell>
+                      <TableCell>
+                        {item.quantidade} {insumoInfo.unidade_medida}
+                      </TableCell>
+                      <TableCell>R$ {item.custo_item.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRemoverItem(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
