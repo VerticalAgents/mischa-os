@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,6 +10,7 @@ import { Calculator, Download } from "lucide-react";
 import { format } from "date-fns";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
+import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
 
 interface ProjecaoItem {
   idProduto: string;
@@ -38,8 +40,9 @@ export default function ProjecaoProducaoTab() {
   const [dadosAuditoria, setDadosAuditoria] = useState<AuditoriaItem[]>([]);
   const [produtosAtivos, setProdutosAtivos] = useState<string[]>([]);
 
-  const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
+  const { agendamentos, carregarTodosAgendamentos, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
   const { produtos } = useSupabaseProdutos();
+  const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
 
   const capacidadeForma = 40; // Capacidade fixa de 40 unidades por forma
 
@@ -57,27 +60,29 @@ export default function ProjecaoProducaoTab() {
     setProdutosAtivos(produtosAtivosLista);
   }, [produtos]);
 
-  // Processar dados de auditoria (usando datas inclusive)
+  // Processar dados de auditoria (usando a MESMA lógica da AuditoriaPCPTab)
   useEffect(() => {
     processarDadosAuditoria();
-  }, [agendamentos, produtos, dataInicio, dataFim]);
+  }, [agendamentos, produtos, dataInicio, dataFim, calcularQuantidadesPorProporcao, temProporcoesConfiguradas]);
 
   // Calcular projeção baseada nos dados da auditoria
   useEffect(() => {
     calcularProjecaoFromAuditoria();
   }, [dadosAuditoria, tipoAgendamento, produtos]);
 
-  const processarDadosAuditoria = () => {
+  const processarDadosAuditoria = async () => {
     console.log('🔍 Processando dados de auditoria para projeção...');
-    
+    console.log('📊 Total de agendamentos:', agendamentos.length);
+    console.log('🏭 Produtos ativos:', produtos.filter(p => p.ativo).length);
+
     const inicio = new Date(dataInicio);
     const fim = new Date(dataFim);
-    // Incluir todo o dia final (23:59:59)
-    fim.setHours(23, 59, 59, 999);
 
-    // Filtrar agendamentos no período (datas inclusive) com clientes ativos apenas
+    // Filtrar agendamentos
     const agendamentosFiltrados = agendamentos.filter(agendamento => {
       const dataReposicao = new Date(agendamento.dataReposicao);
+      
+      // Filtro por período
       const dentroPeríodo = dataReposicao >= inicio && dataReposicao <= fim;
       
       // Filtrar apenas clientes ativos
@@ -86,10 +91,12 @@ export default function ProjecaoProducaoTab() {
       return dentroPeríodo && clienteAtivo;
     });
 
-    console.log('📋 Agendamentos filtrados por período e cliente ativo:', agendamentosFiltrados.length);
+    console.log('📋 Agendamentos filtrados:', agendamentosFiltrados.length);
 
-    // Processar cada agendamento
-    const dadosProcessados: AuditoriaItem[] = agendamentosFiltrados.map(agendamento => {
+    // Processar cada agendamento (MESMA LÓGICA da AuditoriaPCPTab)
+    const dadosProcessados: AuditoriaItem[] = [];
+    
+    for (const agendamento of agendamentosFiltrados) {
       const quantidadesPorProduto: Record<string, number> = {};
       
       // Inicializar todas as quantidades como 0
@@ -97,43 +104,117 @@ export default function ProjecaoProducaoTab() {
         quantidadesPorProduto[nomeProduto] = 0;
       });
 
-      // Verificar se há pedido com itens específicos (tipo Alterado)
-      if (agendamento.pedido && 
-          agendamento.pedido.tipoPedido === 'Alterado' && 
-          agendamento.pedido.itensPedido && 
-          agendamento.pedido.itensPedido.length > 0) {
+      console.log(`\n📦 Processando agendamento: ${agendamento.cliente.nome}`);
+      console.log('🔍 Tipo de pedido:', agendamento.pedido?.tipoPedido || 'Padrão');
+
+      // Primeiro, verificar se há dados na tabela agendamentos_clientes
+      try {
+        const agendamentoCompleto = await carregarAgendamentoPorCliente(agendamento.cliente.id);
         
-        // Para pedidos alterados, usar quantidades específicas dos itens
-        agendamento.pedido.itensPedido.forEach(item => {
-          const nomeProduto = item.nomeSabor || (item.sabor && item.sabor.nome);
-          const quantidade = item.quantidadeSabor || 0;
-          
-          if (nomeProduto && quantidade > 0) {
-            if (quantidadesPorProduto.hasOwnProperty(nomeProduto)) {
-              quantidadesPorProduto[nomeProduto] = quantidade;
+        if (agendamentoCompleto) {
+          console.log('✅ Dados encontrados na tabela agendamentos_clientes:', {
+            tipo: agendamentoCompleto.tipo_pedido,
+            quantidade_total: agendamentoCompleto.quantidade_total,
+            itens_personalizados: agendamentoCompleto.itens_personalizados
+          });
+
+          if (agendamentoCompleto.tipo_pedido === 'Alterado' && 
+              agendamentoCompleto.itens_personalizados && 
+              agendamentoCompleto.itens_personalizados.length > 0) {
+            
+            // Para pedidos alterados, usar os itens personalizados salvos
+            console.log('📝 Usando itens personalizados salvos:', agendamentoCompleto.itens_personalizados);
+            
+            agendamentoCompleto.itens_personalizados.forEach(item => {
+              if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
+                quantidadesPorProduto[item.produto] = item.quantidade;
+                console.log(`➕ ${item.produto}: ${item.quantidade} unidades (personalizado)`);
+              }
+            });
+          } else if (agendamentoCompleto.tipo_pedido === 'Padrão') {
+            // Para pedidos padrão, calcular usando as proporções
+            const quantidadeTotal = agendamentoCompleto.quantidade_total;
+            console.log(`📊 Processando pedido PADRÃO com quantidade total: ${quantidadeTotal}`);
+            
+            if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
+              try {
+                const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
+                console.log('🧮 Quantidades calculadas pela proporção:', quantidadesCalculadas);
+                
+                quantidadesCalculadas.forEach(item => {
+                  if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
+                    quantidadesPorProduto[item.produto] = item.quantidade;
+                    console.log(`➕ ${item.produto}: ${item.quantidade} unidades (proporção padrão)`);
+                  }
+                });
+              } catch (error) {
+                console.error('❌ Erro ao calcular quantidades por proporção:', error);
+              }
             }
           }
-        });
-      } else {
-        // Para agendamentos padrão, usar a quantidade total distribuída
-        const quantidadeTotal = agendamento.cliente.quantidadePadrao || 0;
-        
-        if (quantidadeTotal > 0 && produtosAtivos.length > 0) {
-          // Distribuir toda a quantidade para o primeiro produto ativo
-          const primeiroProduto = produtosAtivos[0];
-          quantidadesPorProduto[primeiroProduto] = quantidadeTotal;
+        } else {
+          // Fallback para dados da lista de agendamentos (método antigo)
+          console.log('⚠️ Usando dados da lista de agendamentos como fallback');
+          
+          if (agendamento.pedido && 
+              agendamento.pedido.tipoPedido === 'Alterado' && 
+              agendamento.pedido.itensPedido && 
+              agendamento.pedido.itensPedido.length > 0) {
+            
+            // Para pedidos alterados, usar quantidades específicas dos itens
+            agendamento.pedido.itensPedido.forEach(item => {
+              const nomeProduto = item.nomeSabor || (item.sabor && item.sabor.nome);
+              const quantidade = item.quantidadeSabor || 0;
+              
+              if (nomeProduto && quantidade > 0) {
+                if (quantidadesPorProduto.hasOwnProperty(nomeProduto)) {
+                  quantidadesPorProduto[nomeProduto] = quantidade;
+                  console.log(`➕ ${nomeProduto}: ${quantidade} unidades (pedido alterado - fallback)`);
+                }
+              }
+            });
+          } else {
+            // Para agendamentos padrão, usar a quantidade total do cliente
+            const quantidadeTotal = agendamento.cliente.quantidadePadrao || 0;
+            console.log(`📊 Processando agendamento PADRÃO (fallback) com quantidade total: ${quantidadeTotal}`);
+            
+            if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
+              try {
+                const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
+                console.log('🧮 Quantidades calculadas pela proporção (fallback):', quantidadesCalculadas);
+                
+                quantidadesCalculadas.forEach(item => {
+                  if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
+                    quantidadesPorProduto[item.produto] = item.quantidade;
+                    console.log(`➕ ${item.produto}: ${item.quantidade} unidades (proporção padrão - fallback)`);
+                  }
+                });
+              } catch (error) {
+                console.error('❌ Erro ao calcular quantidades por proporção (fallback):', error);
+                // Em caso de erro, distribuir para o primeiro produto como último recurso
+                if (produtosAtivos.length > 0) {
+                  const primeiroProduto = produtosAtivos[0];
+                  quantidadesPorProduto[primeiroProduto] = quantidadeTotal;
+                  console.log(`➕ ${primeiroProduto}: ${quantidadeTotal} unidades (fallback final)`);
+                }
+              }
+            }
+          }
         }
+      } catch (error) {
+        console.error('❌ Erro ao processar agendamento:', error);
       }
 
-      return {
+      dadosProcessados.push({
         clienteNome: agendamento.cliente.nome,
         statusAgendamento: agendamento.statusAgendamento,
         dataReposicao: agendamento.dataReposicao,
         statusCliente: agendamento.cliente.statusCliente || 'Ativo',
         quantidadesPorProduto
-      };
-    });
+      });
+    }
 
+    console.log('✅ Dados de auditoria processados:', dadosProcessados.length);
     setDadosAuditoria(dadosProcessados);
   };
 
@@ -155,60 +236,76 @@ export default function ProjecaoProducaoTab() {
     const estoqueManualData = localStorage.getItem('estoque-manual-ajustes');
     const estoqueManual = estoqueManualData ? JSON.parse(estoqueManualData) : {};
 
-    // Calcular necessidades totais por produto
+    // Calcular necessidades totais por produto - CORRIGIDO PARA PROCESSAR TODOS OS PRODUTOS
+    console.log('🔄 Calculando necessidades totais por produto...');
+    
     const necessidadesTotais: Record<string, number> = {};
     
+    // Inicializar todos os produtos ativos com 0
     produtosAtivos.forEach(nomeProduto => {
       necessidadesTotais[nomeProduto] = 0;
     });
 
+    // Somar quantidades de todos os agendamentos filtrados
     dadosFiltrados.forEach(item => {
+      console.log(`📦 Processando agendamento: ${item.clienteNome}`, item.quantidadesPorProduto);
+      
       Object.keys(item.quantidadesPorProduto).forEach(nomeProduto => {
         const quantidade = item.quantidadesPorProduto[nomeProduto] || 0;
-        if (necessidadesTotais[nomeProduto] !== undefined) {
-          necessidadesTotais[nomeProduto] += quantidade;
+        if (quantidade > 0) {
+          if (necessidadesTotais[nomeProduto] !== undefined) {
+            necessidadesTotais[nomeProduto] += quantidade;
+            console.log(`➕ ${nomeProduto}: +${quantidade} = ${necessidadesTotais[nomeProduto]} total`);
+          }
         }
       });
     });
 
-    console.log('📊 Necessidades totais por produto:', necessidadesTotais);
+    console.log('📊 Necessidades totais finais por produto:', necessidadesTotais);
 
-    // Calcular projeção para cada produto
-    const projecao: ProjecaoItem[] = produtos
-      .filter(produto => produto.ativo)
-      .map(produto => {
-        const unidadesNecessarias = necessidadesTotais[produto.nome] || 0;
-        const estoqueDisponivel = estoqueManual[produto.id] !== undefined 
-          ? estoqueManual[produto.id] 
-          : produto.estoque_atual || 0;
+    // Calcular projeção para cada produto que tem necessidade > 0
+    const projecao: ProjecaoItem[] = [];
+
+    Object.keys(necessidadesTotais).forEach(nomeProduto => {
+      const unidadesNecessarias = necessidadesTotais[nomeProduto];
+      
+      if (unidadesNecessarias > 0) {
+        // Encontrar o produto correspondente
+        const produto = produtos.find(p => p.nome === nomeProduto && p.ativo);
         
-        const unidadesProduzir = Math.max(0, unidadesNecessarias - estoqueDisponivel);
-        const formasNecessarias = unidadesProduzir > 0 ? Math.ceil(unidadesProduzir / capacidadeForma) : 0;
-        const sobraEstimada = formasNecessarias > 0 
-          ? (formasNecessarias * capacidadeForma) - unidadesProduzir 
-          : Math.max(0, estoqueDisponivel - unidadesNecessarias);
+        if (produto) {
+          const estoqueDisponivel = estoqueManual[produto.id] !== undefined 
+            ? estoqueManual[produto.id] 
+            : produto.estoque_atual || 0;
+          
+          const unidadesProduzir = Math.max(0, unidadesNecessarias - estoqueDisponivel);
+          const formasNecessarias = unidadesProduzir > 0 ? Math.ceil(unidadesProduzir / capacidadeForma) : 0;
+          const sobraEstimada = formasNecessarias > 0 
+            ? (formasNecessarias * capacidadeForma) - unidadesProduzir 
+            : Math.max(0, estoqueDisponivel - unidadesNecessarias);
 
-        console.log(`🧮 Cálculo para ${produto.nome}:`, {
-          unidadesNecessarias,
-          estoqueDisponivel,
-          unidadesProduzir,
-          formasNecessarias,
-          sobraEstimada
-        });
+          console.log(`🧮 Cálculo para ${nomeProduto}:`, {
+            unidadesNecessarias,
+            estoqueDisponivel,
+            unidadesProduzir,
+            formasNecessarias,
+            sobraEstimada
+          });
 
-        return {
-          idProduto: produto.id,
-          nomeProduto: produto.nome,
-          unidadesNecessarias,
-          estoqueDisponivel,
-          unidadesProduzir,
-          formasNecessarias,
-          sobraEstimada
-        };
-      })
-      .filter(item => item.unidadesNecessarias > 0 || item.unidadesProduzir > 0);
+          projecao.push({
+            idProduto: produto.id,
+            nomeProduto: produto.nome,
+            unidadesNecessarias,
+            estoqueDisponivel,
+            unidadesProduzir,
+            formasNecessarias,
+            sobraEstimada
+          });
+        }
+      }
+    });
 
-    console.log('✅ Projeção final:', projecao);
+    console.log('✅ Projeção final com todos os produtos:', projecao);
     setProjecaoItens(projecao);
   };
 
