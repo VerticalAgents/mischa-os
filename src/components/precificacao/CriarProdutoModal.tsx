@@ -32,11 +32,13 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
+import { useSupabaseSubcategoriasProduto } from "@/hooks/useSupabaseSubcategoriasProduto";
 
 const criarProdutoSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
   descricao: z.string().optional(),
   categoria_id: z.number().min(1, "Categoria é obrigatória"),
+  subcategoria_nome: z.string().optional(),
   unidades_producao: z.number().min(1, "Unidades de produção deve ser maior que zero"),
   peso_unitario: z.number().min(0, "Peso unitário deve ser maior ou igual a zero").optional(),
   preco_venda: z.number().min(0, "Preço de venda deve ser maior ou igual a zero").optional(),
@@ -57,6 +59,7 @@ export default function CriarProdutoModal({
 }: CriarProdutoModalProps) {
   const { adicionarProduto } = useSupabaseProdutos();
   const { categorias } = useSupabaseCategoriasProduto();
+  const { subcategorias, adicionarSubcategoria, getSubcategoriasPorCategoria } = useSupabaseSubcategoriasProduto();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<CriarProdutoFormValues>({
@@ -65,19 +68,47 @@ export default function CriarProdutoModal({
       nome: "",
       descricao: "",
       categoria_id: 0,
+      subcategoria_nome: "",
       unidades_producao: 1,
       peso_unitario: 0,
       preco_venda: 0,
     },
   });
 
+  const categoriaIdWatch = form.watch('categoria_id');
+
   const onSubmit = async (values: CriarProdutoFormValues) => {
     setIsLoading(true);
     try {
+      let subcategoria_id = undefined;
+
+      // Se uma subcategoria foi especificada, criar ou usar existente
+      if (values.subcategoria_nome && values.subcategoria_nome.trim()) {
+        // Verificar se já existe uma subcategoria com esse nome para a categoria
+        const subcategoriasExistentes = getSubcategoriasPorCategoria(values.categoria_id);
+        const subcategoriaExistente = subcategoriasExistentes.find(
+          sub => sub.nome.toLowerCase() === values.subcategoria_nome!.toLowerCase()
+        );
+
+        if (subcategoriaExistente) {
+          subcategoria_id = subcategoriaExistente.id;
+        } else {
+          // Criar nova subcategoria
+          const novaSubcategoria = await adicionarSubcategoria({
+            nome: values.subcategoria_nome.trim(),
+            categoria_id: values.categoria_id
+          });
+          if (novaSubcategoria) {
+            subcategoria_id = novaSubcategoria.id;
+          }
+        }
+      }
+
       const produto = await adicionarProduto({
         nome: values.nome,
         descricao: values.descricao || "",
         categoria_id: values.categoria_id,
+        subcategoria_id,
         unidades_producao: values.unidades_producao,
         peso_unitario: values.peso_unitario || 0,
         preco_venda: values.preco_venda || 0,
@@ -104,11 +135,11 @@ export default function CriarProdutoModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Criar Novo Produto</DialogTitle>
           <DialogDescription>
-            Crie um novo produto e associe-o a uma categoria
+            Crie um novo produto e associe-o a uma categoria e subcategoria
           </DialogDescription>
         </DialogHeader>
 
@@ -156,6 +187,29 @@ export default function CriarProdutoModal({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="subcategoria_nome"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Subcategoria (opcional)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Digite o nome da subcategoria ou deixe em branco" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                  {categoriaIdWatch > 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      Subcategorias existentes: {getSubcategoriasPorCategoria(categoriaIdWatch)
+                        .map(sub => sub.nome).join(', ') || 'Nenhuma'}
+                    </div>
+                  )}
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <FormField

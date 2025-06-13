@@ -778,6 +778,44 @@ export type Database = {
         }
         Relationships: []
       }
+      subcategorias_produto: {
+        Row: {
+          ativo: boolean | null
+          categoria_id: number
+          created_at: string | null
+          descricao: string | null
+          id: number
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          categoria_id: number
+          created_at?: string | null
+          descricao?: string | null
+          id?: number
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          categoria_id?: number
+          created_at?: string | null
+          descricao?: string | null
+          id?: number
+          nome?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subcategorias_produto_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias_produto"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

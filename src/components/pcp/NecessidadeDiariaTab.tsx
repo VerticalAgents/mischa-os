@@ -266,90 +266,104 @@ export default function NecessidadeDiariaTab() {
         </CardContent>
       </Card>
 
-      {/* Tabela de Necessidade por Sabor */}
+      {/* Tabela de Necessidade por Sabor - Responsiva */}
       <Card>
         <CardHeader>
           <CardTitle>Necessidade por Sabor</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <TooltipProvider>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="sticky left-0 bg-background min-w-[150px]">Sabor</TableHead>
-                    {proximosQuinzeDias.map((data, index) => (
-                      <TableHead key={index} className="text-center min-w-[60px]">
-                        <div className="text-xs">
-                          <div>{format(data, 'dd/MM')}</div>
-                          <div className="text-muted-foreground">
-                            {format(data, 'EEE', { locale: ptBR }).substring(0, 3)}
-                          </div>
-                        </div>
-                      </TableHead>
-                    ))}
-                    <TableHead className="text-center font-medium">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {produtosAtivos.map(nomeProduto => (
-                    <TableRow key={nomeProduto}>
-                      <TableCell className="sticky left-0 bg-background font-medium">
-                        {nomeProduto}
-                      </TableCell>
-                      {necessidadeDiaria.map((dia, index) => {
-                        const quantidade = dia.produtosPorData[nomeProduto] || 0;
-                        const isHoje = isToday(dia.data);
-                        
-                        return (
-                          <Tooltip key={index}>
-                            <TooltipTrigger asChild>
-                              <TableCell 
-                                className={`text-center cursor-help ${
-                                  quantidade > 0 
-                                    ? 'font-medium text-green-800' 
-                                    : 'text-gray-400'
-                                } ${isHoje ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
-                              >
-                                {quantidade}
-                              </TableCell>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <div className="text-sm">
-                                <div className="font-medium">{format(dia.data, "dd 'de' MMMM", { locale: ptBR })}</div>
-                                <div>{nomeProduto}: {quantidade} unidades</div>
-                                {isHoje && <div className="text-blue-600 font-medium">📅 Hoje</div>}
+          <div className="w-full">
+            {/* Container responsivo para tabela horizontal */}
+            <div className="overflow-x-auto">
+              <div className="min-w-max">
+                <TooltipProvider>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="sticky left-0 bg-background min-w-[150px] z-10 border-r">
+                          Sabor
+                        </TableHead>
+                        {proximosQuinzeDias.map((data, index) => (
+                          <TableHead key={index} className="text-center min-w-[60px] px-2">
+                            <div className="text-xs">
+                              <div>{format(data, 'dd/MM')}</div>
+                              <div className="text-muted-foreground">
+                                {format(data, 'EEE', { locale: ptBR }).substring(0, 3)}
                               </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        );
-                      })}
-                      <TableCell className="text-center font-bold bg-muted">
-                        {totalPorProduto(nomeProduto)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  
-                  {/* Linha de totais por dia */}
-                  <TableRow className="bg-muted/50 font-medium">
-                    <TableCell className="sticky left-0 bg-muted/50">Total por dia</TableCell>
-                    {necessidadeDiaria.map((dia, index) => {
-                      const totalDia = Object.values(dia.produtosPorData).reduce((sum, qty) => sum + qty, 0);
-                      return (
-                        <TableCell key={index} className={`text-center ${isToday(dia.data) ? 'ring-2 ring-blue-500' : ''}`}>
-                          {totalDia}
+                            </div>
+                          </TableHead>
+                        ))}
+                        <TableHead className="text-center font-medium min-w-[80px] border-l">
+                          Total
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {produtosAtivos.map(nomeProduto => (
+                        <TableRow key={nomeProduto}>
+                          <TableCell className="sticky left-0 bg-background font-medium z-10 border-r">
+                            {nomeProduto}
+                          </TableCell>
+                          {necessidadeDiaria.map((dia, index) => {
+                            const quantidade = dia.produtosPorData[nomeProduto] || 0;
+                            const isHoje = isToday(dia.data);
+                            
+                            return (
+                              <Tooltip key={index}>
+                                <TooltipTrigger asChild>
+                                  <TableCell 
+                                    className={`text-center cursor-help px-2 ${
+                                      quantidade > 0 
+                                        ? 'font-medium text-green-800' 
+                                        : 'text-gray-400'
+                                    } ${isHoje ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
+                                  >
+                                    {quantidade}
+                                  </TableCell>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <div className="text-sm">
+                                    <div className="font-medium">{format(dia.data, "dd 'de' MMMM", { locale: ptBR })}</div>
+                                    <div>{nomeProduto}: {quantidade} unidades</div>
+                                    {isHoje && <div className="text-blue-600 font-medium">📅 Hoje</div>}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })}
+                          <TableCell className="text-center font-bold bg-muted border-l">
+                            {totalPorProduto(nomeProduto)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      {/* Linha de totais por dia */}
+                      <TableRow className="bg-muted/50 font-medium border-t-2">
+                        <TableCell className="sticky left-0 bg-muted/50 z-10 border-r">
+                          Total por dia
                         </TableCell>
-                      );
-                    })}
-                    <TableCell className="text-center font-bold">
-                      {necessidadeDiaria.reduce((sum, dia) => 
-                        sum + Object.values(dia.produtosPorData).reduce((daySum, qty) => daySum + qty, 0), 0
-                      )}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </TooltipProvider>
+                        {necessidadeDiaria.map((dia, index) => {
+                          const totalDia = Object.values(dia.produtosPorData).reduce((sum, qty) => sum + qty, 0);
+                          return (
+                            <TableCell 
+                              key={index} 
+                              className={`text-center px-2 ${isToday(dia.data) ? 'ring-2 ring-blue-500' : ''}`}
+                            >
+                              {totalDia}
+                            </TableCell>
+                          );
+                        })}
+                        <TableCell className="text-center font-bold border-l">
+                          {necessidadeDiaria.reduce((sum, dia) => 
+                            sum + Object.values(dia.produtosPorData).reduce((daySum, qty) => daySum + qty, 0), 0
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TooltipProvider>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -357,7 +371,7 @@ export default function NecessidadeDiariaTab() {
       {/* Legenda */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex items-center gap-6 text-sm">
+          <div className="flex items-center gap-6 text-sm flex-wrap">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-green-100 border border-green-200 rounded"></div>
               <span>Com necessidade de produção</span>
