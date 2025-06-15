@@ -1,67 +1,22 @@
-
 import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
-import { useSupabaseReceitas } from "@/hooks/useSupabaseReceitas";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Trash2, Plus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { useSupabaseProdutos, ProdutoCompleto } from "@/hooks/useSupabaseProdutos";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
-import { Plus, Trash2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-
-const editarProdutoSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
-  descricao: z.string().optional(),
-  categoria_id: z.number().min(1, "Categoria é obrigatória"),
-  unidades_producao: z.number().min(1, "Unidades de produção deve ser maior que zero"),
-  peso_unitario: z.number().min(0, "Peso unitário deve ser maior ou igual a zero").optional(),
-  preco_venda: z.number().min(0, "Preço de venda deve ser maior ou igual a zero").optional(),
-});
-
-const componenteProdutoSchema = z.object({
-  tipo: z.enum(['receita', 'insumo']),
-  item_id: z.string().min(1, "Selecione um item"),
-  quantidade: z.number().min(0.01, "Quantidade deve ser maior que zero"),
-});
-
-type EditarProdutoFormValues = z.infer<typeof editarProdutoSchema>;
-type ComponenteProdutoFormValues = z.infer<typeof componenteProdutoSchema>;
+import { useSupabaseSubcategoriasProduto } from "@/hooks/useSupabaseSubcategoriasProduto";
+import { useSupabaseReceitas } from "@/hooks/useSupabaseReceitas";
+import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 
 interface EditarProdutoModalProps {
   produto: ProdutoCompleto | null;
@@ -70,411 +25,488 @@ interface EditarProdutoModalProps {
   onSuccess: () => void;
 }
 
-export default function EditarProdutoModal({
-  produto,
-  isOpen,
-  onClose,
-  onSuccess,
-}: EditarProdutoModalProps) {
-  const { insumos } = useSupabaseInsumos();
-  const { receitas } = useSupabaseReceitas();
-  const { adicionarComponenteProduto, removerComponenteProduto } = useSupabaseProdutos();
+interface ComponenteProduto {
+  id: string;
+  tipo: 'receita' | 'insumo';
+  item_id: string;
+  quantidade: number;
+  nome?: string;
+  custo_unitario?: number;
+}
+
+export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess }: EditarProdutoModalProps) {
+  const [nome, setNome] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [ativo, setAtivo] = useState(true);
+  const [unidadesProducao, setUnidadesProducao] = useState(1);
+  const [pesoUnitario, setPesoUnitario] = useState<number | undefined>();
+  const [precoVenda, setPrecoVenda] = useState<number | undefined>();
+  const [categoriaId, setCategoriaId] = useState<number | undefined>();
+  const [subcategoriaId, setSubcategoriaId] = useState<number | undefined>();
+  const [componentes, setComponentes] = useState<ComponenteProduto[]>([]);
+  const [novoComponenteTipo, setNovoComponenteTipo] = useState<'receita' | 'insumo'>('receita');
+  const [novoComponenteItemId, setNovoComponenteItemId] = useState("");
+  const [novoComponenteQuantidade, setNovoComponenteQuantidade] = useState<number>(1);
+  const [loading, setLoading] = useState(false);
+
+  const { toast } = useToast();
+  const { atualizarProduto, removerComponenteProduto, adicionarComponenteProduto } = useSupabaseProdutos();
   const { categorias } = useSupabaseCategoriasProduto();
-  const [isAdicionandoComponente, setIsAdicionandoComponente] = useState(false);
+  const { subcategorias, carregarSubcategorias } = useSupabaseSubcategoriasProduto();
+  const { receitas } = useSupabaseReceitas();
+  const { insumos } = useSupabaseInsumos();
 
-  const produtoForm = useForm<EditarProdutoFormValues>({
-    resolver: zodResolver(editarProdutoSchema),
-    defaultValues: {
-      nome: "",
-      descricao: "",
-      categoria_id: 0,
-      unidades_producao: 1,
-      peso_unitario: 0,
-      preco_venda: 0,
-    },
-  });
+  // Carregar subcategorias quando a categoria mudar
+  useEffect(() => {
+    if (categoriaId) {
+      carregarSubcategorias();
+    }
+  }, [categoriaId, carregarSubcategorias]);
 
-  const componenteForm = useForm<ComponenteProdutoFormValues>({
-    resolver: zodResolver(componenteProdutoSchema),
-    defaultValues: {
-      tipo: 'receita',
-      item_id: "",
-      quantidade: 0,
-    },
-  });
+  // Filtrar subcategorias pela categoria selecionada
+  const subcategoriasFiltradas = subcategorias.filter(sub => sub.categoria_id === categoriaId);
+
+  // Resetar subcategoria quando categoria mudar
+  useEffect(() => {
+    if (categoriaId && subcategoriaId) {
+      const subcategoriaValida = subcategoriasFiltradas.find(sub => sub.id === subcategoriaId);
+      if (!subcategoriaValida) {
+        setSubcategoriaId(undefined);
+      }
+    }
+  }, [categoriaId, subcategoriasFiltradas, subcategoriaId]);
 
   useEffect(() => {
-    if (produto) {
-      produtoForm.reset({
-        nome: produto.nome,
-        descricao: produto.descricao || "",
-        categoria_id: produto.categoria_id || 0,
-        unidades_producao: produto.unidades_producao,
-        peso_unitario: produto.peso_unitario || 0,
-        preco_venda: produto.preco_venda || 0,
-      });
+    if (isOpen && produto) {
+      setNome(produto.nome);
+      setDescricao(produto.descricao || "");
+      setAtivo(produto.ativo);
+      setUnidadesProducao(produto.unidades_producao);
+      setPesoUnitario(produto.peso_unitario || undefined);
+      setPrecoVenda(produto.preco_venda || undefined);
+      setCategoriaId(produto.categoria_id || undefined);
+      setSubcategoriaId(produto.subcategoria_id || undefined);
+      setComponentes(produto.componentes || []);
+      setNovoComponenteTipo('receita');
+      setNovoComponenteItemId("");
+      setNovoComponenteQuantidade(1);
     }
-  }, [produto, produtoForm]);
+  }, [isOpen, produto]);
 
-  const onSubmitProduto = async (values: EditarProdutoFormValues) => {
-    if (!produto) return;
+  const resetForm = () => {
+    setNome("");
+    setDescricao("");
+    setAtivo(true);
+    setUnidadesProducao(1);
+    setPesoUnitario(undefined);
+    setPrecoVenda(undefined);
+    setCategoriaId(undefined);
+    setSubcategoriaId(undefined);
+    setComponentes([]);
+    setNovoComponenteTipo('receita');
+    setNovoComponenteItemId("");
+    setNovoComponenteQuantidade(1);
+  };
 
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
+  const handleSalvar = async () => {
+    if (!produto || !nome.trim()) {
+      toast({
+        title: "Erro de validação",
+        description: "Nome do produto é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
     try {
-      const { error } = await supabase
-        .from('produtos_finais')
-        .update(values)
-        .eq('id', produto.id);
-
-      if (error) {
-        toast({
-          title: "Erro ao atualizar produto",
-          description: error.message,
-          variant: "destructive"
-        });
-        return;
-      }
+      await atualizarProduto(produto.id, {
+        nome,
+        descricao,
+        ativo,
+        unidades_producao: unidadesProducao,
+        peso_unitario: pesoUnitario,
+        preco_venda: precoVenda,
+        categoria_id: categoriaId,
+        subcategoria_id: subcategoriaId,
+      });
 
       toast({
         title: "Produto atualizado",
-        description: "Produto atualizado com sucesso"
+        description: "Produto atualizado com sucesso",
       });
+
       onSuccess();
-      onClose();
+      handleClose();
     } catch (error) {
       console.error('Erro ao atualizar produto:', error);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar o produto",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const onSubmitComponente = async (values: ComponenteProdutoFormValues) => {
-    if (!produto) return;
-
-    const success = await adicionarComponenteProduto(
-      produto.id,
-      values.item_id,
-      values.tipo,
-      values.quantidade
-    );
-
-    if (success) {
-      componenteForm.reset({
-        tipo: 'receita',
-        item_id: "",
-        quantidade: 0,
+  const handleAdicionarComponente = async () => {
+    if (!produto || !novoComponenteItemId || novoComponenteQuantidade <= 0) {
+      toast({
+        title: "Erro de validação",
+        description: "Selecione um item e quantidade válida",
+        variant: "destructive",
       });
-      setIsAdicionandoComponente(false);
+      return;
+    }
+
+    try {
+      await adicionarComponenteProduto(produto.id, {
+        tipo: novoComponenteTipo,
+        item_id: novoComponenteItemId,
+        quantidade: novoComponenteQuantidade,
+      });
+
+      toast({
+        title: "Componente adicionado",
+        description: "Componente adicionado com sucesso",
+      });
+
       onSuccess();
+      setNovoComponenteItemId("");
+      setNovoComponenteQuantidade(1);
+    } catch (error) {
+      console.error('Erro ao adicionar componente:', error);
+      toast({
+        title: "Erro ao adicionar",
+        description: "Não foi possível adicionar o componente",
+        variant: "destructive",
+      });
     }
   };
 
   const handleRemoverComponente = async (componenteId: string) => {
-    const success = await removerComponenteProduto(componenteId);
-    if (success) {
-      onSuccess();
+    if (!produto) return;
+
+    if (confirm("Tem certeza que deseja remover este componente?")) {
+      try {
+        await removerComponenteProduto(componenteId);
+        
+        toast({
+          title: "Componente removido",
+          description: "Componente removido com sucesso",
+        });
+
+        onSuccess();
+      } catch (error) {
+        console.error('Erro ao remover componente:', error);
+        toast({
+          title: "Erro ao remover",
+          description: "Não foi possível remover o componente",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const getItensDisponiveis = (tipo: 'receita' | 'insumo') => {
-    return tipo === 'receita' ? receitas : insumos;
+  const calcularCustoTotal = () => {
+    return componentes.reduce((total, comp) => total + (comp.custo_unitario || 0) * comp.quantidade, 0);
   };
 
-  // Verificar se produto e componentes existem antes de renderizar
-  if (!produto) {
-    return null;
-  }
+  const calcularCustoUnitario = () => {
+    const custoTotal = calcularCustoTotal();
+    return unidadesProducao > 0 ? custoTotal / unidadesProducao : 0;
+  };
 
-  const componentes = produto.componentes || [];
+  const calcularMargemLucro = () => {
+    const custoUnit = calcularCustoUnitario();
+    if (precoVenda && custoUnit > 0) {
+      return ((precoVenda - custoUnit) / precoVenda) * 100;
+    }
+    return 0;
+  };
+
+  if (!produto) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>Editar Produto</DialogTitle>
-          <DialogDescription>
-            Edite os dados do produto e seus componentes
-          </DialogDescription>
+          <DialogTitle>Editar Produto: {produto.nome}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Formulário do Produto */}
-          <Form {...produtoForm}>
-            <form onSubmit={produtoForm.handleSubmit(onSubmitProduto)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={produtoForm.control}
-                  name="nome"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome do Produto</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Nome do produto" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={produtoForm.control}
-                  name="categoria_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Categoria do Produto</FormLabel>
-                      <Select 
-                        onValueChange={(value) => field.onChange(Number(value))} 
-                        value={field.value > 0 ? field.value.toString() : ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione uma categoria" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {categorias.map((categoria) => (
-                            <SelectItem key={categoria.id} value={categoria.id.toString()}>
-                              {categoria.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+        <Tabs defaultValue="dados" className="flex-1">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
+            <TabsTrigger value="componentes">Componentes</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dados" className="space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="nome">Nome *</Label>
+                <Input
+                  id="nome"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Nome do produto"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={produtoForm.control}
-                  name="unidades_producao"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Unidades por Produção</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="1"
-                          step="1"
-                          placeholder="Ex: 12"
-                          {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={produtoForm.control}
-                  name="peso_unitario"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Peso Unitário (g)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="Ex: 50"
-                          {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              <div className="space-y-2">
+                <Label htmlFor="unidades">Unidades/Produção</Label>
+                <Input
+                  id="unidades"
+                  type="number"
+                  min="1"
+                  value={unidadesProducao}
+                  onChange={(e) => setUnidadesProducao(parseInt(e.target.value) || 1)}
                 />
               </div>
-
-              <FormField
-                control={produtoForm.control}
-                name="preco_venda"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Preço de Venda (R$)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="Ex: 25.90"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={produtoForm.control}
-                name="descricao"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrição (opcional)</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Descrição do produto" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <Button type="submit" className="w-full">
-                Atualizar Produto
-              </Button>
-            </form>
-          </Form>
-
-          {/* Lista de Componentes */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-md font-semibold">Componentes</h4>
-              <Button
-                size="sm"
-                onClick={() => setIsAdicionandoComponente(true)}
-                disabled={isAdicionandoComponente}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Componente
-              </Button>
             </div>
 
-            {/* Formulário para adicionar componente */}
-            {isAdicionandoComponente && (
-              <Form {...componenteForm}>
-                <form onSubmit={componenteForm.handleSubmit(onSubmitComponente)} className="space-y-4 p-4 border rounded">
-                  <div className="grid grid-cols-3 gap-4">
-                    <FormField
-                      control={componenteForm.control}
-                      name="tipo"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipo</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Tipo do componente" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="receita">Receita Base</SelectItem>
-                              <SelectItem value="insumo">Insumo</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={componenteForm.control}
-                      name="item_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Item</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione um item" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {getItensDisponiveis(componenteForm.watch('tipo')).map((item) => (
-                                <SelectItem key={item.id} value={item.id}>
-                                  {item.nome}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={componenteForm.control}
-                      name="quantidade"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Quantidade</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="Ex: 1"
-                              {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+            <div className="space-y-2">
+              <Label htmlFor="descricao">Descrição</Label>
+              <Textarea
+                id="descricao"
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                placeholder="Descrição do produto"
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="categoria">Categoria</Label>
+                <Select value={categoriaId?.toString()} onValueChange={(value) => setCategoriaId(parseInt(value))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categorias.map(categoria => (
+                      <SelectItem key={categoria.id} value={categoria.id.toString()}>
+                        {categoria.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="subcategoria">Subcategoria</Label>
+                <Select 
+                  value={subcategoriaId?.toString()} 
+                  onValueChange={(value) => setSubcategoriaId(parseInt(value))}
+                  disabled={!categoriaId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={categoriaId ? "Selecione uma subcategoria" : "Selecione uma categoria primeiro"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subcategoriasFiltradas.map(subcategoria => (
+                      <SelectItem key={subcategoria.id} value={subcategoria.id.toString()}>
+                        {subcategoria.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="peso">Peso Unitário (g)</Label>
+                <Input
+                  id="peso"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={pesoUnitario || ""}
+                  onChange={(e) => setPesoUnitario(parseFloat(e.target.value) || undefined)}
+                  placeholder="0.0"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="preco">Preço de Venda (R$)</Label>
+                <Input
+                  id="preco"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={precoVenda || ""}
+                  onChange={(e) => setPrecoVenda(parseFloat(e.target.value) || undefined)}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="ativo"
+                checked={ativo}
+                onCheckedChange={setAtivo}
+              />
+              <Label htmlFor="ativo">Produto ativo</Label>
+            </div>
+
+            {/* Resumo de custos */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Resumo de Custos</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label className="text-sm text-muted-foreground">Custo Total</Label>
+                  <div className="text-lg font-semibold">R$ {calcularCustoTotal().toFixed(2)}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Custo Unitário</Label>
+                  <div className="text-lg font-semibold">R$ {calcularCustoUnitario().toFixed(2)}</div>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Margem de Lucro</Label>
+                  <div className="text-lg font-semibold">
+                    <Badge variant={calcularMargemLucro() > 20 ? "default" : calcularMargemLucro() > 10 ? "secondary" : "destructive"}>
+                      {calcularMargemLucro().toFixed(1)}%
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="componentes" className="space-y-4 mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Adicionar Componente</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <Select value={novoComponenteTipo} onValueChange={(value: 'receita' | 'insumo') => setNovoComponenteTipo(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="receita">Receita</SelectItem>
+                        <SelectItem value="insumo">Insumo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Item</Label>
+                    <Select value={novoComponenteItemId} onValueChange={setNovoComponenteItemId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {novoComponenteTipo === 'receita' 
+                          ? receitas.map(receita => (
+                              <SelectItem key={receita.id} value={receita.id}>
+                                {receita.nome}
+                              </SelectItem>
+                            ))
+                          : insumos.map(insumo => (
+                              <SelectItem key={insumo.id} value={insumo.id}>
+                                {insumo.nome}
+                              </SelectItem>
+                            ))
+                        }
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Quantidade</Label>
+                    <Input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      value={novoComponenteQuantidade}
+                      onChange={(e) => setNovoComponenteQuantidade(parseFloat(e.target.value) || 0)}
                     />
                   </div>
-                  <div className="flex gap-2">
-                    <Button type="submit" size="sm">
+
+                  <div className="space-y-2">
+                    <Label>&nbsp;</Label>
+                    <Button onClick={handleAdicionarComponente} className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
                       Adicionar
                     </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setIsAdicionandoComponente(false);
-                        componenteForm.reset();
-                      }}
-                    >
-                      Cancelar
-                    </Button>
                   </div>
-                </form>
-              </Form>
-            )}
+                </div>
+              </CardContent>
+            </Card>
 
-            {/* Tabela de componentes */}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Quantidade</TableHead>
-                  <TableHead>Custo</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <Card>
+              <CardHeader>
+                <CardTitle>Componentes Atuais</CardTitle>
+              </CardHeader>
+              <CardContent>
                 {componentes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-gray-500">
-                      Nenhum componente adicionado
-                    </TableCell>
-                  </TableRow>
+                  <div className="text-center text-muted-foreground py-8">
+                    Nenhum componente adicionado
+                  </div>
                 ) : (
-                  componentes.map((componente) => (
-                    <TableRow key={componente.id}>
-                      <TableCell className="capitalize">{componente.tipo}</TableCell>
-                      <TableCell>{componente.nome_item}</TableCell>
-                      <TableCell>{componente.quantidade}</TableCell>
-                      <TableCell>R$ {componente.custo_item.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRemoverComponente(componente.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Quantidade</TableHead>
+                          <TableHead>Custo Unit.</TableHead>
+                          <TableHead>Custo Total</TableHead>
+                          <TableHead></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {componentes.map((componente) => (
+                          <TableRow key={componente.id}>
+                            <TableCell>
+                              <Badge variant={componente.tipo === 'receita' ? 'default' : 'secondary'}>
+                                {componente.tipo}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{componente.nome}</TableCell>
+                            <TableCell>{componente.quantidade}</TableCell>
+                            <TableCell>R$ {(componente.custo_unitario || 0).toFixed(2)}</TableCell>
+                            <TableCell>R$ {((componente.custo_unitario || 0) * componente.quantidade).toFixed(2)}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRemoverComponente(componente.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Fechar
+          <Button variant="outline" onClick={handleClose} disabled={loading}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSalvar} disabled={loading}>
+            {loading ? "Salvando..." : "Salvar Alterações"}
           </Button>
         </DialogFooter>
       </DialogContent>

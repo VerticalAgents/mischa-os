@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,6 +10,7 @@ import { ptBR } from "date-fns/locale";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
+import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 
 interface NecessidadeDiaria {
   data: Date;
@@ -25,14 +25,21 @@ interface AuditoriaItem {
   quantidadesPorProduto: Record<string, number>;
 }
 
+interface ProdutoComCategoria {
+  nome: string;
+  categoria: string;
+  categoriaId: number;
+}
+
 export default function NecessidadeDiariaTab() {
   const [incluirPrevistos, setIncluirPrevistos] = useState(false);
   const [necessidadeDiaria, setNecessidadeDiaria] = useState<NecessidadeDiaria[]>([]);
   const [dadosAuditoria, setDadosAuditoria] = useState<AuditoriaItem[]>([]);
-  const [produtosAtivos, setProdutosAtivos] = useState<string[]>([]);
+  const [produtosAtivos, setProdutosAtivos] = useState<ProdutoComCategoria[]>([]);
 
   const { agendamentos, carregarTodosAgendamentos, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
   const { produtos } = useSupabaseProdutos();
+  const { categorias } = useSupabaseCategoriasProduto();
   const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
 
   // Gerar array de 15 dias a partir de hoje
@@ -43,14 +50,22 @@ export default function NecessidadeDiariaTab() {
     carregarTodosAgendamentos();
   }, [carregarTodosAgendamentos]);
 
-  // Atualizar lista de produtos ativos
+  // Atualizar lista de produtos ativos com categorias
   useEffect(() => {
-    const produtosAtivosLista = produtos
+    const produtosAtivosComCategoria = produtos
       .filter(produto => produto.ativo)
-      .map(produto => produto.nome)
-      .sort();
-    setProdutosAtivos(produtosAtivosLista);
-  }, [produtos]);
+      .map(produto => {
+        const categoria = categorias.find(cat => cat.id === produto.categoria_id);
+        return {
+          nome: produto.nome,
+          categoria: categoria?.nome || "Sem categoria",
+          categoriaId: produto.categoria_id || 0
+        };
+      })
+      .sort((a, b) => a.categoria.localeCompare(b.categoria) || a.nome.localeCompare(b.nome));
+    
+    setProdutosAtivos(produtosAtivosComCategoria);
+  }, [produtos, categorias]);
 
   // Processar dados de auditoria
   useEffect(() => {
@@ -68,30 +83,22 @@ export default function NecessidadeDiariaTab() {
     const hoje = new Date();
     const quinzeDiasFrente = addDays(hoje, 14);
 
-    // Filtrar agendamentos para os próximos 15 dias
     const agendamentosFiltrados = agendamentos.filter(agendamento => {
       const dataReposicao = new Date(agendamento.dataReposicao);
-      
-      // Filtro por período (próximos 15 dias)
       const dentroPeríodo = dataReposicao >= hoje && dataReposicao <= quinzeDiasFrente;
-      
-      // Filtrar apenas clientes ativos
       const clienteAtivo = agendamento.cliente.statusCliente === 'Ativo';
-      
       return dentroPeríodo && clienteAtivo;
     });
 
     console.log('📋 Agendamentos filtrados (15 dias):', agendamentosFiltrados.length);
 
-    // Processar cada agendamento (mesma lógica da AuditoriaPCPTab)
     const dadosProcessados: AuditoriaItem[] = [];
     
     for (const agendamento of agendamentosFiltrados) {
       const quantidadesPorProduto: Record<string, number> = {};
       
-      // Inicializar todas as quantidades como 0
-      produtosAtivos.forEach(nomeProduto => {
-        quantidadesPorProduto[nomeProduto] = 0;
+      produtosAtivos.forEach(produto => {
+        quantidadesPorProduto[produto.nome] = 0;
       });
 
       console.log(`\n📦 Processando agendamento: ${agendamento.cliente.nome}`);
@@ -104,14 +111,12 @@ export default function NecessidadeDiariaTab() {
               agendamentoCompleto.itens_personalizados && 
               agendamentoCompleto.itens_personalizados.length > 0) {
             
-            // Para pedidos alterados, usar os itens personalizados salvos
             agendamentoCompleto.itens_personalizados.forEach(item => {
               if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
                 quantidadesPorProduto[item.produto] = item.quantidade;
               }
             });
           } else if (agendamentoCompleto.tipo_pedido === 'Padrão') {
-            // Para pedidos padrão, calcular usando as proporções
             const quantidadeTotal = agendamentoCompleto.quantidade_total;
             
             if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
@@ -129,7 +134,6 @@ export default function NecessidadeDiariaTab() {
             }
           }
         } else {
-          // Fallback para dados da lista de agendamentos
           if (agendamento.pedido && 
               agendamento.pedido.tipoPedido === 'Alterado' && 
               agendamento.pedido.itensPedido && 
@@ -146,7 +150,6 @@ export default function NecessidadeDiariaTab() {
               }
             });
           } else {
-            // Para agendamentos padrão, usar a quantidade total do cliente
             const quantidadeTotal = agendamento.cliente.quantidadePadrao || 0;
             
             if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
@@ -161,7 +164,7 @@ export default function NecessidadeDiariaTab() {
               } catch (error) {
                 console.error('❌ Erro ao calcular quantidades por proporção (fallback):', error);
                 if (produtosAtivos.length > 0) {
-                  const primeiroProduto = produtosAtivos[0];
+                  const primeiroProduto = produtosAtivos[0].nome;
                   quantidadesPorProduto[primeiroProduto] = quantidadeTotal;
                 }
               }
@@ -188,7 +191,6 @@ export default function NecessidadeDiariaTab() {
   const calcularNecessidadeDiaria = () => {
     console.log('🧮 Calculando necessidade diária...');
 
-    // Filtrar dados de auditoria por status do agendamento
     const dadosFiltrados = dadosAuditoria.filter(item => {
       if (incluirPrevistos) {
         return item.statusAgendamento === 'Agendado' || item.statusAgendamento === 'Previsto';
@@ -199,16 +201,13 @@ export default function NecessidadeDiariaTab() {
 
     console.log('📊 Dados filtrados por status:', dadosFiltrados.length);
 
-    // Calcular necessidade por data
     const necessidadePorData: NecessidadeDiaria[] = proximosQuinzeDias.map(data => {
       const produtosPorData: Record<string, number> = {};
       
-      // Inicializar todos os produtos com 0
-      produtosAtivos.forEach(nomeProduto => {
-        produtosPorData[nomeProduto] = 0;
+      produtosAtivos.forEach(produto => {
+        produtosPorData[produto.nome] = 0;
       });
 
-      // Somar quantidades dos agendamentos nesta data
       dadosFiltrados.forEach(item => {
         const dataReposicao = new Date(item.dataReposicao);
         
@@ -232,9 +231,35 @@ export default function NecessidadeDiariaTab() {
     setNecessidadeDiaria(necessidadePorData);
   };
 
+  // Função para calcular formas necessárias com lógica diferenciada
+  const calcularFormasNecessarias = (nomeProduto: string, quantidade: number): number => {
+    if (quantidade === 0) return 0;
+    
+    // Cálculo específico para Mini Brownie Tradicional
+    if (nomeProduto === "Mini Brownie Tradicional") {
+      // Cada pacote tem 2kg, cada forma produz 2.7kg
+      const kgNecessarios = quantidade * 2; // quantidade de pacotes * 2kg por pacote
+      return Math.ceil(kgNecessarios / 2.7); // arredondar para cima
+    }
+    
+    // Cálculo padrão para outros produtos (assumindo 30 unidades por forma)
+    return Math.ceil(quantidade / 30);
+  };
+
   const totalPorProduto = (nomeProduto: string) => {
     return necessidadeDiaria.reduce((sum, dia) => sum + (dia.produtosPorData[nomeProduto] || 0), 0);
   };
+
+  // Agrupar produtos por categoria
+  const produtosPorCategoria = produtosAtivos.reduce((acc, produto) => {
+    if (!acc[produto.categoria]) {
+      acc[produto.categoria] = [];
+    }
+    acc[produto.categoria].push(produto);
+    return acc;
+  }, {} as Record<string, ProdutoComCategoria[]>);
+
+  const categoriasOrdenadas = Object.keys(produtosPorCategoria).sort();
 
   return (
     <div className="space-y-6">
@@ -245,7 +270,7 @@ export default function NecessidadeDiariaTab() {
             Necessidade Diária de Produção (15 dias)
           </CardTitle>
           <CardDescription>
-            Visualização da necessidade de produção por sabor nos próximos 15 dias baseada nos dados da Auditoria PCP
+            Visualização da necessidade de produção por produto nos próximos 15 dias baseada nos dados da Auditoria PCP
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -266,107 +291,125 @@ export default function NecessidadeDiariaTab() {
         </CardContent>
       </Card>
 
-      {/* Tabela de Necessidade por Sabor - Responsiva */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Necessidade por Sabor</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="w-full">
-            {/* Container responsivo para tabela horizontal */}
-            <div className="overflow-x-auto">
-              <div className="min-w-max">
-                <TooltipProvider>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="sticky left-0 bg-background min-w-[150px] z-10 border-r">
-                          Sabor
-                        </TableHead>
-                        {proximosQuinzeDias.map((data, index) => (
-                          <TableHead key={index} className="text-center min-w-[60px] px-2">
-                            <div className="text-xs">
-                              <div>{format(data, 'dd/MM')}</div>
-                              <div className="text-muted-foreground">
-                                {format(data, 'EEE', { locale: ptBR }).substring(0, 3)}
-                              </div>
-                            </div>
+      {/* Tabelas separadas por categoria */}
+      {categoriasOrdenadas.map(categoria => (
+        <Card key={categoria}>
+          <CardHeader>
+            <CardTitle>{categoria}</CardTitle>
+            <CardDescription>
+              Necessidade de produção para produtos da categoria {categoria}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="w-full">
+              <div className="overflow-x-auto">
+                <div className="min-w-max">
+                  <TooltipProvider>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="sticky left-0 bg-background min-w-[150px] z-10 border-r">
+                            Produto
                           </TableHead>
+                          {proximosQuinzeDias.map((data, index) => (
+                            <TableHead key={index} className="text-center min-w-[60px] px-2">
+                              <div className="text-xs">
+                                <div>{format(data, 'dd/MM')}</div>
+                                <div className="text-muted-foreground">
+                                  {format(data, 'EEE', { locale: ptBR }).substring(0, 3)}
+                                </div>
+                              </div>
+                            </TableHead>
+                          ))}
+                          <TableHead className="text-center font-medium min-w-[80px] border-l">
+                            Total Unid.
+                          </TableHead>
+                          <TableHead className="text-center font-medium min-w-[80px]">
+                            Formas
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {produtosPorCategoria[categoria].map(produto => (
+                          <TableRow key={produto.nome}>
+                            <TableCell className="sticky left-0 bg-background font-medium z-10 border-r">
+                              {produto.nome}
+                            </TableCell>
+                            {necessidadeDiaria.map((dia, index) => {
+                              const quantidade = dia.produtosPorData[produto.nome] || 0;
+                              const isHoje = isToday(dia.data);
+                              
+                              return (
+                                <Tooltip key={index}>
+                                  <TooltipTrigger asChild>
+                                    <TableCell 
+                                      className={`text-center cursor-help px-2 ${
+                                        quantidade > 0 
+                                          ? 'font-medium text-green-800' 
+                                          : 'text-gray-400'
+                                      } ${isHoje ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
+                                    >
+                                      {quantidade}
+                                    </TableCell>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <div className="text-sm">
+                                      <div className="font-medium">{format(dia.data, "dd 'de' MMMM", { locale: ptBR })}</div>
+                                      <div>{produto.nome}: {quantidade} unidades</div>
+                                      <div>Formas: {calcularFormasNecessarias(produto.nome, quantidade)}</div>
+                                      {isHoje && <div className="text-blue-600 font-medium">📅 Hoje</div>}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            })}
+                            <TableCell className="text-center font-bold bg-muted border-l">
+                              {totalPorProduto(produto.nome)}
+                            </TableCell>
+                            <TableCell className="text-center font-bold bg-muted">
+                              {calcularFormasNecessarias(produto.nome, totalPorProduto(produto.nome))}
+                            </TableCell>
+                          </TableRow>
                         ))}
-                        <TableHead className="text-center font-medium min-w-[80px] border-l">
-                          Total
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {produtosAtivos.map(nomeProduto => (
-                        <TableRow key={nomeProduto}>
-                          <TableCell className="sticky left-0 bg-background font-medium z-10 border-r">
-                            {nomeProduto}
+                        
+                        {/* Linha de totais por dia para esta categoria */}
+                        <TableRow className="bg-muted/50 font-medium border-t-2">
+                          <TableCell className="sticky left-0 bg-muted/50 z-10 border-r">
+                            Total {categoria}
                           </TableCell>
                           {necessidadeDiaria.map((dia, index) => {
-                            const quantidade = dia.produtosPorData[nomeProduto] || 0;
-                            const isHoje = isToday(dia.data);
-                            
+                            const totalDia = produtosPorCategoria[categoria].reduce((sum, produto) => 
+                              sum + (dia.produtosPorData[produto.nome] || 0), 0
+                            );
                             return (
-                              <Tooltip key={index}>
-                                <TooltipTrigger asChild>
-                                  <TableCell 
-                                    className={`text-center cursor-help px-2 ${
-                                      quantidade > 0 
-                                        ? 'font-medium text-green-800' 
-                                        : 'text-gray-400'
-                                    } ${isHoje ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
-                                  >
-                                    {quantidade}
-                                  </TableCell>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <div className="text-sm">
-                                    <div className="font-medium">{format(dia.data, "dd 'de' MMMM", { locale: ptBR })}</div>
-                                    <div>{nomeProduto}: {quantidade} unidades</div>
-                                    {isHoje && <div className="text-blue-600 font-medium">📅 Hoje</div>}
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
+                              <TableCell 
+                                key={index} 
+                                className={`text-center px-2 ${isToday(dia.data) ? 'ring-2 ring-blue-500' : ''}`}
+                              >
+                                {totalDia}
+                              </TableCell>
                             );
                           })}
-                          <TableCell className="text-center font-bold bg-muted border-l">
-                            {totalPorProduto(nomeProduto)}
+                          <TableCell className="text-center font-bold border-l">
+                            {produtosPorCategoria[categoria].reduce((sum, produto) => 
+                              sum + totalPorProduto(produto.nome), 0
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center font-bold">
+                            {produtosPorCategoria[categoria].reduce((sum, produto) => 
+                              sum + calcularFormasNecessarias(produto.nome, totalPorProduto(produto.nome)), 0
+                            )}
                           </TableCell>
                         </TableRow>
-                      ))}
-                      
-                      {/* Linha de totais por dia */}
-                      <TableRow className="bg-muted/50 font-medium border-t-2">
-                        <TableCell className="sticky left-0 bg-muted/50 z-10 border-r">
-                          Total por dia
-                        </TableCell>
-                        {necessidadeDiaria.map((dia, index) => {
-                          const totalDia = Object.values(dia.produtosPorData).reduce((sum, qty) => sum + qty, 0);
-                          return (
-                            <TableCell 
-                              key={index} 
-                              className={`text-center px-2 ${isToday(dia.data) ? 'ring-2 ring-blue-500' : ''}`}
-                            >
-                              {totalDia}
-                            </TableCell>
-                          );
-                        })}
-                        <TableCell className="text-center font-bold border-l">
-                          {necessidadeDiaria.reduce((sum, dia) => 
-                            sum + Object.values(dia.produtosPorData).reduce((daySum, qty) => daySum + qty, 0), 0
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </TooltipProvider>
+                      </TableBody>
+                    </Table>
+                  </TooltipProvider>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ))}
 
       {/* Legenda */}
       <Card>
@@ -386,7 +429,9 @@ export default function NecessidadeDiariaTab() {
             </div>
           </div>
           <div className="mt-2 text-xs text-muted-foreground">
-            Dados baseados nos agendamentos filtrados da Auditoria PCP para os próximos 15 dias
+            Dados baseados nos agendamentos filtrados da Auditoria PCP para os próximos 15 dias<br/>
+            <strong>Mini Brownie Tradicional:</strong> Cálculo especial - 2kg por pacote, 2,7kg por forma<br/>
+            <strong>Outros produtos:</strong> Cálculo padrão - 30 unidades por forma
           </div>
         </CardContent>
       </Card>
