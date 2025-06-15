@@ -91,10 +91,10 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
       const componentesFormatados = (produto.componentes || []).map(comp => ({
         id: comp.id,
         tipo: comp.tipo,
-        item_id: comp.item_id,
+        item_id: comp.id, // Use comp.id as item_id since that's what we have
         quantidade: comp.quantidade,
-        nome: comp.nome,
-        custo_unitario: comp.custo_unitario
+        nome: comp.nome_item, // Map nome_item to nome
+        custo_unitario: comp.custo_item // Map custo_item to custo_unitario
       }));
       setComponentes(componentesFormatados);
       
@@ -177,11 +177,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     }
 
     try {
-      await adicionarComponenteProduto(produto.id, {
-        tipo: novoComponenteTipo,
-        item_id: novoComponenteItemId,
-        quantidade: novoComponenteQuantidade,
-      });
+      await adicionarComponenteProduto(produto.id, novoComponenteItemId, novoComponenteTipo, novoComponenteQuantidade);
 
       toast({
         title: "Componente adicionado",
