@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,7 @@ export default function AgendamentoEditModal({
   const { produtos: produtosSupabase, loading: loadingSupabase } = useSupabaseProdutos();
   const { salvarAgendamento, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
 
+  // CORREÇÃO: Lógica de produtos unificada com logs detalhados
   const produtos = produtosSupabase.length > 0 ? produtosSupabase.map(p => ({
     id: parseInt(p.id) || 0,
     nome: p.nome,
@@ -106,20 +108,60 @@ export default function AgendamentoEditModal({
     subcategoriaId: p.subcategoria_id || 0
   })) : produtosLocal;
 
+  console.log('🔍 DEBUG - Produtos disponíveis:', {
+    totalProdutos: produtos.length,
+    produtosSupabase: produtosSupabase.length,
+    produtosLocal: produtosLocal.length,
+    produtos: produtos.map(p => ({ id: p.id, nome: p.nome, ativo: p.ativo }))
+  });
+
+  // CORREÇÃO: Filtro de produtos melhorado com logs detalhados
   const produtosFiltrados = produtos.filter(produto => {
-    if (!agendamento?.cliente || !produto) {
+    console.log('🔍 Analisando produto:', produto.nome, {
+      ativo: produto.ativo,
+      clienteExiste: !!agendamento?.cliente,
+      categoriasHabilitadas: agendamento?.cliente?.categoriasHabilitadas
+    });
+
+    // Primeiro filtro: produto deve existir e estar ativo
+    if (!produto || !produto.ativo) {
+      console.log('❌ Produto inativo ou inexistente:', produto?.nome);
       return false;
     }
 
-    if (!produto.ativo) {
+    // Segundo filtro: cliente deve existir
+    if (!agendamento?.cliente) {
+      console.log('❌ Cliente não encontrado para filtro');
       return false;
     }
 
+    // Terceiro filtro: se não há categorias habilitadas, liberar todos os produtos ativos
     if (!agendamento.cliente.categoriasHabilitadas || agendamento.cliente.categoriasHabilitadas.length === 0) {
+      console.log('✅ Produto liberado (sem filtro de categoria):', produto.nome);
       return true;
     }
 
-    return agendamento.cliente.categoriasHabilitadas.includes(produto.categoriaId);
+    // Quarto filtro: produto deve pertencer às categorias habilitadas
+    const pertenceCategoria = agendamento.cliente.categoriasHabilitadas.includes(produto.categoriaId);
+    console.log('🔍 Verificando categoria do produto:', {
+      produto: produto.nome,
+      categoriaId: produto.categoriaId,
+      categoriasHabilitadas: agendamento.cliente.categoriasHabilitadas,
+      pertence: pertenceCategoria
+    });
+
+    if (pertenceCategoria) {
+      console.log('✅ Produto aprovado no filtro:', produto.nome);
+    } else {
+      console.log('❌ Produto rejeitado por categoria:', produto.nome);
+    }
+
+    return pertenceCategoria;
+  });
+
+  console.log('🎯 DEBUG - Produtos filtrados finais:', {
+    totalFiltrados: produtosFiltrados.length,
+    produtos: produtosFiltrados.map(p => ({ id: p.id, nome: p.nome, categoriaId: p.categoriaId }))
   });
 
   // Carregar dados do agendamento ao abrir o modal
@@ -186,20 +228,35 @@ export default function AgendamentoEditModal({
     carregarDadosCompletos();
   }, [agendamento, open, carregarAgendamentoPorCliente]);
 
-  // Atualizar produtos com quantidades quando o tipo for "Alterado"
+  // CORREÇÃO: Atualizar produtos com quantidades quando o tipo for "Alterado"
   useEffect(() => {
     const atualizarProdutosQuantidades = async () => {
+      console.log('🔄 Atualizando produtos quantidades:', {
+        tipoPedido,
+        produtosFiltradosLength: produtosFiltrados.length,
+        produtosQuantidadesLength: produtosQuantidades.length
+      });
+
       if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0 && produtosQuantidades.length === 0) {
-        const produtosIniciais = produtosFiltrados.map(produto => ({
-          produto: produto.nome,
-          quantidade: 0
-        }));
+        console.log('🎯 Criando produtos iniciais para tipo Alterado');
+        
+        const produtosIniciais = produtosFiltrados.map(produto => {
+          console.log('➕ Adicionando produto inicial:', produto.nome);
+          return {
+            produto: produto.nome,
+            quantidade: 0
+          };
+        });
+        
+        console.log('✅ Produtos iniciais criados:', produtosIniciais);
         setProdutosQuantidades(produtosIniciais);
+        
       } else if (tipoPedido === 'Padrão') {
         // Para pedidos padrão, calcular automaticamente as quantidades
         if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
           try {
             const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
+            console.log('📊 Quantidades calculadas para padrão:', quantidadesCalculadas);
             setProdutosQuantidades(quantidadesCalculadas);
           } catch (error) {
             console.error('Erro ao calcular quantidades por proporção:', error);
@@ -216,6 +273,8 @@ export default function AgendamentoEditModal({
 
   // Atualizar quantidade de um produto específico
   const atualizarQuantidadeProduto = (produtoNome: string, novaQuantidade: number) => {
+    console.log('🔄 Atualizando quantidade do produto:', produtoNome, 'para:', novaQuantidade);
+    
     setProdutosQuantidades(prev => 
       prev.map(produto => 
         produto.produto === produtoNome 
@@ -456,18 +515,36 @@ export default function AgendamentoEditModal({
                   </Alert>
                 )}
 
+                {/* DEBUG: Mostrar informações de debug */}
+                <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                  <strong>Debug Info:</strong> 
+                  Produtos filtrados: {produtosFiltrados.length} | 
+                  Produtos com quantidades: {produtosQuantidades.length} |
+                  Cliente: {agendamento.cliente.nome}
+                </div>
+
                 {produtosFiltrados.length === 0 ? (
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
                       Nenhum produto disponível para as categorias habilitadas deste cliente.
                       Verifique as configurações de categoria do cliente.
+                      
+                      <div className="mt-2 text-xs">
+                        <strong>Categorias habilitadas:</strong> {agendamento.cliente.categoriasHabilitadas?.join(', ') || 'Nenhuma'}
+                      </div>
                     </AlertDescription>
                   </Alert>
                 ) : (
                   <div className="grid gap-3 max-h-60 overflow-y-auto">
                     {produtosFiltrados.map((produto) => {
                       const produtoQuantidade = produtosQuantidades.find(p => p.produto === produto.nome);
+                      console.log('🎯 Renderizando produto no modal:', {
+                        nome: produto.nome,
+                        quantidade: produtoQuantidade?.quantidade || 0,
+                        categoriaId: produto.categoriaId
+                      });
+                      
                       return (
                         <div key={produto.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex flex-col">
