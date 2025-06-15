@@ -86,7 +86,18 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
       setPrecoVenda(produto.preco_venda || undefined);
       setCategoriaId(produto.categoria_id || undefined);
       setSubcategoriaId(produto.subcategoria_id || undefined);
-      setComponentes(produto.componentes || []);
+      
+      // Fix the components mapping to match ComponenteProduto interface
+      const componentesFormatados = (produto.componentes || []).map(comp => ({
+        id: comp.id,
+        tipo: comp.tipo,
+        item_id: comp.item_id,
+        quantidade: comp.quantidade,
+        nome: comp.nome,
+        custo_unitario: comp.custo_unitario
+      }));
+      setComponentes(componentesFormatados);
+      
       setNovoComponenteTipo('receita');
       setNovoComponenteItemId("");
       setNovoComponenteQuantidade(1);
