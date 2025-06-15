@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -237,9 +238,11 @@ export default function NecessidadeDiariaTab() {
     
     // Cálculo específico para Mini Brownie Tradicional
     if (nomeProduto === "Mini Brownie Tradicional") {
-      // Cada pacote tem 2kg, cada forma produz 2.7kg
-      const kgNecessarios = quantidade * 2; // quantidade de pacotes * 2kg por pacote
-      return Math.ceil(kgNecessarios / 2.7); // arredondar para cima
+      // Cada pacote precisa de 2kg, cada forma produz 2.7kg
+      // Então cada pacote precisa de 2/2.7 = 0.740740741 formas
+      const formasPorPacote = 2 / 2.7;
+      const formasNecessarias = quantidade * formasPorPacote;
+      return Math.ceil(formasNecessarias); // arredondar para cima
     }
     
     // Cálculo padrão para outros produtos (assumindo 30 unidades por forma)
@@ -357,6 +360,11 @@ export default function NecessidadeDiariaTab() {
                                       <div className="font-medium">{format(dia.data, "dd 'de' MMMM", { locale: ptBR })}</div>
                                       <div>{produto.nome}: {quantidade} unidades</div>
                                       <div>Formas: {calcularFormasNecessarias(produto.nome, quantidade)}</div>
+                                      {produto.nome === "Mini Brownie Tradicional" && quantidade > 0 && (
+                                        <div className="text-xs text-muted-foreground">
+                                          Sobra: {((Math.ceil((quantidade * 2) / 2.7) * 2.7) - (quantidade * 2)).toFixed(0)}g
+                                        </div>
+                                      )}
                                       {isHoje && <div className="text-blue-600 font-medium">📅 Hoje</div>}
                                     </div>
                                   </TooltipContent>
@@ -430,7 +438,7 @@ export default function NecessidadeDiariaTab() {
           </div>
           <div className="mt-2 text-xs text-muted-foreground">
             Dados baseados nos agendamentos filtrados da Auditoria PCP para os próximos 15 dias<br/>
-            <strong>Mini Brownie Tradicional:</strong> Cálculo especial - 2kg por pacote, 2,7kg por forma<br/>
+            <strong>Mini Brownie Tradicional:</strong> Cálculo especial - 2kg por pacote, 2,7kg por forma (0,74 formas/pacote)<br/>
             <strong>Outros produtos:</strong> Cálculo padrão - 30 unidades por forma
           </div>
         </CardContent>
