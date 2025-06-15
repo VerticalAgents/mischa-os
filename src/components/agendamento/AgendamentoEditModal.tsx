@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -228,7 +227,7 @@ export default function AgendamentoEditModal({
     carregarDadosCompletos();
   }, [agendamento, open, carregarAgendamentoPorCliente]);
 
-  // CORREÇÃO: Atualizar produtos com quantidades quando o tipo for "Alterado"
+  // CORREÇÃO PRINCIPAL: Atualizar produtos com quantidades para tipo "Alterado"
   useEffect(() => {
     const atualizarProdutosQuantidades = async () => {
       console.log('🔄 Atualizando produtos quantidades:', {
@@ -237,19 +236,26 @@ export default function AgendamentoEditModal({
         produtosQuantidadesLength: produtosQuantidades.length
       });
 
-      if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0 && produtosQuantidades.length === 0) {
-        console.log('🎯 Criando produtos iniciais para tipo Alterado');
+      if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0) {
+        console.log('🎯 Configurando produtos para tipo Alterado');
         
-        const produtosIniciais = produtosFiltrados.map(produto => {
-          console.log('➕ Adicionando produto inicial:', produto.nome);
+        // Para tipo "Alterado", sempre mostrar TODOS os produtos filtrados
+        // Preservar quantidades existentes ou inicializar com 0
+        const produtosParaEdicao = produtosFiltrados.map(produto => {
+          const produtoExistente = produtosQuantidades.find(p => p.produto === produto.nome);
+          console.log('➕ Configurando produto para edição:', {
+            nome: produto.nome,
+            quantidadeExistente: produtoExistente?.quantidade || 0
+          });
+          
           return {
             produto: produto.nome,
-            quantidade: 0
+            quantidade: produtoExistente?.quantidade || 0
           };
         });
         
-        console.log('✅ Produtos iniciais criados:', produtosIniciais);
-        setProdutosQuantidades(produtosIniciais);
+        console.log('✅ Produtos configurados para edição:', produtosParaEdicao);
+        setProdutosQuantidades(produtosParaEdicao);
         
       } else if (tipoPedido === 'Padrão') {
         // Para pedidos padrão, calcular automaticamente as quantidades
@@ -269,7 +275,7 @@ export default function AgendamentoEditModal({
     };
 
     atualizarProdutosQuantidades();
-  }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length, quantidadeTotal, calcularQuantidadesPorProporcao, temProporcoesConfiguradas]);
+  }, [tipoPedido, produtosFiltrados, quantidadeTotal, calcularQuantidadesPorProporcao, temProporcoesConfiguradas]);
 
   // Atualizar quantidade de um produto específico
   const atualizarQuantidadeProduto = (produtoNome: string, novaQuantidade: number) => {
@@ -502,7 +508,7 @@ export default function AgendamentoEditModal({
 
                 {agendamento.cliente.categoriasHabilitadas && agendamento.cliente.categoriasHabilitadas.length > 0 && (
                   <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                    Exibindo apenas produtos das categorias habilitadas para este cliente
+                    Exibindo todos os produtos ativos das categorias habilitadas para este cliente
                   </div>
                 )}
                 
@@ -520,7 +526,8 @@ export default function AgendamentoEditModal({
                   <strong>Debug Info:</strong> 
                   Produtos filtrados: {produtosFiltrados.length} | 
                   Produtos com quantidades: {produtosQuantidades.length} |
-                  Cliente: {agendamento.cliente.nome}
+                  Cliente: {agendamento.cliente.nome} |
+                  Modo: TODOS os produtos ativos (independente de proporção)
                 </div>
 
                 {produtosFiltrados.length === 0 ? (
@@ -539,7 +546,7 @@ export default function AgendamentoEditModal({
                   <div className="grid gap-3 max-h-60 overflow-y-auto">
                     {produtosFiltrados.map((produto) => {
                       const produtoQuantidade = produtosQuantidades.find(p => p.produto === produto.nome);
-                      console.log('🎯 Renderizando produto no modal:', {
+                      console.log('🎯 Renderizando produto no modal (ALTERADO):', {
                         nome: produto.nome,
                         quantidade: produtoQuantidade?.quantidade || 0,
                         categoriaId: produto.categoriaId
