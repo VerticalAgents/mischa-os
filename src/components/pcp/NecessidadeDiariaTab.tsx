@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
@@ -19,6 +19,7 @@ interface NecessidadeDiaria {
 export default function NecessidadeDiariaTab() {
   const [incluirPrevistos, setIncluirPrevistos] = useState(false);
   const [necessidadeDiaria, setNecessidadeDiaria] = useState<NecessidadeDiaria[]>([]);
+  const [dadosCarregados, setDadosCarregados] = useState(false);
 
   const { carregarTodosAgendamentos } = useAgendamentoClienteStore();
   const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria } = useAuditoriaPCPData();
@@ -28,30 +29,8 @@ export default function NecessidadeDiariaTab() {
     Array.from({ length: 15 }, (_, i) => addDays(new Date(), i)), []
   );
 
-  // Carregar agendamentos ao montar o componente
-  useEffect(() => {
-    carregarTodosAgendamentos();
-  }, [carregarTodosAgendamentos]);
-
-  // Processar dados de auditoria para os próximos 15 dias
-  useEffect(() => {
-    const hoje = new Date();
-    const quinzeDiasFrente = addDays(hoje, 14);
-    
-    processarDadosAuditoria(
-      format(hoje, 'yyyy-MM-dd'),
-      format(quinzeDiasFrente, 'yyyy-MM-dd'),
-      '',
-      'todos'
-    );
-  }, [processarDadosAuditoria]);
-
-  // Calcular necessidade diária baseada nos dados da auditoria
-  useEffect(() => {
-    calcularNecessidadeDiaria();
-  }, [dadosAuditoria, incluirPrevistos, proximosQuinzeDias, produtosAtivos]);
-
-  const calcularNecessidadeDiaria = () => {
+  // Função memoizada para calcular necessidade diária
+  const calcularNecessidadeDiaria = useCallback(() => {
     console.log('🧮 Calculando necessidade diária...');
 
     const dadosFiltrados = dadosAuditoria.filter(item => {
@@ -92,7 +71,51 @@ export default function NecessidadeDiariaTab() {
 
     console.log('✅ Necessidade diária calculada:', necessidadePorData);
     setNecessidadeDiaria(necessidadePorData);
-  };
+  }, [dadosAuditoria, incluirPrevistos, proximosQuinzeDias, produtosAtivos]);
+
+  // Carregar agendamentos apenas uma vez
+  useEffect(() => {
+    let isMounted = true;
+    
+    const carregarDados = async () => {
+      if (!dadosCarregados && isMounted) {
+        try {
+          await carregarTodosAgendamentos();
+          setDadosCarregados(true);
+        } catch (error) {
+          console.error('Erro ao carregar agendamentos:', error);
+        }
+      }
+    };
+
+    carregarDados();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [carregarTodosAgendamentos, dadosCarregados]);
+
+  // Processar dados de auditoria para os próximos 15 dias
+  useEffect(() => {
+    if (dadosCarregados) {
+      const hoje = new Date();
+      const quinzeDiasFrente = addDays(hoje, 14);
+      
+      processarDadosAuditoria(
+        format(hoje, 'yyyy-MM-dd'),
+        format(quinzeDiasFrente, 'yyyy-MM-dd'),
+        '',
+        'todos'
+      );
+    }
+  }, [dadosCarregados, processarDadosAuditoria]);
+
+  // Calcular necessidade diária baseada nos dados da auditoria
+  useEffect(() => {
+    if (dadosAuditoria.length > 0 || produtosAtivos.length > 0) {
+      calcularNecessidadeDiaria();
+    }
+  }, [calcularNecessidadeDiaria]);
 
   // Função para calcular formas necessárias com lógica diferenciada
   const calcularFormasNecessarias = (nomeProduto: string, quantidade: number): number => {
@@ -130,11 +153,13 @@ export default function NecessidadeDiariaTab() {
     Object.keys(produtosPorCategoria).sort(), [produtosPorCategoria]
   );
 
-  if (loading) {
+  if (!dadosCarregados || loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        <span className="ml-4 text-lg">Carregando dados de necessidade diária...</span>
+        <span className="ml-4 text-lg">
+          {!dadosCarregados ? 'Inicializando sistema...' : 'Carregando dados de necessidade diária...'}
+        </span>
       </div>
     );
   }

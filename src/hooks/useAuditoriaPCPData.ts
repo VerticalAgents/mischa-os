@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAgendamentoClienteStore } from './useAgendamentoClienteStore';
 import { useSupabaseProdutos } from './useSupabaseProdutos';
 import { useProporoesPadrao } from './useProporoesPadrao';
@@ -23,6 +23,7 @@ export const useAuditoriaPCPData = () => {
   const [dadosAuditoria, setDadosAuditoria] = useState<AuditoriaItem[]>([]);
   const [produtosAtivos, setProdutosAtivos] = useState<ProdutoComCategoria[]>([]);
   const [loading, setLoading] = useState(false);
+  const processandoRef = useRef(false);
 
   const { agendamentos, agendamentosCompletos } = useAgendamentoClienteStore();
   const { produtos } = useSupabaseProdutos();
@@ -51,9 +52,15 @@ export const useAuditoriaPCPData = () => {
 
   // Processar dados de auditoria de forma otimizada
   const processarDadosAuditoria = async (dataInicio?: string, dataFim?: string, filtroCliente?: string, filtroStatus?: string) => {
-    if (loading) return; // Evitar múltiplas execuções simultâneas
+    // Evitar múltiplas execuções simultâneas
+    if (processandoRef.current || loading) {
+      console.log('⏳ Processamento já em andamento, ignorando nova requisição');
+      return;
+    }
     
+    processandoRef.current = true;
     setLoading(true);
+    
     try {
       console.log('🔍 Processando dados de auditoria otimizado...');
       console.log('📊 Total de agendamentos:', agendamentos.length);
@@ -188,8 +195,10 @@ export const useAuditoriaPCPData = () => {
       setDadosAuditoria(dadosProcessados);
     } catch (error) {
       console.error('❌ Erro ao processar dados de auditoria:', error);
+      setDadosAuditoria([]);
     } finally {
       setLoading(false);
+      processandoRef.current = false;
     }
   };
 

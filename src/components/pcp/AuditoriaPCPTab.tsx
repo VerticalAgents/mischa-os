@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -18,23 +18,54 @@ export default function AuditoriaPCPTab() {
   const [dataInicio, setDataInicio] = useState(format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [dataFim, setDataFim] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
+  const [dadosCarregados, setDadosCarregados] = useState(false);
 
   const { carregarTodosAgendamentos } = useAgendamentoClienteStore();
   const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria } = useAuditoriaPCPData();
 
-  // Carregar dados iniciais
-  useEffect(() => {
-    carregarTodosAgendamentos();
-  }, [carregarTodosAgendamentos]);
-
-  // Reprocessar dados quando filtros mudarem
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      processarDadosAuditoria(dataInicio, dataFim, filtroCliente, filtroStatus);
-    }, 300); // Debounce de 300ms
-
-    return () => clearTimeout(timeoutId);
+  // Função memoizada para processar dados
+  const processarDados = useCallback(() => {
+    processarDadosAuditoria(dataInicio, dataFim, filtroCliente, filtroStatus);
   }, [dataInicio, dataFim, filtroCliente, filtroStatus, processarDadosAuditoria]);
+
+  // Carregar agendamentos apenas uma vez
+  useEffect(() => {
+    let isMounted = true;
+    
+    const carregarDados = async () => {
+      if (!dadosCarregados && isMounted) {
+        try {
+          await carregarTodosAgendamentos();
+          setDadosCarregados(true);
+        } catch (error) {
+          console.error('Erro ao carregar agendamentos:', error);
+        }
+      }
+    };
+
+    carregarDados();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [carregarTodosAgendamentos, dadosCarregados]);
+
+  // Processar dados apenas quando os agendamentos estiverem carregados
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (dadosCarregados) {
+      timeoutId = setTimeout(() => {
+        processarDados();
+      }, 300); // Debounce de 300ms
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [dadosCarregados, processarDados]);
 
   const exportarCSV = () => {
     console.log('📥 Iniciando exportação CSV...');
@@ -160,7 +191,7 @@ export default function AuditoriaPCPTab() {
                 size="sm"
                 onClick={exportarCSV}
                 className="flex items-center gap-2"
-                disabled={loading}
+                disabled={loading || !dadosCarregados}
               >
                 <Download className="h-4 w-4" />
                 Exportar CSV
@@ -181,6 +212,11 @@ export default function AuditoriaPCPTab() {
                 Carregando...
               </Badge>
             )}
+            {!dadosCarregados && (
+              <Badge variant="outline" className="animate-pulse">
+                Inicializando...
+              </Badge>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -191,7 +227,12 @@ export default function AuditoriaPCPTab() {
           <CardTitle>Dados de Auditoria</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {!dadosCarregados ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="ml-2">Inicializando sistema...</span>
+            </div>
+          ) : loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               <span className="ml-2">Processando dados...</span>
