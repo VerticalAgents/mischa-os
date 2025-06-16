@@ -29,11 +29,19 @@ export default function ProjecaoProducaoTab() {
   const [tipoAgendamento, setTipoAgendamento] = useState<TipoAgendamento>('agendados');
   const [projecaoItens, setProjecaoItens] = useState<ProjecaoItem[]>([]);
 
-  const { carregarTodosAgendamentos } = useAgendamentoClienteStore();
-  const { produtos } = useSupabaseProdutos();
-  const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria } = useAuditoriaPCPData();
+  const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria, dadosCarregados } = useAuditoriaPCPData();
 
   const capacidadeForma = 40; // Capacidade fixa de 40 unidades por forma
+
+  // Processar dados de auditoria quando filtros mudarem
+  useEffect(() => {
+    if (dadosCarregados) {
+      processarDadosAuditoria(dataInicio, dataFim, '', 'todos');
+    }
+  }, [dataInicio, dataFim, processarDadosAuditoria, dadosCarregados]);
+
+  const { carregarTodosAgendamentos } = useAgendamentoClienteStore();
+  const { produtos } = useSupabaseProdutos();
 
   // Carregar agendamentos ao montar o componente
   useEffect(() => {
@@ -184,11 +192,13 @@ export default function ProjecaoProducaoTab() {
     }
   };
 
-  if (loading) {
+  if (!dadosCarregados || loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        <span className="ml-4 text-lg">Carregando projeção de produção...</span>
+        <span className="ml-4 text-lg">
+          {!dadosCarregados ? 'Inicializando sistema...' : 'Carregando projeção de produção...'}
+        </span>
       </div>
     );
   }

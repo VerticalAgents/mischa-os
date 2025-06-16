@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,7 +9,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Search, Download, FileText, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useAuditoriaPCPData } from "@/hooks/useAuditoriaPCPData";
 
 export default function AuditoriaPCPTab() {
@@ -18,37 +16,13 @@ export default function AuditoriaPCPTab() {
   const [dataInicio, setDataInicio] = useState(format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [dataFim, setDataFim] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
-  const [dadosCarregados, setDadosCarregados] = useState(false);
 
-  const { carregarTodosAgendamentos } = useAgendamentoClienteStore();
-  const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria } = useAuditoriaPCPData();
+  const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria, dadosCarregados } = useAuditoriaPCPData();
 
   // Função memoizada para processar dados
   const processarDados = useCallback(() => {
     processarDadosAuditoria(dataInicio, dataFim, filtroCliente, filtroStatus);
   }, [dataInicio, dataFim, filtroCliente, filtroStatus, processarDadosAuditoria]);
-
-  // Carregar agendamentos apenas uma vez
-  useEffect(() => {
-    let isMounted = true;
-    
-    const carregarDados = async () => {
-      if (!dadosCarregados && isMounted) {
-        try {
-          await carregarTodosAgendamentos();
-          setDadosCarregados(true);
-        } catch (error) {
-          console.error('Erro ao carregar agendamentos:', error);
-        }
-      }
-    };
-
-    carregarDados();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [carregarTodosAgendamentos, dadosCarregados]);
 
   // Processar dados apenas quando os agendamentos estiverem carregados
   useEffect(() => {

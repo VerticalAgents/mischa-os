@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,7 +7,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Calendar } from "lucide-react";
 import { format, addDays, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useAuditoriaPCPData } from "@/hooks/useAuditoriaPCPData";
 
 interface NecessidadeDiaria {
@@ -19,10 +17,8 @@ interface NecessidadeDiaria {
 export default function NecessidadeDiariaTab() {
   const [incluirPrevistos, setIncluirPrevistos] = useState(false);
   const [necessidadeDiaria, setNecessidadeDiaria] = useState<NecessidadeDiaria[]>([]);
-  const [dadosCarregados, setDadosCarregados] = useState(false);
 
-  const { carregarTodosAgendamentos } = useAgendamentoClienteStore();
-  const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria } = useAuditoriaPCPData();
+  const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria, dadosCarregados } = useAuditoriaPCPData();
 
   // Gerar array de 15 dias a partir de hoje
   const proximosQuinzeDias = useMemo(() => 
@@ -72,28 +68,6 @@ export default function NecessidadeDiariaTab() {
     console.log('✅ Necessidade diária calculada:', necessidadePorData);
     setNecessidadeDiaria(necessidadePorData);
   }, [dadosAuditoria, incluirPrevistos, proximosQuinzeDias, produtosAtivos]);
-
-  // Carregar agendamentos apenas uma vez
-  useEffect(() => {
-    let isMounted = true;
-    
-    const carregarDados = async () => {
-      if (!dadosCarregados && isMounted) {
-        try {
-          await carregarTodosAgendamentos();
-          setDadosCarregados(true);
-        } catch (error) {
-          console.error('Erro ao carregar agendamentos:', error);
-        }
-      }
-    };
-
-    carregarDados();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [carregarTodosAgendamentos, dadosCarregados]);
 
   // Processar dados de auditoria para os próximos 15 dias
   useEffect(() => {
