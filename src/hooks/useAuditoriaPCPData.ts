@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAgendamentoClienteStore } from './useAgendamentoClienteStore';
 import { useProdutosAtivos } from './pcp/useProdutosAtivos';
 import { useProcessamentoAuditoria } from './pcp/useProcessamentoAuditoria';
@@ -8,38 +8,49 @@ export type { AuditoriaItem, ProdutoComCategoria } from './pcp/types';
 
 export const useAuditoriaPCPData = () => {
   const [dadosCarregados, setDadosCarregados] = useState(false);
+  const [inicializado, setInicializado] = useState(false);
+  const carregandoRef = useRef(false);
   
-  const { carregarTodosAgendamentos } = useAgendamentoClienteStore();
+  const { carregarTodosAgendamentos, agendamentos } = useAgendamentoClienteStore();
   const { produtosAtivosComCategoria } = useProdutosAtivos();
   const { dadosAuditoria, loading, processarDadosAuditoria } = useProcessamentoAuditoria();
 
-  // Carregar agendamentos apenas uma vez
-  useEffect(() => {
-    let isMounted = true;
+  // Função para carregar dados iniciais apenas uma vez
+  const inicializarDados = useCallback(async () => {
+    if (carregandoRef.current || inicializado) {
+      return;
+    }
     
-    const carregarDados = async () => {
-      if (!dadosCarregados && isMounted) {
-        try {
-          await carregarTodosAgendamentos();
-          setDadosCarregados(true);
-        } catch (error) {
-          console.error('Erro ao carregar agendamentos:', error);
-        }
-      }
-    };
+    carregandoRef.current = true;
+    
+    try {
+      console.log('🚀 Inicializando dados do PCP...');
+      await carregarTodosAgendamentos();
+      setInicializado(true);
+      setDadosCarregados(true);
+      console.log('✅ Dados do PCP inicializados');
+    } catch (error) {
+      console.error('❌ Erro ao inicializar dados do PCP:', error);
+      setDadosCarregados(false);
+    } finally {
+      carregandoRef.current = false;
+    }
+  }, [carregarTodosAgendamentos, inicializado]);
 
-    carregarDados();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [carregarTodosAgendamentos, dadosCarregados]);
+  // Inicializar apenas na primeira montagem
+  useEffect(() => {
+    if (!inicializado && !carregandoRef.current) {
+      inicializarDados();
+    }
+  }, [inicializarDados, inicializado]);
 
   return {
     dadosAuditoria,
     produtosAtivos: produtosAtivosComCategoria,
-    loading,
+    loading: loading || carregandoRef.current,
     processarDadosAuditoria,
-    dadosCarregados
+    dadosCarregados: dadosCarregados && !carregandoRef.current,
+    inicializado,
+    totalAgendamentos: agendamentos.length
   };
 };

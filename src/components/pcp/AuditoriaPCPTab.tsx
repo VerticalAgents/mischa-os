@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Search, Download, FileText, Filter } from "lucide-react";
+import { Search, Download, FileText, Filter, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuditoriaPCPData } from "@/hooks/useAuditoriaPCPData";
@@ -16,75 +17,102 @@ export default function AuditoriaPCPTab() {
   const [dataInicio, setDataInicio] = useState(format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [dataFim, setDataFim] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
+  const [dadosCarregadosManualmente, setDadosCarregadosManualmente] = useState(false);
 
-  const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria, dadosCarregados } = useAuditoriaPCPData();
+  const { 
+    dadosAuditoria, 
+    produtosAtivos, 
+    loading, 
+    processarDadosAuditoria, 
+    dadosCarregados,
+    inicializado,
+    totalAgendamentos
+  } = useAuditoriaPCPData();
 
-  // Função memoizada para processar dados
-  const processarDados = useCallback(() => {
-    processarDadosAuditoria(dataInicio, dataFim, filtroCliente, filtroStatus);
-  }, [dataInicio, dataFim, filtroCliente, filtroStatus, processarDadosAuditoria]);
-
-  // Processar dados apenas quando os agendamentos estiverem carregados
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
-    if (dadosCarregados) {
-      timeoutId = setTimeout(() => {
-        processarDados();
-      }, 300); // Debounce de 300ms
+  // Função para carregar dados manualmente
+  const carregarDados = useCallback(() => {
+    if (inicializado) {
+      processarDadosAuditoria(dataInicio, dataFim, filtroCliente, filtroStatus);
+      setDadosCarregadosManualmente(true);
     }
+  }, [processarDadosAuditoria, dataInicio, dataFim, filtroCliente, filtroStatus, inicializado]);
 
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [dadosCarregados, processarDados]);
+  // Carregar dados apenas quando o usuário clicar ou mudar filtros após carregamento inicial
+  useEffect(() => {
+    if (dadosCarregadosManualmente && inicializado) {
+      const timeoutId = setTimeout(() => {
+        processarDadosAuditoria(dataInicio, dataFim, filtroCliente, filtroStatus);
+      }, 500); // Debounce maior para filtros
 
-  const exportarCSV = () => {
+      return () => clearTimeout(timeoutId);
+    }
+  }, [dataInicio, dataFim, filtroCliente, filtroStatus, processarDadosAuditoria, dadosCarregadosManualmente, inicializado]);
+
+  const exportarCSV = useCallback(() => {
     console.log('📥 Iniciando exportação CSV...');
     
-    // Cabeçalhos
-    const headers = [
-      'Cliente',
-      'Status Agendamento',
-      'Data Reposição',
-      'Status Cliente',
-      ...produtosAtivos.map(p => p.nome)
-    ];
+    if (dadosAuditoria.length === 0) {
+      alert('Nenhum dado para exportar. Carregue os dados primeiro.');
+      return;
+    }
 
-    // Linhas de dados
-    const linhas = dadosAuditoria.map(item => [
-      item.clienteNome,
-      item.statusAgendamento,
-      format(item.dataReposicao, 'dd/MM/yyyy'),
-      item.statusCliente,
-      ...produtosAtivos.map(produto => item.quantidadesPorProduto[produto.nome] || 0)
-    ]);
+    try {
+      // Cabeçalhos
+      const headers = [
+        'Cliente',
+        'Status Agendamento',
+        'Data Reposição',
+        'Status Cliente',
+        ...produtosAtivos.map(p => p.nome)
+      ];
 
-    // Criar conteúdo CSV
-    const csvContent = [
-      headers.join(','),
-      ...linhas.map(linha => linha.join(','))
-    ].join('\n');
+      // Linhas de dados
+      const linhas = dadosAuditoria.map(item => [
+        `"${item.clienteNome.replace(/"/g, '""')}"`, // Escapar aspas duplas
+        item.statusAgendamento,
+        format(item.dataReposicao, 'dd/MM/yyyy'),
+        item.statusCliente,
+        ...produtosAtivos.map(produto => item.quantidadesPorProduto[produto.nome] || 0)
+      ]);
 
-    // Download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `auditoria-pcp-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    link.click();
-    
-    console.log('✅ Exportação CSV concluída');
-  };
+      // Criar conteúdo CSV
+      const csvContent = [
+        headers.join(','),
+        ...linhas.map(linha => linha.join(','))
+      ].join('\n');
 
-  const limparFiltros = () => {
+      // Download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `auditoria-pcp-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      console.log('✅ Exportação CSV concluída');
+    } catch (error) {
+      console.error('❌ Erro na exportação CSV:', error);
+      alert('Erro ao exportar CSV. Tente novamente.');
+    }
+  }, [dadosAuditoria, produtosAtivos]);
+
+  const limparFiltros = useCallback(() => {
     setFiltroCliente("");
     setFiltroStatus('todos');
     setDataInicio(format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
     setDataFim(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
-  };
+  }, []);
+
+  // Status de carregamento melhorado
+  const statusCarregamento = useMemo(() => {
+    if (!inicializado) return 'Inicializando sistema...';
+    if (loading) return 'Processando dados...';
+    if (!dadosCarregadosManualmente) return 'Clique em "Carregar Dados" para visualizar';
+    return null;
+  }, [inicializado, loading, dadosCarregadosManualmente]);
 
   return (
     <div className="space-y-6">
@@ -96,7 +124,7 @@ export default function AuditoriaPCPTab() {
             Auditoria PCP
           </CardTitle>
           <CardDescription>
-            Visualização detalhada de todos os agendamentos e quantidades reais de produtos para auditoria e validação
+            Visualização detalhada de agendamentos e quantidades. Sistema otimizado para melhor performance.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -112,6 +140,7 @@ export default function AuditoriaPCPTab() {
                   value={filtroCliente}
                   onChange={(e) => setFiltroCliente(e.target.value)}
                   className="pl-10"
+                  disabled={loading || !inicializado}
                 />
               </div>
             </div>
@@ -123,6 +152,7 @@ export default function AuditoriaPCPTab() {
                 type="date"
                 value={dataInicio}
                 onChange={(e) => setDataInicio(e.target.value)}
+                disabled={loading || !inicializado}
               />
             </div>
             
@@ -133,6 +163,7 @@ export default function AuditoriaPCPTab() {
                 type="date"
                 value={dataFim}
                 onChange={(e) => setDataFim(e.target.value)}
+                disabled={loading || !inicializado}
               />
             </div>
             
@@ -142,7 +173,8 @@ export default function AuditoriaPCPTab() {
                 id="filtro-status"
                 value={filtroStatus}
                 onChange={(e) => setFiltroStatus(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                disabled={loading || !inicializado}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="todos">Todos</option>
                 <option value="Agendado">Agendado</option>
@@ -152,9 +184,20 @@ export default function AuditoriaPCPTab() {
             
             <div className="flex gap-2">
               <Button
+                variant="default"
+                size="sm"
+                onClick={carregarDados}
+                disabled={loading || !inicializado}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Carregar Dados
+              </Button>
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={limparFiltros}
+                disabled={loading || !inicializado}
                 className="flex items-center gap-2"
               >
                 <Filter className="h-4 w-4" />
@@ -164,31 +207,29 @@ export default function AuditoriaPCPTab() {
                 variant="outline"
                 size="sm"
                 onClick={exportarCSV}
+                disabled={loading || !inicializado || dadosAuditoria.length === 0}
                 className="flex items-center gap-2"
-                disabled={loading || !dadosCarregados}
               >
                 <Download className="h-4 w-4" />
-                Exportar CSV
+                CSV
               </Button>
             </div>
           </div>
 
           {/* Indicadores */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary">
-              {dadosAuditoria.length} agendamentos encontrados
+              {dadosAuditoria.length} agendamentos processados
             </Badge>
             <Badge variant="outline">
               {produtosAtivos.length} produtos ativos
             </Badge>
-            {loading && (
-              <Badge variant="outline" className="animate-pulse">
-                Carregando...
-              </Badge>
-            )}
-            {!dadosCarregados && (
-              <Badge variant="outline" className="animate-pulse">
-                Inicializando...
+            <Badge variant="outline">
+              {totalAgendamentos} agendamentos totais
+            </Badge>
+            {statusCarregamento && (
+              <Badge variant="outline" className={loading ? "animate-pulse" : ""}>
+                {statusCarregamento}
               </Badge>
             )}
           </div>
@@ -201,15 +242,17 @@ export default function AuditoriaPCPTab() {
           <CardTitle>Dados de Auditoria</CardTitle>
         </CardHeader>
         <CardContent>
-          {!dadosCarregados ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <span className="ml-2">Inicializando sistema...</span>
-            </div>
-          ) : loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <span className="ml-2">Processando dados...</span>
+          {statusCarregamento ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center space-y-4">
+                {loading && <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>}
+                <p className="text-lg">{statusCarregamento}</p>
+                {!dadosCarregadosManualmente && inicializado && (
+                  <Button onClick={carregarDados} className="mt-4">
+                    Carregar Dados da Auditoria
+                  </Button>
+                )}
+              </div>
             </div>
           ) : dadosAuditoria.length === 0 ? (
             <Alert>
@@ -235,7 +278,7 @@ export default function AuditoriaPCPTab() {
                 </TableHeader>
                 <TableBody>
                   {dadosAuditoria.map((item, index) => (
-                    <TableRow key={index}>
+                    <TableRow key={`${item.clienteNome}-${index}`}>
                       <TableCell className="font-medium">{item.clienteNome}</TableCell>
                       <TableCell>
                         <Badge variant={item.statusAgendamento === 'Agendado' ? 'default' : 'secondary'}>
