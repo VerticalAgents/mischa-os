@@ -3,11 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Calendar } from "lucide-react";
+import { Calendar, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { format, addDays, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuditoriaPCPData } from "@/hooks/useAuditoriaPCPData";
+import { useExportacaoNecessidadeDiaria } from "@/hooks/useExportacaoNecessidadeDiaria";
 
 interface NecessidadeDiaria {
   data: Date;
@@ -19,6 +21,7 @@ export default function NecessidadeDiariaTab() {
   const [necessidadeDiaria, setNecessidadeDiaria] = useState<NecessidadeDiaria[]>([]);
 
   const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria, dadosCarregados } = useAuditoriaPCPData();
+  const { exportarExcel, exportarPDF } = useExportacaoNecessidadeDiaria();
 
   // Gerar array de 15 dias a partir de hoje
   const proximosQuinzeDias = useMemo(() => 
@@ -91,7 +94,6 @@ export default function NecessidadeDiariaTab() {
     }
   }, [calcularNecessidadeDiaria]);
 
-  // Função para calcular formas necessárias com lógica diferenciada
   const calcularFormasNecessarias = (nomeProduto: string, quantidade: number): number => {
     if (quantidade === 0) return 0;
     
@@ -127,6 +129,15 @@ export default function NecessidadeDiariaTab() {
     Object.keys(produtosPorCategoria).sort(), [produtosPorCategoria]
   );
 
+  // Funções de exportação
+  const handleExportarExcel = useCallback(() => {
+    exportarExcel(necessidadeDiaria, produtosAtivos);
+  }, [exportarExcel, necessidadeDiaria, produtosAtivos]);
+
+  const handleExportarPDF = useCallback(() => {
+    exportarPDF(necessidadeDiaria, produtosAtivos);
+  }, [exportarPDF, necessidadeDiaria, produtosAtivos]);
+
   if (!dadosCarregados || loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -161,9 +172,32 @@ export default function NecessidadeDiariaTab() {
               <Label htmlFor="incluir-previstos">Incluir pedidos previstos</Label>
             </div>
 
-            <div className="text-sm text-muted-foreground">
-              Dados baseados na Auditoria PCP | Produtos ativos: {produtosAtivos.length}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportarExcel}
+                disabled={necessidadeDiaria.length === 0}
+                className="flex items-center gap-2"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Excel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportarPDF}
+                disabled={necessidadeDiaria.length === 0}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                PDF
+              </Button>
             </div>
+          </div>
+
+          <div className="text-sm text-muted-foreground">
+            Dados baseados na Auditoria PCP | Produtos ativos: {produtosAtivos.length}
           </div>
         </CardContent>
       </Card>
@@ -313,7 +347,8 @@ export default function NecessidadeDiariaTab() {
           <div className="mt-2 text-xs text-muted-foreground">
             Dados baseados nos agendamentos filtrados da Auditoria PCP para os próximos 15 dias<br/>
             <strong>Mini Brownie Tradicional:</strong> Cálculo especial - 2kg por pacote, 2,7kg por forma (0,74 formas/pacote)<br/>
-            <strong>Outros produtos:</strong> Cálculo padrão - 30 unidades por forma
+            <strong>Outros produtos:</strong> Cálculo padrão - 30 unidades por forma<br/>
+            <strong>Exportação:</strong> Use os botões Excel ou PDF para exportar os dados
           </div>
         </CardContent>
       </Card>
