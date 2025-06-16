@@ -4,7 +4,7 @@ import { useAgendamentoClienteStore } from './useAgendamentoClienteStore';
 import { useProdutosAtivos } from './pcp/useProdutosAtivos';
 import { useProcessamentoAuditoria } from './pcp/useProcessamentoAuditoria';
 
-export { AuditoriaItem, ProdutoComCategoria } from './pcp/types';
+export type { AuditoriaItem, ProdutoComCategoria } from './pcp/types';
 
 export const useAuditoriaPCPData = () => {
   const [dadosCarregados, setDadosCarregados] = useState(false);
