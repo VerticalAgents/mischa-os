@@ -11,200 +11,30 @@ import { Search, Download, FileText, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
-import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
-import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
-
-interface AuditoriaItem {
-  clienteNome: string;
-  statusAgendamento: string;
-  dataReposicao: Date;
-  statusCliente: string;
-  quantidadesPorProduto: Record<string, number>;
-}
+import { useAuditoriaPCPData } from "@/hooks/useAuditoriaPCPData";
 
 export default function AuditoriaPCPTab() {
   const [filtroCliente, setFiltroCliente] = useState("");
   const [dataInicio, setDataInicio] = useState(format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [dataFim, setDataFim] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
-  const [dadosAuditoria, setDadosAuditoria] = useState<AuditoriaItem[]>([]);
-  const [produtosAtivos, setProdutosAtivos] = useState<string[]>([]);
 
-  const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
-  const { produtos } = useSupabaseProdutos();
-  const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
+  const { carregarTodosAgendamentos } = useAgendamentoClienteStore();
+  const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria } = useAuditoriaPCPData();
 
   // Carregar dados iniciais
   useEffect(() => {
     carregarTodosAgendamentos();
   }, [carregarTodosAgendamentos]);
 
-  // Atualizar lista de produtos ativos
+  // Reprocessar dados quando filtros mudarem
   useEffect(() => {
-    const produtosAtivosLista = produtos
-      .filter(produto => produto.ativo)
-      .map(produto => produto.nome)
-      .sort();
-    setProdutosAtivos(produtosAtivosLista);
-  }, [produtos]);
+    const timeoutId = setTimeout(() => {
+      processarDadosAuditoria(dataInicio, dataFim, filtroCliente, filtroStatus);
+    }, 300); // Debounce de 300ms
 
-  // Processar dados de auditoria
-  useEffect(() => {
-    processarDadosAuditoria();
-  }, [agendamentos, produtos, dataInicio, dataFim, filtroCliente, filtroStatus, calcularQuantidadesPorProporcao, temProporcoesConfiguradas]);
-
-  const processarDadosAuditoria = async () => {
-    console.log('🔍 Processando dados de auditoria...');
-    console.log('📊 Total de agendamentos:', agendamentos.length);
-    console.log('🏭 Produtos ativos:', produtos.filter(p => p.ativo).length);
-
-    const inicio = new Date(dataInicio);
-    const fim = new Date(dataFim);
-
-    // Filtrar agendamentos
-    const agendamentosFiltrados = agendamentos.filter(agendamento => {
-      const dataReposicao = new Date(agendamento.dataReposicao);
-      
-      // Filtro por período
-      const dentroPeríodo = dataReposicao >= inicio && dataReposicao <= fim;
-      
-      // Filtro por cliente
-      const clienteMatch = !filtroCliente || 
-        agendamento.cliente.nome.toLowerCase().includes(filtroCliente.toLowerCase());
-      
-      // Filtro por status
-      const statusMatch = filtroStatus === 'todos' || 
-        agendamento.statusAgendamento === filtroStatus;
-      
-      return dentroPeríodo && clienteMatch && statusMatch;
-    });
-
-    console.log('📋 Agendamentos filtrados:', agendamentosFiltrados.length);
-
-    // Processar cada agendamento
-    const dadosProcessados: AuditoriaItem[] = [];
-    
-    for (const agendamento of agendamentosFiltrados) {
-      const quantidadesPorProduto: Record<string, number> = {};
-      
-      // Inicializar todas as quantidades como 0
-      produtosAtivos.forEach(nomeProduto => {
-        quantidadesPorProduto[nomeProduto] = 0;
-      });
-
-      console.log(`\n📦 Processando agendamento: ${agendamento.cliente.nome}`);
-      console.log('🔍 Tipo de pedido:', agendamento.pedido?.tipoPedido || 'Padrão');
-
-      // Primeiro, verificar se há dados na tabela agendamentos_clientes
-      try {
-        const agendamentoCompleto = await carregarAgendamentoPorCliente(agendamento.cliente.id);
-        
-        if (agendamentoCompleto) {
-          console.log('✅ Dados encontrados na tabela agendamentos_clientes:', {
-            tipo: agendamentoCompleto.tipo_pedido,
-            quantidade_total: agendamentoCompleto.quantidade_total,
-            itens_personalizados: agendamentoCompleto.itens_personalizados
-          });
-
-          if (agendamentoCompleto.tipo_pedido === 'Alterado' && 
-              agendamentoCompleto.itens_personalizados && 
-              agendamentoCompleto.itens_personalizados.length > 0) {
-            
-            // Para pedidos alterados, usar os itens personalizados salvos
-            console.log('📝 Usando itens personalizados salvos:', agendamentoCompleto.itens_personalizados);
-            
-            agendamentoCompleto.itens_personalizados.forEach(item => {
-              if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
-                quantidadesPorProduto[item.produto] = item.quantidade;
-                console.log(`➕ ${item.produto}: ${item.quantidade} unidades (personalizado)`);
-              }
-            });
-          } else if (agendamentoCompleto.tipo_pedido === 'Padrão') {
-            // Para pedidos padrão, calcular usando as proporções
-            const quantidadeTotal = agendamentoCompleto.quantidade_total;
-            console.log(`📊 Processando pedido PADRÃO com quantidade total: ${quantidadeTotal}`);
-            
-            if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
-              try {
-                const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
-                console.log('🧮 Quantidades calculadas pela proporção:', quantidadesCalculadas);
-                
-                quantidadesCalculadas.forEach(item => {
-                  if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
-                    quantidadesPorProduto[item.produto] = item.quantidade;
-                    console.log(`➕ ${item.produto}: ${item.quantidade} unidades (proporção padrão)`);
-                  }
-                });
-              } catch (error) {
-                console.error('❌ Erro ao calcular quantidades por proporção:', error);
-              }
-            }
-          }
-        } else {
-          // Fallback para dados da lista de agendamentos (método antigo)
-          console.log('⚠️ Usando dados da lista de agendamentos como fallback');
-          
-          if (agendamento.pedido && 
-              agendamento.pedido.tipoPedido === 'Alterado' && 
-              agendamento.pedido.itensPedido && 
-              agendamento.pedido.itensPedido.length > 0) {
-            
-            // Para pedidos alterados, usar quantidades específicas dos itens
-            agendamento.pedido.itensPedido.forEach(item => {
-              const nomeProduto = item.nomeSabor || (item.sabor && item.sabor.nome);
-              const quantidade = item.quantidadeSabor || 0;
-              
-              if (nomeProduto && quantidade > 0) {
-                if (quantidadesPorProduto.hasOwnProperty(nomeProduto)) {
-                  quantidadesPorProduto[nomeProduto] = quantidade;
-                  console.log(`➕ ${nomeProduto}: ${quantidade} unidades (pedido alterado - fallback)`);
-                }
-              }
-            });
-          } else {
-            // Para agendamentos padrão, usar a quantidade total do cliente
-            const quantidadeTotal = agendamento.cliente.quantidadePadrao || 0;
-            console.log(`📊 Processando agendamento PADRÃO (fallback) com quantidade total: ${quantidadeTotal}`);
-            
-            if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
-              try {
-                const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
-                console.log('🧮 Quantidades calculadas pela proporção (fallback):', quantidadesCalculadas);
-                
-                quantidadesCalculadas.forEach(item => {
-                  if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
-                    quantidadesPorProduto[item.produto] = item.quantidade;
-                    console.log(`➕ ${item.produto}: ${item.quantidade} unidades (proporção padrão - fallback)`);
-                  }
-                });
-              } catch (error) {
-                console.error('❌ Erro ao calcular quantidades por proporção (fallback):', error);
-                // Em caso de erro, distribuir para o primeiro produto como último recurso
-                if (produtosAtivos.length > 0) {
-                  const primeiroProduto = produtosAtivos[0];
-                  quantidadesPorProduto[primeiroProduto] = quantidadeTotal;
-                  console.log(`➕ ${primeiroProduto}: ${quantidadeTotal} unidades (fallback final)`);
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('❌ Erro ao processar agendamento:', error);
-      }
-
-      dadosProcessados.push({
-        clienteNome: agendamento.cliente.nome,
-        statusAgendamento: agendamento.statusAgendamento,
-        dataReposicao: agendamento.dataReposicao,
-        statusCliente: agendamento.cliente.statusCliente || 'Ativo',
-        quantidadesPorProduto
-      });
-    }
-
-    console.log('✅ Dados de auditoria processados:', dadosProcessados.length);
-    setDadosAuditoria(dadosProcessados);
-  };
+    return () => clearTimeout(timeoutId);
+  }, [dataInicio, dataFim, filtroCliente, filtroStatus, processarDadosAuditoria]);
 
   const exportarCSV = () => {
     console.log('📥 Iniciando exportação CSV...');
@@ -215,7 +45,7 @@ export default function AuditoriaPCPTab() {
       'Status Agendamento',
       'Data Reposição',
       'Status Cliente',
-      ...produtosAtivos
+      ...produtosAtivos.map(p => p.nome)
     ];
 
     // Linhas de dados
@@ -224,7 +54,7 @@ export default function AuditoriaPCPTab() {
       item.statusAgendamento,
       format(item.dataReposicao, 'dd/MM/yyyy'),
       item.statusCliente,
-      ...produtosAtivos.map(produto => item.quantidadesPorProduto[produto] || 0)
+      ...produtosAtivos.map(produto => item.quantidadesPorProduto[produto.nome] || 0)
     ]);
 
     // Criar conteúdo CSV
@@ -250,9 +80,6 @@ export default function AuditoriaPCPTab() {
     setDataInicio(format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
     setDataFim(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   };
-
-  // Função para carregar agendamento por cliente (usando o hook existente)
-  const { carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
 
   return (
     <div className="space-y-6">
@@ -333,6 +160,7 @@ export default function AuditoriaPCPTab() {
                 size="sm"
                 onClick={exportarCSV}
                 className="flex items-center gap-2"
+                disabled={loading}
               >
                 <Download className="h-4 w-4" />
                 Exportar CSV
@@ -348,6 +176,11 @@ export default function AuditoriaPCPTab() {
             <Badge variant="outline">
               {produtosAtivos.length} produtos ativos
             </Badge>
+            {loading && (
+              <Badge variant="outline" className="animate-pulse">
+                Carregando...
+              </Badge>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -358,7 +191,12 @@ export default function AuditoriaPCPTab() {
           <CardTitle>Dados de Auditoria</CardTitle>
         </CardHeader>
         <CardContent>
-          {dadosAuditoria.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="ml-2">Processando dados...</span>
+            </div>
+          ) : dadosAuditoria.length === 0 ? (
             <Alert>
               <AlertDescription>
                 Nenhum agendamento encontrado com os filtros aplicados.
@@ -374,8 +212,8 @@ export default function AuditoriaPCPTab() {
                     <TableHead>Data Reposição</TableHead>
                     <TableHead>Status Cliente</TableHead>
                     {produtosAtivos.map(produto => (
-                      <TableHead key={produto} className="text-center min-w-[120px]">
-                        {produto}
+                      <TableHead key={produto.nome} className="text-center min-w-[120px]">
+                        {produto.nome}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -398,13 +236,13 @@ export default function AuditoriaPCPTab() {
                         </Badge>
                       </TableCell>
                       {produtosAtivos.map(produto => (
-                        <TableCell key={produto} className="text-center">
+                        <TableCell key={produto.nome} className="text-center">
                           <span className={
-                            item.quantidadesPorProduto[produto] > 0 
+                            item.quantidadesPorProduto[produto.nome] > 0 
                               ? 'font-semibold text-green-600' 
                               : 'text-muted-foreground'
                           }>
-                            {item.quantidadesPorProduto[produto] || 0}
+                            {item.quantidadesPorProduto[produto.nome] || 0}
                           </span>
                         </TableCell>
                       ))}

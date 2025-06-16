@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
@@ -9,185 +9,47 @@ import { Calendar } from "lucide-react";
 import { format, addDays, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
-import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
-import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
-import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
+import { useAuditoriaPCPData } from "@/hooks/useAuditoriaPCPData";
 
 interface NecessidadeDiaria {
   data: Date;
   produtosPorData: Record<string, number>;
 }
 
-interface AuditoriaItem {
-  clienteNome: string;
-  statusAgendamento: string;
-  dataReposicao: Date;
-  statusCliente: string;
-  quantidadesPorProduto: Record<string, number>;
-}
-
-interface ProdutoComCategoria {
-  nome: string;
-  categoria: string;
-  categoriaId: number;
-}
-
 export default function NecessidadeDiariaTab() {
   const [incluirPrevistos, setIncluirPrevistos] = useState(false);
   const [necessidadeDiaria, setNecessidadeDiaria] = useState<NecessidadeDiaria[]>([]);
-  const [dadosAuditoria, setDadosAuditoria] = useState<AuditoriaItem[]>([]);
-  const [produtosAtivos, setProdutosAtivos] = useState<ProdutoComCategoria[]>([]);
 
-  const { agendamentos, carregarTodosAgendamentos, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
-  const { produtos } = useSupabaseProdutos();
-  const { categorias } = useSupabaseCategoriasProduto();
-  const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
+  const { carregarTodosAgendamentos } = useAgendamentoClienteStore();
+  const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria } = useAuditoriaPCPData();
 
   // Gerar array de 15 dias a partir de hoje
-  const proximosQuinzeDias = Array.from({ length: 15 }, (_, i) => addDays(new Date(), i));
+  const proximosQuinzeDias = useMemo(() => 
+    Array.from({ length: 15 }, (_, i) => addDays(new Date(), i)), []
+  );
 
   // Carregar agendamentos ao montar o componente
   useEffect(() => {
     carregarTodosAgendamentos();
   }, [carregarTodosAgendamentos]);
 
-  // Atualizar lista de produtos ativos com categorias
+  // Processar dados de auditoria para os próximos 15 dias
   useEffect(() => {
-    const produtosAtivosComCategoria = produtos
-      .filter(produto => produto.ativo)
-      .map(produto => {
-        const categoria = categorias.find(cat => cat.id === produto.categoria_id);
-        return {
-          nome: produto.nome,
-          categoria: categoria?.nome || "Sem categoria",
-          categoriaId: produto.categoria_id || 0
-        };
-      })
-      .sort((a, b) => a.categoria.localeCompare(b.categoria) || a.nome.localeCompare(b.nome));
+    const hoje = new Date();
+    const quinzeDiasFrente = addDays(hoje, 14);
     
-    setProdutosAtivos(produtosAtivosComCategoria);
-  }, [produtos, categorias]);
-
-  // Processar dados de auditoria
-  useEffect(() => {
-    processarDadosAuditoria();
-  }, [agendamentos, produtos, calcularQuantidadesPorProporcao, temProporcoesConfiguradas]);
+    processarDadosAuditoria(
+      format(hoje, 'yyyy-MM-dd'),
+      format(quinzeDiasFrente, 'yyyy-MM-dd'),
+      '',
+      'todos'
+    );
+  }, [processarDadosAuditoria]);
 
   // Calcular necessidade diária baseada nos dados da auditoria
   useEffect(() => {
     calcularNecessidadeDiaria();
-  }, [dadosAuditoria, incluirPrevistos]);
-
-  const processarDadosAuditoria = async () => {
-    console.log('🔍 Processando dados de auditoria para necessidade diária...');
-
-    const hoje = new Date();
-    const quinzeDiasFrente = addDays(hoje, 14);
-
-    const agendamentosFiltrados = agendamentos.filter(agendamento => {
-      const dataReposicao = new Date(agendamento.dataReposicao);
-      const dentroPeríodo = dataReposicao >= hoje && dataReposicao <= quinzeDiasFrente;
-      const clienteAtivo = agendamento.cliente.statusCliente === 'Ativo';
-      return dentroPeríodo && clienteAtivo;
-    });
-
-    console.log('📋 Agendamentos filtrados (15 dias):', agendamentosFiltrados.length);
-
-    const dadosProcessados: AuditoriaItem[] = [];
-    
-    for (const agendamento of agendamentosFiltrados) {
-      const quantidadesPorProduto: Record<string, number> = {};
-      
-      produtosAtivos.forEach(produto => {
-        quantidadesPorProduto[produto.nome] = 0;
-      });
-
-      console.log(`\n📦 Processando agendamento: ${agendamento.cliente.nome}`);
-
-      try {
-        const agendamentoCompleto = await carregarAgendamentoPorCliente(agendamento.cliente.id);
-        
-        if (agendamentoCompleto) {
-          if (agendamentoCompleto.tipo_pedido === 'Alterado' && 
-              agendamentoCompleto.itens_personalizados && 
-              agendamentoCompleto.itens_personalizados.length > 0) {
-            
-            agendamentoCompleto.itens_personalizados.forEach(item => {
-              if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
-                quantidadesPorProduto[item.produto] = item.quantidade;
-              }
-            });
-          } else if (agendamentoCompleto.tipo_pedido === 'Padrão') {
-            const quantidadeTotal = agendamentoCompleto.quantidade_total;
-            
-            if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
-              try {
-                const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
-                
-                quantidadesCalculadas.forEach(item => {
-                  if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
-                    quantidadesPorProduto[item.produto] = item.quantidade;
-                  }
-                });
-              } catch (error) {
-                console.error('❌ Erro ao calcular quantidades por proporção:', error);
-              }
-            }
-          }
-        } else {
-          if (agendamento.pedido && 
-              agendamento.pedido.tipoPedido === 'Alterado' && 
-              agendamento.pedido.itensPedido && 
-              agendamento.pedido.itensPedido.length > 0) {
-            
-            agendamento.pedido.itensPedido.forEach(item => {
-              const nomeProduto = item.nomeSabor || (item.sabor && item.sabor.nome);
-              const quantidade = item.quantidadeSabor || 0;
-              
-              if (nomeProduto && quantidade > 0) {
-                if (quantidadesPorProduto.hasOwnProperty(nomeProduto)) {
-                  quantidadesPorProduto[nomeProduto] = quantidade;
-                }
-              }
-            });
-          } else {
-            const quantidadeTotal = agendamento.cliente.quantidadePadrao || 0;
-            
-            if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
-              try {
-                const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
-                
-                quantidadesCalculadas.forEach(item => {
-                  if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
-                    quantidadesPorProduto[item.produto] = item.quantidade;
-                  }
-                });
-              } catch (error) {
-                console.error('❌ Erro ao calcular quantidades por proporção (fallback):', error);
-                if (produtosAtivos.length > 0) {
-                  const primeiroProduto = produtosAtivos[0].nome;
-                  quantidadesPorProduto[primeiroProduto] = quantidadeTotal;
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('❌ Erro ao processar agendamento:', error);
-      }
-
-      dadosProcessados.push({
-        clienteNome: agendamento.cliente.nome,
-        statusAgendamento: agendamento.statusAgendamento,
-        dataReposicao: agendamento.dataReposicao,
-        statusCliente: agendamento.cliente.statusCliente || 'Ativo',
-        quantidadesPorProduto
-      });
-    }
-
-    console.log('✅ Dados de auditoria processados:', dadosProcessados.length);
-    setDadosAuditoria(dadosProcessados);
-  };
+  }, [dadosAuditoria, incluirPrevistos, proximosQuinzeDias, produtosAtivos]);
 
   const calcularNecessidadeDiaria = () => {
     console.log('🧮 Calculando necessidade diária...');
@@ -254,15 +116,28 @@ export default function NecessidadeDiariaTab() {
   };
 
   // Agrupar produtos por categoria
-  const produtosPorCategoria = produtosAtivos.reduce((acc, produto) => {
-    if (!acc[produto.categoria]) {
-      acc[produto.categoria] = [];
-    }
-    acc[produto.categoria].push(produto);
-    return acc;
-  }, {} as Record<string, ProdutoComCategoria[]>);
+  const produtosPorCategoria = useMemo(() => {
+    return produtosAtivos.reduce((acc, produto) => {
+      if (!acc[produto.categoria]) {
+        acc[produto.categoria] = [];
+      }
+      acc[produto.categoria].push(produto);
+      return acc;
+    }, {} as Record<string, typeof produtosAtivos>);
+  }, [produtosAtivos]);
 
-  const categoriasOrdenadas = Object.keys(produtosPorCategoria).sort();
+  const categoriasOrdenadas = useMemo(() => 
+    Object.keys(produtosPorCategoria).sort(), [produtosPorCategoria]
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <span className="ml-4 text-lg">Carregando dados de necessidade diária...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

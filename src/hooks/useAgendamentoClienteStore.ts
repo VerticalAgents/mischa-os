@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +20,7 @@ export interface AgendamentoCliente {
 
 interface AgendamentoClienteStore {
   agendamentos: AgendamentoItem[];
+  agendamentosCompletos: Map<string, AgendamentoCliente>;
   loading: boolean;
   error: string | null;
   
@@ -155,14 +157,16 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
   devtools(
     (set, get) => ({
       agendamentos: [],
+      agendamentosCompletos: new Map(),
       loading: false,
       error: null,
 
       carregarTodosAgendamentos: async () => {
         set({ loading: true, error: null });
         try {
-          console.log('useAgendamentoClienteStore: Carregando todos os agendamentos...');
+          console.log('useAgendamentoClienteStore: Carregando todos os agendamentos otimizado...');
           
+          // Carregar todos os agendamentos com clientes em uma única query
           const { data, error } = await supabase
             .from('agendamentos_clientes')
             .select(`
@@ -178,9 +182,19 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           const agendamentosConvertidos = data?.map(row => 
             convertToAgendamentoItem(row, row.clientes)
           ) || [];
+
+          // Armazenar agendamentos completos no cache
+          const agendamentosCompletosMapa = new Map();
+          data?.forEach(row => {
+            agendamentosCompletosMapa.set(row.cliente_id, convertDbRowToAgendamento(row));
+          });
           
           console.log('useAgendamentoClienteStore: Agendamentos carregados:', agendamentosConvertidos.length);
-          set({ agendamentos: agendamentosConvertidos, loading: false });
+          set({ 
+            agendamentos: agendamentosConvertidos, 
+            agendamentosCompletos: agendamentosCompletosMapa,
+            loading: false 
+          });
         } catch (error) {
           console.error('useAgendamentoClienteStore: Erro:', error);
           set({ error: error instanceof Error ? error.message : 'Erro desconhecido', loading: false });
@@ -189,6 +203,13 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
       
       carregarAgendamentoPorCliente: async (clienteId: string) => {
         try {
+          // Primeiro verificar se já temos no cache
+          const cache = get().agendamentosCompletos;
+          if (cache.has(clienteId)) {
+            console.log('useAgendamentoClienteStore: Usando cache para cliente:', clienteId);
+            return cache.get(clienteId)!;
+          }
+
           console.log('useAgendamentoClienteStore: Carregando agendamento para cliente:', clienteId);
           
           const { data, error } = await supabase
@@ -203,6 +224,14 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           }
 
           const agendamento = data ? convertDbRowToAgendamento(data) : null;
+          
+          // Atualizar cache
+          if (agendamento) {
+            const novoCache = new Map(get().agendamentosCompletos);
+            novoCache.set(clienteId, agendamento);
+            set({ agendamentosCompletos: novoCache });
+          }
+
           console.log('useAgendamentoClienteStore: Agendamento carregado:', agendamento);
           
           if (agendamento && agendamento.tipo_pedido === 'Alterado') {
@@ -294,6 +323,11 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           }
 
           console.log('✅ Agendamento salvo com sucesso:', result.data);
+          
+          // Atualizar cache
+          const novoCache = new Map(get().agendamentosCompletos);
+          novoCache.set(clienteId, convertDbRowToAgendamento(result.data));
+          set({ agendamentosCompletos: novoCache });
           
           // Recarregar todos os agendamentos para atualizar a lista
           await get().carregarTodosAgendamentos();

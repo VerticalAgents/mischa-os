@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -10,7 +9,7 @@ import { Calculator, Download } from "lucide-react";
 import { format } from "date-fns";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
-import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
+import { useAuditoriaPCPData } from "@/hooks/useAuditoriaPCPData";
 
 interface ProjecaoItem {
   idProduto: string;
@@ -22,14 +21,6 @@ interface ProjecaoItem {
   sobraEstimada: number;
 }
 
-interface AuditoriaItem {
-  clienteNome: string;
-  statusAgendamento: string;
-  dataReposicao: Date;
-  statusCliente: string;
-  quantidadesPorProduto: Record<string, number>;
-}
-
 type TipoAgendamento = 'agendados' | 'agendados-previstos';
 
 export default function ProjecaoProducaoTab() {
@@ -37,12 +28,10 @@ export default function ProjecaoProducaoTab() {
   const [dataFim, setDataFim] = useState(format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [tipoAgendamento, setTipoAgendamento] = useState<TipoAgendamento>('agendados');
   const [projecaoItens, setProjecaoItens] = useState<ProjecaoItem[]>([]);
-  const [dadosAuditoria, setDadosAuditoria] = useState<AuditoriaItem[]>([]);
-  const [produtosAtivos, setProdutosAtivos] = useState<string[]>([]);
 
-  const { agendamentos, carregarTodosAgendamentos, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
+  const { carregarTodosAgendamentos } = useAgendamentoClienteStore();
   const { produtos } = useSupabaseProdutos();
-  const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
+  const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria } = useAuditoriaPCPData();
 
   const capacidadeForma = 40; // Capacidade fixa de 40 unidades por forma
 
@@ -51,172 +40,15 @@ export default function ProjecaoProducaoTab() {
     carregarTodosAgendamentos();
   }, [carregarTodosAgendamentos]);
 
-  // Atualizar lista de produtos ativos
+  // Processar dados de auditoria quando filtros mudarem
   useEffect(() => {
-    const produtosAtivosLista = produtos
-      .filter(produto => produto.ativo)
-      .map(produto => produto.nome)
-      .sort();
-    setProdutosAtivos(produtosAtivosLista);
-  }, [produtos]);
-
-  // Processar dados de auditoria (usando a MESMA lógica da AuditoriaPCPTab)
-  useEffect(() => {
-    processarDadosAuditoria();
-  }, [agendamentos, produtos, dataInicio, dataFim, calcularQuantidadesPorProporcao, temProporcoesConfiguradas]);
+    processarDadosAuditoria(dataInicio, dataFim, '', 'todos');
+  }, [dataInicio, dataFim, processarDadosAuditoria]);
 
   // Calcular projeção baseada nos dados da auditoria
   useEffect(() => {
     calcularProjecaoFromAuditoria();
   }, [dadosAuditoria, tipoAgendamento, produtos]);
-
-  const processarDadosAuditoria = async () => {
-    console.log('🔍 Processando dados de auditoria para projeção...');
-    console.log('📊 Total de agendamentos:', agendamentos.length);
-    console.log('🏭 Produtos ativos:', produtos.filter(p => p.ativo).length);
-
-    const inicio = new Date(dataInicio);
-    const fim = new Date(dataFim);
-
-    // Filtrar agendamentos
-    const agendamentosFiltrados = agendamentos.filter(agendamento => {
-      const dataReposicao = new Date(agendamento.dataReposicao);
-      
-      // Filtro por período
-      const dentroPeríodo = dataReposicao >= inicio && dataReposicao <= fim;
-      
-      // Filtrar apenas clientes ativos
-      const clienteAtivo = agendamento.cliente.statusCliente === 'Ativo';
-      
-      return dentroPeríodo && clienteAtivo;
-    });
-
-    console.log('📋 Agendamentos filtrados:', agendamentosFiltrados.length);
-
-    // Processar cada agendamento (MESMA LÓGICA da AuditoriaPCPTab)
-    const dadosProcessados: AuditoriaItem[] = [];
-    
-    for (const agendamento of agendamentosFiltrados) {
-      const quantidadesPorProduto: Record<string, number> = {};
-      
-      // Inicializar todas as quantidades como 0
-      produtosAtivos.forEach(nomeProduto => {
-        quantidadesPorProduto[nomeProduto] = 0;
-      });
-
-      console.log(`\n📦 Processando agendamento: ${agendamento.cliente.nome}`);
-      console.log('🔍 Tipo de pedido:', agendamento.pedido?.tipoPedido || 'Padrão');
-
-      // Primeiro, verificar se há dados na tabela agendamentos_clientes
-      try {
-        const agendamentoCompleto = await carregarAgendamentoPorCliente(agendamento.cliente.id);
-        
-        if (agendamentoCompleto) {
-          console.log('✅ Dados encontrados na tabela agendamentos_clientes:', {
-            tipo: agendamentoCompleto.tipo_pedido,
-            quantidade_total: agendamentoCompleto.quantidade_total,
-            itens_personalizados: agendamentoCompleto.itens_personalizados
-          });
-
-          if (agendamentoCompleto.tipo_pedido === 'Alterado' && 
-              agendamentoCompleto.itens_personalizados && 
-              agendamentoCompleto.itens_personalizados.length > 0) {
-            
-            // Para pedidos alterados, usar os itens personalizados salvos
-            console.log('📝 Usando itens personalizados salvos:', agendamentoCompleto.itens_personalizados);
-            
-            agendamentoCompleto.itens_personalizados.forEach(item => {
-              if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
-                quantidadesPorProduto[item.produto] = item.quantidade;
-                console.log(`➕ ${item.produto}: ${item.quantidade} unidades (personalizado)`);
-              }
-            });
-          } else if (agendamentoCompleto.tipo_pedido === 'Padrão') {
-            // Para pedidos padrão, calcular usando as proporções
-            const quantidadeTotal = agendamentoCompleto.quantidade_total;
-            console.log(`📊 Processando pedido PADRÃO com quantidade total: ${quantidadeTotal}`);
-            
-            if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
-              try {
-                const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
-                console.log('🧮 Quantidades calculadas pela proporção:', quantidadesCalculadas);
-                
-                quantidadesCalculadas.forEach(item => {
-                  if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
-                    quantidadesPorProduto[item.produto] = item.quantidade;
-                    console.log(`➕ ${item.produto}: ${item.quantidade} unidades (proporção padrão)`);
-                  }
-                });
-              } catch (error) {
-                console.error('❌ Erro ao calcular quantidades por proporção:', error);
-              }
-            }
-          }
-        } else {
-          // Fallback para dados da lista de agendamentos (método antigo)
-          console.log('⚠️ Usando dados da lista de agendamentos como fallback');
-          
-          if (agendamento.pedido && 
-              agendamento.pedido.tipoPedido === 'Alterado' && 
-              agendamento.pedido.itensPedido && 
-              agendamento.pedido.itensPedido.length > 0) {
-            
-            // Para pedidos alterados, usar quantidades específicas dos itens
-            agendamento.pedido.itensPedido.forEach(item => {
-              const nomeProduto = item.nomeSabor || (item.sabor && item.sabor.nome);
-              const quantidade = item.quantidadeSabor || 0;
-              
-              if (nomeProduto && quantidade > 0) {
-                if (quantidadesPorProduto.hasOwnProperty(nomeProduto)) {
-                  quantidadesPorProduto[nomeProduto] = quantidade;
-                  console.log(`➕ ${nomeProduto}: ${quantidade} unidades (pedido alterado - fallback)`);
-                }
-              }
-            });
-          } else {
-            // Para agendamentos padrão, usar a quantidade total do cliente
-            const quantidadeTotal = agendamento.cliente.quantidadePadrao || 0;
-            console.log(`📊 Processando agendamento PADRÃO (fallback) com quantidade total: ${quantidadeTotal}`);
-            
-            if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
-              try {
-                const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
-                console.log('🧮 Quantidades calculadas pela proporção (fallback):', quantidadesCalculadas);
-                
-                quantidadesCalculadas.forEach(item => {
-                  if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
-                    quantidadesPorProduto[item.produto] = item.quantidade;
-                    console.log(`➕ ${item.produto}: ${item.quantidade} unidades (proporção padrão - fallback)`);
-                  }
-                });
-              } catch (error) {
-                console.error('❌ Erro ao calcular quantidades por proporção (fallback):', error);
-                // Em caso de erro, distribuir para o primeiro produto como último recurso
-                if (produtosAtivos.length > 0) {
-                  const primeiroProduto = produtosAtivos[0];
-                  quantidadesPorProduto[primeiroProduto] = quantidadeTotal;
-                  console.log(`➕ ${primeiroProduto}: ${quantidadeTotal} unidades (fallback final)`);
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('❌ Erro ao processar agendamento:', error);
-      }
-
-      dadosProcessados.push({
-        clienteNome: agendamento.cliente.nome,
-        statusAgendamento: agendamento.statusAgendamento,
-        dataReposicao: agendamento.dataReposicao,
-        statusCliente: agendamento.cliente.statusCliente || 'Ativo',
-        quantidadesPorProduto
-      });
-    }
-
-    console.log('✅ Dados de auditoria processados:', dadosProcessados.length);
-    setDadosAuditoria(dadosProcessados);
-  };
 
   const calcularProjecaoFromAuditoria = () => {
     console.log('🧮 Calculando projeção baseada nos dados da auditoria...');
@@ -236,14 +68,14 @@ export default function ProjecaoProducaoTab() {
     const estoqueManualData = localStorage.getItem('estoque-manual-ajustes');
     const estoqueManual = estoqueManualData ? JSON.parse(estoqueManualData) : {};
 
-    // Calcular necessidades totais por produto - CORRIGIDO PARA PROCESSAR TODOS OS PRODUTOS
+    // Calcular necessidades totais por produto
     console.log('🔄 Calculando necessidades totais por produto...');
     
     const necessidadesTotais: Record<string, number> = {};
     
     // Inicializar todos os produtos ativos com 0
-    produtosAtivos.forEach(nomeProduto => {
-      necessidadesTotais[nomeProduto] = 0;
+    produtosAtivos.forEach(produto => {
+      necessidadesTotais[produto.nome] = 0;
     });
 
     // Somar quantidades de todos os agendamentos filtrados
@@ -279,10 +111,23 @@ export default function ProjecaoProducaoTab() {
             : produto.estoque_atual || 0;
           
           const unidadesProduzir = Math.max(0, unidadesNecessarias - estoqueDisponivel);
-          const formasNecessarias = unidadesProduzir > 0 ? Math.ceil(unidadesProduzir / capacidadeForma) : 0;
-          const sobraEstimada = formasNecessarias > 0 
-            ? (formasNecessarias * capacidadeForma) - unidadesProduzir 
-            : Math.max(0, estoqueDisponivel - unidadesNecessarias);
+          
+          let formasNecessarias = 0;
+          let sobraEstimada = 0;
+
+          if (unidadesProduzir > 0) {
+            if (nomeProduto === "Mini Brownie Tradicional") {
+              // Cálculo específico para Mini Brownie Tradicional
+              const formasPorPacote = 2 / 2.7;
+              formasNecessarias = Math.ceil(unidadesProduzir * formasPorPacote);
+              sobraEstimada = (formasNecessarias * 2.7) - (unidadesProduzir * 2);
+            } else {
+              formasNecessarias = Math.ceil(unidadesProduzir / capacidadeForma);
+              sobraEstimada = (formasNecessarias * capacidadeForma) - unidadesProduzir;
+            }
+          } else {
+            sobraEstimada = Math.max(0, estoqueDisponivel - unidadesNecessarias);
+          }
 
           console.log(`🧮 Cálculo para ${nomeProduto}:`, {
             unidadesNecessarias,
@@ -309,7 +154,10 @@ export default function ProjecaoProducaoTab() {
     setProjecaoItens(projecao);
   };
 
-  const totalFormas = projecaoItens.reduce((sum, item) => sum + item.formasNecessarias, 0);
+  const totalFormas = useMemo(() => 
+    projecaoItens.reduce((sum, item) => sum + item.formasNecessarias, 0), 
+    [projecaoItens]
+  );
 
   const exportarDados = (formato: 'pdf' | 'excel') => {
     const dados = projecaoItens.map(item => ({
@@ -335,6 +183,15 @@ export default function ProjecaoProducaoTab() {
       a.click();
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <span className="ml-4 text-lg">Carregando projeção de produção...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -425,6 +282,7 @@ export default function ProjecaoProducaoTab() {
                 size="sm"
                 onClick={() => exportarDados('excel')}
                 className="flex items-center gap-2"
+                disabled={loading}
               >
                 <Download className="h-4 w-4" />
                 Excel
@@ -434,6 +292,7 @@ export default function ProjecaoProducaoTab() {
                 size="sm"
                 onClick={() => exportarDados('pdf')}
                 className="flex items-center gap-2"
+                disabled={loading}
               >
                 <Download className="h-4 w-4" />
                 PDF
@@ -474,7 +333,10 @@ export default function ProjecaoProducaoTab() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
-                        {item.sobraEstimada}
+                        {item.nomeProduto === "Mini Brownie Tradicional" ? 
+                          `${item.sobraEstimada.toFixed(0)}g` : 
+                          item.sobraEstimada
+                        }
                       </TableCell>
                     </TableRow>
                   ))
@@ -502,7 +364,7 @@ export default function ProjecaoProducaoTab() {
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Baseado em {capacidadeForma} unidades por forma
+                Baseado em {capacidadeForma} unidades por forma (exceto Mini Brownie Tradicional: 0,74 formas/pacote)
               </p>
             </div>
           )}
