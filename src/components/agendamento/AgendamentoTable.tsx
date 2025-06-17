@@ -26,12 +26,15 @@ export default function AgendamentoTable({
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const handleSortChange = (field: SortField, direction: SortDirection) => {
+    console.log('Alterando ordenação para:', field, direction);
     setSortField(field);
     setSortDirection(direction);
   };
 
   const sortedAgendamentos = useMemo(() => {
-    return [...agendamentos].sort((a, b) => {
+    console.log('Aplicando ordenação:', { sortField, sortDirection, totalItems: agendamentos.length });
+    
+    const sorted = [...agendamentos].sort((a, b) => {
       let valueA: any;
       let valueB: any;
 
@@ -64,6 +67,14 @@ export default function AgendamentoTable({
       }
       return 0;
     });
+
+    console.log('Dados ordenados:', sorted.slice(0, 3).map(item => ({
+      nome: item.cliente.nome,
+      data: formatDate(item.dataReposicao),
+      status: item.statusAgendamento
+    })));
+
+    return sorted;
   }, [agendamentos, sortField, sortDirection]);
 
   const getStatusBadgeVariant = (status: string) => {
