@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { AgendamentoItem } from "./types";
-import { Edit, Plus, Check, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react";
+import { Edit, Plus, Check } from "lucide-react";
+import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 
 interface AgendamentoTableProps {
   agendamentos: AgendamentoItem[];
@@ -13,9 +14,6 @@ interface AgendamentoTableProps {
   onEditarAgendamento: (agendamento: AgendamentoItem) => void;
   onConfirmarPrevisto?: (agendamento: AgendamentoItem) => void;
 }
-
-type SortField = 'cliente' | 'data' | 'status' | 'quantidade';
-type SortDirection = 'asc' | 'desc';
 
 export default function AgendamentoTable({ 
   agendamentos, 
@@ -27,13 +25,9 @@ export default function AgendamentoTable({
   const [sortField, setSortField] = useState<SortField>('data');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
+  const handleSortChange = (field: SortField, direction: SortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
   };
 
   const sortedAgendamentos = useMemo(() => {
@@ -42,7 +36,7 @@ export default function AgendamentoTable({
       let valueB: any;
 
       switch (sortField) {
-        case 'cliente':
+        case 'nome':
           valueA = a.cliente.nome.toLowerCase();
           valueB = b.cliente.nome.toLowerCase();
           break;
@@ -54,9 +48,9 @@ export default function AgendamentoTable({
           valueA = a.statusAgendamento.toLowerCase();
           valueB = b.statusAgendamento.toLowerCase();
           break;
-        case 'quantidade':
-          valueA = a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0;
-          valueB = b.pedido?.totalPedidoUnidades || b.cliente.quantidadePadrao || 0;
+        case 'tipo':
+          valueA = a.isPedidoUnico ? 'único' : 'pdv';
+          valueB = b.isPedidoUnico ? 'único' : 'pdv';
           break;
         default:
           return 0;
@@ -71,25 +65,6 @@ export default function AgendamentoTable({
       return 0;
     });
   }, [agendamentos, sortField, sortDirection]);
-
-  const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <Button
-      variant="ghost"
-      className="h-auto p-1 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 -ml-1"
-      onClick={() => handleSort(field)}
-    >
-      {children}
-      {sortField === field ? (
-        sortDirection === 'asc' ? (
-          <ChevronUp className="h-4 w-4 text-primary" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-primary" />
-        )
-      ) : (
-        <ArrowUpDown className="h-4 w-4 opacity-50" />
-      )}
-    </Button>
-  );
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -120,95 +95,105 @@ export default function AgendamentoTable({
   };
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[200px]">
-              <SortButton field="cliente">Cliente</SortButton>
-            </TableHead>
-            <TableHead className="w-[120px]">
-              <SortButton field="data">Data</SortButton>
-            </TableHead>
-            <TableHead className="w-[100px]">
-              <SortButton field="status">Status</SortButton>
-            </TableHead>
-            <TableHead className="w-[100px]">
-              <SortButton field="quantidade">Quantidade</SortButton>
-            </TableHead>
-            <TableHead className="w-[80px]">Tipo</TableHead>
-            <TableHead className="w-[100px]">Tipo Pedido</TableHead>
-            <TableHead className="text-right w-[150px]">Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sortedAgendamentos.length === 0 ? (
+    <div className="space-y-4">
+      {/* Controles de Ordenação */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">Ordenar por:</span>
+          <SortDropdown
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onSortChange={handleSortChange}
+          />
+        </div>
+        <div className="text-sm text-muted-foreground">
+          {sortedAgendamentos.length} agendamento(s)
+        </div>
+      </div>
+
+      {/* Tabela */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                Nenhum agendamento encontrado
-              </TableCell>
+              <TableHead className="w-[200px]">Cliente</TableHead>
+              <TableHead className="w-[120px]">Data</TableHead>
+              <TableHead className="w-[100px]">Status</TableHead>
+              <TableHead className="w-[100px]">Quantidade</TableHead>
+              <TableHead className="w-[80px]">Tipo</TableHead>
+              <TableHead className="w-[100px]">Tipo Pedido</TableHead>
+              <TableHead className="text-right w-[150px]">Ações</TableHead>
             </TableRow>
-          ) : (
-            sortedAgendamentos.map((agendamento, index) => (
-              <TableRow key={`${agendamento.cliente.id}-${index}`} className="hover:bg-muted/50">
-                <TableCell className="font-medium">
-                  {agendamento.cliente.nome}
-                </TableCell>
-                <TableCell>
-                  {formatDate(agendamento.dataReposicao)}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={getStatusBadgeVariant(agendamento.statusAgendamento)}>
-                    {agendamento.statusAgendamento}
-                  </Badge>
-                </TableCell>
-                <TableCell className="font-medium">
-                  {agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={agendamento.isPedidoUnico ? "secondary" : "outline"}>
-                    {agendamento.isPedidoUnico ? "Único" : "PDV"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {getTipoPedidoBadge(agendamento.pedido?.tipoPedido)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex gap-1 justify-end">
-                    {agendamento.statusAgendamento === "Previsto" && onConfirmarPrevisto && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => onConfirmarPrevisto(agendamento)}
-                        className="flex items-center gap-1 bg-green-500 hover:bg-green-600 h-8 px-2"
-                      >
-                        <Check className="h-3 w-3" />
-                        Confirmar
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onCriarPedido(agendamento.cliente.id)}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEditarAgendamento(agendamento)}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                  </div>
+          </TableHeader>
+          <TableBody>
+            {sortedAgendamentos.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  Nenhum agendamento encontrado
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              sortedAgendamentos.map((agendamento, index) => (
+                <TableRow key={`${agendamento.cliente.id}-${index}`} className="hover:bg-muted/50">
+                  <TableCell className="font-medium">
+                    {agendamento.cliente.nome}
+                  </TableCell>
+                  <TableCell>
+                    {formatDate(agendamento.dataReposicao)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusBadgeVariant(agendamento.statusAgendamento)}>
+                      {agendamento.statusAgendamento}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={agendamento.isPedidoUnico ? "secondary" : "outline"}>
+                      {agendamento.isPedidoUnico ? "Único" : "PDV"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {getTipoPedidoBadge(agendamento.pedido?.tipoPedido)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex gap-1 justify-end">
+                      {agendamento.statusAgendamento === "Previsto" && onConfirmarPrevisto && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => onConfirmarPrevisto(agendamento)}
+                          className="flex items-center gap-1 bg-green-500 hover:bg-green-600 h-8 px-2"
+                        >
+                          <Check className="h-3 w-3" />
+                          Confirmar
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onCriarPedido(agendamento.cliente.id)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEditarAgendamento(agendamento)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
