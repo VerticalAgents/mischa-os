@@ -1,51 +1,56 @@
 
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
-const TAB_STORAGE_KEY = 'currentActiveTab';
-const SUBTAB_STORAGE_KEY = 'currentActiveSubtab';
+const getTabStorageKey = (pathname: string) => `tab_${pathname.replace(/\//g, '_')}`;
+const getSubtabStorageKey = (pathname: string) => `subtab_${pathname.replace(/\//g, '_')}`;
 
 export const useTabPersistence = (defaultTab: string, defaultSubtab?: string) => {
+  const location = useLocation();
+  const tabKey = getTabStorageKey(location.pathname);
+  const subtabKey = getSubtabStorageKey(location.pathname);
+
   const [activeTab, setActiveTab] = useState(() => {
-    // Tentar recuperar a aba salva do localStorage
-    const savedTab = localStorage.getItem(TAB_STORAGE_KEY);
+    // Recuperar a aba salva específica para esta rota
+    const savedTab = localStorage.getItem(tabKey);
     return savedTab || defaultTab;
   });
 
   const [activeSubtab, setActiveSubtab] = useState(() => {
-    // Tentar recuperar a subaba salva do localStorage
-    const savedSubtab = localStorage.getItem(SUBTAB_STORAGE_KEY);
+    // Recuperar a subaba salva específica para esta rota
+    const savedSubtab = localStorage.getItem(subtabKey);
     return savedSubtab || defaultSubtab || '';
   });
 
   // Salvar aba ativa no localStorage sempre que mudar
   useEffect(() => {
     if (activeTab) {
-      localStorage.setItem(TAB_STORAGE_KEY, activeTab);
-      console.log('🔄 Salvando aba ativa:', activeTab);
+      localStorage.setItem(tabKey, activeTab);
+      console.log('🔄 Salvando aba ativa para', location.pathname, ':', activeTab);
     }
-  }, [activeTab]);
+  }, [activeTab, tabKey, location.pathname]);
 
   // Salvar subaba ativa no localStorage sempre que mudar
   useEffect(() => {
     if (activeSubtab) {
-      localStorage.setItem(SUBTAB_STORAGE_KEY, activeSubtab);
-      console.log('🔄 Salvando subaba ativa:', activeSubtab);
+      localStorage.setItem(subtabKey, activeSubtab);
+      console.log('🔄 Salvando subaba ativa para', location.pathname, ':', activeSubtab);
     }
-  }, [activeSubtab]);
+  }, [activeSubtab, subtabKey, location.pathname]);
 
   const changeTab = (newTab: string) => {
-    console.log('📋 Mudando para aba:', newTab);
+    console.log('📋 Mudando para aba:', newTab, 'em', location.pathname);
     setActiveTab(newTab);
   };
 
   const changeSubtab = (newSubtab: string) => {
-    console.log('📋 Mudando para subaba:', newSubtab);
+    console.log('📋 Mudando para subaba:', newSubtab, 'em', location.pathname);
     setActiveSubtab(newSubtab);
   };
 
   const clearTabPersistence = () => {
-    localStorage.removeItem(TAB_STORAGE_KEY);
-    localStorage.removeItem(SUBTAB_STORAGE_KEY);
+    localStorage.removeItem(tabKey);
+    localStorage.removeItem(subtabKey);
     setActiveTab(defaultTab);
     setActiveSubtab(defaultSubtab || '');
   };

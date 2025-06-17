@@ -1,24 +1,25 @@
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
 import { Package } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InsumosTabs from "@/components/estoque/InsumosTabs";
+import { useTabPersistence } from "@/hooks/useTabPersistence";
 
 export default function EstoqueInsumos() {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState("produtos");
+  const { activeTab, changeTab } = useTabPersistence("produtos");
 
   useEffect(() => {
-    // Verifica se há parâmetro de tab na URL
+    // Verificar se há parâmetro de tab na URL
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
     
     if (tabParam && ['produtos', 'insumos', 'cotacoes', 'pedidos'].includes(tabParam)) {
-      setActiveTab(tabParam);
+      changeTab(tabParam);
     }
-  }, [location.search]);
+  }, [location.search, changeTab]);
 
   return (
     <>
@@ -30,7 +31,7 @@ export default function EstoqueInsumos() {
       />
 
       <div className="mt-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={changeTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="produtos">Produtos Acabados</TabsTrigger>
             <TabsTrigger value="insumos">Insumos</TabsTrigger>

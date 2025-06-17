@@ -1,45 +1,52 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-const ROUTE_STORAGE_KEY = 'rotaAtual';
+const ROUTE_STORAGE_KEY = 'lastVisitedRoute';
 
 export const useRoutePersistence = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const hasRestoredRef = useRef(false);
-  const isInitialMount = useRef(true);
 
-  // Salva a rota atual no localStorage sempre que a rota muda
+  // Salva a rota atual sempre que ela muda (exceto rotas de auth)
   useEffect(() => {
-    // Não salvar rotas de autenticação
-    if (location.pathname !== '/auth' && location.pathname !== '/login') {
-      console.log('🔄 Salvando rota atual:', location.pathname);
-      localStorage.setItem(ROUTE_STORAGE_KEY, location.pathname);
-    }
-  }, [location.pathname]);
-
-  // Restaura a rota salva APENAS na inicialização do app (uma única vez)
-  const restoreRoute = () => {
-    // Se já restaurou uma vez, não fazer nada
-    if (hasRestoredRef.current) {
-      console.log('⚠️ Restauração já foi feita, ignorando');
-      return;
-    }
-
-    const savedRoute = localStorage.getItem(ROUTE_STORAGE_KEY);
-    console.log('🔍 Verificando rota salva:', { savedRoute, currentPath: location.pathname });
+    const currentPath = location.pathname + location.search;
     
-    // Se existe uma rota salva e não estamos já nela, navegar para ela
-    if (savedRoute && savedRoute !== location.pathname && savedRoute !== '/auth' && savedRoute !== '/login') {
-      console.log('🚀 Restaurando rota para:', savedRoute);
-      hasRestoredRef.current = true;
-      navigate(savedRoute, { replace: true });
-    } else {
-      console.log('✅ Mantendo rota atual:', location.pathname);
-      hasRestoredRef.current = true;
+    // Não salvar rotas de autenticação ou root vazia
+    if (currentPath !== '/auth' && currentPath !== '/login' && currentPath !== '/') {
+      console.log('🔄 Salvando rota atual:', currentPath);
+      localStorage.setItem(ROUTE_STORAGE_KEY, currentPath);
     }
+  }, [location.pathname, location.search]);
+
+  // Restaura a rota salva apenas na inicialização
+  const restoreRoute = () => {
+    const savedRoute = localStorage.getItem(ROUTE_STORAGE_KEY);
+    const currentPath = location.pathname + location.search;
+    
+    console.log('🔍 Verificando rota salva:', { savedRoute, currentPath });
+    
+    // Se existe uma rota salva, não estamos nela, e não é uma rota de auth
+    if (savedRoute && 
+        savedRoute !== currentPath && 
+        savedRoute !== '/auth' && 
+        savedRoute !== '/login' && 
+        savedRoute !== '/' &&
+        currentPath === '/') {
+      
+      console.log('🚀 Restaurando rota para:', savedRoute);
+      navigate(savedRoute, { replace: true });
+      return true;
+    }
+    
+    console.log('✅ Mantendo rota atual:', currentPath);
+    return false;
   };
 
-  return { restoreRoute };
+  // Limpar persistência quando necessário
+  const clearRoutePersistence = () => {
+    localStorage.removeItem(ROUTE_STORAGE_KEY);
+  };
+
+  return { restoreRoute, clearRoutePersistence };
 };

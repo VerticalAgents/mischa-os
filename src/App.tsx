@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -55,13 +54,18 @@ const initializeTheme = () => {
 const AppContent = () => {
   const { restoreRoute } = useRoutePersistence();
 
-  // Restaura a rota salva APENAS na primeira inicialização
+  // Restaura a rota salva na primeira inicialização
   useEffect(() => {
-    // Restaura a rota previamente salva logo após a montagem
-    restoreRoute();
-  }, []); // Array de dependências vazio para executar apenas uma vez
+    // Aguarda um ciclo de render para garantir que o Router esteja pronto
+    const timer = setTimeout(() => {
+      restoreRoute();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []); // Executa apenas uma vez na montagem
 
   return (
+    
     <Routes>
       {/* Auth Routes - redirect /login to /auth */}
       <Route path="/login" element={<Navigate to="/auth" replace />} />

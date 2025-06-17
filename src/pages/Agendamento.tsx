@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TodosAgendamentos from "@/components/agendamento/TodosAgendamentos";
@@ -7,17 +7,19 @@ import AgendamentosPrevistos from "@/components/agendamento/AgendamentosPrevisto
 import AgendamentosAgendados from "@/components/agendamento/AgendamentosAgendados";
 import NovaConfirmacaoReposicaoTab from "@/components/agendamento/NovaConfirmacaoReposicaoTab";
 import { useSearchParams } from "react-router-dom";
+import { useTabPersistence } from "@/hooks/useTabPersistence";
 
 export default function Agendamento() {
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<string>("todos");
+  const { activeTab, changeTab } = useTabPersistence("todos");
 
   useEffect(() => {
+    // Verificar se há parâmetro de tab na URL e atualizar
     const tab = searchParams.get("tab");
     if (tab && ["todos", "previstos", "agendados", "confirmacao"].includes(tab)) {
-      setActiveTab(tab);
+      changeTab(tab);
     }
-  }, [searchParams]);
+  }, [searchParams, changeTab]);
 
   return (
     <div className="space-y-6">
@@ -26,7 +28,7 @@ export default function Agendamento() {
         description="Gerenciamento de agendamentos e confirmação de reposições" 
       />
       
-      <Tabs defaultValue="todos" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={changeTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="todos">Todos os Agendamentos</TabsTrigger>
           <TabsTrigger value="previstos">Pedidos Previstos</TabsTrigger>
