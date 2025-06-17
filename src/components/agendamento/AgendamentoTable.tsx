@@ -23,6 +23,7 @@ export default function AgendamentoTable({
   onEditarAgendamento,
   onConfirmarPrevisto 
 }: AgendamentoTableProps) {
+  // Ordenação padrão por data (mais próxima primeiro)
   const [sortField, setSortField] = useState<SortField>('data');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
