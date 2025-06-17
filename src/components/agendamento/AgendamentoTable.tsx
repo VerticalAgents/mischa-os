@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { AgendamentoItem } from "./types";
-import { Edit, Plus, Check, ChevronUp, ChevronDown } from "lucide-react";
+import { Edit, Plus, Check, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react";
 
 interface AgendamentoTableProps {
   agendamentos: AgendamentoItem[];
@@ -46,8 +46,8 @@ export default function AgendamentoTable({
           valueB = b.cliente.nome.toLowerCase();
           break;
         case 'data':
-          valueA = new Date(a.dataReposicao);
-          valueB = new Date(b.dataReposicao);
+          valueA = new Date(a.dataReposicao).getTime();
+          valueB = new Date(b.dataReposicao).getTime();
           break;
         case 'status':
           valueA = a.statusAgendamento.toLowerCase();
@@ -74,18 +74,18 @@ export default function AgendamentoTable({
   const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <Button
       variant="ghost"
-      className="h-auto p-0 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1"
+      className="h-auto p-1 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 -ml-1"
       onClick={() => handleSort(field)}
     >
       {children}
       {sortField === field ? (
         sortDirection === 'asc' ? (
-          <ChevronUp className="h-4 w-4" />
+          <ChevronUp className="h-4 w-4 text-primary" />
         ) : (
-          <ChevronDown className="h-4 w-4" />
+          <ChevronDown className="h-4 w-4 text-primary" />
         )
       ) : (
-        <div className="h-4 w-4" />
+        <ArrowUpDown className="h-4 w-4 opacity-50" />
       )}
     </Button>
   );
@@ -123,79 +123,89 @@ export default function AgendamentoTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>
+            <TableHead className="w-[200px]">
               <SortButton field="cliente">Cliente</SortButton>
             </TableHead>
-            <TableHead>
+            <TableHead className="w-[120px]">
               <SortButton field="data">Data</SortButton>
             </TableHead>
-            <TableHead>
+            <TableHead className="w-[100px]">
               <SortButton field="status">Status</SortButton>
             </TableHead>
-            <TableHead>
+            <TableHead className="w-[100px]">
               <SortButton field="quantidade">Quantidade</SortButton>
             </TableHead>
-            <TableHead>Tipo</TableHead>
-            <TableHead>Tipo Pedido</TableHead>
-            <TableHead className="text-right">Ações</TableHead>
+            <TableHead className="w-[80px]">Tipo</TableHead>
+            <TableHead className="w-[100px]">Tipo Pedido</TableHead>
+            <TableHead className="text-right w-[150px]">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedAgendamentos.map((agendamento, index) => (
-            <TableRow key={`${agendamento.cliente.id}-${index}`}>
-              <TableCell className="font-medium">
-                {agendamento.cliente.nome}
-              </TableCell>
-              <TableCell>
-                {formatDate(agendamento.dataReposicao)}
-              </TableCell>
-              <TableCell>
-                <Badge variant={getStatusBadgeVariant(agendamento.statusAgendamento)}>
-                  {agendamento.statusAgendamento}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                {agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao}
-              </TableCell>
-              <TableCell>
-                <Badge variant={agendamento.isPedidoUnico ? "secondary" : "outline"}>
-                  {agendamento.isPedidoUnico ? "Único" : "PDV"}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                {getTipoPedidoBadge(agendamento.pedido?.tipoPedido)}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex gap-2 justify-end">
-                  {agendamento.statusAgendamento === "Previsto" && onConfirmarPrevisto && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => onConfirmarPrevisto(agendamento)}
-                      className="flex items-center gap-1 bg-green-500 hover:bg-green-600"
-                    >
-                      <Check className="h-4 w-4" />
-                      Confirmar
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onCriarPedido(agendamento.cliente.id)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onEditarAgendamento(agendamento)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </div>
+          {sortedAgendamentos.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                Nenhum agendamento encontrado
               </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            sortedAgendamentos.map((agendamento, index) => (
+              <TableRow key={`${agendamento.cliente.id}-${index}`} className="hover:bg-muted/50">
+                <TableCell className="font-medium">
+                  {agendamento.cliente.nome}
+                </TableCell>
+                <TableCell>
+                  {formatDate(agendamento.dataReposicao)}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={getStatusBadgeVariant(agendamento.statusAgendamento)}>
+                    {agendamento.statusAgendamento}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-medium">
+                  {agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={agendamento.isPedidoUnico ? "secondary" : "outline"}>
+                    {agendamento.isPedidoUnico ? "Único" : "PDV"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {getTipoPedidoBadge(agendamento.pedido?.tipoPedido)}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex gap-1 justify-end">
+                    {agendamento.statusAgendamento === "Previsto" && onConfirmarPrevisto && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => onConfirmarPrevisto(agendamento)}
+                        className="flex items-center gap-1 bg-green-500 hover:bg-green-600 h-8 px-2"
+                      >
+                        <Check className="h-3 w-3" />
+                        Confirmar
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onCriarPedido(agendamento.cliente.id)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEditarAgendamento(agendamento)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </div>

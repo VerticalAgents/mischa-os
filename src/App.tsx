@@ -26,6 +26,7 @@ import LoginPage from "./pages/auth/LoginPage";
 import AuthPage from "./pages/auth/AuthPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { useAuth } from "./contexts/AuthContext";
 
 // New pages
 import GestaoComercial from "./pages/GestaoComercial";
@@ -53,19 +54,21 @@ const initializeTheme = () => {
 // Componente interno para usar os hooks após o Router estar disponível
 const AppContent = () => {
   const { restoreRoute } = useRoutePersistence();
+  const { isAuthenticated, loading } = useAuth();
 
-  // Restaura a rota salva na primeira inicialização
+  // Restaura a rota salva apenas quando o usuário está autenticado e não está carregando
   useEffect(() => {
-    // Aguarda um ciclo de render para garantir que o Router esteja pronto
-    const timer = setTimeout(() => {
-      restoreRoute();
-    }, 100);
+    if (!loading && isAuthenticated) {
+      // Aguarda um pouco para garantir que o auth context esteja totalmente inicializado
+      const timer = setTimeout(() => {
+        restoreRoute();
+      }, 200);
 
-    return () => clearTimeout(timer);
-  }, []); // Executa apenas uma vez na montagem
+      return () => clearTimeout(timer);
+    }
+  }, [loading, isAuthenticated, restoreRoute]);
 
   return (
-    
     <Routes>
       {/* Auth Routes - redirect /login to /auth */}
       <Route path="/login" element={<Navigate to="/auth" replace />} />

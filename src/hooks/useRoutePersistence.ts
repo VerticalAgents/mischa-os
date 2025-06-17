@@ -35,7 +35,10 @@ export const useRoutePersistence = () => {
         currentPath === '/') {
       
       console.log('🚀 Restaurando rota para:', savedRoute);
-      navigate(savedRoute, { replace: true });
+      // Usar timeout para evitar conflitos com auth
+      setTimeout(() => {
+        navigate(savedRoute, { replace: true });
+      }, 100);
       return true;
     }
     

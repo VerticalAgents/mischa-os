@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -34,6 +33,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -41,15 +41,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('🔐 Auth event:', event, session ? 'Session exists' : 'No session');
+        
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
+        // Só processar eventos após a inicialização
+        if (!isInitialized) {
+          setIsInitialized(true);
+          return;
+        }
+
         if (event === 'SIGNED_IN' && session) {
-          // Navigate to original intended route or default to home
-          const from = location.state?.from?.pathname || '/';
-          navigate(from, { replace: true });
-          toast.success("Login realizado com sucesso");
+          // Só navegar se estivermos na página de auth
+          if (location.pathname === '/auth' || location.pathname === '/login') {
+            const from = location.state?.from?.pathname || '/';
+            navigate(from, { replace: true });
+            toast.success("Login realizado com sucesso");
+          }
         }
 
         if (event === 'SIGNED_OUT') {
@@ -61,13 +71,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('🔍 Session inicial:', session ? 'Existe' : 'Não existe');
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      setIsInitialized(true);
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate, location]);
+  }, [navigate]);
 
   const signInWithEmail = async (email: string, password: string): Promise<void> => {
     try {
