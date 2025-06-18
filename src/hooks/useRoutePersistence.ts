@@ -27,6 +27,7 @@ export const useRoutePersistence = () => {
     console.log('🔍 Verificando rota salva:', { savedRoute, currentPath });
     
     // Se existe uma rota salva, não estamos nela, e não é uma rota de auth
+    // E IMPORTANTE: só restaurar se estivermos na rota raiz "/"
     if (savedRoute && 
         savedRoute !== currentPath && 
         savedRoute !== '/auth' && 

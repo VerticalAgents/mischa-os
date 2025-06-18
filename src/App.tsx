@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -57,14 +58,17 @@ const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
 
   // Restaura a rota salva apenas quando o usuário está autenticado e não está carregando
+  // E SOMENTE se estivermos na rota raiz
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      // Aguarda um pouco para garantir que o auth context esteja totalmente inicializado
-      const timer = setTimeout(() => {
-        restoreRoute();
-      }, 200);
-
-      return () => clearTimeout(timer);
+      const currentPath = window.location.pathname;
+      // Só tentar restaurar se estivermos exatamente na rota raiz
+      if (currentPath === '/') {
+        const timer = setTimeout(() => {
+          restoreRoute();
+        }, 200);
+        return () => clearTimeout(timer);
+      }
     }
   }, [loading, isAuthenticated, restoreRoute]);
 
@@ -143,13 +147,6 @@ const AppContent = () => {
         <ProtectedRoute>
           <AppLayout>
             <Projections />
-          </AppLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/analytics" element={
-        <ProtectedRoute>
-          <AppLayout>
-            <DashboardAnalytics />
           </AppLayout>
         </ProtectedRoute>
       } />
