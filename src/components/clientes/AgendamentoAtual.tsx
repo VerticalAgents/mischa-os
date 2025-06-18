@@ -60,17 +60,22 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
     return cliente.categoriasHabilitadas.includes(produto.categoriaId);
   });
 
+  // Inicializar produtos quando tipoPedido muda para 'Alterado'
   useEffect(() => {
-    if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0 && produtosQuantidades.length === 0) {
-      const produtosIniciais = produtosFiltrados.map(produto => ({
-        produto: produto.nome,
-        quantidade: 0
-      }));
-      setProdutosQuantidades(produtosIniciais);
+    if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0) {
+      // Se não há produtos cadastrados ou se mudou para 'Alterado', inicializar
+      if (produtosQuantidades.length === 0) {
+        const produtosIniciais = produtosFiltrados.map(produto => ({
+          produto: produto.nome,
+          quantidade: 0
+        }));
+        setProdutosQuantidades(produtosIniciais);
+        console.log('🎯 Inicializando produtos para tipo Alterado:', produtosIniciais);
+      }
     } else if (tipoPedido === 'Padrão') {
       setProdutosQuantidades([]);
     }
-  }, [tipoPedido, produtosFiltrados.length, produtosQuantidades.length]);
+  }, [tipoPedido, produtosFiltrados.length]);
 
   // Carregar dados da tabela agendamentos_clientes
   useEffect(() => {
@@ -112,8 +117,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             if (agendamento.tipo_pedido === 'Alterado' && agendamento.itens_personalizados) {
               console.log('🎯 Carregando itens personalizados:', agendamento.itens_personalizados);
               setProdutosQuantidades(agendamento.itens_personalizados);
-            } else {
-              setProdutosQuantidades([]);
             }
           } else {
             console.log('⚠️ Nenhum agendamento encontrado, usando valores padrão');
@@ -145,13 +148,16 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
   const hasDataError = isDataObrigatoria && !proximaDataReposicao;
 
   const atualizarQuantidadeProduto = (produtoNome: string, novaQuantidade: number) => {
-    setProdutosQuantidades(prev => 
-      prev.map(produto => 
+    console.log('🔄 Atualizando quantidade do produto:', produtoNome, 'para:', novaQuantidade);
+    setProdutosQuantidades(prev => {
+      const updated = prev.map(produto => 
         produto.produto === produtoNome 
           ? { ...produto, quantidade: Math.max(0, novaQuantidade) }
           : produto
-      )
-    );
+      );
+      console.log('✅ Produtos atualizados:', updated);
+      return updated;
+    });
   };
 
   // Salvar alterações na tabela agendamentos_clientes
@@ -366,6 +372,8 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
                 <div className="grid gap-3 max-h-60 overflow-y-auto">
                   {produtosFiltrados.map((produto) => {
                     const produtoQuantidade = produtosQuantidades.find(p => p.produto === produto.nome);
+                    const quantidadeAtual = produtoQuantidade?.quantidade || 0;
+                    
                     return (
                       <div key={produto.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex flex-col">
@@ -378,10 +386,15 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
                         </div>
                         <Input
                           type="number"
-                          value={produtoQuantidade?.quantidade || 0}
-                          onChange={(e) => atualizarQuantidadeProduto(produto.nome, Number(e.target.value))}
+                          value={quantidadeAtual}
+                          onChange={(e) => {
+                            const novaQuantidade = Number(e.target.value);
+                            console.log('🎯 Input alterado para produto:', produto.nome, 'nova quantidade:', novaQuantidade);
+                            atualizarQuantidadeProduto(produto.nome, novaQuantidade);
+                          }}
                           min="0"
                           className="w-20"
+                          placeholder="0"
                         />
                       </div>
                     );

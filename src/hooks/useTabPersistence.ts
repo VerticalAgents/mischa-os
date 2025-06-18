@@ -22,21 +22,21 @@ export const useTabPersistence = (defaultTab: string, defaultSubtab?: string) =>
     return savedSubtab || defaultSubtab || '';
   });
 
-  // Salvar aba ativa no localStorage sempre que mudar
+  // Salvar aba ativa no localStorage sempre que mudar, mas evitar loops
   useEffect(() => {
-    if (activeTab) {
+    if (activeTab && activeTab !== defaultTab) {
       localStorage.setItem(tabKey, activeTab);
       console.log('🔄 Salvando aba ativa para', location.pathname, ':', activeTab);
     }
-  }, [activeTab, tabKey, location.pathname]);
+  }, [activeTab, tabKey, location.pathname, defaultTab]);
 
   // Salvar subaba ativa no localStorage sempre que mudar
   useEffect(() => {
-    if (activeSubtab) {
+    if (activeSubtab && activeSubtab !== defaultSubtab) {
       localStorage.setItem(subtabKey, activeSubtab);
       console.log('🔄 Salvando subaba ativa para', location.pathname, ':', activeSubtab);
     }
-  }, [activeSubtab, subtabKey, location.pathname]);
+  }, [activeSubtab, subtabKey, location.pathname, defaultSubtab]);
 
   const changeTab = (newTab: string) => {
     console.log('📋 Mudando para aba:', newTab, 'em', location.pathname);
