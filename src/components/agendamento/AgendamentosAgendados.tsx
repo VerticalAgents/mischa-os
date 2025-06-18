@@ -2,9 +2,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
 import { AgendamentoItem } from "./types";
 import { Button } from "@/components/ui/button";
-import { Edit } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Edit, Search } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -15,7 +17,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge";
-import { CheckCheck } from "lucide-react";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import { TipoPedidoBadge } from "@/components/expedicao/TipoPedidoBadge";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
@@ -24,13 +25,15 @@ import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 export default function AgendamentosAgendados() {
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
   const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
-  
+
   // Ordenação padrão por data (mais próxima primeiro)
   const [sortField, setSortField] = useState<SortField>('data');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
-  // Filtrar apenas agendamentos confirmados/agendados
+  // Filtrar apenas agendamentos agendados
   const agendamentosAgendados = agendamentos.filter(
     agendamento => agendamento.statusAgendamento === "Agendado"
   );
@@ -40,8 +43,19 @@ export default function AgendamentosAgendados() {
     setSortDirection(direction);
   };
 
+  // Filtrar agendamentos com base no termo de pesquisa
+  const filteredAgendamentos = useMemo(() => {
+    if (!searchTerm.trim()) return agendamentosAgendados;
+    
+    const term = searchTerm.toLowerCase();
+    return agendamentosAgendados.filter(agendamento => 
+      agendamento.cliente.nome.toLowerCase().includes(term) ||
+      (agendamento.pedido?.tipoPedido || 'Padrão').toLowerCase().includes(term)
+    );
+  }, [agendamentosAgendados, searchTerm]);
+
   const sortedAgendamentos = useMemo(() => {
-    return [...agendamentosAgendados].sort((a, b) => {
+    return [...filteredAgendamentos].sort((a, b) => {
       let valueA: any;
       let valueB: any;
 
@@ -74,7 +88,7 @@ export default function AgendamentosAgendados() {
       }
       return 0;
     });
-  }, [agendamentosAgendados, sortField, sortDirection]);
+  }, [filteredAgendamentos, sortField, sortDirection]);
 
   useEffect(() => {
     carregarTodosAgendamentos();
@@ -91,6 +105,19 @@ export default function AgendamentosAgendados() {
 
   return (
     <div className="space-y-4">
+      {/* Filtro de Pesquisa */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Pesquisar por cliente ou tipo..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
       {/* Controles de Ordenação */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -127,10 +154,7 @@ export default function AgendamentosAgendados() {
                 })}
               </TableCell>
               <TableCell>
-                <Badge variant="default" className="bg-green-500 text-white">
-                  <CheckCheck className="mr-2 h-4 w-4" />
-                  Agendado
-                </Badge>
+                <Badge variant="default">Agendado</Badge>
               </TableCell>
               <TableCell>
                 <TipoPedidoBadge tipo={agendamento.pedido?.tipoPedido || 'Padrão'} />

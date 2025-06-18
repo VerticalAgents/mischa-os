@@ -1,10 +1,11 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
 import { AgendamentoItem } from "./types";
 import { Button } from "@/components/ui/button";
-import { Edit } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Edit, CheckCheck, Search } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -15,20 +16,19 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge";
-import { CheckCheck } from "lucide-react";
-import { useClienteStore } from "@/hooks/useClienteStore";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import { TipoPedidoBadge } from "@/components/expedicao/TipoPedidoBadge";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
-import { toast } from "sonner";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 
 export default function TodosAgendamentos() {
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
-  const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
+  const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
+  const { agendamentos, carregarTodosAgendamentos, obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
   const { carregarClientes } = useClienteStore();
-  const { obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
 
   // Ordenação padrão por data (mais próxima primeiro)
   const [sortField, setSortField] = useState<SortField>('data');
@@ -39,8 +39,20 @@ export default function TodosAgendamentos() {
     setSortDirection(direction);
   };
 
+  // Filtrar agendamentos com base no termo de pesquisa
+  const filteredAgendamentos = useMemo(() => {
+    if (!searchTerm.trim()) return agendamentos;
+    
+    const term = searchTerm.toLowerCase();
+    return agendamentos.filter(agendamento => 
+      agendamento.cliente.nome.toLowerCase().includes(term) ||
+      agendamento.statusAgendamento.toLowerCase().includes(term) ||
+      (agendamento.pedido?.tipoPedido || 'Padrão').toLowerCase().includes(term)
+    );
+  }, [agendamentos, searchTerm]);
+
   const sortedAgendamentos = useMemo(() => {
-    return [...agendamentos].sort((a, b) => {
+    return [...filteredAgendamentos].sort((a, b) => {
       let valueA: any;
       let valueB: any;
 
@@ -73,7 +85,7 @@ export default function TodosAgendamentos() {
       }
       return 0;
     });
-  }, [agendamentos, sortField, sortDirection]);
+  }, [filteredAgendamentos, sortField, sortDirection]);
 
   useEffect(() => {
     carregarTodosAgendamentos();
@@ -90,7 +102,7 @@ export default function TodosAgendamentos() {
 
   const handleConfirmarAgendamento = async (agendamento: AgendamentoItem) => {
     try {
-      console.log('TodosAgendamentos: Confirmando agendamento previsto para cliente:', agendamento.cliente.nome);
+      console.log('TodosAgendamentos: Confirmando agendamento para cliente:', agendamento.cliente.nome);
 
       const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
       
@@ -102,10 +114,8 @@ export default function TodosAgendamentos() {
           data_atual: agendamentoAtual.data_proxima_reposicao
         });
 
-        // Alterar apenas o status para "Agendado", preservando todos os outros dados
         await salvarAgendamento(agendamento.cliente.id, {
           status_agendamento: 'Agendado',
-          // Preservar TODOS os dados existentes sem alteração
           data_proxima_reposicao: agendamentoAtual.data_proxima_reposicao,
           quantidade_total: agendamentoAtual.quantidade_total,
           tipo_pedido: agendamentoAtual.tipo_pedido,
@@ -118,15 +128,35 @@ export default function TodosAgendamentos() {
       await carregarTodosAgendamentos();
       await carregarClientes();
       
-      toast.success(`Agendamento confirmado para ${agendamento.cliente.nome}`);
+      toast({
+        title: "Sucesso",
+        description: `Agendamento confirmado para ${agendamento.cliente.nome}`,
+      });
     } catch (error) {
       console.error('Erro ao confirmar agendamento:', error);
-      toast.error("Erro ao confirmar agendamento");
+      toast({
+        title: "Erro",
+        description: "Erro ao confirmar agendamento",
+        variant: "destructive",
+      });
     }
   };
 
   return (
     <div className="space-y-4">
+      {/* Filtro de Pesquisa */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Pesquisar por cliente, status ou tipo..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
       {/* Controles de Ordenação */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -138,12 +168,12 @@ export default function TodosAgendamentos() {
           />
         </div>
         <div className="text-sm text-muted-foreground">
-          {sortedAgendamentos.length} agendamento(s)
+          {sortedAgendamentos.length} agendamento(s) encontrados
         </div>
       </div>
 
       <Table>
-        <TableCaption>Lista de todos os agendamentos de reposição.</TableCaption>
+        <TableCaption>Lista de todos os agendamentos.</TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead>PDV</TableHead>
@@ -163,14 +193,14 @@ export default function TodosAgendamentos() {
                 })}
               </TableCell>
               <TableCell>
-                {agendamento.statusAgendamento === "Agendado" ? (
-                  <Badge variant="default" className="bg-green-500 text-white">
-                    <CheckCheck className="mr-2 h-4 w-4" />
-                    Agendado
-                  </Badge>
-                ) : (
-                  <Badge variant="outline">{agendamento.statusAgendamento}</Badge>
-                )}
+                <Badge 
+                  variant={
+                    agendamento.statusAgendamento === "Agendado" ? "default" :
+                    agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"
+                  }
+                >
+                  {agendamento.statusAgendamento}
+                </Badge>
               </TableCell>
               <TableCell>
                 <TipoPedidoBadge tipo={agendamento.pedido?.tipoPedido || 'Padrão'} />

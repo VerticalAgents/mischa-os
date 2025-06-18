@@ -1,11 +1,11 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { AgendamentoItem } from "./types";
 import { Button } from "@/components/ui/button";
-import { Edit, CheckCheck } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Edit, CheckCheck, Search } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -25,6 +25,7 @@ import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 export default function AgendamentosPrevistos() {
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   const { agendamentos, carregarTodosAgendamentos, obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
   const { carregarClientes } = useClienteStore();
@@ -43,8 +44,19 @@ export default function AgendamentosPrevistos() {
     setSortDirection(direction);
   };
 
+  // Filtrar agendamentos com base no termo de pesquisa
+  const filteredAgendamentos = useMemo(() => {
+    if (!searchTerm.trim()) return agendamentosPrevistos;
+    
+    const term = searchTerm.toLowerCase();
+    return agendamentosPrevistos.filter(agendamento => 
+      agendamento.cliente.nome.toLowerCase().includes(term) ||
+      (agendamento.pedido?.tipoPedido || 'Padrão').toLowerCase().includes(term)
+    );
+  }, [agendamentosPrevistos, searchTerm]);
+
   const sortedAgendamentos = useMemo(() => {
-    return [...agendamentosPrevistos].sort((a, b) => {
+    return [...filteredAgendamentos].sort((a, b) => {
       let valueA: any;
       let valueB: any;
 
@@ -77,7 +89,7 @@ export default function AgendamentosPrevistos() {
       }
       return 0;
     });
-  }, [agendamentosPrevistos, sortField, sortDirection]);
+  }, [filteredAgendamentos, sortField, sortDirection]);
 
   useEffect(() => {
     carregarTodosAgendamentos();
@@ -138,6 +150,19 @@ export default function AgendamentosPrevistos() {
 
   return (
     <div className="space-y-4">
+      {/* Filtro de Pesquisa */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Pesquisar por cliente ou tipo..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
       {/* Controles de Ordenação */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
