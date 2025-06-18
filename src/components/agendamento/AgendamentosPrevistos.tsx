@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ import AgendamentoEditModal from "./AgendamentoEditModal";
 import { TipoPedidoBadge } from "@/components/expedicao/TipoPedidoBadge";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
+import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 
 export default function AgendamentosPrevistos() {
   const [open, setOpen] = useState(false);
@@ -28,10 +29,55 @@ export default function AgendamentosPrevistos() {
   const { agendamentos, carregarTodosAgendamentos, obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
   const { carregarClientes } = useClienteStore();
 
+  // Ordenação padrão por data (mais próxima primeiro)
+  const [sortField, setSortField] = useState<SortField>('data');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
   // Filtrar apenas agendamentos previstos
   const agendamentosPrevistos = agendamentos.filter(
     agendamento => agendamento.statusAgendamento === "Previsto"
   );
+
+  const handleSortChange = (field: SortField, direction: SortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
+  };
+
+  const sortedAgendamentos = useMemo(() => {
+    return [...agendamentosPrevistos].sort((a, b) => {
+      let valueA: any;
+      let valueB: any;
+
+      switch (sortField) {
+        case 'nome':
+          valueA = a.cliente.nome.toLowerCase();
+          valueB = b.cliente.nome.toLowerCase();
+          break;
+        case 'data':
+          valueA = new Date(a.dataReposicao).getTime();
+          valueB = new Date(b.dataReposicao).getTime();
+          break;
+        case 'status':
+          valueA = a.statusAgendamento.toLowerCase();
+          valueB = b.statusAgendamento.toLowerCase();
+          break;
+        case 'tipo':
+          valueA = a.isPedidoUnico ? 'único' : 'pdv';
+          valueB = b.isPedidoUnico ? 'único' : 'pdv';
+          break;
+        default:
+          return 0;
+      }
+
+      if (valueA < valueB) {
+        return sortDirection === 'asc' ? -1 : 1;
+      }
+      if (valueA > valueB) {
+        return sortDirection === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [agendamentosPrevistos, sortField, sortDirection]);
 
   useEffect(() => {
     carregarTodosAgendamentos();
@@ -91,7 +137,22 @@ export default function AgendamentosPrevistos() {
   };
 
   return (
-    <>
+    <div className="space-y-4">
+      {/* Controles de Ordenação */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">Ordenar por:</span>
+          <SortDropdown
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onSortChange={handleSortChange}
+          />
+        </div>
+        <div className="text-sm text-muted-foreground">
+          {sortedAgendamentos.length} agendamento(s) previstos
+        </div>
+      </div>
+
       <Table>
         <TableCaption>Lista de agendamentos previstos.</TableCaption>
         <TableHeader>
@@ -104,7 +165,7 @@ export default function AgendamentosPrevistos() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {agendamentosPrevistos.map((agendamento) => (
+          {sortedAgendamentos.map((agendamento) => (
             <TableRow key={agendamento.cliente.id}>
               <TableCell>{agendamento.cliente.nome}</TableCell>
               <TableCell>
@@ -150,6 +211,6 @@ export default function AgendamentosPrevistos() {
         agendamento={selectedAgendamento}
         onSalvar={handleSalvarAgendamento}
       />
-    </>
+    </div>
   );
 }

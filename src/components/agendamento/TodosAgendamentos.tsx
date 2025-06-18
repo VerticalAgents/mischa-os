@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AgendamentoItem } from "./types";
@@ -21,6 +21,7 @@ import AgendamentoEditModal from "./AgendamentoEditModal";
 import { TipoPedidoBadge } from "@/components/expedicao/TipoPedidoBadge";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { toast } from "sonner";
+import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 
 export default function TodosAgendamentos() {
   const [open, setOpen] = useState(false);
@@ -28,6 +29,51 @@ export default function TodosAgendamentos() {
   const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
   const { carregarClientes } = useClienteStore();
   const { obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
+
+  // Ordenação padrão por data (mais próxima primeiro)
+  const [sortField, setSortField] = useState<SortField>('data');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSortChange = (field: SortField, direction: SortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
+  };
+
+  const sortedAgendamentos = useMemo(() => {
+    return [...agendamentos].sort((a, b) => {
+      let valueA: any;
+      let valueB: any;
+
+      switch (sortField) {
+        case 'nome':
+          valueA = a.cliente.nome.toLowerCase();
+          valueB = b.cliente.nome.toLowerCase();
+          break;
+        case 'data':
+          valueA = new Date(a.dataReposicao).getTime();
+          valueB = new Date(b.dataReposicao).getTime();
+          break;
+        case 'status':
+          valueA = a.statusAgendamento.toLowerCase();
+          valueB = b.statusAgendamento.toLowerCase();
+          break;
+        case 'tipo':
+          valueA = a.isPedidoUnico ? 'único' : 'pdv';
+          valueB = b.isPedidoUnico ? 'único' : 'pdv';
+          break;
+        default:
+          return 0;
+      }
+
+      if (valueA < valueB) {
+        return sortDirection === 'asc' ? -1 : 1;
+      }
+      if (valueA > valueB) {
+        return sortDirection === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [agendamentos, sortField, sortDirection]);
 
   useEffect(() => {
     carregarTodosAgendamentos();
@@ -80,7 +126,22 @@ export default function TodosAgendamentos() {
   };
 
   return (
-    <>
+    <div className="space-y-4">
+      {/* Controles de Ordenação */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">Ordenar por:</span>
+          <SortDropdown
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onSortChange={handleSortChange}
+          />
+        </div>
+        <div className="text-sm text-muted-foreground">
+          {sortedAgendamentos.length} agendamento(s)
+        </div>
+      </div>
+
       <Table>
         <TableCaption>Lista de todos os agendamentos de reposição.</TableCaption>
         <TableHeader>
@@ -93,7 +154,7 @@ export default function TodosAgendamentos() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {agendamentos.map((agendamento) => (
+          {sortedAgendamentos.map((agendamento) => (
             <TableRow key={agendamento.cliente.id}>
               <TableCell>{agendamento.cliente.nome}</TableCell>
               <TableCell>
@@ -148,6 +209,6 @@ export default function TodosAgendamentos() {
         agendamento={selectedAgendamento}
         onSalvar={handleSalvarAgendamento}
       />
-    </>
+    </div>
   );
 }
