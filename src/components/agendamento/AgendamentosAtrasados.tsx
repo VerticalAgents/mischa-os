@@ -162,6 +162,11 @@ export default function AgendamentosAtrasados() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
+  // Se não há agendamentos atrasados, não renderizar nada
+  if (sortedAgendamentos.length === 0) {
+    return null;
+  }
+
   return (
     <div className="space-y-4">
       {/* Filtro de Pesquisa */}

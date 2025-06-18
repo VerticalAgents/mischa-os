@@ -17,12 +17,16 @@ import { Badge } from "@/components/ui/badge";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
+import AgendamentoEditModal from "./AgendamentoEditModal";
+import { AgendamentoItem } from "./types";
 
 export default function AgendamentosPendentes() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [open, setOpen] = useState(false);
+  const [selectedCliente, setSelectedCliente] = useState<any>(null);
   const { toast } = useToast();
   const { clientes, carregarClientes } = useClienteStore();
-  const { agendamentos, carregarTodosAgendamentos, salvarAgendamento } = useAgendamentoClienteStore();
+  const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
 
   // Ordenação padrão por nome
   const [sortField, setSortField] = useState<SortField>('nome');
@@ -95,34 +99,50 @@ export default function AgendamentosPendentes() {
     carregarTodosAgendamentos();
   }, [carregarClientes, carregarTodosAgendamentos]);
 
-  const handleCriarAgendamento = async (cliente: any) => {
-    try {
-      const proximaData = new Date();
-      proximaData.setDate(proximaData.getDate() + cliente.periodicidadePadrao);
-
-      await salvarAgendamento(cliente.id, {
-        status_agendamento: 'Previsto',
-        data_proxima_reposicao: proximaData,
-        quantidade_total: cliente.quantidadePadrao,
-        tipo_pedido: 'Padrão'
-      });
-
-      await carregarTodosAgendamentos();
-      await carregarClientes();
-      
-      toast({
-        title: "Sucesso",
-        description: `Agendamento criado para ${cliente.nome}`,
-      });
-    } catch (error) {
-      console.error('Erro ao criar agendamento:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao criar agendamento",
-        variant: "destructive",
-      });
-    }
+  const handleCriarAgendamento = (cliente: any) => {
+    // Criar um agendamento fictício para abrir o modal de edição
+    const agendamentoFicticio: AgendamentoItem = {
+      cliente: {
+        id: cliente.id,
+        nome: cliente.nome,
+        cnpjCpf: cliente.cnpjCpf || '',
+        statusCliente: cliente.statusCliente,
+        quantidadePadrao: cliente.quantidadePadrao || 0,
+        periodicidadePadrao: cliente.periodicidadePadrao || 7,
+        categoriasHabilitadas: cliente.categoriasHabilitadas || []
+      },
+      statusAgendamento: 'Agendar',
+      dataReposicao: new Date(),
+      isPedidoUnico: false,
+      pedido: {
+        id: 0,
+        idCliente: cliente.id,
+        dataPedido: new Date(),
+        dataPrevistaEntrega: new Date(),
+        statusPedido: 'Agendado',
+        totalPedidoUnidades: cliente.quantidadePadrao || 0,
+        tipoPedido: 'Padrão',
+        itensPedido: [],
+        historicoAlteracoesStatus: []
+      }
+    };
+    
+    setSelectedCliente(agendamentoFicticio);
+    setOpen(true);
   };
+
+  const handleSalvarAgendamento = () => {
+    // Recarregar dados após salvar
+    carregarTodosAgendamentos();
+    carregarClientes();
+    setOpen(false);
+    setSelectedCliente(null);
+  };
+
+  // Se não há clientes sem agendamento, não renderizar nada
+  if (sortedClientes.length === 0) {
+    return null;
+  }
 
   return (
     <div className="space-y-4">
@@ -189,6 +209,13 @@ export default function AgendamentosPendentes() {
           ))}
         </TableBody>
       </Table>
+
+      <AgendamentoEditModal
+        open={open}
+        onOpenChange={setOpen}
+        agendamento={selectedCliente}
+        onSalvar={handleSalvarAgendamento}
+      />
     </div>
   );
 }

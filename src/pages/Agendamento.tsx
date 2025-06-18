@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TodosAgendamentos from "@/components/agendamento/TodosAgendamentos";
@@ -10,10 +10,18 @@ import AgendamentosAtrasados from "@/components/agendamento/AgendamentosAtrasado
 import NovaConfirmacaoReposicaoTab from "@/components/agendamento/NovaConfirmacaoReposicaoTab";
 import { useSearchParams } from "react-router-dom";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
+import { useClienteStore } from "@/hooks/useClienteStore";
+import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 
 export default function Agendamento() {
   const [searchParams] = useSearchParams();
   const { activeTab, changeTab } = useTabPersistence("todos");
+  const { clientes } = useClienteStore();
+  const { agendamentos } = useAgendamentoClienteStore();
+  
+  // Estados para controlar a visibilidade das abas
+  const [temAgendamentosPendentes, setTemAgendamentosPendentes] = useState(false);
+  const [temAgendamentosAtrasados, setTemAgendamentosAtrasados] = useState(false);
 
   useEffect(() => {
     // Verificar se há parâmetro de tab na URL e atualizar
@@ -22,6 +30,25 @@ export default function Agendamento() {
       changeTab(tab);
     }
   }, [searchParams, changeTab]);
+
+  useEffect(() => {
+    // Verificar se há clientes sem agendamento
+    const clientesComAgendamento = new Set(agendamentos.map(a => a.cliente.id));
+    const clientesSemAgendamento = clientes.filter(cliente => 
+      cliente.ativo && !clientesComAgendamento.has(cliente.id)
+    );
+    setTemAgendamentosPendentes(clientesSemAgendamento.length > 0);
+
+    // Verificar se há agendamentos atrasados
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const agendamentosAtrasados = agendamentos.filter(agendamento => {
+      const dataAgendamento = new Date(agendamento.dataReposicao);
+      dataAgendamento.setHours(0, 0, 0, 0);
+      return dataAgendamento < hoje;
+    });
+    setTemAgendamentosAtrasados(agendamentosAtrasados.length > 0);
+  }, [clientes, agendamentos]);
 
   return (
     <div className="space-y-6">
@@ -36,8 +63,12 @@ export default function Agendamento() {
           <TabsTrigger value="previstos">Pedidos Previstos</TabsTrigger>
           <TabsTrigger value="agendados">Pedidos Agendados</TabsTrigger>
           <TabsTrigger value="confirmacao">Confirmação de Reposição</TabsTrigger>
-          <TabsTrigger value="pendentes">Agendamentos Pendentes</TabsTrigger>
-          <TabsTrigger value="atrasados">Agendamentos Atrasados</TabsTrigger>
+          {temAgendamentosPendentes && (
+            <TabsTrigger value="pendentes">Agendamentos Pendentes</TabsTrigger>
+          )}
+          {temAgendamentosAtrasados && (
+            <TabsTrigger value="atrasados">Agendamentos Atrasados</TabsTrigger>
+          )}
         </TabsList>
         
         <TabsContent value="todos" className="space-y-4">
@@ -56,13 +87,17 @@ export default function Agendamento() {
           <NovaConfirmacaoReposicaoTab />
         </TabsContent>
         
-        <TabsContent value="pendentes" className="space-y-4">
-          <AgendamentosPendentes />
-        </TabsContent>
+        {temAgendamentosPendentes && (
+          <TabsContent value="pendentes" className="space-y-4">
+            <AgendamentosPendentes />
+          </TabsContent>
+        )}
         
-        <TabsContent value="atrasados" className="space-y-4">
-          <AgendamentosAtrasados />
-        </TabsContent>
+        {temAgendamentosAtrasados && (
+          <TabsContent value="atrasados" className="space-y-4">
+            <AgendamentosAtrasados />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
