@@ -5,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TodosAgendamentos from "@/components/agendamento/TodosAgendamentos";
 import AgendamentosPrevistos from "@/components/agendamento/AgendamentosPrevistos";
 import AgendamentosAgendados from "@/components/agendamento/AgendamentosAgendados";
+import AgendamentosPendentes from "@/components/agendamento/AgendamentosPendentes";
+import AgendamentosAtrasados from "@/components/agendamento/AgendamentosAtrasados";
 import NovaConfirmacaoReposicaoTab from "@/components/agendamento/NovaConfirmacaoReposicaoTab";
 import { useSearchParams } from "react-router-dom";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
@@ -16,7 +18,7 @@ export default function Agendamento() {
   useEffect(() => {
     // Verificar se há parâmetro de tab na URL e atualizar
     const tab = searchParams.get("tab");
-    if (tab && ["todos", "previstos", "agendados", "confirmacao"].includes(tab)) {
+    if (tab && ["todos", "previstos", "agendados", "confirmacao", "pendentes", "atrasados"].includes(tab)) {
       changeTab(tab);
     }
   }, [searchParams, changeTab]);
@@ -34,6 +36,8 @@ export default function Agendamento() {
           <TabsTrigger value="previstos">Pedidos Previstos</TabsTrigger>
           <TabsTrigger value="agendados">Pedidos Agendados</TabsTrigger>
           <TabsTrigger value="confirmacao">Confirmação de Reposição</TabsTrigger>
+          <TabsTrigger value="pendentes">Agendamentos Pendentes</TabsTrigger>
+          <TabsTrigger value="atrasados">Agendamentos Atrasados</TabsTrigger>
         </TabsList>
         
         <TabsContent value="todos" className="space-y-4">
@@ -50,6 +54,14 @@ export default function Agendamento() {
         
         <TabsContent value="confirmacao" className="space-y-4">
           <NovaConfirmacaoReposicaoTab />
+        </TabsContent>
+        
+        <TabsContent value="pendentes" className="space-y-4">
+          <AgendamentosPendentes />
+        </TabsContent>
+        
+        <TabsContent value="atrasados" className="space-y-4">
+          <AgendamentosAtrasados />
         </TabsContent>
       </Tabs>
     </div>
