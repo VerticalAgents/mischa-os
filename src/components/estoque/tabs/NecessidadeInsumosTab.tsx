@@ -477,11 +477,11 @@ export default function NecessidadeInsumosTab() {
                           <div>
                             <h5 className="font-medium mb-3">Insumos por Receita</h5>
                             <div className="space-y-3">
-                              {Object.entries(dadosEtapas.insumosPorReceita).map(([produto, insumos]) => (
+                              {Object.entries(dadosEtapas.insumosPorReceita).map(([produto, insumosData]) => (
                                 <div key={produto} className="p-3 border rounded-lg">
                                   <div className="font-medium mb-2">{produto}</div>
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                    {Object.entries(insumos).map(([insumoId, dados]) => {
+                                    {Object.entries(insumosData).map(([insumoId, dados]) => {
                                       const insumo = insumos.find(i => i.id === insumoId);
                                       return (
                                         <div key={insumoId} className="flex justify-between p-2 bg-gray-50 rounded text-sm">
