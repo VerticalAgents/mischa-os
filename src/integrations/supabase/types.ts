@@ -114,6 +114,7 @@ export type Database = {
         Row: {
           ativo: boolean | null
           categoria_estabelecimento_id: number | null
+          categorias_habilitadas: Json | null
           cnpj_cpf: string | null
           contabilizar_giro_medio: boolean | null
           contato_email: string | null
@@ -145,6 +146,7 @@ export type Database = {
         Insert: {
           ativo?: boolean | null
           categoria_estabelecimento_id?: number | null
+          categorias_habilitadas?: Json | null
           cnpj_cpf?: string | null
           contabilizar_giro_medio?: boolean | null
           contato_email?: string | null
@@ -176,6 +178,7 @@ export type Database = {
         Update: {
           ativo?: boolean | null
           categoria_estabelecimento_id?: number | null
+          categorias_habilitadas?: Json | null
           cnpj_cpf?: string | null
           contabilizar_giro_medio?: boolean | null
           contato_email?: string | null
@@ -205,6 +208,42 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      clientes_categorias: {
+        Row: {
+          categoria_id: number
+          cliente_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          categoria_id: number
+          cliente_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          categoria_id?: number
+          cliente_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_categorias_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias_produto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clientes_categorias_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       componentes_produto: {
         Row: {

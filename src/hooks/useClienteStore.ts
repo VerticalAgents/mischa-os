@@ -105,7 +105,7 @@ function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>)
     tipo_cobranca: cliente.tipoCobranca || 'À vista',
     forma_pagamento: cliente.formaPagamento || 'Boleto',
     observacoes: cliente.observacoes || null,
-    // Categorias de produto habilitadas
+    // Categorias de produto habilitadas - salvar no JSONB para compatibilidade
     categorias_habilitadas: cliente.categoriasHabilitadas || []
   };
 }
@@ -205,6 +205,23 @@ export const useClienteStore = create<ClienteStore>()(
             throw error;
           }
 
+          // Salvar as categorias na tabela de relacionamento
+          if (cliente.categoriasHabilitadas && cliente.categoriasHabilitadas.length > 0) {
+            const categoriasRelacao = cliente.categoriasHabilitadas.map(categoriaId => ({
+              cliente_id: data.id,
+              categoria_id: categoriaId
+            }));
+
+            const { error: categoriaError } = await supabase
+              .from('clientes_categorias')
+              .insert(categoriasRelacao);
+
+            if (categoriaError) {
+              console.error('Erro ao salvar categorias do cliente:', categoriaError);
+              // Não impedir o cadastro por conta das categorias
+            }
+          }
+
           const novoCliente = convertSupabaseToCliente(data);
           set(state => ({
             clientes: [novoCliente, ...state.clientes]
@@ -294,6 +311,37 @@ export const useClienteStore = create<ClienteStore>()(
               variant: "destructive"
             });
             return;
+          }
+
+          // Se as categorias foram atualizadas, salvar na tabela de relacionamento
+          if (dadosCliente.categoriasHabilitadas !== undefined) {
+            console.log('useClienteStore: Atualizando categorias na tabela de relacionamento:', dadosCliente.categoriasHabilitadas);
+            
+            // Remover categorias existentes
+            const { error: deleteError } = await supabase
+              .from('clientes_categorias')
+              .delete()
+              .eq('cliente_id', id);
+
+            if (deleteError) {
+              console.error('Erro ao remover categorias existentes:', deleteError);
+            }
+
+            // Inserir novas categorias
+            if (dadosCliente.categoriasHabilitadas.length > 0) {
+              const novasRelacoes = dadosCliente.categoriasHabilitadas.map(categoriaId => ({
+                cliente_id: id,
+                categoria_id: categoriaId
+              }));
+
+              const { error: insertError } = await supabase
+                .from('clientes_categorias')
+                .insert(novasRelacoes);
+
+              if (insertError) {
+                console.error('Erro ao inserir novas categorias:', insertError);
+              }
+            }
           }
 
           set(state => ({

@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
+import { useClientesCategorias } from "@/hooks/useClientesCategorias";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -9,21 +10,48 @@ import { AlertCircle } from "lucide-react";
 interface CategoriasProdutoSelectorProps {
   value: number[];
   onChange: (categorias: number[]) => void;
+  clienteId?: string;
 }
 
 export default function CategoriasProdutoSelector({ 
   value, 
-  onChange 
+  onChange,
+  clienteId 
 }: CategoriasProdutoSelectorProps) {
   const { categorias, loading } = useSupabaseCategoriasProduto();
+  const { carregarCategoriasCliente } = useClientesCategorias();
   const [categoriasHabilitadas, setCategoriasHabilitadas] = useState<number[]>([]);
+  const [carregandoCategorias, setCarregandoCategorias] = useState(false);
 
-  // Sincronizar com o valor recebido como prop
+  // Carregar categorias do cliente se um clienteId for fornecido
   useEffect(() => {
-    console.log('CategoriasProdutoSelector: Sincronizando valor recebido:', value);
-    const novoValor = Array.isArray(value) ? value : [];
-    setCategoriasHabilitadas(novoValor);
-  }, [value]);
+    const carregarCategoriasDoCliente = async () => {
+      if (clienteId) {
+        setCarregandoCategorias(true);
+        try {
+          const categoriasDoBanco = await carregarCategoriasCliente(clienteId);
+          console.log('CategoriasProdutoSelector: Categorias carregadas do banco:', categoriasDoBanco);
+          setCategoriasHabilitadas(categoriasDoBanco);
+          onChange(categoriasDoBanco);
+        } catch (error) {
+          console.error('Erro ao carregar categorias do cliente:', error);
+        } finally {
+          setCarregandoCategorias(false);
+        }
+      }
+    };
+
+    carregarCategoriasDoCliente();
+  }, [clienteId, carregarCategoriasCliente, onChange]);
+
+  // Sincronizar com o valor recebido como prop (para novos clientes)
+  useEffect(() => {
+    if (!clienteId) {
+      console.log('CategoriasProdutoSelector: Sincronizando valor recebido (novo cliente):', value);
+      const novoValor = Array.isArray(value) ? value : [];
+      setCategoriasHabilitadas(novoValor);
+    }
+  }, [value, clienteId]);
 
   const handleCategoriaToggle = (categoriaId: number) => {
     console.log('CategoriasProdutoSelector: Toggle categoria ID:', categoriaId);
@@ -38,7 +66,7 @@ export default function CategoriasProdutoSelector({
     onChange(novasCategorias);
   };
 
-  if (loading) {
+  if (loading || carregandoCategorias) {
     return (
       <Card>
         <CardHeader>
