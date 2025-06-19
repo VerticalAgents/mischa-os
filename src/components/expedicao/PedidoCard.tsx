@@ -62,18 +62,24 @@ export const PedidoCard = ({
             </div>
           </div>
 
-          {/* Lista de produtos */}
+          {/* Lista de produtos - formato exato da imagem de referência */}
           <div className="lg:w-80 border-l-0 lg:border-l lg:pl-4">
             <div className="space-y-2">
               <h4 className="font-medium text-sm text-muted-foreground">Produtos</h4>
-              <div className="max-h-32 overflow-y-auto space-y-1">
+              <div className="max-h-32 overflow-y-auto">
                 {produtos.length > 0 ? (
-                  produtos.map((item: any, index: number) => (
-                    <div key={index} className="flex justify-between items-center text-sm">
-                      <span className="text-left">{item.nome || item.sabor || `Produto ${index + 1}`}</span>
-                      <span className="font-medium text-right ml-2">{item.quantidade || item.quantidade_sabor || 0}</span>
-                    </div>
-                  ))
+                  <div className="space-y-1">
+                    {produtos.map((item: any, index: number) => (
+                      <div key={index} className="flex justify-between items-center text-sm">
+                        <span className="text-left text-blue-600">
+                          {item.nome || item.sabor || `Produto ${index + 1}`}
+                        </span>
+                        <span className="font-medium text-right ml-2 text-gray-900">
+                          {item.quantidade || item.quantidade_sabor || 0}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <div className="text-sm text-muted-foreground">
                     Total: {pedido.quantidade_total} unidades
