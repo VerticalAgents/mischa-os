@@ -87,18 +87,18 @@ export const useNecessidadeInsumos = () => {
             
             agendamentoCompleto.itens_personalizados.forEach((item: any) => {
               if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
-                quantidadesPorProduto[item.produto] = item.quantidade;
+                quantidadesPorProduto[item.produto] = Number(item.quantidade) || 0;
               }
             });
           } else if (agendamentoCompleto.tipo_pedido === 'Padrão') {
-            const quantidadeTotal = agendamentoCompleto.quantidade_total;
+            const quantidadeTotal = Number(agendamentoCompleto.quantidade_total) || 0;
             
             if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
               const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
               
               quantidadesCalculadas.forEach((item: any) => {
                 if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
-                  quantidadesPorProduto[item.produto] = item.quantidade;
+                  quantidadesPorProduto[item.produto] = Number(item.quantidade) || 0;
                 }
               });
             }
@@ -112,21 +112,21 @@ export const useNecessidadeInsumos = () => {
             
             agendamento.pedido.itensPedido.forEach((item: any) => {
               const nomeProduto = item.nomeSabor || (item.sabor && item.sabor.nome);
-              const quantidade = item.quantidadeSabor || 0;
+              const quantidade = Number(item.quantidadeSabor) || 0;
               
               if (nomeProduto && quantidade > 0 && quantidadesPorProduto.hasOwnProperty(nomeProduto)) {
                 quantidadesPorProduto[nomeProduto] = quantidade;
               }
             });
           } else {
-            const quantidadeTotal = agendamento.cliente.quantidadePadrao || 0;
+            const quantidadeTotal = Number(agendamento.cliente.quantidadePadrao) || 0;
             
             if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
               const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
               
               quantidadesCalculadas.forEach((item: any) => {
                 if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
-                  quantidadesPorProduto[item.produto] = item.quantidade;
+                  quantidadesPorProduto[item.produto] = Number(item.quantidade) || 0;
                 }
               });
             }
@@ -177,9 +177,10 @@ export const useNecessidadeInsumos = () => {
       
       dadosProcessados.forEach(agendamento => {
         Object.entries(agendamento.quantidadesPorProduto).forEach(([nomeProduto, quantidade]) => {
-          if (quantidade > 0) {
+          const quantidadeNum = Number(quantidade) || 0;
+          if (quantidadeNum > 0) {
             const atual = quantidadesPorProduto.get(nomeProduto) || 0;
-            quantidadesPorProduto.set(nomeProduto, atual + quantidade);
+            quantidadesPorProduto.set(nomeProduto, atual + quantidadeNum);
           }
         });
       });
@@ -191,7 +192,7 @@ export const useNecessidadeInsumos = () => {
       
       quantidadesPorProduto.forEach((quantidadeNecessaria, nomeProduto) => {
         const produto = produtos.find(p => p.nome === nomeProduto);
-        const estoqueAtual = produto?.estoque_atual || 0;
+        const estoqueAtual = Number(produto?.estoque_atual) || 0;
         const necessidade = Math.max(0, quantidadeNecessaria - estoqueAtual);
         
         if (necessidade > 0) {
@@ -226,7 +227,7 @@ export const useNecessidadeInsumos = () => {
         console.log(`📝 ${nomeProduto}: ${quantidadeNecessaria} unidades = ${numeroReceitas} receitas (40 unidades/receita)`);
 
         receita.itens.forEach(item => {
-          const quantidadeItem = item.quantidade * numeroReceitas;
+          const quantidadeItem = Number(item.quantidade) * numeroReceitas;
           const atual = necessidadeInsumosPorId.get(item.insumo_id) || {
             nome: item.nome_insumo,
             unidade: '',
@@ -252,7 +253,7 @@ export const useNecessidadeInsumos = () => {
 
       necessidadeInsumosPorId.forEach((necessidade, insumoId) => {
         const insumo = insumos.find(i => i.id === insumoId);
-        const estoqueAtual = insumo?.estoque_atual || 0;
+        const estoqueAtual = Number(insumo?.estoque_atual) || 0;
         const quantidadeComprar = Math.max(0, necessidade.quantidade - estoqueAtual);
         const custoTotal = quantidadeComprar * necessidade.custoMedio;
         
