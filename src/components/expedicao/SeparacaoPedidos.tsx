@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
-import { PedidoCard } from "./PedidoCard";
+import PedidoCard from "./PedidoCard";
 import { toast } from "sonner";
 import { Printer, FileText, Check } from "lucide-react";
 import { formatDate } from "@/lib/utils";

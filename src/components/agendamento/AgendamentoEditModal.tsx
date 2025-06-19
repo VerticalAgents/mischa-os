@@ -61,11 +61,11 @@ export default function AgendamentoEditModal({
       setQuantidadeTotal(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao);
       setObservacoes("");
       
-      // Carregar itens personalizados se existirem
+      // Carregar itens personalizados se existirem - adaptado para ItemPedido
       if (agendamento.pedido?.itensPedido && agendamento.pedido.itensPedido.length > 0) {
         const itens = agendamento.pedido.itensPedido.map(item => ({
-          nome: item.produto?.nome || `Produto ${item.produtoId}`,
-          quantidade: item.quantidade
+          nome: item.nomeSabor || `Sabor ${item.idSabor}`,
+          quantidade: item.quantidadeSabor
         }));
         setItensPersonalizados(itens);
       } else {
@@ -121,17 +121,11 @@ export default function AgendamentoEditModal({
           itensPedido: itensPersonalizados.map((item, index) => ({
             id: index,
             idPedido: 0,
-            produtoId: `custom-${index}`,
-            quantidade: item.quantidade,
-            precoUnitario: 0,
-            produto: {
-              id: `custom-${index}`,
-              nome: item.nome,
-              categoria: "Personalizado",
-              subcategoriaId: 1,
-              categoriaId: 1,
-              ativo: true,
-              dataCadastro: new Date()
+            idSabor: index,
+            nomeSabor: item.nome,
+            quantidadeSabor: item.quantidade,
+            sabor: {
+              nome: item.nome
             }
           })),
           totalPedidoUnidades: quantidadeTotal,
