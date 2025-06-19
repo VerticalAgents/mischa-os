@@ -57,7 +57,7 @@ export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsVi
       <ClienteFormDialog 
         open={isEditDialogOpen} 
         onOpenChange={setIsEditDialogOpen}
-        clienteId={cliente.id}
+        cliente={cliente}
         onClienteUpdate={handleClienteUpdate}
       />
     </div>
