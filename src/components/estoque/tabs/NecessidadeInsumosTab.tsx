@@ -580,7 +580,7 @@ export default function NecessidadeInsumosTab() {
                                 <div key={produto} className="p-3 border rounded-lg">
                                   <div className="font-medium mb-2">{produto}</div>
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                    {Object.entries(insumosData).map(([insumoId, dados]) => {
+                                    {Object.entries(insumosData as Record<string, { quantidade: number, unidade: string }>).map(([insumoId, dados]) => {
                                       const insumo = insumos.find(i => i.id === insumoId);
                                       return (
                                         <div key={insumoId} className="flex justify-between p-2 bg-gray-50 rounded text-sm">
@@ -600,7 +600,7 @@ export default function NecessidadeInsumosTab() {
                           <div>
                             <h5 className="font-medium mb-3">Consolidação Total</h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                              {Object.entries(dadosEtapas.consolidacaoInsumos).map(([insumoId, dados]) => (
+                              {Object.entries(dadosEtapas.consolidacaoInsumos as Record<string, { nome: string, quantidade: number, unidade: string }>).map(([insumoId, dados]) => (
                                 <div key={insumoId} className="flex justify-between p-2 bg-green-50 rounded">
                                   <span className="text-sm">{dados.nome}</span>
                                   <Badge variant="outline">{dados.quantidade.toFixed(2)} {dados.unidade}</Badge>
