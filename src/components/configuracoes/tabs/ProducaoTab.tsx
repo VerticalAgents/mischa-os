@@ -1,3 +1,4 @@
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -28,6 +29,7 @@ import { useProdutoStore } from "@/hooks/useProdutoStore";
 import { useEffect, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ConfiguracoesProducao } from "@/types";
 
 // Schema for form validation
 const producaoSchema = z.object({
@@ -40,12 +42,14 @@ const producaoSchema = z.object({
   formasPorFornada: z.number().min(1, "Deve ser pelo menos 1").default(2)
 });
 
+type ProducaoFormData = z.infer<typeof producaoSchema>;
+
 export default function ProducaoTab() {
   const { configuracoesProducao, atualizarConfiguracoesProducao } = useConfigStore();
   const { produtos, atualizarEstoqueMinimo } = useProdutoStore();
   const [activeTab, setActiveTab] = useState("parametros");
   
-  const form = useForm<z.infer<typeof producaoSchema>>({
+  const form = useForm<ProducaoFormData>({
     resolver: zodResolver(producaoSchema),
     defaultValues: configuracoesProducao
   });
@@ -57,8 +61,19 @@ export default function ProducaoTab() {
     }
   }, [configuracoesProducao, form]);
   
-  const onSubmit = (data: z.infer<typeof producaoSchema>) => {
-    atualizarConfiguracoesProducao(data);
+  const onSubmit = (data: ProducaoFormData) => {
+    // Ensure all required fields are defined for ConfiguracoesProducao
+    const configData: ConfiguracoesProducao = {
+      unidadesPorForma: data.unidadesPorForma,
+      formasPorLote: data.formasPorLote,
+      incluirPedidosPrevistos: data.incluirPedidosPrevistos,
+      percentualPedidosPrevistos: data.percentualPedidosPrevistos,
+      tempoMedioPorFornada: data.tempoMedioPorFornada,
+      unidadesBrowniePorForma: data.unidadesBrowniePorForma,
+      formasPorFornada: data.formasPorFornada,
+    };
+    
+    atualizarConfiguracoesProducao(configData);
     toast({
       title: "Configurações salvas",
       description: "Parâmetros de produção foram atualizados com sucesso",
