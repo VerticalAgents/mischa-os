@@ -6,10 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trash2, Plus, Eye } from "lucide-react";
-import { useProdutoStore } from "@/hooks/useProdutoStore";
-import { useClientesCategorias } from "@/hooks/useClientesCategorias";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useProdutosPorCategoria } from "@/hooks/useProdutosPorCategoria";
 
 interface ItemPedido {
   produto: string;
@@ -29,63 +28,14 @@ export default function ProdutoQuantidadeSelector({
   clienteId,
   quantidadeTotal
 }: ProdutoQuantidadeSelectorProps) {
-  const [categoriasCliente, setCategoriasCliente] = useState<number[]>([]);
-  const [produtosFiltrados, setProdutosFiltrados] = useState<any[]>([]);
   const [showDebug, setShowDebug] = useState(false);
-  const [debugInfo, setDebugInfo] = useState({
-    clienteId: '',
-    categorias: [] as number[],
-    produtos: [] as any[],
-    quantidadeTotal: 0,
-    quantidadeDistribuida: 0
-  });
-
-  const { produtos } = useProdutoStore();
-  const { carregarCategoriasCliente } = useClientesCategorias();
-
-  // Carregar categorias do cliente
-  useEffect(() => {
-    const carregarCategorias = async () => {
-      if (clienteId) {
-        try {
-          console.log('🔄 Carregando categorias para cliente:', clienteId);
-          const categorias = await carregarCategoriasCliente(clienteId);
-          console.log('✅ Categorias carregadas:', categorias);
-          setCategoriasCliente(categorias);
-        } catch (error) {
-          console.error('❌ Erro ao carregar categorias:', error);
-          setCategoriasCliente([]);
-        }
-      }
-    };
-
-    carregarCategorias();
-  }, [clienteId, carregarCategoriasCliente]);
-
-  // Filtrar produtos baseado nas categorias
-  useEffect(() => {
-    if (categoriasCliente.length > 0) {
-      const produtosFiltrados = produtos.filter(produto => 
-        categoriasCliente.includes(produto.categoriaId)
-      );
-      console.log('📦 Produtos filtrados:', produtosFiltrados.map(p => p.nome));
-      setProdutosFiltrados(produtosFiltrados);
-    } else {
-      setProdutosFiltrados([]);
-    }
-  }, [produtos, categoriasCliente]);
-
-  // Atualizar informações de debug
-  useEffect(() => {
-    const quantidadeDistribuida = value.reduce((sum, item) => sum + item.quantidade, 0);
-    setDebugInfo({
-      clienteId,
-      categorias: categoriasCliente,
-      produtos: produtosFiltrados,
-      quantidadeTotal,
-      quantidadeDistribuida
-    });
-  }, [clienteId, categoriasCliente, produtosFiltrados, quantidadeTotal, value]);
+  
+  const { 
+    produtosFiltrados, 
+    categoriasCliente, 
+    loading, 
+    error 
+  } = useProdutosPorCategoria(clienteId);
 
   const adicionarProduto = () => {
     if (produtosFiltrados.length > 0) {
@@ -116,6 +66,29 @@ export default function ProdutoQuantidadeSelector({
   const quantidadeDistribuida = value.reduce((sum, item) => sum + item.quantidade, 0);
   const isValidTotal = quantidadeDistribuida === quantidadeTotal;
 
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Label className="text-sm font-medium">Produtos e Quantidades</Label>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          <span className="ml-2 text-sm">Carregando produtos...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <Label className="text-sm font-medium">Produtos e Quantidades</Label>
+        <div className="p-4 border border-red-200 bg-red-50 rounded-lg">
+          <p className="text-sm text-red-800">❌ {error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -134,12 +107,12 @@ export default function ProdutoQuantidadeSelector({
               </CardHeader>
               <CardContent className="text-xs space-y-2">
                 <div>
-                  <strong>1. Cliente identificado:</strong> {debugInfo.clienteId}
+                  <strong>1. Cliente identificado:</strong> {clienteId}
                 </div>
                 <div>
                   <strong>2. Categorias habilitadas:</strong>{' '}
-                  {debugInfo.categorias.length > 0 ? (
-                    debugInfo.categorias.map(cat => (
+                  {categoriasCliente.length > 0 ? (
+                    categoriasCliente.map(cat => (
                       <Badge key={cat} variant="secondary" className="ml-1 text-xs">{cat}</Badge>
                     ))
                   ) : (
@@ -148,20 +121,20 @@ export default function ProdutoQuantidadeSelector({
                 </div>
                 <div>
                   <strong>3. Produtos disponíveis:</strong>{' '}
-                  {debugInfo.produtos.length} produtos encontrados
-                  {debugInfo.produtos.slice(0, 3).map(produto => (
+                  {produtosFiltrados.length} produtos encontrados
+                  {produtosFiltrados.slice(0, 3).map(produto => (
                     <Badge key={produto.id} variant="outline" className="ml-1 text-xs">
                       {produto.nome}
                     </Badge>
                   ))}
-                  {debugInfo.produtos.length > 3 && (
+                  {produtosFiltrados.length > 3 && (
                     <span className="text-muted-foreground">...</span>
                   )}
                 </div>
                 <div>
                   <strong>4. Validação de quantidade:</strong>{' '}
                   <span className={isValidTotal ? "text-green-600" : "text-red-500"}>
-                    {debugInfo.quantidadeDistribuida} / {debugInfo.quantidadeTotal}
+                    {quantidadeDistribuida} / {quantidadeTotal}
                     {isValidTotal ? " ✓" : " ✗"}
                   </span>
                 </div>
