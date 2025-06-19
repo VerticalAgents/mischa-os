@@ -12,7 +12,6 @@ import AgentesIAConfigTab from "./tabs/AgentesIAConfigTab";
 import FinanceiroTab from "./tabs/FinanceiroTab";
 import CategoriasProdutoTab from "./tabs/CategoriasProdutoTab";
 import ProporcoesTab from "./tabs/ProporcoesTab";
-import ParametrosClienteTab from "./tabs/ParametrosClienteTab";
 import ClientesTab from "./tabs/ClientesTab";
 import AgendamentoTab from "./tabs/AgendamentoTab";
 import ProducaoTab from "./tabs/ProducaoTab";
@@ -46,7 +45,6 @@ const configGroups = [
     title: "Operações",
     tabs: [
       { id: "clientes", label: "Clientes", component: ClientesTab },
-      { id: "parametros-cliente", label: "Parâmetros Cliente", component: ParametrosClienteTab },
       { id: "agendamento", label: "Agendamento", component: AgendamentoTab },
       { id: "producao", label: "Produção", component: ProducaoTab },
     ]

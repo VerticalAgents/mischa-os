@@ -2,7 +2,12 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useClienteStore } from "@/hooks/useClienteStore";
-import { useConfigStore } from "@/hooks/useConfigStore";
+import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
+import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
+import { useSupabaseCategoriasEstabelecimento } from "@/hooks/useSupabaseCategoriasEstabelecimento";
+import { useSupabaseTiposLogistica } from "@/hooks/useSupabaseTiposLogistica";
+import { useSupabaseFormasPagamento } from "@/hooks/useSupabaseFormasPagamento";
+import { useSupabaseTiposCobranca } from "@/hooks/useSupabaseTiposCobranca";
 import { 
   StatusCliente, 
   DiaSemana, 
@@ -74,18 +79,16 @@ export default function ClienteFormDialog({
   onClienteUpdate,
 }: ClienteFormDialogProps) {
   const { adicionarCliente, atualizarCliente, getClientePorId, carregarClientes } = useClienteStore();
-  const { 
-    getRepresentanteAtivo,
-    getRotaAtiva,
-    getCategoriaAtiva
-  } = useConfigStore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Get active configuration options
-  const representantes = getRepresentanteAtivo();
-  const rotas = getRotaAtiva();
-  const categorias = getCategoriaAtiva();
+  // Get active configuration options from Supabase
+  const { representantes } = useSupabaseRepresentantes();
+  const { rotasEntrega } = useSupabaseRotasEntrega();
+  const { categorias } = useSupabaseCategoriasEstabelecimento();
+  const { tiposLogistica } = useSupabaseTiposLogistica();
+  const { formasPagamento } = useSupabaseFormasPagamento();
+  const { tiposCobranca } = useSupabaseTiposCobranca();
 
   const form = useForm<ClienteFormValues>({
     defaultValues: {
@@ -102,7 +105,7 @@ export default function ClienteFormDialog({
       // Valores padrão para os novos campos
       janelasEntrega: ['Seg', 'Qua', 'Sex'],
       representanteId: representantes.length > 0 ? representantes[0].id : undefined,
-      rotaEntregaId: rotas.length > 0 ? rotas[0].id : undefined,
+      rotaEntregaId: rotasEntrega.length > 0 ? rotasEntrega[0].id : undefined,
       categoriaEstabelecimentoId: categorias.length > 0 ? categorias[0].id : undefined,
       instrucoesEntrega: "",
       contabilizarGiroMedio: true,
@@ -436,7 +439,7 @@ export default function ClienteFormDialog({
                           onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                         >
                           <option value="">Selecione uma rota</option>
-                          {rotas.map(rota => (
+                          {rotasEntrega.map(rota => (
                             <option key={rota.id} value={rota.id}>{rota.nome}</option>
                           ))}
                         </select>
@@ -523,10 +526,12 @@ export default function ClienteFormDialog({
                       <FormControl>
                         <select
                           className="w-full rounded-md border border-input bg-background px-3 py-2"
-                          {...field}
+                          value={field.value}
+                          onChange={field.onChange}
                         >
-                          <option value="Própria">Própria</option>
-                          <option value="Distribuição">Distribuição</option>
+                          {tiposLogistica.map(tipo => (
+                            <option key={tipo.id} value={tipo.nome}>{tipo.nome}</option>
+                          ))}
                         </select>
                       </FormControl>
                       <FormMessage />
@@ -564,10 +569,12 @@ export default function ClienteFormDialog({
                       <FormControl>
                         <select
                           className="w-full rounded-md border border-input bg-background px-3 py-2"
-                          {...field}
+                          value={field.value}
+                          onChange={field.onChange}
                         >
-                          <option value="À vista">À vista</option>
-                          <option value="Consignado">Consignado</option>
+                          {tiposCobranca.map(tipo => (
+                            <option key={tipo.id} value={tipo.nome}>{tipo.nome}</option>
+                          ))}
                         </select>
                       </FormControl>
                       <FormMessage />
@@ -585,11 +592,12 @@ export default function ClienteFormDialog({
                     <FormControl>
                       <select
                         className="w-full rounded-md border border-input bg-background px-3 py-2"
-                        {...field}
+                        value={field.value}
+                        onChange={field.onChange}
                       >
-                        <option value="Boleto">Boleto</option>
-                        <option value="PIX">PIX</option>
-                        <option value="Dinheiro">Dinheiro</option>
+                        {formasPagamento.map(forma => (
+                          <option key={forma.id} value={forma.nome}>{forma.nome}</option>
+                        ))}
                       </select>
                     </FormControl>
                     <FormMessage />
