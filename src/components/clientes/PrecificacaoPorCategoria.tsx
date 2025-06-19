@@ -23,7 +23,7 @@ export default function PrecificacaoPorCategoria({
   const { precos, carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
   const [precosLocal, setPrecosLocal] = useState<Record<number, number>>({});
 
-  // Carregar preços existentes do cliente
+  // Carregar preços existentes do cliente ou definir valores padrão
   useEffect(() => {
     const carregarPrecos = async () => {
       if (clienteId) {
@@ -39,34 +39,82 @@ export default function PrecificacaoPorCategoria({
         } catch (error) {
           console.error('Erro ao carregar preços:', error);
         }
+      } else {
+        // Para novo cliente, definir valores padrão
+        const precosIniciais: Record<number, number> = {};
+        categoriasHabilitadas.forEach(categoriaId => {
+          const categoria = categorias.find(cat => cat.id === categoriaId);
+          if (categoria && categoria.nome.toLowerCase().includes('revenda padrão')) {
+            precosIniciais[categoriaId] = 4.50;
+          } else {
+            precosIniciais[categoriaId] = 0;
+          }
+        });
+        setPrecosLocal(precosIniciais);
       }
     };
 
     carregarPrecos();
-  }, [clienteId, carregarPrecosPorCliente]);
+  }, [clienteId, carregarPrecosPorCliente, categoriasHabilitadas, categorias]);
+
+  // Atualizar preços quando categorias habilitadas mudarem
+  useEffect(() => {
+    setPrecosLocal(prev => {
+      const novosPrecosLocal = { ...prev };
+      
+      // Adicionar preços para novas categorias habilitadas
+      categoriasHabilitadas.forEach(categoriaId => {
+        if (!(categoriaId in novosPrecosLocal)) {
+          const categoria = categorias.find(cat => cat.id === categoriaId);
+          if (categoria && categoria.nome.toLowerCase().includes('revenda padrão')) {
+            novosPrecosLocal[categoriaId] = 4.50;
+          } else {
+            novosPrecosLocal[categoriaId] = 0;
+          }
+        }
+      });
+      
+      // Remover preços de categorias não habilitadas
+      Object.keys(novosPrecosLocal).forEach(categoriaIdStr => {
+        const categoriaId = Number(categoriaIdStr);
+        if (!categoriasHabilitadas.includes(categoriaId)) {
+          delete novosPrecosLocal[categoriaId];
+        }
+      });
+      
+      return novosPrecosLocal;
+    });
+  }, [categoriasHabilitadas, categorias]);
 
   // Notificar mudanças de preços para o componente pai
   useEffect(() => {
     const precosArray = Object.entries(precosLocal).map(([categoriaId, preco]) => ({
       categoria_id: Number(categoriaId),
-      preco_unitario: preco
+      preco_unitario: preco || 0
     }));
     
     onPrecosChange(precosArray);
   }, [precosLocal, onPrecosChange]);
 
   const handlePrecoChange = (categoriaId: number, valor: string) => {
+    // Remover caracteres não numéricos exceto vírgula e ponto
+    const valorLimpo = valor.replace(/[^\d.,]/g, '');
+    
     // Converter vírgula para ponto e validar número
-    const valorFormatado = valor.replace(',', '.');
-    const preco = parseFloat(valorFormatado) || 0;
+    const valorFormatado = valorLimpo.replace(',', '.');
+    const preco = parseFloat(valorFormatado);
+    
+    // Se não é um número válido, definir como 0
+    const precoFinal = isNaN(preco) ? 0 : preco;
     
     setPrecosLocal(prev => ({
       ...prev,
-      [categoriaId]: preco
+      [categoriaId]: precoFinal
     }));
   };
 
   const formatarPrecoParaExibicao = (preco: number): string => {
+    if (preco === 0) return '';
     return preco.toFixed(2).replace('.', ',');
   };
 
@@ -119,7 +167,7 @@ export default function PrecificacaoPorCategoria({
                   id={`preco-${categoria.id}`}
                   type="text"
                   placeholder="0,00"
-                  value={precosLocal[categoria.id] ? formatarPrecoParaExibicao(precosLocal[categoria.id]) : ''}
+                  value={formatarPrecoParaExibicao(precosLocal[categoria.id] || 0)}
                   onChange={(e) => handlePrecoChange(categoria.id, e.target.value)}
                   className="pl-10 text-right"
                 />
