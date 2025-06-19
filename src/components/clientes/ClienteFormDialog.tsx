@@ -17,10 +17,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Cliente, StatusCliente } from "@/types";
+import { Cliente, StatusCliente, DiaSemana } from "@/types";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
+import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
+import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
+import { useSupabaseCategoriasEstabelecimento } from "@/hooks/useSupabaseCategoriasEstabelecimento";
+import { useSupabaseTiposLogistica } from "@/hooks/useSupabaseTiposLogistica";
+import { useSupabaseTiposCobranca } from "@/hooks/useSupabaseTiposCobranca";
+import { useSupabaseFormasPagamento } from "@/hooks/useSupabaseFormasPagamento";
 import { toast } from "@/hooks/use-toast";
+import DiasSemanaPicker from "./DiasSemanaPicker";
+import CategoriasProdutoSelector from "./CategoriasProdutoSelector";
 
 interface ClienteFormDialogProps {
   open: boolean;
@@ -37,6 +45,12 @@ export default function ClienteFormDialog({
 }: ClienteFormDialogProps) {
   const { adicionarCliente, atualizarCliente, loading } = useClienteStore();
   const { categorias } = useSupabaseCategoriasProduto();
+  const { representantes } = useSupabaseRepresentantes();
+  const { rotasEntrega } = useSupabaseRotasEntrega();
+  const { categorias: categoriasEstabelecimento } = useSupabaseCategoriasEstabelecimento();
+  const { tiposLogistica } = useSupabaseTiposLogistica();
+  const { tiposCobranca } = useSupabaseTiposCobranca();
+  const { formasPagamento } = useSupabaseFormasPagamento();
 
   // Estado do formulário
   const [formData, setFormData] = useState<Partial<Cliente>>({
@@ -55,23 +69,23 @@ export default function ClienteFormDialog({
     emiteNotaFiscal: true,
     contabilizarGiroMedio: true,
     observacoes: '',
-    categoriasHabilitadas: []
+    categoriasHabilitadas: [],
+    janelasEntrega: [],
+    representanteId: undefined,
+    rotaEntregaId: undefined,
+    categoriaEstabelecimentoId: undefined,
+    instrucoesEntrega: ''
   });
-
-  // Estado simplificado para categorias
-  const [categoriasHabilitadas, setCategoriasHabilitadas] = useState<number[]>([]);
 
   // Carregar dados do cliente quando abrir para edição
   useEffect(() => {
     if (cliente && open) {
-      console.log('ClienteFormDialog: Carregando dados do cliente para edição:', cliente.nome);
-      
-      // Preencher dados básicos
-      setFormData(cliente);
-      const categoriasIniciais = cliente.categoriasHabilitadas || [];
-      setCategoriasHabilitadas(categoriasIniciais);
+      console.log('ClienteFormDialog: Carregando dados do cliente para edição:', cliente);
+      setFormData({
+        ...cliente,
+        categoriasHabilitadas: cliente.categoriasHabilitadas || []
+      });
     } else if (!cliente && open) {
-      // Limpar formulário para novo cliente
       console.log('ClienteFormDialog: Inicializando formulário para novo cliente');
       setFormData({
         nome: '',
@@ -89,33 +103,37 @@ export default function ClienteFormDialog({
         emiteNotaFiscal: true,
         contabilizarGiroMedio: true,
         observacoes: '',
-        categoriasHabilitadas: []
+        categoriasHabilitadas: [],
+        janelasEntrega: [],
+        representanteId: undefined,
+        rotaEntregaId: undefined,
+        categoriaEstabelecimentoId: undefined,
+        instrucoesEntrega: ''
       });
-      setCategoriasHabilitadas([]);
     }
   }, [cliente, open]);
 
-  const handleCategoriaToggle = (categoriaId: number) => {
-    console.log('ClienteFormDialog: Toggling categoria:', categoriaId);
-    
-    const novasCategorias = categoriasHabilitadas.includes(categoriaId)
-      ? categoriasHabilitadas.filter(id => id !== categoriaId)
-      : [...categoriasHabilitadas, categoriaId];
-    
-    console.log('ClienteFormDialog: Novas categorias:', novasCategorias);
-    setCategoriasHabilitadas(novasCategorias);
-    
-    // Atualizar formData também
-    setFormData(prev => ({
-      ...prev,
-      categoriasHabilitadas: novasCategorias
-    }));
-  };
-
   const handleInputChange = (field: keyof Cliente, value: any) => {
+    console.log(`ClienteFormDialog: Atualizando campo ${field}:`, value);
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handleCategoriasChange = (categorias: number[]) => {
+    console.log('ClienteFormDialog: Atualizando categorias habilitadas:', categorias);
+    setFormData(prev => ({
+      ...prev,
+      categoriasHabilitadas: categorias
+    }));
+  };
+
+  const handleDiasEntregaChange = (dias: DiaSemana[]) => {
+    console.log('ClienteFormDialog: Atualizando janelas de entrega:', dias);
+    setFormData(prev => ({
+      ...prev,
+      janelasEntrega: dias
     }));
   };
 
@@ -132,17 +150,11 @@ export default function ClienteFormDialog({
     }
 
     try {
-      console.log('ClienteFormDialog: Salvando cliente com dados:', {
-        ...formData,
-        categoriasHabilitadas
-      });
+      console.log('ClienteFormDialog: Salvando cliente com dados completos:', formData);
 
       if (cliente) {
         // Atualização
-        await atualizarCliente(cliente.id, {
-          ...formData,
-          categoriasHabilitadas
-        });
+        await atualizarCliente(cliente.id, formData);
         
         toast({
           title: "Cliente atualizado",
@@ -150,10 +162,7 @@ export default function ClienteFormDialog({
         });
       } else {
         // Criação
-        const novoCliente = await adicionarCliente({
-          ...formData,
-          categoriasHabilitadas
-        } as Omit<Cliente, 'id' | 'dataCadastro'>);
+        await adicionarCliente(formData as Omit<Cliente, 'id' | 'dataCadastro'>);
         
         toast({
           title: "Cliente cadastrado",
@@ -175,7 +184,7 @@ export default function ClienteFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {cliente ? 'Editar Cliente' : 'Novo Cliente'}
@@ -287,6 +296,9 @@ export default function ClienteFormDialog({
                     <SelectContent>
                       <SelectItem value="Ativo">Ativo</SelectItem>
                       <SelectItem value="Inativo">Inativo</SelectItem>
+                      <SelectItem value="Em análise">Em análise</SelectItem>
+                      <SelectItem value="A ativar">A ativar</SelectItem>
+                      <SelectItem value="Standby">Standby</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -294,51 +306,192 @@ export default function ClienteFormDialog({
             </CardContent>
           </Card>
 
-          {/* Categorias de Produtos */}
+          {/* Configurações de Entrega e Logística */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Categorias de Produtos Habilitadas</CardTitle>
+              <CardTitle className="text-lg">Configurações de Entrega e Logística</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {categoriasHabilitadas.length === 0 && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    ⚠️ Nenhuma categoria de produto habilitada para este cliente.
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="grid grid-cols-1 gap-4">
-                {categorias.map((categoria) => (
-                  <div key={categoria.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`categoria-${categoria.id}`}
-                      checked={categoriasHabilitadas.includes(categoria.id)}
-                      onCheckedChange={() => handleCategoriaToggle(categoria.id)}
-                    />
-                    <label
-                      htmlFor={`categoria-${categoria.id}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                    >
-                      {categoria.nome}
-                    </label>
-                    {categoria.descricao && (
-                      <span className="text-xs text-muted-foreground">
-                        - {categoria.descricao}
-                      </span>
-                    )}
-                  </div>
-                ))}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="representante">Representante</Label>
+                  <Select 
+                    value={formData.representanteId?.toString() || ''} 
+                    onValueChange={(value) => handleInputChange('representanteId', value ? parseInt(value) : undefined)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um representante" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nenhum representante</SelectItem>
+                      {representantes.map((rep) => (
+                        <SelectItem key={rep.id} value={rep.id.toString()}>
+                          {rep.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rotaEntrega">Rota de Entrega</Label>
+                  <Select 
+                    value={formData.rotaEntregaId?.toString() || ''} 
+                    onValueChange={(value) => handleInputChange('rotaEntregaId', value ? parseInt(value) : undefined)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma rota" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nenhuma rota</SelectItem>
+                      {rotasEntrega.map((rota) => (
+                        <SelectItem key={rota.id} value={rota.id.toString()}>
+                          {rota.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              
-              {categorias.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Nenhuma categoria disponível no sistema.
-                </p>
-              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="categoriaEstabelecimento">Categoria do Estabelecimento</Label>
+                  <Select 
+                    value={formData.categoriaEstabelecimentoId?.toString() || ''} 
+                    onValueChange={(value) => handleInputChange('categoriaEstabelecimentoId', value ? parseInt(value) : undefined)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nenhuma categoria</SelectItem>
+                      {categoriasEstabelecimento.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id.toString()}>
+                          {cat.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
+                  <Select 
+                    value={formData.tipoLogistica || 'Própria'} 
+                    onValueChange={(value) => handleInputChange('tipoLogistica', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tiposLogistica.map((tipo) => (
+                        <SelectItem key={tipo.id} value={tipo.nome}>
+                          {tipo.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Janelas de Entrega</Label>
+                <DiasSemanaPicker 
+                  value={formData.janelasEntrega || []}
+                  onChange={handleDiasEntregaChange}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="instrucoesEntrega">Instruções de Entrega</Label>
+                <Textarea
+                  id="instrucoesEntrega"
+                  value={formData.instrucoesEntrega || ''}
+                  onChange={(e) => handleInputChange('instrucoesEntrega', e.target.value)}
+                  placeholder="Instruções especiais para entrega..."
+                  rows={2}
+                />
+              </div>
             </CardContent>
           </Card>
+
+          {/* Configurações Financeiras */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Configurações Financeiras</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tipoCobranca">Tipo de Cobrança</Label>
+                  <Select 
+                    value={formData.tipoCobranca || 'À vista'} 
+                    onValueChange={(value) => handleInputChange('tipoCobranca', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tiposCobranca.map((tipo) => (
+                        <SelectItem key={tipo.id} value={tipo.nome}>
+                          {tipo.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="formaPagamento">Forma de Pagamento</Label>
+                  <Select 
+                    value={formData.formaPagamento || 'Boleto'} 
+                    onValueChange={(value) => handleInputChange('formaPagamento', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {formasPagamento.map((forma) => (
+                        <SelectItem key={forma.id} value={forma.nome}>
+                          {forma.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emiteNotaFiscal">Emite Nota Fiscal</Label>
+                  <Select 
+                    value={formData.emiteNotaFiscal ? 'true' : 'false'} 
+                    onValueChange={(value) => handleInputChange('emiteNotaFiscal', value === 'true')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Sim</SelectItem>
+                      <SelectItem value="false">Não</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="contabilizarGiroMedio"
+                  checked={formData.contabilizarGiroMedio || false}
+                  onCheckedChange={(checked) => handleInputChange('contabilizarGiroMedio', checked)}
+                />
+                <Label htmlFor="contabilizarGiroMedio">
+                  Contabilizar no giro médio
+                </Label>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Categorias de Produtos */}
+          <CategoriasProdutoSelector 
+            value={formData.categoriasHabilitadas || []}
+            onChange={handleCategoriasChange}
+          />
 
           {/* Observações */}
           <Card>

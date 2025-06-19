@@ -58,7 +58,7 @@ function convertSupabaseToCliente(data: any, agendamento?: any): Cliente {
     ativo: data.ativo || true,
     giroMedioSemanal: data.giro_medio_semanal || calcularGiroSemanal(data.quantidade_padrao || 0, data.periodicidade_padrao || 7),
     // Garantir que os campos sejam carregados corretamente
-    janelasEntrega: data.janelas_entrega || ['Seg', 'Qua', 'Sex'],
+    janelasEntrega: data.janelas_entrega || [],
     representanteId: data.representante_id,
     rotaEntregaId: data.rota_entrega_id,
     categoriaEstabelecimentoId: data.categoria_estabelecimento_id,
@@ -92,19 +92,21 @@ function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>)
     ativo: cliente.ativo !== undefined ? cliente.ativo : true,
     giro_medio_semanal: giroCalculado,
     meta_giro_semanal: Math.round(giroCalculado * 1.2),
-    // Garantir que todos os campos sejam salvos
+    // Campos de entrega e logística
     janelas_entrega: cliente.janelasEntrega || null,
     representante_id: cliente.representanteId || null,
     rota_entrega_id: cliente.rotaEntregaId || null,
     categoria_estabelecimento_id: cliente.categoriaEstabelecimentoId || null,
     instrucoes_entrega: cliente.instrucoesEntrega || null,
+    // Campos financeiros e fiscais
     contabilizar_giro_medio: cliente.contabilizarGiroMedio !== undefined ? cliente.contabilizarGiroMedio : true,
     tipo_logistica: cliente.tipoLogistica || 'Própria',
     emite_nota_fiscal: cliente.emiteNotaFiscal !== undefined ? cliente.emiteNotaFiscal : true,
     tipo_cobranca: cliente.tipoCobranca || 'À vista',
     forma_pagamento: cliente.formaPagamento || 'Boleto',
     observacoes: cliente.observacoes || null,
-    categorias_habilitadas: cliente.categoriasHabilitadas || [] // Salvar categorias habilitadas corretamente
+    // Categorias de produto habilitadas
+    categorias_habilitadas: cliente.categoriasHabilitadas || []
   };
 }
 
@@ -182,10 +184,10 @@ export const useClienteStore = create<ClienteStore>()(
       adicionarCliente: async (cliente) => {
         set({ loading: true });
         try {
-          console.log('Dados do cliente a serem enviados:', cliente);
+          console.log('useClienteStore: Dados do cliente a serem enviados:', cliente);
           
           const dadosSupabase = convertClienteToSupabase(cliente);
-          console.log('Dados convertidos para Supabase:', dadosSupabase);
+          console.log('useClienteStore: Dados convertidos para Supabase:', dadosSupabase);
           
           const { data, error } = await supabase
             .from('clientes')
@@ -240,35 +242,44 @@ export const useClienteStore = create<ClienteStore>()(
             return;
           }
 
+          console.log('useClienteStore: Atualizando cliente com dados:', dadosCliente);
+
           // Converter dadosCliente para formato Supabase, incluindo todos os campos
           const dadosSupabase: any = {};
           
+          // Dados básicos
           if (dadosCliente.nome !== undefined) dadosSupabase.nome = dadosCliente.nome;
           if (dadosCliente.cnpjCpf !== undefined) dadosSupabase.cnpj_cpf = dadosCliente.cnpjCpf;
           if (dadosCliente.enderecoEntrega !== undefined) dadosSupabase.endereco_entrega = dadosCliente.enderecoEntrega;
           if (dadosCliente.contatoNome !== undefined) dadosSupabase.contato_nome = dadosCliente.contatoNome;
           if (dadosCliente.contatoTelefone !== undefined) dadosSupabase.contato_telefone = dadosCliente.contatoTelefone;
           if (dadosCliente.contatoEmail !== undefined) dadosSupabase.contato_email = dadosCliente.contatoEmail;
+          
+          // Configurações comerciais
           if (dadosCliente.quantidadePadrao !== undefined) dadosSupabase.quantidade_padrao = dadosCliente.quantidadePadrao;
           if (dadosCliente.periodicidadePadrao !== undefined) dadosSupabase.periodicidade_padrao = dadosCliente.periodicidadePadrao;
           if (dadosCliente.statusCliente !== undefined) dadosSupabase.status_cliente = dadosCliente.statusCliente;
           if (dadosCliente.metaGiroSemanal !== undefined) dadosSupabase.meta_giro_semanal = dadosCliente.metaGiroSemanal;
           
-          // Novos campos que estavam faltando
+          // Entrega e logística
           if (dadosCliente.janelasEntrega !== undefined) dadosSupabase.janelas_entrega = dadosCliente.janelasEntrega;
           if (dadosCliente.representanteId !== undefined) dadosSupabase.representante_id = dadosCliente.representanteId;
           if (dadosCliente.rotaEntregaId !== undefined) dadosSupabase.rota_entrega_id = dadosCliente.rotaEntregaId;
           if (dadosCliente.categoriaEstabelecimentoId !== undefined) dadosSupabase.categoria_estabelecimento_id = dadosCliente.categoriaEstabelecimentoId;
           if (dadosCliente.instrucoesEntrega !== undefined) dadosSupabase.instrucoes_entrega = dadosCliente.instrucoesEntrega;
-          if (dadosCliente.contabilizarGiroMedio !== undefined) dadosSupabase.contabilizar_giro_medio = dadosCliente.contabilizarGiroMedio;
           if (dadosCliente.tipoLogistica !== undefined) dadosSupabase.tipo_logistica = dadosCliente.tipoLogistica;
+          
+          // Configurações financeiras e fiscais
+          if (dadosCliente.contabilizarGiroMedio !== undefined) dadosSupabase.contabilizar_giro_medio = dadosCliente.contabilizarGiroMedio;
           if (dadosCliente.emiteNotaFiscal !== undefined) dadosSupabase.emite_nota_fiscal = dadosCliente.emiteNotaFiscal;
           if (dadosCliente.tipoCobranca !== undefined) dadosSupabase.tipo_cobranca = dadosCliente.tipoCobranca;
           if (dadosCliente.formaPagamento !== undefined) dadosSupabase.forma_pagamento = dadosCliente.formaPagamento;
+          
+          // Observações e categorias
           if (dadosCliente.observacoes !== undefined) dadosSupabase.observacoes = dadosCliente.observacoes;
           if (dadosCliente.categoriasHabilitadas !== undefined) dadosSupabase.categorias_habilitadas = dadosCliente.categoriasHabilitadas;
 
-          console.log('Atualizando cliente com dados:', dadosSupabase);
+          console.log('useClienteStore: Dados convertidos para Supabase:', dadosSupabase);
 
           const { error } = await supabase
             .from('clientes')
