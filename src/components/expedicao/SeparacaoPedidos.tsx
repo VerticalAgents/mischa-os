@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
+import { useProdutoStore } from "@/hooks/useProdutoStore";
 import PedidoCard from "./PedidoCard";
 import { toast } from "sonner";
 import { Printer, FileText, Check } from "lucide-react";
@@ -25,6 +26,8 @@ export const SeparacaoPedidos = () => {
     carregarPedidos
   } = useExpedicaoStore();
 
+  const { produtos } = useProdutoStore();
+
   // Usar hook de sincronização
   useExpedicaoSync();
 
@@ -37,6 +40,74 @@ export const SeparacaoPedidos = () => {
     }
   }, [carregarPedidos]);
 
+  // Função para converter pedido da expedição para o formato esperado pelo PedidoCard
+  const converterPedidoParaCard = (pedidoExpedicao: any) => {
+    console.log('🔄 Convertendo pedido da expedição:', pedidoExpedicao);
+    
+    // Criar lista de itens do pedido com nomes corretos dos produtos
+    let itensPedido: any[] = [];
+    
+    if (pedidoExpedicao.itens_personalizados && pedidoExpedicao.itens_personalizados.length > 0) {
+      // Pedido alterado - usar itens personalizados
+      itensPedido = pedidoExpedicao.itens_personalizados.map((item: any, index: number) => ({
+        id: index,
+        idPedido: Number(pedidoExpedicao.id),
+        idSabor: index,
+        nomeSabor: item.produto || item.nome || `Produto ${index}`, // Usar nome correto do produto
+        quantidadeSabor: item.quantidade,
+        sabor: { nome: item.produto || item.nome || `Produto ${index}` }
+      }));
+    } else {
+      // Pedido padrão - usar distribuição baseada nos produtos cadastrados
+      const quantidadePorProduto = Math.floor(pedidoExpedicao.quantidade_total / Math.max(1, produtos.length));
+      const resto = pedidoExpedicao.quantidade_total % Math.max(1, produtos.length);
+      
+      itensPedido = produtos.slice(0, Math.min(produtos.length, 5)).map((produto, index) => ({
+        id: index,
+        idPedido: Number(pedidoExpedicao.id),
+        idSabor: produto.id,
+        nomeSabor: produto.nome, // Usar nome real do produto
+        quantidadeSabor: quantidadePorProduto + (index < resto ? 1 : 0),
+        sabor: { nome: produto.nome }
+      }));
+    }
+
+    console.log('📦 Itens do pedido convertidos:', itensPedido);
+
+    return {
+      id: Number(pedidoExpedicao.id),
+      idCliente: pedidoExpedicao.cliente_id,
+      dataPedido: new Date(pedidoExpedicao.data_prevista_entrega),
+      dataPrevistaEntrega: new Date(pedidoExpedicao.data_prevista_entrega),
+      statusPedido: 'Agendado' as const,
+      substatusPedido: (pedidoExpedicao.substatus_pedido || 'Agendado') as any,
+      tipoPedido: pedidoExpedicao.tipo_pedido as any,
+      itensPedido,
+      totalPedidoUnidades: pedidoExpedicao.quantidade_total,
+      cliente: {
+        id: pedidoExpedicao.cliente_id,
+        nome: pedidoExpedicao.cliente_nome,
+        enderecoEntrega: pedidoExpedicao.cliente_endereco || '',
+        quantidadePadrao: 0,
+        periodicidadePadrao: 7,
+        statusCliente: 'Ativo' as const,
+        dataCadastro: new Date(),
+        ultimaDataReposicaoEfetiva: null,
+        proximaDataReposicao: null,
+        observacoes: '',
+        instrucoesEntrega: '',
+        cnpjCpf: '',
+        emiteNotaFiscal: true,
+        ativo: true,
+        contabilizarGiroMedio: true,
+        tipoLogistica: 'Própria' as const,
+        tipoCobranca: 'À vista' as const,
+        formaPagamento: 'Boleto' as const,
+        categoriaId: 1,
+        subcategoriaId: 1
+      }
+    };
+  };
   
   // Obter pedidos filtrados
   const pedidosParaSeparacao = getPedidosParaSeparacao();
@@ -140,7 +211,7 @@ export const SeparacaoPedidos = () => {
       produtosParaExibir.forEach((item: any) => {
         produtosHtml += `
           <div class="produto-item">
-            <span class="produto-nome">${item.nome || item.sabor || 'Produto'}</span>
+            <span class="produto-nome">${item.nome || item.produto || item.sabor || 'Produto'}</span>
             <span class="produto-qtd">${item.quantidade || item.quantidade_sabor || 0}</span>
           </div>
         `;
@@ -257,7 +328,7 @@ export const SeparacaoPedidos = () => {
       produtosParaExibir.forEach((item: any) => {
         produtosHtml += `
           <div class="produto-linha">
-            <span>${(item.nome || item.sabor || 'Produto').substring(0, 25)}</span>
+            <span>${(item.nome || item.produto || item.sabor || 'Produto').substring(0, 25)}</span>
             <span>${item.quantidade || item.quantidade_sabor || 0}</span>
           </div>
         `;
@@ -269,7 +340,7 @@ export const SeparacaoPedidos = () => {
           <div class="data">Entrega: ${formatDate(new Date(pedido.data_prevista_entrega))}</div>
           <div class="produtos">${produtosHtml}</div>
           <div class="total-etiqueta">Total: ${pedido.quantidade_total} unidades</div>
-          <div class="detalhes">Pedido #${pedido.id} - ${pedido.tipo_pedido}</div>
+          <div class="detalhes">Pedido - ${pedido.tipo_pedido}</div>
         </div>
       `;
     });
@@ -358,46 +429,7 @@ export const SeparacaoPedidos = () => {
                 {todosPedidos.map((pedido) => (
                   <PedidoCard 
                     key={pedido.id}
-                    pedido={{
-                      id: Number(pedido.id),
-                      idCliente: pedido.cliente_id,
-                      dataPedido: new Date(pedido.data_prevista_entrega),
-                      dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
-                      statusPedido: 'Agendado',
-                      substatusPedido: pedido.substatus_pedido || 'Agendado',
-                      tipoPedido: pedido.tipo_pedido as any,
-                      itensPedido: pedido.itens_personalizados?.map((item: any, index: number) => ({
-                        id: index,
-                        idPedido: Number(pedido.id),
-                        idSabor: index,
-                        nomeSabor: item.nome,
-                        quantidadeSabor: item.quantidade,
-                        sabor: { nome: item.nome }
-                      })) || [],
-                      totalPedidoUnidades: pedido.quantidade_total,
-                      cliente: {
-                        id: pedido.cliente_id,
-                        nome: pedido.cliente_nome,
-                        enderecoEntrega: pedido.cliente_endereco || '',
-                        quantidadePadrao: 0,
-                        periodicidadePadrao: 7,
-                        statusCliente: 'Ativo',
-                        dataCadastro: new Date(),
-                        ultimaDataReposicaoEfetiva: null,
-                        proximaDataReposicao: null,
-                        observacoes: '',
-                        instrucoesEntrega: '',
-                        cnpjCpf: '',
-                        emiteNotaFiscal: true,
-                        ativo: true,
-                        contabilizarGiroMedio: true,
-                        tipoLogistica: 'Própria',
-                        tipoCobranca: 'À vista',
-                        formaPagamento: 'Boleto',
-                        categoriaId: 1,
-                        subcategoriaId: 1
-                      }
-                    }}
+                    pedido={converterPedidoParaCard(pedido)}
                     onMarcarSeparado={confirmarSeparacao}
                   />
                 ))}
@@ -415,46 +447,7 @@ export const SeparacaoPedidos = () => {
                 {pedidosPadrao.map((pedido) => (
                   <PedidoCard 
                     key={pedido.id}
-                    pedido={{
-                      id: Number(pedido.id),
-                      idCliente: pedido.cliente_id,
-                      dataPedido: new Date(pedido.data_prevista_entrega),
-                      dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
-                      statusPedido: 'Agendado',
-                      substatusPedido: pedido.substatus_pedido || 'Agendado',
-                      tipoPedido: pedido.tipo_pedido as any,
-                      itensPedido: pedido.itens_personalizados?.map((item: any, index: number) => ({
-                        id: index,
-                        idPedido: Number(pedido.id),
-                        idSabor: index,
-                        nomeSabor: item.nome,
-                        quantidadeSabor: item.quantidade,
-                        sabor: { nome: item.nome }
-                      })) || [],
-                      totalPedidoUnidades: pedido.quantidade_total,
-                      cliente: {
-                        id: pedido.cliente_id,
-                        nome: pedido.cliente_nome,
-                        enderecoEntrega: pedido.cliente_endereco || '',
-                        quantidadePadrao: 0,
-                        periodicidadePadrao: 7,
-                        statusCliente: 'Ativo',
-                        dataCadastro: new Date(),
-                        ultimaDataReposicaoEfetiva: null,
-                        proximaDataReposicao: null,
-                        observacoes: '',
-                        instrucoesEntrega: '',
-                        cnpjCpf: '',
-                        emiteNotaFiscal: true,
-                        ativo: true,
-                        contabilizarGiroMedio: true,
-                        tipoLogistica: 'Própria',
-                        tipoCobranca: 'À vista',
-                        formaPagamento: 'Boleto',
-                        categoriaId: 1,
-                        subcategoriaId: 1
-                      }
-                    }}
+                    pedido={converterPedidoParaCard(pedido)}
                     onMarcarSeparado={confirmarSeparacao}
                   />
                 ))}
@@ -472,46 +465,7 @@ export const SeparacaoPedidos = () => {
                 {pedidosAlterados.map((pedido) => (
                   <PedidoCard 
                     key={pedido.id}
-                    pedido={{
-                      id: Number(pedido.id),
-                      idCliente: pedido.cliente_id,
-                      dataPedido: new Date(pedido.data_prevista_entrega),
-                      dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
-                      statusPedido: 'Agendado',
-                      substatusPedido: pedido.substatus_pedido || 'Agendado',
-                      tipoPedido: pedido.tipo_pedido as any,
-                      itensPedido: pedido.itens_personalizados?.map((item: any, index: number) => ({
-                        id: index,
-                        idPedido: Number(pedido.id),
-                        idSabor: index,
-                        nomeSabor: item.nome,
-                        quantidadeSabor: item.quantidade,
-                        sabor: { nome: item.nome }
-                      })) || [],
-                      totalPedidoUnidades: pedido.quantidade_total,
-                      cliente: {
-                        id: pedido.cliente_id,
-                        nome: pedido.cliente_nome,
-                        enderecoEntrega: pedido.cliente_endereco || '',
-                        quantidadePadrao: 0,
-                        periodicidadePadrao: 7,
-                        statusCliente: 'Ativo',
-                        dataCadastro: new Date(),
-                        ultimaDataReposicaoEfetiva: null,
-                        proximaDataReposicao: null,
-                        observacoes: '',
-                        instrucoesEntrega: '',
-                        cnpjCpf: '',
-                        emiteNotaFiscal: true,
-                        ativo: true,
-                        contabilizarGiroMedio: true,
-                        tipoLogistica: 'Própria',
-                        tipoCobranca: 'À vista',
-                        formaPagamento: 'Boleto',
-                        categoriaId: 1,
-                        subcategoriaId: 1
-                      }
-                    }}
+                    pedido={converterPedidoParaCard(pedido)}
                     onMarcarSeparado={confirmarSeparacao}
                   />
                 ))}
@@ -529,46 +483,7 @@ export const SeparacaoPedidos = () => {
                 {pedidosProximoDia.map((pedido) => (
                   <PedidoCard 
                     key={pedido.id}
-                    pedido={{
-                      id: Number(pedido.id),
-                      idCliente: pedido.cliente_id,
-                      dataPedido: new Date(pedido.data_prevista_entrega),
-                      dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
-                      statusPedido: 'Agendado',
-                      substatusPedido: pedido.substatus_pedido || 'Agendado',
-                      tipoPedido: pedido.tipo_pedido as any,
-                      itensPedido: pedido.itens_personalizados?.map((item: any, index: number) => ({
-                        id: index,
-                        idPedido: Number(pedido.id),
-                        idSabor: index,
-                        nomeSabor: item.nome,
-                        quantidadeSabor: item.quantidade,
-                        sabor: { nome: item.nome }
-                      })) || [],
-                      totalPedidoUnidades: pedido.quantidade_total,
-                      cliente: {
-                        id: pedido.cliente_id,
-                        nome: pedido.cliente_nome,
-                        enderecoEntrega: pedido.cliente_endereco || '',
-                        quantidadePadrao: 0,
-                        periodicidadePadrao: 7,
-                        statusCliente: 'Ativo',
-                        dataCadastro: new Date(),
-                        ultimaDataReposicaoEfetiva: null,
-                        proximaDataReposicao: null,
-                        observacoes: '',
-                        instrucoesEntrega: '',
-                        cnpjCpf: '',
-                        emiteNotaFiscal: true,
-                        ativo: true,
-                        contabilizarGiroMedio: true,
-                        tipoLogistica: 'Própria',
-                        tipoCobranca: 'À vista',
-                        formaPagamento: 'Boleto',
-                        categoriaId: 1,
-                        subcategoriaId: 1
-                      }
-                    }}
+                    pedido={converterPedidoParaCard(pedido)}
                     onMarcarSeparado={confirmarSeparacao}
                     showAntecipada={true}
                   />

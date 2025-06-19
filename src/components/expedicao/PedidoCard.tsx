@@ -1,3 +1,4 @@
+
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Pedido } from "@/types";
@@ -39,6 +40,15 @@ export default function PedidoCard({ pedido, onMarcarSeparado, onCancelar, showA
     return pedido.itensPedido.reduce((total, item) => total + (10 * item.quantidadeSabor), 0);
   };
 
+  // Gerar ID do pedido apenas se for um número válido
+  const getPedidoId = () => {
+    const id = pedido.id;
+    if (id && !isNaN(Number(id)) && Number(id) > 0) {
+      return `Pedido #${String(id).substring(0, 8)}`;
+    }
+    return "Pedido"; // Apenas "Pedido" sem o número se não for válido
+  };
+
   return (
     <Card className={cn(
       "transition-all duration-200 hover:shadow-md",
@@ -49,7 +59,7 @@ export default function PedidoCard({ pedido, onMarcarSeparado, onCancelar, showA
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Pedido #{String(pedido.id).substring(0, 8)}
+            {getPedidoId()}
             {showAntecipada && (
               <Badge variant="outline" className="text-blue-600 border-blue-300">
                 Separação Antecipada
@@ -90,10 +100,7 @@ export default function PedidoCard({ pedido, onMarcarSeparado, onCancelar, showA
               <div key={index} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-md">
                 <div className="flex items-center gap-3">
                   <div className="font-medium">
-                    <ProdutoNomeDisplay 
-                      produtoId={String(item.idSabor)} 
-                      nomeFallback={item.nomeSabor}
-                    />
+                    {item.nomeSabor || `Produto ${index}`}
                   </div>
                   <Badge variant="outline" className="text-xs">
                     {item.quantidadeSabor} un.

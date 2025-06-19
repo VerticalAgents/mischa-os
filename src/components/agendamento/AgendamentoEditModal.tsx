@@ -51,7 +51,7 @@ export default function AgendamentoEditModal({
   const [quantidadeTotal, setQuantidadeTotal] = useState<number>(0);
   const [observacoes, setObservacoes] = useState<string>("");
   const [itensPersonalizados, setItensPersonalizados] = useState<ItemPedidoCustomizado[]>([]);
-  const { salvarAgendamento } = useAgendamentoClienteStore();
+  const { salvarAgendamento, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
   const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
   const { produtos } = useProdutoStore();
   const { toast } = useToast();
@@ -115,25 +115,55 @@ export default function AgendamentoEditModal({
   };
 
   useEffect(() => {
-    if (agendamento) {
-      setDataReposicao(agendamento.dataReposicao);
-      setStatusAgendamento(agendamento.statusAgendamento);
-      const validTipoPedido = agendamento.pedido?.tipoPedido === "Único" ? "Padrão" : (agendamento.pedido?.tipoPedido || "Padrão");
-      setTipoPedido(validTipoPedido as TipoPedidoAgendamento);
-      setQuantidadeTotal(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao);
-      setObservacoes("");
-      
-      if (agendamento.pedido?.itensPedido && agendamento.pedido.itensPedido.length > 0) {
-        const itens = agendamento.pedido.itensPedido.map(item => ({
-          produto: item.nomeSabor || `Sabor ${item.idSabor}`,
-          quantidade: item.quantidadeSabor
-        }));
-        setItensPersonalizados(itens);
-      } else {
-        setItensPersonalizados([]);
+    const carregarDadosModal = async () => {
+      if (agendamento) {
+        console.log('🔄 Carregando dados do agendamento no modal:', agendamento);
+        
+        setDataReposicao(agendamento.dataReposicao);
+        setStatusAgendamento(agendamento.statusAgendamento);
+        const validTipoPedido = agendamento.pedido?.tipoPedido === "Único" ? "Padrão" : (agendamento.pedido?.tipoPedido || "Padrão");
+        setTipoPedido(validTipoPedido as TipoPedidoAgendamento);
+        setQuantidadeTotal(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao);
+        setObservacoes("");
+        
+        // Carregar dados salvos do banco para garantir que estão atualizados
+        try {
+          const agendamentoAtual = await carregarAgendamentoPorCliente(agendamento.cliente.id);
+          
+          if (agendamentoAtual && agendamentoAtual.tipo_pedido === 'Alterado' && agendamentoAtual.itens_personalizados) {
+            console.log('✅ Carregando itens personalizados salvos:', agendamentoAtual.itens_personalizados);
+            setItensPersonalizados(agendamentoAtual.itens_personalizados);
+            setQuantidadeTotal(agendamentoAtual.quantidade_total);
+            setTipoPedido('Alterado');
+          } else if (agendamento.pedido?.itensPedido && agendamento.pedido.itensPedido.length > 0) {
+            // Fallback para dados do agendamento passado como prop
+            const itens = agendamento.pedido.itensPedido.map(item => ({
+              produto: item.nomeSabor || `Sabor ${item.idSabor}`,
+              quantidade: item.quantidadeSabor
+            }));
+            setItensPersonalizados(itens);
+          } else {
+            setItensPersonalizados([]);
+          }
+        } catch (error) {
+          console.error('❌ Erro ao carregar dados do banco, usando dados do prop:', error);
+          
+          // Fallback para dados do agendamento passado como prop
+          if (agendamento.pedido?.itensPedido && agendamento.pedido.itensPedido.length > 0) {
+            const itens = agendamento.pedido.itensPedido.map(item => ({
+              produto: item.nomeSabor || `Sabor ${item.idSabor}`,
+              quantidade: item.quantidadeSabor
+            }));
+            setItensPersonalizados(itens);
+          } else {
+            setItensPersonalizados([]);
+          }
+        }
       }
-    }
-  }, [agendamento]);
+    };
+
+    carregarDadosModal();
+  }, [agendamento, carregarAgendamentoPorCliente]);
 
   // Efeito para preencher automaticamente quando tipoPedido muda para 'Alterado'
   useEffect(() => {
