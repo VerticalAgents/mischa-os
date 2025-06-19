@@ -1,4 +1,3 @@
-
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Pedido } from "@/types";
@@ -16,6 +15,7 @@ interface PedidoCardProps {
   pedido: Pedido;
   onMarcarSeparado: (pedidoId: string) => void;
   onCancelar?: (pedidoId: string) => void;
+  showAntecipada?: boolean;
 }
 
 interface StatusVariantProps {
@@ -29,7 +29,7 @@ function getStatusVariant(status: StatusVariantProps['status']) {
   return 'default';
 }
 
-export default function PedidoCard({ pedido, onMarcarSeparado, onCancelar }: PedidoCardProps) {
+export default function PedidoCard({ pedido, onMarcarSeparado, onCancelar, showAntecipada }: PedidoCardProps) {
   const formatarData = (data: Date) => {
     return format(new Date(data), "dd 'de' MMMM, yyyy", { locale: ptBR });
   };
@@ -42,13 +42,19 @@ export default function PedidoCard({ pedido, onMarcarSeparado, onCancelar }: Ped
   return (
     <Card className={cn(
       "transition-all duration-200 hover:shadow-md",
-      pedido.substatusPedido === 'Separado' && "bg-green-50 border-green-200"
+      pedido.substatusPedido === 'Separado' && "bg-green-50 border-green-200",
+      showAntecipada && "border-blue-200 bg-blue-50"
     )}>
       <CardHeader className="space-y-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <Package className="h-5 w-5" />
             Pedido #{String(pedido.id).substring(0, 8)}
+            {showAntecipada && (
+              <Badge variant="outline" className="text-blue-600 border-blue-300">
+                Separação Antecipada
+              </Badge>
+            )}
           </CardTitle>
           <div className="flex gap-2">
             <TipoPedidoBadge tipo={pedido.tipoPedido || "Padrão"} />
