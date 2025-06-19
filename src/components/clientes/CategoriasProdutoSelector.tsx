@@ -42,7 +42,7 @@ export default function CategoriasProdutoSelector({
     };
 
     carregarCategoriasDoCliente();
-  }, [clienteId, carregarCategoriasCliente, onChange]);
+  }, [clienteId]); // Removido carregarCategoriasCliente e onChange das dependências
 
   // Sincronizar com o valor recebido como prop (para novos clientes)
   useEffect(() => {
