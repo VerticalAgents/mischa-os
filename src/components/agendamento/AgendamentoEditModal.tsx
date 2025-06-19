@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -22,6 +21,7 @@ import {
 import { AgendamentoItem } from "./types";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useToast } from "@/hooks/use-toast";
+import { TipoPedidoAgendamento } from "@/types";
 
 interface AgendamentoEditModalProps {
   open: boolean;
@@ -38,7 +38,7 @@ export default function AgendamentoEditModal({
 }: AgendamentoEditModalProps) {
   const [dataReposicao, setDataReposicao] = useState<Date>();
   const [statusAgendamento, setStatusAgendamento] = useState<"Agendar" | "Previsto" | "Agendado">("Previsto");
-  const [tipoPedido, setTipoPedido] = useState<"Padrão" | "Alterado">("Padrão");
+  const [tipoPedido, setTipoPedido] = useState<TipoPedidoAgendamento>("Padrão");
   const [quantidadeTotal, setQuantidadeTotal] = useState<number>(0);
   const [observacoes, setObservacoes] = useState<string>("");
   const { salvarAgendamento } = useAgendamentoClienteStore();
@@ -48,7 +48,9 @@ export default function AgendamentoEditModal({
     if (agendamento) {
       setDataReposicao(agendamento.dataReposicao);
       setStatusAgendamento(agendamento.statusAgendamento);
-      setTipoPedido(agendamento.pedido?.tipoPedido || "Padrão");
+      // Ensure we only use valid agendamento types
+      const validTipoPedido = agendamento.pedido?.tipoPedido === "Único" ? "Padrão" : (agendamento.pedido?.tipoPedido || "Padrão");
+      setTipoPedido(validTipoPedido as TipoPedidoAgendamento);
       setQuantidadeTotal(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao);
       setObservacoes("");
     }
@@ -128,7 +130,7 @@ export default function AgendamentoEditModal({
 
             <div className="space-y-2">
               <Label htmlFor="tipoPedido">Tipo do Pedido</Label>
-              <Select value={tipoPedido} onValueChange={(value: "Padrão" | "Alterado") => setTipoPedido(value)}>
+              <Select value={tipoPedido} onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
