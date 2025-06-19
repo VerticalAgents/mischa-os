@@ -30,6 +30,11 @@ export const PedidoCard = ({
   // Processar lista de produtos/sabores
   const produtos = pedido.itens_personalizados || [];
   
+  // Para pedidos padrão sem itens personalizados, mostrar distribuição padrão
+  const produtosParaExibir = produtos.length > 0 ? produtos : [
+    { nome: "Distribuição Padrão", quantidade: pedido.quantidade_total }
+  ];
+  
   return (
     <Card className="mb-4">
       <CardContent className="p-4">
@@ -62,29 +67,31 @@ export const PedidoCard = ({
             </div>
           </div>
 
-          {/* Lista de produtos - formato exato da imagem de referência */}
+          {/* Lista de produtos - sempre visível com detalhes */}
           <div className="lg:w-80 border-l-0 lg:border-l lg:pl-4">
             <div className="space-y-2">
               <h4 className="font-medium text-sm text-muted-foreground">Produtos</h4>
               <div className="max-h-32 overflow-y-auto">
-                {produtos.length > 0 ? (
-                  <div className="space-y-1">
-                    {produtos.map((item: any, index: number) => (
-                      <div key={index} className="flex justify-between items-center text-sm">
-                        <span className="text-left text-blue-600">
-                          {item.nome || item.sabor || `Produto ${index + 1}`}
-                        </span>
-                        <span className="font-medium text-right ml-2 text-gray-900">
-                          {item.quantidade || item.quantidade_sabor || 0}
-                        </span>
+                <div className="space-y-1">
+                  {produtosParaExibir.map((item: any, index: number) => (
+                    <div key={index} className="flex justify-between items-center text-sm">
+                      <span className="text-left text-blue-600">
+                        {item.nome || item.sabor || `Produto ${index + 1}`}
+                      </span>
+                      <span className="font-medium text-right ml-2 text-gray-900">
+                        {item.quantidade || item.quantidade_sabor || 0}
+                      </span>
+                    </div>
+                  ))}
+                  {produtosParaExibir.length > 1 && (
+                    <div className="border-t pt-1 mt-1">
+                      <div className="flex justify-between items-center text-sm font-medium">
+                        <span className="text-gray-700">Total</span>
+                        <span className="text-gray-900">{pedido.quantidade_total}</span>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    Total: {pedido.quantidade_total} unidades
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

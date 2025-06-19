@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -99,45 +98,87 @@ export const SeparacaoPedidos = () => {
         <head>
           <title>Lista de Separação - ${tipoLista}</title>
           <style>
-            body { font-family: Arial, sans-serif; }
+            body { font-family: Arial, sans-serif; margin: 20px; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; }
-            h1 { text-align: center; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            h1 { text-align: center; margin-bottom: 10px; }
             .header { text-align: center; margin-bottom: 20px; }
-            .data { font-size: 12px; }
+            .produtos-lista { font-size: 11px; line-height: 1.3; }
+            .produto-item { margin-bottom: 2px; display: flex; justify-content: space-between; }
+            .produto-nome { flex: 1; }
+            .produto-qtd { font-weight: bold; margin-left: 10px; }
+            .total-geral { border-top: 1px solid #ccc; padding-top: 2px; margin-top: 4px; font-weight: bold; }
           </style>
         </head>
         <body>
           <div class="header">
             <h1>Lista de Separação - ${tipoLista}</h1>
-            <p>Data de impressão: ${new Date().toLocaleDateString()}</p>
+            <p>Data de impressão: ${new Date().toLocaleDateString()} às ${new Date().toLocaleTimeString()}</p>
+            <p>Total de pedidos: ${listaAtual.length}</p>
           </div>
           <table>
             <thead>
               <tr>
-                <th>Cliente</th>
-                <th>Total Unidades</th>
-                <th>Data Entrega</th>
-                <th>Tipo</th>
+                <th style="width: 25%;">Cliente</th>
+                <th style="width: 15%;">Data Entrega</th>
+                <th style="width: 10%;">Tipo</th>
+                <th style="width: 40%;">Produtos e Quantidades</th>
+                <th style="width: 10%;">Total</th>
               </tr>
             </thead>
             <tbody>
     `;
     
     listaAtual.forEach(pedido => {
+      const produtos = pedido.itens_personalizados || [];
+      const produtosParaExibir = produtos.length > 0 ? produtos : [
+        { nome: "Distribuição Padrão", quantidade: pedido.quantidade_total }
+      ];
+      
+      let produtosHtml = '<div class="produtos-lista">';
+      produtosParaExibir.forEach((item: any) => {
+        produtosHtml += `
+          <div class="produto-item">
+            <span class="produto-nome">${item.nome || item.sabor || 'Produto'}</span>
+            <span class="produto-qtd">${item.quantidade || item.quantidade_sabor || 0}</span>
+          </div>
+        `;
+      });
+      
+      if (produtosParaExibir.length > 1) {
+        produtosHtml += `
+          <div class="produto-item total-geral">
+            <span class="produto-nome">TOTAL</span>
+            <span class="produto-qtd">${pedido.quantidade_total}</span>
+          </div>
+        `;
+      }
+      
+      produtosHtml += '</div>';
+      
       printContent += `
         <tr>
-          <td>${pedido.cliente_nome}</td>
-          <td>${pedido.quantidade_total}</td>
+          <td><strong>${pedido.cliente_nome}</strong></td>
           <td>${formatDate(new Date(pedido.data_prevista_entrega))}</td>
           <td>${pedido.tipo_pedido}</td>
+          <td>${produtosHtml}</td>
+          <td style="text-align: center; font-weight: bold;">${pedido.quantidade_total}</td>
         </tr>
       `;
     });
     
+    // Adicionar resumo total
+    const totalGeral = listaAtual.reduce((sum, pedido) => sum + pedido.quantidade_total, 0);
+    
     printContent += `
             </tbody>
+            <tfoot>
+              <tr style="background-color: #f8f9fa; font-weight: bold;">
+                <td colspan="4" style="text-align: right; padding-right: 10px;">TOTAL GERAL:</td>
+                <td style="text-align: center; font-size: 14px;">${totalGeral}</td>
+              </tr>
+            </tfoot>
           </table>
         </body>
       </html>
@@ -187,7 +228,7 @@ export const SeparacaoPedidos = () => {
             body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
             .etiqueta {
               width: 4in;
-              height: 2in;
+              height: 2.5in;
               padding: 0.2in;
               margin: 0.1in;
               border: 1px dashed #aaa;
@@ -196,20 +237,38 @@ export const SeparacaoPedidos = () => {
               box-sizing: border-box;
             }
             .cliente { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
-            .data { margin-bottom: 5px; }
-            .unidades { margin-bottom: 5px; }
-            .detalhes { font-size: 12px; }
+            .data { margin-bottom: 5px; font-size: 12px; }
+            .produtos { font-size: 10px; margin-bottom: 5px; max-height: 0.8in; overflow: hidden; }
+            .produto-linha { display: flex; justify-content: space-between; margin-bottom: 1px; }
+            .total-etiqueta { font-size: 12px; font-weight: bold; border-top: 1px solid #ccc; padding-top: 2px; }
+            .detalhes { font-size: 10px; color: #666; }
           </style>
         </head>
         <body>
     `;
     
     listaAtual.forEach(pedido => {
+      const produtos = pedido.itens_personalizados || [];
+      const produtosParaExibir = produtos.length > 0 ? produtos : [
+        { nome: "Distribuição Padrão", quantidade: pedido.quantidade_total }
+      ];
+      
+      let produtosHtml = '';
+      produtosParaExibir.forEach((item: any) => {
+        produtosHtml += `
+          <div class="produto-linha">
+            <span>${(item.nome || item.sabor || 'Produto').substring(0, 25)}</span>
+            <span>${item.quantidade || item.quantidade_sabor || 0}</span>
+          </div>
+        `;
+      });
+      
       printContent += `
         <div class="etiqueta">
           <div class="cliente">${pedido.cliente_nome}</div>
           <div class="data">Entrega: ${formatDate(new Date(pedido.data_prevista_entrega))}</div>
-          <div class="unidades">Total: ${pedido.quantidade_total} unidades</div>
+          <div class="produtos">${produtosHtml}</div>
+          <div class="total-etiqueta">Total: ${pedido.quantidade_total} unidades</div>
           <div class="detalhes">Pedido #${pedido.id} - ${pedido.tipo_pedido}</div>
         </div>
       `;
