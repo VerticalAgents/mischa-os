@@ -56,6 +56,33 @@ export type Database = {
           },
         ]
       }
+      categorias_estabelecimento: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          id: number
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: number
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: number
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categorias_produto: {
         Row: {
           ativo: boolean | null
@@ -273,6 +300,30 @@ export type Database = {
           observacoes?: string | null
           status_contato?: string
           ultimo_contato_em?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      formas_pagamento: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: number
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: number
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: number
+          nome?: string
           updated_at?: string
         }
         Relationships: []
@@ -733,6 +784,63 @@ export type Database = {
         }
         Relationships: []
       }
+      representantes: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          email: string | null
+          id: number
+          nome: string
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          email?: string | null
+          id?: number
+          nome: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          email?: string | null
+          id?: number
+          nome?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rotas_entrega: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          id: number
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: number
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: number
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sabores: {
         Row: {
           ativo: boolean | null
@@ -839,6 +947,33 @@ export type Database = {
           descricao?: string | null
           id?: number
           nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tipos_logistica: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: number
+          nome: string
+          percentual_logistico: number | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: number
+          nome: string
+          percentual_logistico?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: number
+          nome?: string
+          percentual_logistico?: number | null
           updated_at?: string
         }
         Relationships: []

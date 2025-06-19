@@ -1,12 +1,15 @@
 
 import { useState } from "react";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
   Dialog,
@@ -16,274 +19,219 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash } from "lucide-react";
-import { useConfigStore } from "@/hooks/useConfigStore";
-import { Representante } from "@/types";
+import { Badge } from "@/components/ui/badge";
+import { Edit, Trash2, Plus } from "lucide-react";
+import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 
 export default function RepresentantesList() {
-  const { representantes, adicionarRepresentante, atualizarRepresentante, removerRepresentante } = useConfigStore();
-  const [editingItem, setEditingItem] = useState<Representante | null>(null);
-  const [newItem, setNewItem] = useState<Omit<Representante, "id">>({
+  const { 
+    representantes, 
+    loading, 
+    adicionarRepresentante, 
+    atualizarRepresentante, 
+    removerRepresentante 
+  } = useSupabaseRepresentantes();
+  
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [formData, setFormData] = useState({
     nome: "",
     email: "",
-    telefone: "",
-    ativo: true
+    telefone: ""
   });
 
-  // Reset form for new item
-  const handleNewItem = () => {
-    setEditingItem(null);
-    setNewItem({
-      nome: "",
-      email: "",
-      telefone: "",
-      ativo: true
-    });
+  const handleAdd = async () => {
+    if (!formData.nome.trim()) return;
+    
+    const success = await adicionarRepresentante(formData);
+    if (success) {
+      setFormData({ nome: "", email: "", telefone: "" });
+      setIsAddModalOpen(false);
+    }
   };
 
-  // Set item for editing
-  const handleEditItem = (item: Representante) => {
+  const handleEdit = async () => {
+    if (!formData.nome.trim() || !editingItem) return;
+    
+    const success = await atualizarRepresentante(editingItem.id, formData);
+    if (success) {
+      setFormData({ nome: "", email: "", telefone: "" });
+      setIsEditModalOpen(false);
+      setEditingItem(null);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (confirm("Tem certeza que deseja remover este representante?")) {
+      await removerRepresentante(id);
+    }
+  };
+
+  const openEditModal = (item: any) => {
     setEditingItem(item);
-    setNewItem({
+    setFormData({
       nome: item.nome,
       email: item.email || "",
-      telefone: item.telefone || "",
-      ativo: item.ativo
+      telefone: item.telefone || ""
     });
+    setIsEditModalOpen(true);
   };
 
-  // Handle save (add or update)
-  const handleSave = (close: () => void) => {
-    if (!newItem.nome.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome do representante é obrigatório",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (editingItem) {
-      atualizarRepresentante(editingItem.id, newItem);
-      toast({
-        title: "Representante atualizado",
-        description: `${newItem.nome} foi atualizado com sucesso`
-      });
-    } else {
-      adicionarRepresentante(newItem);
-      toast({
-        title: "Representante adicionado",
-        description: `${newItem.nome} foi adicionado com sucesso`
-      });
-    }
-    
-    close();
-  };
-
-  // Handle delete with confirmation
-  const handleDelete = (id: number, nome: string) => {
-    if (window.confirm(`Tem certeza que deseja remover "${nome}"?`)) {
-      removerRepresentante(id);
-      toast({
-        title: "Representante removido",
-        description: `${nome} foi removido com sucesso`
-      });
-    }
-  };
+  if (loading) {
+    return <div>Carregando representantes...</div>;
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Representantes Comerciais</h3>
-        <Dialog>
+        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleNewItem} className="flex items-center gap-1">
-              <Plus className="h-4 w-4" /> Adicionar
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Representante
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>
-                {editingItem ? "Editar Representante" : "Novo Representante"}
-              </DialogTitle>
+              <DialogTitle>Adicionar Representante</DialogTitle>
               <DialogDescription>
-                {editingItem
-                  ? "Altere os dados do representante comercial"
-                  : "Adicione um novo representante comercial"}
+                Adicione um novo representante comercial ao sistema
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome</Label>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="nome">Nome *</Label>
                 <Input
                   id="nome"
+                  value={formData.nome}
+                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                   placeholder="Nome do representante"
-                  value={newItem.nome}
-                  onChange={(e) => setNewItem({...newItem, nome: e.target.value})}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+              <div>
+                <Label htmlFor="email">E-mail</Label>
                 <Input
                   id="email"
                   type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="email@exemplo.com"
-                  value={newItem.email}
-                  onChange={(e) => setNewItem({...newItem, email: e.target.value})}
                 />
               </div>
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="telefone">Telefone</Label>
                 <Input
                   id="telefone"
+                  value={formData.telefone}
+                  onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
                   placeholder="(00) 00000-0000"
-                  value={newItem.telefone}
-                  onChange={(e) => setNewItem({...newItem, telefone: e.target.value})}
                 />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="ativo"
-                  checked={newItem.ativo}
-                  onCheckedChange={(checked) => setNewItem({...newItem, ativo: checked})}
-                />
-                <Label htmlFor="ativo">Ativo</Label>
               </div>
             </div>
             <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancelar</Button>
-              </DialogClose>
-              <DialogClose asChild>
-                <Button onClick={(e) => {
-                  const close = () => (e.target as HTMLButtonElement).click();
-                  handleSave(close);
-                }}>
-                  Salvar
-                </Button>
-              </DialogClose>
+              <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleAdd}>Adicionar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Telefone</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nome</TableHead>
+            <TableHead>E-mail</TableHead>
+            <TableHead>Telefone</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Ações</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {representantes.map((representante) => (
+            <TableRow key={representante.id}>
+              <TableCell className="font-medium">{representante.nome}</TableCell>
+              <TableCell>{representante.email || "-"}</TableCell>
+              <TableCell>{representante.telefone || "-"}</TableCell>
+              <TableCell>
+                <Badge variant={representante.ativo ? "default" : "secondary"}>
+                  {representante.ativo ? "Ativo" : "Inativo"}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEditModal(representante)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(representante.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {representantes.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
-                  Nenhum representante cadastrado
-                </TableCell>
-              </TableRow>
-            ) : (
-              representantes.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.nome}</TableCell>
-                  <TableCell>{item.email || '-'}</TableCell>
-                  <TableCell>{item.telefone || '-'}</TableCell>
-                  <TableCell>{item.ativo ? 'Ativo' : 'Inativo'}</TableCell>
-                  <TableCell className="text-right space-x-1">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleEditItem(item)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Editar Representante</DialogTitle>
-                          <DialogDescription>
-                            Altere os dados do representante comercial
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="nome">Nome</Label>
-                            <Input
-                              id="nome"
-                              placeholder="Nome do representante"
-                              value={newItem.nome}
-                              onChange={(e) => setNewItem({...newItem, nome: e.target.value})}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                              id="email"
-                              type="email"
-                              placeholder="email@exemplo.com"
-                              value={newItem.email}
-                              onChange={(e) => setNewItem({...newItem, email: e.target.value})}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="telefone">Telefone</Label>
-                            <Input
-                              id="telefone"
-                              placeholder="(00) 00000-0000"
-                              value={newItem.telefone}
-                              onChange={(e) => setNewItem({...newItem, telefone: e.target.value})}
-                            />
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="ativo"
-                              checked={newItem.ativo}
-                              onCheckedChange={(checked) => setNewItem({...newItem, ativo: checked})}
-                            />
-                            <Label htmlFor="ativo">Ativo</Label>
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <DialogClose asChild>
-                            <Button variant="outline">Cancelar</Button>
-                          </DialogClose>
-                          <DialogClose asChild>
-                            <Button onClick={(e) => {
-                              const close = () => (e.target as HTMLButtonElement).click();
-                              handleSave(close);
-                            }}>
-                              Salvar
-                            </Button>
-                          </DialogClose>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDelete(item.id, item.nome)}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+          ))}
+        </TableBody>
+      </Table>
+
+      {/* Modal de Edição */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Representante</DialogTitle>
+            <DialogDescription>
+              Edite as informações do representante comercial
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-nome">Nome *</Label>
+              <Input
+                id="edit-nome"
+                value={formData.nome}
+                onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                placeholder="Nome do representante"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-email">E-mail</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="email@exemplo.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-telefone">Telefone</Label>
+              <Input
+                id="edit-telefone"
+                value={formData.telefone}
+                onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                placeholder="(00) 00000-0000"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleEdit}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

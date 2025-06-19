@@ -1,12 +1,15 @@
 
 import { useState } from "react";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
   Dialog,
@@ -16,226 +19,173 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash } from "lucide-react";
-import { useConfigStore } from "@/hooks/useConfigStore";
-import { FormaPagamento } from "@/types";
+import { Badge } from "@/components/ui/badge";
+import { Edit, Trash2, Plus } from "lucide-react";
+import { useSupabaseFormasPagamento } from "@/hooks/useSupabaseFormasPagamento";
 
 export default function FormasPagamentoList() {
-  const { formasPagamento, adicionarFormaPagamento, atualizarFormaPagamento, removerFormaPagamento } = useConfigStore();
-  const [editingItem, setEditingItem] = useState<FormaPagamento | null>(null);
-  const [newItem, setNewItem] = useState<Omit<FormaPagamento, "id">>({
-    nome: "",
-    ativo: true
+  const { 
+    formasPagamento, 
+    loading, 
+    adicionarFormaPagamento, 
+    atualizarFormaPagamento, 
+    removerFormaPagamento 
+  } = useSupabaseFormasPagamento();
+  
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    nome: ""
   });
 
-  // Reset form for new item
-  const handleNewItem = () => {
-    setEditingItem(null);
-    setNewItem({
-      nome: "",
-      ativo: true
-    });
-  };
-
-  // Set item for editing
-  const handleEditItem = (item: FormaPagamento) => {
-    setEditingItem(item);
-    setNewItem({
-      nome: item.nome,
-      ativo: item.ativo
-    });
-  };
-
-  // Handle save (add or update)
-  const handleSave = (close: () => void) => {
-    if (!newItem.nome.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome da forma de pagamento é obrigatório",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (editingItem) {
-      atualizarFormaPagamento(editingItem.id, newItem);
-      toast({
-        title: "Forma de pagamento atualizada",
-        description: `${newItem.nome} foi atualizada com sucesso`
-      });
-    } else {
-      adicionarFormaPagamento(newItem);
-      toast({
-        title: "Forma de pagamento adicionada",
-        description: `${newItem.nome} foi adicionada com sucesso`
-      });
-    }
+  const handleAdd = async () => {
+    if (!formData.nome.trim()) return;
     
-    close();
-  };
-
-  // Handle delete with confirmation
-  const handleDelete = (id: number, nome: string) => {
-    if (window.confirm(`Tem certeza que deseja remover "${nome}"?`)) {
-      removerFormaPagamento(id);
-      toast({
-        title: "Forma de pagamento removida",
-        description: `${nome} foi removida com sucesso`
-      });
+    const success = await adicionarFormaPagamento(formData);
+    if (success) {
+      setFormData({ nome: "" });
+      setIsAddModalOpen(false);
     }
   };
+
+  const handleEdit = async () => {
+    if (!formData.nome.trim() || !editingItem) return;
+    
+    const success = await atualizarFormaPagamento(editingItem.id, formData);
+    if (success) {
+      setFormData({ nome: "" });
+      setIsEditModalOpen(false);
+      setEditingItem(null);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (confirm("Tem certeza que deseja remover esta forma de pagamento?")) {
+      await removerFormaPagamento(id);
+    }
+  };
+
+  const openEditModal = (item: any) => {
+    setEditingItem(item);
+    setFormData({
+      nome: item.nome
+    });
+    setIsEditModalOpen(true);
+  };
+
+  if (loading) {
+    return <div>Carregando formas de pagamento...</div>;
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Formas de Pagamento</h3>
-        <Dialog>
+        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleNewItem} className="flex items-center gap-1">
-              <Plus className="h-4 w-4" /> Adicionar
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Forma
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>
-                {editingItem ? "Editar Forma de Pagamento" : "Nova Forma de Pagamento"}
-              </DialogTitle>
+              <DialogTitle>Adicionar Forma de Pagamento</DialogTitle>
               <DialogDescription>
-                {editingItem
-                  ? "Altere os dados da forma de pagamento"
-                  : "Adicione uma nova forma de pagamento"}
+                Adicione uma nova forma de pagamento ao sistema
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome</Label>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="nome">Nome *</Label>
                 <Input
                   id="nome"
-                  placeholder="Nome da forma de pagamento"
-                  value={newItem.nome}
-                  onChange={(e) => setNewItem({...newItem, nome: e.target.value})}
+                  value={formData.nome}
+                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                  placeholder="Ex: PIX"
                 />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="ativo"
-                  checked={newItem.ativo}
-                  onCheckedChange={(checked) => setNewItem({...newItem, ativo: checked})}
-                />
-                <Label htmlFor="ativo">Ativo</Label>
               </div>
             </div>
             <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancelar</Button>
-              </DialogClose>
-              <DialogClose asChild>
-                <Button onClick={(e) => {
-                  const close = () => (e.target as HTMLButtonElement).click();
-                  handleSave(close);
-                }}>
-                  Salvar
-                </Button>
-              </DialogClose>
+              <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleAdd}>Adicionar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nome</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Ações</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {formasPagamento.map((forma) => (
+            <TableRow key={forma.id}>
+              <TableCell className="font-medium">{forma.nome}</TableCell>
+              <TableCell>
+                <Badge variant={forma.ativo ? "default" : "secondary"}>
+                  {forma.ativo ? "Ativo" : "Inativo"}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEditModal(forma)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(forma.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {formasPagamento.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
-                  Nenhuma forma de pagamento cadastrada
-                </TableCell>
-              </TableRow>
-            ) : (
-              formasPagamento.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.nome}</TableCell>
-                  <TableCell>{item.ativo ? 'Ativo' : 'Inativo'}</TableCell>
-                  <TableCell className="text-right space-x-1">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleEditItem(item)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Editar Forma de Pagamento</DialogTitle>
-                          <DialogDescription>
-                            Altere os dados da forma de pagamento
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="nome">Nome</Label>
-                            <Input
-                              id="nome"
-                              placeholder="Nome da forma de pagamento"
-                              value={newItem.nome}
-                              onChange={(e) => setNewItem({...newItem, nome: e.target.value})}
-                            />
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="ativo"
-                              checked={newItem.ativo}
-                              onCheckedChange={(checked) => setNewItem({...newItem, ativo: checked})}
-                            />
-                            <Label htmlFor="ativo">Ativo</Label>
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <DialogClose asChild>
-                            <Button variant="outline">Cancelar</Button>
-                          </DialogClose>
-                          <DialogClose asChild>
-                            <Button onClick={(e) => {
-                              const close = () => (e.target as HTMLButtonElement).click();
-                              handleSave(close);
-                            }}>
-                              Salvar
-                            </Button>
-                          </DialogClose>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDelete(item.id, item.nome)}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+          ))}
+        </TableBody>
+      </Table>
+
+      {/* Modal de Edição */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Forma de Pagamento</DialogTitle>
+            <DialogDescription>
+              Edite as informações da forma de pagamento
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-nome">Nome *</Label>
+              <Input
+                id="edit-nome"
+                value={formData.nome}
+                onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                placeholder="Ex: PIX"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleEdit}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
