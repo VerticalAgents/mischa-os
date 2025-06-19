@@ -16,7 +16,7 @@ export default function EstoqueInsumos() {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
     
-    if (tabParam && ['produtos', 'insumos', 'cotacoes', 'pedidos'].includes(tabParam)) {
+    if (tabParam && ['produtos', 'insumos', 'cotacoes', 'pedidos', 'necessidade'].includes(tabParam)) {
       changeTab(tabParam);
     }
   }, [location.search, changeTab]);
