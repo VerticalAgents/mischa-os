@@ -20,7 +20,6 @@ import {
 import { Cliente, StatusCliente } from "@/types";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
-import { useSupabasePrecosCategoriaCliente } from "@/hooks/useSupabasePrecosCategoriaCliente";
 import { toast } from "@/hooks/use-toast";
 
 interface ClienteFormDialogProps {
@@ -38,7 +37,6 @@ export default function ClienteFormDialog({
 }: ClienteFormDialogProps) {
   const { adicionarCliente, atualizarCliente, loading } = useClienteStore();
   const { categorias } = useSupabaseCategoriasProduto();
-  const { carregarPrecosPorCliente, salvarPrecos } = useSupabasePrecosCategoriaCliente();
 
   // Estado do formulário
   const [formData, setFormData] = useState<Partial<Cliente>>({
@@ -60,74 +58,42 @@ export default function ClienteFormDialog({
     categoriasHabilitadas: []
   });
 
-  // Estado simplificado para categorias e preços
+  // Estado simplificado para categorias
   const [categoriasHabilitadas, setCategoriasHabilitadas] = useState<number[]>([]);
-  const [precosPorCategoria, setPrecosPorCategoria] = useState<{ [key: number]: number }>({});
-  const [isLoadingData, setIsLoadingData] = useState(false);
 
   // Carregar dados do cliente quando abrir para edição
   useEffect(() => {
-    const carregarDadosCliente = async () => {
-      if (cliente && open) {
-        console.log('ClienteFormDialog: Carregando dados do cliente para edição:', cliente.nome);
-        setIsLoadingData(true);
-        
-        try {
-          // Preencher dados básicos
-          setFormData(cliente);
-          const categoriasIniciais = cliente.categoriasHabilitadas || [];
-          setCategoriasHabilitadas(categoriasIniciais);
-          
-          // Carregar preços apenas se o cliente tem ID e categorias
-          if (cliente.id && categoriasIniciais.length > 0) {
-            const precosCarregados = await carregarPrecosPorCliente(cliente.id);
-            const precosMap: { [key: number]: number } = {};
-            
-            precosCarregados.forEach(preco => {
-              precosMap[preco.categoria_id] = preco.preco_unitario;
-            });
-            
-            setPrecosPorCategoria(precosMap);
-            console.log('ClienteFormDialog: Preços carregados:', precosMap);
-          } else {
-            setPrecosPorCategoria({});
-          }
-        } catch (error) {
-          console.error('ClienteFormDialog: Erro ao carregar dados:', error);
-          // Não bloquear a edição por erro nos preços
-          setPrecosPorCategoria({});
-        } finally {
-          setIsLoadingData(false);
-        }
-      } else if (!cliente && open) {
-        // Limpar formulário para novo cliente
-        console.log('ClienteFormDialog: Inicializando formulário para novo cliente');
-        setFormData({
-          nome: '',
-          cnpjCpf: '',
-          enderecoEntrega: '',
-          contatoNome: '',
-          contatoTelefone: '',
-          contatoEmail: '',
-          quantidadePadrao: 0,
-          periodicidadePadrao: 7,
-          statusCliente: 'Ativo',
-          tipoLogistica: 'Própria',
-          tipoCobranca: 'À vista',
-          formaPagamento: 'Boleto',
-          emiteNotaFiscal: true,
-          contabilizarGiroMedio: true,
-          observacoes: '',
-          categoriasHabilitadas: []
-        });
-        setCategoriasHabilitadas([]);
-        setPrecosPorCategoria({});
-        setIsLoadingData(false);
-      }
-    };
-
-    carregarDadosCliente();
-  }, [cliente, open, carregarPrecosPorCliente]);
+    if (cliente && open) {
+      console.log('ClienteFormDialog: Carregando dados do cliente para edição:', cliente.nome);
+      
+      // Preencher dados básicos
+      setFormData(cliente);
+      const categoriasIniciais = cliente.categoriasHabilitadas || [];
+      setCategoriasHabilitadas(categoriasIniciais);
+    } else if (!cliente && open) {
+      // Limpar formulário para novo cliente
+      console.log('ClienteFormDialog: Inicializando formulário para novo cliente');
+      setFormData({
+        nome: '',
+        cnpjCpf: '',
+        enderecoEntrega: '',
+        contatoNome: '',
+        contatoTelefone: '',
+        contatoEmail: '',
+        quantidadePadrao: 0,
+        periodicidadePadrao: 7,
+        statusCliente: 'Ativo',
+        tipoLogistica: 'Própria',
+        tipoCobranca: 'À vista',
+        formaPagamento: 'Boleto',
+        emiteNotaFiscal: true,
+        contabilizarGiroMedio: true,
+        observacoes: '',
+        categoriasHabilitadas: []
+      });
+      setCategoriasHabilitadas([]);
+    }
+  }, [cliente, open]);
 
   const handleCategoriaToggle = (categoriaId: number) => {
     console.log('ClienteFormDialog: Toggling categoria:', categoriaId);
@@ -143,25 +109,6 @@ export default function ClienteFormDialog({
     setFormData(prev => ({
       ...prev,
       categoriasHabilitadas: novasCategorias
-    }));
-
-    // Se desmarcou a categoria, remover o preço
-    if (!novasCategorias.includes(categoriaId)) {
-      setPrecosPorCategoria(prev => {
-        const novosPrecos = { ...prev };
-        delete novosPrecos[categoriaId];
-        return novosPrecos;
-      });
-    }
-  };
-
-  const handlePrecoChange = (categoriaId: number, valor: string) => {
-    const preco = parseFloat(valor) || 0;
-    console.log('ClienteFormDialog: Alterando preço categoria', categoriaId, 'para', preco);
-    
-    setPrecosPorCategoria(prev => ({
-      ...prev,
-      [categoriaId]: preco
     }));
   };
 
@@ -190,15 +137,12 @@ export default function ClienteFormDialog({
         categoriasHabilitadas
       });
 
-      let clienteId: string;
-
       if (cliente) {
         // Atualização
         await atualizarCliente(cliente.id, {
           ...formData,
           categoriasHabilitadas
         });
-        clienteId = cliente.id;
         
         toast({
           title: "Cliente atualizado",
@@ -211,29 +155,10 @@ export default function ClienteFormDialog({
           categoriasHabilitadas
         } as Omit<Cliente, 'id' | 'dataCadastro'>);
         
-        if (!novoCliente?.id) {
-          throw new Error('Cliente criado mas ID não retornado');
-        }
-        
-        clienteId = novoCliente.id;
-        
         toast({
           title: "Cliente cadastrado",
           description: "Novo cliente foi criado com sucesso"
         });
-      }
-      
-      // Salvar preços por categoria se houver
-      const precosParaSalvar = Object.entries(precosPorCategoria)
-        .filter(([_, preco]) => preco > 0)
-        .map(([categoriaId, preco]) => ({
-          categoria_id: parseInt(categoriaId),
-          preco_unitario: preco
-        }));
-      
-      if (precosParaSalvar.length > 0) {
-        console.log('ClienteFormDialog: Salvando preços:', precosParaSalvar);
-        await salvarPrecos(clienteId, precosParaSalvar);
       }
 
       onClienteUpdate?.();
@@ -247,21 +172,6 @@ export default function ClienteFormDialog({
       });
     }
   };
-
-  if (isLoadingData) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[900px]">
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p>Carregando dados do cliente...</p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -401,46 +311,22 @@ export default function ClienteFormDialog({
               
               <div className="grid grid-cols-1 gap-4">
                 {categorias.map((categoria) => (
-                  <div key={categoria.id} className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`categoria-${categoria.id}`}
-                        checked={categoriasHabilitadas.includes(categoria.id)}
-                        onCheckedChange={() => handleCategoriaToggle(categoria.id)}
-                      />
-                      <label
-                        htmlFor={`categoria-${categoria.id}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        {categoria.nome}
-                      </label>
-                      {categoria.descricao && (
-                        <span className="text-xs text-muted-foreground">
-                          - {categoria.descricao}
-                        </span>
-                      )}
-                    </div>
-                    
-                    {/* Campo de preço para categoria habilitada */}
-                    {categoriasHabilitadas.includes(categoria.id) && (
-                      <div className="ml-6 flex items-center space-x-2">
-                        <Label htmlFor={`preco-${categoria.id}`} className="text-sm w-20">
-                          Preço:
-                        </Label>
-                        <div className="flex items-center space-x-1">
-                          <span className="text-sm text-muted-foreground">R$</span>
-                          <Input
-                            id={`preco-${categoria.id}`}
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            placeholder="0,00"
-                            value={precosPorCategoria[categoria.id] || ''}
-                            onChange={(e) => handlePrecoChange(categoria.id, e.target.value)}
-                            className="w-24 text-right"
-                          />
-                        </div>
-                      </div>
+                  <div key={categoria.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`categoria-${categoria.id}`}
+                      checked={categoriasHabilitadas.includes(categoria.id)}
+                      onCheckedChange={() => handleCategoriaToggle(categoria.id)}
+                    />
+                    <label
+                      htmlFor={`categoria-${categoria.id}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {categoria.nome}
+                    </label>
+                    {categoria.descricao && (
+                      <span className="text-xs text-muted-foreground">
+                        - {categoria.descricao}
+                      </span>
                     )}
                   </div>
                 ))}
