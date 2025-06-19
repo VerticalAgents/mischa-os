@@ -284,7 +284,6 @@ export default function EstoqueInsumosTab() {
         </div>
       </div>
 
-      {/* Cards informativos */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="pb-2">
@@ -328,7 +327,6 @@ export default function EstoqueInsumosTab() {
         </Card>
       </div>
 
-      {/* Controles de filtro */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="flex-1">
           <div className="relative max-w-xs">
@@ -385,7 +383,6 @@ export default function EstoqueInsumosTab() {
         </div>
       </div>
 
-      {/* Tabela de insumos */}
       <Card>
         <CardHeader>
           <CardTitle>Lista de Insumos</CardTitle>
