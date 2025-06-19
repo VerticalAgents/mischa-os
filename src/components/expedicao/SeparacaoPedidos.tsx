@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -384,7 +383,7 @@ export const SeparacaoPedidos = () => {
                         periodicidadePadrao: 7,
                         statusCliente: 'Ativo',
                         dataCadastro: new Date(),
-                        dataUltimaReposicao: null,
+                        ultima_data_reposicao_efetiva: null,
                         dataProximaReposicao: null,
                         observacoes: '',
                         contatos: [],
@@ -438,7 +437,7 @@ export const SeparacaoPedidos = () => {
                         periodicidadePadrao: 7,
                         statusCliente: 'Ativo',
                         dataCadastro: new Date(),
-                        dataUltimaReposicao: null,
+                        ultima_data_reposicao_efetiva: null,
                         dataProximaReposicao: null,
                         observacoes: '',
                         contatos: [],
@@ -492,7 +491,7 @@ export const SeparacaoPedidos = () => {
                         periodicidadePadrao: 7,
                         statusCliente: 'Ativo',
                         dataCadastro: new Date(),
-                        dataUltimaReposicao: null,
+                        ultima_data_reposicao_efetiva: null,
                         dataProximaReposicao: null,
                         observacoes: '',
                         contatos: [],
@@ -546,7 +545,7 @@ export const SeparacaoPedidos = () => {
                         periodicidadePadrao: 7,
                         statusCliente: 'Ativo',
                         dataCadastro: new Date(),
-                        dataUltimaReposicao: null,
+                        ultima_data_reposicao_efetiva: null,
                         dataProximaReposicao: null,
                         observacoes: '',
                         contatos: [],
