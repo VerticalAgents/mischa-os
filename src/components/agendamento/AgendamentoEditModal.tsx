@@ -32,7 +32,7 @@ interface AgendamentoEditModalProps {
 }
 
 interface ItemPedidoCustomizado {
-  nome: string;
+  produto: string;
   quantidade: number;
 }
 
@@ -64,7 +64,7 @@ export default function AgendamentoEditModal({
       // Carregar itens personalizados se existirem - adaptado para ItemPedido
       if (agendamento.pedido?.itensPedido && agendamento.pedido.itensPedido.length > 0) {
         const itens = agendamento.pedido.itensPedido.map(item => ({
-          nome: item.nomeSabor || `Sabor ${item.idSabor}`,
+          produto: item.nomeSabor || `Sabor ${item.idSabor}`,
           quantidade: item.quantidadeSabor
         }));
         setItensPersonalizados(itens);
@@ -75,17 +75,17 @@ export default function AgendamentoEditModal({
   }, [agendamento]);
 
   const adicionarItemPersonalizado = () => {
-    setItensPersonalizados([...itensPersonalizados, { nome: "", quantidade: 0 }]);
+    setItensPersonalizados([...itensPersonalizados, { produto: "", quantidade: 0 }]);
   };
 
   const removerItemPersonalizado = (index: number) => {
     setItensPersonalizados(itensPersonalizados.filter((_, i) => i !== index));
   };
 
-  const atualizarItemPersonalizado = (index: number, campo: 'nome' | 'quantidade', valor: string | number) => {
+  const atualizarItemPersonalizado = (index: number, campo: 'produto' | 'quantidade', valor: string | number) => {
     const novosItens = [...itensPersonalizados];
-    if (campo === 'nome') {
-      novosItens[index].nome = valor as string;
+    if (campo === 'produto') {
+      novosItens[index].produto = valor as string;
     } else {
       novosItens[index].quantidade = Number(valor);
     }
@@ -122,10 +122,10 @@ export default function AgendamentoEditModal({
             id: index,
             idPedido: 0,
             idSabor: index,
-            nomeSabor: item.nome,
+            nomeSabor: item.produto,
             quantidadeSabor: item.quantidade,
             sabor: {
-              nome: item.nome
+              nome: item.produto
             }
           })),
           totalPedidoUnidades: quantidadeTotal,
@@ -232,11 +232,11 @@ export default function AgendamentoEditModal({
               {itensPersonalizados.map((item, index) => (
                 <div key={index} className="grid grid-cols-3 gap-4 items-end">
                   <div className="space-y-2">
-                    <Label htmlFor={`item-nome-${index}`}>Nome do Produto</Label>
+                    <Label htmlFor={`item-produto-${index}`}>Nome do Produto</Label>
                     <Input
-                      id={`item-nome-${index}`}
-                      value={item.nome}
-                      onChange={(e) => atualizarItemPersonalizado(index, 'nome', e.target.value)}
+                      id={`item-produto-${index}`}
+                      value={item.produto}
+                      onChange={(e) => atualizarItemPersonalizado(index, 'produto', e.target.value)}
                       placeholder="Digite o nome do produto"
                     />
                   </div>
