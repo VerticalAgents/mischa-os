@@ -50,13 +50,15 @@ export default function AgendamentoEditModal({
   const [quantidadeTotal, setQuantidadeTotal] = useState<number>(0);
   const [observacoes, setObservacoes] = useState<string>("");
   const [itensPersonalizados, setItensPersonalizados] = useState<ItemPedidoCustomizado[]>([]);
+  const [dadosCarregados, setDadosCarregados] = useState(false);
   
   const { salvarAgendamento, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
   const { toast } = useToast();
 
+  // Carrega dados apenas uma vez quando o agendamento muda
   useEffect(() => {
     const carregarDadosModal = async () => {
-      if (agendamento) {
+      if (agendamento && open && !dadosCarregados) {
         console.log('🔄 Carregando dados do agendamento no modal:', agendamento);
         
         setDataReposicao(agendamento.dataReposicao);
@@ -99,11 +101,18 @@ export default function AgendamentoEditModal({
             setItensPersonalizados([]);
           }
         }
+
+        setDadosCarregados(true);
       }
     };
 
+    // Reset quando o modal fechar
+    if (!open) {
+      setDadosCarregados(false);
+    }
+
     carregarDadosModal();
-  }, [agendamento, carregarAgendamentoPorCliente]);
+  }, [agendamento, open, dadosCarregados, carregarAgendamentoPorCliente]);
 
   // Limpar itens quando tipo de pedido muda para Padrão
   useEffect(() => {

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useSupabaseProdutos } from './useSupabaseProdutos';
 import { useClientesCategorias } from './useClientesCategorias';
 
@@ -14,14 +14,21 @@ export const useProdutosPorCategoria = (clienteId?: string) => {
   const [categoriasCliente, setCategoriasCliente] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [carregado, setCarregado] = useState(false);
 
   const { produtos } = useSupabaseProdutos();
   const { carregarCategoriasCliente } = useClientesCategorias();
 
-  const carregarDados = useCallback(async () => {
+  const carregarDados = useCallback(async (forceReload = false) => {
     if (!clienteId) {
       setProdutosFiltrados([]);
       setCategoriasCliente([]);
+      setCarregado(false);
+      return;
+    }
+
+    // Se já carregou e não é um reload forçado, não recarrega
+    if (carregado && !forceReload) {
       return;
     }
 
@@ -49,6 +56,8 @@ export const useProdutosPorCategoria = (clienteId?: string) => {
       } else {
         setProdutosFiltrados([]);
       }
+
+      setCarregado(true);
     } catch (err) {
       console.error('❌ Erro ao carregar dados:', err);
       setError('Erro ao carregar produtos');
@@ -57,26 +66,11 @@ export const useProdutosPorCategoria = (clienteId?: string) => {
     } finally {
       setLoading(false);
     }
-  }, [clienteId, carregarCategoriasCliente]);
+  }, [clienteId, carregarCategoriasCliente, produtos]);
 
-  // Efeito separado para reagir a mudanças nos produtos
-  useEffect(() => {
-    if (clienteId && categoriasCliente.length > 0 && produtos.length > 0) {
-      const produtosFiltrados = produtos
-        .filter(produto => produto.ativo && categoriasCliente.includes(produto.categoria_id || 0))
-        .map(produto => ({
-          id: produto.id,
-          nome: produto.nome,
-          categoriaId: produto.categoria_id || 0
-        }));
-      
-      console.log('📦 Produtos atualizados:', produtosFiltrados);
-      setProdutosFiltrados(produtosFiltrados);
-    }
-  }, [produtos, categoriasCliente, clienteId]);
-
-  useEffect(() => {
-    carregarDados();
+  // Função para recarregar manualmente
+  const recarregar = useCallback(() => {
+    carregarDados(true);
   }, [carregarDados]);
 
   return {
@@ -84,6 +78,8 @@ export const useProdutosPorCategoria = (clienteId?: string) => {
     categoriasCliente,
     loading,
     error,
-    recarregar: carregarDados
+    carregado,
+    carregarDados,
+    recarregar
   };
 };
