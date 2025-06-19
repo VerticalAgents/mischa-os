@@ -1,7 +1,8 @@
-
 import { useState } from 'react';
 import { Cliente, DiaSemana } from '@/types';
-import { useConfigStore } from '@/hooks/useConfigStore';
+import { useSupabaseRepresentantes } from '@/hooks/useSupabaseRepresentantes';
+import { useSupabaseRotasEntrega } from '@/hooks/useSupabaseRotasEntrega';
+import { useSupabaseCategoriasEstabelecimento } from '@/hooks/useSupabaseCategoriasEstabelecimento';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/common/StatusBadge";
@@ -11,15 +12,13 @@ interface ClienteDetalhesInfoProps {
 }
 
 export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProps) {
-  const { 
-    representantes,
-    rotasEntrega,
-    categoriasEstabelecimento 
-  } = useConfigStore();
+  const { representantes } = useSupabaseRepresentantes();
+  const { rotasEntrega } = useSupabaseRotasEntrega();
+  const { categorias } = useSupabaseCategoriasEstabelecimento();
 
   const representante = representantes.find(r => r.id === cliente.representanteId);
   const rota = rotasEntrega.find(r => r.id === cliente.rotaEntregaId);
-  const categoria = categoriasEstabelecimento.find(c => c.id === cliente.categoriaEstabelecimentoId);
+  const categoria = categorias.find(c => c.id === cliente.categoriaEstabelecimentoId);
   
   // Helper para formatar a periodicidade em texto
   const formatPeriodicidade = (dias: number): string => {
