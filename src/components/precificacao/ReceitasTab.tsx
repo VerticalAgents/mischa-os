@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useSupabaseReceitas, ReceitaCompleta } from "@/hooks/useSupabaseReceitas";
+import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,6 +23,7 @@ import EditarReceitaModal from "./EditarReceitaModal";
 
 export default function ReceitasTab() {
   const { receitas, loading, carregarReceitas, removerReceita, duplicarReceita } = useSupabaseReceitas();
+  const { insumos } = useSupabaseInsumos();
   const [editandoReceita, setEditandoReceita] = useState<ReceitaCompleta | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -46,6 +48,32 @@ export default function ReceitasTab() {
   const fecharEdicaoReceita = () => {
     setEditandoReceita(null);
     setIsEditModalOpen(false);
+  };
+
+  // Função para calcular o custo unitário correto de um insumo
+  const calcularCustoUnitarioInsumo = (insumoId: string) => {
+    const insumo = insumos.find(i => i.id === insumoId);
+    if (!insumo) return 0;
+    return insumo.volume_bruto > 0 ? insumo.custo_medio / insumo.volume_bruto : 0;
+  };
+
+  // Função para calcular o custo total correto de uma receita
+  const calcularCustoTotalReceita = (receita: ReceitaCompleta) => {
+    return receita.itens.reduce((total, item) => {
+      const custoUnitario = calcularCustoUnitarioInsumo(item.insumo_id);
+      return total + (custoUnitario * item.quantidade);
+    }, 0);
+  };
+
+  // Função para calcular o custo unitário da receita
+  const calcularCustoUnitarioReceita = (receita: ReceitaCompleta) => {
+    const custoTotal = calcularCustoTotalReceita(receita);
+    return receita.rendimento > 0 ? custoTotal / receita.rendimento : 0;
+  };
+
+  // Função para calcular o peso total da receita
+  const calcularPesoTotalReceita = (receita: ReceitaCompleta) => {
+    return receita.itens.reduce((total, item) => total + item.quantidade, 0);
   };
 
   return (
@@ -84,47 +112,53 @@ export default function ReceitasTab() {
                   </TableCell>
                 </TableRow>
               ) : (
-                receitas.map((receita) => (
-                  <TableRow key={receita.id}>
-                    <TableCell className="font-medium">{receita.nome}</TableCell>
-                    <TableCell>
-                      {receita.rendimento} {receita.unidade_rendimento}
-                    </TableCell>
-                    <TableCell>{receita.peso_total.toFixed(2)}g</TableCell>
-                    <TableCell className="text-right">
-                      R$ {receita.custo_total.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      R$ {receita.custo_unitario.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDuplicarReceita(receita)}
-                          title="Duplicar receita"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => abrirEdicaoReceita(receita)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRemoverReceita(receita.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                receitas.map((receita) => {
+                  const custoTotal = calcularCustoTotalReceita(receita);
+                  const custoUnitario = calcularCustoUnitarioReceita(receita);
+                  const pesoTotal = calcularPesoTotalReceita(receita);
+                  
+                  return (
+                    <TableRow key={receita.id}>
+                      <TableCell className="font-medium">{receita.nome}</TableCell>
+                      <TableCell>
+                        {receita.rendimento} {receita.unidade_rendimento}
+                      </TableCell>
+                      <TableCell>{pesoTotal.toFixed(2)}g</TableCell>
+                      <TableCell className="text-right">
+                        R$ {custoTotal.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        R$ {custoUnitario.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDuplicarReceita(receita)}
+                            title="Duplicar receita"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => abrirEdicaoReceita(receita)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemoverReceita(receita.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
