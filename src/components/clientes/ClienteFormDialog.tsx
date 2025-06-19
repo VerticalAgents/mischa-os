@@ -162,8 +162,31 @@ export default function ClienteFormDialog({
     } else if (open && !clienteId) {
       // Reset para novo cliente
       setPrecosCategoria([]);
+      form.reset({
+        nome: "",
+        cnpjCpf: "",
+        enderecoEntrega: "",
+        contatoNome: "",
+        contatoTelefone: "",
+        contatoEmail: "",
+        quantidadePadrao: 20,
+        periodicidadePadrao: 7,
+        statusCliente: "A ativar",
+        observacoes: "",
+        janelasEntrega: ['Seg', 'Qua', 'Sex'],
+        representanteId: representantes.length > 0 ? representantes[0].id : undefined,
+        rotaEntregaId: rotasEntrega.length > 0 ? rotasEntrega[0].id : undefined,
+        categoriaEstabelecimentoId: categorias.length > 0 ? categorias[0].id : undefined,
+        instrucoesEntrega: "",
+        contabilizarGiroMedio: true,
+        tipoLogistica: "Própria",
+        emiteNotaFiscal: true,
+        tipoCobranca: "À vista",
+        formaPagamento: "Boleto",
+        categoriasHabilitadas: [1],
+      });
     }
-  }, [clienteId, open, getClientePorId, form, carregarPrecosPorCliente]);
+  }, [clienteId, open, getClientePorId, form, carregarPrecosPorCliente, representantes, rotasEntrega, categorias]);
 
   const onSubmit = async (data: ClienteFormValues) => {
     setIsSubmitting(true);

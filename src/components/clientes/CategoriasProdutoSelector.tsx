@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useCategoriaStore } from "@/hooks/useCategoriaStore";
+import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,7 +15,7 @@ export default function CategoriasProdutoSelector({
   value, 
   onChange 
 }: CategoriasProdutoSelectorProps) {
-  const { categorias } = useCategoriaStore();
+  const { categorias } = useSupabaseCategoriasProduto();
   const [categoriasHabilitadas, setCategoriasHabilitadas] = useState<number[]>(value || []);
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export default function CategoriasProdutoSelector({
               />
               <label
                 htmlFor={`categoria-${categoria.id}`}
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
               >
                 {categoria.nome}
               </label>

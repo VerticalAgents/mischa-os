@@ -1,6 +1,10 @@
 
+-- Adicionar campo categorias_habilitadas na tabela clientes
+ALTER TABLE public.clientes 
+ADD COLUMN IF NOT EXISTS categorias_habilitadas JSONB DEFAULT '[1]'::jsonb;
+
 -- Criar tabela para armazenar preços por categoria de produto por cliente
-CREATE TABLE public.precos_categoria_cliente (
+CREATE TABLE IF NOT EXISTS public.precos_categoria_cliente (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   cliente_id UUID NOT NULL REFERENCES public.clientes(id) ON DELETE CASCADE,
   categoria_id INTEGER NOT NULL REFERENCES public.categorias_produto(id) ON DELETE CASCADE,

@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { Cliente, StatusCliente } from '../types';
@@ -72,7 +71,7 @@ function convertSupabaseToCliente(data: any, agendamento?: any): Cliente {
     observacoes: data.observacoes,
     categoriaId: 1, // Default value
     subcategoriaId: 1, // Default value
-    categoriasHabilitadas: [1] // Default value
+    categoriasHabilitadas: data.categorias_habilitadas || [1] // Carregar do banco ou default
   };
 }
 
@@ -104,7 +103,8 @@ function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>)
     emite_nota_fiscal: cliente.emiteNotaFiscal !== undefined ? cliente.emiteNotaFiscal : true,
     tipo_cobranca: cliente.tipoCobranca || 'À vista',
     forma_pagamento: cliente.formaPagamento || 'Boleto',
-    observacoes: cliente.observacoes || null
+    observacoes: cliente.observacoes || null,
+    categorias_habilitadas: cliente.categoriasHabilitadas || [1] // Salvar categorias habilitadas
   };
 }
 
@@ -266,6 +266,7 @@ export const useClienteStore = create<ClienteStore>()(
           if (dadosCliente.tipoCobranca !== undefined) dadosSupabase.tipo_cobranca = dadosCliente.tipoCobranca;
           if (dadosCliente.formaPagamento !== undefined) dadosSupabase.forma_pagamento = dadosCliente.formaPagamento;
           if (dadosCliente.observacoes !== undefined) dadosSupabase.observacoes = dadosCliente.observacoes;
+          if (dadosCliente.categoriasHabilitadas !== undefined) dadosSupabase.categorias_habilitadas = dadosCliente.categoriasHabilitadas;
 
           console.log('Atualizando cliente com dados:', dadosSupabase);
 

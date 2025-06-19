@@ -30,12 +30,14 @@ export default function PrecosPorCategoriaSelector({
 
   // Notificar mudanças para o componente pai
   useEffect(() => {
-    const precosArray = Object.entries(precos).map(([categoriaId, preco]) => ({
-      categoria_id: Number(categoriaId),
-      preco_unitario: preco
-    }));
+    const precosArray = Object.entries(precos)
+      .filter(([categoriaId, preco]) => categoriasHabilitadas.includes(Number(categoriaId)) && preco > 0)
+      .map(([categoriaId, preco]) => ({
+        categoria_id: Number(categoriaId),
+        preco_unitario: preco
+      }));
     onChange(precosArray);
-  }, [precos, onChange]);
+  }, [precos, onChange, categoriasHabilitadas]);
 
   const handlePrecoChange = (categoriaId: number, valor: string) => {
     const preco = parseFloat(valor) || 0;
