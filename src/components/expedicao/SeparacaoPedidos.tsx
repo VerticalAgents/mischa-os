@@ -386,13 +386,16 @@ export const SeparacaoPedidos = () => {
                         ultimaDataReposicaoEfetiva: null,
                         proximaDataReposicao: null,
                         observacoes: '',
-                        contatos: [],
-                        formasPagamento: [],
-                        tiposCobranca: [],
-                        tiposLogistica: [],
                         instrucoesEntrega: '',
                         cnpjCpf: '',
-                        emiteNotaFiscal: true
+                        emiteNotaFiscal: true,
+                        ativo: true,
+                        contabilizarGiroMedio: true,
+                        tipoLogistica: 'Própria',
+                        tipoCobranca: 'À vista',
+                        formaPagamento: 'Boleto',
+                        categoriaId: 1,
+                        subcategoriaId: 1
                       }
                     }}
                     onMarcarSeparado={confirmarSeparacao}
@@ -440,13 +443,16 @@ export const SeparacaoPedidos = () => {
                         ultimaDataReposicaoEfetiva: null,
                         proximaDataReposicao: null,
                         observacoes: '',
-                        contatos: [],
-                        formasPagamento: [],
-                        tiposCobranca: [],
-                        tiposLogistica: [],
                         instrucoesEntrega: '',
                         cnpjCpf: '',
-                        emiteNotaFiscal: true
+                        emiteNotaFiscal: true,
+                        ativo: true,
+                        contabilizarGiroMedio: true,
+                        tipoLogistica: 'Própria',
+                        tipoCobranca: 'À vista',
+                        formaPagamento: 'Boleto',
+                        categoriaId: 1,
+                        subcategoriaId: 1
                       }
                     }}
                     onMarcarSeparado={confirmarSeparacao}
@@ -494,13 +500,16 @@ export const SeparacaoPedidos = () => {
                         ultimaDataReposicaoEfetiva: null,
                         proximaDataReposicao: null,
                         observacoes: '',
-                        contatos: [],
-                        formasPagamento: [],
-                        tiposCobranca: [],
-                        tiposLogistica: [],
                         instrucoesEntrega: '',
                         cnpjCpf: '',
-                        emiteNotaFiscal: true
+                        emiteNotaFiscal: true,
+                        ativo: true,
+                        contabilizarGiroMedio: true,
+                        tipoLogistica: 'Própria',
+                        tipoCobranca: 'À vista',
+                        formaPagamento: 'Boleto',
+                        categoriaId: 1,
+                        subcategoriaId: 1
                       }
                     }}
                     onMarcarSeparado={confirmarSeparacao}
@@ -548,13 +557,16 @@ export const SeparacaoPedidos = () => {
                         ultimaDataReposicaoEfetiva: null,
                         proximaDataReposicao: null,
                         observacoes: '',
-                        contatos: [],
-                        formasPagamento: [],
-                        tiposCobranca: [],
-                        tiposLogistica: [],
                         instrucoesEntrega: '',
                         cnpjCpf: '',
-                        emiteNotaFiscal: true
+                        emiteNotaFiscal: true,
+                        ativo: true,
+                        contabilizarGiroMedio: true,
+                        tipoLogistica: 'Própria',
+                        tipoCobranca: 'À vista',
+                        formaPagamento: 'Boleto',
+                        categoriaId: 1,
+                        subcategoriaId: 1
                       }
                     }}
                     onMarcarSeparado={confirmarSeparacao}
