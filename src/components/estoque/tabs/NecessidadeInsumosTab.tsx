@@ -20,13 +20,11 @@ import {
   ChefHat,
   List,
   BarChart3,
-  CheckCircle2,
-  ExternalLink
+  CheckCircle2
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNecessidadeInsumos } from "@/hooks/useNecessidadeInsumos";
-import { useAuditoriaPCPData } from "@/hooks/useAuditoriaPCPData";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useSupabaseReceitas } from "@/hooks/useSupabaseReceitas";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
@@ -42,18 +40,16 @@ export default function NecessidadeInsumosTab() {
     necessidadeInsumos, 
     resumoCalculo, 
     loading, 
-    calcularNecessidadeInsumos 
+    calcularNecessidadeInsumos,
+    dadosAuditoria
   } = useNecessidadeInsumos();
 
-  const { dadosAuditoria, processarDadosAuditoria } = useAuditoriaPCPData();
   const { produtos } = useSupabaseProdutos();
   const { receitas } = useSupabaseReceitas();
   const { insumos } = useSupabaseInsumos();
 
   const handleCalcular = async () => {
-    // Primeiro processar os dados de auditoria para o período
-    await processarDadosAuditoria(dataInicio, dataFim, '', 'todos');
-    // Depois calcular necessidade de insumos
+    // Usar o filtro local diretamente
     calcularNecessidadeInsumos(dataInicio, dataFim);
     setMostrarDetalhes(true);
   };
@@ -156,7 +152,8 @@ export default function NecessidadeInsumosTab() {
       if (data.producao > 0) {
         const receita = receitas.find(r => r.nome === nomeProduto);
         if (receita) {
-          const numeroReceitas = Math.ceil(data.producao / receita.rendimento);
+          // CORREÇÃO: Dividir por 40 unidades por receita
+          const numeroReceitas = Math.ceil(data.producao / 40);
           receitasNecessarias.set(nomeProduto, {
             producao: data.producao,
             receitas: numeroReceitas,
@@ -226,7 +223,7 @@ export default function NecessidadeInsumosTab() {
     {
       numero: 1,
       titulo: "Leitura dos Agendamentos",
-      origem: "PCP > Auditoria PCP",
+      origem: "Filtro local do período",
       icone: Calendar,
       concluida: !!dadosEtapas?.agendamentos
     },
@@ -240,7 +237,7 @@ export default function NecessidadeInsumosTab() {
     {
       numero: 3,
       titulo: "Cálculo das Receitas Necessárias",
-      origem: "Precificação > Receitas",
+      origem: "40 unidades por receita",
       icone: ChefHat,
       concluida: !!dadosEtapas?.receitasNecessarias
     },
@@ -541,13 +538,13 @@ export default function NecessidadeInsumosTab() {
 
                         {etapa.numero === 3 && dadosEtapas?.receitasNecessarias && (
                           <div>
-                            <h5 className="font-medium mb-3">Receitas Necessárias</h5>
+                            <h5 className="font-medium mb-3">Receitas Necessárias (40 unidades/receita)</h5>
                             <div className="space-y-2">
                               {Object.entries(dadosEtapas.receitasNecessarias).map(([produto, dados]) => (
                                 <div key={produto} className="p-3 border rounded-lg">
                                   <div className="font-medium">{produto}</div>
                                   <div className="text-sm text-muted-foreground mt-1">
-                                    {dados.producao} unidades ÷ {dados.receita?.rendimento || 40} = 
+                                    {dados.producao} unidades ÷ 40 = 
                                     <span className="font-medium text-foreground"> {dados.receitas} receitas</span>
                                   </div>
                                 </div>

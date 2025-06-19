@@ -1,9 +1,10 @@
 
 import { useState, useCallback, useMemo } from 'react';
-import { useAuditoriaPCPData } from './useAuditoriaPCPData';
+import { useAgendamentoClienteStore } from './useAgendamentoClienteStore';
 import { useSupabaseReceitas } from './useSupabaseReceitas';
 import { useSupabaseInsumos } from './useSupabaseInsumos';
 import { useSupabaseProdutos } from './useSupabaseProdutos';
+import { useProporoesPadrao } from './useProporoesPadrao';
 import { format } from 'date-fns';
 
 export interface NecessidadeInsumo {
@@ -26,11 +27,128 @@ export const useNecessidadeInsumos = () => {
     totalInsumos: number;
     valorTotalCompra: number;
   } | null>(null);
+  const [dadosAuditoria, setDadosAuditoria] = useState<any[]>([]);
 
-  const { processarDadosAuditoria, dadosAuditoria } = useAuditoriaPCPData();
+  const { agendamentos, agendamentosCompletos } = useAgendamentoClienteStore();
   const { receitas } = useSupabaseReceitas();
   const { insumos } = useSupabaseInsumos();
   const { produtos } = useSupabaseProdutos();
+  const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
+
+  // Processar agendamentos para o período específico (otimizado)
+  const processarAgendamentosLocal = useCallback(async (
+    dataInicio: string,
+    dataFim: string
+  ) => {
+    console.log('🔄 Processando agendamentos para período:', dataInicio, 'até', dataFim);
+    
+    if (!agendamentos || agendamentos.length === 0) {
+      console.log('❌ Nenhum agendamento disponível');
+      return [];
+    }
+
+    const inicio = new Date(dataInicio);
+    const fim = new Date(dataFim);
+
+    // Filtrar agendamentos pelo período local
+    const agendamentosFiltrados = agendamentos.filter(agendamento => {
+      try {
+        const dataReposicao = new Date(agendamento.dataReposicao);
+        return dataReposicao >= inicio && dataReposicao <= fim;
+      } catch (error) {
+        console.error('❌ Erro ao filtrar agendamento:', agendamento.cliente.nome, error);
+        return false;
+      }
+    });
+
+    console.log('📋 Agendamentos filtrados:', agendamentosFiltrados.length);
+
+    // Processar cada agendamento
+    const dadosProcessados = [];
+    
+    for (const agendamento of agendamentosFiltrados) {
+      const quantidadesPorProduto: Record<string, number> = {};
+      
+      // Inicializar produtos ativos
+      produtos.forEach(produto => {
+        if (produto.ativo) {
+          quantidadesPorProduto[produto.nome] = 0;
+        }
+      });
+
+      try {
+        // Usar cache primeiro
+        const agendamentoCompleto = agendamentosCompletos.get(agendamento.cliente.id);
+        
+        if (agendamentoCompleto) {
+          if (agendamentoCompleto.tipo_pedido === 'Alterado' && 
+              agendamentoCompleto.itens_personalizados && 
+              agendamentoCompleto.itens_personalizados.length > 0) {
+            
+            agendamentoCompleto.itens_personalizados.forEach((item: any) => {
+              if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
+                quantidadesPorProduto[item.produto] = item.quantidade;
+              }
+            });
+          } else if (agendamentoCompleto.tipo_pedido === 'Padrão') {
+            const quantidadeTotal = agendamentoCompleto.quantidade_total;
+            
+            if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
+              const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
+              
+              quantidadesCalculadas.forEach((item: any) => {
+                if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
+                  quantidadesPorProduto[item.produto] = item.quantidade;
+                }
+              });
+            }
+          }
+        } else {
+          // Fallback
+          if (agendamento.pedido && 
+              agendamento.pedido.tipoPedido === 'Alterado' && 
+              agendamento.pedido.itensPedido && 
+              agendamento.pedido.itensPedido.length > 0) {
+            
+            agendamento.pedido.itensPedido.forEach((item: any) => {
+              const nomeProduto = item.nomeSabor || (item.sabor && item.sabor.nome);
+              const quantidade = item.quantidadeSabor || 0;
+              
+              if (nomeProduto && quantidade > 0 && quantidadesPorProduto.hasOwnProperty(nomeProduto)) {
+                quantidadesPorProduto[nomeProduto] = quantidade;
+              }
+            });
+          } else {
+            const quantidadeTotal = agendamento.cliente.quantidadePadrao || 0;
+            
+            if (quantidadeTotal > 0 && temProporcoesConfiguradas()) {
+              const quantidadesCalculadas = await calcularQuantidadesPorProporcao(quantidadeTotal);
+              
+              quantidadesCalculadas.forEach((item: any) => {
+                if (quantidadesPorProduto.hasOwnProperty(item.produto)) {
+                  quantidadesPorProduto[item.produto] = item.quantidade;
+                }
+              });
+            }
+          }
+        }
+
+        dadosProcessados.push({
+          clienteNome: agendamento.cliente.nome,
+          statusAgendamento: agendamento.statusAgendamento,
+          dataReposicao: agendamento.dataReposicao,
+          statusCliente: agendamento.cliente.statusCliente || 'Ativo',
+          quantidadesPorProduto
+        });
+
+      } catch (error) {
+        console.error('❌ Erro ao processar agendamento:', agendamento.cliente.nome, error);
+      }
+    }
+
+    console.log('✅ Dados processados:', dadosProcessados.length);
+    return dadosProcessados;
+  }, [agendamentos, agendamentosCompletos, produtos, calcularQuantidadesPorProporcao, temProporcoesConfiguradas]);
 
   const calcularNecessidadeInsumos = useCallback(async (
     dataInicio: string,
@@ -41,22 +159,23 @@ export const useNecessidadeInsumos = () => {
     try {
       console.log('🔄 Iniciando cálculo de necessidade de insumos...');
       
-      // Paso 1: Buscar agendamentos do período
-      await processarDadosAuditoria(dataInicio, dataFim, '', 'todos');
+      // Processar agendamentos com filtro local
+      const dadosProcessados = await processarAgendamentosLocal(dataInicio, dataFim);
+      setDadosAuditoria(dadosProcessados);
       
-      if (!dadosAuditoria || dadosAuditoria.length === 0) {
+      if (!dadosProcessados || dadosProcessados.length === 0) {
         console.log('❌ Nenhum agendamento encontrado para o período');
         setNecessidadeInsumos([]);
         setResumoCalculo(null);
         return;
       }
 
-      console.log('📊 Agendamentos encontrados:', dadosAuditoria.length);
+      console.log('📊 Agendamentos encontrados:', dadosProcessados.length);
 
-      // Paso 2: Consolidar quantidades por produto
+      // Consolidar quantidades por produto
       const quantidadesPorProduto = new Map<string, number>();
       
-      dadosAuditoria.forEach(agendamento => {
+      dadosProcessados.forEach(agendamento => {
         Object.entries(agendamento.quantidadesPorProduto).forEach(([nomeProduto, quantidade]) => {
           if (quantidade > 0) {
             const atual = quantidadesPorProduto.get(nomeProduto) || 0;
@@ -67,7 +186,7 @@ export const useNecessidadeInsumos = () => {
 
       console.log('📦 Produtos consolidados:', Object.fromEntries(quantidadesPorProduto));
 
-      // Paso 3: Subtrair estoque atual de produtos
+      // Subtrair estoque atual de produtos
       const necessidadeProducao = new Map<string, number>();
       
       quantidadesPorProduto.forEach((quantidadeNecessaria, nomeProduto) => {
@@ -82,7 +201,7 @@ export const useNecessidadeInsumos = () => {
 
       console.log('🏭 Necessidade de produção:', Object.fromEntries(necessidadeProducao));
 
-      // Paso 4: Calcular necessidade de insumos por receita
+      // Calcular necessidade de insumos por receita
       const necessidadeInsumosPorId = new Map<string, {
         nome: string;
         unidade: string;
@@ -100,11 +219,11 @@ export const useNecessidadeInsumos = () => {
           return;
         }
 
-        // Cada receita gera 40 unidades
-        const numeroReceitas = Math.ceil(quantidadeNecessaria / receita.rendimento);
+        // CORREÇÃO: Cada receita gera 40 unidades (não usar receita.rendimento)
+        const numeroReceitas = Math.ceil(quantidadeNecessaria / 40);
         totalReceitas += numeroReceitas;
         
-        console.log(`📝 ${nomeProduto}: ${quantidadeNecessaria} unidades = ${numeroReceitas} receitas`);
+        console.log(`📝 ${nomeProduto}: ${quantidadeNecessaria} unidades = ${numeroReceitas} receitas (40 unidades/receita)`);
 
         receita.itens.forEach(item => {
           const quantidadeItem = item.quantidade * numeroReceitas;
@@ -127,7 +246,7 @@ export const useNecessidadeInsumos = () => {
         });
       });
 
-      // Paso 5: Subtrair estoque atual de insumos e calcular o que comprar
+      // Subtrair estoque atual de insumos e calcular o que comprar
       const necessidadeFinal: NecessidadeInsumo[] = [];
       let valorTotalCompra = 0;
 
@@ -174,12 +293,13 @@ export const useNecessidadeInsumos = () => {
     } finally {
       setLoading(false);
     }
-  }, [processarDadosAuditoria, dadosAuditoria, receitas, insumos, produtos]);
+  }, [processarAgendamentosLocal, receitas, insumos, produtos]);
 
   return {
     necessidadeInsumos,
     resumoCalculo,
     loading,
-    calcularNecessidadeInsumos
+    calcularNecessidadeInsumos,
+    dadosAuditoria
   };
 };
