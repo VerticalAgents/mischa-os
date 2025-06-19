@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,12 +45,15 @@ export default function NecessidadeInsumosTab() {
     calcularNecessidadeInsumos 
   } = useNecessidadeInsumos();
 
-  const { dadosAuditoria } = useAuditoriaPCPData();
+  const { dadosAuditoria, processarDadosAuditoria } = useAuditoriaPCPData();
   const { produtos } = useSupabaseProdutos();
   const { receitas } = useSupabaseReceitas();
   const { insumos } = useSupabaseInsumos();
 
-  const handleCalcular = () => {
+  const handleCalcular = async () => {
+    // Primeiro processar os dados de auditoria para o período
+    await processarDadosAuditoria(dataInicio, dataFim, '', 'todos');
+    // Depois calcular necessidade de insumos
     calcularNecessidadeInsumos(dataInicio, dataFim);
     setMostrarDetalhes(true);
   };
@@ -119,6 +121,7 @@ export default function NecessidadeInsumosTab() {
       clienteNome: agendamento.clienteNome,
       dataReposicao: agendamento.dataReposicao,
       statusAgendamento: agendamento.statusAgendamento,
+      statusCliente: agendamento.statusCliente,
       produtos: Object.entries(agendamento.quantidadesPorProduto)
         .filter(([, quantidade]) => quantidade > 0)
         .map(([nomeProduto, quantidade]) => ({ nomeProduto, quantidade }))
@@ -135,7 +138,6 @@ export default function NecessidadeInsumosTab() {
       });
     });
 
-    // Etapa 2: Necessidade de produção (subtraindo estoque)
     const necessidadeProducao = new Map<string, { necessaria: number, estoque: number, producao: number }>();
     quantidadesPorProduto.forEach((quantidadeNecessaria, nomeProduto) => {
       const produto = produtos.find(p => p.nome === nomeProduto);
@@ -149,7 +151,6 @@ export default function NecessidadeInsumosTab() {
       });
     });
 
-    // Etapa 3: Receitas necessárias
     const receitasNecessarias = new Map<string, { producao: number, receitas: number, receita?: any }>();
     necessidadeProducao.forEach((data, nomeProduto) => {
       if (data.producao > 0) {
@@ -165,7 +166,6 @@ export default function NecessidadeInsumosTab() {
       }
     });
 
-    // Etapa 4: Insumos por receita
     const insumosPorReceita = new Map<string, Map<string, { quantidade: number, unidade: string }>>();
     receitasNecessarias.forEach((data, nomeProduto) => {
       if (data.receita) {
@@ -184,7 +184,6 @@ export default function NecessidadeInsumosTab() {
       }
     });
 
-    // Etapa 5: Consolidação total
     const consolidacaoInsumos = new Map<string, { nome: string, quantidade: number, unidade: string }>();
     insumosPorReceita.forEach((insumosReceita) => {
       insumosReceita.forEach((data, insumoId) => {
@@ -473,9 +472,9 @@ export default function NecessidadeInsumosTab() {
                                       <TableRow>
                                         <TableHead>Cliente</TableHead>
                                         <TableHead>Data</TableHead>
-                                        <TableHead>Status</TableHead>
+                                        <TableHead>Status Agendamento</TableHead>
+                                        <TableHead>Status Cliente</TableHead>
                                         <TableHead>Produtos</TableHead>
-                                        <TableHead className="w-12"></TableHead>
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -496,6 +495,14 @@ export default function NecessidadeInsumosTab() {
                                             </Badge>
                                           </TableCell>
                                           <TableCell>
+                                            <Badge 
+                                              variant={agendamento.statusCliente === 'Ativo' ? 'default' : 'outline'}
+                                              className="text-xs"
+                                            >
+                                              {agendamento.statusCliente}
+                                            </Badge>
+                                          </TableCell>
+                                          <TableCell>
                                             <div className="space-y-1">
                                               {agendamento.produtos.map((produto, prodIndex) => (
                                                 <div key={prodIndex} className="flex justify-between text-xs bg-gray-50 p-1 rounded">
@@ -504,11 +511,6 @@ export default function NecessidadeInsumosTab() {
                                                 </div>
                                               ))}
                                             </div>
-                                          </TableCell>
-                                          <TableCell>
-                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                              <ExternalLink className="h-3 w-3" />
-                                            </Button>
                                           </TableCell>
                                         </TableRow>
                                       ))}
