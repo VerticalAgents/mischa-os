@@ -21,9 +21,11 @@ import {
   ChefHat,
   List,
   BarChart3,
-  CheckCircle2
+  CheckCircle2,
+  ExternalLink
 } from "lucide-react";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { useNecessidadeInsumos } from "@/hooks/useNecessidadeInsumos";
 import { useAuditoriaPCPData } from "@/hooks/useAuditoriaPCPData";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
@@ -112,7 +114,17 @@ export default function NecessidadeInsumosTab() {
   const calcularDadosEtapas = () => {
     if (!dadosAuditoria || dadosAuditoria.length === 0) return null;
 
-    // Etapa 1: Agendamentos
+    // Etapa 1: Agendamentos - Lista detalhada dos agendamentos encontrados
+    const agendamentosDetalhados = dadosAuditoria.map(agendamento => ({
+      clienteNome: agendamento.clienteNome,
+      dataReposicao: agendamento.dataReposicao,
+      statusAgendamento: agendamento.statusAgendamento,
+      produtos: Object.entries(agendamento.quantidadesPorProduto)
+        .filter(([, quantidade]) => quantidade > 0)
+        .map(([nomeProduto, quantidade]) => ({ nomeProduto, quantidade }))
+    })).filter(agendamento => agendamento.produtos.length > 0);
+
+    // Consolidação por produto
     const quantidadesPorProduto = new Map<string, number>();
     dadosAuditoria.forEach(agendamento => {
       Object.entries(agendamento.quantidadesPorProduto).forEach(([nomeProduto, quantidade]) => {
@@ -188,6 +200,7 @@ export default function NecessidadeInsumosTab() {
     });
 
     return {
+      agendamentosDetalhados,
       agendamentos: Object.fromEntries(quantidadesPorProduto),
       necessidadeProducao: Object.fromEntries(necessidadeProducao),
       receitasNecessarias: Object.fromEntries(receitasNecessarias),
@@ -426,16 +439,84 @@ export default function NecessidadeInsumosTab() {
                     <Card className="ml-11 mt-2">
                       <CardContent className="pt-4">
                         {etapa.numero === 1 && dadosEtapas?.agendamentos && (
-                          <div>
-                            <h5 className="font-medium mb-3">Agendamentos do Período</h5>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                              {Object.entries(dadosEtapas.agendamentos).map(([produto, quantidade]) => (
-                                <div key={produto} className="flex justify-between p-2 bg-blue-50 rounded">
-                                  <span className="text-sm">{produto}</span>
-                                  <Badge variant="secondary">{quantidade} un</Badge>
-                                </div>
-                              ))}
+                          <div className="space-y-6">
+                            {/* Totais Consolidados */}
+                            <div>
+                              <div className="flex items-center gap-2 mb-3">
+                                <h5 className="font-medium">Total por Sabor</h5>
+                                <Badge variant="secondary">
+                                  {Object.keys(dadosEtapas.agendamentos).length} sabores
+                                </Badge>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {Object.entries(dadosEtapas.agendamentos).map(([produto, quantidade]) => (
+                                  <div key={produto} className="flex justify-between p-3 bg-blue-50 rounded border">
+                                    <span className="text-sm font-medium">{produto}</span>
+                                    <Badge variant="default">{quantidade} unidades</Badge>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
+
+                            {/* Lista Detalhada de Agendamentos */}
+                            {dadosEtapas.agendamentosDetalhados && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-3">
+                                  <h5 className="font-medium">Agendamentos Incluídos no Cálculo</h5>
+                                  <Badge variant="outline">
+                                    {dadosEtapas.agendamentosDetalhados.length} agendamentos
+                                  </Badge>
+                                </div>
+                                <div className="max-h-80 overflow-y-auto border rounded-lg">
+                                  <Table>
+                                    <TableHeader className="sticky top-0 bg-background">
+                                      <TableRow>
+                                        <TableHead>Cliente</TableHead>
+                                        <TableHead>Data</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Produtos</TableHead>
+                                        <TableHead className="w-12"></TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {dadosEtapas.agendamentosDetalhados.map((agendamento, index) => (
+                                        <TableRow key={index}>
+                                          <TableCell className="font-medium text-sm">
+                                            {agendamento.clienteNome}
+                                          </TableCell>
+                                          <TableCell className="text-sm">
+                                            {format(agendamento.dataReposicao, "dd/MM/yyyy", { locale: ptBR })}
+                                          </TableCell>
+                                          <TableCell>
+                                            <Badge 
+                                              variant={agendamento.statusAgendamento === 'Agendado' ? 'default' : 'secondary'}
+                                              className="text-xs"
+                                            >
+                                              {agendamento.statusAgendamento}
+                                            </Badge>
+                                          </TableCell>
+                                          <TableCell>
+                                            <div className="space-y-1">
+                                              {agendamento.produtos.map((produto, prodIndex) => (
+                                                <div key={prodIndex} className="flex justify-between text-xs bg-gray-50 p-1 rounded">
+                                                  <span>{produto.nomeProduto}</span>
+                                                  <span className="font-medium">{produto.quantidade}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </TableCell>
+                                          <TableCell>
+                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                              <ExternalLink className="h-3 w-3" />
+                                            </Button>
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 
