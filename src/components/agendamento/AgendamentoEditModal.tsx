@@ -23,11 +23,8 @@ import {
 import { AgendamentoItem } from "./types";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useToast } from "@/hooks/use-toast";
-import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
-import { useProdutoStore } from "@/hooks/useProdutoStore";
-import { useClientesCategorias } from "@/hooks/useClientesCategorias";
 import { TipoPedidoAgendamento } from "@/types";
-import ProdutoSelector from "@/components/clientes/ProdutoSelector";
+import ProdutoQuantidadeSelector from "./ProdutoQuantidadeSelector";
 
 interface AgendamentoEditModalProps {
   open: boolean;
@@ -53,86 +50,9 @@ export default function AgendamentoEditModal({
   const [quantidadeTotal, setQuantidadeTotal] = useState<number>(0);
   const [observacoes, setObservacoes] = useState<string>("");
   const [itensPersonalizados, setItensPersonalizados] = useState<ItemPedidoCustomizado[]>([]);
-  const [categoriasClienteCarregadas, setCategoriasClienteCarregadas] = useState<number[]>([]);
   
   const { salvarAgendamento, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
-  const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
-  const { produtos } = useProdutoStore();
-  const { carregarCategoriasCliente } = useClientesCategorias();
   const { toast } = useToast();
-
-  // Carregar categorias do cliente sempre que o agendamento mudar
-  useEffect(() => {
-    const carregarCategorias = async () => {
-      if (agendamento?.cliente?.id) {
-        try {
-          console.log('🔄 Carregando categorias do cliente no modal:', agendamento.cliente.id);
-          const categorias = await carregarCategoriasCliente(agendamento.cliente.id);
-          console.log('✅ Categorias carregadas no modal:', categorias);
-          setCategoriasClienteCarregadas(categorias);
-        } catch (error) {
-          console.error('❌ Erro ao carregar categorias do cliente no modal:', error);
-          setCategoriasClienteCarregadas([]);
-        }
-      }
-    };
-
-    carregarCategorias();
-  }, [agendamento?.cliente?.id, carregarCategoriasCliente]);
-
-  // Função para calcular distribuição proporcional
-  const calcularDistribuicaoProporcional = async (quantidade: number) => {
-    try {
-      console.log('🎯 Calculando distribuição proporcional no modal para quantidade:', quantidade);
-      console.log('🏷️ Categorias do cliente disponíveis:', categoriasClienteCarregadas);
-      
-      // Filtrar produtos disponíveis para o cliente usando as categorias carregadas
-      const produtosFiltrados = produtos.filter(produto => {
-        if (!categoriasClienteCarregadas || categoriasClienteCarregadas.length === 0) {
-          console.log('⚠️ Nenhuma categoria habilitada, mostrando todos os produtos');
-          return true;
-        }
-        const pertenceCategoria = categoriasClienteCarregadas.includes(produto.categoriaId);
-        console.log(`📦 Produto ${produto.nome} (categoria ${produto.categoriaId}): ${pertenceCategoria ? 'INCLUÍDO' : 'EXCLUÍDO'}`);
-        return pertenceCategoria;
-      });
-
-      console.log('📋 Produtos filtrados para o cliente:', produtosFiltrados.map(p => p.nome));
-      
-      if (produtosFiltrados.length === 0) {
-        console.log('❌ Nenhum produto disponível para as categorias do cliente');
-        return [];
-      }
-      
-      if (temProporcoesConfiguradas()) {
-        console.log('✅ Usando proporções configuradas do sistema');
-        const proporcoes = await calcularQuantidadesPorProporcao(quantidade);
-        
-        // Filtrar apenas produtos disponíveis para o cliente
-        const proporcoesDisponiveis = proporcoes.filter(prop => 
-          produtosFiltrados.some(produto => produto.nome === prop.produto)
-        );
-        
-        if (proporcoesDisponiveis.length > 0) {
-          console.log('📊 Proporções calculadas no modal:', proporcoesDisponiveis);
-          return proporcoesDisponiveis;
-        }
-      }
-      
-      // Fallback: distribuição uniforme entre produtos disponíveis
-      console.log('⚡ Usando distribuição uniforme como fallback no modal');
-      const quantidadePorProduto = Math.floor(quantidade / produtosFiltrados.length);
-      const resto = quantidade % produtosFiltrados.length;
-      
-      return produtosFiltrados.map((produto, index) => ({
-        produto: produto.nome,
-        quantidade: quantidadePorProduto + (index < resto ? 1 : 0)
-      }));
-    } catch (error) {
-      console.error('❌ Erro ao calcular distribuição proporcional no modal:', error);
-      return [];
-    }
-  };
 
   useEffect(() => {
     const carregarDadosModal = async () => {
@@ -185,34 +105,12 @@ export default function AgendamentoEditModal({
     carregarDadosModal();
   }, [agendamento, carregarAgendamentoPorCliente]);
 
-  // Efeito para preencher automaticamente quando tipoPedido muda para 'Alterado'
+  // Limpar itens quando tipo de pedido muda para Padrão
   useEffect(() => {
-    const preencherAutomaticamente = async () => {
-      if (tipoPedido === 'Alterado' && quantidadeTotal > 0 && categoriasClienteCarregadas.length >= 0) {
-        // Só preencher automaticamente se a lista estiver vazia ou com valores zerados
-        const temValoresPreenchidos = itensPersonalizados.some(item => item.quantidade > 0);
-        
-        if (!temValoresPreenchidos || itensPersonalizados.length === 0) {
-          console.log('🔄 Preenchendo automaticamente produtos no modal para tipo Alterado');
-          console.log('🎯 Quantidade total:', quantidadeTotal);
-          console.log('🏷️ Categorias disponíveis:', categoriasClienteCarregadas);
-          
-          const distribuicao = await calcularDistribuicaoProporcional(quantidadeTotal);
-          console.log('📦 Distribuição calculada:', distribuicao);
-          
-          setItensPersonalizados(distribuicao);
-          console.log('✅ Produtos preenchidos automaticamente no modal:', distribuicao);
-        }
-      } else if (tipoPedido === 'Padrão') {
-        setItensPersonalizados([]);
-      }
-    };
-
-    // Só executar se as categorias já foram carregadas
-    if (categoriasClienteCarregadas !== null) {
-      preencherAutomaticamente();
+    if (tipoPedido === 'Padrão') {
+      setItensPersonalizados([]);
     }
-  }, [tipoPedido, quantidadeTotal, categoriasClienteCarregadas]);
+  }, [tipoPedido]);
 
   const somaQuantidadesProdutos = itensPersonalizados.reduce((soma, item) => soma + item.quantidade, 0);
   const hasValidationError = tipoPedido === "Alterado" && somaQuantidadesProdutos !== quantidadeTotal;
@@ -378,10 +276,11 @@ export default function AgendamentoEditModal({
                 </Alert>
               )}
               
-              <ProdutoSelector
+              <ProdutoQuantidadeSelector
                 value={itensPersonalizados}
                 onChange={setItensPersonalizados}
-                categoriasHabilitadas={categoriasClienteCarregadas}
+                clienteId={agendamento.cliente.id}
+                quantidadeTotal={quantidadeTotal}
               />
             </div>
           )}
