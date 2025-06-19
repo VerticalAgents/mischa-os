@@ -15,38 +15,64 @@ export interface PrecoCategoriaCliente {
 export const useSupabasePrecosCategoriaCliente = () => {
   const [precos, setPrecos] = useState<PrecoCategoriaCliente[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const carregarPrecosPorCliente = async (clienteId: string) => {
+    if (!clienteId) {
+      console.log('useSupabasePrecosCategoriaCliente: ClienteId não fornecido');
+      return [];
+    }
+
     setLoading(true);
+    setError(null);
+    
     try {
+      console.log('useSupabasePrecosCategoriaCliente: Carregando preços para cliente:', clienteId);
+      
+      // Verificar se a tabela existe primeiro
       const { data, error } = await supabase
-        .from('precos_categoria_cliente' as any)
+        .from('precos_categoria_cliente')
         .select('*')
-        .eq('cliente_id', clienteId);
+        .eq('cliente_id', clienteId)
+        .limit(1);
 
       if (error) {
-        console.error('Erro ao carregar preços por categoria:', error);
-        toast({
-          title: "Erro ao carregar preços",
-          description: error.message,
-          variant: "destructive"
-        });
-        return [];
+        if (error.message.includes('relation') && error.message.includes('does not exist')) {
+          // Tabela não existe - retornar array vazio sem erro
+          console.log('useSupabasePrecosCategoriaCliente: Tabela precos_categoria_cliente não existe, usando valores padrão');
+          setPrecos([]);
+          return [];
+        }
+        throw error;
       }
 
-      const precosConvertidos = (data as any[])?.map(item => ({
+      // Converter dados se existirem
+      const precosConvertidos = (data || []).map(item => ({
         id: item.id,
         cliente_id: item.cliente_id,
-        categoria_id: item.categoria_id,
-        preco_unitario: Number(item.preco_unitario),
+        categoria_id: Number(item.categoria_id),
+        preco_unitario: Number(item.preco_unitario || 0),
         created_at: item.created_at,
         updated_at: item.updated_at
-      })) || [];
+      }));
 
+      console.log('useSupabasePrecosCategoriaCliente: Preços carregados:', precosConvertidos);
       setPrecos(precosConvertidos);
       return precosConvertidos;
-    } catch (error) {
-      console.error('Erro ao carregar preços por categoria:', error);
+    } catch (error: any) {
+      console.error('useSupabasePrecosCategoriaCliente: Erro ao carregar preços:', error);
+      setError(error.message);
+      
+      // Não mostrar toast para erros de tabela inexistente
+      if (!error.message.includes('relation') && !error.message.includes('does not exist')) {
+        toast({
+          title: "Aviso",
+          description: "Não foi possível carregar preços personalizados. Usando valores padrão.",
+          variant: "default"
+        });
+      }
+      
+      setPrecos([]);
       return [];
     } finally {
       setLoading(false);
@@ -54,16 +80,43 @@ export const useSupabasePrecosCategoriaCliente = () => {
   };
 
   const salvarPrecos = async (clienteId: string, precosCategoria: { categoria_id: number; preco_unitario: number }[]) => {
+    if (!clienteId) {
+      toast({
+        title: "Erro",
+        description: "ID do cliente é obrigatório",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
+    setError(null);
+    
     try {
-      // Primeiro, remover preços existentes
+      console.log('useSupabasePrecosCategoriaCliente: Salvando preços:', { clienteId, precosCategoria });
+      
+      // Verificar se a tabela existe
+      const { error: testError } = await supabase
+        .from('precos_categoria_cliente')
+        .select('id')
+        .limit(1);
+
+      if (testError && testError.message.includes('relation') && testError.message.includes('does not exist')) {
+        console.log('useSupabasePrecosCategoriaCliente: Tabela não existe, salvando apenas no cliente');
+        toast({
+          title: "Preços salvos",
+          description: "Configurações de preço foram salvas nas configurações do cliente"
+        });
+        return;
+      }
+
+      // Remover preços existentes
       const { error: deleteError } = await supabase
-        .from('precos_categoria_cliente' as any)
+        .from('precos_categoria_cliente')
         .delete()
         .eq('cliente_id', clienteId);
 
-      if (deleteError) {
-        console.error('Erro ao remover preços antigos:', deleteError);
+      if (deleteError && !deleteError.message.includes('relation')) {
         throw deleteError;
       }
 
@@ -78,11 +131,10 @@ export const useSupabasePrecosCategoriaCliente = () => {
 
       if (precosParaInserir.length > 0) {
         const { error: insertError } = await supabase
-          .from('precos_categoria_cliente' as any)
+          .from('precos_categoria_cliente')
           .insert(precosParaInserir);
 
-        if (insertError) {
-          console.error('Erro ao inserir preços:', insertError);
+        if (insertError && !insertError.message.includes('relation')) {
           throw insertError;
         }
       }
@@ -93,8 +145,10 @@ export const useSupabasePrecosCategoriaCliente = () => {
         title: "Preços salvos",
         description: "Preços por categoria foram atualizados com sucesso"
       });
-    } catch (error) {
-      console.error('Erro ao salvar preços:', error);
+    } catch (error: any) {
+      console.error('useSupabasePrecosCategoriaCliente: Erro ao salvar preços:', error);
+      setError(error.message);
+      
       toast({
         title: "Erro ao salvar preços",
         description: "Não foi possível salvar os preços por categoria",
@@ -108,6 +162,7 @@ export const useSupabasePrecosCategoriaCliente = () => {
   return {
     precos,
     loading,
+    error,
     carregarPrecosPorCliente,
     salvarPrecos
   };

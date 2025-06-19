@@ -15,27 +15,56 @@ export default function CategoriasProdutoSelector({
   value, 
   onChange 
 }: CategoriasProdutoSelectorProps) {
-  const { categorias } = useSupabaseCategoriasProduto();
+  const { categorias, loading } = useSupabaseCategoriasProduto();
   const [categoriasHabilitadas, setCategoriasHabilitadas] = useState<number[]>([]);
 
   // Sincronizar com o valor recebido como prop
   useEffect(() => {
-    console.log('CategoriasProdutoSelector: Valor recebido:', value);
-    setCategoriasHabilitadas(value || []);
+    console.log('CategoriasProdutoSelector: Sincronizando valor recebido:', value);
+    console.log('CategoriasProdutoSelector: Tipo do valor:', typeof value, Array.isArray(value));
+    
+    const novoValor = Array.isArray(value) ? value : [];
+    setCategoriasHabilitadas(novoValor);
   }, [value]);
 
+  // Debug: mostrar categorias disponíveis
+  useEffect(() => {
+    console.log('CategoriasProdutoSelector: Categorias disponíveis:', categorias);
+    console.log('CategoriasProdutoSelector: Loading categorias:', loading);
+  }, [categorias, loading]);
+
   const handleCategoriaToggle = (categoriaId: number) => {
-    console.log('CategoriasProdutoSelector: Toggling categoria:', categoriaId);
-    console.log('CategoriasProdutoSelector: Estado atual:', categoriasHabilitadas);
+    console.log('CategoriasProdutoSelector: Toggle categoria ID:', categoriaId);
+    console.log('CategoriasProdutoSelector: Estado atual das categorias:', categoriasHabilitadas);
     
     const novasCategorias = categoriasHabilitadas.includes(categoriaId)
       ? categoriasHabilitadas.filter(id => id !== categoriaId)
       : [...categoriasHabilitadas, categoriaId];
     
-    console.log('CategoriasProdutoSelector: Novas categorias:', novasCategorias);
+    console.log('CategoriasProdutoSelector: Novas categorias após toggle:', novasCategorias);
+    
     setCategoriasHabilitadas(novasCategorias);
+    
+    // Chamar onChange para notificar o componente pai
+    console.log('CategoriasProdutoSelector: Chamando onChange com:', novasCategorias);
     onChange(novasCategorias);
   };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Categorias de Produtos Habilitadas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <span className="ml-2 text-sm">Carregando categorias...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -53,26 +82,34 @@ export default function CategoriasProdutoSelector({
         )}
         
         <div className="space-y-3">
-          {categorias.map((categoria) => (
-            <div key={categoria.id} className="flex items-center space-x-2">
-              <Checkbox
-                id={`categoria-${categoria.id}`}
-                checked={categoriasHabilitadas.includes(categoria.id)}
-                onCheckedChange={() => handleCategoriaToggle(categoria.id)}
-              />
-              <label
-                htmlFor={`categoria-${categoria.id}`}
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-              >
-                {categoria.nome}
-              </label>
-              {categoria.descricao && (
-                <span className="text-xs text-muted-foreground">
-                  - {categoria.descricao}
-                </span>
-              )}
-            </div>
-          ))}
+          {categorias.map((categoria) => {
+            const isChecked = categoriasHabilitadas.includes(categoria.id);
+            console.log(`CategoriasProdutoSelector: Categoria ${categoria.nome} (ID: ${categoria.id}) - Checked: ${isChecked}`);
+            
+            return (
+              <div key={categoria.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`categoria-${categoria.id}`}
+                  checked={isChecked}
+                  onCheckedChange={() => {
+                    console.log(`CategoriasProdutoSelector: Checkbox clicado para categoria ${categoria.nome} (ID: ${categoria.id})`);
+                    handleCategoriaToggle(categoria.id);
+                  }}
+                />
+                <label
+                  htmlFor={`categoria-${categoria.id}`}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  {categoria.nome}
+                </label>
+                {categoria.descricao && (
+                  <span className="text-xs text-muted-foreground">
+                    - {categoria.descricao}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
         
         {categorias.length === 0 && (
