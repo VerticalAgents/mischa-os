@@ -360,16 +360,16 @@ export const SeparacaoPedidos = () => {
                   <PedidoCard 
                     key={pedido.id}
                     pedido={{
-                      id: pedido.id,
+                      id: Number(pedido.id),
                       idCliente: pedido.cliente_id,
                       dataPedido: new Date(pedido.data_prevista_entrega),
                       dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
                       statusPedido: 'Agendado',
-                      substatusPedido: pedido.status_separacao || 'Agendado',
+                      substatusPedido: pedido.substatus_pedido || 'Agendado',
                       tipoPedido: pedido.tipo_pedido as any,
                       itensPedido: pedido.itens_personalizados?.map((item: any, index: number) => ({
                         id: index,
-                        idPedido: pedido.id,
+                        idPedido: Number(pedido.id),
                         idSabor: index,
                         nomeSabor: item.nome,
                         quantidadeSabor: item.quantidade,
@@ -379,7 +379,21 @@ export const SeparacaoPedidos = () => {
                       cliente: {
                         id: pedido.cliente_id,
                         nome: pedido.cliente_nome,
-                        enderecoEntrega: pedido.endereco_entrega || ''
+                        enderecoEntrega: pedido.endereco_entrega || '',
+                        quantidadePadrao: 0,
+                        periodicidadePadrao: 7,
+                        statusCliente: 'Ativo',
+                        dataCadastro: new Date(),
+                        dataUltimaReposicao: null,
+                        dataProximaReposicao: null,
+                        observacoes: '',
+                        contatos: [],
+                        formasPagamento: [],
+                        tiposCobranca: [],
+                        tiposLogistica: [],
+                        instrucoesEntrega: '',
+                        cnpjCpf: '',
+                        emiteNotaFiscal: true
                       }
                     }}
                     onMarcarSeparado={confirmarSeparacao}
@@ -400,16 +414,16 @@ export const SeparacaoPedidos = () => {
                   <PedidoCard 
                     key={pedido.id}
                     pedido={{
-                      id: pedido.id,
+                      id: Number(pedido.id),
                       idCliente: pedido.cliente_id,
                       dataPedido: new Date(pedido.data_prevista_entrega),
                       dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
                       statusPedido: 'Agendado',
-                      substatusPedido: pedido.status_separacao || 'Agendado',
+                      substatusPedido: pedido.substatus_pedido || 'Agendado',
                       tipoPedido: pedido.tipo_pedido as any,
                       itensPedido: pedido.itens_personalizados?.map((item: any, index: number) => ({
                         id: index,
-                        idPedido: pedido.id,
+                        idPedido: Number(pedido.id),
                         idSabor: index,
                         nomeSabor: item.nome,
                         quantidadeSabor: item.quantidade,
@@ -419,7 +433,21 @@ export const SeparacaoPedidos = () => {
                       cliente: {
                         id: pedido.cliente_id,
                         nome: pedido.cliente_nome,
-                        enderecoEntrega: pedido.endereco_entrega || ''
+                        enderecoEntrega: pedido.endereco_entrega || '',
+                        quantidadePadrao: 0,
+                        periodicidadePadrao: 7,
+                        statusCliente: 'Ativo',
+                        dataCadastro: new Date(),
+                        dataUltimaReposicao: null,
+                        dataProximaReposicao: null,
+                        observacoes: '',
+                        contatos: [],
+                        formasPagamento: [],
+                        tiposCobranca: [],
+                        tiposLogistica: [],
+                        instrucoesEntrega: '',
+                        cnpjCpf: '',
+                        emiteNotaFiscal: true
                       }
                     }}
                     onMarcarSeparado={confirmarSeparacao}
@@ -440,16 +468,16 @@ export const SeparacaoPedidos = () => {
                   <PedidoCard 
                     key={pedido.id}
                     pedido={{
-                      id: pedido.id,
+                      id: Number(pedido.id),
                       idCliente: pedido.cliente_id,
                       dataPedido: new Date(pedido.data_prevista_entrega),
                       dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
                       statusPedido: 'Agendado',
-                      substatusPedido: pedido.status_separacao || 'Agendado',
+                      substatusPedido: pedido.substatus_pedido || 'Agendado',
                       tipoPedido: pedido.tipo_pedido as any,
                       itensPedido: pedido.itens_personalizados?.map((item: any, index: number) => ({
                         id: index,
-                        idPedido: pedido.id,
+                        idPedido: Number(pedido.id),
                         idSabor: index,
                         nomeSabor: item.nome,
                         quantidadeSabor: item.quantidade,
@@ -459,7 +487,21 @@ export const SeparacaoPedidos = () => {
                       cliente: {
                         id: pedido.cliente_id,
                         nome: pedido.cliente_nome,
-                        enderecoEntrega: pedido.endereco_entrega || ''
+                        enderecoEntrega: pedido.endereco_entrega || '',
+                        quantidadePadrao: 0,
+                        periodicidadePadrao: 7,
+                        statusCliente: 'Ativo',
+                        dataCadastro: new Date(),
+                        dataUltimaReposicao: null,
+                        dataProximaReposicao: null,
+                        observacoes: '',
+                        contatos: [],
+                        formasPagamento: [],
+                        tiposCobranca: [],
+                        tiposLogistica: [],
+                        instrucoesEntrega: '',
+                        cnpjCpf: '',
+                        emiteNotaFiscal: true
                       }
                     }}
                     onMarcarSeparado={confirmarSeparacao}
@@ -480,16 +522,16 @@ export const SeparacaoPedidos = () => {
                   <PedidoCard 
                     key={pedido.id}
                     pedido={{
-                      id: pedido.id,
+                      id: Number(pedido.id),
                       idCliente: pedido.cliente_id,
                       dataPedido: new Date(pedido.data_prevista_entrega),
                       dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
                       statusPedido: 'Agendado',
-                      substatusPedido: pedido.status_separacao || 'Agendado',
+                      substatusPedido: pedido.substatus_pedido || 'Agendado',
                       tipoPedido: pedido.tipo_pedido as any,
                       itensPedido: pedido.itens_personalizados?.map((item: any, index: number) => ({
                         id: index,
-                        idPedido: pedido.id,
+                        idPedido: Number(pedido.id),
                         idSabor: index,
                         nomeSabor: item.nome,
                         quantidadeSabor: item.quantidade,
@@ -499,7 +541,21 @@ export const SeparacaoPedidos = () => {
                       cliente: {
                         id: pedido.cliente_id,
                         nome: pedido.cliente_nome,
-                        enderecoEntrega: pedido.endereco_entrega || ''
+                        enderecoEntrega: pedido.endereco_entrega || '',
+                        quantidadePadrao: 0,
+                        periodicidadePadrao: 7,
+                        statusCliente: 'Ativo',
+                        dataCadastro: new Date(),
+                        dataUltimaReposicao: null,
+                        dataProximaReposicao: null,
+                        observacoes: '',
+                        contatos: [],
+                        formasPagamento: [],
+                        tiposCobranca: [],
+                        tiposLogistica: [],
+                        instrucoesEntrega: '',
+                        cnpjCpf: '',
+                        emiteNotaFiscal: true
                       }
                     }}
                     onMarcarSeparado={confirmarSeparacao}
