@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
-import { TipoPedidoBadge } from "@/components/expedicao/TipoPedidoBadge";
+import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import SortDropdown, { SortField, SortDirection } from "./SortDropdown";

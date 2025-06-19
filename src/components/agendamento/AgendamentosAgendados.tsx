@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
-import { TipoPedidoBadge } from "@/components/expedicao/TipoPedidoBadge";
+import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 

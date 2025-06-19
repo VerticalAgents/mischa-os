@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Check, RotateCcw, AlertTriangle, Clock, MessageSquare } from "lucide-react";
 import StatusConfirmacaoBadge from "./StatusConfirmacaoBadge";
-import { TipoPedidoBadge } from "@/components/expedicao/TipoPedidoBadge";
+import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 
 export default function NovaConfirmacaoReposicaoTab() {
   const { 

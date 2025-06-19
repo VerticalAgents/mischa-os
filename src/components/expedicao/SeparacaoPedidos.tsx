@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -358,9 +359,30 @@ export const SeparacaoPedidos = () => {
                 {todosPedidos.map((pedido) => (
                   <PedidoCard 
                     key={pedido.id}
-                    pedido={pedido}
-                    onConfirmarSeparacao={confirmarSeparacao}
-                    onDesfazerSeparacao={desfazerSeparacao}
+                    pedido={{
+                      id: pedido.id,
+                      idCliente: pedido.cliente_id,
+                      dataPedido: new Date(pedido.data_prevista_entrega),
+                      dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
+                      statusPedido: 'Agendado',
+                      substatusPedido: pedido.status_separacao || 'Agendado',
+                      tipoPedido: pedido.tipo_pedido as any,
+                      itensPedido: pedido.itens_personalizados?.map((item: any, index: number) => ({
+                        id: index,
+                        idPedido: pedido.id,
+                        idSabor: index,
+                        nomeSabor: item.nome,
+                        quantidadeSabor: item.quantidade,
+                        sabor: { nome: item.nome }
+                      })) || [],
+                      totalPedidoUnidades: pedido.quantidade_total,
+                      cliente: {
+                        id: pedido.cliente_id,
+                        nome: pedido.cliente_nome,
+                        enderecoEntrega: pedido.endereco_entrega || ''
+                      }
+                    }}
+                    onMarcarSeparado={confirmarSeparacao}
                   />
                 ))}
               </div>
@@ -377,9 +399,30 @@ export const SeparacaoPedidos = () => {
                 {pedidosPadrao.map((pedido) => (
                   <PedidoCard 
                     key={pedido.id}
-                    pedido={pedido}
-                    onConfirmarSeparacao={confirmarSeparacao}
-                    onDesfazerSeparacao={desfazerSeparacao}
+                    pedido={{
+                      id: pedido.id,
+                      idCliente: pedido.cliente_id,
+                      dataPedido: new Date(pedido.data_prevista_entrega),
+                      dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
+                      statusPedido: 'Agendado',
+                      substatusPedido: pedido.status_separacao || 'Agendado',
+                      tipoPedido: pedido.tipo_pedido as any,
+                      itensPedido: pedido.itens_personalizados?.map((item: any, index: number) => ({
+                        id: index,
+                        idPedido: pedido.id,
+                        idSabor: index,
+                        nomeSabor: item.nome,
+                        quantidadeSabor: item.quantidade,
+                        sabor: { nome: item.nome }
+                      })) || [],
+                      totalPedidoUnidades: pedido.quantidade_total,
+                      cliente: {
+                        id: pedido.cliente_id,
+                        nome: pedido.cliente_nome,
+                        enderecoEntrega: pedido.endereco_entrega || ''
+                      }
+                    }}
+                    onMarcarSeparado={confirmarSeparacao}
                   />
                 ))}
               </div>
@@ -396,9 +439,30 @@ export const SeparacaoPedidos = () => {
                 {pedidosAlterados.map((pedido) => (
                   <PedidoCard 
                     key={pedido.id}
-                    pedido={pedido}
-                    onConfirmarSeparacao={confirmarSeparacao}
-                    onDesfazerSeparacao={desfazerSeparacao}
+                    pedido={{
+                      id: pedido.id,
+                      idCliente: pedido.cliente_id,
+                      dataPedido: new Date(pedido.data_prevista_entrega),
+                      dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
+                      statusPedido: 'Agendado',
+                      substatusPedido: pedido.status_separacao || 'Agendado',
+                      tipoPedido: pedido.tipo_pedido as any,
+                      itensPedido: pedido.itens_personalizados?.map((item: any, index: number) => ({
+                        id: index,
+                        idPedido: pedido.id,
+                        idSabor: index,
+                        nomeSabor: item.nome,
+                        quantidadeSabor: item.quantidade,
+                        sabor: { nome: item.nome }
+                      })) || [],
+                      totalPedidoUnidades: pedido.quantidade_total,
+                      cliente: {
+                        id: pedido.cliente_id,
+                        nome: pedido.cliente_nome,
+                        enderecoEntrega: pedido.endereco_entrega || ''
+                      }
+                    }}
+                    onMarcarSeparado={confirmarSeparacao}
                   />
                 ))}
               </div>
@@ -415,9 +479,30 @@ export const SeparacaoPedidos = () => {
                 {pedidosProximoDia.map((pedido) => (
                   <PedidoCard 
                     key={pedido.id}
-                    pedido={pedido}
-                    onConfirmarSeparacao={confirmarSeparacao}
-                    onDesfazerSeparacao={desfazerSeparacao}
+                    pedido={{
+                      id: pedido.id,
+                      idCliente: pedido.cliente_id,
+                      dataPedido: new Date(pedido.data_prevista_entrega),
+                      dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
+                      statusPedido: 'Agendado',
+                      substatusPedido: pedido.status_separacao || 'Agendado',
+                      tipoPedido: pedido.tipo_pedido as any,
+                      itensPedido: pedido.itens_personalizados?.map((item: any, index: number) => ({
+                        id: index,
+                        idPedido: pedido.id,
+                        idSabor: index,
+                        nomeSabor: item.nome,
+                        quantidadeSabor: item.quantidade,
+                        sabor: { nome: item.nome }
+                      })) || [],
+                      totalPedidoUnidades: pedido.quantidade_total,
+                      cliente: {
+                        id: pedido.cliente_id,
+                        nome: pedido.cliente_nome,
+                        enderecoEntrega: pedido.endereco_entrega || ''
+                      }
+                    }}
+                    onMarcarSeparado={confirmarSeparacao}
                     showAntecipada={true}
                   />
                 ))}
