@@ -163,8 +163,24 @@ export default function EditarReceitaModal({
     const insumo = insumos.find(i => i.id === insumoId);
     return {
       nome: insumo?.nome || "Insumo não encontrado",
-      unidade_medida: insumo?.unidade_medida || ""
+      unidade_medida: insumo?.unidade_medida || "",
+      custo_medio: insumo?.custo_medio || 0,
+      volume_bruto: insumo?.volume_bruto || 1
     };
+  };
+
+  // Função para calcular o custo unitário correto
+  const calcularCustoUnitario = (insumoId: string) => {
+    const insumoInfo = getInsumoInfo(insumoId);
+    // Custo unitário = custo do pacote ÷ volume bruto do pacote
+    return insumoInfo.volume_bruto > 0 ? insumoInfo.custo_medio / insumoInfo.volume_bruto : 0;
+  };
+
+  // Função para calcular o custo do item na receita
+  const calcularCustoItem = (insumoId: string, quantidade: number) => {
+    const custoUnitario = calcularCustoUnitario(insumoId);
+    // Custo do item = quantidade utilizada × custo unitário
+    return custoUnitario * quantidade;
   };
 
   return (
@@ -341,20 +357,25 @@ export default function EditarReceitaModal({
                 <TableRow>
                   <TableHead>Insumo</TableHead>
                   <TableHead>Quantidade</TableHead>
-                  <TableHead>Custo</TableHead>
+                  <TableHead>Custo Unit.</TableHead>
+                  <TableHead>Custo Total</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {receita?.itens.map((item) => {
                   const insumoInfo = getInsumoInfo(item.insumo_id);
+                  const custoUnitario = calcularCustoUnitario(item.insumo_id);
+                  const custoTotalItem = calcularCustoItem(item.insumo_id, item.quantidade);
+                  
                   return (
                     <TableRow key={item.id}>
                       <TableCell>{insumoInfo.nome}</TableCell>
                       <TableCell>
                         {item.quantidade} {insumoInfo.unidade_medida}
                       </TableCell>
-                      <TableCell>R$ {item.custo_item.toFixed(2)}</TableCell>
+                      <TableCell>R$ {custoUnitario.toFixed(4)}</TableCell>
+                      <TableCell>R$ {custoTotalItem.toFixed(2)}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="outline"
@@ -369,6 +390,30 @@ export default function EditarReceitaModal({
                 })}
               </TableBody>
             </Table>
+
+            {/* Resumo de custos */}
+            {receita && receita.itens.length > 0 && (
+              <div className="mt-4 p-4 bg-muted rounded-lg">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Custo Total da Receita:</span>
+                    <div className="text-lg font-semibold">
+                      R$ {receita.itens.reduce((total, item) => {
+                        return total + calcularCustoItem(item.insumo_id, item.quantidade);
+                      }, 0).toFixed(2)}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Custo por {receita.unidade_rendimento}:</span>
+                    <div className="text-lg font-semibold">
+                      R$ {receita.rendimento > 0 ? (receita.itens.reduce((total, item) => {
+                        return total + calcularCustoItem(item.insumo_id, item.quantidade);
+                      }, 0) / receita.rendimento).toFixed(2) : '0.00'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
