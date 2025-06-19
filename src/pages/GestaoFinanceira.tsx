@@ -5,7 +5,7 @@ import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineChart, Receipt, DollarSign, FileText, ArrowRight } from "lucide-react";
+import { LineChart, Receipt, DollarSign, FileText, ArrowRight, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { gestaoFinanceiraItems } from "@/components/layout/navigation-items";
 
@@ -67,19 +67,20 @@ export default function GestaoFinanceira() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-xl flex items-center">
-              <FileText className="mr-2 h-5 w-5" />
-              Histórico de DREs
+              <TrendingUp className="mr-2 h-5 w-5" />
+              Projeção por PDV
             </CardTitle>
             <CardDescription>
-              Demonstrativos de resultados
+              Análise de rentabilidade por cliente
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground mb-4">
-              Acesse o histórico de demonstrativos de resultados e acompanhe a evolução financeira.
+              Projete resultados específicos por ponto de venda com base na precificação personalizada.
             </p>
-            <Button variant="outline" className="w-full">
-              Em breve
+            <Button onClick={() => navigate("/gestao-financeira/projecao-resultados-pdv")} className="w-full" variant="outline">
+              Em Desenvolvimento
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </CardContent>
         </Card>
