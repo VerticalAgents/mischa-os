@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,6 @@ export default function NecessidadeInsumosTab() {
   const { insumos } = useSupabaseInsumos();
 
   const handleCalcular = async () => {
-    // Usar o filtro local diretamente
     calcularNecessidadeInsumos(dataInicio, dataFim);
     setMostrarDetalhes(true);
   };
@@ -70,10 +70,12 @@ export default function NecessidadeInsumosTab() {
     const headers = [
       'Insumo',
       'Unidade',
-      'Quantidade Necessária',
-      'Estoque Atual',
-      'Quantidade a Comprar',
-      'Custo Médio (R$)',
+      'Quantidade Necessária (g)',
+      'Estoque Atual (g)',
+      'Quantidade a Comprar (g)',
+      'Volume Bruto por Pacote (g)',
+      'Pacotes a Comprar',
+      'Custo Médio por Pacote (R$)',
       'Custo Total (R$)'
     ];
 
@@ -82,15 +84,24 @@ export default function NecessidadeInsumosTab() {
         !filtroInsumo || 
         item.nomeInsumo.toLowerCase().includes(filtroInsumo.toLowerCase())
       )
-      .map(item => [
-        `"${item.nomeInsumo}"`,
-        item.unidadeMedida,
-        item.quantidadeNecessaria.toFixed(2),
-        item.estoqueAtual.toFixed(2),
-        item.quantidadeComprar.toFixed(2),
-        item.custoMedio.toFixed(2),
-        item.custoTotal.toFixed(2)
-      ]);
+      .map(item => {
+        const insumo = insumos.find(i => i.id === item.insumoId);
+        const volumeBruto = Number(insumo?.volume_bruto) || 1;
+        const pacotesComprar = Math.ceil(item.quantidadeComprar / volumeBruto);
+        const custoTotalCorreto = pacotesComprar * item.custoMedio;
+        
+        return [
+          `"${item.nomeInsumo}"`,
+          item.unidadeMedida,
+          item.quantidadeNecessaria.toFixed(2),
+          item.estoqueAtual.toFixed(2),
+          item.quantidadeComprar.toFixed(2),
+          volumeBruto.toFixed(0),
+          pacotesComprar.toString(),
+          item.custoMedio.toFixed(2),
+          custoTotalCorreto.toFixed(2)
+        ];
+      });
 
     const csvContent = [
       headers.join(','),
@@ -112,6 +123,18 @@ export default function NecessidadeInsumosTab() {
   const calcularDadosEtapas = () => {
     if (!dadosAuditoria || dadosAuditoria.length === 0) return null;
 
+    // Consolidação por produto
+    const quantidadesPorProduto = new Map<string, number>();
+    dadosAuditoria.forEach(agendamento => {
+      Object.entries(agendamento.quantidadesPorProduto).forEach(([nomeProduto, quantidade]) => {
+        const quantidadeNum = Number(quantidade) || 0;
+        if (quantidadeNum > 0) {
+          const atual = quantidadesPorProduto.get(nomeProduto) || 0;
+          quantidadesPorProduto.set(nomeProduto, atual + quantidadeNum);
+        }
+      });
+    });
+
     // Etapa 1: Agendamentos - Lista detalhada dos agendamentos encontrados
     const agendamentosDetalhados = dadosAuditoria.map(agendamento => ({
       clienteNome: agendamento.clienteNome,
@@ -119,25 +142,14 @@ export default function NecessidadeInsumosTab() {
       statusAgendamento: agendamento.statusAgendamento,
       statusCliente: agendamento.statusCliente,
       produtos: Object.entries(agendamento.quantidadesPorProduto)
-        .filter(([, quantidade]) => quantidade > 0)
-        .map(([nomeProduto, quantidade]) => ({ nomeProduto, quantidade }))
+        .filter(([, quantidade]) => Number(quantidade) > 0)
+        .map(([nomeProduto, quantidade]) => ({ nomeProduto, quantidade: Number(quantidade) }))
     })).filter(agendamento => agendamento.produtos.length > 0);
-
-    // Consolidação por produto
-    const quantidadesPorProduto = new Map<string, number>();
-    dadosAuditoria.forEach(agendamento => {
-      Object.entries(agendamento.quantidadesPorProduto).forEach(([nomeProduto, quantidade]) => {
-        if (quantidade > 0) {
-          const atual = quantidadesPorProduto.get(nomeProduto) || 0;
-          quantidadesPorProduto.set(nomeProduto, atual + quantidade);
-        }
-      });
-    });
 
     const necessidadeProducao = new Map<string, { necessaria: number, estoque: number, producao: number }>();
     quantidadesPorProduto.forEach((quantidadeNecessaria, nomeProduto) => {
       const produto = produtos.find(p => p.nome === nomeProduto);
-      const estoqueAtual = produto?.estoque_atual || 0;
+      const estoqueAtual = Number(produto?.estoque_atual) || 0;
       const necessidade = Math.max(0, quantidadeNecessaria - estoqueAtual);
       
       necessidadeProducao.set(nomeProduto, {
@@ -152,7 +164,6 @@ export default function NecessidadeInsumosTab() {
       if (data.producao > 0) {
         const receita = receitas.find(r => r.nome === nomeProduto);
         if (receita) {
-          // CORREÇÃO: Dividir por 40 unidades por receita
           const numeroReceitas = Math.ceil(data.producao / 40);
           receitasNecessarias.set(nomeProduto, {
             producao: data.producao,
@@ -168,7 +179,7 @@ export default function NecessidadeInsumosTab() {
       if (data.receita) {
         const insumosReceita = new Map<string, { quantidade: number, unidade: string }>();
         data.receita.itens.forEach((item: any) => {
-          const quantidadeItem = item.quantidade * data.receitas;
+          const quantidadeItem = Number(item.quantidade) * data.receitas;
           const insumo = insumos.find(i => i.id === item.insumo_id);
           if (insumo) {
             insumosReceita.set(item.insumo_id, {
@@ -218,6 +229,14 @@ export default function NecessidadeInsumosTab() {
   );
 
   const insumosParaComprar = insumosFiltrados.filter(item => item.quantidadeComprar > 0);
+
+  // Calcular valor total corrigido baseado em pacotes
+  const valorTotalCorrigido = insumosFiltrados.reduce((total, item) => {
+    const insumo = insumos.find(i => i.id === item.insumoId);
+    const volumeBruto = Number(insumo?.volume_bruto) || 1;
+    const pacotesComprar = Math.ceil(item.quantidadeComprar / volumeBruto);
+    return total + (pacotesComprar * item.custoMedio);
+  }, 0);
 
   const etapas = [
     {
@@ -369,9 +388,9 @@ export default function NecessidadeInsumosTab() {
               <div className="text-center p-3 bg-purple-50 rounded-lg">
                 <TrendingUp className="h-8 w-8 mx-auto text-purple-600 mb-2" />
                 <div className="text-2xl font-bold text-purple-600">
-                  R$ {resumoCalculo.valorTotalCompra.toFixed(2)}
+                  R$ {valorTotalCorrigido.toFixed(2)}
                 </div>
-                <div className="text-sm text-muted-foreground">Valor Total</div>
+                <div className="text-sm text-muted-foreground">Valor Total (Pacotes)</div>
               </div>
             </div>
           )}
@@ -448,7 +467,7 @@ export default function NecessidadeInsumosTab() {
                                 {Object.entries(dadosEtapas.agendamentos).map(([produto, quantidade]) => (
                                   <div key={produto} className="flex justify-between p-3 bg-blue-50 rounded border">
                                     <span className="text-sm font-medium">{produto}</span>
-                                    <Badge variant="default">{quantidade} unidades</Badge>
+                                    <Badge variant="default">{Number(quantidade)} unidades</Badge>
                                   </div>
                                 ))}
                               </div>
@@ -481,7 +500,7 @@ export default function NecessidadeInsumosTab() {
                                             {agendamento.clienteNome}
                                           </TableCell>
                                           <TableCell className="text-sm">
-                                            {format(agendamento.dataReposicao, "dd/MM/yyyy", { locale: ptBR })}
+                                            {format(new Date(agendamento.dataReposicao), "dd/MM/yyyy", { locale: ptBR })}
                                           </TableCell>
                                           <TableCell>
                                             <Badge 
@@ -630,7 +649,7 @@ export default function NecessidadeInsumosTab() {
         <CardHeader>
           <CardTitle>Necessidade de Compra</CardTitle>
           <CardDescription>
-            Lista de insumos que precisam ser comprados para atender a demanda
+            Lista de insumos que precisam ser comprados para atender a demanda (cálculo baseado em pacotes)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -664,49 +683,70 @@ export default function NecessidadeInsumosTab() {
                     <TableRow>
                       <TableHead>Insumo</TableHead>
                       <TableHead>Unidade</TableHead>
-                      <TableHead className="text-right">Necessário</TableHead>
-                      <TableHead className="text-right">Estoque</TableHead>
-                      <TableHead className="text-right">A Comprar</TableHead>
-                      <TableHead className="text-right">Custo Médio</TableHead>
+                      <TableHead className="text-right">Necessário (g)</TableHead>
+                      <TableHead className="text-right">Estoque (g)</TableHead>
+                      <TableHead className="text-right">A Comprar (g)</TableHead>
+                      <TableHead className="text-right">Vol. Bruto Pacote (g)</TableHead>
+                      <TableHead className="text-right">Pacotes a Comprar</TableHead>
+                      <TableHead className="text-right">Custo/Pacote</TableHead>
                       <TableHead className="text-right">Custo Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {insumosFiltrados.map((item) => (
-                      <TableRow key={item.insumoId}>
-                        <TableCell className="font-medium">{item.nomeInsumo}</TableCell>
-                        <TableCell>{item.unidadeMedida}</TableCell>
-                        <TableCell className="text-right">
-                          {item.quantidadeNecessaria.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className={item.estoqueAtual > 0 ? 'text-green-600' : 'text-red-600'}>
-                            {item.estoqueAtual.toFixed(2)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {item.quantidadeComprar > 0 ? (
-                            <Badge variant="destructive">
-                              {item.quantidadeComprar.toFixed(2)}
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">0</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          R$ {item.custoMedio.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {item.custoTotal > 0 ? (
-                            <span className="font-semibold text-red-600">
-                              R$ {item.custoTotal.toFixed(2)}
+                    {insumosFiltrados.map((item) => {
+                      const insumo = insumos.find(i => i.id === item.insumoId);
+                      const volumeBruto = Number(insumo?.volume_bruto) || 1;
+                      const pacotesComprar = item.quantidadeComprar > 0 ? Math.ceil(item.quantidadeComprar / volumeBruto) : 0;
+                      const custoTotalCorreto = pacotesComprar * item.custoMedio;
+                      
+                      return (
+                        <TableRow key={item.insumoId}>
+                          <TableCell className="font-medium">{item.nomeInsumo}</TableCell>
+                          <TableCell>{item.unidadeMedida}</TableCell>
+                          <TableCell className="text-right">
+                            {item.quantidadeNecessaria.toFixed(0)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className={item.estoqueAtual > 0 ? 'text-green-600' : 'text-red-600'}>
+                              {item.estoqueAtual.toFixed(0)}
                             </span>
-                          ) : (
-                            <span className="text-muted-foreground">R$ 0,00</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {item.quantidadeComprar > 0 ? (
+                              <span className="font-medium text-orange-600">
+                                {item.quantidadeComprar.toFixed(0)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">0</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant="outline">{volumeBruto.toFixed(0)}g</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {pacotesComprar > 0 ? (
+                              <Badge variant="destructive">
+                                {pacotesComprar} pacotes
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">0</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            R$ {item.custoMedio.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {custoTotalCorreto > 0 ? (
+                              <span className="font-semibold text-red-600">
+                                R$ {custoTotalCorreto.toFixed(2)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">R$ 0,00</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
