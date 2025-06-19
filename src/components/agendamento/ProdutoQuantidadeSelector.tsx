@@ -247,7 +247,7 @@ export default function ProdutoQuantidadeSelector({
           variant="outline"
           size="sm"
           onClick={adicionarProduto}
-          disabled={produtosFiltrados.length === 0 || error}
+          disabled={produtosFiltrados.length === 0 || Boolean(error)}
         >
           <Plus className="h-4 w-4 mr-1" />
           Adicionar Produto
