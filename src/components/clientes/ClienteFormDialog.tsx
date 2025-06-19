@@ -28,6 +28,7 @@ import { useSupabaseFormasPagamento } from "@/hooks/useSupabaseFormasPagamento";
 import { toast } from "@/hooks/use-toast";
 import DiasSemanaPicker from "./DiasSemanaPicker";
 import CategoriasProdutoSelector from "./CategoriasProdutoSelector";
+import PrecificacaoPorCategoria from "./PrecificacaoPorCategoria";
 
 interface ClienteFormDialogProps {
   open: boolean;
@@ -75,6 +76,9 @@ export default function ClienteFormDialog({
     categoriaEstabelecimentoId: undefined,
     instrucoesEntrega: ''
   });
+
+  // Novo estado para preços por categoria
+  const [precosCategoria, setPrecosCategoria] = useState<{ categoria_id: number; preco_unitario: number }[]>([]);
 
   // Carregar dados do cliente quando abrir para edição
   useEffect(() => {
@@ -136,6 +140,12 @@ export default function ClienteFormDialog({
     }));
   };
 
+  // Nova função para lidar com mudanças de preços
+  const handlePrecosChange = (precos: { categoria_id: number; preco_unitario: number }[]) => {
+    console.log('ClienteFormDialog: Atualizando preços por categoria:', precos);
+    setPrecosCategoria(precos);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -150,10 +160,14 @@ export default function ClienteFormDialog({
 
     try {
       console.log('ClienteFormDialog: Salvando cliente com dados completos:', formData);
+      console.log('ClienteFormDialog: Preços por categoria a salvar:', precosCategoria);
 
       if (cliente) {
         // Atualização
         await atualizarCliente(cliente.id, formData);
+        
+        // TODO: Salvar preços por categoria quando implementar backend
+        // await salvarPrecosCategoria(cliente.id, precosCategoria);
         
         toast({
           title: "Cliente atualizado",
@@ -162,6 +176,9 @@ export default function ClienteFormDialog({
       } else {
         // Criação
         await adicionarCliente(formData as Omit<Cliente, 'id' | 'dataCadastro'>);
+        
+        // TODO: Salvar preços por categoria quando implementar backend
+        // await salvarPrecosCategoria(novoClienteId, precosCategoria);
         
         toast({
           title: "Cliente cadastrado",
@@ -488,6 +505,13 @@ export default function ClienteFormDialog({
             value={formData.categoriasHabilitadas || []}
             onChange={handleCategoriasChange}
             clienteId={cliente?.id}
+          />
+
+          {/* Novo bloco: Precificação por Categoria */}
+          <PrecificacaoPorCategoria
+            categoriasHabilitadas={formData.categoriasHabilitadas || []}
+            clienteId={cliente?.id}
+            onPrecosChange={handlePrecosChange}
           />
 
           {/* Observações */}
