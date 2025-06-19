@@ -316,14 +316,13 @@ export default function ClienteFormDialog({
                 <div className="space-y-2">
                   <Label htmlFor="representante">Representante</Label>
                   <Select 
-                    value={formData.representanteId?.toString() || ''} 
+                    value={formData.representanteId?.toString() || undefined} 
                     onValueChange={(value) => handleInputChange('representanteId', value ? parseInt(value) : undefined)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um representante" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhum representante</SelectItem>
                       {representantes.map((rep) => (
                         <SelectItem key={rep.id} value={rep.id.toString()}>
                           {rep.nome}
@@ -335,14 +334,13 @@ export default function ClienteFormDialog({
                 <div className="space-y-2">
                   <Label htmlFor="rotaEntrega">Rota de Entrega</Label>
                   <Select 
-                    value={formData.rotaEntregaId?.toString() || ''} 
+                    value={formData.rotaEntregaId?.toString() || undefined} 
                     onValueChange={(value) => handleInputChange('rotaEntregaId', value ? parseInt(value) : undefined)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione uma rota" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhuma rota</SelectItem>
                       {rotasEntrega.map((rota) => (
                         <SelectItem key={rota.id} value={rota.id.toString()}>
                           {rota.nome}
@@ -357,14 +355,13 @@ export default function ClienteFormDialog({
                 <div className="space-y-2">
                   <Label htmlFor="categoriaEstabelecimento">Categoria do Estabelecimento</Label>
                   <Select 
-                    value={formData.categoriaEstabelecimentoId?.toString() || ''} 
+                    value={formData.categoriaEstabelecimentoId?.toString() || undefined} 
                     onValueChange={(value) => handleInputChange('categoriaEstabelecimentoId', value ? parseInt(value) : undefined)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhuma categoria</SelectItem>
                       {categoriasEstabelecimento.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id.toString()}>
                           {cat.nome}
