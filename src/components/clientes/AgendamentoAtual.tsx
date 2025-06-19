@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Cliente } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
 import { useAgendamentoClienteStore, AgendamentoCliente } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
+import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
 import { toast } from "@/hooks/use-toast";
 import { AlertTriangle, Save, Calendar } from "lucide-react";
 
@@ -49,6 +49,7 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
   const { produtos } = useProdutoStore();
   const { carregarAgendamentoPorCliente, salvarAgendamento, loading } = useAgendamentoClienteStore();
   const { carregarClientes } = useClienteStore();
+  const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
 
   const produtosFiltrados = produtos.filter(produto => {
     if (!cliente.categoriasHabilitadas || cliente.categoriasHabilitadas.length === 0) {
@@ -57,21 +58,87 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
     return cliente.categoriasHabilitadas.includes(produto.categoriaId);
   });
 
-  // Inicializar produtos quando tipoPedido muda para 'Alterado'
-  useEffect(() => {
-    if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0) {
-      if (produtosQuantidades.length === 0) {
-        const produtosIniciais = produtosFiltrados.map(produto => ({
-          produto: produto.nome,
-          quantidade: 0
-        }));
-        setProdutosQuantidades(produtosIniciais);
-        console.log('🎯 Inicializando produtos para tipo Alterado:', produtosIniciais);
+  // Função para calcular distribuição proporcional
+  const calcularDistribuicaoProporcional = async (quantidade: number) => {
+    try {
+      console.log('🎯 Calculando distribuição proporcional para quantidade:', quantidade);
+      
+      if (temProporcoesConfiguradas()) {
+        console.log('✅ Usando proporções configuradas do sistema');
+        const proporcoes = await calcularQuantidadesPorProporcao(quantidade);
+        
+        // Filtrar apenas produtos disponíveis para o cliente
+        const proporcoesDisponiveis = proporcoes.filter(prop => 
+          produtosFiltrados.some(produto => produto.nome === prop.produto)
+        );
+        
+        if (proporcoesDisponiveis.length > 0) {
+          console.log('📊 Proporções calculadas:', proporcoesDisponiveis);
+          return proporcoesDisponiveis;
+        }
       }
-    } else if (tipoPedido === 'Padrão') {
-      setProdutosQuantidades([]);
+      
+      // Fallback: distribuição uniforme entre produtos disponíveis
+      console.log('⚡ Usando distribuição uniforme como fallback');
+      const quantidadePorProduto = Math.floor(quantidade / produtosFiltrados.length);
+      const resto = quantidade % produtosFiltrados.length;
+      
+      return produtosFiltrados.map((produto, index) => ({
+        produto: produto.nome,
+        quantidade: quantidadePorProduto + (index < resto ? 1 : 0)
+      }));
+    } catch (error) {
+      console.error('❌ Erro ao calcular distribuição proporcional:', error);
+      
+      // Fallback em caso de erro
+      const quantidadePorProduto = Math.floor(quantidade / produtosFiltrados.length);
+      const resto = quantidade % produtosFiltrados.length;
+      
+      return produtosFiltrados.map((produto, index) => ({
+        produto: produto.nome,
+        quantidade: quantidadePorProduto + (index < resto ? 1 : 0)
+      }));
     }
-  }, [tipoPedido, produtosFiltrados.length]);
+  };
+
+  // Efeito para preencher automaticamente quando tipoPedido muda para 'Alterado'
+  useEffect(() => {
+    const preencherAutomaticamente = async () => {
+      if (tipoPedido === 'Alterado' && quantidadeTotal > 0) {
+        // Só preencher automaticamente se a lista estiver vazia ou com valores zerados
+        const temValoresPreenchidos = produtosQuantidades.some(produto => produto.quantidade > 0);
+        
+        if (!temValoresPreenchidos || produtosQuantidades.length === 0) {
+          console.log('🔄 Preenchendo automaticamente produtos para tipo Alterado');
+          const distribuicao = await calcularDistribuicaoProporcional(quantidadeTotal);
+          setProdutosQuantidades(distribuicao);
+          console.log('✅ Produtos preenchidos automaticamente:', distribuicao);
+        }
+      } else if (tipoPedido === 'Padrão') {
+        setProdutosQuantidades([]);
+      }
+    };
+
+    preencherAutomaticamente();
+  }, [tipoPedido, quantidadeTotal, produtosFiltrados.length]);
+
+  // Efeito para atualizar distribuição quando quantidade total muda em tipo Alterado
+  useEffect(() => {
+    const atualizarDistribuicao = async () => {
+      if (tipoPedido === 'Alterado' && quantidadeTotal > 0 && produtosQuantidades.length > 0) {
+        // Verificar se todos os produtos estão zerados (possível reset)
+        const todosZerados = produtosQuantidades.every(produto => produto.quantidade === 0);
+        
+        if (todosZerados) {
+          console.log('🔄 Redistribuindo produtos zerados para nova quantidade total');
+          const distribuicao = await calcularDistribuicaoProporcional(quantidadeTotal);
+          setProdutosQuantidades(distribuicao);
+        }
+      }
+    };
+
+    atualizarDistribuicao();
+  }, [quantidadeTotal]);
 
   // Carregar dados da tabela agendamentos_clientes
   useEffect(() => {
