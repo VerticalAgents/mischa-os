@@ -11,6 +11,7 @@ import { useProdutoStore } from "@/hooks/useProdutoStore";
 import { useAgendamentoClienteStore, AgendamentoCliente } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
+import { useClientesCategorias } from "@/hooks/useClientesCategorias";
 import { toast } from "@/hooks/use-toast";
 import { AlertTriangle, Save, Calendar } from "lucide-react";
 import ProdutoSelector from './ProdutoSelector';
@@ -46,23 +47,45 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
   const [produtosQuantidades, setProdutosQuantidades] = useState<ProdutoQuantidade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [agendamentoCarregado, setAgendamentoCarregado] = useState(false);
+  const [categoriasClienteCarregadas, setCategoriasClienteCarregadas] = useState<number[]>([]);
   
   const { produtos } = useProdutoStore();
   const { carregarAgendamentoPorCliente, salvarAgendamento, loading } = useAgendamentoClienteStore();
   const { carregarClientes } = useClienteStore();
   const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
+  const { carregarCategoriasCliente } = useClientesCategorias();
+
+  // Carregar categorias do cliente
+  useEffect(() => {
+    const carregarCategorias = async () => {
+      if (cliente.id) {
+        try {
+          console.log('🔄 Carregando categorias do cliente:', cliente.id);
+          const categorias = await carregarCategoriasCliente(cliente.id);
+          console.log('✅ Categorias carregadas:', categorias);
+          setCategoriasClienteCarregadas(categorias);
+        } catch (error) {
+          console.error('❌ Erro ao carregar categorias do cliente:', error);
+          setCategoriasClienteCarregadas([]);
+        }
+      }
+    };
+
+    carregarCategorias();
+  }, [cliente.id, carregarCategoriasCliente]);
 
   const produtosFiltrados = produtos.filter(produto => {
-    if (!cliente.categoriasHabilitadas || cliente.categoriasHabilitadas.length === 0) {
+    if (!categoriasClienteCarregadas || categoriasClienteCarregadas.length === 0) {
       return true;
     }
-    return cliente.categoriasHabilitadas.includes(produto.categoriaId);
+    return categoriasClienteCarregadas.includes(produto.categoriaId);
   });
 
   // Função para calcular distribuição proporcional
   const calcularDistribuicaoProporcional = async (quantidade: number) => {
     try {
       console.log('🎯 Calculando distribuição proporcional para quantidade:', quantidade);
+      console.log('🏷️ Categorias disponíveis:', categoriasClienteCarregadas);
       
       if (temProporcoesConfiguradas()) {
         console.log('✅ Usando proporções configuradas do sistema');
@@ -81,6 +104,11 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
       
       // Fallback: distribuição uniforme entre produtos disponíveis
       console.log('⚡ Usando distribuição uniforme como fallback');
+      if (produtosFiltrados.length === 0) {
+        console.log('❌ Nenhum produto disponível para as categorias do cliente');
+        return [];
+      }
+      
       const quantidadePorProduto = Math.floor(quantidade / produtosFiltrados.length);
       const resto = quantidade % produtosFiltrados.length;
       
@@ -92,6 +120,10 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
       console.error('❌ Erro ao calcular distribuição proporcional:', error);
       
       // Fallback em caso de erro
+      if (produtosFiltrados.length === 0) {
+        return [];
+      }
+      
       const quantidadePorProduto = Math.floor(quantidade / produtosFiltrados.length);
       const resto = quantidade % produtosFiltrados.length;
       
@@ -147,12 +179,15 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
   // Efeito para preencher automaticamente quando tipoPedido muda para 'Alterado'
   useEffect(() => {
     const preencherAutomaticamente = async () => {
-      if (tipoPedido === 'Alterado' && quantidadeTotal > 0 && agendamentoCarregado) {
+      if (tipoPedido === 'Alterado' && quantidadeTotal > 0 && agendamentoCarregado && categoriasClienteCarregadas !== null) {
         // Só preencher automaticamente se a lista estiver vazia ou com valores zerados
         const temValoresPreenchidos = produtosQuantidades.some(produto => produto.quantidade > 0);
         
         if (!temValoresPreenchidos || produtosQuantidades.length === 0) {
           console.log('🔄 Preenchendo automaticamente produtos para tipo Alterado');
+          console.log('🎯 Quantidade total:', quantidadeTotal);
+          console.log('🏷️ Categorias disponíveis:', categoriasClienteCarregadas);
+          
           const distribuicao = await calcularDistribuicaoProporcional(quantidadeTotal);
           setProdutosQuantidades(distribuicao);
           console.log('✅ Produtos preenchidos automaticamente:', distribuicao);
@@ -163,7 +198,7 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
     };
 
     preencherAutomaticamente();
-  }, [tipoPedido, quantidadeTotal, agendamentoCarregado]);
+  }, [tipoPedido, quantidadeTotal, agendamentoCarregado, categoriasClienteCarregadas]);
 
   const somaQuantidadesProdutos = produtosQuantidades.reduce((soma, produto) => soma + produto.quantidade, 0);
   const hasValidationError = tipoPedido === "Alterado" && somaQuantidadesProdutos !== quantidadeTotal;
@@ -314,7 +349,7 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             <ProdutoSelector
               value={produtosQuantidades}
               onChange={setProdutosQuantidades}
-              categoriasHabilitadas={cliente.categoriasHabilitadas || []}
+              categoriasHabilitadas={categoriasClienteCarregadas}
             />
           </div>
         )}
