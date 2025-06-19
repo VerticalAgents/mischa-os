@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CalendarIcon, Save, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { CalendarIcon, Save, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
 import { TipoPedidoAgendamento } from "@/types";
+import ProdutoSelector from "@/components/clientes/ProdutoSelector";
 
 interface AgendamentoEditModalProps {
   open: boolean;
@@ -189,24 +190,6 @@ export default function AgendamentoEditModal({
   const somaQuantidadesProdutos = itensPersonalizados.reduce((soma, item) => soma + item.quantidade, 0);
   const hasValidationError = tipoPedido === "Alterado" && somaQuantidadesProdutos !== quantidadeTotal;
 
-  const adicionarItemPersonalizado = () => {
-    setItensPersonalizados([...itensPersonalizados, { produto: "", quantidade: 0 }]);
-  };
-
-  const removerItemPersonalizado = (index: number) => {
-    setItensPersonalizados(itensPersonalizados.filter((_, i) => i !== index));
-  };
-
-  const atualizarItemPersonalizado = (index: number, campo: 'produto' | 'quantidade', valor: string | number) => {
-    const novosItens = [...itensPersonalizados];
-    if (campo === 'produto') {
-      novosItens[index].produto = valor as string;
-    } else {
-      novosItens[index].quantidade = Number(valor);
-    }
-    setItensPersonalizados(novosItens);
-  };
-
   const handleSalvar = async () => {
     if (!agendamento || !dataReposicao) return;
 
@@ -358,19 +341,6 @@ export default function AgendamentoEditModal({
 
           {tipoPedido === "Alterado" && (
             <div className="space-y-4 border-t pt-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-base font-medium">Itens do Pedido Personalizado</Label>
-                <div className="flex items-center gap-2">
-                  <div className={`text-sm ${hasValidationError ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
-                    Total: {somaQuantidadesProdutos} / {quantidadeTotal}
-                  </div>
-                  <Button type="button" onClick={adicionarItemPersonalizado} size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Item
-                  </Button>
-                </div>
-              </div>
-
               {hasValidationError && (
                 <Alert variant="destructive">
                   <AlertTriangle className="h-4 w-4" />
@@ -381,43 +351,11 @@ export default function AgendamentoEditModal({
                 </Alert>
               )}
               
-              {itensPersonalizados.map((item, index) => (
-                <div key={index} className="grid grid-cols-3 gap-4 items-end">
-                  <div className="space-y-2">
-                    <Label htmlFor={`item-produto-${index}`}>Nome do Produto</Label>
-                    <Input
-                      id={`item-produto-${index}`}
-                      value={item.produto}
-                      onChange={(e) => atualizarItemPersonalizado(index, 'produto', e.target.value)}
-                      placeholder="Digite o nome do produto"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`item-quantidade-${index}`}>Quantidade</Label>
-                    <Input
-                      id={`item-quantidade-${index}`}
-                      type="number"
-                      min="0"
-                      value={item.quantidade}
-                      onChange={(e) => atualizarItemPersonalizado(index, 'quantidade', e.target.value)}
-                    />
-                  </div>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => removerItemPersonalizado(index)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              
-              {itensPersonalizados.length === 0 && (
-                <div className="text-center py-4 text-muted-foreground">
-                  Nenhum item adicionado. Clique em "Adicionar Item" para começar.
-                </div>
-              )}
+              <ProdutoSelector
+                value={itensPersonalizados}
+                onChange={setItensPersonalizados}
+                categoriasHabilitadas={agendamento.cliente.categoriasHabilitadas || []}
+              />
             </div>
           )}
 

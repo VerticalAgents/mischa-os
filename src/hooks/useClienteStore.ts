@@ -15,7 +15,7 @@ interface ClienteStore {
   
   // Ações
   carregarClientes: () => Promise<void>;
-  adicionarCliente: (cliente: Omit<Cliente, 'id' | 'dataCadastro'>) => Promise<void>;
+  adicionarCliente: (cliente: Omit<Cliente, 'id' | 'dataCadastro'>) => Promise<Cliente>;
   atualizarCliente: (id: string, dadosCliente: Partial<Cliente>) => Promise<void>;
   removerCliente: (id: string) => Promise<void>;
   selecionarCliente: (id: string | null) => void;
@@ -71,7 +71,7 @@ function convertSupabaseToCliente(data: any, agendamento?: any): Cliente {
     observacoes: data.observacoes,
     categoriaId: 1, // Default value
     subcategoriaId: 1, // Default value
-    categoriasHabilitadas: data.categorias_habilitadas || [1] // Carregar do banco ou default
+    categoriasHabilitadas: data.categorias_habilitadas || [] // Carregar do banco corretamente
   };
 }
 
@@ -104,7 +104,7 @@ function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>)
     tipo_cobranca: cliente.tipoCobranca || 'À vista',
     forma_pagamento: cliente.formaPagamento || 'Boleto',
     observacoes: cliente.observacoes || null,
-    categorias_habilitadas: cliente.categoriasHabilitadas || [1] // Salvar categorias habilitadas
+    categorias_habilitadas: cliente.categoriasHabilitadas || [] // Salvar categorias habilitadas corretamente
   };
 }
 
