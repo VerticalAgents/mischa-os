@@ -1,16 +1,7 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-
-interface ConfiguracoesProducao {
-  unidadesPorForma: number;
-  formasPorLote: number;
-  incluirPedidosPrevistos: boolean;
-  percentualPedidosPrevistos: number;
-  tempoMedioPorFornada: number;
-  unidadesBrowniePorForma: number;
-  formasPorFornada: number;
-}
+import { ConfiguracoesProducao } from '@/types';
 
 interface ConfigStore {
   // Getters para dados ativos
