@@ -57,7 +57,23 @@ export const useProdutosPorCategoria = (clienteId?: string) => {
     } finally {
       setLoading(false);
     }
-  }, [clienteId, carregarCategoriasCliente, produtos]);
+  }, [clienteId, carregarCategoriasCliente]);
+
+  // Efeito separado para reagir a mudanças nos produtos
+  useEffect(() => {
+    if (clienteId && categoriasCliente.length > 0 && produtos.length > 0) {
+      const produtosFiltrados = produtos
+        .filter(produto => produto.ativo && categoriasCliente.includes(produto.categoria_id || 0))
+        .map(produto => ({
+          id: produto.id,
+          nome: produto.nome,
+          categoriaId: produto.categoria_id || 0
+        }));
+      
+      console.log('📦 Produtos atualizados:', produtosFiltrados);
+      setProdutosFiltrados(produtosFiltrados);
+    }
+  }, [produtos, categoriasCliente, clienteId]);
 
   useEffect(() => {
     carregarDados();
