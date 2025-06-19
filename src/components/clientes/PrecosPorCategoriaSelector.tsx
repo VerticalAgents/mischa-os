@@ -21,6 +21,7 @@ export default function PrecosPorCategoriaSelector({
 
   // Inicializar preços com valores iniciais
   useEffect(() => {
+    console.log('PrecosPorCategoriaSelector: Preços iniciais:', precosIniciais);
     const precosMap: { [key: number]: number } = {};
     precosIniciais.forEach(preco => {
       precosMap[preco.categoria_id] = preco.preco_unitario;
@@ -28,19 +29,22 @@ export default function PrecosPorCategoriaSelector({
     setPrecos(precosMap);
   }, [precosIniciais]);
 
-  // Notificar mudanças para o componente pai
+  // Notificar mudanças para o componente pai apenas quando necessário
   useEffect(() => {
     const precosArray = Object.entries(precos)
-      .filter(([categoriaId, preco]) => categoriasHabilitadas.includes(Number(categoriaId)) && preco > 0)
+      .filter(([categoriaId, preco]) => categoriasHabilitadas.includes(Number(categoriaId)))
       .map(([categoriaId, preco]) => ({
         categoria_id: Number(categoriaId),
-        preco_unitario: preco
+        preco_unitario: preco || 0
       }));
+    
+    console.log('PrecosPorCategoriaSelector: Notificando mudanças:', precosArray);
     onChange(precosArray);
-  }, [precos, onChange, categoriasHabilitadas]);
+  }, [precos, categoriasHabilitadas, onChange]);
 
   const handlePrecoChange = (categoriaId: number, valor: string) => {
     const preco = parseFloat(valor) || 0;
+    console.log('PrecosPorCategoriaSelector: Alterando preço categoria', categoriaId, 'para', preco);
     setPrecos(prev => ({
       ...prev,
       [categoriaId]: preco

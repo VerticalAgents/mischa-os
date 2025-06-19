@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -8,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Save } from "lucide-react";
+import { CalendarIcon, Save, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -30,6 +31,11 @@ interface AgendamentoEditModalProps {
   onSalvar: (agendamento: AgendamentoItem) => void;
 }
 
+interface ItemPedidoCustomizado {
+  nome: string;
+  quantidade: number;
+}
+
 export default function AgendamentoEditModal({
   open,
   onOpenChange,
@@ -41,6 +47,7 @@ export default function AgendamentoEditModal({
   const [tipoPedido, setTipoPedido] = useState<TipoPedidoAgendamento>("Padrão");
   const [quantidadeTotal, setQuantidadeTotal] = useState<number>(0);
   const [observacoes, setObservacoes] = useState<string>("");
+  const [itensPersonalizados, setItensPersonalizados] = useState<ItemPedidoCustomizado[]>([]);
   const { salvarAgendamento } = useAgendamentoClienteStore();
   const { toast } = useToast();
 
@@ -53,8 +60,41 @@ export default function AgendamentoEditModal({
       setTipoPedido(validTipoPedido as TipoPedidoAgendamento);
       setQuantidadeTotal(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao);
       setObservacoes("");
+      
+      // Carregar itens personalizados se existirem
+      if (agendamento.pedido?.itensPedido && agendamento.pedido.itensPedido.length > 0) {
+        const itens = agendamento.pedido.itensPedido.map(item => ({
+          nome: item.produto?.nome || `Produto ${item.produtoId}`,
+          quantidade: item.quantidade
+        }));
+        setItensPersonalizados(itens);
+      } else {
+        setItensPersonalizados([]);
+      }
     }
   }, [agendamento]);
+
+  const adicionarItemPersonalizado = () => {
+    setItensPersonalizados([...itensPersonalizados, { nome: "", quantidade: 0 }]);
+  };
+
+  const removerItemPersonalizado = (index: number) => {
+    setItensPersonalizados(itensPersonalizados.filter((_, i) => i !== index));
+  };
+
+  const atualizarItemPersonalizado = (index: number, campo: 'nome' | 'quantidade', valor: string | number) => {
+    const novosItens = [...itensPersonalizados];
+    if (campo === 'nome') {
+      novosItens[index].nome = valor as string;
+    } else {
+      novosItens[index].quantidade = Number(valor);
+    }
+    setItensPersonalizados(novosItens);
+    
+    // Atualizar quantidade total automaticamente
+    const novaQuantidadeTotal = novosItens.reduce((total, item) => total + item.quantidade, 0);
+    setQuantidadeTotal(novaQuantidadeTotal);
+  };
 
   const handleSalvar = async () => {
     if (!agendamento || !dataReposicao) return;
@@ -64,7 +104,8 @@ export default function AgendamentoEditModal({
         status_agendamento: statusAgendamento,
         data_proxima_reposicao: dataReposicao,
         tipo_pedido: tipoPedido,
-        quantidade_total: quantidadeTotal
+        quantidade_total: quantidadeTotal,
+        itens_personalizados: tipoPedido === "Alterado" ? itensPersonalizados : null
       });
 
       const agendamentoAtualizado: AgendamentoItem = {
@@ -77,7 +118,22 @@ export default function AgendamentoEditModal({
           dataPedido: new Date(),
           dataPrevistaEntrega: dataReposicao,
           statusPedido: 'Agendado',
-          itensPedido: [],
+          itensPedido: itensPersonalizados.map((item, index) => ({
+            id: index,
+            idPedido: 0,
+            produtoId: `custom-${index}`,
+            quantidade: item.quantidade,
+            precoUnitario: 0,
+            produto: {
+              id: `custom-${index}`,
+              nome: item.nome,
+              categoria: "Personalizado",
+              subcategoriaId: 1,
+              categoriaId: 1,
+              ativo: true,
+              dataCadastro: new Date()
+            }
+          })),
           totalPedidoUnidades: quantidadeTotal,
           tipoPedido
         } : undefined
@@ -104,7 +160,7 @@ export default function AgendamentoEditModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Agendamento</DialogTitle>
           <DialogDescription>
@@ -169,6 +225,56 @@ export default function AgendamentoEditModal({
             </Popover>
           </div>
 
+          {tipoPedido === "Alterado" && (
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Itens do Pedido Personalizado</Label>
+                <Button type="button" onClick={adicionarItemPersonalizado} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Item
+                </Button>
+              </div>
+              
+              {itensPersonalizados.map((item, index) => (
+                <div key={index} className="grid grid-cols-3 gap-4 items-end">
+                  <div className="space-y-2">
+                    <Label htmlFor={`item-nome-${index}`}>Nome do Produto</Label>
+                    <Input
+                      id={`item-nome-${index}`}
+                      value={item.nome}
+                      onChange={(e) => atualizarItemPersonalizado(index, 'nome', e.target.value)}
+                      placeholder="Digite o nome do produto"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`item-quantidade-${index}`}>Quantidade</Label>
+                    <Input
+                      id={`item-quantidade-${index}`}
+                      type="number"
+                      min="0"
+                      value={item.quantidade}
+                      onChange={(e) => atualizarItemPersonalizado(index, 'quantidade', e.target.value)}
+                    />
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => removerItemPersonalizado(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              
+              {itensPersonalizados.length === 0 && (
+                <div className="text-center py-4 text-muted-foreground">
+                  Nenhum item adicionado. Clique em "Adicionar Item" para começar.
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="quantidade">Quantidade Total</Label>
             <Input
@@ -177,7 +283,13 @@ export default function AgendamentoEditModal({
               value={quantidadeTotal}
               onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
               min="0"
+              disabled={tipoPedido === "Alterado"}
             />
+            {tipoPedido === "Alterado" && (
+              <p className="text-xs text-muted-foreground">
+                A quantidade total é calculada automaticamente com base nos itens adicionados.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

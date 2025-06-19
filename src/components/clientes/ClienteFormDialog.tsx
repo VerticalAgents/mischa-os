@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -124,7 +123,8 @@ export default function ClienteFormDialog({
     if (clienteId && open) {
       const cliente = getClientePorId(clienteId);
       if (cliente) {
-        console.log('Carregando dados do cliente para edição:', cliente);
+        console.log('ClienteFormDialog: Carregando dados do cliente para edição:', cliente);
+        console.log('ClienteFormDialog: Categorias habilitadas:', cliente.categoriasHabilitadas);
         
         form.reset({
           nome: cliente.nome,
@@ -156,6 +156,7 @@ export default function ClienteFormDialog({
             categoria_id: p.categoria_id,
             preco_unitario: p.preco_unitario
           }));
+          console.log('ClienteFormDialog: Preços carregados:', precosMap);
           setPrecosCategoria(precosMap);
         });
       }
@@ -192,19 +193,21 @@ export default function ClienteFormDialog({
     setIsSubmitting(true);
     
     try {
-      console.log('Dados do formulário para salvar:', data);
-      console.log('Preços por categoria:', precosCategoria);
+      console.log('ClienteFormDialog: Dados do formulário para salvar:', data);
+      console.log('ClienteFormDialog: Preços por categoria:', precosCategoria);
       
       const dadosCliente = {
         ...data,
         quantidadePadrao: Number(data.quantidadePadrao),
         periodicidadePadrao: Number(data.periodicidadePadrao),
+        categoriasHabilitadas: data.categoriasHabilitadas, // Garantir que seja salvo
       };
 
       let clienteIdFinal = clienteId;
 
       if (clienteId) {
         // Atualização
+        console.log('ClienteFormDialog: Atualizando cliente:', clienteId, dadosCliente);
         await atualizarCliente(clienteId, dadosCliente);
         clienteIdFinal = clienteId;
         
@@ -214,7 +217,8 @@ export default function ClienteFormDialog({
         });
       } else {
         // Criação
-        const novoCliente = await adicionarCliente({
+        console.log('ClienteFormDialog: Criando novo cliente:', dadosCliente);
+        await adicionarCliente({
           ...dadosCliente,
           ativo: data.statusCliente === 'Ativo',
           giroMedioSemanal: 0,
@@ -224,7 +228,6 @@ export default function ClienteFormDialog({
         });
         
         // Para novos clientes, precisamos obter o ID do cliente criado
-        // Como o hook não retorna o ID, vamos recarregar a lista e pegar o último cliente
         await carregarClientes();
         
         toast({
@@ -235,6 +238,7 @@ export default function ClienteFormDialog({
 
       // Salvar preços por categoria se houver um cliente ID válido
       if (clienteIdFinal && precosCategoria.length > 0) {
+        console.log('ClienteFormDialog: Salvando preços por categoria:', precosCategoria);
         await salvarPrecos(clienteIdFinal, precosCategoria);
       }
 
@@ -250,7 +254,7 @@ export default function ClienteFormDialog({
       setPrecosCategoria([]);
       onOpenChange(false);
     } catch (error) {
-      console.error("Erro ao salvar cliente:", error);
+      console.error("ClienteFormDialog: Erro ao salvar cliente:", error);
       toast({
         title: clienteId ? "Erro ao atualizar cliente" : "Erro ao cadastrar cliente",
         description: "Ocorreu um erro ao tentar salvar os dados do cliente.",
@@ -261,8 +265,9 @@ export default function ClienteFormDialog({
     }
   };
 
-  const handlePrecosChange = (novosPpreos: { categoria_id: number; preco_unitario: number }[]) => {
-    setPrecosCategoria(novosPpreos);
+  const handlePrecosChange = (novosPrecos: { categoria_id: number; preco_unitario: number }[]) => {
+    console.log('ClienteFormDialog: Alteração de preços recebida:', novosPrecos);
+    setPrecosCategoria(novosPrecos);
   };
 
   return (

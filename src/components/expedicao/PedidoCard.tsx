@@ -1,127 +1,146 @@
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Pedido } from "@/types";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import StatusBadge from "@/components/common/StatusBadge";
-import { TipoPedidoBadge } from "./TipoPedidoBadge";
-import { formatDate } from "@/lib/utils";
-import { Check, Undo } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Package, MapPin, User, Calendar, CheckCircle, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import TipoPedidoBadge from "./TipoPedidoBadge";
+import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 
 interface PedidoCardProps {
-  pedido: {
-    id: string;
-    cliente_nome: string;
-    data_prevista_entrega: Date;
-    quantidade_total: number;
-    tipo_pedido: string;
-    substatus_pedido?: string;
-    itens_personalizados?: any;
-  };
-  onConfirmarSeparacao: (id: string) => void;
-  onDesfazerSeparacao: (id: string) => void;
-  showAntecipada?: boolean;
+  pedido: Pedido;
+  onMarcarSeparado: (pedidoId: string) => void;
+  onCancelar?: (pedidoId: string) => void;
 }
 
-export const PedidoCard = ({ 
-  pedido, 
-  onConfirmarSeparacao, 
-  onDesfazerSeparacao,
-  showAntecipada = false 
-}: PedidoCardProps) => {
-  // Processar lista de produtos/sabores
-  const produtos = pedido.itens_personalizados || [];
-  
-  // Para pedidos padrão sem itens personalizados, mostrar distribuição padrão
-  const produtosParaExibir = produtos.length > 0 ? produtos : [
-    { nome: "Distribuição Padrão", quantidade: pedido.quantidade_total }
-  ];
-  
+interface StatusVariantProps {
+  status: Pedido['statusPedido'];
+}
+
+function getStatusVariant(status: StatusVariantProps['status']) {
+  if (status === 'Pendente') return 'default';
+  if (status === 'Agendado') return 'secondary';
+  if (status === 'Cancelado') return 'destructive';
+  return 'default';
+}
+
+export default function PedidoCard({ pedido, onMarcarSeparado, onCancelar }: PedidoCardProps) {
+  const formatarData = (data: Date) => {
+    return format(new Date(data), "dd 'de' MMMM, yyyy", { locale: ptBR });
+  };
+
+  const calcularValorTotal = () => {
+    return pedido.itensPedido.reduce((total, item) => total + (item.precoUnitario * item.quantidade), 0);
+  };
+
   return (
-    <Card className="mb-4">
-      <CardContent className="p-4">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Informações principais do pedido */}
-          <div className="flex-1">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-semibold text-lg">{pedido.cliente_nome}</h3>
-                <TipoPedidoBadge tipo={pedido.tipo_pedido} />
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-muted-foreground">
-                <div>
-                  <span className="font-medium">Data:</span> {formatDate(new Date(pedido.data_prevista_entrega))}
-                </div>
-                <div>
-                  <span className="font-medium">Status Agendamento:</span>
-                  <StatusBadge status="Agendado" />
-                </div>
-                <div>
-                  <span className="font-medium">Status Cliente:</span>
-                  {pedido.substatus_pedido && (
-                    <span className="ml-1 text-xs">
-                      ({pedido.substatus_pedido})
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
+    <Card className={cn(
+      "transition-all duration-200 hover:shadow-md",
+      pedido.statusPedido === 'Separado' && "bg-green-50 border-green-200"
+    )}>
+      <CardHeader className="space-y-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Pedido #{pedido.id.substring(0, 8)}
+          </CardTitle>
+          <div className="flex gap-2">
+            <TipoPedidoBadge tipo={pedido.tipoPedido} />
+            <Badge variant={getStatusVariant(pedido.statusPedido)}>
+              {pedido.statusPedido}
+            </Badge>
           </div>
-
-          {/* Lista de produtos - sempre visível com detalhes */}
-          <div className="lg:w-80 border-l-0 lg:border-l lg:pl-4">
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm text-muted-foreground">Produtos</h4>
-              <div className="max-h-32 overflow-y-auto">
-                <div className="space-y-1">
-                  {produtosParaExibir.map((item: any, index: number) => (
-                    <div key={index} className="flex justify-between items-center text-sm">
-                      <span className="text-left text-blue-600">
-                        {item.nome || item.sabor || `Produto ${index + 1}`}
-                      </span>
-                      <span className="font-medium text-right ml-2 text-gray-900">
-                        {item.quantidade || item.quantidade_sabor || 0}
-                      </span>
-                    </div>
-                  ))}
-                  {produtosParaExibir.length > 1 && (
-                    <div className="border-t pt-1 mt-1">
-                      <div className="flex justify-between items-center text-sm font-medium">
-                        <span className="text-gray-700">Total</span>
-                        <span className="text-gray-900">{pedido.quantidade_total}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">{pedido.cliente.nome}</span>
           </div>
+          
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <span className="truncate">{pedido.cliente.enderecoEntrega || 'Endereço não informado'}</span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span>{formatarData(pedido.dataPrevistaEntrega)}</span>
+          </div>
+        </div>
+      </CardHeader>
 
-          {/* Ações */}
-          <div className="flex flex-col justify-center gap-2 lg:w-auto">
-            {pedido.substatus_pedido === "Separado" ? (
-              <Button
-                variant="outline" 
-                size="sm"
-                onClick={() => onDesfazerSeparacao(pedido.id)}
-                className="flex items-center gap-1"
-              >
-                <Undo className="h-4 w-4" />
-                Desfazer
-              </Button>
-            ) : (
-              <Button
-                variant="outline" 
-                size="sm"
-                onClick={() => onConfirmarSeparacao(pedido.id)}
-                className="flex items-center gap-1"
-              >
-                <Check className="h-4 w-4" />
-                {showAntecipada ? "Separação Antecipada" : "Confirmar Separação"}
-              </Button>
+      <CardContent className="space-y-4">
+        <div>
+          <h4 className="font-medium mb-2">Itens do Pedido:</h4>
+          <div className="space-y-2">
+            {pedido.itensPedido.map((item, index) => (
+              <div key={index} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-md">
+                <div className="flex items-center gap-3">
+                  <div className="font-medium">
+                    <ProdutoNomeDisplay 
+                      produtoId={item.produtoId} 
+                      nomeFallback={item.produto?.nome}
+                    />
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {item.quantidade} un.
+                  </Badge>
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  R$ {(item.precoUnitario * item.quantidade).toFixed(2)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="flex items-center justify-between">
+          <div className="text-sm">
+            <span className="text-muted-foreground">Total: </span>
+            <span className="font-semibold text-lg">
+              {pedido.totalPedidoUnidades} un. | R$ {calcularValorTotal().toFixed(2)}
+            </span>
+          </div>
+          
+          <div className="flex gap-2">
+            {pedido.statusPedido !== 'Separado' && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onCancelar?.(pedido.id)}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={() => onMarcarSeparado(pedido.id)}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Marcar como Separado
+                </Button>
+              </>
+            )}
+            
+            {pedido.statusPedido === 'Separado' && (
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Separado
+              </Badge>
             )}
           </div>
         </div>
       </CardContent>
     </Card>
   );
-};
+}

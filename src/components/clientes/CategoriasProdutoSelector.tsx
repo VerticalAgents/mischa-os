@@ -16,17 +16,23 @@ export default function CategoriasProdutoSelector({
   onChange 
 }: CategoriasProdutoSelectorProps) {
   const { categorias } = useSupabaseCategoriasProduto();
-  const [categoriasHabilitadas, setCategoriasHabilitadas] = useState<number[]>(value || []);
+  const [categoriasHabilitadas, setCategoriasHabilitadas] = useState<number[]>([]);
 
+  // Sincronizar com o valor recebido como prop
   useEffect(() => {
+    console.log('CategoriasProdutoSelector: Valor recebido:', value);
     setCategoriasHabilitadas(value || []);
   }, [value]);
 
   const handleCategoriaToggle = (categoriaId: number) => {
+    console.log('CategoriasProdutoSelector: Toggling categoria:', categoriaId);
+    console.log('CategoriasProdutoSelector: Estado atual:', categoriasHabilitadas);
+    
     const novasCategorias = categoriasHabilitadas.includes(categoriaId)
       ? categoriasHabilitadas.filter(id => id !== categoriaId)
       : [...categoriasHabilitadas, categoriaId];
     
+    console.log('CategoriasProdutoSelector: Novas categorias:', novasCategorias);
     setCategoriasHabilitadas(novasCategorias);
     onChange(novasCategorias);
   };
