@@ -1,14 +1,13 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import StatusBadge from "@/components/common/StatusBadge";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
-import { TipoPedidoBadge } from "./TipoPedidoBadge";
+import { PedidoCard } from "./PedidoCard";
 import { toast } from "sonner";
-import { Printer, FileText, Check, Undo } from "lucide-react";
+import { Printer, FileText, Check } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const SeparacaoPedidos = () => {
@@ -294,66 +293,18 @@ export const SeparacaoPedidos = () => {
             </TabsTrigger>
           </TabsList>
           
-          
           <TabsContent value="todos">
             {todosPedidos.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Total Unidades</TableHead>
-                    <TableHead>Data Entrega</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {todosPedidos.map((pedido) => (
-                    <TableRow key={pedido.id}>
-                      <TableCell>{pedido.cliente_nome}</TableCell>
-                      <TableCell>
-                        <TipoPedidoBadge tipo={pedido.tipo_pedido} />
-                      </TableCell>
-                      <TableCell>{pedido.quantidade_total}</TableCell>
-                      <TableCell>{formatDate(new Date(pedido.data_prevista_entrega))}</TableCell>
-                      <TableCell>
-                        <StatusBadge status="Agendado" />
-                        {pedido.substatus_pedido && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            ({pedido.substatus_pedido})
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          {pedido.substatus_pedido === "Separado" ? (
-                            <Button
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => desfazerSeparacao(pedido.id)}
-                              className="flex items-center gap-1"
-                            >
-                              <Undo className="h-4 w-4" />
-                              Desfazer
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => confirmarSeparacao(pedido.id)}
-                              className="flex items-center gap-1"
-                            >
-                              <Check className="h-4 w-4" />
-                              Confirmar Separação
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-4">
+                {todosPedidos.map((pedido) => (
+                  <PedidoCard 
+                    key={pedido.id}
+                    pedido={pedido}
+                    onConfirmarSeparacao={confirmarSeparacao}
+                    onDesfazerSeparacao={desfazerSeparacao}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 Não há pedidos agendados para hoje.
@@ -361,62 +312,18 @@ export const SeparacaoPedidos = () => {
             )}
           </TabsContent>
           
-          
           <TabsContent value="padrao">
             {pedidosPadrao.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Data Entrega</TableHead>
-                    <TableHead>Total Unidades</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pedidosPadrao.map((pedido) => (
-                    <TableRow key={pedido.id}>
-                      <TableCell>{pedido.cliente_nome}</TableCell>
-                      <TableCell>{formatDate(new Date(pedido.data_prevista_entrega))}</TableCell>
-                      <TableCell>{pedido.quantidade_total}</TableCell>
-                      <TableCell>
-                        <StatusBadge status="Agendado" />
-                        {pedido.substatus_pedido && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            ({pedido.substatus_pedido})
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          {pedido.substatus_pedido === "Separado" ? (
-                            <Button
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => desfazerSeparacao(pedido.id)}
-                              className="flex items-center gap-1"
-                            >
-                              <Undo className="h-4 w-4" />
-                              Desfazer
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => confirmarSeparacao(pedido.id)}
-                              className="flex items-center gap-1"
-                            >
-                              <Check className="h-4 w-4" />
-                              Confirmar Separação
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-4">
+                {pedidosPadrao.map((pedido) => (
+                  <PedidoCard 
+                    key={pedido.id}
+                    pedido={pedido}
+                    onConfirmarSeparacao={confirmarSeparacao}
+                    onDesfazerSeparacao={desfazerSeparacao}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 Não há pedidos padrão agendados para hoje.
@@ -426,59 +333,16 @@ export const SeparacaoPedidos = () => {
           
           <TabsContent value="alterados">
             {pedidosAlterados.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Data Entrega</TableHead>
-                    <TableHead>Total Unidades</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pedidosAlterados.map((pedido) => (
-                    <TableRow key={pedido.id}>
-                      <TableCell>{pedido.cliente_nome}</TableCell>
-                      <TableCell>{formatDate(new Date(pedido.data_prevista_entrega))}</TableCell>
-                      <TableCell>{pedido.quantidade_total}</TableCell>
-                      <TableCell>
-                        <StatusBadge status="Agendado" />
-                        {pedido.substatus_pedido && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            ({pedido.substatus_pedido})
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          {pedido.substatus_pedido === "Separado" ? (
-                            <Button
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => desfazerSeparacao(pedido.id)}
-                              className="flex items-center gap-1"
-                            >
-                              <Undo className="h-4 w-4" />
-                              Desfazer
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => confirmarSeparacao(pedido.id)}
-                              className="flex items-center gap-1"
-                            >
-                              <Check className="h-4 w-4" />
-                              Confirmar Separação
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-4">
+                {pedidosAlterados.map((pedido) => (
+                  <PedidoCard 
+                    key={pedido.id}
+                    pedido={pedido}
+                    onConfirmarSeparacao={confirmarSeparacao}
+                    onDesfazerSeparacao={desfazerSeparacao}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 Não há pedidos alterados agendados para hoje.
@@ -488,42 +352,17 @@ export const SeparacaoPedidos = () => {
           
           <TabsContent value="proximos">
             {pedidosProximoDia.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Data Entrega</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Total Unidades</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pedidosProximoDia.map((pedido) => (
-                    <TableRow key={pedido.id}>
-                      <TableCell>{pedido.cliente_nome}</TableCell>
-                      <TableCell>{formatDate(new Date(pedido.data_prevista_entrega))}</TableCell>
-                      <TableCell>
-                        <TipoPedidoBadge tipo={pedido.tipo_pedido} />
-                      </TableCell>
-                      <TableCell>{pedido.quantidade_total}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => confirmarSeparacao(pedido.id)}
-                            className="flex items-center gap-1"
-                          >
-                            <Check className="h-4 w-4" />
-                            Confirmar Separação Antecipada
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-4">
+                {pedidosProximoDia.map((pedido) => (
+                  <PedidoCard 
+                    key={pedido.id}
+                    pedido={pedido}
+                    onConfirmarSeparacao={confirmarSeparacao}
+                    onDesfazerSeparacao={desfazerSeparacao}
+                    showAntecipada={true}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 Não há pedidos pendentes para separação antecipada.
