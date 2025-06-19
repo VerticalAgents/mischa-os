@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -35,8 +34,8 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <AuthProvider>
-          <BrowserRouter>
+        <BrowserRouter>
+          <AuthProvider>
             <Routes>
               <Route path="/login" element={<AuthPage />} />
               <Route path="/" element={
@@ -166,8 +165,8 @@ function App() {
                 </ProtectedRoute>
               } />
             </Routes>
-          </BrowserRouter>
-        </AuthProvider>
+          </AuthProvider>
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );
