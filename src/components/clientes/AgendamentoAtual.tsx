@@ -26,7 +26,6 @@ interface ProdutoQuantidade {
 
 // CORREÇÃO DEFINITIVA: Funções que preservam exatamente a data sem problemas de timezone
 const formatDateForInput = (date: Date): string => {
-  // Usar getFullYear, getMonth, getDate (métodos locais) para evitar problemas de timezone
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -34,9 +33,7 @@ const formatDateForInput = (date: Date): string => {
 };
 
 const parseDateFromInput = (dateString: string): Date => {
-  // Usar new Date(year, month, day) em vez de Date.parse para evitar timezone issues
   const [year, month, day] = dateString.split('-').map(Number);
-  // month - 1 porque Date() usa meses 0-based (0 = Janeiro)
   return new Date(year, month - 1, day);
 };
 
@@ -63,7 +60,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
   // Inicializar produtos quando tipoPedido muda para 'Alterado'
   useEffect(() => {
     if (tipoPedido === 'Alterado' && produtosFiltrados.length > 0) {
-      // Se não há produtos cadastrados ou se mudou para 'Alterado', inicializar
       if (produtosQuantidades.length === 0) {
         const produtosIniciais = produtosFiltrados.map(produto => ({
           produto: produto.nome,
@@ -96,7 +92,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             
             setStatusAgendamento(agendamento.status_agendamento);
             
-            // CORREÇÃO: Formatação segura da data preservando o valor exato
             if (agendamento.data_proxima_reposicao) {
               const dataFormatada = formatDateForInput(agendamento.data_proxima_reposicao);
               console.log('📅 Data formatada para input no cliente (CORRIGIDA):', {
@@ -182,7 +177,6 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
 
     setIsLoading(true);
     try {
-      // CORREÇÃO: Conversão segura da data preservando o valor exato
       let dataParaBanco: Date | undefined;
       if (proximaDataReposicao) {
         dataParaBanco = parseDateFromInput(proximaDataReposicao);
@@ -316,7 +310,13 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
               value={quantidadeTotal}
               onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
               min="0"
+              className={hasValidationError ? "border-red-500" : ""}
             />
+            {hasValidationError && tipoPedido === 'Alterado' && (
+              <p className="text-sm text-red-500">
+                Total deve ser igual à soma das quantidades dos produtos ({somaQuantidadesProdutos})
+              </p>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -340,8 +340,13 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label>Quantidades por Produto</Label>
-                <div className="text-sm text-muted-foreground">
+                <div className={`text-sm ${hasValidationError ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
                   Total: {somaQuantidadesProdutos} / {quantidadeTotal}
+                  {hasValidationError && (
+                    <span className="ml-2 text-red-600">
+                      (Diferença: {Math.abs(somaQuantidadesProdutos - quantidadeTotal)})
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -355,7 +360,8 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
                 <Alert variant="destructive">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    A soma das quantidades dos produtos deve ser igual ao total do pedido ({quantidadeTotal})
+                    A soma das quantidades dos produtos ({somaQuantidadesProdutos}) deve ser igual ao total do pedido ({quantidadeTotal}).
+                    Diferença: {Math.abs(somaQuantidadesProdutos - quantidadeTotal)} unidades.
                   </AlertDescription>
                 </Alert>
               )}

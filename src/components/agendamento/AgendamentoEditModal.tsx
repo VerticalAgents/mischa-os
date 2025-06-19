@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Save, Plus, Trash2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CalendarIcon, Save, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -55,13 +56,11 @@ export default function AgendamentoEditModal({
     if (agendamento) {
       setDataReposicao(agendamento.dataReposicao);
       setStatusAgendamento(agendamento.statusAgendamento);
-      // Ensure we only use valid agendamento types
       const validTipoPedido = agendamento.pedido?.tipoPedido === "Único" ? "Padrão" : (agendamento.pedido?.tipoPedido || "Padrão");
       setTipoPedido(validTipoPedido as TipoPedidoAgendamento);
       setQuantidadeTotal(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao);
       setObservacoes("");
       
-      // Carregar itens personalizados se existirem - adaptado para ItemPedido
       if (agendamento.pedido?.itensPedido && agendamento.pedido.itensPedido.length > 0) {
         const itens = agendamento.pedido.itensPedido.map(item => ({
           produto: item.nomeSabor || `Sabor ${item.idSabor}`,
@@ -73,6 +72,9 @@ export default function AgendamentoEditModal({
       }
     }
   }, [agendamento]);
+
+  const somaQuantidadesProdutos = itensPersonalizados.reduce((soma, item) => soma + item.quantidade, 0);
+  const hasValidationError = tipoPedido === "Alterado" && somaQuantidadesProdutos !== quantidadeTotal;
 
   const adicionarItemPersonalizado = () => {
     setItensPersonalizados([...itensPersonalizados, { produto: "", quantidade: 0 }]);
@@ -90,14 +92,19 @@ export default function AgendamentoEditModal({
       novosItens[index].quantidade = Number(valor);
     }
     setItensPersonalizados(novosItens);
-    
-    // Atualizar quantidade total automaticamente
-    const novaQuantidadeTotal = novosItens.reduce((total, item) => total + item.quantidade, 0);
-    setQuantidadeTotal(novaQuantidadeTotal);
   };
 
   const handleSalvar = async () => {
     if (!agendamento || !dataReposicao) return;
+
+    if (hasValidationError) {
+      toast({
+        title: "Erro de validação",
+        description: "A soma das quantidades dos produtos deve ser igual ao total do pedido",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
       await salvarAgendamento(agendamento.cliente.id, {
@@ -219,15 +226,47 @@ export default function AgendamentoEditModal({
             </Popover>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="quantidade">Quantidade Total</Label>
+            <Input
+              id="quantidade"
+              type="number"
+              value={quantidadeTotal}
+              onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
+              min="0"
+              className={hasValidationError ? "border-red-500" : ""}
+            />
+            {hasValidationError && (
+              <p className="text-sm text-red-500">
+                Total deve ser igual à soma das quantidades dos produtos ({somaQuantidadesProdutos})
+              </p>
+            )}
+          </div>
+
           {tipoPedido === "Alterado" && (
             <div className="space-y-4 border-t pt-4">
               <div className="flex items-center justify-between">
                 <Label className="text-base font-medium">Itens do Pedido Personalizado</Label>
-                <Button type="button" onClick={adicionarItemPersonalizado} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Item
-                </Button>
+                <div className="flex items-center gap-2">
+                  <div className={`text-sm ${hasValidationError ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
+                    Total: {somaQuantidadesProdutos} / {quantidadeTotal}
+                  </div>
+                  <Button type="button" onClick={adicionarItemPersonalizado} size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Item
+                  </Button>
+                </div>
               </div>
+
+              {hasValidationError && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    A soma das quantidades dos produtos ({somaQuantidadesProdutos}) deve ser igual ao total do pedido ({quantidadeTotal}).
+                    Diferença: {Math.abs(somaQuantidadesProdutos - quantidadeTotal)} unidades.
+                  </AlertDescription>
+                </Alert>
+              )}
               
               {itensPersonalizados.map((item, index) => (
                 <div key={index} className="grid grid-cols-3 gap-4 items-end">
@@ -270,23 +309,6 @@ export default function AgendamentoEditModal({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="quantidade">Quantidade Total</Label>
-            <Input
-              id="quantidade"
-              type="number"
-              value={quantidadeTotal}
-              onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
-              min="0"
-              disabled={tipoPedido === "Alterado"}
-            />
-            {tipoPedido === "Alterado" && (
-              <p className="text-xs text-muted-foreground">
-                A quantidade total é calculada automaticamente com base nos itens adicionados.
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="observacoes">Observações</Label>
             <Textarea
               id="observacoes"
@@ -302,7 +324,11 @@ export default function AgendamentoEditModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSalvar} className="flex items-center gap-2">
+          <Button 
+            onClick={handleSalvar} 
+            className="flex items-center gap-2"
+            disabled={hasValidationError}
+          >
             <Save className="h-4 w-4" />
             Salvar Alterações
           </Button>
