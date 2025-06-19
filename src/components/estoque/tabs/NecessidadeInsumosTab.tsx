@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,8 @@ import {
   ChefHat,
   List,
   BarChart3,
-  CheckCircle2
+  CheckCircle2,
+  FileText
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -29,6 +29,8 @@ import { useNecessidadeInsumos } from "@/hooks/useNecessidadeInsumos";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useSupabaseReceitas } from "@/hooks/useSupabaseReceitas";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
+import jsPDF from 'jspdf';
+import { toast } from 'sonner';
 
 export default function NecessidadeInsumosTab() {
   const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -51,7 +53,7 @@ export default function NecessidadeInsumosTab() {
 
   const handleCalcular = async () => {
     calcularNecessidadeInsumos(dataInicio, dataFim);
-    setMostrarDetalhes(true);
+    setMostrarDetalhes(false); // Manter oculto por padrão
   };
 
   const toggleEtapa = (etapa: number) => {
@@ -117,6 +119,124 @@ export default function NecessidadeInsumosTab() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const exportarPDF = () => {
+    const insumosParaComprar = necessidadeInsumos.filter(item => item.quantidadeComprar > 0);
+    
+    if (insumosParaComprar.length === 0) {
+      toast.error('Nenhum insumo precisa ser comprado');
+      return;
+    }
+
+    try {
+      const doc = new jsPDF();
+      
+      // Configurar fonte
+      doc.setFont('helvetica');
+      
+      // Título
+      doc.setFontSize(16);
+      doc.text('Lista de Compras - Insumos', 20, 20);
+      
+      // Data de geração e período
+      doc.setFontSize(10);
+      doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 20, 30);
+      doc.text(`Período: ${format(new Date(dataInicio), 'dd/MM/yyyy')} a ${format(new Date(dataFim), 'dd/MM/yyyy')}`, 20, 35);
+      
+      // Resumo
+      let yPosition = 50;
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Resumo:', 20, yPosition);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      yPosition += 8;
+      doc.text(`Total de insumos a comprar: ${insumosParaComprar.length}`, 25, yPosition);
+      
+      const valorTotal = insumosParaComprar.reduce((total, item) => {
+        const insumo = insumos.find(i => i.id === item.insumoId);
+        const volumeBruto = Number(insumo?.volume_bruto) || 1;
+        const pacotesComprar = Math.ceil(item.quantidadeComprar / volumeBruto);
+        return total + (pacotesComprar * item.custoMedio);
+      }, 0);
+      
+      yPosition += 6;
+      doc.text(`Valor total estimado: R$ ${valorTotal.toFixed(2)}`, 25, yPosition);
+      
+      // Cabeçalhos da tabela
+      yPosition += 15;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      
+      doc.text('Insumo', 20, yPosition);
+      doc.text('Qtd (g)', 80, yPosition);
+      doc.text('Pacotes', 110, yPosition);
+      doc.text('Custo/Pac', 140, yPosition);
+      doc.text('Total', 170, yPosition);
+      
+      // Linha separadora
+      doc.line(20, yPosition + 2, 190, yPosition + 2);
+      yPosition += 8;
+      
+      // Dados dos insumos
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      
+      insumosParaComprar.forEach((item, index) => {
+        if (yPosition > 270) { // Nova página se necessário
+          doc.addPage();
+          yPosition = 20;
+        }
+        
+        const insumo = insumos.find(i => i.id === item.insumoId);
+        const volumeBruto = Number(insumo?.volume_bruto) || 1;
+        const pacotesComprar = Math.ceil(item.quantidadeComprar / volumeBruto);
+        const custoTotal = pacotesComprar * item.custoMedio;
+        
+        // Nome do insumo (truncado se muito longo)
+        const nomeInsumo = item.nomeInsumo.length > 25 ? item.nomeInsumo.substring(0, 25) + '...' : item.nomeInsumo;
+        doc.text(nomeInsumo, 20, yPosition);
+        
+        // Quantidade a comprar
+        doc.text(item.quantidadeComprar.toFixed(0), 80, yPosition);
+        
+        // Pacotes a comprar
+        doc.text(pacotesComprar.toString(), 110, yPosition);
+        
+        // Custo por pacote
+        doc.text(`R$ ${item.custoMedio.toFixed(2)}`, 140, yPosition);
+        
+        // Custo total
+        doc.text(`R$ ${custoTotal.toFixed(2)}`, 170, yPosition);
+        
+        yPosition += 6;
+        
+        // Linha separadora a cada 5 registros
+        if ((index + 1) % 5 === 0) {
+          doc.line(20, yPosition, 190, yPosition);
+          yPosition += 3;
+        }
+      });
+      
+      // Rodapé
+      const totalPaginas = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPaginas; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text(`Página ${i} de ${totalPaginas}`, 20, 285);
+        doc.text(`Total de itens: ${insumosParaComprar.length}`, 150, 285);
+      }
+      
+      // Salvar arquivo
+      doc.save(`lista-compras-insumos-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+      
+      toast.success('Lista de compras exportada para PDF!');
+    } catch (error) {
+      console.error('Erro na exportação PDF:', error);
+      toast.error('Erro ao exportar para PDF');
+    }
   };
 
   // Calcular dados para as etapas
@@ -351,6 +471,16 @@ export default function NecessidadeInsumosTab() {
                 CSV
               </Button>
 
+              <Button
+                variant="outline"
+                onClick={exportarPDF}
+                disabled={loading || insumosParaComprar.length === 0}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                PDF
+              </Button>
+
               {necessidadeInsumos.length > 0 && (
                 <Button
                   variant="outline"
@@ -364,21 +494,9 @@ export default function NecessidadeInsumosTab() {
             </div>
           </div>
 
-          {/* Resumo */}
+          {/* Resumo - Somente 2 blocos visuais */}
           {resumoCalculo && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <Package className="h-8 w-8 mx-auto text-blue-600 mb-2" />
-                <div className="text-2xl font-bold text-blue-600">{resumoCalculo.totalSabores}</div>
-                <div className="text-sm text-muted-foreground">Produtos</div>
-              </div>
-              
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <Calculator className="h-8 w-8 mx-auto text-green-600 mb-2" />
-                <div className="text-2xl font-bold text-green-600">{resumoCalculo.totalReceitas}</div>
-                <div className="text-sm text-muted-foreground">Receitas</div>
-              </div>
-              
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="text-center p-3 bg-orange-50 rounded-lg">
                 <ShoppingCart className="h-8 w-8 mx-auto text-orange-600 mb-2" />
                 <div className="text-2xl font-bold text-orange-600">{insumosParaComprar.length}</div>
