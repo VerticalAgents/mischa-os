@@ -125,10 +125,15 @@ export default function ProjecaoProducaoTab() {
 
           if (unidadesProduzir > 0) {
             if (nomeProduto === "Mini Brownie Tradicional") {
-              // Cálculo específico para Mini Brownie Tradicional
-              const formasPorPacote = 2 / 2.7;
-              formasNecessarias = Math.ceil(unidadesProduzir * formasPorPacote);
-              sobraEstimada = (formasNecessarias * 2.7) - (unidadesProduzir * 2);
+              // CORREÇÃO: Cálculo específico para Mini Brownie Tradicional
+              // Cada pacote de Mini Brownie precisa de 0,74 formas de Brownie Tradicional
+              formasNecessarias = Math.ceil(unidadesProduzir * 0.74);
+              
+              // Para sobra: cada forma produz aproximadamente 1.35 pacotes (1/0.74)
+              const pacotesProduzidos = formasNecessarias / 0.74;
+              sobraEstimada = Math.max(0, pacotesProduzidos - unidadesProduzir);
+              
+              console.log(`🧮 Mini Brownie Tradicional: ${unidadesProduzir} pacotes = ${formasNecessarias} formas (0,74 formas/pacote)`);
             } else {
               formasNecessarias = Math.ceil(unidadesProduzir / capacidadeForma);
               sobraEstimada = (formasNecessarias * capacidadeForma) - unidadesProduzir;
@@ -327,7 +332,16 @@ export default function ProjecaoProducaoTab() {
                 {projecaoItens.length > 0 ? (
                   projecaoItens.map((item) => (
                     <TableRow key={item.idProduto}>
-                      <TableCell className="font-medium">{item.nomeProduto}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {item.nomeProduto}
+                          {item.nomeProduto === "Mini Brownie Tradicional" && (
+                            <Badge variant="outline" className="text-xs">
+                              0,74 formas/pacote
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">{item.unidadesNecessarias}</TableCell>
                       <TableCell className="text-right">
                         <span className={item.estoqueDisponivel >= item.unidadesNecessarias ? 'text-green-600' : 'text-red-600'}>
@@ -344,8 +358,8 @@ export default function ProjecaoProducaoTab() {
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
                         {item.nomeProduto === "Mini Brownie Tradicional" ? 
-                          `${item.sobraEstimada.toFixed(0)}g` : 
-                          item.sobraEstimada
+                          `${item.sobraEstimada.toFixed(1)} pacotes` : 
+                          `${item.sobraEstimada} unidades`
                         }
                       </TableCell>
                     </TableRow>

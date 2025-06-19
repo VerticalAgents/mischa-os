@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +15,13 @@ const PRECOS_TEMPORARIOS: Record<string, number> = {
   'default': 5.00
 };
 
-const CUSTO_UNITARIO_FIXO = 1.32;
+// Custos diferenciados por categoria
+const CUSTOS_UNITARIOS: Record<string, number> = {
+  'revenda padrão': 1.32,
+  'food service': 29.17,
+  'default': 1.32
+};
+
 const ALIQUOTA_PROVISORIA = 0.04; // 4%
 
 interface ProjecaoCliente {
@@ -30,6 +35,7 @@ interface ProjecaoCliente {
     faturamento: number;
     custoInsumos: number;
     margemUnitaria: number;
+    custoUnitario: number;
   }[];
   emiteNotaFiscal: boolean;
   impostoTotal: number;
@@ -53,12 +59,18 @@ interface ClienteDetalhe {
   calculos: CalculoDetalhe[];
 }
 
+interface ClienteNaoIncluido {
+  nomeCliente: string;
+  motivo: string;
+}
+
 export default function ProjecaoResultadosPDV() {
   const { clientes, carregarClientes } = useClienteStore();
   const { categorias } = useSupabaseCategoriasProduto();
   const [projecoes, setProjecoes] = useState<ProjecaoCliente[]>([]);
   const [mostrarDetalhes, setMostrarDetalhes] = useState(false);
   const [detalhesCalculos, setDetalhesCalculos] = useState<ClienteDetalhe[]>([]);
+  const [clientesNaoIncluidos, setClientesNaoIncluidos] = useState<ClienteNaoIncluido[]>([]);
 
   useEffect(() => {
     console.log('ProjecaoResultadosPDV: Carregando clientes...');
@@ -84,6 +96,16 @@ export default function ProjecaoResultadosPDV() {
     return PRECOS_TEMPORARIOS.default;
   };
 
+  const obterCustoCategoria = (nomeCategoria: string): number => {
+    const nomeNormalizado = nomeCategoria.toLowerCase();
+    for (const [key, custo] of Object.entries(CUSTOS_UNITARIOS)) {
+      if (nomeNormalizado.includes(key)) {
+        return custo;
+      }
+    }
+    return CUSTOS_UNITARIOS.default;
+  };
+
   const calcularGiroSemanal = (qtdPadrao: number, periodicidade: number): number => {
     if (periodicidade === 0) return 0;
     return Math.round((qtdPadrao / periodicidade) * 7);
@@ -98,6 +120,7 @@ export default function ProjecaoResultadosPDV() {
     
     const projecoesCalculadas: ProjecaoCliente[] = [];
     const detalhesCalculados: ClienteDetalhe[] = [];
+    const clientesExcluidos: ClienteNaoIncluido[] = [];
 
     clientesAtivos.forEach(cliente => {
       const detalhesCliente: CalculoDetalhe[] = [];
@@ -105,6 +128,12 @@ export default function ProjecaoResultadosPDV() {
       // Verificar se cliente tem categorias habilitadas
       if (!cliente.categoriasHabilitadas || cliente.categoriasHabilitadas.length === 0) {
         console.log(`ProjecaoResultadosPDV: Cliente ${cliente.nome} sem categorias habilitadas`);
+        
+        clientesExcluidos.push({
+          nomeCliente: cliente.nome,
+          motivo: "Cliente sem categorias habilitadas"
+        });
+        
         detalhesCliente.push({
           etapa: "AVISO",
           descricao: "Cliente sem categorias habilitadas - pulando cálculos",
@@ -138,15 +167,16 @@ export default function ProjecaoResultadosPDV() {
 
         const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
         const precoAplicado = obterPrecoCategoria(categoria.nome);
+        const custoUnitario = obterCustoCategoria(categoria.nome);
         const faturamento = giroSemanal * precoAplicado;
-        const custoInsumos = giroSemanal * CUSTO_UNITARIO_FIXO;
-        const margemUnitaria = precoAplicado - CUSTO_UNITARIO_FIXO;
+        const custoInsumos = giroSemanal * custoUnitario;
+        const margemUnitaria = precoAplicado - custoUnitario;
 
         detalhesCliente.push({
           etapa: "CALCULO_CATEGORIA",
           descricao: `Cálculos para categoria: ${categoria.nome}`,
           formula: `Giro semanal = (${cliente.quantidadePadrao} ÷ ${cliente.periodicidadePadrao}) × 7 = ${giroSemanal}`,
-          observacao: `Preço aplicado: R$ ${precoAplicado.toFixed(2)} (${precoAplicado === PRECOS_TEMPORARIOS.default ? 'preço padrão' : 'preço específico da categoria'})`
+          observacao: `Preço aplicado: R$ ${precoAplicado.toFixed(2)} | Custo unitário: R$ ${custoUnitario.toFixed(2)} (${categoria.nome.toLowerCase().includes('food service') ? 'custo Food Service' : 'custo padrão'})`
         });
 
         detalhesCliente.push({
@@ -159,14 +189,14 @@ export default function ProjecaoResultadosPDV() {
         detalhesCliente.push({
           etapa: "CUSTO_INSUMOS",
           descricao: `Custo de insumos da categoria ${categoria.nome}`,
-          formula: `${giroSemanal} × R$ ${CUSTO_UNITARIO_FIXO.toFixed(2)} = R$ ${custoInsumos.toFixed(2)}`,
+          formula: `${giroSemanal} × R$ ${custoUnitario.toFixed(2)} = R$ ${custoInsumos.toFixed(2)}`,
           valor: custoInsumos
         });
 
         detalhesCliente.push({
           etapa: "MARGEM_UNITARIA",
           descricao: `Margem unitária da categoria ${categoria.nome}`,
-          formula: `R$ ${precoAplicado.toFixed(2)} - R$ ${CUSTO_UNITARIO_FIXO.toFixed(2)} = R$ ${margemUnitaria.toFixed(2)}`,
+          formula: `R$ ${precoAplicado.toFixed(2)} - R$ ${custoUnitario.toFixed(2)} = R$ ${margemUnitaria.toFixed(2)}`,
           valor: margemUnitaria
         });
 
@@ -177,12 +207,19 @@ export default function ProjecaoResultadosPDV() {
           precoAplicado,
           faturamento,
           custoInsumos,
-          margemUnitaria
+          margemUnitaria,
+          custoUnitario
         };
       }).filter(Boolean) as any[];
 
       if (categoriasCliente.length === 0) {
         console.log(`ProjecaoResultadosPDV: Cliente ${cliente.nome} sem categorias válidas`);
+        
+        clientesExcluidos.push({
+          nomeCliente: cliente.nome,
+          motivo: "Categorias configuradas não encontradas no sistema"
+        });
+        
         detalhesCalculados.push({
           clienteId: cliente.id,
           nomeCliente: cliente.nome,
@@ -268,8 +305,11 @@ export default function ProjecaoResultadosPDV() {
     });
 
     console.log('ProjecaoResultadosPDV: Projeções calculadas:', projecoesCalculadas.length);
+    console.log('ProjecaoResultadosPDV: Clientes não incluídos:', clientesExcluidos.length);
+    
     setProjecoes(projecoesCalculadas);
     setDetalhesCalculos(detalhesCalculados);
+    setClientesNaoIncluidos(clientesExcluidos);
   };
 
   const formatarMoeda = (valor: number): string => {
@@ -363,6 +403,20 @@ export default function ProjecaoResultadosPDV() {
                   </div>
                 </div>
               ))}
+              
+              {clientesNaoIncluidos.length > 0 && (
+                <div className="border border-red-200 rounded p-3 bg-red-50">
+                  <h4 className="font-semibold text-red-800 mb-3">Clientes Não Incluídos na Projeção:</h4>
+                  <div className="space-y-2">
+                    {clientesNaoIncluidos.map((cliente, index) => (
+                      <div key={index} className="text-sm">
+                        <div className="font-medium text-red-700">❌ {cliente.nomeCliente}</div>
+                        <div className="text-red-600 ml-4">Motivo: {cliente.motivo}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -381,7 +435,7 @@ export default function ProjecaoResultadosPDV() {
           </p>
           <ul className="space-y-1 list-disc list-inside">
             <li>🔧 Preços por categoria: Revenda Padrão (R$ 4,50), Food Service (R$ 70,00)</li>
-            <li>🔧 Custo unitário fixo: R$ 1,32</li>
+            <li>🔧 Custos unitários: Revenda Padrão (R$ 1,32), Food Service (R$ 29,17)</li>
             <li>🔧 Alíquota de imposto: 4% provisório</li>
             <li>🔧 Logística: Própria (3%), Distribuição (8%)</li>
           </ul>
@@ -440,6 +494,7 @@ export default function ProjecaoResultadosPDV() {
                       <TableHead>Categoria</TableHead>
                       <TableHead>Giro Semanal</TableHead>
                       <TableHead>Preço Aplicado</TableHead>
+                      <TableHead>Custo Unit.</TableHead>
                       <TableHead>Faturamento</TableHead>
                       <TableHead>Custo Insumos</TableHead>
                       <TableHead>Margem Unit.</TableHead>
@@ -470,6 +525,14 @@ export default function ProjecaoResultadosPDV() {
                             <div className="flex items-center gap-1">
                               {formatarMoeda(categoria.precoAplicado)}
                               <Badge variant="outline" className="text-xs">temp</Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {formatarMoeda(categoria.custoUnitario)}
+                              <Badge variant={categoria.nomeCategoria.toLowerCase().includes('food service') ? "destructive" : "secondary"} className="text-xs">
+                                {categoria.nomeCategoria.toLowerCase().includes('food service') ? 'FS' : 'std'}
+                              </Badge>
                             </div>
                           </TableCell>
                           <TableCell className="font-medium">{formatarMoeda(categoria.faturamento)}</TableCell>
