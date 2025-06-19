@@ -58,14 +58,15 @@ function convertSupabaseToCliente(data: any, agendamento?: any): Cliente {
       : (data.proxima_data_reposicao ? new Date(data.proxima_data_reposicao) : undefined),
     ativo: data.ativo || true,
     giroMedioSemanal: data.giro_medio_semanal || calcularGiroSemanal(data.quantidade_padrao || 0, data.periodicidade_padrao || 7),
-    janelasEntrega: data.janelas_entrega,
+    // Garantir que os campos sejam carregados corretamente
+    janelasEntrega: data.janelas_entrega || ['Seg', 'Qua', 'Sex'],
     representanteId: data.representante_id,
     rotaEntregaId: data.rota_entrega_id,
     categoriaEstabelecimentoId: data.categoria_estabelecimento_id,
     instrucoesEntrega: data.instrucoes_entrega,
-    contabilizarGiroMedio: data.contabilizar_giro_medio || true,
+    contabilizarGiroMedio: data.contabilizar_giro_medio !== undefined ? data.contabilizar_giro_medio : true,
     tipoLogistica: data.tipo_logistica || 'Própria',
-    emiteNotaFiscal: data.emite_nota_fiscal || true,
+    emiteNotaFiscal: data.emite_nota_fiscal !== undefined ? data.emite_nota_fiscal : true,
     tipoCobranca: data.tipo_cobranca || 'À vista',
     formaPagamento: data.forma_pagamento || 'Boleto',
     observacoes: data.observacoes,
@@ -92,6 +93,7 @@ function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>)
     ativo: cliente.ativo !== undefined ? cliente.ativo : true,
     giro_medio_semanal: giroCalculado,
     meta_giro_semanal: Math.round(giroCalculado * 1.2),
+    // Garantir que todos os campos sejam salvos
     janelas_entrega: cliente.janelasEntrega || null,
     representante_id: cliente.representanteId || null,
     rota_entrega_id: cliente.rotaEntregaId || null,
@@ -198,7 +200,7 @@ export const useClienteStore = create<ClienteStore>()(
               description: `Erro: ${error.message}`,
               variant: "destructive"
             });
-            return;
+            throw error;
           }
 
           const novoCliente = convertSupabaseToCliente(data);
@@ -210,6 +212,8 @@ export const useClienteStore = create<ClienteStore>()(
             title: "Cliente cadastrado",
             description: `${cliente.nome} foi cadastrado com sucesso`
           });
+
+          return novoCliente;
         } catch (error) {
           console.error('Erro ao adicionar cliente:', error);
           toast({
@@ -217,6 +221,7 @@ export const useClienteStore = create<ClienteStore>()(
             description: "Erro inesperado ao cadastrar cliente",
             variant: "destructive"
           });
+          throw error;
         } finally {
           set({ loading: false });
         }
@@ -235,7 +240,7 @@ export const useClienteStore = create<ClienteStore>()(
             return;
           }
 
-          // Converter dadosCliente para formato Supabase
+          // Converter dadosCliente para formato Supabase, incluindo todos os campos
           const dadosSupabase: any = {};
           
           if (dadosCliente.nome !== undefined) dadosSupabase.nome = dadosCliente.nome;
@@ -248,6 +253,21 @@ export const useClienteStore = create<ClienteStore>()(
           if (dadosCliente.periodicidadePadrao !== undefined) dadosSupabase.periodicidade_padrao = dadosCliente.periodicidadePadrao;
           if (dadosCliente.statusCliente !== undefined) dadosSupabase.status_cliente = dadosCliente.statusCliente;
           if (dadosCliente.metaGiroSemanal !== undefined) dadosSupabase.meta_giro_semanal = dadosCliente.metaGiroSemanal;
+          
+          // Novos campos que estavam faltando
+          if (dadosCliente.janelasEntrega !== undefined) dadosSupabase.janelas_entrega = dadosCliente.janelasEntrega;
+          if (dadosCliente.representanteId !== undefined) dadosSupabase.representante_id = dadosCliente.representanteId;
+          if (dadosCliente.rotaEntregaId !== undefined) dadosSupabase.rota_entrega_id = dadosCliente.rotaEntregaId;
+          if (dadosCliente.categoriaEstabelecimentoId !== undefined) dadosSupabase.categoria_estabelecimento_id = dadosCliente.categoriaEstabelecimentoId;
+          if (dadosCliente.instrucoesEntrega !== undefined) dadosSupabase.instrucoes_entrega = dadosCliente.instrucoesEntrega;
+          if (dadosCliente.contabilizarGiroMedio !== undefined) dadosSupabase.contabilizar_giro_medio = dadosCliente.contabilizarGiroMedio;
+          if (dadosCliente.tipoLogistica !== undefined) dadosSupabase.tipo_logistica = dadosCliente.tipoLogistica;
+          if (dadosCliente.emiteNotaFiscal !== undefined) dadosSupabase.emite_nota_fiscal = dadosCliente.emiteNotaFiscal;
+          if (dadosCliente.tipoCobranca !== undefined) dadosSupabase.tipo_cobranca = dadosCliente.tipoCobranca;
+          if (dadosCliente.formaPagamento !== undefined) dadosSupabase.forma_pagamento = dadosCliente.formaPagamento;
+          if (dadosCliente.observacoes !== undefined) dadosSupabase.observacoes = dadosCliente.observacoes;
+
+          console.log('Atualizando cliente com dados:', dadosSupabase);
 
           const { error } = await supabase
             .from('clientes')

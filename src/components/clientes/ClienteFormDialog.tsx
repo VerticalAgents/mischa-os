@@ -8,6 +8,7 @@ import { useSupabaseCategoriasEstabelecimento } from "@/hooks/useSupabaseCategor
 import { useSupabaseTiposLogistica } from "@/hooks/useSupabaseTiposLogistica";
 import { useSupabaseFormasPagamento } from "@/hooks/useSupabaseFormasPagamento";
 import { useSupabaseTiposCobranca } from "@/hooks/useSupabaseTiposCobranca";
+import { useSupabasePrecosCategoriaCliente } from "@/hooks/useSupabasePrecosCategoriaCliente";
 import { 
   StatusCliente, 
   DiaSemana, 
@@ -39,6 +40,7 @@ import { Switch } from "@/components/ui/switch";
 import DiasSemanaPicker from "./DiasSemanaPicker";
 import { Textarea } from "@/components/ui/textarea";
 import CategoriasProdutoSelector from "./CategoriasProdutoSelector";
+import PrecosPorCategoriaSelector from "./PrecosPorCategoriaSelector";
 
 type ClienteFormValues = {
   nome: string;
@@ -51,7 +53,6 @@ type ClienteFormValues = {
   periodicidadePadrao: number;
   statusCliente: StatusCliente;
   observacoes?: string;
-  // Novos campos
   janelasEntrega: DiaSemana[];
   representanteId?: number;
   rotaEntregaId?: number;
@@ -62,14 +63,14 @@ type ClienteFormValues = {
   emiteNotaFiscal: boolean;
   tipoCobranca: TipoCobranca;
   formaPagamento: FormaPagamentoNome;
-  categoriasHabilitadas: number[]; // New field for enabled categories
+  categoriasHabilitadas: number[];
 };
 
 interface ClienteFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  clienteId?: string; // Changed from number to string
-  onClienteUpdate?: () => void; // New callback for when client is updated
+  clienteId?: string;
+  onClienteUpdate?: () => void;
 }
 
 export default function ClienteFormDialog({
@@ -81,6 +82,7 @@ export default function ClienteFormDialog({
   const { adicionarCliente, atualizarCliente, getClientePorId, carregarClientes } = useClienteStore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [precosCategoria, setPrecosCategoria] = useState<{ categoria_id: number; preco_unitario: number }[]>([]);
   
   // Get active configuration options from Supabase
   const { representantes } = useSupabaseRepresentantes();
@@ -89,6 +91,7 @@ export default function ClienteFormDialog({
   const { tiposLogistica } = useSupabaseTiposLogistica();
   const { formasPagamento } = useSupabaseFormasPagamento();
   const { tiposCobranca } = useSupabaseTiposCobranca();
+  const { carregarPrecosPorCliente, salvarPrecos } = useSupabasePrecosCategoriaCliente();
 
   const form = useForm<ClienteFormValues>({
     defaultValues: {
@@ -102,7 +105,6 @@ export default function ClienteFormDialog({
       periodicidadePadrao: 7,
       statusCliente: "A ativar",
       observacoes: "",
-      // Valores padrão para os novos campos
       janelasEntrega: ['Seg', 'Qua', 'Sex'],
       representanteId: representantes.length > 0 ? representantes[0].id : undefined,
       rotaEntregaId: rotasEntrega.length > 0 ? rotasEntrega[0].id : undefined,
@@ -113,7 +115,7 @@ export default function ClienteFormDialog({
       emiteNotaFiscal: true,
       tipoCobranca: "À vista",
       formaPagamento: "Boleto",
-      categoriasHabilitadas: [1], // Default to "Revenda Padrão"
+      categoriasHabilitadas: [1],
     },
   });
 
@@ -122,6 +124,8 @@ export default function ClienteFormDialog({
     if (clienteId && open) {
       const cliente = getClientePorId(clienteId);
       if (cliente) {
+        console.log('Carregando dados do cliente para edição:', cliente);
+        
         form.reset({
           nome: cliente.nome,
           cnpjCpf: cliente.cnpjCpf || "",
@@ -133,7 +137,6 @@ export default function ClienteFormDialog({
           periodicidadePadrao: cliente.periodicidadePadrao,
           statusCliente: cliente.statusCliente,
           observacoes: cliente.observacoes || "",
-          // Novos campos
           janelasEntrega: cliente.janelasEntrega || ['Seg', 'Qua', 'Sex'],
           representanteId: cliente.representanteId,
           rotaEntregaId: cliente.rotaEntregaId,
@@ -146,43 +149,60 @@ export default function ClienteFormDialog({
           formaPagamento: cliente.formaPagamento,
           categoriasHabilitadas: cliente.categoriasHabilitadas || [1],
         });
+
+        // Carregar preços por categoria existentes
+        carregarPrecosPorCliente(clienteId).then(precos => {
+          const precosMap = precos.map(p => ({
+            categoria_id: p.categoria_id,
+            preco_unitario: p.preco_unitario
+          }));
+          setPrecosCategoria(precosMap);
+        });
       }
+    } else if (open && !clienteId) {
+      // Reset para novo cliente
+      setPrecosCategoria([]);
     }
-  }, [clienteId, open, getClientePorId, form]);
+  }, [clienteId, open, getClientePorId, form, carregarPrecosPorCliente]);
 
   const onSubmit = async (data: ClienteFormValues) => {
     setIsSubmitting(true);
     
     try {
-      console.log('Dados do formulário:', data);
+      console.log('Dados do formulário para salvar:', data);
+      console.log('Preços por categoria:', precosCategoria);
       
+      const dadosCliente = {
+        ...data,
+        quantidadePadrao: Number(data.quantidadePadrao),
+        periodicidadePadrao: Number(data.periodicidadePadrao),
+      };
+
+      let clienteIdFinal = clienteId;
+
       if (clienteId) {
-        await atualizarCliente(clienteId, {
-          ...data,
-          quantidadePadrao: Number(data.quantidadePadrao),
-          periodicidadePadrao: Number(data.periodicidadePadrao),
-        });
+        // Atualização
+        await atualizarCliente(clienteId, dadosCliente);
+        clienteIdFinal = clienteId;
         
         toast({
           title: "Cliente atualizado com sucesso",
           description: `O cliente ${data.nome} foi atualizado.`,
         });
-
-        // Call the update callback if provided
-        if (onClienteUpdate) {
-          onClienteUpdate();
-        }
       } else {
-        await adicionarCliente({
-          ...data,
-          quantidadePadrao: Number(data.quantidadePadrao),
-          periodicidadePadrao: Number(data.periodicidadePadrao),
+        // Criação
+        const novoCliente = await adicionarCliente({
+          ...dadosCliente,
           ativo: data.statusCliente === 'Ativo',
           giroMedioSemanal: 0,
-          categoriaId: 1, // Add required field
-          subcategoriaId: 1, // Add required field
+          categoriaId: 1,
+          subcategoriaId: 1,
           contabilizarGiroMedio: data.contabilizarGiroMedio
         });
+        
+        // Para novos clientes, precisamos obter o ID do cliente criado
+        // Como o hook não retorna o ID, vamos recarregar a lista e pegar o último cliente
+        await carregarClientes();
         
         toast({
           title: "Cliente cadastrado com sucesso",
@@ -190,10 +210,21 @@ export default function ClienteFormDialog({
         });
       }
 
+      // Salvar preços por categoria se houver um cliente ID válido
+      if (clienteIdFinal && precosCategoria.length > 0) {
+        await salvarPrecos(clienteIdFinal, precosCategoria);
+      }
+
       // Reload clients to ensure data consistency
       await carregarClientes();
       
+      // Call the update callback if provided
+      if (onClienteUpdate) {
+        onClienteUpdate();
+      }
+      
       form.reset();
+      setPrecosCategoria([]);
       onOpenChange(false);
     } catch (error) {
       console.error("Erro ao salvar cliente:", error);
@@ -207,9 +238,13 @@ export default function ClienteFormDialog({
     }
   };
 
+  const handlePrecosChange = (novosPpreos: { categoria_id: number; preco_unitario: number }[]) => {
+    setPrecosCategoria(novosPpreos);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{clienteId ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
           <DialogDescription>
@@ -282,6 +317,13 @@ export default function ClienteFormDialog({
                     <FormMessage />
                   </FormItem>
                 )}
+              />
+
+              {/* Preços por Categoria */}
+              <PrecosPorCategoriaSelector
+                categoriasHabilitadas={form.watch("categoriasHabilitadas")}
+                precosIniciais={precosCategoria}
+                onChange={handlePrecosChange}
               />
 
               <h3 className="text-lg font-medium pt-2">Dados de Contato</h3>

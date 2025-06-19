@@ -572,6 +572,48 @@ export type Database = {
         }
         Relationships: []
       }
+      precos_categoria_cliente: {
+        Row: {
+          categoria_id: number
+          cliente_id: string
+          created_at: string
+          id: string
+          preco_unitario: number
+          updated_at: string
+        }
+        Insert: {
+          categoria_id: number
+          cliente_id: string
+          created_at?: string
+          id?: string
+          preco_unitario?: number
+          updated_at?: string
+        }
+        Update: {
+          categoria_id?: number
+          cliente_id?: string
+          created_at?: string
+          id?: string
+          preco_unitario?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "precos_categoria_cliente_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias_produto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "precos_categoria_cliente_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       produtos: {
         Row: {
           ativo: boolean | null

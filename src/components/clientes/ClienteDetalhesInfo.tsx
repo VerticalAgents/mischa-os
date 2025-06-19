@@ -1,8 +1,11 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Cliente, DiaSemana } from '@/types';
 import { useSupabaseRepresentantes } from '@/hooks/useSupabaseRepresentantes';
 import { useSupabaseRotasEntrega } from '@/hooks/useSupabaseRotasEntrega';
 import { useSupabaseCategoriasEstabelecimento } from '@/hooks/useSupabaseCategoriasEstabelecimento';
+import { useSupabaseCategoriasProduto } from '@/hooks/useSupabaseCategoriasProduto';
+import { useSupabasePrecosCategoriaCliente } from '@/hooks/useSupabasePrecosCategoriaCliente';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/common/StatusBadge";
@@ -15,10 +18,19 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
   const { representantes } = useSupabaseRepresentantes();
   const { rotasEntrega } = useSupabaseRotasEntrega();
   const { categorias } = useSupabaseCategoriasEstabelecimento();
+  const { categorias: categoriasProduto } = useSupabaseCategoriasProduto();
+  const { precos, carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
 
   const representante = representantes.find(r => r.id === cliente.representanteId);
   const rota = rotasEntrega.find(r => r.id === cliente.rotaEntregaId);
   const categoria = categorias.find(c => c.id === cliente.categoriaEstabelecimentoId);
+
+  // Carregar preços por categoria quando o componente for montado
+  useEffect(() => {
+    if (cliente.id) {
+      carregarPrecosPorCliente(cliente.id);
+    }
+  }, [cliente.id, carregarPrecosPorCliente]);
   
   // Helper para formatar a periodicidade em texto
   const formatPeriodicidade = (dias: number): string => {
@@ -51,6 +63,13 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
     if (!dias || dias.length === 0) return "Não definidos";
     if (dias.length === 7) return "Todos os dias";
     return dias.join(', ');
+  };
+
+  const formatarPreco = (valor: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(valor);
   };
 
   return (
@@ -160,6 +179,26 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
               </div>
             </dl>
           </div>
+
+          {/* Seção de Preços por Categoria */}
+          {precos.length > 0 && (
+            <div className="md:col-span-2">
+              <h3 className="font-medium text-foreground mb-2">Preços por Categoria</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {precos.map(preco => {
+                  const categoriaProduto = categoriasProduto.find(c => c.id === preco.categoria_id);
+                  return (
+                    <div key={preco.id} className="flex justify-between items-center p-3 bg-muted rounded-md">
+                      <span className="text-sm font-medium">{categoriaProduto?.nome || `Categoria ${preco.categoria_id}`}</span>
+                      <Badge variant="secondary" className="font-semibold">
+                        {formatarPreco(preco.preco_unitario)}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           
           {cliente.instrucoesEntrega && (
             <div className="md:col-span-2">
