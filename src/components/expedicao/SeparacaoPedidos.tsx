@@ -31,7 +31,7 @@ export const SeparacaoPedidos = () => {
   } = useExpedicaoStore();
 
   const { produtos } = useProdutoStore();
-  const { agendamentos, atualizarAgendamento, carregarAgendamentos } = useAgendamentoClienteStore();
+  const { agendamentos, salvarAgendamento, carregarTodosAgendamentos } = useAgendamentoClienteStore();
 
   // Usar hook de sincronização
   useExpedicaoSync();
@@ -42,9 +42,9 @@ export const SeparacaoPedidos = () => {
       mountedRef.current = true;
       console.log('🔄 Carregando pedidos inicial da SeparacaoPedidos');
       carregarPedidos();
-      carregarAgendamentos();
+      carregarTodosAgendamentos();
     }
-  }, [carregarPedidos, carregarAgendamentos]);
+  }, [carregarPedidos, carregarTodosAgendamentos]);
 
   // Função para converter pedido da expedição para o formato esperado pelo PedidoCard
   const converterPedidoParaCard = (pedidoExpedicao: any) => {
@@ -118,21 +118,21 @@ export const SeparacaoPedidos = () => {
   const handleEditarAgendamento = (pedidoId: string) => {
     console.log('🔧 Editando agendamento para pedido ID:', pedidoId);
     
-    // Buscar o agendamento correspondente
-    const agendamento = agendamentos.find(a => a.id === pedidoId);
+    // Buscar o agendamento correspondente pelo cliente
+    const agendamento = agendamentos.find(a => a.cliente.id === pedidoId);
     
     if (agendamento) {
       // Converter para o formato esperado pelo modal
       const agendamentoFormatado = {
-        id: agendamento.id,
+        id: agendamento.cliente.id,
         cliente: {
-          id: agendamento.cliente_id,
-          nome: agendamento.cliente_nome,
-          quantidadePadrao: agendamento.quantidade_total
+          id: agendamento.cliente.id,
+          nome: agendamento.cliente.nome,
+          quantidadePadrao: agendamento.cliente.quantidadePadrao
         },
-        dataReposicao: new Date(agendamento.data_proxima_reposicao),
-        pedido: {
-          totalPedidoUnidades: agendamento.quantidade_total
+        dataReposicao: agendamento.dataReposicao,
+        pedido: agendamento.pedido || {
+          totalPedidoUnidades: agendamento.cliente.quantidadePadrao
         }
       };
       
@@ -147,14 +147,14 @@ export const SeparacaoPedidos = () => {
     try {
       console.log('💾 Salvando agendamento atualizado:', agendamentoAtualizado);
       
-      await atualizarAgendamento(agendamentoAtualizado.id, {
+      await salvarAgendamento(agendamentoAtualizado.id, {
         data_proxima_reposicao: agendamentoAtualizado.dataReposicao,
         quantidade_total: agendamentoAtualizado.pedido?.totalPedidoUnidades || agendamentoAtualizado.cliente.quantidadePadrao
       });
       
       // Recarregar dados após atualização
       await carregarPedidos();
-      await carregarAgendamentos();
+      await carregarTodosAgendamentos();
       
       toast.success("Agendamento atualizado com sucesso!");
       setModalEditarAberto(false);
