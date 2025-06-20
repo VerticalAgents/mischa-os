@@ -15,12 +15,12 @@ export const useAgendamentoActions = () => {
     console.log('🔧 Editando agendamento para pedido ID:', pedidoId);
     
     // Buscar primeiro nos agendamentos
-    const agendamento = agendamentos.find(a => a.id === pedidoId);
+    const agendamento = agendamentos.find(a => String(a.id) === pedidoId);
     
     if (agendamento) {
       // Converter para o formato esperado pelo modal
       const agendamentoFormatado = {
-        id: agendamento.id,
+        id: String(agendamento.id),
         cliente: agendamento.cliente,
         dataReposicao: agendamento.dataReposicao,
         pedido: {
@@ -37,7 +37,7 @@ export const useAgendamentoActions = () => {
       
       if (pedidoExpedicao) {
         const agendamentoFormatado = {
-          id: pedidoExpedicao.id,
+          id: String(pedidoExpedicao.id),
           cliente: {
             id: pedidoExpedicao.cliente_id,
             nome: pedidoExpedicao.cliente_nome,

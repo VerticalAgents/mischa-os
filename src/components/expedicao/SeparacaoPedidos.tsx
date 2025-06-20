@@ -8,6 +8,7 @@ import { usePedidoConverter } from "./hooks/usePedidoConverter";
 import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
 import { PrintingActions } from "./components/PrintingActions";
 import { SeparacaoTabs } from "./components/SeparacaoTabs";
+import { DebugInfo } from "./components/DebugInfo";
 import EditarAgendamentoDialog from "../agendamento/EditarAgendamentoDialog";
 import { toast } from "sonner";
 import { Check } from "lucide-react";
@@ -76,7 +77,19 @@ export const SeparacaoPedidos = () => {
       return;
     }
     
+    console.log('✅ Marcando todos como separados:', listaAtual.map(p => p.id));
     await marcarTodosSeparados(listaAtual);
+  };
+
+  const handleConfirmarSeparacao = async (pedidoId: string) => {
+    try {
+      console.log('✅ Iniciando confirmação de separação para pedido ID:', pedidoId, 'Tipo:', typeof pedidoId);
+      await confirmarSeparacao(pedidoId);
+      console.log('✅ Separação confirmada com sucesso para pedido:', pedidoId);
+    } catch (error) {
+      console.error('❌ Erro ao confirmar separação:', error);
+      toast.error("Erro ao confirmar separação");
+    }
   };
 
   if (isLoading) {
@@ -114,6 +127,9 @@ export const SeparacaoPedidos = () => {
           </div>
         </div>
         
+        {/* Debug Info Component */}
+        <DebugInfo tipo="separacao" dadosAtivos={todosPedidos} />
+        
         <SeparacaoTabs
           activeSubTab={activeSubTab}
           setActiveSubTab={setActiveSubTab}
@@ -122,7 +138,7 @@ export const SeparacaoPedidos = () => {
           pedidosAlterados={pedidosAlterados}
           pedidosProximoDia={pedidosProximoDia}
           converterPedidoParaCard={converterPedidoParaCard}
-          confirmarSeparacao={confirmarSeparacao}
+          confirmarSeparacao={handleConfirmarSeparacao}
           handleEditarAgendamento={handleEditarAgendamento}
         />
       </Card>
