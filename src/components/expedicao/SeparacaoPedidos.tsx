@@ -57,7 +57,7 @@ export const SeparacaoPedidos = () => {
       // Pedido alterado - usar itens personalizados
       itensPedido = pedidoExpedicao.itens_personalizados.map((item: any, index: number) => ({
         id: index,
-        idPedido: Number(pedidoExpedicao.id),
+        idPedido: String(pedidoExpedicao.id), // Manter como string
         idSabor: index,
         nomeSabor: item.produto || item.nome || `Produto ${index}`, // Usar nome correto do produto
         quantidadeSabor: item.quantidade,
@@ -70,7 +70,7 @@ export const SeparacaoPedidos = () => {
       
       itensPedido = produtos.slice(0, Math.min(produtos.length, 5)).map((produto, index) => ({
         id: index,
-        idPedido: Number(pedidoExpedicao.id),
+        idPedido: String(pedidoExpedicao.id), // Manter como string
         idSabor: produto.id,
         nomeSabor: produto.nome, // Usar nome real do produto
         quantidadeSabor: quantidadePorProduto + (index < resto ? 1 : 0),
@@ -81,7 +81,7 @@ export const SeparacaoPedidos = () => {
     console.log('📦 Itens do pedido convertidos:', itensPedido);
 
     return {
-      id: Number(pedidoExpedicao.id),
+      id: String(pedidoExpedicao.id), // Manter como string
       idCliente: pedidoExpedicao.cliente_id,
       dataPedido: new Date(pedidoExpedicao.data_prevista_entrega),
       dataPrevistaEntrega: new Date(pedidoExpedicao.data_prevista_entrega),
@@ -118,28 +118,30 @@ export const SeparacaoPedidos = () => {
   const handleEditarAgendamento = (pedidoId: string) => {
     console.log('🔧 Editando agendamento para pedido ID:', pedidoId);
     
-    // Buscar o agendamento correspondente pelo cliente
-    const agendamento = agendamentos.find(a => a.cliente.id === pedidoId);
+    // Buscar o pedido nos dados da expedição
+    const pedidoExpedicao = pedidos.find(p => p.id === pedidoId);
     
-    if (agendamento) {
+    if (pedidoExpedicao) {
       // Converter para o formato esperado pelo modal
       const agendamentoFormatado = {
-        id: agendamento.cliente.id,
+        id: pedidoExpedicao.id,
         cliente: {
-          id: agendamento.cliente.id,
-          nome: agendamento.cliente.nome,
-          quantidadePadrao: agendamento.cliente.quantidadePadrao
+          id: pedidoExpedicao.cliente_id,
+          nome: pedidoExpedicao.cliente_nome,
+          quantidadePadrao: pedidoExpedicao.quantidade_total
         },
-        dataReposicao: agendamento.dataReposicao,
-        pedido: agendamento.pedido || {
-          totalPedidoUnidades: agendamento.cliente.quantidadePadrao
+        dataReposicao: pedidoExpedicao.data_prevista_entrega,
+        pedido: {
+          totalPedidoUnidades: pedidoExpedicao.quantidade_total
         }
       };
       
+      console.log('🔧 Agendamento formatado para edição:', agendamentoFormatado);
       setAgendamentoParaEditar(agendamentoFormatado);
       setModalEditarAberto(true);
     } else {
-      toast.error("Agendamento não encontrado");
+      console.error('❌ Pedido não encontrado para edição:', pedidoId);
+      toast.error("Pedido não encontrado");
     }
   };
 
@@ -164,6 +166,7 @@ export const SeparacaoPedidos = () => {
       toast.error("Erro ao atualizar agendamento");
     }
   };
+
   
   // Obter pedidos filtrados
   const pedidosParaSeparacao = getPedidosParaSeparacao();

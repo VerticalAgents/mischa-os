@@ -43,23 +43,23 @@ export default function PedidoCard({ pedido, onMarcarSeparado, onEditarAgendamen
   // Gerar ID do pedido apenas se for um número válido
   const getPedidoId = () => {
     const id = pedido.id;
-    if (id && !isNaN(Number(id)) && Number(id) > 0) {
+    if (id && String(id).length > 0) {
       return `Pedido #${String(id).substring(0, 8)}`;
     }
     return "Pedido"; // Apenas "Pedido" sem o número se não for válido
   };
 
   const handleMarcarSeparado = () => {
-    // Converter o ID para string e garantir que está correto
+    // Garantir que o ID está sendo passado como string
     const idString = String(pedido.id);
-    console.log('Marcando como separado - ID:', idString);
+    console.log('✅ Marcando como separado - ID:', idString, 'Tipo:', typeof idString);
     onMarcarSeparado(idString);
   };
 
   const handleEditarAgendamento = () => {
     if (onEditarAgendamento) {
       const idString = String(pedido.id);
-      console.log('Editando agendamento - ID:', idString);
+      console.log('🔧 Editando agendamento - ID:', idString, 'Tipo:', typeof idString);
       onEditarAgendamento(idString);
     }
   };
