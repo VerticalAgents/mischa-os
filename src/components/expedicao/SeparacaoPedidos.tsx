@@ -5,13 +5,17 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
+import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import PedidoCard from "./PedidoCard";
+import EditarAgendamentoDialog from "../agendamento/EditarAgendamentoDialog";
 import { toast } from "sonner";
 import { Printer, FileText, Check } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export const SeparacaoPedidos = () => {
   const [activeSubTab, setActiveSubTab] = useState<string>("todos");
+  const [modalEditarAberto, setModalEditarAberto] = useState(false);
+  const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<any>(null);
   const printFrameRef = useRef<HTMLIFrameElement>(null);
   const mountedRef = useRef(false);
   
@@ -27,6 +31,7 @@ export const SeparacaoPedidos = () => {
   } = useExpedicaoStore();
 
   const { produtos } = useProdutoStore();
+  const { agendamentos, atualizarAgendamento, carregarAgendamentos } = useAgendamentoClienteStore();
 
   // Usar hook de sincronização
   useExpedicaoSync();
@@ -37,8 +42,9 @@ export const SeparacaoPedidos = () => {
       mountedRef.current = true;
       console.log('🔄 Carregando pedidos inicial da SeparacaoPedidos');
       carregarPedidos();
+      carregarAgendamentos();
     }
-  }, [carregarPedidos]);
+  }, [carregarPedidos, carregarAgendamentos]);
 
   // Função para converter pedido da expedição para o formato esperado pelo PedidoCard
   const converterPedidoParaCard = (pedidoExpedicao: any) => {
@@ -107,6 +113,56 @@ export const SeparacaoPedidos = () => {
         subcategoriaId: 1
       }
     };
+  };
+
+  const handleEditarAgendamento = (pedidoId: string) => {
+    console.log('🔧 Editando agendamento para pedido ID:', pedidoId);
+    
+    // Buscar o agendamento correspondente
+    const agendamento = agendamentos.find(a => a.id === pedidoId);
+    
+    if (agendamento) {
+      // Converter para o formato esperado pelo modal
+      const agendamentoFormatado = {
+        id: agendamento.id,
+        cliente: {
+          id: agendamento.cliente_id,
+          nome: agendamento.cliente_nome,
+          quantidadePadrao: agendamento.quantidade_total
+        },
+        dataReposicao: new Date(agendamento.data_proxima_reposicao),
+        pedido: {
+          totalPedidoUnidades: agendamento.quantidade_total
+        }
+      };
+      
+      setAgendamentoParaEditar(agendamentoFormatado);
+      setModalEditarAberto(true);
+    } else {
+      toast.error("Agendamento não encontrado");
+    }
+  };
+
+  const handleSalvarAgendamento = async (agendamentoAtualizado: any) => {
+    try {
+      console.log('💾 Salvando agendamento atualizado:', agendamentoAtualizado);
+      
+      await atualizarAgendamento(agendamentoAtualizado.id, {
+        data_proxima_reposicao: agendamentoAtualizado.dataReposicao,
+        quantidade_total: agendamentoAtualizado.pedido?.totalPedidoUnidades || agendamentoAtualizado.cliente.quantidadePadrao
+      });
+      
+      // Recarregar dados após atualização
+      await carregarPedidos();
+      await carregarAgendamentos();
+      
+      toast.success("Agendamento atualizado com sucesso!");
+      setModalEditarAberto(false);
+      setAgendamentoParaEditar(null);
+    } catch (error) {
+      console.error('Erro ao salvar agendamento:', error);
+      toast.error("Erro ao atualizar agendamento");
+    }
   };
   
   // Obter pedidos filtrados
@@ -431,6 +487,7 @@ export const SeparacaoPedidos = () => {
                     key={pedido.id}
                     pedido={converterPedidoParaCard(pedido)}
                     onMarcarSeparado={confirmarSeparacao}
+                    onEditarAgendamento={handleEditarAgendamento}
                   />
                 ))}
               </div>
@@ -449,6 +506,7 @@ export const SeparacaoPedidos = () => {
                     key={pedido.id}
                     pedido={converterPedidoParaCard(pedido)}
                     onMarcarSeparado={confirmarSeparacao}
+                    onEditarAgendamento={handleEditarAgendamento}
                   />
                 ))}
               </div>
@@ -467,6 +525,7 @@ export const SeparacaoPedidos = () => {
                     key={pedido.id}
                     pedido={converterPedidoParaCard(pedido)}
                     onMarcarSeparado={confirmarSeparacao}
+                    onEditarAgendamento={handleEditarAgendamento}
                   />
                 ))}
               </div>
@@ -485,6 +544,7 @@ export const SeparacaoPedidos = () => {
                     key={pedido.id}
                     pedido={converterPedidoParaCard(pedido)}
                     onMarcarSeparado={confirmarSeparacao}
+                    onEditarAgendamento={handleEditarAgendamento}
                     showAntecipada={true}
                   />
                 ))}
@@ -497,6 +557,16 @@ export const SeparacaoPedidos = () => {
           </TabsContent>
         </Tabs>
       </Card>
+
+      {/* Modal de edição de agendamento */}
+      {agendamentoParaEditar && (
+        <EditarAgendamentoDialog
+          agendamento={agendamentoParaEditar}
+          open={modalEditarAberto}
+          onOpenChange={setModalEditarAberto}
+          onSalvar={handleSalvarAgendamento}
+        />
+      )}
 
       {/* IFrame invisível para impressão */}
       <iframe ref={printFrameRef} style={{ display: 'none' }} />

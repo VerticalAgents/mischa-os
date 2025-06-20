@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Package, MapPin, User, Calendar, CheckCircle, X } from "lucide-react";
+import { Package, MapPin, User, Calendar, CheckCircle, Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import TipoPedidoBadge from "./TipoPedidoBadge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
@@ -15,7 +15,7 @@ import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 interface PedidoCardProps {
   pedido: Pedido;
   onMarcarSeparado: (pedidoId: string) => void;
-  onCancelar?: (pedidoId: string) => void;
+  onEditarAgendamento?: (pedidoId: string) => void;
   showAntecipada?: boolean;
 }
 
@@ -30,7 +30,7 @@ function getStatusVariant(status: StatusVariantProps['status']) {
   return 'default';
 }
 
-export default function PedidoCard({ pedido, onMarcarSeparado, onCancelar, showAntecipada }: PedidoCardProps) {
+export default function PedidoCard({ pedido, onMarcarSeparado, onEditarAgendamento, showAntecipada }: PedidoCardProps) {
   const formatarData = (data: Date) => {
     return format(new Date(data), "dd 'de' MMMM, yyyy", { locale: ptBR });
   };
@@ -47,6 +47,21 @@ export default function PedidoCard({ pedido, onMarcarSeparado, onCancelar, showA
       return `Pedido #${String(id).substring(0, 8)}`;
     }
     return "Pedido"; // Apenas "Pedido" sem o número se não for válido
+  };
+
+  const handleMarcarSeparado = () => {
+    // Converter o ID para string e garantir que está correto
+    const idString = String(pedido.id);
+    console.log('Marcando como separado - ID:', idString);
+    onMarcarSeparado(idString);
+  };
+
+  const handleEditarAgendamento = () => {
+    if (onEditarAgendamento) {
+      const idString = String(pedido.id);
+      console.log('Editando agendamento - ID:', idString);
+      onEditarAgendamento(idString);
+    }
   };
 
   return (
@@ -130,14 +145,14 @@ export default function PedidoCard({ pedido, onMarcarSeparado, onCancelar, showA
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => onCancelar?.(String(pedido.id))}
-                  className="text-red-600 hover:text-red-700"
+                  onClick={handleEditarAgendamento}
+                  className="text-blue-600 hover:text-blue-700"
                 >
-                  <X className="h-4 w-4 mr-1" />
-                  Cancelar
+                  <Edit className="h-4 w-4 mr-1" />
+                  Editar Agendamento
                 </Button>
                 <Button 
-                  onClick={() => onMarcarSeparado(String(pedido.id))}
+                  onClick={handleMarcarSeparado}
                   size="sm"
                   className="bg-green-600 hover:bg-green-700"
                 >
