@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Package, MapPin, User, Calendar, CheckCircle, Edit } from "lucide-react";
+import { Package, MapPin, User, Calendar, CheckCircle, Edit, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import TipoPedidoBadge from "./TipoPedidoBadge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
@@ -17,6 +17,10 @@ interface PedidoCardProps {
   onMarcarSeparado: (pedidoId: string) => void;
   onEditarAgendamento?: (pedidoId: string) => void;
   showAntecipada?: boolean;
+  showDespachoActions?: boolean;
+  onConfirmarDespacho?: () => void;
+  onConfirmarEntrega?: (observacao?: string) => void;
+  onConfirmarRetorno?: (observacao?: string) => void;
 }
 
 interface StatusVariantProps {
@@ -30,7 +34,16 @@ function getStatusVariant(status: StatusVariantProps['status']) {
   return 'default';
 }
 
-export default function PedidoCard({ pedido, onMarcarSeparado, onEditarAgendamento, showAntecipada }: PedidoCardProps) {
+export default function PedidoCard({ 
+  pedido, 
+  onMarcarSeparado, 
+  onEditarAgendamento, 
+  showAntecipada,
+  showDespachoActions = false,
+  onConfirmarDespacho,
+  onConfirmarEntrega,
+  onConfirmarRetorno
+}: PedidoCardProps) {
   const formatarData = (data: Date) => {
     return format(new Date(data), "dd 'de' MMMM, yyyy", { locale: ptBR });
   };
@@ -140,7 +153,8 @@ export default function PedidoCard({ pedido, onMarcarSeparado, onEditarAgendamen
           </div>
           
           <div className="flex gap-2">
-            {pedido.substatusPedido !== 'Separado' && (
+            {/* Ações de separação (padrão) */}
+            {!showDespachoActions && pedido.substatusPedido !== 'Separado' && (
               <>
                 <Button
                   variant="outline"
@@ -161,8 +175,46 @@ export default function PedidoCard({ pedido, onMarcarSeparado, onEditarAgendamen
                 </Button>
               </>
             )}
+
+            {/* Ações de despacho */}
+            {showDespachoActions && (
+              <>
+                {pedido.substatusPedido === 'Separado' && onConfirmarDespacho && (
+                  <Button 
+                    onClick={onConfirmarDespacho}
+                    size="sm"
+                    variant="outline"
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    <Truck className="h-4 w-4 mr-1" />
+                    Confirmar Despacho
+                  </Button>
+                )}
+                
+                {onConfirmarEntrega && (
+                  <Button 
+                    onClick={() => onConfirmarEntrega()}
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Confirmar Entrega
+                  </Button>
+                )}
+                
+                {onConfirmarRetorno && (
+                  <Button 
+                    onClick={() => onConfirmarRetorno()}
+                    size="sm"
+                    variant="destructive"
+                  >
+                    Confirmar Retorno
+                  </Button>
+                )}
+              </>
+            )}
             
-            {pedido.substatusPedido === 'Separado' && (
+            {pedido.substatusPedido === 'Separado' && !showDespachoActions && (
               <Badge variant="secondary" className="bg-green-100 text-green-800">
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Separado
