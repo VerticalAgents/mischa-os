@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
@@ -20,7 +19,7 @@ export const useAgendamentoActions = () => {
     if (agendamento) {
       // Converter para o formato esperado pelo modal
       const agendamentoFormatado = {
-        id: String(a.cliente.id),
+        id: String(agendamento.cliente.id),
         cliente: agendamento.cliente,
         dataReposicao: agendamento.dataReposicao,
         pedido: {
