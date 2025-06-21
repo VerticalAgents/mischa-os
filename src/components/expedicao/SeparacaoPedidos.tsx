@@ -84,6 +84,13 @@ export const SeparacaoPedidos = () => {
   const handleConfirmarSeparacao = async (pedidoId: string) => {
     try {
       console.log('✅ Iniciando confirmação de separação para pedido ID:', pedidoId, 'Tipo:', typeof pedidoId);
+      
+      // Debug adicional para verificar se o ID está correto
+      const pedidoEncontrado = pedidos.find(p => String(p.id) === String(pedidoId));
+      console.log('🔍 Pedido encontrado na lista:', pedidoEncontrado ? 'SIM' : 'NÃO');
+      console.log('🔍 ID original do pedido:', pedidoId);
+      console.log('🔍 Todos os IDs disponíveis:', pedidos.map(p => ({ id: p.id, tipo: typeof p.id })));
+      
       await confirmarSeparacao(pedidoId);
       console.log('✅ Separação confirmada com sucesso para pedido:', pedidoId);
     } catch (error) {

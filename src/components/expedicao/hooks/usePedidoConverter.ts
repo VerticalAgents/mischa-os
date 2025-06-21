@@ -14,7 +14,7 @@ export const usePedidoConverter = () => {
       // Pedido alterado - usar itens personalizados
       itensPedido = pedidoExpedicao.itens_personalizados.map((item: any, index: number) => ({
         id: index,
-        idPedido: Number(pedidoExpedicao.id), // Converter para number
+        idPedido: pedidoExpedicao.id, // Manter como string (UUID)
         idSabor: index,
         nomeSabor: item.produto || item.nome || `Produto ${index}`, // Usar nome correto do produto
         quantidadeSabor: item.quantidade,
@@ -27,7 +27,7 @@ export const usePedidoConverter = () => {
       
       itensPedido = produtos.slice(0, Math.min(produtos.length, 5)).map((produto, index) => ({
         id: index,
-        idPedido: Number(pedidoExpedicao.id), // Converter para number
+        idPedido: pedidoExpedicao.id, // Manter como string (UUID)
         idSabor: produto.id,
         nomeSabor: produto.nome, // Usar nome real do produto
         quantidadeSabor: quantidadePorProduto + (index < resto ? 1 : 0),
@@ -38,7 +38,7 @@ export const usePedidoConverter = () => {
     console.log('📦 Itens do pedido convertidos:', itensPedido);
 
     return {
-      id: Number(pedidoExpedicao.id), // Converter para number para compatibilidade com Pedido interface
+      id: pedidoExpedicao.id, // Manter como string (UUID) - não converter para number
       idCliente: pedidoExpedicao.cliente_id,
       dataPedido: new Date(pedidoExpedicao.data_prevista_entrega),
       dataPrevistaEntrega: new Date(pedidoExpedicao.data_prevista_entrega),

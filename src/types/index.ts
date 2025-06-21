@@ -116,7 +116,7 @@ export interface AlteracaoStatusPedido {
 
 export interface ItemPedido {
   id: number;
-  idPedido: number;
+  idPedido: string | number; // Aceita tanto string (UUID) quanto number para compatibilidade
   idSabor: number;
   nomeSabor?: string; // Make nomeSabor optional to match mockData
   quantidadeSabor: number;
@@ -128,7 +128,7 @@ export interface ItemPedido {
 }
 
 export interface Pedido {
-  id: number;
+  id: string | number; // Aceita tanto string (UUID) quanto number para compatibilidade
   idCliente: string; // Changed to string to match Cliente.id (UUID)
   cliente?: Cliente;
   dataPedido: Date;
