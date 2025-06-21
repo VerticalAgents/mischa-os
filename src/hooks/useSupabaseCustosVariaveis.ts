@@ -29,7 +29,7 @@ export function useSupabaseCustosVariaveis() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCustosVariaveis(data || []);
+      setCustosVariaveis((data || []) as CustoVariavel[]);
     } catch (error) {
       console.error('Erro ao carregar custos variáveis:', error);
       toast({
@@ -51,7 +51,7 @@ export function useSupabaseCustosVariaveis() {
         .single();
 
       if (error) throw error;
-      setCustosVariaveis(prev => [data, ...prev]);
+      setCustosVariaveis(prev => [data as CustoVariavel, ...prev]);
       toast({
         title: "Sucesso",
         description: "Custo variável adicionado com sucesso",
@@ -78,7 +78,7 @@ export function useSupabaseCustosVariaveis() {
         .single();
 
       if (error) throw error;
-      setCustosVariaveis(prev => prev.map(c => c.id === id ? data : c));
+      setCustosVariaveis(prev => prev.map(c => c.id === id ? data as CustoVariavel : c));
       toast({
         title: "Sucesso",
         description: "Custo variável atualizado com sucesso",

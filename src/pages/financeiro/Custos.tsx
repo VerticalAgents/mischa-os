@@ -53,13 +53,21 @@ const SUBCATEGORIAS_VARIAVEIS = [
 
 type Frequencia = "mensal" | "semanal" | "trimestral" | "semestral" | "anual" | "por-producao";
 
+type FormData = {
+  nome?: string;
+  subcategoria?: string;
+  valor?: number;
+  frequencia?: Frequencia;
+  percentual_faturamento?: number;
+  observacoes?: string;
+};
+
 export default function Custos() {
   const { custosFixos, isLoading: loadingFixos, adicionarCustoFixo, atualizarCustoFixo, excluirCustoFixo } = useSupabaseCustosFixos();
   const { custosVariaveis, isLoading: loadingVariaveis, adicionarCustoVariavel, atualizarCustoVariavel, excluirCustoVariavel } = useSupabaseCustosVariaveis();
   const { faturamentoMensal, disponivel: faturamentoDisponivel, isLoading: loadingFaturamento } = useFaturamentoPrevisto();
 
-  const [novoCusto, setNovoCusto] = useState<Partial<CustoFixo & CustoVariavel>>({
-    categoria: "fixo",
+  const [novoCusto, setNovoCusto] = useState<FormData>({
     frequencia: "mensal"
   });
   const [searchTerm, setSearchTerm] = useState("");
@@ -140,7 +148,7 @@ export default function Custos() {
       }
 
       setDialogOpen(false);
-      setNovoCusto({ categoria: "fixo", frequencia: "mensal" });
+      setNovoCusto({ frequencia: "mensal" });
       setEditandoId(null);
     } catch (error) {
       console.error('Erro ao salvar custo:', error);
@@ -148,7 +156,7 @@ export default function Custos() {
   };
 
   const editarCusto = (custo: CustoFixo | CustoVariavel) => {
-    setNovoCusto({ ...custo, categoria: activeTab === "fixos" ? "fixo" : "variavel" });
+    setNovoCusto({ ...custo });
     setEditandoId(custo.id);
     setDialogOpen(true);
   };
@@ -230,7 +238,7 @@ export default function Custos() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => {
-              setNovoCusto({ categoria: activeTab === "fixos" ? "fixo" : "variavel", frequencia: "mensal" });
+              setNovoCusto({ frequencia: "mensal" });
               setEditandoId(null);
             }}>
               <Plus className="h-4 w-4 mr-2" />

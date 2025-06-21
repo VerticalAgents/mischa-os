@@ -28,7 +28,7 @@ export function useSupabaseCustosFixos() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCustosFixos(data || []);
+      setCustosFixos((data || []) as CustoFixo[]);
     } catch (error) {
       console.error('Erro ao carregar custos fixos:', error);
       toast({
@@ -50,7 +50,7 @@ export function useSupabaseCustosFixos() {
         .single();
 
       if (error) throw error;
-      setCustosFixos(prev => [data, ...prev]);
+      setCustosFixos(prev => [data as CustoFixo, ...prev]);
       toast({
         title: "Sucesso",
         description: "Custo fixo adicionado com sucesso",
@@ -77,7 +77,7 @@ export function useSupabaseCustosFixos() {
         .single();
 
       if (error) throw error;
-      setCustosFixos(prev => prev.map(c => c.id === id ? data : c));
+      setCustosFixos(prev => prev.map(c => c.id === id ? data as CustoFixo : c));
       toast({
         title: "Sucesso",
         description: "Custo fixo atualizado com sucesso",
