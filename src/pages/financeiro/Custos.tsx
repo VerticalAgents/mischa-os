@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { Button } from "@/components/ui/button";
@@ -28,12 +27,13 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Search, Percent, AlertTriangle } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Percent, AlertTriangle, TrendingUp } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSupabaseCustosFixos, CustoFixo } from "@/hooks/useSupabaseCustosFixos";
 import { useSupabaseCustosVariaveis, CustoVariavel } from "@/hooks/useSupabaseCustosVariaveis";
 import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
+import { useClienteStore } from "@/hooks/useClienteStore";
 
 // Subcategorias predefinidas
 const SUBCATEGORIAS_FIXAS = [
@@ -69,6 +69,7 @@ export default function Custos() {
   const { custosFixos, isLoading: loadingFixos, adicionarCustoFixo, atualizarCustoFixo, excluirCustoFixo } = useSupabaseCustosFixos();
   const { custosVariaveis, isLoading: loadingVariaveis, adicionarCustoVariavel, atualizarCustoVariavel, excluirCustoVariavel } = useSupabaseCustosVariaveis();
   const { faturamentoMensal, disponivel: faturamentoDisponivel, isLoading: loadingFaturamento } = useFaturamentoPrevisto();
+  const { clientes } = useClienteStore();
 
   const [novoCusto, setNovoCusto] = useState<FormData>({
     nome: "",
@@ -116,6 +117,30 @@ export default function Custos() {
       : 0;
     return total + percentualPart + (custo.valor || 0);
   }, 0);
+
+  // Calculate inputs cost from client projections
+  const calcularCustoInsumos = (): number => {
+    if (!clientes.length) return 0;
+    
+    const clientesAtivos = clientes.filter(
+      c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio
+    );
+    
+    // Mock calculation based on client volume and average input cost
+    // Future: integrate with real input cost calculation from recipes
+    const custoMedioInsumosPorUnidade = 2.10; // Average input cost per unit
+    const volumeMensalTotal = clientesAtivos.reduce((total, cliente) => {
+      const volumeSemanal = cliente.quantidadePadrao * (7 / cliente.periodicidadePadrao);
+      return total + (volumeSemanal * 4.33); // Convert to monthly
+    }, 0);
+    
+    return volumeMensalTotal * custoMedioInsumosPorUnidade;
+  };
+
+  const totalCustoInsumos = calcularCustoInsumos();
+  
+  // Calculate total cost (fixed + variable + inputs)
+  const custoTotal = totalFixo + totalVariavelComValorFixo + totalCustoInsumos;
 
   // Filter costs based on activeTab and searchTerm
   const filteredCustosFixos = custosFixos.filter(custo => {
@@ -463,8 +488,8 @@ export default function Custos() {
         </Dialog>
       </div>
 
-      {/* Cards de resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      {/* Cards de resumo expandidos */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total de Custos Fixos (mensal)</CardTitle>
@@ -475,6 +500,7 @@ export default function Custos() {
             </span>
           </CardContent>
         </Card>
+        
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -496,6 +522,38 @@ export default function Custos() {
             )}
           </CardContent>
         </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Custo de Insumos (mensal)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col">
+            <span className="text-2xl font-bold">
+              {formatCurrency(totalCustoInsumos)}
+            </span>
+            <span className="text-xs text-muted-foreground mt-1 flex items-center">
+              <TrendingUp className="h-3 w-3 mr-1" />
+              {totalCustoInsumos === 0 ? "Sem dados disponíveis" : "Baseado na projeção por PDV"}
+            </span>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Custo Total (mensal)</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col">
+            <span className="text-2xl font-bold">
+              {formatCurrency(custoTotal)}
+            </span>
+            <span className="text-xs text-muted-foreground mt-1">
+              Fixos + Variáveis + Insumos
+            </span>
+          </CardContent>
+        </Card>
+        
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Subcategorias</CardTitle>
