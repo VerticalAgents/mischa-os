@@ -110,7 +110,7 @@ export const usePedidoStore = create<PedidoStore>()(
         const saboresAtivos = useSaborStore.getState().getSaboresAtivos();
         const itensPedido = calcularDistribuicaoSabores(saboresAtivos, cliente.quantidadePadrao);
         
-        const novoId = Math.max(0, ...get().pedidos.map(p => p.id)) + 1;
+        const novoId = Math.max(0, ...get().pedidos.map(p => Number(p.id))) + 1;
         const pedidoCompleto = {
           ...novoPedido,
           id: novoId,
@@ -140,11 +140,12 @@ export const usePedidoStore = create<PedidoStore>()(
       },
       
       adicionarPedido: (pedido) => {
-        const novoId = Math.max(0, ...get().pedidos.map(p => p.id)) + 1;
+        const novoId = Math.max(0, ...get().pedidos.map(p => Number(p.id))) + 1;
         
         let cliente = undefined;
         if (pedido.idCliente && pedido.idCliente !== '') { // Changed condition to check for non-empty string
-          cliente = useClienteStore.getState().getClientePorId(pedido.idCliente);
+          const idClienteString = String(pedido.idCliente); // Convert to string for cliente store
+          cliente = useClienteStore.getState().getClientePorId(idClienteString);
         }
         
         const novoPedido = {
@@ -172,16 +173,16 @@ export const usePedidoStore = create<PedidoStore>()(
       atualizarPedido: (id, dadosPedido) => {
         set(state => ({
           pedidos: state.pedidos.map(pedido => 
-            pedido.id === id ? { ...pedido, ...dadosPedido } : pedido
+            Number(pedido.id) === id ? { ...pedido, ...dadosPedido } : pedido
           ),
-          pedidoAtual: state.pedidoAtual?.id === id 
+          pedidoAtual: state.pedidoAtual && Number(state.pedidoAtual.id) === id 
             ? { ...state.pedidoAtual, ...dadosPedido } 
             : state.pedidoAtual
         }));
       },
       
       atualizarItensPedido: (idPedido, itens) => {
-        const pedido = get().pedidos.find(p => p.id === idPedido);
+        const pedido = get().pedidos.find(p => Number(p.id) === idPedido);
         
         if (!pedido) return;
         
@@ -199,7 +200,7 @@ export const usePedidoStore = create<PedidoStore>()(
         
         set(state => ({
           pedidos: state.pedidos.map(p => {
-            if (p.id === idPedido) {
+            if (Number(p.id) === idPedido) {
               return {
                 ...p,
                 totalPedidoUnidades: totalUnidades,
@@ -209,7 +210,7 @@ export const usePedidoStore = create<PedidoStore>()(
             }
             return p;
           }),
-          pedidoAtual: state.pedidoAtual?.id === idPedido 
+          pedidoAtual: state.pedidoAtual && Number(state.pedidoAtual.id) === idPedido 
             ? {
                 ...state.pedidoAtual,
                 totalPedidoUnidades: totalUnidades,
@@ -222,8 +223,8 @@ export const usePedidoStore = create<PedidoStore>()(
       
       removerPedido: (id) => {
         set(state => ({
-          pedidos: state.pedidos.filter(pedido => pedido.id !== id),
-          pedidoAtual: state.pedidoAtual?.id === id ? null : state.pedidoAtual
+          pedidos: state.pedidos.filter(pedido => Number(pedido.id) !== id),
+          pedidoAtual: state.pedidoAtual && Number(state.pedidoAtual.id) === id ? null : state.pedidoAtual
         }));
       },
       
@@ -233,17 +234,17 @@ export const usePedidoStore = create<PedidoStore>()(
           return;
         }
         
-        const pedido = get().pedidos.find(p => p.id === id);
+        const pedido = get().pedidos.find(p => Number(p.id) === id);
         set({ pedidoAtual: pedido || null });
       },
       
       confirmarEntrega: (idPedido, dataEfetiva, itensEntregues) => {
-        const pedido = get().pedidos.find(p => p.id === idPedido);
+        const pedido = get().pedidos.find(p => Number(p.id) === idPedido);
         if (!pedido) return;
         
         set(state => ({
           pedidos: state.pedidos.map(p => {
-            if (p.id === idPedido) {
+            if (Number(p.id) === idPedido) {
               const itensAtualizados = p.itensPedido.map(item => {
                 const itemEntregue = itensEntregues.find(i => i.idSabor === item.idSabor);
                 return itemEntregue 
@@ -310,7 +311,7 @@ export const usePedidoStore = create<PedidoStore>()(
       },
       
       despacharPedido: (idPedido) => {
-        const pedido = get().pedidos.find(p => p.id === idPedido);
+        const pedido = get().pedidos.find(p => Number(p.id) === idPedido);
         if (!pedido) return;
         
         const saborState = useSaborStore.getState();
@@ -337,9 +338,9 @@ export const usePedidoStore = create<PedidoStore>()(
         
         set(state => ({
           pedidos: state.pedidos.map(p => 
-            p.id === idPedido ? { ...p, statusPedido: "Despachado" } : p
+            Number(p.id) === idPedido ? { ...p, statusPedido: "Despachado" } : p
           ),
-          pedidoAtual: state.pedidoAtual?.id === idPedido 
+          pedidoAtual: state.pedidoAtual && Number(state.pedidoAtual.id) === idPedido 
             ? { ...state.pedidoAtual, statusPedido: "Despachado" } 
             : state.pedidoAtual
         }));
@@ -357,9 +358,9 @@ export const usePedidoStore = create<PedidoStore>()(
       cancelarPedido: (idPedido) => {
         set(state => ({
           pedidos: state.pedidos.map(p => 
-            p.id === idPedido ? { ...p, statusPedido: "Cancelado" } : p
+            Number(p.id) === idPedido ? { ...p, statusPedido: "Cancelado" } : p
           ),
-          pedidoAtual: state.pedidoAtual?.id === idPedido 
+          pedidoAtual: state.pedidoAtual && Number(state.pedidoAtual.id) === idPedido 
             ? { ...state.pedidoAtual, statusPedido: "Cancelado" } 
             : state.pedidoAtual
         }));
@@ -371,7 +372,7 @@ export const usePedidoStore = create<PedidoStore>()(
       },
       
       atualizarSubstatusPedido: (idPedido, novoSubstatus, observacao) => {
-        const pedido = get().pedidos.find(p => p.id === idPedido);
+        const pedido = get().pedidos.find(p => Number(p.id) === idPedido);
         if (!pedido) return;
     
         const alteracaoStatus: AlteracaoStatusPedido = {
@@ -385,7 +386,7 @@ export const usePedidoStore = create<PedidoStore>()(
     
         set(state => ({
           pedidos: state.pedidos.map(p =>
-            p.id === idPedido ? {
+            Number(p.id) === idPedido ? {
               ...p,
               substatusPedido: novoSubstatus,
               historicoAlteracoesStatus: [
@@ -394,7 +395,7 @@ export const usePedidoStore = create<PedidoStore>()(
               ]
             } : p
           ),
-          pedidoAtual: state.pedidoAtual?.id === idPedido
+          pedidoAtual: state.pedidoAtual && Number(state.pedidoAtual.id) === idPedido
             ? {
               ...state.pedidoAtual,
               substatusPedido: novoSubstatus,
@@ -474,7 +475,7 @@ export const usePedidoStore = create<PedidoStore>()(
             (!filtros.dataInicio || new Date(pedido.dataPrevistaEntrega) >= new Date(filtros.dataInicio)) &&
             (!filtros.dataFim || new Date(pedido.dataPrevistaEntrega) <= new Date(filtros.dataFim));
           
-          const clienteMatch = !filtros.idCliente || pedido.cliente?.id === filtros.idCliente;
+          const clienteMatch = !filtros.idCliente || String(pedido.idCliente) === filtros.idCliente;
           
           const statusMatch = !filtros.status || filtros.status === 'Todos' || pedido.statusPedido === filtros.status;
           
@@ -485,11 +486,11 @@ export const usePedidoStore = create<PedidoStore>()(
       },
       
       getPedidoPorId: (id) => {
-        return get().pedidos.find(p => p.id === id);
+        return get().pedidos.find(p => Number(p.id) === id);
       },
       
       getPedidosPorCliente: (idCliente) => {
-        return get().pedidos.filter(p => p.cliente?.id === idCliente);
+        return get().pedidos.filter(p => String(p.idCliente) === idCliente);
       },
       
       getPedidosPorStatus: (status) => {
