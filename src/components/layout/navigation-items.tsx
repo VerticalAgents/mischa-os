@@ -4,7 +4,7 @@ import {
   BarChart3, Users, Tag, Clipboard, 
   ShoppingBag, Settings, Layers, Truck, FileText,
   Cpu, PackageCheck, DollarSign, LineChart, Receipt,
-  BarChart, Building, HelpingHand, UserCircle, TrendingUp
+  BarChart, Building, HelpingHand, UserCircle, TrendingUp, Calculator
 } from "lucide-react";
 
 export type MenuItem = {
@@ -143,5 +143,10 @@ export const gestaoFinanceiraItems = [
     label: "Projeção de Resultados por PDV",
     path: "/gestao-financeira/projecao-resultados-pdv",
     icon: <TrendingUp className="h-4 w-4" />,
+  },
+  {
+    label: "Ponto de Equilíbrio",
+    path: "/gestao-financeira/ponto-equilibrio",
+    icon: <Calculator className="h-4 w-4" />,
   }
 ];
