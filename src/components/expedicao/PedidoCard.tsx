@@ -65,14 +65,16 @@ export default function PedidoCard({
   const handleMarcarSeparado = () => {
     // Garantir que o ID está sendo passado como string
     const idString = String(pedido.id);
-    console.log('✅ Marcando como separado - ID:', idString, 'Tipo:', typeof idString);
+    console.log('✅ PedidoCard: Marcando como separado - ID original:', pedido.id, 'Tipo:', typeof pedido.id);
+    console.log('✅ PedidoCard: ID convertido para string:', idString, 'Tipo:', typeof idString);
     onMarcarSeparado(idString);
   };
 
   const handleEditarAgendamento = () => {
     if (onEditarAgendamento) {
       const idString = String(pedido.id);
-      console.log('🔧 Editando agendamento - ID:', idString, 'Tipo:', typeof idString);
+      console.log('🔧 PedidoCard: Editando agendamento - ID original:', pedido.id, 'Tipo:', typeof pedido.id);
+      console.log('🔧 PedidoCard: ID convertido para string:', idString, 'Tipo:', typeof idString);
       onEditarAgendamento(idString);
     }
   };
