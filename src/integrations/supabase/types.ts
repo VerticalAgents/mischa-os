@@ -343,6 +343,75 @@ export type Database = {
         }
         Relationships: []
       }
+      custos_fixos: {
+        Row: {
+          created_at: string
+          frequencia: string
+          id: string
+          nome: string
+          observacoes: string | null
+          subcategoria: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          frequencia?: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          subcategoria: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          created_at?: string
+          frequencia?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          subcategoria?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: []
+      }
+      custos_variaveis: {
+        Row: {
+          created_at: string
+          frequencia: string
+          id: string
+          nome: string
+          observacoes: string | null
+          percentual_faturamento: number
+          subcategoria: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          frequencia?: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          percentual_faturamento?: number
+          subcategoria: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          created_at?: string
+          frequencia?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          percentual_faturamento?: number
+          subcategoria?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       formas_pagamento: {
         Row: {
           ativo: boolean
