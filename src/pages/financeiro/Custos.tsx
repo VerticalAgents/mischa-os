@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Search, Percent, AlertTriangle, Info } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Percent, AlertTriangle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSupabaseCustosFixos, CustoFixo } from "@/hooks/useSupabaseCustosFixos";
@@ -41,27 +41,28 @@ const SUBCATEGORIAS_FIXAS = [
   "Utilidades", 
   "Marketing",
   "Manutenção",
-  "RH"
+  "Infraestrutura",
+  "Investimentos"
 ];
 
 const SUBCATEGORIAS_VARIAVEIS = [
   "Matéria-prima",
   "Logística",
   "Produção", 
-  "Embalagens"
+  "Materiais"
 ];
 
 type Frequencia = "mensal" | "semanal" | "trimestral" | "semestral" | "anual" | "por-producao";
 type TipoCusto = "fixo" | "variavel";
 
 type FormData = {
-  nome?: string;
-  subcategoria?: string;
-  valor?: number;
-  frequencia?: Frequencia;
-  percentual_faturamento?: number;
-  observacoes?: string;
-  tipoCusto?: TipoCusto;
+  nome: string;
+  subcategoria: string;
+  valor: number;
+  frequencia: Frequencia;
+  percentual_faturamento: number;
+  observacoes: string;
+  tipoCusto: TipoCusto;
 };
 
 export default function Custos() {
@@ -70,7 +71,12 @@ export default function Custos() {
   const { faturamentoMensal, disponivel: faturamentoDisponivel, isLoading: loadingFaturamento } = useFaturamentoPrevisto();
 
   const [novoCusto, setNovoCusto] = useState<FormData>({
+    nome: "",
+    subcategoria: "",
+    valor: 0,
     frequencia: "mensal",
+    percentual_faturamento: 0,
+    observacoes: "",
     tipoCusto: "fixo"
   });
   const [searchTerm, setSearchTerm] = useState("");
@@ -103,6 +109,14 @@ export default function Custos() {
     ? (faturamentoMensal * totalPercentualVariavel) / 100
     : 0;
 
+  // Calculate total variable costs including fixed values
+  const totalVariavelComValorFixo = custosVariaveis.reduce((total, custo) => {
+    const percentualPart = faturamentoDisponivel 
+      ? (faturamentoMensal * custo.percentual_faturamento) / 100
+      : 0;
+    return total + percentualPart + (custo.valor || 0);
+  }, 0);
+
   // Filter costs based on activeTab and searchTerm
   const filteredCustosFixos = custosFixos.filter(custo => {
     const matchesSearch = custo.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -116,15 +130,25 @@ export default function Custos() {
     return matchesSearch;
   });
 
+  // Validation function
+  const isFormValid = (): boolean => {
+    return !!(novoCusto.nome.trim() && novoCusto.subcategoria.trim());
+  };
+
   const handleSalvar = async () => {
     try {
+      if (!isFormValid()) {
+        console.error('Formulário inválido: nome e subcategoria são obrigatórios');
+        return;
+      }
+
       if (novoCusto.tipoCusto === "fixo") {
         const custoFixoData = {
-          nome: novoCusto.nome!,
-          subcategoria: novoCusto.subcategoria!,
-          valor: novoCusto.valor!,
+          nome: novoCusto.nome.trim(),
+          subcategoria: novoCusto.subcategoria,
+          valor: novoCusto.valor || 0,
           frequencia: novoCusto.frequencia as "mensal" | "semanal" | "trimestral" | "semestral" | "anual",
-          observacoes: novoCusto.observacoes
+          observacoes: novoCusto.observacoes?.trim() || undefined
         };
 
         if (editandoId) {
@@ -134,12 +158,12 @@ export default function Custos() {
         }
       } else {
         const custoVariavelData = {
-          nome: novoCusto.nome!,
-          subcategoria: novoCusto.subcategoria!,
+          nome: novoCusto.nome.trim(),
+          subcategoria: novoCusto.subcategoria,
           valor: novoCusto.valor || 0,
           frequencia: novoCusto.frequencia as CustoVariavel['frequencia'],
           percentual_faturamento: novoCusto.percentual_faturamento || 0,
-          observacoes: novoCusto.observacoes
+          observacoes: novoCusto.observacoes?.trim() || undefined
         };
 
         if (editandoId) {
@@ -150,18 +174,34 @@ export default function Custos() {
       }
 
       setDialogOpen(false);
-      setNovoCusto({ frequencia: "mensal", tipoCusto: "fixo" });
-      setEditandoId(null);
+      resetForm();
     } catch (error) {
       console.error('Erro ao salvar custo:', error);
     }
   };
 
+  const resetForm = () => {
+    setNovoCusto({
+      nome: "",
+      subcategoria: "",
+      valor: 0,
+      frequencia: "mensal",
+      percentual_faturamento: 0,
+      observacoes: "",
+      tipoCusto: "fixo"
+    });
+    setEditandoId(null);
+  };
+
   const editarCusto = (custo: CustoFixo | CustoVariavel, tipo: TipoCusto) => {
     setNovoCusto({ 
-      ...custo, 
-      tipoCusto: tipo,
-      percentual_faturamento: 'percentual_faturamento' in custo ? custo.percentual_faturamento : 0
+      nome: custo.nome,
+      subcategoria: custo.subcategoria,
+      valor: custo.valor,
+      frequencia: custo.frequencia,
+      percentual_faturamento: 'percentual_faturamento' in custo ? custo.percentual_faturamento : 0,
+      observacoes: custo.observacoes || "",
+      tipoCusto: tipo
     });
     setEditandoId(custo.id);
     setDialogOpen(true);
@@ -203,6 +243,14 @@ export default function Custos() {
 
   const getSubcategoriasList = () => {
     return novoCusto.tipoCusto === "fixo" ? SUBCATEGORIAS_FIXAS : SUBCATEGORIAS_VARIAVEIS;
+  };
+
+  // Calculate variable cost display value
+  const calcularValorVariavelDisplay = (custo: CustoVariavel): number => {
+    const percentualPart = faturamentoDisponivel 
+      ? (faturamentoMensal * custo.percentual_faturamento) / 100
+      : 0;
+    return percentualPart + (custo.valor || 0);
   };
 
   return (
@@ -248,8 +296,7 @@ export default function Custos() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => {
-              setNovoCusto({ frequencia: "mensal", tipoCusto: "fixo" });
-              setEditandoId(null);
+              resetForm();
             }}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Custo
@@ -265,24 +312,24 @@ export default function Custos() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="nome" className="text-sm font-medium">Nome</label>
+                  <label htmlFor="nome" className="text-sm font-medium">Nome *</label>
                   <Input
                     id="nome"
                     placeholder="Nome do custo"
-                    value={novoCusto.nome || ""}
+                    value={novoCusto.nome}
                     onChange={(e) => setNovoCusto({...novoCusto, nome: e.target.value})}
                   />
                 </div>
                 <div>
-                  <label htmlFor="tipoCusto" className="text-sm font-medium">Tipo de Custo</label>
+                  <label htmlFor="tipoCusto" className="text-sm font-medium">Tipo de Custo *</label>
                   <Select
                     value={novoCusto.tipoCusto}
                     onValueChange={(value) => setNovoCusto({
                       ...novoCusto, 
                       tipoCusto: value as TipoCusto,
                       subcategoria: "", // Reset subcategoria quando muda o tipo
-                      valor: undefined,
-                      percentual_faturamento: undefined
+                      valor: 0,
+                      percentual_faturamento: 0
                     })}
                   >
                     <SelectTrigger>
@@ -298,13 +345,13 @@ export default function Custos() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="subcategoria" className="text-sm font-medium">Subcategoria</label>
+                  <label htmlFor="subcategoria" className="text-sm font-medium">Subcategoria *</label>
                   <Select
                     value={novoCusto.subcategoria}
                     onValueChange={(value) => setNovoCusto({...novoCusto, subcategoria: value})}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder="Selecione uma subcategoria" />
                     </SelectTrigger>
                     <SelectContent>
                       {getSubcategoriasList().map(sub => (
@@ -348,7 +395,7 @@ export default function Custos() {
                     value={novoCusto.valor || ""}
                     onChange={(e) => {
                       const valorStr = e.target.value;
-                      const valor = valorStr === "" ? undefined : parseFloat(valorStr);
+                      const valor = valorStr === "" ? 0 : parseFloat(valorStr);
                       setNovoCusto({ ...novoCusto, valor });
                     }}
                   />
@@ -356,7 +403,7 @@ export default function Custos() {
               ) : (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="valor" className="text-sm font-medium">Valor (opcional)</label>
+                    <label htmlFor="valor" className="text-sm font-medium">Valor Fixo (opcional)</label>
                     <Input
                       id="valor"
                       type="number"
@@ -366,7 +413,7 @@ export default function Custos() {
                       value={novoCusto.valor || ""}
                       onChange={(e) => {
                         const valorStr = e.target.value;
-                        const valor = valorStr === "" ? undefined : parseFloat(valorStr);
+                        const valor = valorStr === "" ? 0 : parseFloat(valorStr);
                         setNovoCusto({ ...novoCusto, valor });
                       }}
                     />
@@ -382,7 +429,7 @@ export default function Custos() {
                       value={novoCusto.percentual_faturamento || ""}
                       onChange={(e) => {
                         const valorStr = e.target.value;
-                        const percentual = valorStr === "" ? undefined : parseFloat(valorStr);
+                        const percentual = valorStr === "" ? 0 : parseFloat(valorStr);
                         setNovoCusto({ ...novoCusto, percentual_faturamento: percentual });
                       }}
                     />
@@ -396,7 +443,7 @@ export default function Custos() {
                   id="observacoes"
                   placeholder="Observações adicionais"
                   rows={3}
-                  value={novoCusto.observacoes || ""}
+                  value={novoCusto.observacoes}
                   onChange={(e) => setNovoCusto({...novoCusto, observacoes: e.target.value})}
                 />
               </div>
@@ -405,7 +452,10 @@ export default function Custos() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleSalvar}>
+              <Button 
+                onClick={handleSalvar}
+                disabled={!isFormValid()}
+              >
                 Salvar
               </Button>
             </DialogFooter>
@@ -433,7 +483,7 @@ export default function Custos() {
           </CardHeader>
           <CardContent className="flex flex-col">
             <span className="text-2xl font-bold">
-              {formatCurrency(totalVariavelCalculado)}
+              {formatCurrency(totalVariavelComValorFixo)}
             </span>
             <span className="text-sm text-muted-foreground flex items-center mt-1">
               <Percent className="h-3 w-3 mr-1" />
@@ -554,7 +604,8 @@ export default function Custos() {
                     <TableRow>
                       <TableHead className="w-48">Nome</TableHead>
                       <TableHead>Subcategoria</TableHead>
-                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-right">Valor Total</TableHead>
+                      <TableHead className="text-right">Valor Fixo</TableHead>
                       <TableHead className="text-right">% do Faturamento</TableHead>
                       <TableHead>Frequência</TableHead>
                       <TableHead>Observações</TableHead>
@@ -567,7 +618,10 @@ export default function Custos() {
                         <TableCell className="font-medium">{custo.nome}</TableCell>
                         <TableCell>{custo.subcategoria}</TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(custo.valor)}
+                          {formatCurrency(calcularValorVariavelDisplay(custo))}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(custo.valor || 0)}
                         </TableCell>
                         <TableCell className="text-right">
                           <span className="flex items-center justify-end">
@@ -593,7 +647,7 @@ export default function Custos() {
                     ))}
                     {filteredCustosVariaveis.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-4 text-muted-foreground">
                           Nenhum custo variável encontrado.
                         </TableCell>
                       </TableRow>
@@ -603,7 +657,10 @@ export default function Custos() {
                     <TableRow>
                       <TableCell colSpan={2}>Total</TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(totalVariavelCalculado)}
+                        {formatCurrency(totalVariavelComValorFixo)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(custosVariaveis.reduce((total, custo) => total + (custo.valor || 0), 0))}
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="flex items-center justify-end">
