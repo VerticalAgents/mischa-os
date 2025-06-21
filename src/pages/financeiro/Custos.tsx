@@ -52,6 +52,7 @@ const SUBCATEGORIAS_VARIAVEIS = [
 ];
 
 type Frequencia = "mensal" | "semanal" | "trimestral" | "semestral" | "anual" | "por-producao";
+type TipoCusto = "fixo" | "variavel";
 
 type FormData = {
   nome?: string;
@@ -60,6 +61,7 @@ type FormData = {
   frequencia?: Frequencia;
   percentual_faturamento?: number;
   observacoes?: string;
+  tipoCusto?: TipoCusto;
 };
 
 export default function Custos() {
@@ -68,10 +70,10 @@ export default function Custos() {
   const { faturamentoMensal, disponivel: faturamentoDisponivel, isLoading: loadingFaturamento } = useFaturamentoPrevisto();
 
   const [novoCusto, setNovoCusto] = useState<FormData>({
-    frequencia: "mensal"
+    frequencia: "mensal",
+    tipoCusto: "fixo"
   });
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoriaFilter, setCategoriaFilter] = useState<"fixo" | "variavel" | "todos">("todos");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"fixos" | "variaveis">("fixos");
@@ -116,7 +118,7 @@ export default function Custos() {
 
   const handleSalvar = async () => {
     try {
-      if (activeTab === "fixos") {
+      if (novoCusto.tipoCusto === "fixo") {
         const custoFixoData = {
           nome: novoCusto.nome!,
           subcategoria: novoCusto.subcategoria!,
@@ -134,7 +136,7 @@ export default function Custos() {
         const custoVariavelData = {
           nome: novoCusto.nome!,
           subcategoria: novoCusto.subcategoria!,
-          valor: novoCusto.valor!,
+          valor: novoCusto.valor || 0,
           frequencia: novoCusto.frequencia as CustoVariavel['frequencia'],
           percentual_faturamento: novoCusto.percentual_faturamento || 0,
           observacoes: novoCusto.observacoes
@@ -148,22 +150,26 @@ export default function Custos() {
       }
 
       setDialogOpen(false);
-      setNovoCusto({ frequencia: "mensal" });
+      setNovoCusto({ frequencia: "mensal", tipoCusto: "fixo" });
       setEditandoId(null);
     } catch (error) {
       console.error('Erro ao salvar custo:', error);
     }
   };
 
-  const editarCusto = (custo: CustoFixo | CustoVariavel) => {
-    setNovoCusto({ ...custo });
+  const editarCusto = (custo: CustoFixo | CustoVariavel, tipo: TipoCusto) => {
+    setNovoCusto({ 
+      ...custo, 
+      tipoCusto: tipo,
+      percentual_faturamento: 'percentual_faturamento' in custo ? custo.percentual_faturamento : 0
+    });
     setEditandoId(custo.id);
     setDialogOpen(true);
   };
 
-  const excluirCustoHandler = async (id: string) => {
+  const excluirCustoHandler = async (id: string, tipo: TipoCusto) => {
     try {
-      if (activeTab === "fixos") {
+      if (tipo === "fixo") {
         await excluirCustoFixo(id);
       } else {
         await excluirCustoVariavel(id);
@@ -194,6 +200,10 @@ export default function Custos() {
   };
 
   const isLoading = loadingFixos || loadingVariaveis;
+
+  const getSubcategoriasList = () => {
+    return novoCusto.tipoCusto === "fixo" ? SUBCATEGORIAS_FIXAS : SUBCATEGORIAS_VARIAVEIS;
+  };
 
   return (
     <div className="container mx-auto">
@@ -238,7 +248,7 @@ export default function Custos() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => {
-              setNovoCusto({ frequencia: "mensal" });
+              setNovoCusto({ frequencia: "mensal", tipoCusto: "fixo" });
               setEditandoId(null);
             }}>
               <Plus className="h-4 w-4 mr-2" />
@@ -253,14 +263,37 @@ export default function Custos() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-1 gap-2">
-                <label htmlFor="nome" className="text-sm font-medium">Nome</label>
-                <Input
-                  id="nome"
-                  placeholder="Nome do custo"
-                  value={novoCusto.nome || ""}
-                  onChange={(e) => setNovoCusto({...novoCusto, nome: e.target.value})}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="nome" className="text-sm font-medium">Nome</label>
+                  <Input
+                    id="nome"
+                    placeholder="Nome do custo"
+                    value={novoCusto.nome || ""}
+                    onChange={(e) => setNovoCusto({...novoCusto, nome: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="tipoCusto" className="text-sm font-medium">Tipo de Custo</label>
+                  <Select
+                    value={novoCusto.tipoCusto}
+                    onValueChange={(value) => setNovoCusto({
+                      ...novoCusto, 
+                      tipoCusto: value as TipoCusto,
+                      subcategoria: "", // Reset subcategoria quando muda o tipo
+                      valor: undefined,
+                      percentual_faturamento: undefined
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixo">Custo Fixo</SelectItem>
+                      <SelectItem value="variavel">Custo Variável</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -274,7 +307,7 @@ export default function Custos() {
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(activeTab === "fixos" ? SUBCATEGORIAS_FIXAS : SUBCATEGORIAS_VARIAVEIS).map(sub => (
+                      {getSubcategoriasList().map(sub => (
                         <SelectItem key={sub} value={sub}>{sub}</SelectItem>
                       ))}
                     </SelectContent>
@@ -295,7 +328,7 @@ export default function Custos() {
                       <SelectItem value="trimestral">Trimestral</SelectItem>
                       <SelectItem value="semestral">Semestral</SelectItem>
                       <SelectItem value="anual">Anual</SelectItem>
-                      {activeTab === "variaveis" && (
+                      {novoCusto.tipoCusto === "variavel" && (
                         <SelectItem value="por-producao">Por Produção</SelectItem>
                       )}
                     </SelectContent>
@@ -303,7 +336,7 @@ export default function Custos() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              {novoCusto.tipoCusto === "fixo" ? (
                 <div>
                   <label htmlFor="valor" className="text-sm font-medium">Valor</label>
                   <Input
@@ -320,7 +353,24 @@ export default function Custos() {
                     }}
                   />
                 </div>
-                {activeTab === "variaveis" && (
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="valor" className="text-sm font-medium">Valor (opcional)</label>
+                    <Input
+                      id="valor"
+                      type="number"
+                      placeholder="0,00"
+                      min="0"
+                      step="0.01"
+                      value={novoCusto.valor || ""}
+                      onChange={(e) => {
+                        const valorStr = e.target.value;
+                        const valor = valorStr === "" ? undefined : parseFloat(valorStr);
+                        setNovoCusto({ ...novoCusto, valor });
+                      }}
+                    />
+                  </div>
                   <div>
                     <label htmlFor="percentual" className="text-sm font-medium">% do Faturamento</label>
                     <Input
@@ -337,8 +387,8 @@ export default function Custos() {
                       }}
                     />
                   </div>
-                )}
-              </div>
+                </div>
+              )}
               
               <div>
                 <label htmlFor="observacoes" className="text-sm font-medium">Observações</label>
@@ -455,10 +505,10 @@ export default function Custos() {
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => editarCusto(custo)}>
+                            <Button variant="ghost" size="icon" onClick={() => editarCusto(custo, "fixo")}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => excluirCustoHandler(custo.id)}>
+                            <Button variant="ghost" size="icon" onClick={() => excluirCustoHandler(custo.id, "fixo")}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -531,7 +581,7 @@ export default function Custos() {
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => editarCusto(custo)}>
+                            <Button variant="ghost" size="icon" onClick={() => editarCusto(custo, "variavel")}>
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => excluirCustoVariavel(custo.id)}>
