@@ -121,7 +121,7 @@ export default function Custos() {
           nome: novoCusto.nome!,
           subcategoria: novoCusto.subcategoria!,
           valor: novoCusto.valor!,
-          frequencia: novoCusto.frequencia as CustoFixo['frequencia'],
+          frequencia: novoCusto.frequencia as "mensal" | "semanal" | "trimestral" | "semestral" | "anual",
           observacoes: novoCusto.observacoes
         };
 
