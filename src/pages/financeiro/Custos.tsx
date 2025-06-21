@@ -207,7 +207,7 @@ export default function Custos() {
           </CardHeader>
           <CardContent className="text-sm text-amber-700">
             <p>
-              Os cálculos de custos variáveis requerem dados da aba "Gestão Financeira > Projeção de Resultados por PDV". 
+              Os cálculos de custos variáveis requerem dados da aba "Gestão Financeira &gt; Projeção de Resultados por PDV". 
               Configure clientes com categorias habilitadas para visualizar os cálculos corretos.
             </p>
           </CardContent>
