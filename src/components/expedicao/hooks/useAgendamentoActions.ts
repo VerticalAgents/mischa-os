@@ -14,13 +14,13 @@ export const useAgendamentoActions = () => {
   const handleEditarAgendamento = (pedidoId: string) => {
     console.log('🔧 Editando agendamento para pedido ID:', pedidoId);
     
-    // Buscar primeiro nos agendamentos
-    const agendamento = agendamentos.find(a => String(a.id) === pedidoId);
+    // Buscar primeiro nos agendamentos - use cliente.id para comparação
+    const agendamento = agendamentos.find(a => String(a.cliente.id) === pedidoId);
     
     if (agendamento) {
       // Converter para o formato esperado pelo modal
       const agendamentoFormatado = {
-        id: String(agendamento.id),
+        id: String(a.cliente.id),
         cliente: agendamento.cliente,
         dataReposicao: agendamento.dataReposicao,
         pedido: {
