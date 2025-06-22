@@ -584,9 +584,7 @@ export default function Custos() {
                     Real
                   </Badge>}
               </div>
-              {faturamentoDisponivel && <p className="text-xs text-muted-foreground">
-                  Base: {formatCurrency(faturamentoMensal)}
-                </p>}
+              {faturamentoDisponivel}
             </div>
           </CardContent>
         </Card>
