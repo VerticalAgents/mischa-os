@@ -169,9 +169,11 @@ export default function Custos() {
       // Use real values if toggle is on and it's tax or logistics
       if (usarPercentualReal && faturamentoDisponivel) {
         if (custo.nome.toLowerCase().includes('imposto')) {
-          valorFinal += totalImpostoReal;
+          // Use the exact real value for taxes
+          valorFinal = totalImpostoReal;
         } else if (custo.nome.toLowerCase().includes('logistic') || custo.subcategoria === 'Logística') {
-          valorFinal += totalLogisticaReal;
+          // Use the exact real value for logistics
+          valorFinal = totalLogisticaReal;
         } else {
           // For other variable costs, use the standard percentage calculation
           const percentualPart = (faturamentoMensal * custo.percentual_faturamento) / 100;
@@ -361,25 +363,29 @@ export default function Custos() {
 
   // Calculate variable cost display value with real percentage option
   const calcularValorVariavelDisplay = (custo: CustoVariavel): number => {
-    let valorFinal = custo.valor || 0;
-    
     if (usarPercentualReal && faturamentoDisponivel) {
       if (custo.nome.toLowerCase().includes('imposto')) {
-        valorFinal += totalImpostoReal;
+        // Return exact real value for taxes
+        return totalImpostoReal;
       } else if (custo.nome.toLowerCase().includes('logistic') || custo.subcategoria === 'Logística') {
-        valorFinal += totalLogisticaReal;
+        // Return exact real value for logistics
+        return totalLogisticaReal;
       } else {
+        // For other costs, add fixed value plus percentage
+        let valorFinal = custo.valor || 0;
         const percentualPart = (faturamentoMensal * custo.percentual_faturamento) / 100;
         valorFinal += percentualPart;
+        return valorFinal;
       }
     } else {
+      // Standard calculation
+      let valorFinal = custo.valor || 0;
       const percentualPart = faturamentoDisponivel 
         ? (faturamentoMensal * custo.percentual_faturamento) / 100
         : 0;
       valorFinal += percentualPart;
+      return valorFinal;
     }
-    
-    return valorFinal;
   };
 
   // Get real percentage for display
