@@ -31,13 +31,20 @@ export default function CustosTab() {
   const [editingSubcategoria, setEditingSubcategoria] = useState<SubcategoriaCusto | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [subcategoriaToDelete, setSubcategoriaToDelete] = useState<SubcategoriaCusto | null>(null);
+  const [selectedTipo, setSelectedTipo] = useState<'fixo' | 'variavel'>('fixo');
 
-  const handleNewSubcategoria = () => {
+  // Separate subcategories by type
+  const subcategoriasFixas = subcategorias.filter(sub => sub.tipo === 'fixo');
+  const subcategoriasVariaveis = subcategorias.filter(sub => sub.tipo === 'variavel');
+
+  const handleNewSubcategoria = (tipo: 'fixo' | 'variavel') => {
+    setSelectedTipo(tipo);
     setEditingSubcategoria(null);
     setModalOpen(true);
   };
 
   const handleEditSubcategoria = (subcategoria: SubcategoriaCusto) => {
+    setSelectedTipo(subcategoria.tipo);
     setEditingSubcategoria(subcategoria);
     setModalOpen(true);
   };
@@ -63,8 +70,62 @@ export default function CustosTab() {
     }
   };
 
-  const getTipoBadgeVariant = (tipo: string) => {
-    return tipo === 'fixo' ? 'default' : 'secondary';
+  const renderSubcategoryTable = (subcategoriasList: SubcategoriaCusto[], tipo: 'fixo' | 'variavel') => {
+    if (subcategoriasList.length === 0) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground mb-4">
+            Nenhuma subcategoria de custo {tipo === 'fixo' ? 'fixo' : 'variável'} cadastrada
+          </p>
+          <Button 
+            onClick={() => handleNewSubcategoria(tipo)} 
+            variant="outline" 
+            size="sm"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Criar primeira subcategoria
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nome da Subcategoria</TableHead>
+            <TableHead className="text-right">Ações</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {subcategoriasList.map((subcategoria) => (
+            <TableRow key={subcategoria.id}>
+              <TableCell className="font-medium">
+                {subcategoria.nome}
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditSubcategoria(subcategoria)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDeleteSubcategoria(subcategoria)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
   };
 
   if (loading) {
@@ -80,70 +141,51 @@ export default function CustosTab() {
 
   return (
     <div className="space-y-6">
+      {/* Subcategorias de Custos Fixos */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Subcategorias de Custos</CardTitle>
-          <Button onClick={handleNewSubcategoria}>
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              Subcategorias de Custos Fixos
+              <Badge variant="secondary" className="ml-2">
+                {subcategoriasFixas.length} {subcategoriasFixas.length === 1 ? 'item' : 'itens'}
+              </Badge>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Subcategorias para classificação de custos fixos (aluguel, salários, etc.)
+            </p>
+          </div>
+          <Button onClick={() => handleNewSubcategoria('fixo')}>
             <Plus className="h-4 w-4 mr-2" />
-            Nova Subcategoria
+            Nova Subcategoria Fixa
           </Button>
         </CardHeader>
         <CardContent>
-          {subcategorias.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Nenhuma subcategoria cadastrada</p>
-              <Button 
-                onClick={handleNewSubcategoria} 
-                variant="outline" 
-                className="mt-4"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Criar primeira subcategoria
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome da Subcategoria</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {subcategorias.map((subcategoria) => (
-                  <TableRow key={subcategoria.id}>
-                    <TableCell className="font-medium">
-                      {subcategoria.nome}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getTipoBadgeVariant(subcategoria.tipo)}>
-                        {subcategoria.tipo === 'fixo' ? 'Fixo' : 'Variável'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditSubcategoria(subcategoria)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteSubcategoria(subcategoria)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          {renderSubcategoryTable(subcategoriasFixas, 'fixo')}
+        </CardContent>
+      </Card>
+
+      {/* Subcategorias de Custos Variáveis */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              Subcategorias de Custos Variáveis
+              <Badge variant="secondary" className="ml-2">
+                {subcategoriasVariaveis.length} {subcategoriasVariaveis.length === 1 ? 'item' : 'itens'}
+              </Badge>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Subcategorias para classificação de custos variáveis (impostos, comissões, etc.)
+            </p>
+          </div>
+          <Button onClick={() => handleNewSubcategoria('variavel')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Subcategoria Variável
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {renderSubcategoryTable(subcategoriasVariaveis, 'variavel')}
         </CardContent>
       </Card>
 
@@ -152,7 +194,8 @@ export default function CustosTab() {
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
         subcategoria={editingSubcategoria}
-        title={editingSubcategoria ? 'Editar Subcategoria' : 'Nova Subcategoria'}
+        tipoFixo={selectedTipo}
+        title={editingSubcategoria ? 'Editar Subcategoria' : `Nova Subcategoria ${selectedTipo === 'fixo' ? 'Fixa' : 'Variável'}`}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -161,7 +204,7 @@ export default function CustosTab() {
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir a subcategoria "{subcategoriaToDelete?.nome}"? 
-              Esta ação não pode ser desfeita.
+              Esta ação não pode ser desfeita e pode afetar custos já cadastrados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

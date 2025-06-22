@@ -83,6 +83,7 @@ export default function Custos() {
         totalLogisticaReal: 0
       };
     }
+
     const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo' && c.categoriasHabilitadas && c.categoriasHabilitadas.length > 0);
     let totalImposto = 0;
     let totalLogistica = 0;
@@ -124,6 +125,7 @@ export default function Custos() {
       totalLogisticaReal: totalLogistica
     };
   };
+
   const {
     impostoReal,
     logisticaReal,
@@ -488,6 +490,12 @@ export default function Custos() {
                           {sub.nome}
                         </SelectItem>
                       ))}
+                      {getSubcategoriasList().length === 0 && (
+                        <div className="p-2 text-sm text-muted-foreground text-center">
+                          Nenhuma subcategoria cadastrada.<br />
+                          Configure em Configurações &gt; Custos
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -636,7 +644,6 @@ export default function Custos() {
                   </Badge>
                 )}
               </div>
-              {faturamentoDisponivel}
             </div>
           </CardContent>
         </Card>
@@ -883,7 +890,6 @@ export default function Custos() {
                               <span className={isUsingRealData ? "font-semibold text-blue-600" : ""}>
                                 {formatCurrency(calcularValorVariavelDisplay(custo))}
                               </span>
-                              {isUsingRealData}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">

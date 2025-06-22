@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { SubcategoriaCusto } from '@/hooks/useSupabaseSubcategoriasCustos';
 
 interface SubcategoriaModalProps {
@@ -12,6 +12,7 @@ interface SubcategoriaModalProps {
   onClose: () => void;
   onSave: (nome: string, tipo: 'fixo' | 'variavel') => Promise<boolean>;
   subcategoria?: SubcategoriaCusto | null;
+  tipoFixo: 'fixo' | 'variavel';
   title: string;
 }
 
@@ -20,19 +21,17 @@ export default function SubcategoriaModal({
   onClose, 
   onSave, 
   subcategoria, 
+  tipoFixo,
   title 
 }: SubcategoriaModalProps) {
   const [nome, setNome] = useState('');
-  const [tipo, setTipo] = useState<'fixo' | 'variavel'>('fixo');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (subcategoria) {
       setNome(subcategoria.nome);
-      setTipo(subcategoria.tipo);
     } else {
       setNome('');
-      setTipo('fixo');
     }
   }, [subcategoria, open]);
 
@@ -42,12 +41,11 @@ export default function SubcategoriaModal({
     }
 
     setSaving(true);
-    const success = await onSave(nome.trim(), tipo);
+    const success = await onSave(nome.trim(), tipoFixo);
     
     if (success) {
       onClose();
       setNome('');
-      setTipo('fixo');
     }
     setSaving(false);
   };
@@ -55,7 +53,12 @@ export default function SubcategoriaModal({
   const handleClose = () => {
     onClose();
     setNome('');
-    setTipo('fixo');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && nome.trim() && !saving) {
+      handleSave();
+    }
   };
 
   return (
@@ -72,21 +75,25 @@ export default function SubcategoriaModal({
               id="nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Digite o nome da subcategoria"
+              autoFocus
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="tipo">Tipo</Label>
-            <Select value={tipo} onValueChange={(value: 'fixo' | 'variavel') => setTipo(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="fixo">Fixo</SelectItem>
-                <SelectItem value="variavel">Variável</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Tipo de Custo</Label>
+            <div className="flex items-center gap-2">
+              <Badge variant={tipoFixo === 'fixo' ? 'default' : 'secondary'}>
+                {tipoFixo === 'fixo' ? 'Custo Fixo' : 'Custo Variável'}
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                {tipoFixo === 'fixo' 
+                  ? '(Valores que não variam com a produção)' 
+                  : '(Valores que variam conforme a produção/vendas)'
+                }
+              </span>
+            </div>
           </div>
         </div>
 
