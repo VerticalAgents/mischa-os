@@ -90,49 +90,61 @@ export default function Custos() {
   // Calculate real percentages from PDV projection data
   const calcularPercentuaisReais = () => {
     if (!clientes.length || !faturamentoDisponivel) {
-      return { impostoReal: 0, logisticaReal: 0 };
+      return { impostoReal: 0, logisticaReal: 0, totalImpostoReal: 0, totalLogisticaReal: 0 };
     }
 
     const clientesAtivos = clientes.filter(
-      c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio
+      c => c.statusCliente === 'Ativo' && c.categoriasHabilitadas && c.categoriasHabilitadas.length > 0
     );
 
     let totalImposto = 0;
     let totalLogistica = 0;
 
     clientesAtivos.forEach(cliente => {
-      const volumeSemanal = cliente.quantidadePadrao * (7 / cliente.periodicidadePadrao);
-      const volumeMensal = volumeSemanal * 4.33;
+      // Calculate weekly volume
+      const giroSemanal = cliente.periodicidadePadrao > 0 
+        ? Math.round(cliente.quantidadePadrao / cliente.periodicidadePadrao * 7)
+        : 0;
       
-      // Mock calculation - in real implementation this would come from PDV projection data
-      // For now, calculate based on client characteristics
-      const precoMedio = 5.25; // Average price across all channels
-      const faturamentoCliente = volumeMensal * precoMedio;
+      // Mock price calculation based on category (this should match the PDV projection logic)
+      const precoMedio = 4.50; // This should be calculated based on client categories
+      const faturamentoSemanal = giroSemanal * precoMedio;
       
-      // Calculate taxes (4% of revenue)
-      const impostoCliente = faturamentoCliente * 0.04;
+      // Calculate monthly values (weekly * 4)
+      const faturamentoMensal = faturamentoSemanal * 4;
       
-      // Calculate logistics cost based on client logistics type
-      let custoLogisticoCliente = 0;
-      if (cliente.tipoLogistica === 'Distribuição') {
-        custoLogisticoCliente = faturamentoCliente * 0.12; // 12% for distribution
-      } else if (cliente.tipoLogistica === 'Própria') {
-        custoLogisticoCliente = faturamentoCliente * 0.08; // 8% for own logistics
-      } else {
-        custoLogisticoCliente = faturamentoCliente * 0.10; // 10% for others
+      // Calculate taxes (4% of revenue for clients that emit NF)
+      if (cliente.emiteNotaFiscal) {
+        const impostoCliente = faturamentoMensal * 0.04;
+        totalImposto += impostoCliente;
       }
       
-      totalImposto += impostoCliente;
+      // Calculate logistics cost based on client logistics type
+      let percentualLogistico = 0;
+      if (cliente.tipoLogistica === 'Distribuição') {
+        percentualLogistico = 0.08; // 8% for distribution
+      } else if (cliente.tipoLogistica === 'Própria') {
+        percentualLogistico = 0.03; // 3% for own logistics
+      } else {
+        percentualLogistico = 0.05; // 5% for others
+      }
+      
+      const custoLogisticoCliente = faturamentoMensal * percentualLogistico;
       totalLogistica += custoLogisticoCliente;
     });
 
     const impostoReal = faturamentoMensal > 0 ? (totalImposto / faturamentoMensal) * 100 : 0;
     const logisticaReal = faturamentoMensal > 0 ? (totalLogistica / faturamentoMensal) * 100 : 0;
 
-    return { impostoReal, logisticaReal };
+    return { 
+      impostoReal, 
+      logisticaReal, 
+      totalImpostoReal: totalImposto,
+      totalLogisticaReal: totalLogistica
+    };
   };
 
-  const { impostoReal, logisticaReal } = calcularPercentuaisReais();
+  const { impostoReal, logisticaReal, totalImpostoReal, totalLogisticaReal } = calcularPercentuaisReais();
 
   // Calculate normalized monthly value for fixed costs
   const calcularValorMensal = (custo: CustoFixo): number => {
@@ -152,21 +164,28 @@ export default function Custos() {
   // Calculate variable costs with real percentages option
   const calcularTotalVariavel = (): number => {
     return custosVariaveis.reduce((total, custo) => {
-      let percentualAUsar = custo.percentual_faturamento;
+      let valorFinal = custo.valor || 0;
       
-      // Use real percentages if toggle is on and it's tax or logistics
+      // Use real values if toggle is on and it's tax or logistics
       if (usarPercentualReal && faturamentoDisponivel) {
         if (custo.nome.toLowerCase().includes('imposto')) {
-          percentualAUsar = impostoReal;
+          valorFinal += totalImpostoReal;
         } else if (custo.nome.toLowerCase().includes('logistic') || custo.subcategoria === 'Logística') {
-          percentualAUsar = logisticaReal;
+          valorFinal += totalLogisticaReal;
+        } else {
+          // For other variable costs, use the standard percentage calculation
+          const percentualPart = (faturamentoMensal * custo.percentual_faturamento) / 100;
+          valorFinal += percentualPart;
         }
+      } else {
+        // Standard calculation with configured percentages
+        const percentualPart = faturamentoDisponivel 
+          ? (faturamentoMensal * custo.percentual_faturamento) / 100
+          : 0;
+        valorFinal += percentualPart;
       }
       
-      const percentualPart = faturamentoDisponivel 
-        ? (faturamentoMensal * percentualAUsar) / 100
-        : 0;
-      return total + percentualPart + (custo.valor || 0);
+      return total + valorFinal;
     }, 0);
   };
 
@@ -342,20 +361,25 @@ export default function Custos() {
 
   // Calculate variable cost display value with real percentage option
   const calcularValorVariavelDisplay = (custo: CustoVariavel): number => {
-    let percentualAUsar = custo.percentual_faturamento;
+    let valorFinal = custo.valor || 0;
     
     if (usarPercentualReal && faturamentoDisponivel) {
       if (custo.nome.toLowerCase().includes('imposto')) {
-        percentualAUsar = impostoReal;
+        valorFinal += totalImpostoReal;
       } else if (custo.nome.toLowerCase().includes('logistic') || custo.subcategoria === 'Logística') {
-        percentualAUsar = logisticaReal;
+        valorFinal += totalLogisticaReal;
+      } else {
+        const percentualPart = (faturamentoMensal * custo.percentual_faturamento) / 100;
+        valorFinal += percentualPart;
       }
+    } else {
+      const percentualPart = faturamentoDisponivel 
+        ? (faturamentoMensal * custo.percentual_faturamento) / 100
+        : 0;
+      valorFinal += percentualPart;
     }
     
-    const percentualPart = faturamentoDisponivel 
-      ? (faturamentoMensal * percentualAUsar) / 100
-      : 0;
-    return percentualPart + (custo.valor || 0);
+    return valorFinal;
   };
 
   // Get real percentage for display
@@ -369,6 +393,18 @@ export default function Custos() {
     }
     
     return null;
+  };
+
+  // Get percentage being used for calculation
+  const getPercentualCalculado = (custo: CustoVariavel): number => {
+    if (usarPercentualReal && faturamentoDisponivel) {
+      if (custo.nome.toLowerCase().includes('imposto')) {
+        return impostoReal;
+      } else if (custo.nome.toLowerCase().includes('logistic') || custo.subcategoria === 'Logística') {
+        return logisticaReal;
+      }
+    }
+    return custo.percentual_faturamento;
   };
 
   return (
@@ -759,8 +795,14 @@ export default function Custos() {
                     Usar % Real de Imposto e Logística
                   </label>
                   <span className="text-xs text-muted-foreground">
-                    Calcula percentuais baseados nos dados reais da Projeção Detalhada por Cliente
+                    Calcula valores baseados nos dados reais da Projeção Detalhada por Cliente
                   </span>
+                  {usarPercentualReal && faturamentoDisponivel && (
+                    <div className="text-xs text-blue-600 mt-1">
+                      <div>• Imposto Real: {formatCurrency(totalImpostoReal)} ({impostoReal.toFixed(2)}%)</div>
+                      <div>• Logística Real: {formatCurrency(totalLogisticaReal)} ({logisticaReal.toFixed(2)}%)</div>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -777,7 +819,8 @@ export default function Custos() {
                       <TableHead>Subcategoria</TableHead>
                       <TableHead className="text-right">Valor Total</TableHead>
                       <TableHead className="text-right">Valor Fixo</TableHead>
-                      <TableHead className="text-right">% do Faturamento</TableHead>
+                      <TableHead className="text-right">% Configurado</TableHead>
+                      <TableHead className="text-right">% Usado</TableHead>
                       <TableHead className="text-right">% Real</TableHead>
                       <TableHead>Frequência</TableHead>
                       <TableHead>Observações</TableHead>
@@ -787,13 +830,31 @@ export default function Custos() {
                   <TableBody>
                     {filteredCustosVariaveis.map((custo) => {
                       const percentualReal = getPercentualReal(custo);
+                      const percentualUsado = getPercentualCalculado(custo);
+                      const isUsingRealData = usarPercentualReal && percentualReal !== null;
                       
                       return (
                         <TableRow key={custo.id}>
-                          <TableCell className="font-medium">{custo.nome}</TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              {custo.nome}
+                              {isUsingRealData && (
+                                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                                  Real
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>{custo.subcategoria}</TableCell>
                           <TableCell className="text-right">
-                            {formatCurrency(calcularValorVariavelDisplay(custo))}
+                            <div className="flex flex-col">
+                              <span className={isUsingRealData ? "font-semibold text-blue-600" : ""}>
+                                {formatCurrency(calcularValorVariavelDisplay(custo))}
+                              </span>
+                              {isUsingRealData && (
+                                <span className="text-xs text-blue-500">Fonte: Projeção PDV</span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             {formatCurrency(custo.valor || 0)}
@@ -805,10 +866,18 @@ export default function Custos() {
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
+                            <span className="flex items-center justify-end">
+                              <Percent className="h-3 w-3 mr-1" />
+                              <span className={isUsingRealData ? "font-semibold text-blue-600" : ""}>
+                                {percentualUsado.toFixed(2)}%
+                              </span>
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
                             {percentualReal !== null ? (
                               <span className="flex items-center justify-end">
                                 <Percent className="h-3 w-3 mr-1" />
-                                <span className={usarPercentualReal ? "font-semibold text-blue-600" : ""}>
+                                <span className="text-blue-600">
                                   {percentualReal.toFixed(2)}%
                                 </span>
                               </span>
@@ -835,7 +904,7 @@ export default function Custos() {
                     })}
                     {filteredCustosVariaveis.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-4 text-muted-foreground">
+                        <TableCell colSpan={10} className="text-center py-4 text-muted-foreground">
                           Nenhum custo variável encontrado.
                         </TableCell>
                       </TableRow>
@@ -845,7 +914,14 @@ export default function Custos() {
                     <TableRow>
                       <TableCell colSpan={2}>Total</TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(totalVariavelComValorFixo)}
+                        <div className="flex flex-col">
+                          <span className={usarPercentualReal ? "font-semibold text-blue-600" : ""}>
+                            {formatCurrency(totalVariavelComValorFixo)}
+                          </span>
+                          {usarPercentualReal && (
+                            <span className="text-xs text-blue-500">Com dados reais</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         {formatCurrency(custosVariaveis.reduce((total, custo) => total + (custo.valor || 0), 0))}
@@ -853,11 +929,18 @@ export default function Custos() {
                       <TableCell className="text-right">
                         <span className="flex items-center justify-end">
                           <Percent className="h-3 w-3 mr-1" />
-                          {totalPercentualVariavel.toFixed(2)}%
+                          {custosVariaveis.reduce((total, custo) => total + custo.percentual_faturamento, 0).toFixed(2)}%
                         </span>
                       </TableCell>
-                      <TableCell></TableCell>
-                      <TableCell colSpan={3}></TableCell>
+                      <TableCell className="text-right">
+                        <span className="flex items-center justify-end">
+                          <Percent className="h-3 w-3 mr-1" />
+                          <span className={usarPercentualReal ? "font-semibold text-blue-600" : ""}>
+                            {totalPercentualVariavel.toFixed(2)}%
+                          </span>
+                        </span>
+                      </TableCell>
+                      <TableCell colSpan={4}></TableCell>
                     </TableRow>
                   </TableFooter>
                 </Table>
