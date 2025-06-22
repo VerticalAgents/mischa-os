@@ -4,17 +4,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus } from "lucide-react";
-import { useSaborStore } from "@/hooks/useSaborStore";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Trash2, Plus, Eye, RefreshCw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useProdutosPorCategoria } from "@/hooks/useProdutosPorCategoria";
+import { toast } from "@/hooks/use-toast";
 
-interface ItemPedidoCustomizado {
+interface ItemPedido {
   produto: string;
   quantidade: number;
 }
 
 interface ProdutoQuantidadeSelectorProps {
-  value: ItemPedidoCustomizado[];
-  onChange: (items: ItemPedidoCustomizado[]) => void;
+  value: ItemPedido[];
+  onChange: (itens: ItemPedido[]) => void;
   clienteId: string;
   quantidadeTotal: number;
 }
@@ -25,142 +30,245 @@ export default function ProdutoQuantidadeSelector({
   clienteId,
   quantidadeTotal
 }: ProdutoQuantidadeSelectorProps) {
-  const { sabores } = useSaborStore();
-  const [items, setItems] = useState<ItemPedidoCustomizado[]>(value || []);
+  const [showDebug, setShowDebug] = useState(false);
+  
+  const { 
+    produtosFiltrados, 
+    categoriasCliente, 
+    loading, 
+    error,
+    carregado,
+    carregarDados,
+    recarregar
+  } = useProdutosPorCategoria(clienteId);
 
-  // Sincronizar com o valor externo quando necessário
+  // Carrega dados uma única vez ao montar o componente
   useEffect(() => {
-    if (JSON.stringify(value) !== JSON.stringify(items)) {
-      setItems(value || []);
+    if (clienteId && !carregado) {
+      carregarDados();
     }
-  }, [value]);
+  }, [clienteId, carregado, carregarDados]);
 
-  // Atualizar o componente pai sempre que items mudar
-  useEffect(() => {
-    onChange(items);
-  }, [items, onChange]);
-
-  const adicionarItem = () => {
-    const novoItem: ItemPedidoCustomizado = {
-      produto: "",
-      quantidade: 0
-    };
-    
-    console.log('🔧 Adicionando novo produto:', novoItem);
-    console.log('🔧 Items antes da adição:', items);
-    
-    const novosItems = [...items, novoItem];
-    setItems(novosItems);
-    
-    console.log('🔧 Items após adição:', novosItems);
-  };
-
-  const removerItem = (index: number) => {
-    console.log('🗑️ Removendo produto no índice:', index);
-    
-    const novosItems = items.filter((_, i) => i !== index);
-    setItems(novosItems);
-    
-    console.log('🗑️ Items após remoção:', novosItems);
-  };
-
-  const atualizarItem = (index: number, campo: keyof ItemPedidoCustomizado, valor: string | number) => {
-    console.log('✏️ Atualizando item:', { index, campo, valor });
-    
-    const novosItems = items.map((item, i) => {
-      if (i === index) {
-        return {
-          ...item,
-          [campo]: campo === 'quantidade' ? Number(valor) : valor
-        };
+  const adicionarProduto = () => {
+    if (produtosFiltrados.length > 0) {
+      const novoProduto = produtosFiltrados[0].nome;
+      if (!value.some(item => item.produto === novoProduto)) {
+        onChange([...value, { produto: novoProduto, quantidade: 1 }]);
       }
-      return item;
-    });
-    
-    setItems(novosItems);
-    
-    console.log('✏️ Items após atualização:', novosItems);
+    }
   };
 
-  const totalDistribuido = items.reduce((soma, item) => soma + (item.quantidade || 0), 0);
-  const saboresAtivos = sabores.filter(sabor => sabor.ativo);
+  const removerProduto = (index: number) => {
+    const novosItens = value.filter((_, i) => i !== index);
+    onChange(novosItens);
+  };
+
+  const atualizarQuantidade = (index: number, quantidade: number) => {
+    const novosItens = [...value];
+    novosItens[index].quantidade = Math.max(0, quantidade);
+    onChange(novosItens);
+  };
+
+  const atualizarProduto = (index: number, novoProduto: string) => {
+    const novosItens = [...value];
+    novosItens[index].produto = novoProduto;
+    onChange(novosItens);
+  };
+
+  const handleRecarregar = () => {
+    recarregar();
+    toast({
+      title: "Lista atualizada",
+      description: "Produtos recarregados com sucesso"
+    });
+  };
+
+  const handleTentarNovamente = () => {
+    carregarDados(true);
+  };
+
+  const quantidadeDistribuida = value.reduce((sum, item) => sum + item.quantidade, 0);
+  const isValidTotal = quantidadeDistribuida === quantidadeTotal;
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Label className="text-sm font-medium">Produtos e Quantidades</Label>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          <span className="ml-2 text-sm">Carregando produtos...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Label className="text-base font-medium">Produtos e Quantidades</Label>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={adicionarItem}
-          className="flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Adicionar Produto
-        </Button>
+        <Label className="text-sm font-medium">Produtos e Quantidades</Label>
+        <div className="flex items-center gap-2">
+          {carregado && !error && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRecarregar}
+              className="text-xs"
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Atualizar Lista
+            </Button>
+          )}
+          <Collapsible open={showDebug} onOpenChange={setShowDebug}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm" className="text-xs">
+                <Eye className="h-3 w-3 mr-1" />
+                Ver passo a passo
+              </Button>
+            </CollapsibleTrigger>
+          </Collapsible>
+        </div>
       </div>
 
+      <Collapsible open={showDebug} onOpenChange={setShowDebug}>
+        <CollapsibleContent>
+          <Card className="bg-muted/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs">Auditoria do Processo</CardTitle>
+            </CardHeader>
+            <CardContent className="text-xs space-y-2">
+              <div>
+                <strong>1. Cliente identificado:</strong> {clienteId}
+              </div>
+              <div>
+                <strong>2. Categorias habilitadas:</strong>{' '}
+                {categoriasCliente.length > 0 ? (
+                  categoriasCliente.map(cat => (
+                    <Badge key={cat} variant="secondary" className="ml-1 text-xs">{cat}</Badge>
+                  ))
+                ) : (
+                  <span className="text-red-500">Nenhuma categoria encontrada</span>
+                )}
+              </div>
+              <div>
+                <strong>3. Produtos disponíveis:</strong>{' '}
+                {produtosFiltrados.length} produtos encontrados
+                {produtosFiltrados.slice(0, 3).map(produto => (
+                  <Badge key={produto.id} variant="outline" className="ml-1 text-xs">
+                    {produto.nome}
+                  </Badge>
+                ))}
+                {produtosFiltrados.length > 3 && (
+                  <span className="text-muted-foreground">...</span>
+                )}
+              </div>
+              <div>
+                <strong>4. Validação de quantidade:</strong>{' '}
+                <span className={isValidTotal ? "text-green-600" : "text-red-500"}>
+                  {quantidadeDistribuida} / {quantidadeTotal}
+                  {isValidTotal ? " ✓" : " ✗"}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription className="flex items-center justify-between">
+            <span>❌ {error}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTentarNovamente}
+              className="ml-2"
+            >
+              🔁 Tentar novamente
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!error && produtosFiltrados.length === 0 && carregado && (
+        <div className="p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
+          <p className="text-sm text-yellow-800">
+            ⚠️ Nenhum produto disponível para as categorias deste cliente.
+            Verifique se o cliente possui categorias habilitadas.
+          </p>
+        </div>
+      )}
+
       <div className="space-y-3">
-        {items.map((item, index) => (
-          <div key={`item-${index}-${Date.now()}`} className="flex items-end gap-3 p-3 border rounded-lg bg-gray-50">
+        {value.map((item, index) => (
+          <div key={index} className="flex items-center gap-2 p-3 border rounded-lg">
             <div className="flex-1">
-              <Label htmlFor={`produto-${index}`} className="text-sm">Produto</Label>
-              <Select 
-                value={item.produto} 
-                onValueChange={(valor) => atualizarItem(index, 'produto', valor)}
+              <Label htmlFor={`produto-${index}`} className="text-xs">Produto</Label>
+              <Select
+                value={item.produto}
+                onValueChange={(valor) => atualizarProduto(index, valor)}
               >
-                <SelectTrigger id={`produto-${index}`}>
+                <SelectTrigger>
                   <SelectValue placeholder="Selecione um produto" />
                 </SelectTrigger>
                 <SelectContent>
-                  {saboresAtivos.map((sabor) => (
-                    <SelectItem key={sabor.id} value={sabor.nome}>
-                      {sabor.nome}
+                  {produtosFiltrados.map((produto) => (
+                    <SelectItem key={produto.id} value={produto.nome}>
+                      {produto.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            
             <div className="w-24">
-              <Label htmlFor={`quantidade-${index}`} className="text-sm">Qtd</Label>
+              <Label htmlFor={`quantidade-${index}`} className="text-xs">Qtd</Label>
               <Input
                 id={`quantidade-${index}`}
                 type="number"
+                value={item.quantidade}
+                onChange={(e) => atualizarQuantidade(index, parseInt(e.target.value) || 0)}
                 min="0"
-                value={item.quantidade || ''}
-                onChange={(e) => atualizarItem(index, 'quantidade', e.target.value)}
-                placeholder="0"
+                className="text-center"
               />
             </div>
-            
             <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => removerItem(index)}
-              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+              variant="outline"
+              size="sm"
+              onClick={() => removerProduto(index)}
+              className="mt-5"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         ))}
-        
-        {items.length === 0 && (
-          <div className="text-center py-6 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
-            <p>Nenhum produto adicionado</p>
-            <p className="text-sm">Clique em "Adicionar Produto" para começar</p>
-          </div>
-        )}
       </div>
 
-      <div className="flex justify-between items-center pt-3 border-t bg-gray-50 px-3 py-2 rounded-lg">
-        <span className="text-sm font-medium">Total distribuído:</span>
-        <span className={`font-bold ${totalDistribuido === quantidadeTotal ? 'text-green-600' : 'text-orange-600'}`}>
-          {totalDistribuido} / {quantidadeTotal}
-        </span>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={adicionarProduto}
+          disabled={produtosFiltrados.length === 0 || Boolean(error)}
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          Adicionar Produto
+        </Button>
+        
+        <div className="text-sm">
+          <span className="text-muted-foreground">Total distribuído: </span>
+          <span className={isValidTotal ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
+            {quantidadeDistribuida} / {quantidadeTotal}
+          </span>
+        </div>
       </div>
+
+      {!isValidTotal && quantidadeTotal > 0 && (
+        <div className="p-3 border border-red-200 bg-red-50 rounded-lg">
+          <p className="text-sm text-red-800">
+            ❌ A soma das quantidades ({quantidadeDistribuida}) deve ser igual ao total do pedido ({quantidadeTotal}).
+            Diferença: {Math.abs(quantidadeDistribuida - quantidadeTotal)} unidades.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
