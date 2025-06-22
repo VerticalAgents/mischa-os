@@ -2,10 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Calculator, Info, Eye, EyeOff } from "lucide-react";
+import { AlertTriangle, Calculator, Info, Eye, EyeOff, TrendingUp, Users, DollarSign, Percent } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
+import { useSupabaseTiposLogistica } from "@/hooks/useSupabaseTiposLogistica";
 import { useEffect, useState } from "react";
 
 // Preços temporários por categoria
@@ -67,6 +68,7 @@ interface ClienteNaoIncluido {
 export default function ProjecaoResultadosPDV() {
   const { clientes, carregarClientes } = useClienteStore();
   const { categorias } = useSupabaseCategoriasProduto();
+  const { tiposLogistica } = useSupabaseTiposLogistica();
   const [projecoes, setProjecoes] = useState<ProjecaoCliente[]>([]);
   const [mostrarDetalhes, setMostrarDetalhes] = useState(false);
   const [detalhesCalculos, setDetalhesCalculos] = useState<ClienteDetalhe[]>([]);
@@ -80,11 +82,12 @@ export default function ProjecaoResultadosPDV() {
   useEffect(() => {
     console.log('ProjecaoResultadosPDV: Total de clientes carregados:', clientes.length);
     console.log('ProjecaoResultadosPDV: Categorias disponíveis:', categorias.length);
+    console.log('ProjecaoResultadosPDV: Tipos de logística carregados:', tiposLogistica.length);
     
-    if (clientes.length > 0 && categorias.length > 0) {
+    if (clientes.length > 0 && categorias.length > 0 && tiposLogistica.length > 0) {
       calcularProjecoes();
     }
-  }, [clientes, categorias]);
+  }, [clientes, categorias, tiposLogistica]);
 
   const obterPrecoCategoria = (nomeCategoria: string): number => {
     const nomeNormalizado = nomeCategoria.toLowerCase();
@@ -104,6 +107,31 @@ export default function ProjecaoResultadosPDV() {
       }
     }
     return CUSTOS_UNITARIOS.default;
+  };
+
+  const obterPercentualLogistico = (tipoLogistica: string): number => {
+    console.log('Buscando percentual para tipo:', tipoLogistica);
+    console.log('Tipos disponíveis:', tiposLogistica);
+    
+    const tipo = tiposLogistica.find(t => 
+      t.nome.toLowerCase() === tipoLogistica.toLowerCase() ||
+      tipoLogistica.toLowerCase().includes(t.nome.toLowerCase())
+    );
+    
+    if (tipo) {
+      console.log(`Percentual encontrado para ${tipoLogistica}: ${tipo.percentual_logistico}%`);
+      return tipo.percentual_logistico / 100; // Converter para decimal
+    }
+    
+    // Fallback para os valores antigos se não encontrar na configuração
+    console.log(`Usando percentual padrão para ${tipoLogistica}`);
+    if (tipoLogistica === 'Distribuição') {
+      return 0.08; // 8% para distribuição
+    } else if (tipoLogistica === 'Própria') {
+      return 0.03; // 3% para logística própria
+    }
+    
+    return 0; // Valor padrão se não encontrar
   };
 
   const calcularGiroSemanal = (qtdPadrao: number, periodicidade: number): number => {
@@ -257,22 +285,16 @@ export default function ProjecaoResultadosPDV() {
         observacao: cliente.emiteNotaFiscal ? "Alíquota provisória de 4%" : "Verificar configuração de nota fiscal"
       });
       
-      // Obter percentual logístico baseado no tipo
-      let percentualLogistico = 0;
-      if (cliente.tipoLogistica === 'Distribuição') {
-        percentualLogistico = 0.08; // 8% para distribuição
-      } else if (cliente.tipoLogistica === 'Própria') {
-        percentualLogistico = 0.03; // 3% para logística própria
-      }
-      
+      // Obter percentual logístico baseado no tipo configurado
+      const percentualLogistico = obterPercentualLogistico(cliente.tipoLogistica || 'Própria');
       const custoLogistico = faturamentoTotal * percentualLogistico;
       
       detalhesCliente.push({
         etapa: "LOGISTICA",
-        descricao: "Cálculo de custo logístico",
-        formula: `R$ ${faturamentoTotal.toFixed(2)} × ${(percentualLogistico * 100).toFixed(1)}% = R$ ${custoLogistico.toFixed(2)}`,
+        descricao: "Cálculo de custo logístico (configuração real)",
+        formula: `R$ ${faturamentoTotal.toFixed(2)} × ${(percentualLogistico * 100).toFixed(2)}% = R$ ${custoLogistico.toFixed(2)}`,
         valor: custoLogistico,
-        observacao: `Tipo: ${cliente.tipoLogistica || 'Própria'}`
+        observacao: `Tipo: ${cliente.tipoLogistica || 'Própria'} - Percentual da configuração`
       });
       
       const lucroBruto = faturamentoTotal - custoInsumosTotal - impostoTotal - custoLogistico;
@@ -312,6 +334,73 @@ export default function ProjecaoResultadosPDV() {
     setClientesNaoIncluidos(clientesExcluidos);
   };
 
+  // Cálculos para o Resumo Geral Expandido
+  const calcularIndicadoresGerais = () => {
+    if (projecoes.length === 0) {
+      return {
+        precoMedio: 0,
+        giroMedio: 0,
+        faturamentoMedio: 0,
+        percentualClientesNF: 0,
+        totalImposto: 0,
+        percentualImposto: 0,
+        totalLogistica: 0,
+        percentualLogistica: 0,
+        lucroBrutoMedio: 0,
+        distribuicaoCategorias: {} as Record<string, number>
+      };
+    }
+
+    const totalClientes = projecoes.length;
+    const clientesComNF = projecoes.filter(p => p.emiteNotaFiscal).length;
+    
+    let somaPrecos = 0;
+    let somaGiros = 0;
+    let somaFaturamentos = 0;
+    let somaLucros = 0;
+    const categoriasCount: Record<string, number> = {};
+    let totalCategorias = 0;
+
+    projecoes.forEach(projecao => {
+      projecao.categorias.forEach(categoria => {
+        somaPrecos += categoria.precoAplicado;
+        somaGiros += categoria.giroSemanal;
+        somaFaturamentos += categoria.faturamento;
+        totalCategorias++;
+        
+        const nomeCategoria = categoria.nomeCategoria;
+        categoriasCount[nomeCategoria] = (categoriasCount[nomeCategoria] || 0) + 1;
+      });
+      somaLucros += projecao.lucroBruto;
+    });
+
+    const faturamentoTotal = projecoes.reduce((sum, proj) => 
+      sum + proj.categorias.reduce((catSum, cat) => catSum + cat.faturamento, 0), 0
+    );
+    
+    const totalImposto = projecoes.reduce((sum, proj) => sum + proj.impostoTotal, 0);
+    const totalLogistica = projecoes.reduce((sum, proj) => sum + proj.custoLogistico, 0);
+
+    // Distribuição percentual por categoria
+    const distribuicaoCategorias: Record<string, number> = {};
+    Object.keys(categoriasCount).forEach(categoria => {
+      distribuicaoCategorias[categoria] = (categoriasCount[categoria] / totalCategorias) * 100;
+    });
+
+    return {
+      precoMedio: totalCategorias > 0 ? somaPrecos / totalCategorias : 0,
+      giroMedio: totalCategorias > 0 ? somaGiros / totalCategorias : 0,
+      faturamentoMedio: totalClientes > 0 ? somaFaturamentos / totalClientes : 0,
+      percentualClientesNF: totalClientes > 0 ? (clientesComNF / totalClientes) * 100 : 0,
+      totalImposto,
+      percentualImposto: faturamentoTotal > 0 ? (totalImposto / faturamentoTotal) * 100 : 0,
+      totalLogistica,
+      percentualLogistica: faturamentoTotal > 0 ? (totalLogistica / faturamentoTotal) * 100 : 0,
+      lucroBrutoMedio: totalClientes > 0 ? somaLucros / totalClientes : 0,
+      distribuicaoCategorias
+    };
+  };
+
   const formatarMoeda = (valor: number): string => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -323,9 +412,10 @@ export default function ProjecaoResultadosPDV() {
     return new Intl.NumberFormat('pt-BR', {
       style: 'percent',
       minimumFractionDigits: 1
-    }).format(valor);
+    }).format(valor / 100);
   };
 
+  const indicadores = calcularIndicadoresGerais();
   const totalGeral = projecoes.reduce((sum, proj) => sum + proj.lucroBruto, 0);
   const faturamentoGeral = projecoes.reduce((sum, proj) => 
     sum + proj.categorias.reduce((catSum, cat) => catSum + cat.faturamento, 0), 0
@@ -340,6 +430,7 @@ export default function ProjecaoResultadosPDV() {
         description="Análise de rentabilidade e projeções por ponto de venda"
       />
       
+      {/* Status do Carregamento - Card existente */}
       <Card className="border-blue-200 bg-blue-50">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -358,7 +449,7 @@ export default function ProjecaoResultadosPDV() {
           </div>
         </CardHeader>
         <CardContent className="text-sm text-blue-700">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
             <div className="text-center p-3 bg-white rounded border">
               <div className="font-semibold">Total de Clientes</div>
               <div className="text-2xl font-bold text-blue-600">{clientes.length}</div>
@@ -377,13 +468,28 @@ export default function ProjecaoResultadosPDV() {
               <div className="font-semibold">Na Projeção</div>
               <div className="text-2xl font-bold text-orange-600">{projecoes.length}</div>
             </div>
+            <div className="text-center p-3 bg-white rounded border">
+              <div className="font-semibold">Tipos Logística</div>
+              <div className="text-2xl font-bold text-indigo-600">{tiposLogistica.length}</div>
+            </div>
           </div>
           
           {mostrarDetalhes && (
             <div className="mt-4 space-y-4 max-h-96 overflow-y-auto">
-              <h4 className="font-semibold text-blue-800">Detalhes dos Cálculos por Cliente:</h4>
+              <h4 className="font-semibold text-blue-800">Tipos de Logística Configurados:</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
+                {tiposLogistica.map((tipo) => (
+                  <div key={tipo.id} className="bg-white rounded p-2 border border-blue-200">
+                    <div className="font-medium text-blue-700">{tipo.nome}</div>
+                    <div className="text-sm text-blue-600">{tipo.percentual_logistico.toFixed(2)}%</div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Detalhes dos cálculos por cliente */}
+              <h4 className="font-semibold text-blue-800 mb-2">Detalhes dos Cálculos por Cliente:</h4>
               {detalhesCalculos.map((clienteDetalhe) => (
-                <div key={clienteDetalhe.clienteId} className="border border-blue-200 rounded p-3 bg-white">
+                <div key={clienteDetalhe.clienteId} className="border border-blue-200 rounded p-3 bg-white mb-4">
                   <h5 className="font-semibold text-blue-700 mb-2">{clienteDetalhe.nomeCliente}</h5>
                   <div className="space-y-2">
                     {clienteDetalhe.calculos.map((calculo, index) => (
@@ -403,7 +509,7 @@ export default function ProjecaoResultadosPDV() {
                   </div>
                 </div>
               ))}
-              
+
               {clientesNaoIncluidos.length > 0 && (
                 <div className="border border-red-200 rounded p-3 bg-red-50">
                   <h4 className="font-semibold text-red-800 mb-3">Clientes Não Incluídos na Projeção:</h4>
@@ -422,6 +528,7 @@ export default function ProjecaoResultadosPDV() {
         </CardContent>
       </Card>
       
+      {/* Aviso de dados temporários - Card existente */}
       <Card className="border-amber-200 bg-amber-50">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-amber-800">
@@ -454,15 +561,17 @@ export default function ProjecaoResultadosPDV() {
         </Card>
       ) : (
         <>
+          {/* Resumo Geral Expandido */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calculator className="h-5 w-5" />
-                Resumo Geral
+                Resumo Geral - Indicadores Estratégicos
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Primeira linha - Indicadores principais */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="text-center p-4 bg-blue-50 rounded-lg">
                   <p className="text-sm text-muted-foreground">Faturamento Semanal</p>
                   <p className="text-2xl font-bold text-blue-600">{formatarMoeda(faturamentoGeral)}</p>
@@ -474,13 +583,91 @@ export default function ProjecaoResultadosPDV() {
                 <div className="text-center p-4 bg-purple-50 rounded-lg">
                   <p className="text-sm text-muted-foreground">Margem Bruta</p>
                   <p className="text-2xl font-bold text-purple-600">
-                    {formatarPercentual(faturamentoGeral > 0 ? totalGeral / faturamentoGeral : 0)}
+                    {formatarPercentual(faturamentoGeral > 0 ? totalGeral / faturamentoGeral * 100 : 0)}
                   </p>
+                </div>
+              </div>
+
+              {/* Segunda linha - Indicadores operacionais */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <DollarSign className="h-4 w-4 text-gray-600" />
+                    <p className="text-xs text-muted-foreground">Preço Médio</p>
+                  </div>
+                  <p className="text-lg font-bold text-gray-700">{formatarMoeda(indicadores.precoMedio)}</p>
+                </div>
+                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <TrendingUp className="h-4 w-4 text-gray-600" />
+                    <p className="text-xs text-muted-foreground">Giro Médio</p>
+                  </div>
+                  <p className="text-lg font-bold text-gray-700">{indicadores.giroMedio.toFixed(0)} un/sem</p>
+                </div>
+                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <DollarSign className="h-4 w-4 text-gray-600" />
+                    <p className="text-xs text-muted-foreground">Faturamento Médio</p>
+                  </div>
+                  <p className="text-lg font-bold text-gray-700">{formatarMoeda(indicadores.faturamentoMedio)}</p>
+                </div>
+                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <Users className="h-4 w-4 text-gray-600" />
+                    <p className="text-xs text-muted-foreground">Clientes c/ NF</p>
+                  </div>
+                  <p className="text-lg font-bold text-gray-700">{formatarPercentual(indicadores.percentualClientesNF)}</p>
+                </div>
+              </div>
+
+              {/* Terceira linha - Custos e distribuição */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <Percent className="h-4 w-4" />
+                    Custos e Impostos
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center p-2 bg-red-50 rounded">
+                      <span className="text-sm">Total Impostos</span>
+                      <div className="text-right">
+                        <div className="font-medium text-red-600">{formatarMoeda(indicadores.totalImposto)}</div>
+                        <div className="text-xs text-red-500">{formatarPercentual(indicadores.percentualImposto)} do faturamento</div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-orange-50 rounded">
+                      <span className="text-sm">Total Logística</span>
+                      <div className="text-right">
+                        <div className="font-medium text-orange-600">{formatarMoeda(indicadores.totalLogistica)}</div>
+                        <div className="text-xs text-orange-500">{formatarPercentual(indicadores.percentualLogistica)} do faturamento</div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-green-50 rounded">
+                      <span className="text-sm">Lucro Bruto Médio</span>
+                      <div className="font-medium text-green-600">{formatarMoeda(indicadores.lucroBrutoMedio)}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Distribuição por Categoria
+                  </h4>
+                  <div className="space-y-2">
+                    {Object.entries(indicadores.distribuicaoCategorias).map(([categoria, percentual]) => (
+                      <div key={categoria} className="flex justify-between items-center p-2 bg-blue-50 rounded">
+                        <span className="text-sm">{categoria}</span>
+                        <div className="font-medium text-blue-600">{formatarPercentual(percentual)}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          {/* Tabela de projeção detalhada - existente */}
           <Card>
             <CardHeader>
               <CardTitle>Projeção Detalhada por Cliente</CardTitle>
@@ -559,8 +746,9 @@ export default function ProjecaoResultadosPDV() {
                                 <div className="text-center">
                                   <div>{projecao.tipoLogistica}</div>
                                   <div className="text-xs text-muted-foreground">
-                                    {formatarPercentual(projecao.percentualLogistico)}
+                                    {formatarPercentual(projecao.percentualLogistico * 100)}
                                   </div>
+                                  <Badge variant="outline" className="text-xs mt-1">real</Badge>
                                 </div>
                               </TableCell>
                               <TableCell rowSpan={projecao.categorias.length}>
