@@ -36,7 +36,8 @@ export const useSupabaseSubcategoriasCustos = () => {
         return;
       }
 
-      setSubcategorias(data || []);
+      // Type assertion para garantir que o tipo seja reconhecido corretamente
+      setSubcategorias((data || []) as SubcategoriaCusto[]);
     } catch (error) {
       console.error('Erro ao carregar subcategorias:', error);
     } finally {
@@ -62,7 +63,8 @@ export const useSupabaseSubcategoriasCustos = () => {
         return false;
       }
 
-      setSubcategorias(prev => [...prev, data]);
+      // Type assertion para o novo item
+      setSubcategorias(prev => [...prev, data as SubcategoriaCusto]);
       toast({
         title: "Subcategoria criada com sucesso",
         variant: "default"
@@ -93,8 +95,9 @@ export const useSupabaseSubcategoriasCustos = () => {
         return false;
       }
 
+      // Type assertion para o item editado
       setSubcategorias(prev => 
-        prev.map(sub => sub.id === id ? data : sub)
+        prev.map(sub => sub.id === id ? data as SubcategoriaCusto : sub)
       );
       toast({
         title: "Subcategoria editada com sucesso",
