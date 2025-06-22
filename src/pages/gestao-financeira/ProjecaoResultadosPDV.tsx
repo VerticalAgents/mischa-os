@@ -360,26 +360,55 @@ export default function ProjecaoResultadosPDV() {
     let somaLucros = 0;
     const categoriasCount: Record<string, number> = {};
     let totalCategorias = 0;
+    let totalCategoriasRevenda = 0;
+    let totalGiroClientesHabilitados = 0;
+    let totalClientesGiroHabilitados = 0;
 
     projecoes.forEach(projecao => {
+      // Buscar o cliente para verificar configurações
+      const cliente = clientes.find(c => c.id === projecao.clienteId);
+      const contabilizaGiro = cliente?.contabilizarGiroMedio ?? true;
+      
       projecao.categorias.forEach(categoria => {
-        somaPrecos += categoria.precoAplicado;
-        somaGiros += categoria.giroSemanal;
         somaFaturamentos += categoria.faturamento;
         totalCategorias++;
+        
+        // Filtrar preço médio apenas para categoria "Revenda Padrão"
+        if (categoria.nomeCategoria.toLowerCase().includes('revenda padrão')) {
+          somaPrecos += categoria.precoAplicado;
+          totalCategoriasRevenda++;
+        }
+        
+        // Filtrar giro médio apenas para clientes com checkbox habilitado
+        if (contabilizaGiro) {
+          somaGiros += categoria.giroSemanal;
+          totalGiroClientesHabilitados++;
+        }
         
         const nomeCategoria = categoria.nomeCategoria;
         categoriasCount[nomeCategoria] = (categoriasCount[nomeCategoria] || 0) + 1;
       });
+      
       somaLucros += projecao.lucroBruto;
+      
+      if (contabilizaGiro) {
+        totalClientesGiroHabilitados++;
+      }
     });
 
-    const faturamentoTotal = projecoes.reduce((sum, proj) => 
+    const faturamentoTotalSemanal = projecoes.reduce((sum, proj) => 
       sum + proj.categorias.reduce((catSum, cat) => catSum + cat.faturamento, 0), 0
     );
     
-    const totalImposto = projecoes.reduce((sum, proj) => sum + proj.impostoTotal, 0);
-    const totalLogistica = projecoes.reduce((sum, proj) => sum + proj.custoLogistico, 0);
+    const totalImpostoSemanal = projecoes.reduce((sum, proj) => sum + proj.impostoTotal, 0);
+    const totalLogisticaSemanal = projecoes.reduce((sum, proj) => sum + proj.custoLogistico, 0);
+
+    // Converter valores semanais para mensais (x4)
+    const faturamentoTotalMensal = faturamentoTotalSemanal * 4;
+    const totalImpostoMensal = totalImpostoSemanal * 4;
+    const totalLogisticaMensal = totalLogisticaSemanal * 4;
+    const somaLucrosMensal = somaLucros * 4;
+    const somaFaturamentosMensal = somaFaturamentos * 4;
 
     // Distribuição percentual por categoria
     const distribuicaoCategorias: Record<string, number> = {};
@@ -388,15 +417,15 @@ export default function ProjecaoResultadosPDV() {
     });
 
     return {
-      precoMedio: totalCategorias > 0 ? somaPrecos / totalCategorias : 0,
-      giroMedio: totalCategorias > 0 ? somaGiros / totalCategorias : 0,
-      faturamentoMedio: totalClientes > 0 ? somaFaturamentos / totalClientes : 0,
+      precoMedio: totalCategoriasRevenda > 0 ? somaPrecos / totalCategoriasRevenda : 0,
+      giroMedio: totalGiroClientesHabilitados > 0 ? somaGiros / totalGiroClientesHabilitados : 0,
+      faturamentoMedio: totalClientes > 0 ? somaFaturamentosMensal / totalClientes : 0,
       percentualClientesNF: totalClientes > 0 ? (clientesComNF / totalClientes) * 100 : 0,
-      totalImposto,
-      percentualImposto: faturamentoTotal > 0 ? (totalImposto / faturamentoTotal) * 100 : 0,
-      totalLogistica,
-      percentualLogistica: faturamentoTotal > 0 ? (totalLogistica / faturamentoTotal) * 100 : 0,
-      lucroBrutoMedio: totalClientes > 0 ? somaLucros / totalClientes : 0,
+      totalImposto: totalImpostoMensal,
+      percentualImposto: faturamentoTotalMensal > 0 ? (totalImpostoMensal / faturamentoTotalMensal) * 100 : 0,
+      totalLogistica: totalLogisticaMensal,
+      percentualLogistica: faturamentoTotalMensal > 0 ? (totalLogisticaMensal / faturamentoTotalMensal) * 100 : 0,
+      lucroBrutoMedio: totalClientes > 0 ? somaLucrosMensal / totalClientes : 0,
       distribuicaoCategorias
     };
   };
@@ -416,10 +445,11 @@ export default function ProjecaoResultadosPDV() {
   };
 
   const indicadores = calcularIndicadoresGerais();
-  const totalGeral = projecoes.reduce((sum, proj) => sum + proj.lucroBruto, 0);
-  const faturamentoGeral = projecoes.reduce((sum, proj) => 
+  // Converter valores semanais para mensais
+  const totalGeralMensal = projecoes.reduce((sum, proj) => sum + proj.lucroBruto, 0) * 4;
+  const faturamentoGeralMensal = projecoes.reduce((sum, proj) => 
     sum + proj.categorias.reduce((catSum, cat) => catSum + cat.faturamento, 0), 0
-  );
+  ) * 4;
 
   const clientesAtivos = clientes.filter(cliente => cliente.statusCliente === 'Ativo');
 
@@ -567,23 +597,24 @@ export default function ProjecaoResultadosPDV() {
               <CardTitle className="flex items-center gap-2">
                 <Calculator className="h-5 w-5" />
                 Resumo Geral - Indicadores Estratégicos
+                <Badge variant="outline" className="text-xs">Valores Mensais</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
               {/* Primeira linha - Indicadores principais */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Faturamento Semanal</p>
-                  <p className="text-2xl font-bold text-blue-600">{formatarMoeda(faturamentoGeral)}</p>
+                  <p className="text-sm text-muted-foreground">Faturamento Mensal</p>
+                  <p className="text-2xl font-bold text-blue-600">{formatarMoeda(faturamentoGeralMensal)}</p>
                 </div>
                 <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Lucro Bruto Semanal</p>
-                  <p className="text-2xl font-bold text-green-600">{formatarMoeda(totalGeral)}</p>
+                  <p className="text-sm text-muted-foreground">Lucro Bruto Mensal</p>
+                  <p className="text-2xl font-bold text-green-600">{formatarMoeda(totalGeralMensal)}</p>
                 </div>
                 <div className="text-center p-4 bg-purple-50 rounded-lg">
                   <p className="text-sm text-muted-foreground">Margem Bruta</p>
                   <p className="text-2xl font-bold text-purple-600">
-                    {formatarPercentual(faturamentoGeral > 0 ? totalGeral / faturamentoGeral * 100 : 0)}
+                    {formatarPercentual(faturamentoGeralMensal > 0 ? totalGeralMensal / faturamentoGeralMensal * 100 : 0)}
                   </p>
                 </div>
               </div>
@@ -596,6 +627,7 @@ export default function ProjecaoResultadosPDV() {
                     <p className="text-xs text-muted-foreground">Preço Médio</p>
                   </div>
                   <p className="text-lg font-bold text-gray-700">{formatarMoeda(indicadores.precoMedio)}</p>
+                  <Badge variant="outline" className="text-xs mt-1">Revenda Padrão</Badge>
                 </div>
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center justify-center gap-1 mb-1">
@@ -603,6 +635,7 @@ export default function ProjecaoResultadosPDV() {
                     <p className="text-xs text-muted-foreground">Giro Médio</p>
                   </div>
                   <p className="text-lg font-bold text-gray-700">{indicadores.giroMedio.toFixed(0)} un/sem</p>
+                  <Badge variant="outline" className="text-xs mt-1">Contabilizados</Badge>
                 </div>
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center justify-center gap-1 mb-1">
@@ -610,6 +643,7 @@ export default function ProjecaoResultadosPDV() {
                     <p className="text-xs text-muted-foreground">Faturamento Médio</p>
                   </div>
                   <p className="text-lg font-bold text-gray-700">{formatarMoeda(indicadores.faturamentoMedio)}</p>
+                  <Badge variant="outline" className="text-xs mt-1">Mensal</Badge>
                 </div>
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center justify-center gap-1 mb-1">
@@ -626,6 +660,7 @@ export default function ProjecaoResultadosPDV() {
                   <h4 className="font-semibold text-gray-800 flex items-center gap-2">
                     <Percent className="h-4 w-4" />
                     Custos e Impostos
+                    <Badge variant="outline" className="text-xs">Mensais</Badge>
                   </h4>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center p-2 bg-red-50 rounded">
@@ -667,7 +702,7 @@ export default function ProjecaoResultadosPDV() {
             </CardContent>
           </Card>
 
-          {/* Tabela de projeção detalhada - existente */}
+          {/* Tabela de projeção detalhada */}
           <Card>
             <CardHeader>
               <CardTitle>Projeção Detalhada por Cliente</CardTitle>
@@ -678,6 +713,7 @@ export default function ProjecaoResultadosPDV() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Cliente</TableHead>
+                      <TableHead>Contabiliza Giro</TableHead>
                       <TableHead>Categoria</TableHead>
                       <TableHead>Giro Semanal</TableHead>
                       <TableHead>Preço Aplicado</TableHead>
@@ -693,13 +729,23 @@ export default function ProjecaoResultadosPDV() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {projecoes.map((projecao) => 
-                      projecao.categorias.map((categoria, index) => (
+                    {projecoes.map((projecao) => {
+                      const cliente = clientes.find(c => c.id === projecao.clienteId);
+                      const contabilizaGiro = cliente?.contabilizarGiroMedio ?? true;
+                      
+                      return projecao.categorias.map((categoria, index) => (
                         <TableRow key={`${projecao.clienteId}-${categoria.categoriaId}`}>
                           {index === 0 && (
-                            <TableCell rowSpan={projecao.categorias.length} className="font-medium border-r">
-                              {projecao.nomeCliente}
-                            </TableCell>
+                            <>
+                              <TableCell rowSpan={projecao.categorias.length} className="font-medium border-r">
+                                {projecao.nomeCliente}
+                              </TableCell>
+                              <TableCell rowSpan={projecao.categorias.length} className="text-center border-r">
+                                <Badge variant={contabilizaGiro ? "default" : "secondary"}>
+                                  {contabilizaGiro ? "Sim" : "Não"}
+                                </Badge>
+                              </TableCell>
+                            </>
                           )}
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -760,8 +806,8 @@ export default function ProjecaoResultadosPDV() {
                             </>
                           )}
                         </TableRow>
-                      ))
-                    )}
+                      ));
+                    })}
                   </TableBody>
                 </Table>
               </div>
