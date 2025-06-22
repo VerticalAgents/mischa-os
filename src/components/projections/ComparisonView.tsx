@@ -1,20 +1,13 @@
 
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue 
-} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DREData } from '@/types/projections';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
-import { DRETable } from './DRETable';
+import { ModernDRETable } from './ModernDRETable';
 
 export function ComparisonView() {
-  const { baseDRE, scenarios, getBaseDRE } = useProjectionStore();
+  const { baseDRE, scenarios } = useProjectionStore();
   const [selectedScenarios, setSelectedScenarios] = useState<string[]>(['base']);
   
   const allScenarios = [
@@ -32,33 +25,37 @@ export function ComparisonView() {
   
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        {allScenarios.map((scenario) => (
-          <Button
-            key={scenario.id}
-            variant={selectedScenarios.includes(scenario.id) ? "default" : "outline"}
-            onClick={() => handleSelectScenario(scenario.id)}
-            className="text-sm"
-          >
-            {scenario.name}
-          </Button>
-        ))}
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Selecionar Cenários para Comparação</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {allScenarios.map((scenario) => (
+              <Button
+                key={scenario.id}
+                variant={selectedScenarios.includes(scenario.id) ? "default" : "outline"}
+                onClick={() => handleSelectScenario(scenario.id)}
+                className="text-sm"
+              >
+                {scenario.name}
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {selectedScenarios.map(scenarioId => {
           const scenario = allScenarios.find(s => s.id === scenarioId);
           if (!scenario) return null;
           
           return (
-            <Card key={scenarioId} className="overflow-x-auto">
-              <CardHeader className="py-2">
-                <CardTitle className="text-base">{scenario.name}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-2">
-                <DRETable dreData={scenario} compact />
-              </CardContent>
-            </Card>
+            <ModernDRETable 
+              key={scenarioId} 
+              dreData={scenario} 
+              compact 
+            />
           );
         })}
       </div>

@@ -7,12 +7,12 @@ import {
   TabsContent
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Plus, Copy, Trash2, FileText } from "lucide-react";
+import { Plus, Copy, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { DREData } from '@/types/projections';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
-import { DRETable } from './DRETable';
+import { ModernDRETable } from './ModernDRETable';
 import { ScenarioForm } from './ScenarioForm';
 
 export function ScenarioTabs() {
@@ -52,8 +52,8 @@ export function ScenarioTabs() {
         onValueChange={setActiveScenario}
         className="w-full"
       >
-        <div className="flex items-center justify-between mb-4">
-          <TabsList className="flex-grow">
+        <div className="flex items-center justify-between mb-6">
+          <TabsList className="flex-grow max-w-2xl">
             <TabsTrigger value="base" className="flex-grow">DRE Base</TabsTrigger>
             {scenarios.map((scenario) => (
               <TabsTrigger key={scenario.id} value={scenario.id} className="flex-grow">
@@ -65,7 +65,7 @@ export function ScenarioTabs() {
           <div className="flex gap-2 ml-4">
             <Button size="sm" variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-1" />
-              Cenário
+              Novo Cenário
             </Button>
             <Button 
               size="sm" 
@@ -87,14 +87,14 @@ export function ScenarioTabs() {
         </div>
 
         <TabsContent value="base">
-          <div className="grid grid-cols-1 gap-6">
-            {baseDRE && <DRETable dreData={baseDRE} />}
+          <div className="space-y-6">
+            {baseDRE && <ModernDRETable dreData={baseDRE} />}
           </div>
         </TabsContent>
         
         {scenarios.map((scenario) => (
           <TabsContent key={scenario.id} value={scenario.id}>
-            <div className="grid grid-cols-1 gap-6">
+            <div className="space-y-6">
               <ScenarioForm scenario={scenario} />
             </div>
           </TabsContent>

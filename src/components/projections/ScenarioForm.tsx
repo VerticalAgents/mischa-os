@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   Form,
@@ -21,12 +20,10 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { DREData, Channel, CostItem, InvestmentItem } from '@/types/projections';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
-import { useClienteStore } from '@/hooks/useClienteStore';
-import { DRETable } from './DRETable';
+import { ModernDRETable } from './ModernDRETable';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -59,10 +56,8 @@ const formSchema = z.object({
 
 export function ScenarioForm({ scenario }: ScenarioFormProps) {
   const { updateScenario } = useProjectionStore();
-  const { clientes } = useClienteStore();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   
-  // Ensure channelGrowthFactors has all required properties
   const defaultChannelGrowth: Record<Channel, { type: 'percentage' | 'absolute', value: number }> = {
     'B2B-Revenda': { type: 'percentage', value: 0 },
     'B2B-FoodService': { type: 'percentage', value: 0 },
@@ -82,31 +77,21 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
     }
   });
   
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    // Recalculate the DRE based on form data
-    const updatedScenario = calculateUpdatedDRE(data);
-    updateScenario(scenario.id, updatedScenario);
-  };
-  
   const calculateUpdatedDRE = (data: z.infer<typeof formSchema>) => {
-    // Start with the original channel data
     const updatedChannelsData = [...scenario.channelsData];
     
-    // Apply growth factors
     Object.entries(data.channelGrowth).forEach(([channel, growth]) => {
       const channelIndex = updatedChannelsData.findIndex(c => c.channel === channel);
       if (channelIndex >= 0) {
         const originalData = updatedChannelsData[channelIndex];
         let newVolume = originalData.volume;
         
-        // Apply growth factor
         if (growth.type === 'percentage') {
           newVolume = originalData.volume * (1 + growth.value / 100);
         } else {
           newVolume = originalData.volume + growth.value;
         }
         
-        // Calculate new revenue and costs based on volume
         const unitPrice = originalData.revenue / originalData.volume;
         const unitCost = originalData.variableCosts / originalData.volume;
         
@@ -126,15 +111,11 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
       }
     });
     
-    // Calculate updated costs
     const totalFixedCosts = data.fixedCosts.reduce((sum, cost) => sum + cost.value, 0);
     const totalAdministrativeCosts = data.administrativeCosts.reduce((sum, cost) => sum + cost.value, 0);
-    
-    // Calculate investment and depreciation
     const totalInvestment = data.investments.reduce((sum, inv) => sum + inv.value, 0);
     const monthlyDepreciation = data.investments.reduce((sum, inv) => sum + (inv.value / (inv.depreciationYears * 12)), 0);
     
-    // Calculate totals
     const totalRevenue = updatedChannelsData.reduce((sum, c) => sum + c.revenue, 0);
     const totalVariableCosts = updatedChannelsData.reduce((sum, c) => sum + c.variableCosts, 0);
     const totalCosts = totalVariableCosts + totalFixedCosts + totalAdministrativeCosts;
@@ -145,14 +126,10 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
     const ebitda = operationalResult + monthlyDepreciation;
     const ebitdaMargin = ebitda / totalRevenue * 100;
     
-    // Calculate break-even point
     const contributionMarginPercent = grossMargin / 100;
     const breakEvenPoint = (totalFixedCosts + totalAdministrativeCosts) / contributionMarginPercent;
-    
-    // Calculate payback
     const paybackMonths = operationalResult > 0 ? totalInvestment / operationalResult : 0;
     
-    // Create properly typed channel growth factors
     const channelGrowthFactors: Record<Channel, { type: 'percentage' | 'absolute', value: number }> = {
       'B2B-Revenda': { type: data.channelGrowth['B2B-Revenda']?.type || 'percentage', value: data.channelGrowth['B2B-Revenda']?.value || 0 },
       'B2B-FoodService': { type: data.channelGrowth['B2B-FoodService']?.type || 'percentage', value: data.channelGrowth['B2B-FoodService']?.value || 0 },
@@ -161,7 +138,6 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
       'B2C-Outros': { type: data.channelGrowth['B2C-Outros']?.type || 'percentage', value: data.channelGrowth['B2C-Outros']?.value || 0 }
     };
     
-    // Create a properly typed updated scenario
     const updatedScenario: Partial<DREData> = {
       name: data.name,
       channelsData: updatedChannelsData,
@@ -199,7 +175,6 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
     channelGrowth[channel] = { type, value };
     form.setValue('channelGrowth', channelGrowth);
     
-    // Recalculate and update
     const updatedScenario = calculateUpdatedDRE(form.getValues());
     updateScenario(scenario.id, updatedScenario);
   };
@@ -209,7 +184,6 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
     costs[index].value = value;
     form.setValue(type, costs);
     
-    // Recalculate and update
     const updatedScenario = calculateUpdatedDRE(form.getValues());
     updateScenario(scenario.id, updatedScenario);
   };
@@ -222,13 +196,11 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
     const investments = [...form.getValues('investments')];
     investments[index][field] = value;
     
-    // Recalculate monthly depreciation
     investments[index].monthlyDepreciation = 
       investments[index].value / (investments[index].depreciationYears * 12);
     
     form.setValue('investments', investments);
     
-    // Recalculate and update
     const updatedScenario = calculateUpdatedDRE(form.getValues());
     updateScenario(scenario.id, updatedScenario);
   };
@@ -236,9 +208,9 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
   return (
     <div className="space-y-6">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left column - DRE Table */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Left column - DRE Table (takes 2 columns) */}
+          <div className="xl:col-span-2">
             <Card>
               <CardHeader>
                 <FormField
@@ -251,7 +223,7 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
                           placeholder="Nome do cenário"
                           {...field}
                           onChange={(e) => updateScenarioName(e.target.value)}
-                          className="text-xl font-semibold border-none focus:ring-0"
+                          className="text-xl font-semibold border-none focus:ring-0 p-0"
                         />
                       </FormControl>
                       <FormMessage />
@@ -259,147 +231,143 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
                   )}
                 />
               </CardHeader>
-              <CardContent>
-                <DRETable dreData={scenario} />
+              <CardContent className="p-0">
+                <ModernDRETable dreData={scenario} />
               </CardContent>
             </Card>
-
-            {/* Right column - Parameters */}
-            <div className="space-y-6">
-              {/* Channels Growth */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Projeção por Canal</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {scenario.channelsData.map((channelData) => {
-                      const growth = form.getValues('channelGrowth')[channelData.channel];
-                      return (
-                        <div key={channelData.channel} className="grid grid-cols-3 gap-4 items-center">
-                          <div>{channelData.channel}</div>
-                          <div>
-                            <select
-                              value={growth.type}
-                              onChange={(e) => 
-                                updateGrowthFactor(
-                                  channelData.channel, 
-                                  e.target.value as 'percentage' | 'absolute', 
-                                  growth.value
-                                )
-                              }
-                              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                            >
-                              <option value="percentage">% de crescimento</option>
-                              <option value="absolute">Unidades</option>
-                            </select>
-                          </div>
-                          <div>
-                            <Input
-                              type="number"
-                              value={growth.value}
-                              onChange={(e) => 
-                                updateGrowthFactor(
-                                  channelData.channel, 
-                                  growth.type, 
-                                  parseFloat(e.target.value) || 0
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              {/* Accordion panels for costs */}
-              <Accordion
-                type="single" 
-                collapsible
-                value={expandedSection}
-                onValueChange={setExpandedSection}
-              >
-                <AccordionItem value="fixed-costs">
-                  <AccordionTrigger>Custos Fixos</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-4">
-                      {form.getValues('fixedCosts').map((cost, index) => (
-                        <div key={`fixed-${index}`} className="grid grid-cols-2 gap-4 items-center">
-                          <div>{cost.name}</div>
-                          <div>
-                            <Input
-                              type="number"
-                              value={cost.value}
-                              onChange={(e) => 
-                                updateCosts('fixedCosts', index, parseFloat(e.target.value) || 0)
-                              }
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-                
-                <AccordionItem value="admin-costs">
-                  <AccordionTrigger>Custos Administrativos</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-4">
-                      {form.getValues('administrativeCosts').map((cost, index) => (
-                        <div key={`admin-${index}`} className="grid grid-cols-2 gap-4 items-center">
-                          <div>{cost.name}</div>
-                          <div>
-                            <Input
-                              type="number"
-                              value={cost.value}
-                              onChange={(e) => 
-                                updateCosts('administrativeCosts', index, parseFloat(e.target.value) || 0)
-                              }
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-                
-                <AccordionItem value="investments">
-                  <AccordionTrigger>Investimentos</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-4">
-                      {form.getValues('investments').map((investment, index) => (
-                        <div key={`invest-${index}`} className="grid grid-cols-12 gap-4 items-center">
-                          <div className="col-span-4">{investment.name}</div>
-                          <div className="col-span-4">
-                            <Input
-                              type="number"
-                              value={investment.value}
-                              onChange={(e) => 
-                                updateInvestment(index, 'value', parseFloat(e.target.value) || 0)
-                              }
-                            />
-                          </div>
-                          <div className="col-span-4">
-                            <Input
-                              type="number"
-                              value={investment.depreciationYears}
-                              onChange={(e) => 
-                                updateInvestment(index, 'depreciationYears', parseInt(e.target.value) || 1)
-                              }
-                              placeholder="Anos"
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </div>
           </div>
-        </form>
+
+          {/* Right column - Parameters (takes 1 column) */}
+          <div className="space-y-4">
+            {/* Channels Growth */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Projeção por Canal</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {scenario.channelsData.map((channelData) => {
+                  const growth = form.getValues('channelGrowth')[channelData.channel];
+                  return (
+                    <div key={channelData.channel} className="space-y-2">
+                      <div className="text-sm font-medium">{channelData.channel}</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={growth.type}
+                          onChange={(e) => 
+                            updateGrowthFactor(
+                              channelData.channel, 
+                              e.target.value as 'percentage' | 'absolute', 
+                              growth.value
+                            )
+                          }
+                          className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
+                        >
+                          <option value="percentage">%</option>
+                          <option value="absolute">Unid.</option>
+                        </select>
+                        <Input
+                          type="number"
+                          value={growth.value}
+                          onChange={(e) => 
+                            updateGrowthFactor(
+                              channelData.channel, 
+                              growth.type, 
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          className="text-xs"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+            
+            {/* Accordion panels for costs */}
+            <Accordion
+              type="single" 
+              collapsible
+              value={expandedSection}
+              onValueChange={setExpandedSection}
+            >
+              <AccordionItem value="fixed-costs">
+                <AccordionTrigger className="text-sm">Custos Fixos</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    {form.getValues('fixedCosts').map((cost, index) => (
+                      <div key={`fixed-${index}`} className="space-y-1">
+                        <div className="text-xs text-muted-foreground">{cost.name}</div>
+                        <Input
+                          type="number"
+                          value={cost.value}
+                          onChange={(e) => 
+                            updateCosts('fixedCosts', index, parseFloat(e.target.value) || 0)
+                          }
+                          className="text-xs"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="admin-costs">
+                <AccordionTrigger className="text-sm">Custos Administrativos</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    {form.getValues('administrativeCosts').map((cost, index) => (
+                      <div key={`admin-${index}`} className="space-y-1">
+                        <div className="text-xs text-muted-foreground">{cost.name}</div>
+                        <Input
+                          type="number"
+                          value={cost.value}
+                          onChange={(e) => 
+                            updateCosts('administrativeCosts', index, parseFloat(e.target.value) || 0)
+                          }
+                          className="text-xs"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="investments">
+                <AccordionTrigger className="text-sm">Investimentos</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    {form.getValues('investments').map((investment, index) => (
+                      <div key={`invest-${index}`} className="space-y-2">
+                        <div className="text-xs text-muted-foreground">{investment.name}</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            type="number"
+                            value={investment.value}
+                            onChange={(e) => 
+                              updateInvestment(index, 'value', parseFloat(e.target.value) || 0)
+                            }
+                            placeholder="Valor"
+                            className="text-xs"
+                          />
+                          <Input
+                            type="number"
+                            value={investment.depreciationYears}
+                            onChange={(e) => 
+                              updateInvestment(index, 'depreciationYears', parseInt(e.target.value) || 1)
+                            }
+                            placeholder="Anos"
+                            className="text-xs"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        </div>
       </Form>
     </div>
   );

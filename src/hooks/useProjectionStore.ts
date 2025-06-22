@@ -1,9 +1,10 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { Cliente, DiaSemana } from '../types';
 import { Channel, DREData, ChannelData, CostItem, InvestmentItem } from '../types/projections';
+import { CustoFixo } from './useSupabaseCustosFixos';
+import { CustoVariavel } from './useSupabaseCustosVariaveis';
 
 interface ProjectionStore {
   baseDRE: DREData | null;
@@ -12,7 +13,7 @@ interface ProjectionStore {
   clientChannels: Record<number, Channel>;
   
   // Actions
-  generateBaseDRE: (clientes: Cliente[]) => void;
+  generateBaseDRE: (clientes: Cliente[], custosFixos?: CustoFixo[], custosVariaveis?: CustoVariavel[]) => void;
   createScenario: (name: string) => void;
   duplicateScenario: (id: string) => void;
   updateScenario: (id: string, data: Partial<DREData>) => void;
@@ -27,34 +28,20 @@ interface ProjectionStore {
   getClientChannel: (clienteId: number) => Channel;
 }
 
-// Default fixed costs
-const defaultFixedCosts: CostItem[] = [
-  { name: 'Aluguel', value: 3000 },
-  { name: 'Energia', value: 1200 },
-  { name: 'Água', value: 400 },
-  { name: 'Internet/Telefone', value: 300 },
-  { name: 'Manutenção', value: 500 },
-];
-
-// Default administrative costs
-const defaultAdminCosts: CostItem[] = [
-  { name: 'Folha de Pagamento', value: 12000 },
-  { name: 'Pró-labore', value: 5000 },
-  { name: 'Contabilidade', value: 800 },
-  { name: 'Software/Sistemas', value: 400 },
-  { name: 'Marketing', value: 1500 },
-];
-
-// Default investments
-const defaultInvestments: InvestmentItem[] = [
-  { name: 'Equipamentos de Produção', value: 50000, depreciationYears: 10, monthlyDepreciation: 416.67 },
-  { name: 'Reformas', value: 20000, depreciationYears: 5, monthlyDepreciation: 333.33 },
-  { name: 'Veículos', value: 40000, depreciationYears: 5, monthlyDepreciation: 666.67 },
-];
+// Helper function to convert frequency to monthly value
+const convertToMonthlyValue = (value: number, frequency: string): number => {
+  switch (frequency) {
+    case 'semanal': return value * 4.33;
+    case 'trimestral': return value / 3;
+    case 'semestral': return value / 6;
+    case 'anual': return value / 12;
+    case 'mensal':
+    default: return value;
+  }
+};
 
 // Helper function to assign default channels based on client characteristics
 const assignDefaultChannel = (cliente: Cliente): Channel => {
-  // Simple logic to assign channels based on client characteristics
   if (cliente.tipoLogistica === 'Distribuição') {
     return 'B2B-Revenda';
   } else if (cliente.nome.includes('UFCSPA')) {
@@ -70,7 +57,6 @@ const assignDefaultChannel = (cliente: Cliente): Channel => {
 
 // Helper function to calculate weekly volume for a client
 const calculateWeeklyVolume = (cliente: Cliente): number => {
-  // Calculate weekly volume based on client's standard quantity and periodicity
   return cliente.quantidadePadrao * (7 / cliente.periodicidadePadrao);
 };
 
@@ -85,7 +71,7 @@ export const useProjectionStore = create<ProjectionStore>()(
       activeScenarioId: null,
       clientChannels: {},
       
-      generateBaseDRE: (clientes) => {
+      generateBaseDRE: (clientes, custosFixos = [], custosVariaveis = []) => {
         // Filter active clients that should be counted in average
         const activeClientes = clientes.filter(
           c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio
@@ -123,24 +109,24 @@ export const useProjectionStore = create<ProjectionStore>()(
           
           switch (channel) {
             case 'B2B-Revenda':
-              unitPrice = 4.50;  // Wholesale price
-              unitCost = 2.00;   // Unit cost for wholesale
+              unitPrice = 4.50;
+              unitCost = 2.00;
               break;
             case 'B2B-FoodService':
-              unitPrice = 5.00;  // Food service price
-              unitCost = 2.20;   // Unit cost for food service
+              unitPrice = 5.00;
+              unitCost = 2.20;
               break;
             case 'B2C-UFCSPA':
-              unitPrice = 5.50;  // Direct consumer price (UFCSPA)
-              unitCost = 2.30;   // Unit cost
+              unitPrice = 5.50;
+              unitCost = 2.30;
               break;
             case 'B2C-Personalizados':
-              unitPrice = 6.00;  // Customized products price
-              unitCost = 2.50;   // Unit cost for customized
+              unitPrice = 6.00;
+              unitCost = 2.50;
               break;
             case 'B2C-Outros':
-              unitPrice = 5.50;  // Other B2C price
-              unitCost = 2.30;   // Unit cost for other B2C
+              unitPrice = 5.50;
+              unitCost = 2.30;
               break;
           }
           
@@ -159,11 +145,30 @@ export const useProjectionStore = create<ProjectionStore>()(
           };
         });
         
+        // Convert real fixed costs from database
+        const fixedCosts: CostItem[] = custosFixos.map(custo => ({
+          name: custo.nome,
+          value: convertToMonthlyValue(custo.valor, custo.frequencia)
+        }));
+        
+        // Convert real variable costs from database (administrative costs)
+        const administrativeCosts: CostItem[] = custosVariaveis.map(custo => ({
+          name: custo.nome,
+          value: convertToMonthlyValue(custo.valor, custo.frequencia)
+        }));
+        
+        // Default investments (keeping these as before since they're not in database yet)
+        const defaultInvestments: InvestmentItem[] = [
+          { name: 'Equipamentos de Produção', value: 50000, depreciationYears: 10, monthlyDepreciation: 416.67 },
+          { name: 'Reformas', value: 20000, depreciationYears: 5, monthlyDepreciation: 333.33 },
+          { name: 'Veículos', value: 40000, depreciationYears: 5, monthlyDepreciation: 666.67 },
+        ];
+        
         // Calculate totals
         const totalRevenue = channelsData.reduce((sum, c) => sum + c.revenue, 0);
         const totalVariableCosts = channelsData.reduce((sum, c) => sum + c.variableCosts, 0);
-        const totalFixedCosts = defaultFixedCosts.reduce((sum, c) => sum + c.value, 0);
-        const totalAdministrativeCosts = defaultAdminCosts.reduce((sum, c) => sum + c.value, 0);
+        const totalFixedCosts = fixedCosts.reduce((sum, c) => sum + c.value, 0);
+        const totalAdministrativeCosts = administrativeCosts.reduce((sum, c) => sum + c.value, 0);
         const totalCosts = totalVariableCosts + totalFixedCosts + totalAdministrativeCosts;
         const grossProfit = totalRevenue - totalVariableCosts;
         const grossMargin = grossProfit / totalRevenue * 100;
@@ -175,11 +180,11 @@ export const useProjectionStore = create<ProjectionStore>()(
         const ebitda = operationalResult + monthlyDepreciation;
         const ebitdaMargin = ebitda / totalRevenue * 100;
         
-        // Break-even point calculation (monthly fixed costs / contribution margin percentage)
+        // Break-even point calculation
         const contributionMarginPercent = grossMargin / 100;
         const breakEvenPoint = (totalFixedCosts + totalAdministrativeCosts) / contributionMarginPercent;
         
-        // Payback calculation in months (total investment / monthly operational result)
+        // Payback calculation in months
         const paybackMonths = operationalResult > 0 ? totalInvestment / operationalResult : 0;
         
         const baseDRE: DREData = {
@@ -188,9 +193,9 @@ export const useProjectionStore = create<ProjectionStore>()(
           isBase: true,
           createdAt: new Date(),
           channelsData,
-          fixedCosts: [...defaultFixedCosts],
-          administrativeCosts: [...defaultAdminCosts],
-          investments: [...defaultInvestments],
+          fixedCosts,
+          administrativeCosts,
+          investments: defaultInvestments,
           totalRevenue,
           totalVariableCosts,
           totalFixedCosts,
