@@ -14,12 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useSupabaseCustosFixos, CustoFixo } from "@/hooks/useSupabaseCustosFixos";
 import { useSupabaseCustosVariaveis, CustoVariavel } from "@/hooks/useSupabaseCustosVariaveis";
+import { useSupabaseSubcategoriasCustos } from "@/hooks/useSupabaseSubcategoriasCustos";
 import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
 import { useClienteStore } from "@/hooks/useClienteStore";
 
-// Subcategorias predefinidas
-const SUBCATEGORIAS_FIXAS = ["Instalações", "Utilidades", "Marketing", "Manutenção", "Infraestrutura", "Investimentos"];
-const SUBCATEGORIAS_VARIAVEIS = ["Matéria-prima", "Logística", "Produção", "Materiais"];
 type Frequencia = "mensal" | "semanal" | "trimestral" | "semestral" | "anual" | "por-producao";
 type TipoCusto = "fixo" | "variavel";
 type FormData = {
@@ -31,6 +29,7 @@ type FormData = {
   observacoes: string;
   tipoCusto: TipoCusto;
 };
+
 export default function Custos() {
   const {
     custosFixos,
@@ -47,6 +46,10 @@ export default function Custos() {
     excluirCustoVariavel
   } = useSupabaseCustosVariaveis();
   const {
+    subcategorias,
+    obterSubcategoriasPorTipo
+  } = useSupabaseSubcategoriasCustos();
+  const {
     faturamentoMensal,
     disponivel: faturamentoDisponivel,
     isLoading: loadingFaturamento
@@ -54,6 +57,7 @@ export default function Custos() {
   const {
     clientes
   } = useClienteStore();
+
   const [novoCusto, setNovoCusto] = useState<FormData>({
     nome: "",
     subcategoria: "",
@@ -227,6 +231,7 @@ export default function Custos() {
   const isFormValid = (): boolean => {
     return !!(novoCusto.nome.trim() && novoCusto.subcategoria.trim());
   };
+
   const handleSalvar = async () => {
     try {
       if (!isFormValid()) {
@@ -267,6 +272,7 @@ export default function Custos() {
       console.error('Erro ao salvar custo:', error);
     }
   };
+
   const resetForm = () => {
     setNovoCusto({
       nome: "",
@@ -279,6 +285,7 @@ export default function Custos() {
     });
     setEditandoId(null);
   };
+
   const editarCusto = (custo: CustoFixo | CustoVariavel, tipo: TipoCusto) => {
     setNovoCusto({
       nome: custo.nome,
@@ -292,6 +299,7 @@ export default function Custos() {
     setEditandoId(custo.id);
     setDialogOpen(true);
   };
+
   const excluirCustoHandler = async (id: string, tipo: TipoCusto) => {
     try {
       if (tipo === "fixo") {
@@ -303,6 +311,7 @@ export default function Custos() {
       console.error('Erro ao excluir custo:', error);
     }
   };
+
   const getFrequenciaLabel = (freq: Frequencia): string => {
     const labels = {
       "mensal": "Mensal",
@@ -322,9 +331,12 @@ export default function Custos() {
       currency: 'BRL'
     }).format(value);
   };
+
   const isLoading = loadingFixos || loadingVariaveis;
+
+  // Get subcategories list based on cost type
   const getSubcategoriasList = () => {
-    return novoCusto.tipoCusto === "fixo" ? SUBCATEGORIAS_FIXAS : SUBCATEGORIAS_VARIAVEIS;
+    return obterSubcategoriasPorTipo(novoCusto.tipoCusto);
   };
 
   // Calculate variable cost display value with real percentage option
@@ -374,13 +386,16 @@ export default function Custos() {
     }
     return custo.percentual_faturamento;
   };
-  return <div className="container mx-auto">
+
+  return (
+    <div className="container mx-auto">
       <BreadcrumbNavigation />
       
       <PageHeader title="Custos" description="Gerencie todos os custos da operação" />
 
       {/* Warning about projected revenue */}
-      {!faturamentoDisponivel && <Card className="border-amber-200 bg-amber-50 mt-6">
+      {!faturamentoDisponivel && (
+        <Card className="border-amber-200 bg-amber-50 mt-6">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-amber-800">
               <AlertTriangle className="h-5 w-5" />
@@ -393,21 +408,25 @@ export default function Custos() {
               Configure clientes com categorias habilitadas para visualizar os cálculos corretos.
             </p>
           </CardContent>
-        </Card>}
+        </Card>
+      )}
 
       <div className="flex justify-between items-center mb-6 mt-6">
         <div className="flex gap-4">
           <div className="relative w-80">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar custos..." className="pl-8" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <Input
+              placeholder="Buscar custos..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </div>
         
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => {
-            resetForm();
-          }}>
+            <Button onClick={() => { resetForm(); }}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Custo
             </Button>
@@ -423,21 +442,25 @@ export default function Custos() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="nome" className="text-sm font-medium">Nome *</label>
-                  <Input id="nome" placeholder="Nome do custo" value={novoCusto.nome} onChange={e => setNovoCusto({
-                  ...novoCusto,
-                  nome: e.target.value
-                })} />
+                  <Input
+                    id="nome"
+                    placeholder="Nome do custo"
+                    value={novoCusto.nome}
+                    onChange={(e) => setNovoCusto({ ...novoCusto, nome: e.target.value })}
+                  />
                 </div>
                 <div>
                   <label htmlFor="tipoCusto" className="text-sm font-medium">Tipo de Custo *</label>
-                  <Select value={novoCusto.tipoCusto} onValueChange={value => setNovoCusto({
-                  ...novoCusto,
-                  tipoCusto: value as TipoCusto,
-                  subcategoria: "",
-                  // Reset subcategoria quando muda o tipo
-                  valor: 0,
-                  percentual_faturamento: 0
-                })}>
+                  <Select
+                    value={novoCusto.tipoCusto}
+                    onValueChange={(value) => setNovoCusto({
+                      ...novoCusto,
+                      tipoCusto: value as TipoCusto,
+                      subcategoria: "", // Reset subcategoria quando muda o tipo
+                      valor: 0,
+                      percentual_faturamento: 0
+                    })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
@@ -452,24 +475,28 @@ export default function Custos() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="subcategoria" className="text-sm font-medium">Subcategoria *</label>
-                  <Select value={novoCusto.subcategoria} onValueChange={value => setNovoCusto({
-                  ...novoCusto,
-                  subcategoria: value
-                })}>
+                  <Select
+                    value={novoCusto.subcategoria}
+                    onValueChange={(value) => setNovoCusto({ ...novoCusto, subcategoria: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione uma subcategoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      {getSubcategoriasList().map(sub => <SelectItem key={sub} value={sub}>{sub}</SelectItem>)}
+                      {getSubcategoriasList().map((sub) => (
+                        <SelectItem key={sub.id} value={sub.nome}>
+                          {sub.nome}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <label htmlFor="frequencia" className="text-sm font-medium">Frequência</label>
-                  <Select value={novoCusto.frequencia} onValueChange={value => setNovoCusto({
-                  ...novoCusto,
-                  frequencia: value as Frequencia
-                })}>
+                  <Select
+                    value={novoCusto.frequencia}
+                    onValueChange={(value) => setNovoCusto({ ...novoCusto, frequencia: value as Frequencia })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
@@ -479,53 +506,77 @@ export default function Custos() {
                       <SelectItem value="trimestral">Trimestral</SelectItem>
                       <SelectItem value="semestral">Semestral</SelectItem>
                       <SelectItem value="anual">Anual</SelectItem>
-                      {novoCusto.tipoCusto === "variavel" && <SelectItem value="por-producao">Por Produção</SelectItem>}
+                      {novoCusto.tipoCusto === "variavel" && (
+                        <SelectItem value="por-producao">Por Produção</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               
-              {novoCusto.tipoCusto === "fixo" ? <div>
+              {novoCusto.tipoCusto === "fixo" ? (
+                <div>
                   <label htmlFor="valor" className="text-sm font-medium">Valor</label>
-                  <Input id="valor" type="number" placeholder="0,00" min="0" step="0.01" value={novoCusto.valor || ""} onChange={e => {
-                const valorStr = e.target.value;
-                const valor = valorStr === "" ? 0 : parseFloat(valorStr);
-                setNovoCusto({
-                  ...novoCusto,
-                  valor
-                });
-              }} />
-                </div> : <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    id="valor"
+                    type="number"
+                    placeholder="0,00"
+                    min="0"
+                    step="0.01"
+                    value={novoCusto.valor || ""}
+                    onChange={(e) => {
+                      const valorStr = e.target.value;
+                      const valor = valorStr === "" ? 0 : parseFloat(valorStr);
+                      setNovoCusto({ ...novoCusto, valor });
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="valor" className="text-sm font-medium">Valor Fixo (opcional)</label>
-                    <Input id="valor" type="number" placeholder="0,00" min="0" step="0.01" value={novoCusto.valor || ""} onChange={e => {
-                  const valorStr = e.target.value;
-                  const valor = valorStr === "" ? 0 : parseFloat(valorStr);
-                  setNovoCusto({
-                    ...novoCusto,
-                    valor
-                  });
-                }} />
+                    <Input
+                      id="valor"
+                      type="number"
+                      placeholder="0,00"
+                      min="0"
+                      step="0.01"
+                      value={novoCusto.valor || ""}
+                      onChange={(e) => {
+                        const valorStr = e.target.value;
+                        const valor = valorStr === "" ? 0 : parseFloat(valorStr);
+                        setNovoCusto({ ...novoCusto, valor });
+                      }}
+                    />
                   </div>
                   <div>
                     <label htmlFor="percentual" className="text-sm font-medium">% do Faturamento</label>
-                    <Input id="percentual" type="number" placeholder="0,00" min="0" step="0.01" value={novoCusto.percentual_faturamento || ""} onChange={e => {
-                  const valorStr = e.target.value;
-                  const percentual = valorStr === "" ? 0 : parseFloat(valorStr);
-                  setNovoCusto({
-                    ...novoCusto,
-                    percentual_faturamento: percentual
-                  });
-                }} />
+                    <Input
+                      id="percentual"
+                      type="number"
+                      placeholder="0,00"
+                      min="0"
+                      step="0.01"
+                      value={novoCusto.percentual_faturamento || ""}
+                      onChange={(e) => {
+                        const valorStr = e.target.value;
+                        const percentual = valorStr === "" ? 0 : parseFloat(valorStr);
+                        setNovoCusto({ ...novoCusto, percentual_faturamento: percentual });
+                      }}
+                    />
                   </div>
-                </div>}
+                </div>
+              )}
               
               <div>
                 <label htmlFor="observacoes" className="text-sm font-medium">Observações</label>
-                <Textarea id="observacoes" placeholder="Observações adicionais" rows={3} value={novoCusto.observacoes} onChange={e => setNovoCusto({
-                ...novoCusto,
-                observacoes: e.target.value
-              })} />
+                <Textarea
+                  id="observacoes"
+                  placeholder="Observações adicionais"
+                  rows={3}
+                  value={novoCusto.observacoes}
+                  onChange={(e) => setNovoCusto({ ...novoCusto, observacoes: e.target.value })}
+                />
               </div>
             </div>
             <DialogFooter>
@@ -540,7 +591,6 @@ export default function Custos() {
         </Dialog>
       </div>
 
-      {/* Enhanced summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <Card className="relative overflow-hidden">
           <div className="absolute top-0 right-0 w-12 h-12 bg-blue-500/10 rounded-bl-3xl flex items-center justify-center">
@@ -580,9 +630,11 @@ export default function Custos() {
                   <Percent className="h-3 w-3 mr-1" />
                   {totalPercentualVariavel.toFixed(2)}% do faturamento
                 </span>
-                {usarPercentualReal && <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
+                {usarPercentualReal && (
+                  <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700">
                     Real
-                  </Badge>}
+                  </Badge>
+                )}
               </div>
               {faturamentoDisponivel}
             </div>
@@ -630,9 +682,11 @@ export default function Custos() {
               <p className="text-xs text-muted-foreground">
                 Fixos + Variáveis + Insumos
               </p>
-              {faturamentoDisponivel && <div className="text-xs text-orange-600 font-medium">
+              {faturamentoDisponivel && (
+                <div className="text-xs text-orange-600 font-medium">
                   {(custoTotal / faturamentoMensal * 100).toFixed(1)}% do faturamento
-                </div>}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -667,8 +721,7 @@ export default function Custos() {
         </Card>
       </div>
 
-      {/* Abas de Custos Fixos e Variáveis */}
-      <Tabs value={activeTab} onValueChange={value => setActiveTab(value as "fixos" | "variaveis")}>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "fixos" | "variaveis")}>
         <TabsList className="mb-4">
           <TabsTrigger value="fixos">Custos Fixos</TabsTrigger>
           <TabsTrigger value="variaveis">Custos Variáveis</TabsTrigger>
@@ -680,9 +733,12 @@ export default function Custos() {
               <CardTitle>Custos Fixos</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {isLoading ? <div className="flex justify-center items-center py-8">
+              {isLoading ? (
+                <div className="flex justify-center items-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div> : <Table>
+                </div>
+              ) : (
+                <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-48">Nome</TableHead>
@@ -694,7 +750,8 @@ export default function Custos() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCustosFixos.map(custo => <TableRow key={custo.id}>
+                    {filteredCustosFixos.map((custo) => (
+                      <TableRow key={custo.id}>
                         <TableCell className="font-medium">{custo.nome}</TableCell>
                         <TableCell>{custo.subcategoria}</TableCell>
                         <TableCell className="text-right">
@@ -706,20 +763,31 @@ export default function Custos() {
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => editarCusto(custo, "fixo")}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => editarCusto(custo, "fixo")}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => excluirCustoHandler(custo.id, "fixo")}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => excluirCustoHandler(custo.id, "fixo")}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
-                      </TableRow>)}
-                    {filteredCustosFixos.length === 0 && <TableRow>
+                      </TableRow>
+                    ))}
+                    {filteredCustosFixos.length === 0 && (
+                      <TableRow>
                         <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
                           Nenhum custo fixo encontrado.
                         </TableCell>
-                      </TableRow>}
+                      </TableRow>
+                    )}
                   </TableBody>
                   <TableFooter>
                     <TableRow>
@@ -730,7 +798,8 @@ export default function Custos() {
                       <TableCell colSpan={3}></TableCell>
                     </TableRow>
                   </TableFooter>
-                </Table>}
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -742,7 +811,11 @@ export default function Custos() {
               
               {/* Toggle for real percentages */}
               <div className="flex items-center gap-3 mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 mx-0 my-[15px] py-[25px]">
-                <Switch id="usar-percentual-real" checked={usarPercentualReal} onCheckedChange={setUsarPercentualReal} />
+                <Switch
+                  id="usar-percentual-real"
+                  checked={usarPercentualReal}
+                  onCheckedChange={setUsarPercentualReal}
+                />
                 <div className="flex flex-col">
                   <label htmlFor="usar-percentual-real" className="text-sm font-medium cursor-pointer">
                     Usar % Real de Imposto e Logística
@@ -750,7 +823,8 @@ export default function Custos() {
                   <span className="text-xs text-muted-foreground">
                     Calcula valores baseados nos dados reais da Projeção Detalhada por Cliente
                   </span>
-                  {usarPercentualReal && faturamentoDisponivel && <div className="text-xs text-blue-600 mt-2 space-y-1">
+                  {usarPercentualReal && faturamentoDisponivel && (
+                    <div className="text-xs text-blue-600 mt-2 space-y-1">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="bg-blue-50 text-blue-700">Real</Badge>
                         <span>Imposto: {formatCurrency(1212.96)} (3,20%)</span>
@@ -759,14 +833,18 @@ export default function Custos() {
                         <Badge variant="outline" className="bg-blue-50 text-blue-700">Real</Badge>
                         <span>Logística: {formatCurrency(1500.24)} (4,00%)</span>
                       </div>
-                    </div>}
+                    </div>
+                  )}
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              {isLoading ? <div className="flex justify-center items-center py-8">
+              {isLoading ? (
+                <div className="flex justify-center items-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div> : <Table>
+                </div>
+              ) : (
+                <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-48">Nome</TableHead>
@@ -782,17 +860,21 @@ export default function Custos() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCustosVariaveis.map(custo => {
-                  const percentualReal = getPercentualReal(custo);
-                  const percentualUsado = getPercentualCalculado(custo);
-                  const isUsingRealData = usarPercentualReal && percentualReal !== null;
-                  return <TableRow key={custo.id}>
+                    {filteredCustosVariaveis.map((custo) => {
+                      const percentualReal = getPercentualReal(custo);
+                      const percentualUsado = getPercentualCalculado(custo);
+                      const isUsingRealData = usarPercentualReal && percentualReal !== null;
+
+                      return (
+                        <TableRow key={custo.id}>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               {custo.nome}
-                              {isUsingRealData && <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                              {isUsingRealData && (
+                                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
                                   Real
-                                </Badge>}
+                                </Badge>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>{custo.subcategoria}</TableCell>
@@ -822,12 +904,16 @@ export default function Custos() {
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
-                            {percentualReal !== null ? <span className="flex items-center justify-end">
+                            {percentualReal !== null ? (
+                              <span className="flex items-center justify-end">
                                 <Percent className="h-3 w-3 mr-1" />
                                 <span className="text-blue-600">
                                   {percentualReal.toFixed(2)}%
                                 </span>
-                              </span> : <span className="text-muted-foreground text-xs">—</span>}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
                           </TableCell>
                           <TableCell>{getFrequenciaLabel(custo.frequencia)}</TableCell>
                           <TableCell className="max-w-xs truncate" title={custo.observacoes}>
@@ -835,21 +921,32 @@ export default function Custos() {
                           </TableCell>
                           <TableCell>
                             <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="icon" onClick={() => editarCusto(custo, "variavel")}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => editarCusto(custo, "variavel")}
+                              >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" onClick={() => excluirCustoVariavel(custo.id)}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => excluirCustoVariavel(custo.id)}
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </TableCell>
-                        </TableRow>;
-                })}
-                    {filteredCustosVariaveis.length === 0 && <TableRow>
+                        </TableRow>
+                      );
+                    })}
+                    {filteredCustosVariaveis.length === 0 && (
+                      <TableRow>
                         <TableCell colSpan={10} className="text-center py-4 text-muted-foreground">
                           Nenhum custo variável encontrado.
                         </TableCell>
-                      </TableRow>}
+                      </TableRow>
+                    )}
                   </TableBody>
                   <TableFooter>
                     <TableRow>
@@ -882,10 +979,12 @@ export default function Custos() {
                       <TableCell colSpan={4}></TableCell>
                     </TableRow>
                   </TableFooter>
-                </Table>}
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-    </div>;
+    </div>
+  );
 }
