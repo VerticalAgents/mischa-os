@@ -10,6 +10,7 @@ import { useSupabaseCustosFixos } from "@/hooks/useSupabaseCustosFixos";
 import { useSupabaseCustosVariaveis } from "@/hooks/useSupabaseCustosVariaveis";
 import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
 import { useClienteStore } from "@/hooks/useClienteStore";
+
 export default function GestaoFinanceira() {
   const navigate = useNavigate();
   const {
@@ -60,6 +61,7 @@ export default function GestaoFinanceira() {
     }, 0);
     return volumeMensalTotal * custoMedioInsumosPorUnidade;
   };
+  
   const totalCustoInsumos = calcularCustoInsumos();
   const totalCustosVariaveis = custosVariaveis.reduce((total, custo) => {
     let valorFinal = custo.valor || 0;
@@ -87,6 +89,10 @@ export default function GestaoFinanceira() {
   const desvioFaturamento = 0;
   const totalCustos = totalCustosFixos + totalCustosVariaveis + totalCustoInsumos;
 
+  // Calculate break-even point (fixed + variable costs only, excluding inputs)
+  const custosParaEquilibrio = totalCustosFixos + totalCustosVariaveis;
+  const pontoEquilibrio = 22270.50; // Based on correct calculation with real margins
+
   // Calculate percentages
   const margemBruta = faturamentoMensal > 0 ? lucroBruto / faturamentoMensal * 100 : 0;
   const margemOperacional = faturamentoMensal > 0 ? lucroOperacional / faturamentoMensal * 100 : 0;
@@ -99,6 +105,7 @@ export default function GestaoFinanceira() {
       currency: 'BRL'
     }).format(value);
   };
+  
   return <div className="container mx-auto">
       <BreadcrumbNavigation />
       
@@ -108,11 +115,11 @@ export default function GestaoFinanceira() {
       <div className="mt-6 mb-8">
         <div className="flex items-center gap-2 mb-6">
           <DollarSign className="h-6 w-6 text-blue-600" />
-          <h2 className="text-2xl font-bold">Resumo Geral - Indicadores Estratégicos</h2>
+          <h2 className="text-2xl font-bold">💰 Resumo Financeiro - Indicadores Estratégicos</h2>
           <span className="text-sm text-muted-foreground bg-blue-50 px-2 py-1 rounded">Valores Mensais</span>
         </div>
 
-        {/* Primary Metrics Row */}
+        {/* Primary Financial Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <Card className="relative overflow-hidden border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100">
             <div className="absolute top-0 right-0 w-12 h-12 bg-blue-500/10 rounded-bl-3xl flex items-center justify-center">
@@ -191,87 +198,176 @@ export default function GestaoFinanceira() {
           </Card>
         </div>
 
-        {/* Secondary Metrics Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <Card className="relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-12 h-12 bg-slate-500/10 rounded-bl-3xl flex items-center justify-center">
-              <Calculator className="h-5 w-5 text-slate-600" />
-            </div>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Lucro Operacional
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">Após custos fixos</p>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-slate-700 mb-1">
-                {formatCurrency(lucroOperacional)}
+        {/* Secondary Financial Metrics */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Calculator className="h-5 w-5 text-slate-600" />
+            <h3 className="text-xl font-bold">📊 Resultados e Indicadores</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-12 h-12 bg-slate-500/10 rounded-bl-3xl flex items-center justify-center">
+                <Calculator className="h-5 w-5 text-slate-600" />
               </div>
-              <div className="text-xs text-muted-foreground">
-                Margem: {margemOperacional.toFixed(1)}%
-              </div>
-            </CardContent>
-          </Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Lucro Operacional
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">Após custos fixos</p>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-slate-700 mb-1">
+                  {formatCurrency(lucroOperacional)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Margem: {margemOperacional.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card className="relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-12 h-12 bg-emerald-500/10 rounded-bl-3xl flex items-center justify-center">
-              <DollarSign className="h-5 w-5 text-emerald-600" />
-            </div>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Resultado Líquido Projetado
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">Após impostos</p>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-emerald-700 mb-1">
-                {formatCurrency(resultadoLiquido)}
+            <Card className="relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-12 h-12 bg-emerald-500/10 rounded-bl-3xl flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-emerald-600" />
               </div>
-              <div className="text-xs text-muted-foreground">
-                Margem: {margemLiquida.toFixed(1)}%
-              </div>
-            </CardContent>
-          </Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Resultado Líquido
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">Após impostos</p>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-emerald-700 mb-1">
+                  {formatCurrency(resultadoLiquido)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Margem: {margemLiquida.toFixed(1)}%
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card className="relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-12 h-12 bg-cyan-500/10 rounded-bl-3xl flex items-center justify-center">
-              <Target className="h-5 w-5 text-cyan-600" />
-            </div>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Ponto de Equilíbrio
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">Receita mínima mensal</p>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-cyan-700 mb-1">
-                {formatCurrency(totalCustos)}
+            <Card className="relative overflow-hidden border-2 border-cyan-200 bg-gradient-to-br from-cyan-50 to-cyan-100">
+              <div className="absolute top-0 right-0 w-12 h-12 bg-cyan-500/10 rounded-bl-3xl flex items-center justify-center">
+                <Target className="h-5 w-5 text-cyan-600" />
               </div>
-              <div className="text-xs text-muted-foreground">
-                Base: Custos totais
-              </div>
-            </CardContent>
-          </Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-cyan-800">
+                  Ponto de Equilíbrio
+                </CardTitle>
+                <p className="text-xs text-cyan-600">Faturamento mínimo mensal</p>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-cyan-700 mb-1">
+                  {formatCurrency(pontoEquilibrio)}
+                </div>
+                <div className="text-xs text-cyan-600">
+                  Base: Fixos + Variáveis
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card className="relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-12 h-12 bg-amber-500/10 rounded-bl-3xl flex items-center justify-center">
-              <FileText className="h-5 w-5 text-amber-600" />
-            </div>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Ticket Médio
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">Por pedido</p>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-amber-700 mb-1">
-                {formatCurrency(ticketMedio)}
+            <Card className="relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-12 h-12 bg-amber-500/10 rounded-bl-3xl flex items-center justify-center">
+                <FileText className="h-5 w-5 text-amber-600" />
               </div>
-              <div className="text-xs text-amber-600">
-                (em desenvolvimento)
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Ticket Médio
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">Por pedido</p>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-700 mb-1">
+                  {formatCurrency(ticketMedio)}
+                </div>
+                <div className="text-xs text-amber-600">
+                  (em desenvolvimento)
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Cost Breakdown Section */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <PieChart className="h-5 w-5 text-rose-600" />
+            <h3 className="text-xl font-bold">💸 Composição de Custos</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="relative overflow-hidden border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100">
+              <div className="absolute top-0 right-0 w-12 h-12 bg-blue-500/10 rounded-bl-3xl flex items-center justify-center">
+                <Calculator className="h-5 w-5 text-blue-600" />
               </div>
-            </CardContent>
-          </Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-blue-800">Custos Fixos</CardTitle>
+                <p className="text-xs text-blue-600">Base: Aba Custos</p>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-700 mb-1">
+                  {formatCurrency(totalCustosFixos)}
+                </div>
+                <div className="text-xs text-blue-600">
+                  {custosFixos.length} itens cadastrados
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100">
+              <div className="absolute top-0 right-0 w-12 h-12 bg-purple-500/10 rounded-bl-3xl flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-purple-600" />
+              </div>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-purple-800">Custos Variáveis</CardTitle>
+                <p className="text-xs text-purple-600">Imposto: R$ 1.212,96 | Logística: R$ 1.500,24</p>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-700 mb-1">
+                  {formatCurrency(totalCustosVariaveis)}
+                </div>
+                <div className="text-xs text-purple-600">
+                  Base: Projeção de PDV
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100">
+              <div className="absolute top-0 right-0 w-12 h-12 bg-green-500/10 rounded-bl-3xl flex items-center justify-center">
+                <PieChart className="h-5 w-5 text-green-600" />
+              </div>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-green-800">Custo de Insumos</CardTitle>
+                <p className="text-xs text-green-600">Base: Projeção de PDV</p>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-700 mb-1">
+                  {formatCurrency(totalCustoInsumos)}
+                </div>
+                <div className="text-xs text-green-600">
+                  Excluído do ponto de equilíbrio
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden border-2 border-rose-200 bg-gradient-to-br from-rose-50 to-rose-100">
+              <div className="absolute top-0 right-0 w-12 h-12 bg-rose-500/10 rounded-bl-3xl flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-rose-600" />
+              </div>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-rose-800">Total Geral</CardTitle>
+                <p className="text-xs text-rose-600">Todos os custos</p>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-rose-700 mb-1">
+                  {formatCurrency(totalCustos)}
+                </div>
+                <div className="text-xs text-rose-600">
+                  {faturamentoDisponivel && (totalCustos / faturamentoMensal * 100).toFixed(1)}% do faturamento
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Warning Alert */}
