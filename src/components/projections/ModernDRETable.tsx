@@ -1,17 +1,17 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { DREData } from '@/types/projections';
 import { TrendingUp, TrendingDown, DollarSign, Target, BarChart3, PieChart } from 'lucide-react';
-
 interface ModernDRETableProps {
   dreData: DREData;
   compact?: boolean;
 }
-
-export function ModernDRETable({ dreData, compact = false }: ModernDRETableProps) {
+export function ModernDRETable({
+  dreData,
+  compact = false
+}: ModernDRETableProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -20,31 +20,26 @@ export function ModernDRETable({ dreData, compact = false }: ModernDRETableProps
       maximumFractionDigits: 0
     }).format(value);
   };
-  
   const formatPercent = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'percent',
       minimumFractionDigits: 1,
       maximumFractionDigits: 1
-    }).format(value/100);
+    }).format(value / 100);
   };
-
   const getMarginColor = (margin: number) => {
     if (margin >= 20) return "text-green-600";
     if (margin >= 10) return "text-yellow-600";
     return "text-red-600";
   };
-
   const getProgressColor = (value: number, total: number) => {
-    const percentage = (value / total) * 100;
+    const percentage = value / total * 100;
     if (percentage <= 30) return "bg-green-500";
     if (percentage <= 60) return "bg-yellow-500";
     return "bg-red-500";
   };
-
   if (compact) {
-    return (
-      <Card className="h-full">
+    return <Card className="h-full">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-primary" />
@@ -72,10 +67,7 @@ export function ModernDRETable({ dreData, compact = false }: ModernDRETableProps
                 {formatPercent(dreData.operationalMargin)}
               </span>
             </div>
-            <Progress 
-              value={Math.max(0, dreData.operationalMargin)} 
-              className="h-2"
-            />
+            <Progress value={Math.max(0, dreData.operationalMargin)} className="h-2" />
           </div>
 
           <div className="pt-2 border-t space-y-2">
@@ -93,20 +85,17 @@ export function ModernDRETable({ dreData, compact = false }: ModernDRETableProps
             </div>
           </div>
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6 py-0 px-[20px]">
       {/* Header Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
-          <CardContent className="p-4">
+          <CardContent className="p-4 mx-0 my-0">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-green-700">Receita Total</p>
-                <p className="text-2xl font-bold text-green-800">{formatCurrency(dreData.totalRevenue)}</p>
+                <p className="font-bold text-green-800 text-2xl">{formatCurrency(dreData.totalRevenue)}</p>
               </div>
               <DollarSign className="h-8 w-8 text-green-600" />
             </div>
@@ -118,7 +107,7 @@ export function ModernDRETable({ dreData, compact = false }: ModernDRETableProps
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-700">Margem Bruta</p>
-                <p className="text-2xl font-bold text-blue-800">{formatPercent(dreData.grossMargin)}</p>
+                <p className="font-bold text-blue-800 text-2xl">{formatPercent(dreData.grossMargin)}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-blue-600" />
             </div>
@@ -136,10 +125,7 @@ export function ModernDRETable({ dreData, compact = false }: ModernDRETableProps
                   {formatCurrency(dreData.operationalResult)}
                 </p>
               </div>
-              {dreData.operationalResult >= 0 ? 
-                <TrendingUp className="h-8 w-8 text-purple-600" /> : 
-                <TrendingDown className="h-8 w-8 text-red-600" />
-              }
+              {dreData.operationalResult >= 0 ? <TrendingUp className="h-8 w-8 text-purple-600" /> : <TrendingDown className="h-8 w-8 text-red-600" />}
             </div>
           </CardContent>
         </Card>
@@ -149,9 +135,9 @@ export function ModernDRETable({ dreData, compact = false }: ModernDRETableProps
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-orange-700">EBITDA</p>
-                <p className="text-2xl font-bold text-orange-800">{formatCurrency(dreData.ebitda)}</p>
+                <p className="font-bold text-orange-800 text-2xl">{formatCurrency(dreData.ebitda)}</p>
               </div>
-              <Target className="h-8 w-8 text-orange-600" />
+              <Target className="h-5 w-5 text-orange-600" />
             </div>
           </CardContent>
         </Card>
@@ -167,8 +153,7 @@ export function ModernDRETable({ dreData, compact = false }: ModernDRETableProps
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {dreData.channelsData.map((channel) => (
-              <div key={channel.channel} className="space-y-2">
+            {dreData.channelsData.map(channel => <div key={channel.channel} className="space-y-2">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{channel.channel}</Badge>
@@ -183,12 +168,8 @@ export function ModernDRETable({ dreData, compact = false }: ModernDRETableProps
                     </p>
                   </div>
                 </div>
-                <Progress 
-                  value={(channel.revenue / dreData.totalRevenue) * 100} 
-                  className="h-2"
-                />
-              </div>
-            ))}
+                <Progress value={channel.revenue / dreData.totalRevenue * 100} className="h-2" />
+              </div>)}
           </div>
         </CardContent>
       </Card>
@@ -204,20 +185,17 @@ export function ModernDRETable({ dreData, compact = false }: ModernDRETableProps
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {dreData.fixedCosts.map((cost, index) => (
-                <div key={index} className="flex justify-between items-center">
+              {dreData.fixedCosts.map((cost, index) => <div key={index} className="flex justify-between items-center">
                   <span className="text-sm">{cost.name}</span>
                   <div className="text-right">
                     <span className="font-medium">{formatCurrency(cost.value)}</span>
                     <div className="w-20 h-1 bg-gray-200 rounded mt-1">
-                      <div 
-                        className={`h-full rounded ${getProgressColor(cost.value, dreData.totalFixedCosts)}`}
-                        style={{ width: `${(cost.value / dreData.totalFixedCosts) * 100}%` }}
-                      />
+                      <div className={`h-full rounded ${getProgressColor(cost.value, dreData.totalFixedCosts)}`} style={{
+                    width: `${cost.value / dreData.totalFixedCosts * 100}%`
+                  }} />
                     </div>
                   </div>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CardContent>
         </Card>
@@ -231,20 +209,17 @@ export function ModernDRETable({ dreData, compact = false }: ModernDRETableProps
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {dreData.administrativeCosts.map((cost, index) => (
-                <div key={index} className="flex justify-between items-center">
+              {dreData.administrativeCosts.map((cost, index) => <div key={index} className="flex justify-between items-center">
                   <span className="text-sm">{cost.name}</span>
                   <div className="text-right">
                     <span className="font-medium">{formatCurrency(cost.value)}</span>
                     <div className="w-20 h-1 bg-gray-200 rounded mt-1">
-                      <div 
-                        className={`h-full rounded ${getProgressColor(cost.value, dreData.totalAdministrativeCosts)}`}
-                        style={{ width: `${(cost.value / dreData.totalAdministrativeCosts) * 100}%` }}
-                      />
+                      <div className={`h-full rounded ${getProgressColor(cost.value, dreData.totalAdministrativeCosts)}`} style={{
+                    width: `${cost.value / dreData.totalAdministrativeCosts * 100}%`
+                  }} />
                     </div>
                   </div>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CardContent>
         </Card>
@@ -283,6 +258,5 @@ export function ModernDRETable({ dreData, compact = false }: ModernDRETableProps
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 }
