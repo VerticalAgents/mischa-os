@@ -741,7 +741,7 @@ export default function Custos() {
               <CardTitle>Custos Variáveis</CardTitle>
               
               {/* Toggle for real percentages */}
-              <div className="flex items-center gap-3 mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 mx-0 py-[19px] my-[15px]">
+              <div className="flex items-center gap-3 mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 mx-0 my-[15px] py-[25px]">
                 <Switch id="usar-percentual-real" checked={usarPercentualReal} onCheckedChange={setUsarPercentualReal} />
                 <div className="flex flex-col">
                   <label htmlFor="usar-percentual-real" className="text-sm font-medium cursor-pointer">
