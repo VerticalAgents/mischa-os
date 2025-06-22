@@ -22,7 +22,6 @@ const CUSTOS_UNITARIOS: Record<string, number> = {
   'food service': 29.17,
   'default': 1.32
 };
-
 const ALIQUOTA_PROVISORIA = 0.04; // 4%
 
 interface ProjecaoCliente {
@@ -45,7 +44,6 @@ interface ProjecaoCliente {
   custoLogistico: number;
   lucroBruto: number;
 }
-
 interface CalculoDetalhe {
   etapa: string;
   descricao: string;
@@ -53,42 +51,42 @@ interface CalculoDetalhe {
   formula?: string;
   observacao?: string;
 }
-
 interface ClienteDetalhe {
   clienteId: string;
   nomeCliente: string;
   calculos: CalculoDetalhe[];
 }
-
 interface ClienteNaoIncluido {
   nomeCliente: string;
   motivo: string;
 }
-
 export default function ProjecaoResultadosPDV() {
-  const { clientes, carregarClientes } = useClienteStore();
-  const { categorias } = useSupabaseCategoriasProduto();
-  const { tiposLogistica } = useSupabaseTiposLogistica();
+  const {
+    clientes,
+    carregarClientes
+  } = useClienteStore();
+  const {
+    categorias
+  } = useSupabaseCategoriasProduto();
+  const {
+    tiposLogistica
+  } = useSupabaseTiposLogistica();
   const [projecoes, setProjecoes] = useState<ProjecaoCliente[]>([]);
   const [mostrarDetalhes, setMostrarDetalhes] = useState(false);
   const [detalhesCalculos, setDetalhesCalculos] = useState<ClienteDetalhe[]>([]);
   const [clientesNaoIncluidos, setClientesNaoIncluidos] = useState<ClienteNaoIncluido[]>([]);
-
   useEffect(() => {
     console.log('ProjecaoResultadosPDV: Carregando clientes...');
     carregarClientes();
   }, [carregarClientes]);
-
   useEffect(() => {
     console.log('ProjecaoResultadosPDV: Total de clientes carregados:', clientes.length);
     console.log('ProjecaoResultadosPDV: Categorias disponíveis:', categorias.length);
     console.log('ProjecaoResultadosPDV: Tipos de logística carregados:', tiposLogistica.length);
-    
     if (clientes.length > 0 && categorias.length > 0 && tiposLogistica.length > 0) {
       calcularProjecoes();
     }
   }, [clientes, categorias, tiposLogistica]);
-
   const obterPrecoCategoria = (nomeCategoria: string): number => {
     const nomeNormalizado = nomeCategoria.toLowerCase();
     for (const [key, preco] of Object.entries(PRECOS_TEMPORARIOS)) {
@@ -98,7 +96,6 @@ export default function ProjecaoResultadosPDV() {
     }
     return PRECOS_TEMPORARIOS.default;
   };
-
   const obterCustoCategoria = (nomeCategoria: string): number => {
     const nomeNormalizado = nomeCategoria.toLowerCase();
     for (const [key, custo] of Object.entries(CUSTOS_UNITARIOS)) {
@@ -108,21 +105,15 @@ export default function ProjecaoResultadosPDV() {
     }
     return CUSTOS_UNITARIOS.default;
   };
-
   const obterPercentualLogistico = (tipoLogistica: string): number => {
     console.log('Buscando percentual para tipo:', tipoLogistica);
     console.log('Tipos disponíveis:', tiposLogistica);
-    
-    const tipo = tiposLogistica.find(t => 
-      t.nome.toLowerCase() === tipoLogistica.toLowerCase() ||
-      tipoLogistica.toLowerCase().includes(t.nome.toLowerCase())
-    );
-    
+    const tipo = tiposLogistica.find(t => t.nome.toLowerCase() === tipoLogistica.toLowerCase() || tipoLogistica.toLowerCase().includes(t.nome.toLowerCase()));
     if (tipo) {
       console.log(`Percentual encontrado para ${tipoLogistica}: ${tipo.percentual_logistico}%`);
       return tipo.percentual_logistico / 100; // Converter para decimal
     }
-    
+
     // Fallback para os valores antigos se não encontrar na configuração
     console.log(`Usando percentual padrão para ${tipoLogistica}`);
     if (tipoLogistica === 'Distribuição') {
@@ -130,44 +121,36 @@ export default function ProjecaoResultadosPDV() {
     } else if (tipoLogistica === 'Própria') {
       return 0.03; // 3% para logística própria
     }
-    
     return 0; // Valor padrão se não encontrar
   };
-
   const calcularGiroSemanal = (qtdPadrao: number, periodicidade: number): number => {
     if (periodicidade === 0) return 0;
-    return Math.round((qtdPadrao / periodicidade) * 7);
+    return Math.round(qtdPadrao / periodicidade * 7);
   };
-
   const calcularProjecoes = () => {
     console.log('ProjecaoResultadosPDV: Iniciando cálculo de projeções...');
-    
+
     // Filtrar apenas clientes ativos
     const clientesAtivos = clientes.filter(cliente => cliente.statusCliente === 'Ativo');
     console.log('ProjecaoResultadosPDV: Clientes ativos encontrados:', clientesAtivos.length);
-    
     const projecoesCalculadas: ProjecaoCliente[] = [];
     const detalhesCalculados: ClienteDetalhe[] = [];
     const clientesExcluidos: ClienteNaoIncluido[] = [];
-
     clientesAtivos.forEach(cliente => {
       const detalhesCliente: CalculoDetalhe[] = [];
-      
+
       // Verificar se cliente tem categorias habilitadas
       if (!cliente.categoriasHabilitadas || cliente.categoriasHabilitadas.length === 0) {
         console.log(`ProjecaoResultadosPDV: Cliente ${cliente.nome} sem categorias habilitadas`);
-        
         clientesExcluidos.push({
           nomeCliente: cliente.nome,
           motivo: "Cliente sem categorias habilitadas"
         });
-        
         detalhesCliente.push({
           etapa: "AVISO",
           descricao: "Cliente sem categorias habilitadas - pulando cálculos",
           observacao: "Para incluir este cliente na projeção, configure as categorias habilitadas no cadastro"
         });
-        
         detalhesCalculados.push({
           clienteId: cliente.id,
           nomeCliente: cliente.nome,
@@ -175,13 +158,11 @@ export default function ProjecaoResultadosPDV() {
         });
         return;
       }
-
       detalhesCliente.push({
         etapa: "DADOS_BASE",
         descricao: "Dados básicos do cliente",
         observacao: `Quantidade padrão: ${cliente.quantidadePadrao}, Periodicidade: ${cliente.periodicidadePadrao} dias, Categorias habilitadas: ${cliente.categoriasHabilitadas.length}`
       });
-
       const categoriasCliente = cliente.categoriasHabilitadas.map(categoriaId => {
         const categoria = categorias.find(cat => cat.id === categoriaId);
         if (!categoria) {
@@ -192,42 +173,36 @@ export default function ProjecaoResultadosPDV() {
           });
           return null;
         }
-
         const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
         const precoAplicado = obterPrecoCategoria(categoria.nome);
         const custoUnitario = obterCustoCategoria(categoria.nome);
         const faturamento = giroSemanal * precoAplicado;
         const custoInsumos = giroSemanal * custoUnitario;
         const margemUnitaria = precoAplicado - custoUnitario;
-
         detalhesCliente.push({
           etapa: "CALCULO_CATEGORIA",
           descricao: `Cálculos para categoria: ${categoria.nome}`,
           formula: `Giro semanal = (${cliente.quantidadePadrao} ÷ ${cliente.periodicidadePadrao}) × 7 = ${giroSemanal}`,
           observacao: `Preço aplicado: R$ ${precoAplicado.toFixed(2)} | Custo unitário: R$ ${custoUnitario.toFixed(2)} (${categoria.nome.toLowerCase().includes('food service') ? 'custo Food Service' : 'custo padrão'})`
         });
-
         detalhesCliente.push({
           etapa: "FATURAMENTO",
           descricao: `Faturamento da categoria ${categoria.nome}`,
           formula: `${giroSemanal} × R$ ${precoAplicado.toFixed(2)} = R$ ${faturamento.toFixed(2)}`,
           valor: faturamento
         });
-
         detalhesCliente.push({
           etapa: "CUSTO_INSUMOS",
           descricao: `Custo de insumos da categoria ${categoria.nome}`,
           formula: `${giroSemanal} × R$ ${custoUnitario.toFixed(2)} = R$ ${custoInsumos.toFixed(2)}`,
           valor: custoInsumos
         });
-
         detalhesCliente.push({
           etapa: "MARGEM_UNITARIA",
           descricao: `Margem unitária da categoria ${categoria.nome}`,
           formula: `R$ ${precoAplicado.toFixed(2)} - R$ ${custoUnitario.toFixed(2)} = R$ ${margemUnitaria.toFixed(2)}`,
           valor: margemUnitaria
         });
-
         return {
           categoriaId,
           nomeCategoria: categoria.nome,
@@ -239,15 +214,12 @@ export default function ProjecaoResultadosPDV() {
           custoUnitario
         };
       }).filter(Boolean) as any[];
-
       if (categoriasCliente.length === 0) {
         console.log(`ProjecaoResultadosPDV: Cliente ${cliente.nome} sem categorias válidas`);
-        
         clientesExcluidos.push({
           nomeCliente: cliente.nome,
           motivo: "Categorias configuradas não encontradas no sistema"
         });
-        
         detalhesCalculados.push({
           clienteId: cliente.id,
           nomeCliente: cliente.nome,
@@ -255,40 +227,32 @@ export default function ProjecaoResultadosPDV() {
         });
         return;
       }
-
       const faturamentoTotal = categoriasCliente.reduce((sum, cat) => sum + cat.faturamento, 0);
       const custoInsumosTotal = categoriasCliente.reduce((sum, cat) => sum + cat.custoInsumos, 0);
-      
       detalhesCliente.push({
         etapa: "FATURAMENTO_TOTAL",
         descricao: "Faturamento total do cliente",
         formula: `Soma dos faturamentos por categoria = R$ ${faturamentoTotal.toFixed(2)}`,
         valor: faturamentoTotal
       });
-
       detalhesCliente.push({
         etapa: "CUSTO_TOTAL",
         descricao: "Custo total de insumos do cliente",
         formula: `Soma dos custos por categoria = R$ ${custoInsumosTotal.toFixed(2)}`,
         valor: custoInsumosTotal
       });
-      
       const impostoTotal = cliente.emiteNotaFiscal ? faturamentoTotal * ALIQUOTA_PROVISORIA : 0;
-      
       detalhesCliente.push({
         etapa: "IMPOSTO",
         descricao: "Cálculo de impostos",
-        formula: cliente.emiteNotaFiscal 
-          ? `R$ ${faturamentoTotal.toFixed(2)} × ${(ALIQUOTA_PROVISORIA * 100).toFixed(1)}% = R$ ${impostoTotal.toFixed(2)}`
-          : "Cliente não emite NF - sem impostos",
+        formula: cliente.emiteNotaFiscal ? `R$ ${faturamentoTotal.toFixed(2)} × ${(ALIQUOTA_PROVISORIA * 100).toFixed(1)}% = R$ ${impostoTotal.toFixed(2)}` : "Cliente não emite NF - sem impostos",
         valor: impostoTotal,
         observacao: cliente.emiteNotaFiscal ? "Alíquota provisória de 4%" : "Verificar configuração de nota fiscal"
       });
-      
+
       // Obter percentual logístico baseado no tipo configurado
       const percentualLogistico = obterPercentualLogistico(cliente.tipoLogistica || 'Própria');
       const custoLogistico = faturamentoTotal * percentualLogistico;
-      
       detalhesCliente.push({
         etapa: "LOGISTICA",
         descricao: "Cálculo de custo logístico (configuração real)",
@@ -296,9 +260,7 @@ export default function ProjecaoResultadosPDV() {
         valor: custoLogistico,
         observacao: `Tipo: ${cliente.tipoLogistica || 'Própria'} - Percentual da configuração`
       });
-      
       const lucroBruto = faturamentoTotal - custoInsumosTotal - impostoTotal - custoLogistico;
-
       detalhesCliente.push({
         etapa: "LUCRO_BRUTO",
         descricao: "Lucro bruto final",
@@ -306,7 +268,6 @@ export default function ProjecaoResultadosPDV() {
         valor: lucroBruto,
         observacao: lucroBruto > 0 ? "Lucro positivo" : "Prejuízo ou ponto de equilíbrio"
       });
-
       projecoesCalculadas.push({
         clienteId: cliente.id,
         nomeCliente: cliente.nome,
@@ -318,17 +279,14 @@ export default function ProjecaoResultadosPDV() {
         custoLogistico,
         lucroBruto
       });
-
       detalhesCalculados.push({
         clienteId: cliente.id,
         nomeCliente: cliente.nome,
         calculos: detalhesCliente
       });
     });
-
     console.log('ProjecaoResultadosPDV: Projeções calculadas:', projecoesCalculadas.length);
     console.log('ProjecaoResultadosPDV: Clientes não incluídos:', clientesExcluidos.length);
-    
     setProjecoes(projecoesCalculadas);
     setDetalhesCalculos(detalhesCalculados);
     setClientesNaoIncluidos(clientesExcluidos);
@@ -350,10 +308,8 @@ export default function ProjecaoResultadosPDV() {
         distribuicaoCategorias: {} as Record<string, number>
       };
     }
-
     const totalClientes = projecoes.length;
     const clientesComNF = projecoes.filter(p => p.emiteNotaFiscal).length;
-    
     let somaPrecos = 0;
     let somaGiros = 0;
     let somaFaturamentos = 0;
@@ -363,43 +319,34 @@ export default function ProjecaoResultadosPDV() {
     let totalCategoriasRevenda = 0;
     let totalGiroClientesHabilitados = 0;
     let totalClientesGiroHabilitados = 0;
-
     projecoes.forEach(projecao => {
       // Buscar o cliente para verificar configurações
       const cliente = clientes.find(c => c.id === projecao.clienteId);
       const contabilizaGiro = cliente?.contabilizarGiroMedio ?? true;
-      
       projecao.categorias.forEach(categoria => {
         somaFaturamentos += categoria.faturamento;
         totalCategorias++;
-        
+
         // Filtrar preço médio apenas para categoria "Revenda Padrão"
         if (categoria.nomeCategoria.toLowerCase().includes('revenda padrão')) {
           somaPrecos += categoria.precoAplicado;
           totalCategoriasRevenda++;
         }
-        
+
         // Filtrar giro médio apenas para clientes com checkbox habilitado
         if (contabilizaGiro) {
           somaGiros += categoria.giroSemanal;
           totalGiroClientesHabilitados++;
         }
-        
         const nomeCategoria = categoria.nomeCategoria;
         categoriasCount[nomeCategoria] = (categoriasCount[nomeCategoria] || 0) + 1;
       });
-      
       somaLucros += projecao.lucroBruto;
-      
       if (contabilizaGiro) {
         totalClientesGiroHabilitados++;
       }
     });
-
-    const faturamentoTotalSemanal = projecoes.reduce((sum, proj) => 
-      sum + proj.categorias.reduce((catSum, cat) => catSum + cat.faturamento, 0), 0
-    );
-    
+    const faturamentoTotalSemanal = projecoes.reduce((sum, proj) => sum + proj.categorias.reduce((catSum, cat) => catSum + cat.faturamento, 0), 0);
     const totalImpostoSemanal = projecoes.reduce((sum, proj) => sum + proj.impostoTotal, 0);
     const totalLogisticaSemanal = projecoes.reduce((sum, proj) => sum + proj.custoLogistico, 0);
 
@@ -413,52 +360,40 @@ export default function ProjecaoResultadosPDV() {
     // Distribuição percentual por categoria
     const distribuicaoCategorias: Record<string, number> = {};
     Object.keys(categoriasCount).forEach(categoria => {
-      distribuicaoCategorias[categoria] = (categoriasCount[categoria] / totalCategorias) * 100;
+      distribuicaoCategorias[categoria] = categoriasCount[categoria] / totalCategorias * 100;
     });
-
     return {
       precoMedio: totalCategoriasRevenda > 0 ? somaPrecos / totalCategoriasRevenda : 0,
       giroMedio: totalGiroClientesHabilitados > 0 ? somaGiros / totalGiroClientesHabilitados : 0,
       faturamentoMedio: totalClientes > 0 ? somaFaturamentosMensal / totalClientes : 0,
-      percentualClientesNF: totalClientes > 0 ? (clientesComNF / totalClientes) * 100 : 0,
+      percentualClientesNF: totalClientes > 0 ? clientesComNF / totalClientes * 100 : 0,
       totalImposto: totalImpostoMensal,
-      percentualImposto: faturamentoTotalMensal > 0 ? (totalImpostoMensal / faturamentoTotalMensal) * 100 : 0,
+      percentualImposto: faturamentoTotalMensal > 0 ? totalImpostoMensal / faturamentoTotalMensal * 100 : 0,
       totalLogistica: totalLogisticaMensal,
-      percentualLogistica: faturamentoTotalMensal > 0 ? (totalLogisticaMensal / faturamentoTotalMensal) * 100 : 0,
+      percentualLogistica: faturamentoTotalMensal > 0 ? totalLogisticaMensal / faturamentoTotalMensal * 100 : 0,
       lucroBrutoMedio: totalClientes > 0 ? somaLucrosMensal / totalClientes : 0,
       distribuicaoCategorias
     };
   };
-
   const formatarMoeda = (valor: number): string => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(valor);
   };
-
   const formatarPercentual = (valor: number): string => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'percent',
       minimumFractionDigits: 1
     }).format(valor / 100);
   };
-
   const indicadores = calcularIndicadoresGerais();
   // Converter valores semanais para mensais
   const totalGeralMensal = projecoes.reduce((sum, proj) => sum + proj.lucroBruto, 0) * 4;
-  const faturamentoGeralMensal = projecoes.reduce((sum, proj) => 
-    sum + proj.categorias.reduce((catSum, cat) => catSum + cat.faturamento, 0), 0
-  ) * 4;
-
+  const faturamentoGeralMensal = projecoes.reduce((sum, proj) => sum + proj.categorias.reduce((catSum, cat) => catSum + cat.faturamento, 0), 0) * 4;
   const clientesAtivos = clientes.filter(cliente => cliente.statusCliente === 'Ativo');
-
-  return (
-    <div className="space-y-6">
-      <PageHeader 
-        title="Projeção de Resultados por PDV"
-        description="Análise de rentabilidade e projeções por ponto de venda"
-      />
+  return <div className="space-y-6">
+      <PageHeader title="Projeção de Resultados por PDV" description="Análise de rentabilidade e projeções por ponto de venda" />
       
       {/* Status do Carregamento - Card existente */}
       <Card className="border-blue-200 bg-blue-50">
@@ -468,11 +403,7 @@ export default function ProjecaoResultadosPDV() {
               <Info className="h-5 w-5" />
               Status do Carregamento de Dados
             </CardTitle>
-            <Button
-              variant={mostrarDetalhes ? "default" : "outline"}
-              size="sm"
-              onClick={() => setMostrarDetalhes(!mostrarDetalhes)}
-            >
+            <Button variant={mostrarDetalhes ? "default" : "outline"} size="sm" onClick={() => setMostrarDetalhes(!mostrarDetalhes)}>
               {mostrarDetalhes ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
               {mostrarDetalhes ? "Ocultar" : "Mostrar"} Detalhes dos Cálculos
             </Button>
@@ -504,57 +435,39 @@ export default function ProjecaoResultadosPDV() {
             </div>
           </div>
           
-          {mostrarDetalhes && (
-            <div className="mt-4 space-y-4 max-h-96 overflow-y-auto">
+          {mostrarDetalhes && <div className="mt-4 space-y-4 max-h-96 overflow-y-auto">
               <h4 className="font-semibold text-blue-800">Tipos de Logística Configurados:</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
-                {tiposLogistica.map((tipo) => (
-                  <div key={tipo.id} className="bg-white rounded p-2 border border-blue-200">
+                {tiposLogistica.map(tipo => <div key={tipo.id} className="bg-white rounded p-2 border border-blue-200">
                     <div className="font-medium text-blue-700">{tipo.nome}</div>
                     <div className="text-sm text-blue-600">{tipo.percentual_logistico.toFixed(2)}%</div>
-                  </div>
-                ))}
+                  </div>)}
               </div>
               
               {/* Detalhes dos cálculos por cliente */}
               <h4 className="font-semibold text-blue-800 mb-2">Detalhes dos Cálculos por Cliente:</h4>
-              {detalhesCalculos.map((clienteDetalhe) => (
-                <div key={clienteDetalhe.clienteId} className="border border-blue-200 rounded p-3 bg-white mb-4">
+              {detalhesCalculos.map(clienteDetalhe => <div key={clienteDetalhe.clienteId} className="border border-blue-200 rounded p-3 bg-white mb-4">
                   <h5 className="font-semibold text-blue-700 mb-2">{clienteDetalhe.nomeCliente}</h5>
                   <div className="space-y-2">
-                    {clienteDetalhe.calculos.map((calculo, index) => (
-                      <div key={index} className="text-xs">
+                    {clienteDetalhe.calculos.map((calculo, index) => <div key={index} className="text-xs">
                         <div className="font-medium text-blue-600">{calculo.etapa}: {calculo.descricao}</div>
-                        {calculo.formula && (
-                          <div className="text-gray-600 ml-2">📐 {calculo.formula}</div>
-                        )}
-                        {calculo.valor !== undefined && (
-                          <div className="text-green-600 ml-2">💰 Resultado: {formatarMoeda(calculo.valor)}</div>
-                        )}
-                        {calculo.observacao && (
-                          <div className="text-amber-600 ml-2">ℹ️ {calculo.observacao}</div>
-                        )}
-                      </div>
-                    ))}
+                        {calculo.formula && <div className="text-gray-600 ml-2">📐 {calculo.formula}</div>}
+                        {calculo.valor !== undefined && <div className="text-green-600 ml-2">💰 Resultado: {formatarMoeda(calculo.valor)}</div>}
+                        {calculo.observacao && <div className="text-amber-600 ml-2">ℹ️ {calculo.observacao}</div>}
+                      </div>)}
                   </div>
-                </div>
-              ))}
+                </div>)}
 
-              {clientesNaoIncluidos.length > 0 && (
-                <div className="border border-red-200 rounded p-3 bg-red-50">
+              {clientesNaoIncluidos.length > 0 && <div className="border border-red-200 rounded p-3 bg-red-50">
                   <h4 className="font-semibold text-red-800 mb-3">Clientes Não Incluídos na Projeção:</h4>
                   <div className="space-y-2">
-                    {clientesNaoIncluidos.map((cliente, index) => (
-                      <div key={index} className="text-sm">
+                    {clientesNaoIncluidos.map((cliente, index) => <div key={index} className="text-sm">
                         <div className="font-medium text-red-700">❌ {cliente.nomeCliente}</div>
                         <div className="text-red-600 ml-4">Motivo: {cliente.motivo}</div>
-                      </div>
-                    ))}
+                      </div>)}
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                </div>}
+            </div>}
         </CardContent>
       </Card>
       
@@ -579,8 +492,7 @@ export default function ProjecaoResultadosPDV() {
         </CardContent>
       </Card>
 
-      {projecoes.length === 0 ? (
-        <Card>
+      {projecoes.length === 0 ? <Card>
           <CardContent className="text-center py-8">
             <Info className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Nenhuma projeção disponível</h3>
@@ -588,9 +500,7 @@ export default function ProjecaoResultadosPDV() {
               Dos {clientesAtivos.length} clientes ativos, nenhum possui categorias habilitadas para cálculo.
             </p>
           </CardContent>
-        </Card>
-      ) : (
-        <>
+        </Card> : <>
           {/* Resumo Geral Expandido */}
           <Card>
             <CardHeader>
@@ -690,12 +600,10 @@ export default function ProjecaoResultadosPDV() {
                     Distribuição por Categoria
                   </h4>
                   <div className="space-y-2">
-                    {Object.entries(indicadores.distribuicaoCategorias).map(([categoria, percentual]) => (
-                      <div key={categoria} className="flex justify-between items-center p-2 bg-blue-50 rounded">
+                    {Object.entries(indicadores.distribuicaoCategorias).map(([categoria, percentual]) => <div key={categoria} className="flex justify-between items-center p-2 bg-blue-50 rounded">
                         <span className="text-sm">{categoria}</span>
                         <div className="font-medium text-blue-600">{formatarPercentual(percentual)}</div>
-                      </div>
-                    ))}
+                      </div>)}
                   </div>
                 </div>
               </div>
@@ -729,14 +637,11 @@ export default function ProjecaoResultadosPDV() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {projecoes.map((projecao) => {
-                      const cliente = clientes.find(c => c.id === projecao.clienteId);
-                      const contabilizaGiro = cliente?.contabilizarGiroMedio ?? true;
-                      
-                      return projecao.categorias.map((categoria, index) => (
-                        <TableRow key={`${projecao.clienteId}-${categoria.categoriaId}`}>
-                          {index === 0 && (
-                            <>
+                    {projecoes.map(projecao => {
+                  const cliente = clientes.find(c => c.id === projecao.clienteId);
+                  const contabilizaGiro = cliente?.contabilizarGiroMedio ?? true;
+                  return projecao.categorias.map((categoria, index) => <TableRow key={`${projecao.clienteId}-${categoria.categoriaId}`}>
+                          {index === 0 && <>
                               <TableCell rowSpan={projecao.categorias.length} className="font-medium border-r">
                                 {projecao.nomeCliente}
                               </TableCell>
@@ -745,8 +650,7 @@ export default function ProjecaoResultadosPDV() {
                                   {contabilizaGiro ? "Sim" : "Não"}
                                 </Badge>
                               </TableCell>
-                            </>
-                          )}
+                            </>}
                           <TableCell>
                             <div className="flex items-center gap-2">
                               {categoria.nomeCategoria}
@@ -773,8 +677,7 @@ export default function ProjecaoResultadosPDV() {
                           <TableCell className={categoria.margemUnitaria > 0 ? "text-green-600" : "text-red-600"}>
                             {formatarMoeda(categoria.margemUnitaria)}
                           </TableCell>
-                          {index === 0 && (
-                            <>
+                          {index === 0 && <>
                               <TableCell rowSpan={projecao.categorias.length} className="text-center border-l">
                                 <Badge variant={projecao.emiteNotaFiscal ? "default" : "secondary"}>
                                   {projecao.emiteNotaFiscal ? "Sim" : "Não"}
@@ -783,9 +686,7 @@ export default function ProjecaoResultadosPDV() {
                               <TableCell rowSpan={projecao.categorias.length}>
                                 <div className="flex items-center gap-1">
                                   {formatarMoeda(projecao.impostoTotal)}
-                                  {projecao.impostoTotal > 0 && (
-                                    <Badge variant="outline" className="text-xs">4%</Badge>
-                                  )}
+                                  {projecao.impostoTotal > 0 && <Badge variant="outline" className="text-xs">4%</Badge>}
                                 </div>
                               </TableCell>
                               <TableCell rowSpan={projecao.categorias.length}>
@@ -803,18 +704,14 @@ export default function ProjecaoResultadosPDV() {
                               <TableCell rowSpan={projecao.categorias.length} className={`font-bold border-l ${projecao.lucroBruto > 0 ? "text-green-600" : "text-red-600"}`}>
                                 {formatarMoeda(projecao.lucroBruto)}
                               </TableCell>
-                            </>
-                          )}
-                        </TableRow>
-                      ));
-                    })}
+                            </>}
+                        </TableRow>);
+                })}
                   </TableBody>
                 </Table>
               </div>
             </CardContent>
           </Card>
-        </>
-      )}
-    </div>
-  );
+        </>}
+    </div>;
 }
