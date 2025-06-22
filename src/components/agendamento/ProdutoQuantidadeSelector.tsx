@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,9 +51,8 @@ export default function ProdutoQuantidadeSelector({
   const adicionarProduto = () => {
     if (produtosFiltrados.length > 0) {
       const novoProduto = produtosFiltrados[0].nome;
-      if (!value.some(item => item.produto === novoProduto)) {
-        onChange([...value, { produto: novoProduto, quantidade: 1 }]);
-      }
+      // Remove the restriction that prevents adding multiple products
+      onChange([...value, { produto: novoProduto, quantidade: 1 }]);
     }
   };
 
@@ -200,7 +198,7 @@ export default function ProdutoQuantidadeSelector({
 
       <div className="space-y-3">
         {value.map((item, index) => (
-          <div key={index} className="flex items-center gap-2 p-3 border rounded-lg">
+          <div key={`${index}-${item.produto}`} className="flex items-center gap-2 p-3 border rounded-lg">
             <div className="flex-1">
               <Label htmlFor={`produto-${index}`} className="text-xs">Produto</Label>
               <Select
