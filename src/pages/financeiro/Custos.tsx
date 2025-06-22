@@ -803,7 +803,7 @@ export default function Custos() {
                               <span className={isUsingRealData ? "font-semibold text-blue-600" : ""}>
                                 {formatCurrency(calcularValorVariavelDisplay(custo))}
                               </span>
-                              {isUsingRealData && <span className="text-xs text-blue-500">Fonte: Projeção PDV</span>}
+                              {isUsingRealData}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
