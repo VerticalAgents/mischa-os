@@ -567,9 +567,7 @@ export default function Custos() {
             <TrendingUp className="h-5 w-5 text-purple-600" />
           </div>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total de Custos Variáveis
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Custos Variáveis</CardTitle>
             <p className="text-xs text-muted-foreground">(valor mensal)</p>
           </CardHeader>
           <CardContent>
