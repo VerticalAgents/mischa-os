@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,13 +41,12 @@ export default function ProdutoQuantidadeSelector({
     recarregar
   } = useProdutosPorCategoria(clienteId);
 
-  // Carrega dados automaticamente quando o clienteId muda ou quando o componente é montado
+  // Carrega dados uma única vez ao montar o componente
   useEffect(() => {
-    if (clienteId) {
-      console.log('🔄 Auto-carregando produtos para cliente:', clienteId);
-      carregarDados(true); // Force reload para sempre buscar dados atualizados
+    if (clienteId && !carregado) {
+      carregarDados();
     }
-  }, [clienteId, carregarDados]);
+  }, [clienteId, carregado, carregarDados]);
 
   const adicionarProduto = () => {
     if (produtosFiltrados.length > 0) {
