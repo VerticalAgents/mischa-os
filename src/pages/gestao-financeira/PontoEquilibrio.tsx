@@ -8,12 +8,14 @@ import { Calculator, TrendingUp, Target, AlertTriangle, BarChart3, Package, Fact
 import { useSupabaseCustosFixos } from "@/hooks/useSupabaseCustosFixos";
 import { useSupabaseCustosVariaveis } from "@/hooks/useSupabaseCustosVariaveis";
 import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
 
 export default function PontoEquilibrio() {
   const { custosFixos } = useSupabaseCustosFixos();
   const { custosVariaveis } = useSupabaseCustosVariaveis();
   const { faturamentoMensal, disponivel: faturamentoDisponivel } = useFaturamentoPrevisto();
+  const { clientes } = useClienteStore();
 
   // Calculate normalized monthly value for fixed costs
   const calcularValorMensal = (custo: any): number => {
@@ -27,7 +29,19 @@ export default function PontoEquilibrio() {
     return valorMensal;
   };
 
-  // Calculate totals (fixed + variable only, excluding inputs)
+  // Calculate input costs
+  const calcularCustoInsumos = (): number => {
+    if (!clientes.length) return 0;
+    const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio);
+    const custoMedioInsumosPorUnidade = 2.10;
+    const volumeMensalTotal = clientesAtivos.reduce((total, cliente) => {
+      const volumeSemanal = cliente.quantidadePadrao * (7 / cliente.periodicidadePadrao);
+      return total + volumeSemanal * 4.33;
+    }, 0);
+    return volumeMensalTotal * custoMedioInsumosPorUnidade;
+  };
+
+  // Calculate totals (fixed + variable only, excluding inputs for break-even calculation)
   const totalCustosFixos = custosFixos.reduce((total, custo) => total + calcularValorMensal(custo), 0);
   
   // Calculate variable costs with real values when available
@@ -48,8 +62,14 @@ export default function PontoEquilibrio() {
     return total + valorFinal;
   }, 0);
 
+  // Calculate input costs
+  const totalCustoInsumos = calcularCustoInsumos();
+
   // Total costs for break-even (fixed + variable only, as specified)
   const custosParaEquilibrio = totalCustosFixos + totalCustosVariaveis; // R$ 15.735,32
+
+  // Total costs including inputs for chart visualization
+  const custosTotal = totalCustosFixos + totalCustosVariaveis + totalCustoInsumos; // R$ 29.231,15
 
   // Product data with real contribution margins
   const produtos = [
@@ -57,6 +77,7 @@ export default function PontoEquilibrio() {
       nome: "Brownies (Revenda Padrão)",
       precoVenda: 4.50,
       margemContribuicao: 3.18, // Margin provided
+      custoInsumo: 1.32, // Cost per unit for inputs
       icon: Package,
       color: "blue"
     },
@@ -64,6 +85,7 @@ export default function PontoEquilibrio() {
       nome: "Formas (40 unidades)",
       precoVenda: 127.20,
       margemContribuicao: 127.20, // Margin provided
+      custoInsumo: 0, // No input cost for forms
       icon: Factory,
       color: "purple"
     },
@@ -71,12 +93,13 @@ export default function PontoEquilibrio() {
       nome: "Mini Brownie Tradicional (Food Service)",
       precoVenda: 40.83,
       margemContribuicao: 40.83, // Margin provided
+      custoInsumo: 29.17, // Cost per package for inputs
       icon: Utensils,
       color: "green"
     }
   ];
 
-  // Calculate break-even quantities using provided margins
+  // Calculate break-even quantities using provided margins (without inputs)
   const pontosEquilibrio = produtos.map(produto => {
     const quantidadeEquilibrio = Math.ceil(custosParaEquilibrio / produto.margemContribuicao);
     const faturamentoEquilibrio = quantidadeEquilibrio * produto.precoVenda;
@@ -94,16 +117,26 @@ export default function PontoEquilibrio() {
     ? ((faturamentoMensal - pontoEquilibrioPrincipal) / faturamentoMensal) * 100 
     : 0;
 
-  // Chart data for break-even visualization
+  // Chart data for break-even visualization - corrected to show realistic intersection
   const chartData = Array.from({ length: 12 }, (_, i) => {
     const faturamento = (i + 1) * (pontoEquilibrioPrincipal / 6);
-    const custosVariaveisChart = faturamento * 0.15; // Approximate variable cost percentage
-    const custosTotal = totalCustosFixos + custosVariaveisChart;
+    
+    // Calculate variable costs as percentage of revenue
+    const percentualCustosVariaveis = totalCustosVariaveis / faturamentoMensal;
+    const custosVariaveisChart = faturamento * percentualCustosVariaveis;
+    
+    // Calculate input costs based on volume (proportional to revenue)
+    const percentualCustoInsumos = totalCustoInsumos / faturamentoMensal;
+    const custoInsumosChart = faturamento * percentualCustoInsumos;
+    
+    // Total costs including all components
+    const custosTotal = totalCustosFixos + custosVariaveisChart + custoInsumosChart;
     
     return {
       faturamento: Math.round(faturamento),
       custosFixos: Math.round(totalCustosFixos),
       custosVariaveis: Math.round(custosVariaveisChart),
+      custoInsumos: Math.round(custoInsumosChart),
       custosTotal: Math.round(custosTotal),
       resultado: Math.round(faturamento - custosTotal)
     };
@@ -175,7 +208,7 @@ export default function PontoEquilibrio() {
           </div>
           <CardHeader className="pb-2">
             <CardTitle className="text-2xl text-orange-800">Ponto de Equilíbrio Mensal</CardTitle>
-            <p className="text-sm text-orange-600">Faturamento mínimo para cobrir todos os custos</p>
+            <p className="text-sm text-orange-600">Faturamento mínimo para cobrir custos fixos e variáveis</p>
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold text-orange-700 mb-4">
@@ -313,7 +346,9 @@ export default function PontoEquilibrio() {
             📊 Gráfico de Break-Even
           </CardTitle>
           <CardDescription>
-            Visualização do ponto de equilíbrio: Faturamento vs. Custos (R$ {pontoEquilibrioPrincipal.toLocaleString()})
+            Visualização do ponto de equilíbrio: Faturamento vs. Custos Totais (incluindo insumos)
+            <br />
+            <span className="text-xs text-muted-foreground">Interseção em R$ {pontoEquilibrioPrincipal.toLocaleString()}</span>
           </CardDescription>
         </CardHeader>
         <CardContent className="h-96">
@@ -341,7 +376,7 @@ export default function PontoEquilibrio() {
                 type="monotone" 
                 dataKey="custosTotal" 
                 stroke="#f59e0b" 
-                name="Custos Totais"
+                name="Custos Totais (inclui insumos)"
                 strokeWidth={3}
               />
               <Line 
@@ -354,6 +389,14 @@ export default function PontoEquilibrio() {
               />
               <Line 
                 type="monotone" 
+                dataKey="custoInsumos" 
+                stroke="#06b6d4" 
+                name="Custos de Insumos"
+                strokeDasharray="3 3"
+                strokeWidth={2}
+              />
+              <Line 
+                type="monotone" 
                 dataKey="resultado" 
                 stroke="#10b981" 
                 name="Resultado"
@@ -361,6 +404,9 @@ export default function PontoEquilibrio() {
               />
             </LineChart>
           </ResponsiveContainer>
+          <div className="mt-2 text-xs text-muted-foreground text-center">
+            Custo total inclui insumos conforme projeção mensal real
+          </div>
         </CardContent>
       </Card>
     </div>
