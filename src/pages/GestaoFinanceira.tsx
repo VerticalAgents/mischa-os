@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
@@ -11,29 +10,45 @@ import { useSupabaseCustosFixos } from "@/hooks/useSupabaseCustosFixos";
 import { useSupabaseCustosVariaveis } from "@/hooks/useSupabaseCustosVariaveis";
 import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
 import { useClienteStore } from "@/hooks/useClienteStore";
-
 export default function GestaoFinanceira() {
   const navigate = useNavigate();
-  const { custosFixos } = useSupabaseCustosFixos();
-  const { custosVariaveis } = useSupabaseCustosVariaveis();
-  const { faturamentoMensal, disponivel: faturamentoDisponivel } = useFaturamentoPrevisto();
-  const { clientes } = useClienteStore();
+  const {
+    custosFixos
+  } = useSupabaseCustosFixos();
+  const {
+    custosVariaveis
+  } = useSupabaseCustosVariaveis();
+  const {
+    faturamentoMensal,
+    disponivel: faturamentoDisponivel
+  } = useFaturamentoPrevisto();
+  const {
+    clientes
+  } = useClienteStore();
 
   // Calculate normalized monthly value for fixed costs
   const calcularValorMensal = (custo: any): number => {
     let valorMensal = custo.valor;
     switch (custo.frequencia) {
-      case "semanal": valorMensal *= 4.33; break;
-      case "trimestral": valorMensal /= 3; break;
-      case "semestral": valorMensal /= 6; break;
-      case "anual": valorMensal /= 12; break;
+      case "semanal":
+        valorMensal *= 4.33;
+        break;
+      case "trimestral":
+        valorMensal /= 3;
+        break;
+      case "semestral":
+        valorMensal /= 6;
+        break;
+      case "anual":
+        valorMensal /= 12;
+        break;
     }
     return valorMensal;
   };
 
   // Calculate totals from costs page
   const totalCustosFixos = custosFixos.reduce((total, custo) => total + calcularValorMensal(custo), 0);
-  
+
   // Calculate variable costs with real percentages (same logic as costs page)
   const calcularCustoInsumos = (): number => {
     if (!clientes.length) return 0;
@@ -45,12 +60,10 @@ export default function GestaoFinanceira() {
     }, 0);
     return volumeMensalTotal * custoMedioInsumosPorUnidade;
   };
-
   const totalCustoInsumos = calcularCustoInsumos();
-
   const totalCustosVariaveis = custosVariaveis.reduce((total, custo) => {
     let valorFinal = custo.valor || 0;
-    
+
     // Use real values for taxes and logistics (same as costs page logic)
     if (faturamentoDisponivel) {
       if (custo.nome.toLowerCase().includes('imposto')) {
@@ -58,11 +71,10 @@ export default function GestaoFinanceira() {
       } else if (custo.nome.toLowerCase().includes('logistic') || custo.subcategoria === 'Logística') {
         valorFinal = 1500.24; // Real value from PDV projection
       } else {
-        const percentualPart = (faturamentoMensal * custo.percentual_faturamento) / 100;
+        const percentualPart = faturamentoMensal * custo.percentual_faturamento / 100;
         valorFinal += percentualPart;
       }
     }
-    
     return total + valorFinal;
   }, 0);
 
@@ -76,26 +88,21 @@ export default function GestaoFinanceira() {
   const totalCustos = totalCustosFixos + totalCustosVariaveis + totalCustoInsumos;
 
   // Calculate percentages
-  const margemBruta = faturamentoMensal > 0 ? (lucroBruto / faturamentoMensal) * 100 : 0;
-  const margemOperacional = faturamentoMensal > 0 ? (lucroOperacional / faturamentoMensal) * 100 : 0;
-  const margemLiquida = faturamentoMensal > 0 ? (resultadoLiquido / faturamentoMensal) * 100 : 0;
+  const margemBruta = faturamentoMensal > 0 ? lucroBruto / faturamentoMensal * 100 : 0;
+  const margemOperacional = faturamentoMensal > 0 ? lucroOperacional / faturamentoMensal * 100 : 0;
+  const margemLiquida = faturamentoMensal > 0 ? resultadoLiquido / faturamentoMensal * 100 : 0;
 
   // Format currency
   const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('pt-BR', { 
-      style: 'currency', 
-      currency: 'BRL' 
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
     }).format(value);
   };
-
-  return (
-    <div className="container mx-auto">
+  return <div className="container mx-auto">
       <BreadcrumbNavigation />
       
-      <PageHeader
-        title="Gestão Financeira"
-        description="Visão geral da gestão financeira e DREs da empresa"
-      />
+      <PageHeader title="Gestão Financeira" description="Visão geral da gestão financeira e DREs da empresa" />
 
       {/* Enhanced Financial Summary */}
       <div className="mt-6 mb-8">
@@ -119,7 +126,7 @@ export default function GestaoFinanceira() {
               <div className="text-3xl font-bold text-blue-700 mb-2">
                 {faturamentoDisponivel ? formatCurrency(faturamentoMensal) : "R$ 0"}
               </div>
-              <div className="flex items-center text-sm text-green-600">
+              <div className="flex items-center text-sm text-blue-600">
                 <ArrowRight className="h-3 w-3 mr-1" />
                 +12% vs mês anterior
               </div>
@@ -268,8 +275,7 @@ export default function GestaoFinanceira() {
         </div>
 
         {/* Warning Alert */}
-        {!faturamentoDisponivel && (
-          <Card className="border-amber-200 bg-amber-50 mb-6">
+        {!faturamentoDisponivel && <Card className="border-amber-200 bg-amber-50 mb-6">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-amber-800">
                 <AlertTriangle className="h-5 w-5" />
@@ -282,8 +288,7 @@ export default function GestaoFinanceira() {
                 para visualizar cálculos mais precisos baseados em dados reais.
               </p>
             </CardContent>
-          </Card>
-        )}
+          </Card>}
       </div>
 
       {/* Navigation Cards */}
@@ -372,6 +377,5 @@ export default function GestaoFinanceira() {
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
+    </div>;
 }
