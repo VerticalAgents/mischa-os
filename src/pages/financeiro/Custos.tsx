@@ -626,7 +626,7 @@ export default function Custos() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <span className="text-3xl font-bold text-orange-600">
+              <span className="font-bold text-orange-600 text-2xl">
                 {formatCurrency(custoTotal)}
               </span>
               <p className="text-xs text-muted-foreground">
@@ -651,7 +651,7 @@ export default function Custos() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <span className="text-2xl font-bold text-slate-600">
+              <span className="font-bold text-slate-600 text-4xl">
                 {new Set([...custosFixos.map(c => c.subcategoria), ...custosVariaveis.map(c => c.subcategoria)]).size}
               </span>
               <div className="space-y-1">
