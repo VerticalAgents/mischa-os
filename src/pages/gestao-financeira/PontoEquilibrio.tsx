@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
@@ -66,10 +65,15 @@ export default function PontoEquilibrio() {
   const totalCustoInsumos = calcularCustoInsumos();
 
   // Total costs for break-even (fixed + variable only, as specified)
-  const custosParaEquilibrio = totalCustosFixos + totalCustosVariaveis; // R$ 15.735,32
+  const custosParaEquilibrio = totalCustosFixos + totalCustosVariaveis;
+
+  // Dynamic break-even calculation using the formula: (Custos a Cobrir) ÷ 3.18 × 4.50
+  const margemContribuicaoUnitaria = 3.18; // Fixed contribution margin per unit
+  const precoVendaUnitario = 4.50; // Fixed unit selling price
+  const pontoEquilibrioPrincipal = (custosParaEquilibrio / margemContribuicaoUnitaria) * precoVendaUnitario;
 
   // Total costs including inputs for chart visualization
-  const custosTotal = totalCustosFixos + totalCustosVariaveis + totalCustoInsumos; // R$ 29.231,15
+  const custosTotal = totalCustosFixos + totalCustosVariaveis + totalCustoInsumos;
 
   // Product data with real contribution margins
   const produtos = [
@@ -111,8 +115,6 @@ export default function PontoEquilibrio() {
     };
   });
 
-  // Primary break-even point (using brownies as reference)
-  const pontoEquilibrioPrincipal = 22270.50; // As specified
   const margemSegurancaAtual = faturamentoDisponivel && pontoEquilibrioPrincipal > 0 
     ? ((faturamentoMensal - pontoEquilibrioPrincipal) / faturamentoMensal) * 100 
     : 0;
