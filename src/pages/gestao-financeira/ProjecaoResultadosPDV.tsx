@@ -486,8 +486,8 @@ export default function ProjecaoResultadosPDV() {
           <ul className="space-y-1 list-disc list-inside">
             <li>🔧 Preços por categoria: Revenda Padrão (R$ 4,50), Food Service (R$ 70,00)</li>
             <li>🔧 Custos unitários: Revenda Padrão (R$ 1,32), Food Service (R$ 29,17)</li>
-            <li>🔧 Alíquota de imposto: 4% provisório</li>
-            <li>🔧 Logística: Própria (3%), Distribuição (8%)</li>
+            <li>🔧 Alíquota de imposto: 4% provisório (já foi arrumado) #retirar</li>
+            <li>🔧 Logística: Própria (3%), Distribuição (8%) (já foi arrumado) #retirar</li>
           </ul>
         </CardContent>
       </Card>
