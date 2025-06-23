@@ -24,7 +24,7 @@ export function ComparisonView() {
   };
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full min-w-0">
       <Card>
         <CardHeader>
           <CardTitle>Selecionar Cenários para Comparação</CardTitle>
@@ -36,7 +36,7 @@ export function ComparisonView() {
                 key={scenario.id}
                 variant={selectedScenarios.includes(scenario.id) ? "default" : "outline"}
                 onClick={() => handleSelectScenario(scenario.id)}
-                className="text-sm"
+                className="text-sm whitespace-nowrap"
               >
                 {scenario.name}
               </Button>
@@ -45,19 +45,40 @@ export function ComparisonView() {
         </CardContent>
       </Card>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
-        {selectedScenarios.map(scenarioId => {
-          const scenario = allScenarios.find(s => s.id === scenarioId);
-          if (!scenario) return null;
-          
-          return (
-            <div key={scenarioId} className="h-full">
-              <DRETableHierarchical 
-                dreData={scenario} 
-              />
+      {/* Grid responsivo para comparação */}
+      <div className="w-full min-w-0">
+        {selectedScenarios.length === 0 ? (
+          <Card>
+            <CardContent className="flex items-center justify-center h-32">
+              <p className="text-muted-foreground">Selecione ao menos um cenário para visualizar</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6 w-full">
+            {/* Layout responsivo baseado na quantidade de cenários */}
+            <div className={`
+              grid gap-6 w-full
+              ${selectedScenarios.length === 1 ? 'grid-cols-1 max-w-4xl mx-auto' : 
+                selectedScenarios.length === 2 ? 'grid-cols-1 xl:grid-cols-2' :
+                'grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3'}
+            `}>
+              {selectedScenarios.map(scenarioId => {
+                const scenario = allScenarios.find(s => s.id === scenarioId);
+                if (!scenario) return null;
+                
+                return (
+                  <div key={scenarioId} className="min-w-0 w-full">
+                    <div className="w-full overflow-x-auto">
+                      <DRETableHierarchical 
+                        dreData={scenario} 
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        )}
       </div>
     </div>
   );
