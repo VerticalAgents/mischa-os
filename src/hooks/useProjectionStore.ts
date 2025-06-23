@@ -94,7 +94,7 @@ export const useProjectionStore = create<ProjectionStore>()(
           }
         });
         
-        // Calculate values by client category using PDV projection logic
+        // Calculate values by client category using exact PDV projection logic
         let revendaPadraoFaturamento = 0;
         let revendaPadraoCusto = 0;
         let foodServiceFaturamento = 0;
@@ -140,7 +140,7 @@ export const useProjectionStore = create<ProjectionStore>()(
           totalLogistica += faturamento * percentualLogistico;
         });
         
-        // Calculate totals matching PDV projection
+        // Calculate totals matching PDV projection exactly
         const totalReceita = revendaPadraoFaturamento + foodServiceFaturamento; // R$ 36.246,00
         const totalInsumosRevenda = revendaPadraoCusto; // R$ 8.907,36
         const totalInsumosFoodService = foodServiceCusto; // R$ 2.450,28
@@ -150,7 +150,7 @@ export const useProjectionStore = create<ProjectionStore>()(
         const aquisicaoClientes = totalReceita * 0.08; // R$ 2.899,68
         
         // Calculate totals for DRE structure
-        const totalVariableCosts = totalInsumos + totalLogistica + aquisicaoClientes; // R$ 12.807,48
+        const totalVariableCosts = totalInsumos + totalLogistica + aquisicaoClientes;
         
         // Calculate volumes and group by channels for compatibility
         const channelVolumes: Record<Channel, number> = {
@@ -276,7 +276,16 @@ export const useProjectionStore = create<ProjectionStore>()(
           ebitda,
           ebitdaMargin,
           breakEvenPoint,
-          paybackMonths
+          paybackMonths,
+          // Adding detailed breakdown for DRE display
+          detailedBreakdown: {
+            revendaPadraoFaturamento,
+            foodServiceFaturamento,
+            totalInsumosRevenda,
+            totalInsumosFoodService,
+            totalLogistica,
+            aquisicaoClientes
+          }
         };
         
         set({

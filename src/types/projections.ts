@@ -1,4 +1,5 @@
 
+
 import { Cliente } from './index';
 
 export type Channel = 'B2B-Revenda' | 'B2B-FoodService' | 'B2C-UFCSPA' | 'B2C-Personalizados' | 'B2C-Outros';
@@ -28,6 +29,15 @@ export interface InvestmentItem {
   value: number;
   depreciationYears: number;
   monthlyDepreciation: number;
+}
+
+export interface DetailedBreakdown {
+  revendaPadraoFaturamento: number;
+  foodServiceFaturamento: number;
+  totalInsumosRevenda: number;
+  totalInsumosFoodService: number;
+  totalLogistica: number;
+  aquisicaoClientes: number;
 }
 
 export interface DREData {
@@ -60,4 +70,7 @@ export interface DREData {
   excludedClients?: number[];
   // Growth factors for scenarios
   channelGrowthFactors?: Record<Channel, { type: 'percentage' | 'absolute', value: number }>;
+  // Detailed breakdown for DRE display
+  detailedBreakdown?: DetailedBreakdown;
 }
+
