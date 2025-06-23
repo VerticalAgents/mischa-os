@@ -45,16 +45,17 @@ export function ComparisonView() {
         </CardContent>
       </Card>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
         {selectedScenarios.map(scenarioId => {
           const scenario = allScenarios.find(s => s.id === scenarioId);
           if (!scenario) return null;
           
           return (
-            <DRETableHierarchical 
-              key={scenarioId} 
-              dreData={scenario} 
-            />
+            <div key={scenarioId} className="h-full">
+              <DRETableHierarchical 
+                dreData={scenario} 
+              />
+            </div>
           );
         })}
       </div>
