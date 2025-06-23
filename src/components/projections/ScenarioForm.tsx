@@ -205,90 +205,10 @@ export function ScenarioForm({
       <Form {...form}>
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* Left column - DRE Table (takes 2 columns) */}
-          <div className="xl:col-span-2">
-            <Card>
-              <CardHeader>
-                <FormField control={form.control} name="name" render={({
-                field
-              }) => <FormItem>
-                      <FormControl>
-                        <Input placeholder="Nome do cenário" onChange={e => updateScenarioName(e.target.value)} className="text-4xl font-semibold border-none focus:ring-0 p-0" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>} />
-              </CardHeader>
-              <CardContent className="p-0">
-                <ModernDRETable dreData={scenario} />
-              </CardContent>
-            </Card>
-          </div>
+          
 
           {/* Right column - Parameters (takes 1 column) */}
-          <div className="space-y-4">
-            {/* Channels Growth */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Projeção por Canal</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {scenario.channelsData.map(channelData => {
-                const growth = form.getValues('channelGrowth')[channelData.channel];
-                return <div key={channelData.channel} className="space-y-2">
-                      <div className="text-sm font-medium">{channelData.channel}</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <select value={growth.type} onChange={e => updateGrowthFactor(channelData.channel, e.target.value as 'percentage' | 'absolute', growth.value)} className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs">
-                          <option value="percentage">%</option>
-                          <option value="absolute">Unid.</option>
-                        </select>
-                        <Input type="number" value={growth.value} onChange={e => updateGrowthFactor(channelData.channel, growth.type, parseFloat(e.target.value) || 0)} className="text-xs" />
-                      </div>
-                    </div>;
-              })}
-              </CardContent>
-            </Card>
-            
-            {/* Accordion panels for costs */}
-            <Accordion type="single" collapsible value={expandedSection} onValueChange={setExpandedSection}>
-              <AccordionItem value="fixed-costs">
-                <AccordionTrigger className="text-sm">Custos Fixos</AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3">
-                    {form.getValues('fixedCosts').map((cost, index) => <div key={`fixed-${index}`} className="space-y-1">
-                        <div className="text-xs text-muted-foreground">{cost.name}</div>
-                        <Input type="number" value={cost.value} onChange={e => updateCosts('fixedCosts', index, parseFloat(e.target.value) || 0)} className="text-xs" />
-                      </div>)}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-              
-              <AccordionItem value="admin-costs">
-                <AccordionTrigger className="text-sm">Custos Administrativos</AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3">
-                    {form.getValues('administrativeCosts').map((cost, index) => <div key={`admin-${index}`} className="space-y-1">
-                        <div className="text-xs text-muted-foreground">{cost.name}</div>
-                        <Input type="number" value={cost.value} onChange={e => updateCosts('administrativeCosts', index, parseFloat(e.target.value) || 0)} className="text-xs" />
-                      </div>)}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-              
-              <AccordionItem value="investments">
-                <AccordionTrigger className="text-sm">Investimentos</AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-3">
-                    {form.getValues('investments').map((investment, index) => <div key={`invest-${index}`} className="space-y-2">
-                        <div className="text-xs text-muted-foreground">{investment.name}</div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input type="number" value={investment.value} onChange={e => updateInvestment(index, 'value', parseFloat(e.target.value) || 0)} placeholder="Valor" className="text-xs" />
-                          <Input type="number" value={investment.depreciationYears} onChange={e => updateInvestment(index, 'depreciationYears', parseInt(e.target.value) || 1)} placeholder="Anos" className="text-xs" />
-                        </div>
-                      </div>)}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
+          
         </div>
       </Form>
     </div>;

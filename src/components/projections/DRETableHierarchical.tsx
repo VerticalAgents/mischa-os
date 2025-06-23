@@ -504,20 +504,20 @@ export function DRETableHierarchical({
             <Download className="h-4 w-4 mr-2" />
             Exportar CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={printDRE}>
+          <Button variant="outline" size="sm" onClick={printDRE} className="px-0 mx-0">
             <Printer className="h-4 w-4 mr-2" />
             Imprimir
           </Button>
         </div>
       </div>
 
-      <div className="rounded-md border min-h-[600px] max-h-[80vh] overflow-auto">
+      <div className="rounded-md border mx-0">
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-100">
               <TableHead className="w-[60%] font-bold">Categoria</TableHead>
               <TableHead className="text-right font-bold">Valor</TableHead>
-              <TableHead className="text-right font-bold">%</TableHead>
+              <TableHead className="text-right font-bold px-0 mx-0">%</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
