@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -54,6 +55,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         if (event === 'SIGNED_IN' && session) {
+          // Ensure user has a role assigned (default to 'user')
+          try {
+            const { data: existingRole } = await supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', session.user.id)
+              .maybeSingle();
+
+            if (!existingRole) {
+              await supabase
+                .from('user_roles')
+                .insert({
+                  user_id: session.user.id,
+                  role: 'user'
+                });
+            }
+          } catch (error) {
+            console.error('Error ensuring user role:', error);
+          }
+
           // Só navegar se estivermos na página de auth
           if (location.pathname === '/auth' || location.pathname === '/login') {
             const from = location.state?.from?.pathname || '/';
@@ -110,13 +131,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signUpWithEmail = async (email: string, password: string, fullName: string): Promise<void> => {
     try {
       setLoading(true);
+      
+      // Get current origin for redirect
+      const redirectTo = `${window.location.origin}/auth`;
+      
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName
-          }
+          },
+          emailRedirectTo: redirectTo
         }
       });
 
@@ -146,7 +172,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: `${window.location.origin}/auth`
         }
       });
 

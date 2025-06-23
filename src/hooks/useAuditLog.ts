@@ -1,0 +1,44 @@
+
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface AuditLogEntry {
+  action: string;
+  table_name?: string;
+  record_id?: string;
+  old_values?: Record<string, any>;
+  new_values?: Record<string, any>;
+}
+
+export function useAuditLog() {
+  const { user } = useAuth();
+
+  const logAction = async (entry: AuditLogEntry) => {
+    if (!user) return;
+
+    try {
+      // Get client IP and user agent from browser
+      const userAgent = navigator.userAgent;
+      
+      const { error } = await supabase
+        .from('audit_logs')
+        .insert({
+          user_id: user.id,
+          action: entry.action,
+          table_name: entry.table_name,
+          record_id: entry.record_id,
+          old_values: entry.old_values,
+          new_values: entry.new_values,
+          user_agent: userAgent
+        });
+
+      if (error) {
+        console.error('Error logging audit entry:', error);
+      }
+    } catch (err) {
+      console.error('Error logging audit entry:', err);
+    }
+  };
+
+  return { logAction };
+}
