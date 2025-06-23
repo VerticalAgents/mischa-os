@@ -307,7 +307,9 @@ export default function ProjecaoResultadosPDV() {
         lucroBrutoMedio: 0,
         distribuicaoCategorias: {} as Record<string, number>,
         faturamentoPorCategoria: {} as Record<string, number>,
-        faturamentoPorFormaPagamento: {} as Record<string, number>
+        faturamentoPorFormaPagamento: {} as Record<string, number>,
+        custoTotalInsumos: 0,
+        custoPorCategoria: {} as Record<string, number>
       };
     }
 
@@ -317,9 +319,11 @@ export default function ProjecaoResultadosPDV() {
     let somaGiros = 0;
     let somaFaturamentos = 0;
     let somaLucros = 0;
+    let somaCustoInsumos = 0;
     const categoriasCount: Record<string, number> = {};
     const faturamentoPorCategoria: Record<string, number> = {};
     const faturamentoPorFormaPagamento: Record<string, number> = {};
+    const custoPorCategoria: Record<string, number> = {};
     let totalCategorias = 0;
     let totalCategoriasRevenda = 0;
     let totalGiroClientesHabilitados = 0;
@@ -329,15 +333,19 @@ export default function ProjecaoResultadosPDV() {
       // Buscar o cliente para verificar configurações
       const cliente = clientes.find(c => c.id === projecao.clienteId);
       const contabilizaGiro = cliente?.contabilizarGiroMedio ?? true;
-      const formaPagamento = cliente?.forma_pagamento || 'Não informado';
+      const formaPagamento = cliente?.formaPagamento || 'Não informado';
 
       projecao.categorias.forEach(categoria => {
         somaFaturamentos += categoria.faturamento;
+        somaCustoInsumos += categoria.custoInsumos;
         totalCategorias++;
 
         // Acumular faturamento por categoria
         const nomeCategoria = categoria.nomeCategoria;
         faturamentoPorCategoria[nomeCategoria] = (faturamentoPorCategoria[nomeCategoria] || 0) + categoria.faturamento;
+
+        // Acumular custo de insumos por categoria
+        custoPorCategoria[nomeCategoria] = (custoPorCategoria[nomeCategoria] || 0) + categoria.custoInsumos;
 
         // Acumular faturamento por forma de pagamento
         faturamentoPorFormaPagamento[formaPagamento] = (faturamentoPorFormaPagamento[formaPagamento] || 0) + categoria.faturamento;
@@ -373,11 +381,18 @@ export default function ProjecaoResultadosPDV() {
     const totalLogisticaMensal = totalLogisticaSemanal * 4;
     const somaLucrosMensal = somaLucros * 4;
     const somaFaturamentosMensal = somaFaturamentos * 4;
+    const custoTotalInsumosMensal = somaCustoInsumos * 4;
 
     // Converter faturamento por categoria para mensal
     const faturamentoPorCategoriaMensal: Record<string, number> = {};
     Object.keys(faturamentoPorCategoria).forEach(categoria => {
       faturamentoPorCategoriaMensal[categoria] = faturamentoPorCategoria[categoria] * 4;
+    });
+
+    // Converter custo por categoria para mensal
+    const custoPorCategoriaMensal: Record<string, number> = {};
+    Object.keys(custoPorCategoria).forEach(categoria => {
+      custoPorCategoriaMensal[categoria] = custoPorCategoria[categoria] * 4;
     });
 
     // Converter faturamento por forma de pagamento para mensal
@@ -404,7 +419,9 @@ export default function ProjecaoResultadosPDV() {
       lucroBrutoMedio: totalClientes > 0 ? somaLucrosMensal / totalClientes : 0,
       distribuicaoCategorias,
       faturamentoPorCategoria: faturamentoPorCategoriaMensal,
-      faturamentoPorFormaPagamento: faturamentoPorFormaPagamentoMensal
+      faturamentoPorFormaPagamento: faturamentoPorFormaPagamentoMensal,
+      custoTotalInsumos: custoTotalInsumosMensal,
+      custoPorCategoria: custoPorCategoriaMensal
     };
   };
   const formatarMoeda = (valor: number): string => {
@@ -518,8 +535,6 @@ export default function ProjecaoResultadosPDV() {
           <ul className="space-y-1 list-disc list-inside">
             <li>🔧 Preços por categoria: Revenda Padrão (R$ 4,50), Food Service (R$ 70,00)</li>
             <li>🔧 Custos unitários: Revenda Padrão (R$ 1,32), Food Service (R$ 29,17)</li>
-            
-            
           </ul>
         </CardContent>
       </Card>
@@ -572,6 +587,32 @@ export default function ProjecaoResultadosPDV() {
                     <div key={categoria} className="text-center p-3 bg-blue-50 rounded-lg border">
                       <p className="text-sm text-muted-foreground">{categoria}</p>
                       <p className="text-lg font-bold text-blue-600">{formatarMoeda(valor)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Nova seção - Custo de Insumos */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-lg flex items-center gap-2 mb-4">
+                  <Percent className="h-5 w-5 text-red-600" />
+                  Custo de Insumos
+                </h4>
+                
+                {/* Custo Total de Insumos */}
+                <div className="mb-4">
+                  <div className="text-center p-4 bg-red-50 rounded-lg border">
+                    <p className="text-sm text-muted-foreground">Custo Total de Insumos</p>
+                    <p className="text-2xl font-bold text-red-600">{formatarMoeda(indicadores.custoTotalInsumos)}</p>
+                  </div>
+                </div>
+
+                {/* Custo por Categoria */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(indicadores.custoPorCategoria).map(([categoria, valor]) => (
+                    <div key={categoria} className="text-center p-3 bg-red-50 rounded-lg border">
+                      <p className="text-sm text-muted-foreground">{categoria}</p>
+                      <p className="text-lg font-bold text-red-600">{formatarMoeda(valor)}</p>
                     </div>
                   ))}
                 </div>
@@ -705,7 +746,7 @@ export default function ProjecaoResultadosPDV() {
                     {projecoes.map(projecao => {
                       const cliente = clientes.find(c => c.id === projecao.clienteId);
                       const contabilizaGiro = cliente?.contabilizarGiroMedio ?? true;
-                      const formaPagamento = cliente?.forma_pagamento || 'Não informado';
+                      const formaPagamento = cliente?.formaPagamento || 'Não informado';
                       
                       return projecao.categorias.map((categoria, index) => (
                         <TableRow key={`${projecao.clienteId}-${categoria.categoriaId}`}>
