@@ -17,6 +17,7 @@ import { useSupabaseCustosVariaveis, CustoVariavel } from "@/hooks/useSupabaseCu
 import { useSupabaseSubcategoriasCustos } from "@/hooks/useSupabaseSubcategoriasCustos";
 import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
 import { useClienteStore } from "@/hooks/useClienteStore";
+import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 
 type Frequencia = "mensal" | "semanal" | "trimestral" | "semestral" | "anual" | "por-producao";
 type TipoCusto = "fixo" | "variavel";
@@ -55,8 +56,12 @@ export default function Custos() {
     isLoading: loadingFaturamento
   } = useFaturamentoPrevisto();
   const {
-    clientes
+    clientes,
+    carregarClientes
   } = useClienteStore();
+  const {
+    categorias
+  } = useSupabaseCategoriasProduto();
 
   const [novoCusto, setNovoCusto] = useState<FormData>({
     nome: "",
@@ -73,6 +78,11 @@ export default function Custos() {
   const [activeTab, setActiveTab] = useState<"fixos" | "variaveis">("fixos");
   const [usarPercentualReal, setUsarPercentualReal] = useState(true);
 
+  // Load clients when component mounts
+  useEffect(() => {
+    carregarClientes();
+  }, [carregarClientes]);
+
   // Calculate real percentages from PDV projection data
   const calcularPercentuaisReais = () => {
     if (!clientes.length || !faturamentoDisponivel) {
@@ -87,20 +97,24 @@ export default function Custos() {
     const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo' && c.categoriasHabilitadas && c.categoriasHabilitadas.length > 0);
     let totalImposto = 0;
     let totalLogistica = 0;
+    let faturamentoTotalMensal = 0;
+
     clientesAtivos.forEach(cliente => {
       // Calculate weekly volume
       const giroSemanal = cliente.periodicidadePadrao > 0 ? Math.round(cliente.quantidadePadrao / cliente.periodicidadePadrao * 7) : 0;
 
       // Mock price calculation based on category (this should match the PDV projection logic)
-      const precoMedio = 4.50; // This should be calculated based on client categories
+      // For simplicity, use average price 4.50 as placeholder
+      const precoMedio = 4.50;
       const faturamentoSemanal = giroSemanal * precoMedio;
 
       // Calculate monthly values (weekly * 4)
-      const faturamentoMensal = faturamentoSemanal * 4;
+      const faturamentoMensalCliente = faturamentoSemanal * 4;
+      faturamentoTotalMensal += faturamentoMensalCliente;
 
       // Calculate taxes (4% of revenue for clients that emit NF)
       if (cliente.emiteNotaFiscal) {
-        const impostoCliente = faturamentoMensal * 0.04;
+        const impostoCliente = faturamentoMensalCliente * 0.04;
         totalImposto += impostoCliente;
       }
 
@@ -113,11 +127,11 @@ export default function Custos() {
       } else {
         percentualLogistico = 0.05; // 5% for others
       }
-      const custoLogisticoCliente = faturamentoMensal * percentualLogistico;
+      const custoLogisticoCliente = faturamentoMensalCliente * percentualLogistico;
       totalLogistica += custoLogisticoCliente;
     });
-    const impostoReal = faturamentoMensal > 0 ? totalImposto / faturamentoMensal * 100 : 0;
-    const logisticaReal = faturamentoMensal > 0 ? totalLogistica / faturamentoMensal * 100 : 0;
+    const impostoReal = faturamentoTotalMensal > 0 ? totalImposto / faturamentoTotalMensal * 100 : 0;
+    const logisticaReal = faturamentoTotalMensal > 0 ? totalLogistica / faturamentoTotalMensal * 100 : 0;
     return {
       impostoReal,
       logisticaReal,
@@ -200,20 +214,57 @@ export default function Custos() {
     return total + percentualAUsar;
   }, 0);
 
-  // Calculate inputs cost from client projections
-  const calcularCustoInsumos = (): number => {
-    if (!clientes.length) return 0;
-    const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio);
-
-    // Mock calculation based on client volume and average input cost
-    // Future: integrate with real input cost calculation from recipes
-    const custoMedioInsumosPorUnidade = 2.10; // Average input cost per unit
-    const volumeMensalTotal = clientesAtivos.reduce((total, cliente) => {
-      const volumeSemanal = cliente.quantidadePadrao * (7 / cliente.periodicidadePadrao);
-      return total + volumeSemanal * 4.33; // Convert to monthly
-    }, 0);
-    return volumeMensalTotal * custoMedioInsumosPorUnidade;
+  // CUSTOS UNITÁRIOS por categoria - valores temporários
+  const CUSTOS_UNITARIOS: Record<string, number> = {
+    'revenda padrão': 1.32,
+    'food service': 29.17,
+    'default': 1.32
   };
+
+  const obterCustoCategoria = (nomeCategoria: string): number => {
+    const nomeNormalizado = nomeCategoria.toLowerCase();
+    for (const [key, custo] of Object.entries(CUSTOS_UNITARIOS)) {
+      if (nomeNormalizado.includes(key)) {
+        return custo;
+      }
+    }
+    return CUSTOS_UNITARIOS.default;
+  };
+
+  const calcularGiroSemanal = (qtdPadrao: number, periodicidade: number): number => {
+    if (periodicidade === 0) return 0;
+    return Math.round(qtdPadrao / periodicidade * 7);
+  };
+
+  // Calculate inputs cost from client projections using the same logic as PDV page
+  const calcularCustoInsumos = (): number => {
+    if (!clientes.length || !categorias.length) return 0;
+
+    const clientesAtivos = clientes.filter(c => 
+      c.statusCliente === 'Ativo' && 
+      c.categoriasHabilitadas && 
+      c.categoriasHabilitadas.length > 0
+    );
+
+    let custoTotalInsumos = 0;
+
+    clientesAtivos.forEach(cliente => {
+      cliente.categoriasHabilitadas.forEach(categoriaId => {
+        const categoria = categorias.find(cat => cat.id === categoriaId);
+        if (!categoria) return;
+
+        const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
+        const custoUnitario = obterCustoCategoria(categoria.nome);
+        const custoInsumos = giroSemanal * custoUnitario;
+        
+        // Convert to monthly (weekly * 4)
+        custoTotalInsumos += custoInsumos * 4;
+      });
+    });
+
+    return custoTotalInsumos;
+  };
+
   const totalCustoInsumos = calcularCustoInsumos();
 
   // Calculate total cost (fixed + variable + inputs)
@@ -221,11 +272,11 @@ export default function Custos() {
 
   // Filter costs based on activeTab and searchTerm
   const filteredCustosFixos = custosFixos.filter(custo => {
-    const matchesSearch = custo.nome.toLowerCase().includes(searchTerm.toLowerCase()) || custo.subcategoria && custo.subcategoria.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = custo.nome.toLowerCase().includes(searchTerm.toLowerCase()) || (custo.subcategoria && custo.subcategoria.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesSearch;
   });
   const filteredCustosVariaveis = custosVariaveis.filter(custo => {
-    const matchesSearch = custo.nome.toLowerCase().includes(searchTerm.toLowerCase()) || custo.subcategoria && custo.subcategoria.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = custo.nome.toLowerCase().includes(searchTerm.toLowerCase()) || (custo.subcategoria && custo.subcategoria.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesSearch;
   });
 
