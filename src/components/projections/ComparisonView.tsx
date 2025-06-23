@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DREData } from '@/types/projections';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
-import { ModernDRETable } from './ModernDRETable';
+import { DRETableHierarchical } from './DRETableHierarchical';
 
 export function ComparisonView() {
   const { baseDRE, scenarios } = useProjectionStore();
@@ -51,10 +51,9 @@ export function ComparisonView() {
           if (!scenario) return null;
           
           return (
-            <ModernDRETable 
+            <DRETableHierarchical 
               key={scenarioId} 
               dreData={scenario} 
-              compact 
             />
           );
         })}
