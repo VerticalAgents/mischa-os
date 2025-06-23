@@ -305,9 +305,12 @@ export default function ProjecaoResultadosPDV() {
         totalLogistica: 0,
         percentualLogistica: 0,
         lucroBrutoMedio: 0,
-        distribuicaoCategorias: {} as Record<string, number>
+        distribuicaoCategorias: {} as Record<string, number>,
+        faturamentoPorCategoria: {} as Record<string, number>,
+        faturamentoPorFormaPagamento: {} as Record<string, number>
       };
     }
+
     const totalClientes = projecoes.length;
     const clientesComNF = projecoes.filter(p => p.emiteNotaFiscal).length;
     let somaPrecos = 0;
@@ -315,17 +318,29 @@ export default function ProjecaoResultadosPDV() {
     let somaFaturamentos = 0;
     let somaLucros = 0;
     const categoriasCount: Record<string, number> = {};
+    const faturamentoPorCategoria: Record<string, number> = {};
+    const faturamentoPorFormaPagamento: Record<string, number> = {};
     let totalCategorias = 0;
     let totalCategoriasRevenda = 0;
     let totalGiroClientesHabilitados = 0;
     let totalClientesGiroHabilitados = 0;
+
     projecoes.forEach(projecao => {
       // Buscar o cliente para verificar configurações
       const cliente = clientes.find(c => c.id === projecao.clienteId);
       const contabilizaGiro = cliente?.contabilizarGiroMedio ?? true;
+      const formaPagamento = cliente?.forma_pagamento || 'Não informado';
+
       projecao.categorias.forEach(categoria => {
         somaFaturamentos += categoria.faturamento;
         totalCategorias++;
+
+        // Acumular faturamento por categoria
+        const nomeCategoria = categoria.nomeCategoria;
+        faturamentoPorCategoria[nomeCategoria] = (faturamentoPorCategoria[nomeCategoria] || 0) + categoria.faturamento;
+
+        // Acumular faturamento por forma de pagamento
+        faturamentoPorFormaPagamento[formaPagamento] = (faturamentoPorFormaPagamento[formaPagamento] || 0) + categoria.faturamento;
 
         // Filtrar preço médio apenas para categoria "Revenda Padrão"
         if (categoria.nomeCategoria.toLowerCase().includes('revenda padrão')) {
@@ -338,14 +353,16 @@ export default function ProjecaoResultadosPDV() {
           somaGiros += categoria.giroSemanal;
           totalGiroClientesHabilitados++;
         }
-        const nomeCategoria = categoria.nomeCategoria;
+
         categoriasCount[nomeCategoria] = (categoriasCount[nomeCategoria] || 0) + 1;
       });
+
       somaLucros += projecao.lucroBruto;
       if (contabilizaGiro) {
         totalClientesGiroHabilitados++;
       }
     });
+
     const faturamentoTotalSemanal = projecoes.reduce((sum, proj) => sum + proj.categorias.reduce((catSum, cat) => catSum + cat.faturamento, 0), 0);
     const totalImpostoSemanal = projecoes.reduce((sum, proj) => sum + proj.impostoTotal, 0);
     const totalLogisticaSemanal = projecoes.reduce((sum, proj) => sum + proj.custoLogistico, 0);
@@ -357,11 +374,24 @@ export default function ProjecaoResultadosPDV() {
     const somaLucrosMensal = somaLucros * 4;
     const somaFaturamentosMensal = somaFaturamentos * 4;
 
+    // Converter faturamento por categoria para mensal
+    const faturamentoPorCategoriaMensal: Record<string, number> = {};
+    Object.keys(faturamentoPorCategoria).forEach(categoria => {
+      faturamentoPorCategoriaMensal[categoria] = faturamentoPorCategoria[categoria] * 4;
+    });
+
+    // Converter faturamento por forma de pagamento para mensal
+    const faturamentoPorFormaPagamentoMensal: Record<string, number> = {};
+    Object.keys(faturamentoPorFormaPagamento).forEach(forma => {
+      faturamentoPorFormaPagamentoMensal[forma] = faturamentoPorFormaPagamento[forma] * 4;
+    });
+
     // Distribuição percentual por categoria
     const distribuicaoCategorias: Record<string, number> = {};
     Object.keys(categoriasCount).forEach(categoria => {
       distribuicaoCategorias[categoria] = categoriasCount[categoria] / totalCategorias * 100;
     });
+
     return {
       precoMedio: totalCategoriasRevenda > 0 ? somaPrecos / totalCategoriasRevenda : 0,
       giroMedio: totalGiroClientesHabilitados > 0 ? somaGiros / totalGiroClientesHabilitados : 0,
@@ -372,7 +402,9 @@ export default function ProjecaoResultadosPDV() {
       totalLogistica: totalLogisticaMensal,
       percentualLogistica: faturamentoTotalMensal > 0 ? totalLogisticaMensal / faturamentoTotalMensal * 100 : 0,
       lucroBrutoMedio: totalClientes > 0 ? somaLucrosMensal / totalClientes : 0,
-      distribuicaoCategorias
+      distribuicaoCategorias,
+      faturamentoPorCategoria: faturamentoPorCategoriaMensal,
+      faturamentoPorFormaPagamento: faturamentoPorFormaPagamentoMensal
     };
   };
   const formatarMoeda = (valor: number): string => {
@@ -529,6 +561,38 @@ export default function ProjecaoResultadosPDV() {
                 </div>
               </div>
 
+              {/* Nova seção - Faturamento por Categoria */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-lg flex items-center gap-2 mb-4">
+                  <TrendingUp className="h-5 w-5 text-blue-600" />
+                  Faturamento por Categoria de Produto
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(indicadores.faturamentoPorCategoria).map(([categoria, valor]) => (
+                    <div key={categoria} className="text-center p-3 bg-blue-50 rounded-lg border">
+                      <p className="text-sm text-muted-foreground">{categoria}</p>
+                      <p className="text-lg font-bold text-blue-600">{formatarMoeda(valor)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Nova seção - Faturamento por Forma de Pagamento */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-lg flex items-center gap-2 mb-4">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                  Faturamento por Forma de Pagamento
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {Object.entries(indicadores.faturamentoPorFormaPagamento).map(([forma, valor]) => (
+                    <div key={forma} className="text-center p-3 bg-green-50 rounded-lg border">
+                      <p className="text-sm text-muted-foreground">{forma}</p>
+                      <p className="text-lg font-bold text-green-600">{formatarMoeda(valor)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Segunda linha - Indicadores operacionais */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
@@ -629,6 +693,7 @@ export default function ProjecaoResultadosPDV() {
                       <TableHead>Faturamento</TableHead>
                       <TableHead>Custo Insumos</TableHead>
                       <TableHead>Margem Unit.</TableHead>
+                      <TableHead>Forma Pagamento</TableHead>
                       <TableHead>NF</TableHead>
                       <TableHead>Imposto</TableHead>
                       <TableHead>Logística</TableHead>
@@ -638,10 +703,14 @@ export default function ProjecaoResultadosPDV() {
                   </TableHeader>
                   <TableBody>
                     {projecoes.map(projecao => {
-                  const cliente = clientes.find(c => c.id === projecao.clienteId);
-                  const contabilizaGiro = cliente?.contabilizarGiroMedio ?? true;
-                  return projecao.categorias.map((categoria, index) => <TableRow key={`${projecao.clienteId}-${categoria.categoriaId}`}>
-                          {index === 0 && <>
+                      const cliente = clientes.find(c => c.id === projecao.clienteId);
+                      const contabilizaGiro = cliente?.contabilizarGiroMedio ?? true;
+                      const formaPagamento = cliente?.forma_pagamento || 'Não informado';
+                      
+                      return projecao.categorias.map((categoria, index) => (
+                        <TableRow key={`${projecao.clienteId}-${categoria.categoriaId}`}>
+                          {index === 0 && (
+                            <>
                               <TableCell rowSpan={projecao.categorias.length} className="font-medium border-r">
                                 {projecao.nomeCliente}
                               </TableCell>
@@ -650,7 +719,8 @@ export default function ProjecaoResultadosPDV() {
                                   {contabilizaGiro ? "Sim" : "Não"}
                                 </Badge>
                               </TableCell>
-                            </>}
+                            </>
+                          )}
                           <TableCell>
                             <div className="flex items-center gap-2">
                               {categoria.nomeCategoria}
@@ -677,8 +747,14 @@ export default function ProjecaoResultadosPDV() {
                           <TableCell className={categoria.margemUnitaria > 0 ? "text-green-600" : "text-red-600"}>
                             {formatarMoeda(categoria.margemUnitaria)}
                           </TableCell>
-                          {index === 0 && <>
+                          {index === 0 && (
+                            <>
                               <TableCell rowSpan={projecao.categorias.length} className="text-center border-l">
+                                <Badge variant="outline" className="text-xs">
+                                  {formaPagamento}
+                                </Badge>
+                              </TableCell>
+                              <TableCell rowSpan={projecao.categorias.length} className="text-center">
                                 <Badge variant={projecao.emiteNotaFiscal ? "default" : "secondary"}>
                                   {projecao.emiteNotaFiscal ? "Sim" : "Não"}
                                 </Badge>
@@ -704,9 +780,11 @@ export default function ProjecaoResultadosPDV() {
                               <TableCell rowSpan={projecao.categorias.length} className={`font-bold border-l ${projecao.lucroBruto > 0 ? "text-green-600" : "text-red-600"}`}>
                                 {formatarMoeda(projecao.lucroBruto)}
                               </TableCell>
-                            </>}
-                        </TableRow>);
-                })}
+                            </>
+                          )}
+                        </TableRow>
+                      ));
+                    })}
                   </TableBody>
                 </Table>
               </div>
