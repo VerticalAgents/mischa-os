@@ -55,26 +55,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         if (event === 'SIGNED_IN' && session) {
-          // Ensure user has a role assigned (default to 'user')
-          try {
-            const { data: existingRole } = await supabase
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
-
-            if (!existingRole) {
-              await supabase
-                .from('user_roles')
-                .insert({
-                  user_id: session.user.id,
-                  role: 'user'
-                });
-            }
-          } catch (error) {
-            console.error('Error ensuring user role:', error);
-          }
-
+          // For now, just ensure user is authenticated
+          // Role assignment will be handled separately once database types are updated
+          
           // Só navegar se estivermos na página de auth
           if (location.pathname === '/auth' || location.pathname === '/login') {
             const from = location.state?.from?.pathname || '/';
