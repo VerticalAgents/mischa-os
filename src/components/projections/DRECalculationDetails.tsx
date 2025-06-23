@@ -45,6 +45,19 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
   const aquisicaoClientes = 2899.68; // 8% of receita total (36246.00 * 0.08)
   
   const totalCustosVariaveis = logistica + totalInsumos + aquisicaoClientes; // 1449.84 + 11357.64 + 2899.68 = 15707.16
+  
+  // Calculate gross profit
+  const lucroBruto = receitaTotal - totalCustosVariaveis;
+  
+  // Calculate operational result
+  const lucroOperacional = lucroBruto - dreData.totalFixedCosts - dreData.totalAdministrativeCosts;
+  
+  // Tax rate from custos variáveis (3.2%)
+  const taxaImposto = 3.2; // 3.2%
+  const impostos = receitaTotal * (taxaImposto / 100);
+  
+  // Net result after taxes
+  const resultadoLiquido = lucroOperacional - impostos;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -189,7 +202,7 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
               <AccordionTrigger className="text-left">
                 <div className="flex items-center justify-between w-full mr-4">
                   <span>📁 Lucro Bruto</span>
-                  <Badge variant="outline">{formatCurrency(receitaTotal - totalCustosVariaveis)}</Badge>
+                  <Badge variant="outline">{formatCurrency(lucroBruto)}</Badge>
                 </div>
               </AccordionTrigger>
               <AccordionContent>
@@ -201,15 +214,15 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                         <div>Receita Total: {formatCurrency(receitaTotal)}</div>
                         <div>(-) Custos Variáveis: {formatCurrency(totalCustosVariaveis)}</div>
                         <div className="border-t pt-2 font-semibold">
-                          Lucro Bruto: {formatCurrency(receitaTotal - totalCustosVariaveis)}
+                          Lucro Bruto: {formatCurrency(lucroBruto)}
                         </div>
-                        <div>Margem Bruta: {formatPercent((receitaTotal - totalCustosVariaveis) / receitaTotal * 100)}</div>
+                        <div>Margem Bruta: {formatPercent((lucroBruto) / receitaTotal * 100)}</div>
                       </div>
                     </div>
                     
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h4 className="font-semibold mb-2">✅ Valor final apresentado:</h4>
-                      <p className="text-lg font-bold text-green-600">{formatCurrency(receitaTotal - totalCustosVariaveis)}</p>
+                      <p className="text-lg font-bold text-green-600">{formatCurrency(lucroBruto)}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -232,14 +245,20 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                         <Database className="h-4 w-4" />
                         📌 Fonte dos dados:
                       </h4>
-                      <p className="text-sm">Tabela custos_fixos (convertidos para valores mensais)</p>
-                      <div className="mt-2 space-y-1 text-sm">
+                      <p className="text-sm mb-3">Tabela custos_fixos (convertidos para valores mensais)</p>
+                      <div className="space-y-2 text-sm">
                         {dreData.fixedCosts.map((cost, index) => (
-                          <div key={index} className="flex justify-between">
-                            <span>{cost.name}</span>
-                            <span>{formatCurrency(cost.value)}</span>
+                          <div key={index} className="flex justify-between p-2 bg-white rounded border">
+                            <span className="font-medium">{cost.name}</span>
+                            <span className="font-mono">{formatCurrency(cost.value)}</span>
                           </div>
                         ))}
+                        <div className="border-t pt-2 mt-3">
+                          <div className="flex justify-between font-semibold">
+                            <span>Total dos Custos Fixos:</span>
+                            <span>{formatCurrency(dreData.totalFixedCosts)}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     
@@ -268,14 +287,20 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                         <Database className="h-4 w-4" />
                         📌 Fonte dos dados:
                       </h4>
-                      <p className="text-sm">Tabela custos_variaveis (convertidos para valores mensais)</p>
-                      <div className="mt-2 space-y-1 text-sm">
+                      <p className="text-sm mb-3">Tabela custos_variaveis (convertidos para valores mensais)</p>
+                      <div className="space-y-2 text-sm">
                         {dreData.administrativeCosts.map((cost, index) => (
-                          <div key={index} className="flex justify-between">
-                            <span>{cost.name}</span>
-                            <span>{formatCurrency(cost.value)}</span>
+                          <div key={index} className="flex justify-between p-2 bg-white rounded border">
+                            <span className="font-medium">{cost.name}</span>
+                            <span className="font-mono">{formatCurrency(cost.value)}</span>
                           </div>
                         ))}
+                        <div className="border-t pt-2 mt-3">
+                          <div className="flex justify-between font-semibold">
+                            <span>Total dos Custos Administrativos:</span>
+                            <span>{formatCurrency(dreData.totalAdministrativeCosts)}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     
@@ -292,8 +317,8 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
             <AccordionItem value="resultado-operacional">
               <AccordionTrigger className="text-left">
                 <div className="flex items-center justify-between w-full mr-4">
-                  <span>📁 Resultado Operacional</span>
-                  <Badge variant="outline">{formatCurrency(dreData.operationalResult)}</Badge>
+                  <span>📁 Lucro Operacional</span>
+                  <Badge variant="outline">{formatCurrency(lucroOperacional)}</Badge>
                 </div>
               </AccordionTrigger>
               <AccordionContent>
@@ -302,19 +327,90 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                     <div className="bg-purple-50 p-4 rounded-lg">
                       <h4 className="font-semibold mb-2">🧮 Cálculo:</h4>
                       <div className="space-y-2 text-sm">
-                        <div>Lucro Bruto: {formatCurrency(receitaTotal - totalCustosVariaveis)}</div>
+                        <div>Lucro Bruto: {formatCurrency(lucroBruto)}</div>
                         <div>(-) Custos Fixos: {formatCurrency(dreData.totalFixedCosts)}</div>
                         <div>(-) Custos Administrativos: {formatCurrency(dreData.totalAdministrativeCosts)}</div>
                         <div className="border-t pt-2 font-semibold">
-                          Resultado Operacional: {formatCurrency((receitaTotal - totalCustosVariaveis) - dreData.totalFixedCosts - dreData.totalAdministrativeCosts)}
+                          Lucro Operacional: {formatCurrency(lucroOperacional)}
                         </div>
-                        <div>Margem Operacional: {formatPercent(dreData.operationalMargin)}</div>
+                        <div>Margem Operacional: {formatPercent(lucroOperacional / receitaTotal * 100)}</div>
                       </div>
                     </div>
                     
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h4 className="font-semibold mb-2">✅ Valor final apresentado:</h4>
-                      <p className="text-lg font-bold text-purple-600">{formatCurrency(dreData.operationalResult)}</p>
+                      <p className="text-lg font-bold text-purple-600">{formatCurrency(lucroOperacional)}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Impostos */}
+            <AccordionItem value="impostos">
+              <AccordionTrigger className="text-left">
+                <div className="flex items-center justify-between w-full mr-4">
+                  <span>📁 Impostos</span>
+                  <Badge variant="outline">{formatCurrency(impostos)}</Badge>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <Card>
+                  <CardContent className="pt-6 space-y-4">
+                    <div className="bg-red-50 p-4 rounded-lg">
+                      <h4 className="font-semibold mb-2">🧮 Cálculo:</h4>
+                      <div className="space-y-2 text-sm">
+                        <div>Receita Total: {formatCurrency(receitaTotal)}</div>
+                        <div>Taxa de Imposto: {taxaImposto}%</div>
+                        <div className="border-t pt-2 font-semibold">
+                          Impostos: {formatCurrency(impostos)}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <h4 className="font-semibold mb-2 flex items-center gap-2">
+                        <Database className="h-4 w-4" />
+                        📌 Fonte dos dados:
+                      </h4>
+                      <p className="text-sm">Taxa de imposto obtida da aba "Custos Variáveis" → {taxaImposto}%</p>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-semibold mb-2">✅ Valor final apresentado:</h4>
+                      <p className="text-lg font-bold text-red-600">{formatCurrency(impostos)}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Resultado Líquido */}
+            <AccordionItem value="resultado-liquido">
+              <AccordionTrigger className="text-left">
+                <div className="flex items-center justify-between w-full mr-4">
+                  <span>📁 Resultado Líquido</span>
+                  <Badge variant="outline">{formatCurrency(resultadoLiquido)}</Badge>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <Card>
+                  <CardContent className="pt-6 space-y-4">
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <h4 className="font-semibold mb-2">🧮 Cálculo:</h4>
+                      <div className="space-y-2 text-sm">
+                        <div>Lucro Operacional: {formatCurrency(lucroOperacional)}</div>
+                        <div>(-) Impostos ({taxaImposto}%): {formatCurrency(impostos)}</div>
+                        <div className="border-t pt-2 font-semibold">
+                          Resultado Líquido: {formatCurrency(resultadoLiquido)}
+                        </div>
+                        <div>Margem Líquida: {formatPercent(resultadoLiquido / receitaTotal * 100)}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-semibold mb-2">✅ Valor final apresentado:</h4>
+                      <p className="text-lg font-bold text-green-600">{formatCurrency(resultadoLiquido)}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -332,6 +428,8 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
               <div>• Insumos Total: {formatCurrency(totalInsumos)} (Bloco "Custo de Insumos")</div>
               <div>• Aquisição: {formatCurrency(aquisicaoClientes)} (8% da receita)</div>
               <div>• <strong>Total Custos Variáveis: {formatCurrency(totalCustosVariaveis)}</strong></div>
+              <div>• Impostos: {formatCurrency(impostos)} (Taxa: {taxaImposto}% sobre receita)</div>
+              <div>• <strong>Resultado Líquido: {formatCurrency(resultadoLiquido)}</strong></div>
             </div>
           </div>
         </div>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -63,7 +62,11 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
   const custosFixos = dreData.totalFixedCosts;
   const custoAdm = dreData.totalAdministrativeCosts;
   const lucroOperacional = lucroBruto - custosFixos - custoAdm;
-  const resultadoLiquido = lucroOperacional;
+  
+  // Tax calculation (3.2% from custos variáveis)
+  const taxaImposto = 3.2; // 3.2%
+  const impostos = receitaTotal * (taxaImposto / 100);
+  const resultadoLiquido = lucroOperacional - impostos;
 
   console.log('DRE Values (synchronized with audit):', {
     receitaTotal,
@@ -76,7 +79,9 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
     aquisicaoClientes,
     totalCustosVariaveis,
     lucroBruto,
-    lucroOperacional
+    lucroOperacional,
+    impostos,
+    resultadoLiquido
   });
 
   const dreItems: DREItem[] = [
@@ -169,7 +174,14 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
       valor: custosFixos,
       percentual: custosFixos / receitaTotal * 100,
       level: 0,
-      isExpandable: false
+      isExpandable: true,
+      children: dreData.fixedCosts.map((cost, index) => ({
+        id: `4.${index + 1}`,
+        categoria: `4.${index + 1}. ${cost.name}`,
+        valor: cost.value,
+        percentual: cost.value / receitaTotal * 100,
+        level: 1
+      }))
     },
     {
       id: '5',
@@ -177,7 +189,14 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
       valor: custoAdm,
       percentual: custoAdm / receitaTotal * 100,
       level: 0,
-      isExpandable: false
+      isExpandable: true,
+      children: dreData.administrativeCosts.map((cost, index) => ({
+        id: `5.${index + 1}`,
+        categoria: `5.${index + 1}. ${cost.name}`,
+        valor: cost.value,
+        percentual: cost.value / receitaTotal * 100,
+        level: 1
+      }))
     },
     {
       id: '6',
@@ -189,7 +208,15 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
     },
     {
       id: '7',
-      categoria: '7. RESULTADO LÍQUIDO',
+      categoria: '7. IMPOSTOS',
+      valor: impostos,
+      percentual: impostos / receitaTotal * 100,
+      level: 0,
+      isExpandable: false
+    },
+    {
+      id: '8',
+      categoria: '8. RESULTADO LÍQUIDO',
       valor: resultadoLiquido,
       percentual: resultadoLiquido / receitaTotal * 100,
       level: 0,
@@ -366,6 +393,7 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
         <p>💡 Clique nos ícones de seta para expandir/recolher categorias</p>
         <p>🔍 Dados sincronizados com auditoria "Ver passo a passo"</p>
         <p>✅ Receita: R$ {formatCurrency(receitaTotal).replace('R$ ', '')} | Custos Variáveis: R$ {formatCurrency(totalCustosVariaveis).replace('R$ ', '')} | Lucro Bruto: R$ {formatCurrency(lucroBruto).replace('R$ ', '')}</p>
+        <p>💰 Impostos ({taxaImposto}%): R$ {formatCurrency(impostos).replace('R$ ', '')} | Resultado Líquido: R$ {formatCurrency(resultadoLiquido).replace('R$ ', '')}</p>
         <p className="text-xs text-blue-600">📋 Nota técnica: Dados da DRE Base sincronizados diretamente com auditoria 'Ver passo a passo'</p>
       </div>
 
