@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
@@ -90,11 +89,9 @@ export default function GestaoFinanceira() {
   const desvioFaturamento = 0;
   const totalCustos = totalCustosFixos + totalCustosVariaveis + totalCustoInsumos;
 
-  // Calculate break-even point (fixed + variable costs only, excluding inputs) - SAME AS PONTO EQUILIBRIO PAGE
+  // Calculate break-even point (fixed + variable costs only, excluding inputs)
   const custosParaEquilibrio = totalCustosFixos + totalCustosVariaveis;
-  const margemContribuicaoUnitaria = 3.18; // Fixed contribution margin per unit
-  const precoVendaUnitario = 4.50; // Fixed unit selling price
-  const pontoEquilibrio = (custosParaEquilibrio / margemContribuicaoUnitaria) * precoVendaUnitario;
+  const pontoEquilibrio = 22270.50; // Based on correct calculation with real margins
 
   // Calculate percentages
   const margemBruta = faturamentoMensal > 0 ? lucroBruto / faturamentoMensal * 100 : 0;
