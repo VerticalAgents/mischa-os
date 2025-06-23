@@ -63,6 +63,15 @@ const calculateWeeklyVolume = (cliente: Cliente): number => {
 // Helper to calculate monthly volume
 const weeklyToMonthly = (weekly: number): number => weekly * 4.33;
 
+// Helper to categorize client by name/characteristics for DRE calculations
+const getClientCategory = (cliente: Cliente): 'revenda padrão' | 'food service' => {
+  const nome = cliente.nome.toLowerCase();
+  if (nome.includes('food service') || nome.includes('restaurante') || nome.includes('lanchonete') || cliente.quantidadePadrao > 50) {
+    return 'food service';
+  }
+  return 'revenda padrão';
+};
+
 export const useProjectionStore = create<ProjectionStore>()(
   devtools(
     (set, get) => ({
@@ -85,7 +94,44 @@ export const useProjectionStore = create<ProjectionStore>()(
           }
         });
         
-        // Calculate volumes and group by channels
+        // Calculate values by client category for DRE
+        let revendaPadraoFaturamento = 0;
+        let revendaPadraoCusto = 0;
+        let foodServiceFaturamento = 0;
+        let foodServiceCusto = 0;
+        
+        activeClientes.forEach(cliente => {
+          const categoria = getClientCategory(cliente);
+          const weeklyVolume = calculateWeeklyVolume(cliente);
+          const monthlyVolume = weeklyToMonthly(weeklyVolume);
+          
+          // Different pricing for different categories
+          let unitPrice = categoria === 'food service' ? 70.00 : 4.50;
+          let unitCost = categoria === 'food service' ? 35.00 : 2.00;
+          
+          const faturamento = monthlyVolume * unitPrice;
+          const custo = monthlyVolume * unitCost;
+          
+          if (categoria === 'revenda padrão') {
+            revendaPadraoFaturamento += faturamento;
+            revendaPadraoCusto += custo;
+          } else {
+            foodServiceFaturamento += faturamento;
+            foodServiceCusto += custo;
+          }
+        });
+        
+        // Calculate totals for DRE structure
+        const totalReceita = revendaPadraoFaturamento + foodServiceFaturamento;
+        const totalInsumos = revendaPadraoCusto + foodServiceCusto;
+        
+        // Calculate logística from custos variáveis (assuming 20% of total revenue as baseline)
+        const totalLogistica = totalReceita * 0.15; // 15% da receita para logística
+        
+        // Calculate aquisição de clientes (8% of total revenue)
+        const aquisicaoClientes = totalReceita * 0.08;
+        
+        // Calculate volumes and group by channels for compatibility
         const channelVolumes: Record<Channel, number> = {
           'B2B-Revenda': 0,
           'B2B-FoodService': 0,
@@ -99,7 +145,7 @@ export const useProjectionStore = create<ProjectionStore>()(
           channelVolumes[channel] += calculateWeeklyVolume(cliente);
         });
         
-        // Calculate revenue, costs and margins for each channel
+        // Calculate revenue, costs and margins for each channel (for compatibility)
         const channelsData: ChannelData[] = Object.entries(channelVolumes).map(([channel, weeklyVolume]) => {
           const monthlyVolume = weeklyToMonthly(weeklyVolume);
           
@@ -113,8 +159,8 @@ export const useProjectionStore = create<ProjectionStore>()(
               unitCost = 2.00;
               break;
             case 'B2B-FoodService':
-              unitPrice = 5.00;
-              unitCost = 2.20;
+              unitPrice = 70.00;
+              unitCost = 35.00;
               break;
             case 'B2C-UFCSPA':
               unitPrice = 5.50;
@@ -164,9 +210,9 @@ export const useProjectionStore = create<ProjectionStore>()(
           { name: 'Veículos', value: 40000, depreciationYears: 5, monthlyDepreciation: 666.67 },
         ];
         
-        // Calculate totals
-        const totalRevenue = channelsData.reduce((sum, c) => sum + c.revenue, 0);
-        const totalVariableCosts = channelsData.reduce((sum, c) => sum + c.variableCosts, 0);
+        // Calculate totals using new DRE structure values
+        const totalRevenue = totalReceita;
+        const totalVariableCosts = totalInsumos + totalLogistica + aquisicaoClientes;
         const totalFixedCosts = fixedCosts.reduce((sum, c) => sum + c.value, 0);
         const totalAdministrativeCosts = administrativeCosts.reduce((sum, c) => sum + c.value, 0);
         const totalCosts = totalVariableCosts + totalFixedCosts + totalAdministrativeCosts;
