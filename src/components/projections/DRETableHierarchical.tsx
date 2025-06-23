@@ -1,9 +1,10 @@
-
 import React, { useState } from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Download, Printer, ChevronDown, ChevronRight } from "lucide-react";
+import { Download, Printer, ChevronDown, ChevronRight, Calculator } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DREData } from '@/types/projections';
+import { DRECalculationDetails } from './DRECalculationDetails';
 
 interface DRETableHierarchicalProps {
   dreData: DREData;
@@ -26,6 +27,7 @@ interface DREItem {
 
 export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [showCalculationDetails, setShowCalculationDetails] = useState(false);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -193,6 +195,8 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
     }
   ];
 
+  const isDataLoaded = dreData && dreData.detailedBreakdown && dreData.totalRevenue > 0;
+
   const toggleExpansion = (itemId: string) => {
     const newExpanded = new Set(expandedItems);
     if (newExpanded.has(itemId)) {
@@ -305,6 +309,28 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-lg font-semibold truncate">DRE - {dreData.name}</h3>
         <div className="flex gap-2 flex-shrink-0">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowCalculationDetails(true)}
+                  disabled={!isDataLoaded}
+                  className="flex items-center gap-2"
+                >
+                  <Calculator className="h-4 w-4" />
+                  Ver passo a passo
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isDataLoaded 
+                  ? "Visualizar cálculos detalhados da DRE" 
+                  : "Disponível apenas após o carregamento completo da DRE"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
           <Button variant="outline" size="sm" onClick={exportData}>
             <Download className="h-4 w-4 mr-2" />
             Exportar CSV
@@ -339,6 +365,12 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
         <p>🔍 Dados sincronizados com "Projeção de Resultados por PDV"</p>
         <p>✅ Receita: R$ {formatCurrency(receita).replace('R$ ', '')} | Insumos: R$ {formatCurrency(insumosRevenda + insumosFoodService).replace('R$ ', '')} | Aquisição: R$ {formatCurrency(aquisicaoClientes).replace('R$ ', '')}</p>
       </div>
+
+      <DRECalculationDetails 
+        open={showCalculationDetails}
+        onOpenChange={setShowCalculationDetails}
+        dreData={dreData}
+      />
     </div>
   );
 }
