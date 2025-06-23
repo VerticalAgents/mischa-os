@@ -511,7 +511,7 @@ export function DRETableHierarchical({
         </div>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border min-h-[600px] max-h-[80vh] overflow-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-100">
