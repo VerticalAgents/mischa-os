@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { DREData } from '@/types/projections';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
-import { ModernDRETable } from './ModernDRETable';
+import { DRETableHierarchical } from './DRETableHierarchical';
 import { ScenarioForm } from './ScenarioForm';
 
 export function ScenarioTabs() {
@@ -88,13 +88,14 @@ export function ScenarioTabs() {
 
         <TabsContent value="base">
           <div className="space-y-6">
-            {baseDRE && <ModernDRETable dreData={baseDRE} />}
+            {baseDRE && <DRETableHierarchical dreData={baseDRE} />}
           </div>
         </TabsContent>
         
         {scenarios.map((scenario) => (
           <TabsContent key={scenario.id} value={scenario.id}>
             <div className="space-y-6">
+              <DRETableHierarchical dreData={scenario} />
               <ScenarioForm scenario={scenario} />
             </div>
           </TabsContent>
