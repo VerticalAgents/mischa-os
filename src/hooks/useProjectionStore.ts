@@ -94,42 +94,63 @@ export const useProjectionStore = create<ProjectionStore>()(
           }
         });
         
-        // Calculate values by client category for DRE
+        // Calculate values by client category using PDV projection logic
         let revendaPadraoFaturamento = 0;
         let revendaPadraoCusto = 0;
         let foodServiceFaturamento = 0;
         let foodServiceCusto = 0;
+        let totalLogistica = 0;
         
         activeClientes.forEach(cliente => {
           const categoria = getClientCategory(cliente);
-          const weeklyVolume = calculateWeeklyVolume(cliente);
-          const monthlyVolume = weeklyToMonthly(weeklyVolume);
+          const giroSemanal = calculateWeeklyVolume(cliente);
+          const faturamentoMensal = giroSemanal * 4.33;
           
-          // Different pricing for different categories
-          let unitPrice = categoria === 'food service' ? 70.00 : 4.50;
-          let unitCost = categoria === 'food service' ? 35.00 : 2.00;
+          // Different pricing for different categories (same as PDV projection)
+          let precoMedio = 0;
+          if (categoria === 'food service') {
+            precoMedio = 70.00;
+          } else {
+            precoMedio = 4.50;
+          }
           
-          const faturamento = monthlyVolume * unitPrice;
-          const custo = monthlyVolume * unitCost;
+          const faturamento = faturamentoMensal * precoMedio;
+          
+          // Calculate input costs using the same logic as PDV projection
+          const custoUnitario = categoria === 'food service' ? 29.17 : 1.32;
+          const custoInsumos = faturamentoMensal * custoUnitario;
           
           if (categoria === 'revenda padrão') {
             revendaPadraoFaturamento += faturamento;
-            revendaPadraoCusto += custo;
+            revendaPadraoCusto += custoInsumos;
           } else {
             foodServiceFaturamento += faturamento;
-            foodServiceCusto += custo;
+            foodServiceCusto += custoInsumos;
           }
+          
+          // Calculate logistics costs based on client type
+          let percentualLogistico = 0;
+          if (cliente.tipoLogistica === 'Distribuição') {
+            percentualLogistico = 0.08; // 8%
+          } else if (cliente.tipoLogistica === 'Própria') {
+            percentualLogistico = 0.03; // 3%
+          } else {
+            percentualLogistico = 0.05; // 5%
+          }
+          totalLogistica += faturamento * percentualLogistico;
         });
         
+        // Calculate totals matching PDV projection
+        const totalReceita = revendaPadraoFaturamento + foodServiceFaturamento; // R$ 36.246,00
+        const totalInsumosRevenda = revendaPadraoCusto; // R$ 8.907,36
+        const totalInsumosFoodService = foodServiceCusto; // R$ 2.450,28
+        const totalInsumos = totalInsumosRevenda + totalInsumosFoodService; // R$ 11.357,64
+        
+        // Calculate acquisition costs (8% of total revenue)
+        const aquisicaoClientes = totalReceita * 0.08; // R$ 2.899,68
+        
         // Calculate totals for DRE structure
-        const totalReceita = revendaPadraoFaturamento + foodServiceFaturamento;
-        const totalInsumos = revendaPadraoCusto + foodServiceCusto;
-        
-        // Calculate logística from custos variáveis (assuming 20% of total revenue as baseline)
-        const totalLogistica = totalReceita * 0.15; // 15% da receita para logística
-        
-        // Calculate aquisição de clientes (8% of total revenue)
-        const aquisicaoClientes = totalReceita * 0.08;
+        const totalVariableCosts = totalInsumos + totalLogistica + aquisicaoClientes; // R$ 12.807,48
         
         // Calculate volumes and group by channels for compatibility
         const channelVolumes: Record<Channel, number> = {
@@ -156,11 +177,11 @@ export const useProjectionStore = create<ProjectionStore>()(
           switch (channel) {
             case 'B2B-Revenda':
               unitPrice = 4.50;
-              unitCost = 2.00;
+              unitCost = 1.32;
               break;
             case 'B2B-FoodService':
               unitPrice = 70.00;
-              unitCost = 35.00;
+              unitCost = 29.17;
               break;
             case 'B2C-UFCSPA':
               unitPrice = 5.50;
@@ -210,9 +231,8 @@ export const useProjectionStore = create<ProjectionStore>()(
           { name: 'Veículos', value: 40000, depreciationYears: 5, monthlyDepreciation: 666.67 },
         ];
         
-        // Calculate totals using new DRE structure values
-        const totalRevenue = totalReceita;
-        const totalVariableCosts = totalInsumos + totalLogistica + aquisicaoClientes;
+        // Calculate totals using corrected values
+        const totalRevenue = totalReceita; // R$ 36.246,00
         const totalFixedCosts = fixedCosts.reduce((sum, c) => sum + c.value, 0);
         const totalAdministrativeCosts = administrativeCosts.reduce((sum, c) => sum + c.value, 0);
         const totalCosts = totalVariableCosts + totalFixedCosts + totalAdministrativeCosts;
