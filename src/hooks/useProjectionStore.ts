@@ -81,10 +81,14 @@ export const useProjectionStore = create<ProjectionStore>()(
       clientChannels: {},
       
       generateBaseDRE: (clientes, custosFixos = [], custosVariaveis = []) => {
+        console.log('Generating Base DRE with clients:', clientes.length);
+        
         // Filter active clients that should be counted in average
         const activeClientes = clientes.filter(
           c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio
         );
+        
+        console.log('Active clients for DRE:', activeClientes.length);
         
         // Initialize client channels if not set
         const clientChannels = { ...get().clientChannels };
@@ -141,16 +145,28 @@ export const useProjectionStore = create<ProjectionStore>()(
         });
         
         // Calculate totals matching PDV projection exactly
-        const totalReceita = revendaPadraoFaturamento + foodServiceFaturamento; // R$ 36.246,00
-        const totalInsumosRevenda = revendaPadraoCusto; // R$ 8.907,36
-        const totalInsumosFoodService = foodServiceCusto; // R$ 2.450,28
-        const totalInsumos = totalInsumosRevenda + totalInsumosFoodService; // R$ 11.357,64
+        const totalReceita = revendaPadraoFaturamento + foodServiceFaturamento;
+        const totalInsumosRevenda = revendaPadraoCusto;
+        const totalInsumosFoodService = foodServiceCusto;
+        const totalInsumos = totalInsumosRevenda + totalInsumosFoodService;
         
         // Calculate acquisition costs (8% of total revenue)
-        const aquisicaoClientes = totalReceita * 0.08; // R$ 2.899,68
+        const aquisicaoClientes = totalReceita * 0.08;
         
         // Calculate totals for DRE structure
         const totalVariableCosts = totalInsumos + totalLogistica + aquisicaoClientes;
+        
+        console.log('DRE Calculated Values:', {
+          totalReceita,
+          revendaPadraoFaturamento,
+          foodServiceFaturamento,
+          totalInsumos,
+          totalInsumosRevenda,
+          totalInsumosFoodService,
+          totalLogistica,
+          aquisicaoClientes,
+          totalVariableCosts
+        });
         
         // Calculate volumes and group by channels for compatibility
         const channelVolumes: Record<Channel, number> = {
@@ -232,7 +248,7 @@ export const useProjectionStore = create<ProjectionStore>()(
         ];
         
         // Calculate totals using corrected values
-        const totalRevenue = totalReceita; // R$ 36.246,00
+        const totalRevenue = totalReceita; // This MUST be R$ 36.246,00
         const totalFixedCosts = fixedCosts.reduce((sum, c) => sum + c.value, 0);
         const totalAdministrativeCosts = administrativeCosts.reduce((sum, c) => sum + c.value, 0);
         const totalCosts = totalVariableCosts + totalFixedCosts + totalAdministrativeCosts;
@@ -262,8 +278,8 @@ export const useProjectionStore = create<ProjectionStore>()(
           fixedCosts,
           administrativeCosts,
           investments: defaultInvestments,
-          totalRevenue,
-          totalVariableCosts,
+          totalRevenue, // This should be R$ 36.246,00
+          totalVariableCosts, // This should be R$ 12.807,48
           totalFixedCosts,
           totalAdministrativeCosts,
           totalCosts,
@@ -279,14 +295,16 @@ export const useProjectionStore = create<ProjectionStore>()(
           paybackMonths,
           // Adding detailed breakdown for DRE display
           detailedBreakdown: {
-            revendaPadraoFaturamento,
-            foodServiceFaturamento,
-            totalInsumosRevenda,
-            totalInsumosFoodService,
-            totalLogistica,
-            aquisicaoClientes
+            revendaPadraoFaturamento, // Should be R$ 30.366,00
+            foodServiceFaturamento, // Should be R$ 5.880,00
+            totalInsumosRevenda, // Should be R$ 8.907,36
+            totalInsumosFoodService, // Should be R$ 2.450,28
+            totalLogistica, // Should be R$ 1.449,84
+            aquisicaoClientes // Should be R$ 2.899,68
           }
         };
+        
+        console.log('Final DRE Base:', baseDRE);
         
         set({
           baseDRE,

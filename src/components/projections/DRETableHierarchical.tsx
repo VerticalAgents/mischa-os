@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -42,36 +43,37 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
     }).format(value) + '%';
   };
 
-  // Use real data from dreData with fallbacks
-  const receita = dreData.totalRevenue;
+  // Use EXACTLY the values from dreData - no additional calculations
+  const receita = dreData.totalRevenue; // This should be R$ 36.246,00
   const breakdown = dreData.detailedBreakdown;
   
-  // Use real values from detailedBreakdown or calculate fallbacks
-  const receitaRevenda = breakdown?.revendaPadraoFaturamento || receita * 0.84;
-  const receitaFoodService = breakdown?.foodServiceFaturamento || receita * 0.16;
+  // Use the exact values from the breakdown
+  const receitaRevenda = breakdown?.revendaPadraoFaturamento || 0;
+  const receitaFoodService = breakdown?.foodServiceFaturamento || 0;
   
-  const custosVariaveis = dreData.totalVariableCosts;
-  const logistica = breakdown?.totalLogistica || 1449.84; // Use real logistics value
-  const insumosRevenda = breakdown?.totalInsumosRevenda || 8907.36; // Use real insumos revenda
-  const insumosFoodService = breakdown?.totalInsumosFoodService || 2450.28; // Use real insumos food service
-  const aquisicaoClientes = breakdown?.aquisicaoClientes || receita * 0.08; // 8% of revenue
+  const custosVariaveis = dreData.totalVariableCosts; // This should be R$ 12.807,48
+  const logistica = breakdown?.totalLogistica || 0; // R$ 1.449,84
+  const insumosRevenda = breakdown?.totalInsumosRevenda || 0; // R$ 8.907,36
+  const insumosFoodService = breakdown?.totalInsumosFoodService || 0; // R$ 2.450,28
+  const aquisicaoClientes = breakdown?.aquisicaoClientes || 0; // R$ 2.899,68
   
   const lucroBruto = receita - custosVariaveis;
   const custosFixos = dreData.totalFixedCosts;
   const custoAdm = dreData.totalAdministrativeCosts;
-  
-  // Calculate operational values based on structure proportions
-  const despesasOperacionais = custosFixos * 0.6;
-  const proLabore = despesasOperacionais * 0.3;
-  const despesasPessoal = despesasOperacionais * 0.4;
-  const infraestrutura = despesasOperacionais * 0.3;
-  const despesasVendas = custosFixos * 0.25;
-  const despesasFinanceiras = custosFixos * 0.15;
-  const marketing = custoAdm * 0.3;
-  const investimentos = custoAdm * 0.7;
-  
-  const lucroOperacional = lucroBruto - custosFixos - custoAdm;
+  const lucroOperacional = dreData.operationalResult;
   const resultadoLiquido = lucroOperacional;
+
+  console.log('DRE Debug Values:', {
+    receita,
+    receitaRevenda,
+    receitaFoodService,
+    custosVariaveis,
+    logistica,
+    insumosRevenda,
+    insumosFoodService,
+    aquisicaoClientes,
+    breakdown
+  });
 
   const dreItems: DREItem[] = [
     {
@@ -160,341 +162,30 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
     {
       id: '4',
       categoria: '4. CUSTOS FIXOS',
-      valor: custosFixos + custoAdm,
-      percentual: (custosFixos + custoAdm) / receita * 100,
+      valor: custosFixos,
+      percentual: custosFixos / receita * 100,
       level: 0,
-      isExpandable: true,
-      children: [
-        {
-          id: '4.1',
-          categoria: '4.1. DESPESAS OPERACIONAIS',
-          valor: despesasOperacionais,
-          percentual: despesasOperacionais / receita * 100,
-          level: 1,
-          isExpandable: true,
-          children: [
-            {
-              id: '4.1.1',
-              categoria: '4.1.1. PRÓ-LABORE',
-              valor: proLabore,
-              percentual: proLabore / receita * 100,
-              level: 2,
-              isExpandable: true,
-              children: [{
-                id: '4.1.1.1',
-                categoria: '4.1.1.1. Lucca',
-                valor: proLabore,
-                percentual: proLabore / receita * 100,
-                level: 3
-              }]
-            },
-            {
-              id: '4.1.2',
-              categoria: '4.1.2. DESPESAS COM PESSOAL',
-              valor: despesasPessoal,
-              percentual: despesasPessoal / receita * 100,
-              level: 2,
-              isExpandable: true,
-              children: [
-                {
-                  id: '4.1.2.1',
-                  categoria: '4.1.2.1. Folha de Pagamento',
-                  valor: despesasPessoal * 0.5,
-                  percentual: despesasPessoal * 0.5 / receita * 100,
-                  level: 3
-                },
-                {
-                  id: '4.1.2.2',
-                  categoria: '4.1.2.2. VT',
-                  valor: despesasPessoal * 0.1,
-                  percentual: despesasPessoal * 0.1 / receita * 100,
-                  level: 3
-                },
-                {
-                  id: '4.1.2.3',
-                  categoria: '4.1.2.3. VA',
-                  valor: despesasPessoal * 0.1,
-                  percentual: despesasPessoal * 0.1 / receita * 100,
-                  level: 3
-                },
-                {
-                  id: '4.1.2.4',
-                  categoria: '4.1.2.4. Comissões',
-                  valor: despesasPessoal * 0.15,
-                  percentual: despesasPessoal * 0.15 / receita * 100,
-                  level: 3
-                },
-                {
-                  id: '4.1.2.5',
-                  categoria: '4.1.2.5. Terceirizados',
-                  valor: despesasPessoal * 0.15,
-                  percentual: despesasPessoal * 0.15 / receita * 100,
-                  level: 3
-                }
-              ]
-            },
-            {
-              id: '4.1.3',
-              categoria: '4.1.3. INFRAESTRUTURA',
-              valor: infraestrutura,
-              percentual: infraestrutura / receita * 100,
-              level: 2,
-              isExpandable: true,
-              children: [
-                {
-                  id: '4.1.3.1',
-                  categoria: '4.1.3.1. Material de Limpeza',
-                  valor: infraestrutura * 0.05,
-                  percentual: infraestrutura * 0.05 / receita * 100,
-                  level: 3
-                },
-                {
-                  id: '4.1.3.2',
-                  categoria: '4.1.3.2. Material de Escritório',
-                  valor: infraestrutura * 0.05,
-                  percentual: infraestrutura * 0.05 / receita * 100,
-                  level: 3
-                },
-                {
-                  id: '4.1.3.3',
-                  categoria: '4.1.3.3. Energia Elétrica',
-                  valor: infraestrutura * 0.15,
-                  percentual: infraestrutura * 0.15 / receita * 100,
-                  level: 3
-                },
-                {
-                  id: '4.1.3.4',
-                  categoria: '4.1.3.4. Aluguel',
-                  valor: infraestrutura * 0.3,
-                  percentual: infraestrutura * 0.3 / receita * 100,
-                  level: 3
-                },
-                {
-                  id: '4.1.3.5',
-                  categoria: '4.1.3.5. Água',
-                  valor: infraestrutura * 0.05,
-                  percentual: infraestrutura * 0.05 / receita * 100,
-                  level: 3
-                },
-                {
-                  id: '4.1.3.6',
-                  categoria: '4.1.3.6. Sistemas',
-                  valor: infraestrutura * 0.05,
-                  percentual: infraestrutura * 0.05 / receita * 100,
-                  level: 3
-                },
-                {
-                  id: '4.1.3.7',
-                  categoria: '4.1.3.7. Telefone',
-                  valor: infraestrutura * 0.03,
-                  percentual: infraestrutura * 0.03 / receita * 100,
-                  level: 3
-                },
-                {
-                  id: '4.1.3.8',
-                  categoria: '4.1.3.8. Internet',
-                  valor: infraestrutura * 0.02,
-                  percentual: infraestrutura * 0.02 / receita * 100,
-                  level: 3
-                },
-                {
-                  id: '4.1.3.9',
-                  categoria: '4.1.3.9. Licenças e Sistemas',
-                  valor: infraestrutura * 0.15,
-                  percentual: infraestrutura * 0.15 / receita * 100,
-                  level: 3,
-                  isExpandable: true,
-                  children: [
-                    {
-                      id: '4.1.3.9.1',
-                      categoria: '4.1.3.9.1. ERP Gestão Click',
-                      valor: infraestrutura * 0.05,
-                      percentual: infraestrutura * 0.05 / receita * 100,
-                      level: 4
-                    },
-                    {
-                      id: '4.1.3.9.2',
-                      categoria: '4.1.3.9.2. Canva Pro',
-                      valor: infraestrutura * 0.03,
-                      percentual: infraestrutura * 0.03 / receita * 100,
-                      level: 4
-                    },
-                    {
-                      id: '4.1.3.9.3',
-                      categoria: '4.1.3.9.3. Meu Assessor Pro',
-                      valor: infraestrutura * 0.04,
-                      percentual: infraestrutura * 0.04 / receita * 100,
-                      level: 4
-                    },
-                    {
-                      id: '4.1.3.9.4',
-                      categoria: '4.1.3.9.4. Lovable Pro',
-                      valor: infraestrutura * 0.03,
-                      percentual: infraestrutura * 0.03 / receita * 100,
-                      level: 4
-                    }
-                  ]
-                },
-                {
-                  id: '4.1.3.10',
-                  categoria: '4.1.3.10. Assessorias',
-                  valor: infraestrutura * 0.15,
-                  percentual: infraestrutura * 0.15 / receita * 100,
-                  level: 3,
-                  isExpandable: true,
-                  children: [{
-                    id: '4.1.3.10.1',
-                    categoria: '4.1.3.10.1. Contabilidade',
-                    valor: infraestrutura * 0.15,
-                    percentual: infraestrutura * 0.15 / receita * 100,
-                    level: 4
-                  }]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          id: '4.2',
-          categoria: '4.2. DESPESAS COM VENDAS',
-          valor: despesasVendas,
-          percentual: despesasVendas / receita * 100,
-          level: 1,
-          isExpandable: true,
-          children: [
-            {
-              id: '4.2.1',
-              categoria: '4.2.1. Gasolina',
-              valor: despesasVendas * 0.4,
-              percentual: despesasVendas * 0.4 / receita * 100,
-              level: 2
-            },
-            {
-              id: '4.2.2',
-              categoria: '4.2.2. Seguro',
-              valor: despesasVendas * 0.2,
-              percentual: despesasVendas * 0.2 / receita * 100,
-              level: 2
-            },
-            {
-              id: '4.2.3',
-              categoria: '4.2.3. Multas',
-              valor: despesasVendas * 0.05,
-              percentual: despesasVendas * 0.05 / receita * 100,
-              level: 2
-            },
-            {
-              id: '4.2.4',
-              categoria: '4.2.4. Estacionamento',
-              valor: despesasVendas * 0.1,
-              percentual: despesasVendas * 0.1 / receita * 100,
-              level: 2
-            },
-            {
-              id: '4.2.5',
-              categoria: '4.2.5. Uber',
-              valor: despesasVendas * 0.15,
-              percentual: despesasVendas * 0.15 / receita * 100,
-              level: 2
-            },
-            {
-              id: '4.2.6',
-              categoria: '4.2.6. Outros Gastos com Logística',
-              valor: despesasVendas * 0.1,
-              percentual: despesasVendas * 0.1 / receita * 100,
-              level: 2
-            }
-          ]
-        },
-        {
-          id: '4.2.4',
-          categoria: '4.2.4. MARKETING',
-          valor: marketing,
-          percentual: marketing / receita * 100,
-          level: 1
-        },
-        {
-          id: '4.2.5',
-          categoria: '4.2.5. INVESTIMENTOS',
-          valor: investimentos,
-          percentual: investimentos / receita * 100,
-          level: 1,
-          isExpandable: true,
-          children: [
-            {
-              id: '4.2.5.1',
-              categoria: '4.2.5.1. Forno',
-              valor: investimentos * 0.6,
-              percentual: investimentos * 0.6 / receita * 100,
-              level: 2
-            },
-            {
-              id: '4.2.5.2',
-              categoria: '4.2.5.2. Flow Pack',
-              valor: investimentos * 0.4,
-              percentual: investimentos * 0.4 / receita * 100,
-              level: 2
-            }
-          ]
-        },
-        {
-          id: '4.3',
-          categoria: '4.3. DESPESAS FINANCEIRAS',
-          valor: despesasFinanceiras,
-          percentual: despesasFinanceiras / receita * 100,
-          level: 1,
-          isExpandable: true,
-          children: [
-            {
-              id: '4.3.1',
-              categoria: '4.3.1. Juros',
-              valor: despesasFinanceiras * 0.3,
-              percentual: despesasFinanceiras * 0.3 / receita * 100,
-              level: 2
-            },
-            {
-              id: '4.3.2',
-              categoria: '4.3.2. Depreciação',
-              valor: despesasFinanceiras * 0.4,
-              percentual: despesasFinanceiras * 0.4 / receita * 100,
-              level: 2
-            },
-            {
-              id: '4.3.3',
-              categoria: '4.3.3. Provisionamentos',
-              valor: despesasFinanceiras * 0.2,
-              percentual: despesasFinanceiras * 0.2 / receita * 100,
-              level: 2
-            },
-            {
-              id: '4.3.4',
-              categoria: '4.3.4. Despesas Administrativas',
-              valor: despesasFinanceiras * 0.1,
-              percentual: despesasFinanceiras * 0.1 / receita * 100,
-              level: 2
-            },
-            {
-              id: '4.3.5',
-              categoria: '4.3.5. Receitas Financeiras (+)',
-              valor: -despesasFinanceiras * 0.1,
-              percentual: -despesasFinanceiras * 0.1 / receita * 100,
-              level: 2
-            }
-          ]
-        }
-      ]
+      isExpandable: false
     },
     {
       id: '5',
-      categoria: '5. LUCRO OPERACIONAL',
+      categoria: '5. CUSTOS ADMINISTRATIVOS',
+      valor: custoAdm,
+      percentual: custoAdm / receita * 100,
+      level: 0,
+      isExpandable: false
+    },
+    {
+      id: '6',
+      categoria: '6. LUCRO OPERACIONAL',
       valor: lucroOperacional,
       percentual: lucroOperacional / receita * 100,
       level: 0,
       isSubtotal: true
     },
     {
-      id: '6',
-      categoria: '6. RESULTADO LÍQUIDO',
+      id: '7',
+      categoria: '7. RESULTADO LÍQUIDO',
       valor: resultadoLiquido,
       percentual: resultadoLiquido / receita * 100,
       level: 0,
@@ -531,7 +222,7 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
         : '';
 
       const isExpanded = expandedItems.has(item.id);
-      const paddingLeft = item.level * 16; // 16px per level
+      const paddingLeft = item.level * 16;
 
       result.push(
         <TableRow key={item.id} className={rowClass}>
