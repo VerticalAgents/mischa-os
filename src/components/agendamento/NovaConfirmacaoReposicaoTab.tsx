@@ -1,211 +1,243 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useConfirmacaoReposicaoStore } from "@/hooks/useConfirmacaoReposicaoStore";
-import { format } from "date-fns";
+import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
+import { format, addBusinessDays, isToday, isBefore, startOfDay, isWeekend } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Check, RotateCcw, AlertTriangle, Clock, MessageSquare } from "lucide-react";
+import { Check, Edit, Calendar, AlertTriangle } from "lucide-react";
 import StatusConfirmacaoBadge from "./StatusConfirmacaoBadge";
 import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
+import AgendamentoEditModal from "./AgendamentoEditModal";
+import { AgendamentoItem } from "./types";
+import { toast } from "sonner";
+
+interface AgendamentoComConfirmacao {
+  cliente: {
+    id: string;
+    nome: string;
+    quantidadePadrao: number;
+  };
+  dataReposicao: Date;
+  statusAgendamento: string;
+  tipoPedido: string;
+  quantidadeTotal: number;
+}
+
+const getNextBusinessDayName = () => {
+  const today = new Date();
+  const tomorrow = addBusinessDays(today, 1);
+  
+  // Se for sexta ou sábado, próximo dia útil é segunda
+  if (today.getDay() === 5 || today.getDay() === 6) {
+    return "Próxima Segunda-feira";
+  }
+  
+  return "Amanhã";
+};
+
+const getTwoBusinessDaysName = () => {
+  const today = new Date();
+  const twoDaysAhead = addBusinessDays(today, 2);
+  
+  const dayName = format(twoDaysAhead, "EEEE", { locale: ptBR });
+  return `Próxima ${dayName.charAt(0).toUpperCase() + dayName.slice(1)}-feira`;
+};
 
 export default function NovaConfirmacaoReposicaoTab() {
-  const { 
-    clientesParaConfirmacao, 
-    loading, 
-    carregarClientesParaConfirmacao,
-    confirmarReposicao,
-    reenviarContato,
-    marcarNaoRespondeu
-  } = useConfirmacaoReposicaoStore();
+  const { agendamentos, carregarTodosAgendamentos, salvarAgendamento } = useAgendamentoClienteStore();
+  const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
-    carregarClientesParaConfirmacao();
-  }, [carregarClientesParaConfirmacao]);
+    carregarTodosAgendamentos();
+  }, [carregarTodosAgendamentos]);
 
-  // Calcular estatísticas
-  const hoje = new Date();
-  const paraHoje = clientesParaConfirmacao.filter(cliente => 
-    cliente.status_contato !== 'confirmado'
-  ).length;
-  
-  const atrasados = clientesParaConfirmacao.filter(cliente => 
-    cliente.em_atraso && cliente.status_contato !== 'confirmado'
-  ).length;
-  
-  const total = paraHoje + atrasados;
+  // Converter agendamentos para formato compatível
+  const agendamentosFormatados: AgendamentoComConfirmacao[] = useMemo(() => {
+    return agendamentos
+      .filter(agendamento => agendamento.statusAgendamento === 'Previsto')
+      .map(agendamento => ({
+        cliente: {
+          id: agendamento.cliente.id,
+          nome: agendamento.cliente.nome,
+          quantidadePadrao: agendamento.cliente.quantidadePadrao
+        },
+        dataReposicao: agendamento.dataReposicao,
+        statusAgendamento: agendamento.statusAgendamento,
+        tipoPedido: agendamento.pedido?.tipoPedido || 'Padrão',
+        quantidadeTotal: agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao
+      }));
+  }, [agendamentos]);
 
-  const handleConfirmar = async (clienteId: string) => {
+  // Separar agendamentos por categorias
+  const { paraHoje, proximoDiaUtil, doisDiasUteis, atrasados } = useMemo(() => {
+    const hoje = startOfDay(new Date());
+    const proximoDia = addBusinessDays(hoje, 1);
+    const doisDias = addBusinessDays(hoje, 2);
+
+    return {
+      paraHoje: agendamentosFormatados.filter(ag => 
+        isToday(ag.dataReposicao)
+      ),
+      proximoDiaUtil: agendamentosFormatados.filter(ag => 
+        format(ag.dataReposicao, 'yyyy-MM-dd') === format(proximoDia, 'yyyy-MM-dd')
+      ),
+      doisDiasUteis: agendamentosFormatados.filter(ag => 
+        format(ag.dataReposicao, 'yyyy-MM-dd') === format(doisDias, 'yyyy-MM-dd')
+      ),
+      atrasados: agendamentosFormatados.filter(ag => 
+        isBefore(ag.dataReposicao, hoje)
+      )
+    };
+  }, [agendamentosFormatados]);
+
+  const handleConfirmarAgendamento = async (clienteId: string) => {
     try {
-      await confirmarReposicao(clienteId);
+      await salvarAgendamento(clienteId, {
+        status_agendamento: 'Agendado'
+      });
+      
+      await carregarTodosAgendamentos();
+      toast.success('Agendamento confirmado com sucesso!');
     } catch (error) {
-      console.error('Erro ao confirmar:', error);
+      console.error('Erro ao confirmar agendamento:', error);
+      toast.error('Erro ao confirmar agendamento');
     }
   };
 
-  const handleReenviar = async (clienteId: string) => {
-    try {
-      await reenviarContato(clienteId);
-    } catch (error) {
-      console.error('Erro ao reenviar:', error);
+  const handleReagendar = (agendamento: AgendamentoComConfirmacao) => {
+    // Encontrar o agendamento completo para edição
+    const agendamentoCompleto = agendamentos.find(ag => ag.cliente.id === agendamento.cliente.id);
+    if (agendamentoCompleto) {
+      setSelectedAgendamento(agendamentoCompleto);
+      setModalOpen(true);
     }
   };
 
-  const handleNaoRespondeu = async (clienteId: string) => {
-    try {
-      await marcarNaoRespondeu(clienteId);
-    } catch (error) {
-      console.error('Erro ao marcar não respondeu:', error);
-    }
-  };
+  const renderAgendamentosTable = (agendamentos: AgendamentoComConfirmacao[], title: string, variant: "default" | "secondary" | "destructive" = "default") => {
+    if (agendamentos.length === 0) return null;
 
-  if (loading) {
+    const getCardStyle = () => {
+      switch (variant) {
+        case "destructive":
+          return "border-red-200 bg-red-50";
+        case "secondary":
+          return "border-amber-200 bg-amber-50";
+        default:
+          return "border-green-200 bg-green-50";
+      }
+    };
+
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center space-y-2">
-            <div className="animate-spin h-8 w-8 border-b-2 border-primary rounded-full mx-auto"></div>
-            <p className="text-muted-foreground">Carregando confirmações...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <Card>
+      <Card className={getCardStyle()}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Confirmação de Reposições - {format(new Date(), "dd/MM/yyyy", { locale: ptBR })}
+            {variant === "destructive" && <AlertTriangle className="h-5 w-5 text-red-600" />}
+            {variant === "secondary" && <Calendar className="h-5 w-5 text-amber-600" />}
+            {variant === "default" && <Check className="h-5 w-5 text-green-600" />}
+            {title} ({agendamentos.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Cards Resumo */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-green-600" />
-                <span className="font-medium">Para Hoje</span>
-              </div>
-              <div className="text-2xl font-bold text-green-700">{paraHoje}</div>
-              <div className="text-sm text-green-600">Clientes para confirmação</div>
-            </div>
-            
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-                <span className="font-medium">Atrasados</span>
-              </div>
-              <div className="text-2xl font-bold text-red-700">{atrasados}</div>
-              <div className="text-sm text-red-600">Sem resposta após 48h</div>
-            </div>
-            
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-blue-600" />
-                <span className="font-medium">Total</span>
-              </div>
-              <div className="text-2xl font-bold text-blue-700">{total}</div>
-              <div className="text-sm text-blue-600">Necessitam atenção</div>
-            </div>
-          </div>
-
-          {/* Tabela Principal */}
-          {clientesParaConfirmacao.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Data Prevista</TableHead>
-                  <TableHead>Tipo Pedido</TableHead>
-                  <TableHead>Quantidade</TableHead>
-                  <TableHead>Último Contato</TableHead>
-                  <TableHead>Status Confirmação</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Data Prevista</TableHead>
+                <TableHead>Tipo Pedido</TableHead>
+                <TableHead>Quantidade</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {agendamentos.map((agendamento) => (
+                <TableRow key={agendamento.cliente.id}>
+                  <TableCell className="font-medium">{agendamento.cliente.nome}</TableCell>
+                  <TableCell>
+                    {format(agendamento.dataReposicao, "dd/MM/yyyy", { locale: ptBR })}
+                  </TableCell>
+                  <TableCell>
+                    <TipoPedidoBadge tipo={agendamento.tipoPedido} />
+                  </TableCell>
+                  <TableCell>{agendamento.quantidadeTotal} un</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        onClick={() => handleConfirmarAgendamento(agendamento.cliente.id)}
+                        size="sm"
+                        variant="success"
+                        className="flex items-center gap-1"
+                      >
+                        <Check className="h-4 w-4" />
+                        Confirmar
+                      </Button>
+                      <Button
+                        onClick={() => handleReagendar(agendamento)}
+                        size="sm"
+                        variant="outline"
+                        className="flex items-center gap-1"
+                      >
+                        <Edit className="h-4 w-4" />
+                        Reagendar
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clientesParaConfirmacao.map((cliente) => (
-                  <TableRow 
-                    key={cliente.id}
-                    className={cliente.em_atraso ? 'bg-red-50' : ''}
-                  >
-                    <TableCell className="font-medium">{cliente.nome}</TableCell>
-                    <TableCell>
-                      {format(cliente.data_proxima_reposicao, "dd/MM/yyyy", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell>
-                      <TipoPedidoBadge tipo={cliente.tipo_pedido} />
-                    </TableCell>
-                    <TableCell>{cliente.quantidade_total} un</TableCell>
-                    <TableCell>
-                      {cliente.ultimo_contato_em ? (
-                        <div className="text-sm">
-                          <div>{format(cliente.ultimo_contato_em, "dd/MM/yyyy", { locale: ptBR })}</div>
-                          <div className="text-muted-foreground">
-                            {format(cliente.ultimo_contato_em, "HH:mm", { locale: ptBR })}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <StatusConfirmacaoBadge status={cliente.status_contato} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end">
-                        {cliente.status_contato !== 'confirmado' && (
-                          <Button
-                            onClick={() => handleConfirmar(cliente.id)}
-                            size="sm"
-                            className="flex items-center gap-1 bg-green-500 hover:bg-green-600"
-                          >
-                            <Check className="h-4 w-4" />
-                            Confirmar
-                          </Button>
-                        )}
-                        
-                        {cliente.pode_reenviar && cliente.status_contato !== 'confirmado' && (
-                          <Button
-                            onClick={() => handleReenviar(cliente.id)}
-                            size="sm"
-                            variant="outline"
-                            className="flex items-center gap-1"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                            Reenviar
-                          </Button>
-                        )}
-                        
-                        {cliente.em_atraso && cliente.status_contato !== 'confirmado' && cliente.status_contato !== 'nao_respondeu' && (
-                          <Button
-                            onClick={() => handleNaoRespondeu(cliente.id)}
-                            size="sm"
-                            variant="destructive"
-                            className="flex items-center gap-1"
-                          >
-                            <AlertTriangle className="h-4 w-4" />
-                            Não respondeu
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <Check className="h-12 w-12 mx-auto mb-4 text-green-500" />
-              <h3 className="text-lg font-semibold mb-2">Nenhuma confirmação pendente!</h3>
-              <p>Não há clientes que precisam de confirmação para os próximos dias.</p>
-            </div>
-          )}
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold">Confirmação de Reposições</h2>
+        <p className="text-muted-foreground">
+          Confirme ou reagende os agendamentos previstos para os próximos dias
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        {/* Para Hoje */}
+        {renderAgendamentosTable(paraHoje, "Para Hoje", "default")}
+
+        {/* Próximo Dia Útil */}
+        {renderAgendamentosTable(proximoDiaUtil, getNextBusinessDayName(), "secondary")}
+
+        {/* 2 Dias Úteis */}
+        {renderAgendamentosTable(doisDiasUteis, getTwoBusinessDaysName(), "secondary")}
+
+        {/* Atrasados */}
+        {renderAgendamentosTable(atrasados, "Atrasados", "destructive")}
+
+        {/* Mensagem quando não há agendamentos */}
+        {paraHoje.length === 0 && proximoDiaUtil.length === 0 && doisDiasUteis.length === 0 && atrasados.length === 0 && (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Check className="h-12 w-12 text-green-500 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Nenhuma confirmação pendente!</h3>
+              <p className="text-muted-foreground text-center">
+                Não há agendamentos previstos que precisam de confirmação.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <AgendamentoEditModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        agendamento={selectedAgendamento}
+        onSalvar={() => {
+          carregarTodosAgendamentos();
+          setModalOpen(false);
+        }}
+      />
     </div>
   );
 }
