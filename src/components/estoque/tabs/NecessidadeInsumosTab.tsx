@@ -255,7 +255,7 @@ export default function NecessidadeInsumosTab() {
       });
     });
 
-    // Etapa 1: Agendamentos - Lista detalhada dos agendamentos encontrados
+    // Processar agendamentos
     const agendamentosDetalhados = dadosAuditoria.map(agendamento => ({
       clienteNome: agendamento.clienteNome,
       dataReposicao: agendamento.dataReposicao,
@@ -279,8 +279,53 @@ export default function NecessidadeInsumosTab() {
       });
     });
 
-    const receitasNecessarias = new Map<string, { producao: number, receitas: number, receita?: any }>();
+    // CÁLCULO CORRIGIDO DAS RECEITAS - BROWNIE TRADICIONAL + MINI BROWNIE
+    const receitasNecessarias = new Map<string, { 
+      producao: number, 
+      receitas: number, 
+      receita?: any,
+      detalhesCalculo?: string 
+    }>();
+    
+    const brownieTradicionalData = necessidadeProducao.get("Brownie Tradicional");
+    const miniBrownieData = necessidadeProducao.get("Mini Brownie Tradicional");
+    
+    // Processar Brownie Tradicional (combinado com Mini Brownie)
+    if (brownieTradicionalData?.producao > 0 || miniBrownieData?.producao > 0) {
+      const receita = receitas.find(r => r.nome === "Brownie Tradicional");
+      if (receita) {
+        const receitasBrownieTradicional = brownieTradicionalData?.producao > 0 
+          ? Math.ceil(brownieTradicionalData.producao / 40) 
+          : 0;
+        const receitasMiniBrownie = miniBrownieData?.producao > 0 
+          ? Math.ceil(miniBrownieData.producao * 0.74) 
+          : 0;
+        const totalReceitas = receitasBrownieTradicional + receitasMiniBrownie;
+        
+        let detalhesCalculo = '';
+        if (brownieTradicionalData?.producao > 0 && miniBrownieData?.producao > 0) {
+          detalhesCalculo = `${brownieTradicionalData.producao} unidades ÷ 40 = ${receitasBrownieTradicional} receitas (brownie tradicional) + ${miniBrownieData.producao} unidades × 0.74 = ${receitasMiniBrownie} receitas (mini brownie) = ${totalReceitas} receitas total`;
+        } else if (brownieTradicionalData?.producao > 0) {
+          detalhesCalculo = `${brownieTradicionalData.producao} unidades ÷ 40 = ${totalReceitas} receitas`;
+        } else if (miniBrownieData?.producao > 0) {
+          detalhesCalculo = `${miniBrownieData.producao} unidades × 0.74 = ${totalReceitas} receitas (mini brownie)`;
+        }
+        
+        receitasNecessarias.set("Brownie Tradicional", {
+          producao: (brownieTradicionalData?.producao || 0) + (miniBrownieData?.producao || 0),
+          receitas: totalReceitas,
+          receita,
+          detalhesCalculo
+        });
+      }
+    }
+
+    // Processar outros produtos (exceto Mini Brownie que já foi processado)
     necessidadeProducao.forEach((data, nomeProduto) => {
+      if (nomeProduto === "Brownie Tradicional" || nomeProduto === "Mini Brownie Tradicional") {
+        return; // Já processados acima
+      }
+      
       if (data.producao > 0) {
         const receita = receitas.find(r => r.nome === nomeProduto);
         if (receita) {
@@ -288,7 +333,8 @@ export default function NecessidadeInsumosTab() {
           receitasNecessarias.set(nomeProduto, {
             producao: data.producao,
             receitas: numeroReceitas,
-            receita
+            receita,
+            detalhesCalculo: `${data.producao} unidades ÷ 40 = ${numeroReceitas} receitas`
           });
         }
       }
@@ -681,9 +727,13 @@ export default function NecessidadeInsumosTab() {
                                 <div key={produto} className="p-3 border rounded-lg">
                                   <div className="font-medium">{produto}</div>
                                   <div className="text-sm text-muted-foreground mt-1">
-                                    {dados.producao} unidades ÷ 40 = 
-                                    <span className="font-medium text-foreground"> {dados.receitas} receitas</span>
+                                    {dados.detalhesCalculo || `${dados.producao} unidades ÷ 40 = ${dados.receitas} receitas`}
                                   </div>
+                                  {produto === "Brownie Tradicional" && dados.detalhesCalculo?.includes('mini brownie') && (
+                                    <div className="text-xs text-blue-600 mt-1 font-medium">
+                                      ✓ Cálculo combinado: Brownie Tradicional + Mini Brownie Tradicional
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>

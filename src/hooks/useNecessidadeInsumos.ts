@@ -212,28 +212,74 @@ export const useNecessidadeInsumos = () => {
 
       let totalReceitas = 0;
 
-      necessidadeProducao.forEach((quantidadeNecessaria, nomeProduto) => {
-        let receitaNome = nomeProduto;
-        let numeroReceitas = 0;
+      // LÓGICA CORRIGIDA PARA BROWNIE TRADICIONAL + MINI BROWNIE
+      const brownieTradicionalQuantidade = necessidadeProducao.get("Brownie Tradicional") || 0;
+      const miniBrownieQuantidade = necessidadeProducao.get("Mini Brownie Tradicional") || 0;
+      
+      // Calcular receitas separadamente mas somar para o mesmo insumo
+      let receitasBrownieTradicional = 0;
+      let receitasMiniBrownie = 0;
+      let totalReceitasBrownieTradicional = 0;
+
+      if (brownieTradicionalQuantidade > 0) {
+        receitasBrownieTradicional = Math.ceil(brownieTradicionalQuantidade / 40);
+        console.log(`📝 Brownie Tradicional: ${brownieTradicionalQuantidade} unidades = ${receitasBrownieTradicional} receitas (40 unidades/receita)`);
+      }
+      
+      if (miniBrownieQuantidade > 0) {
+        // Cada pacote de Mini Brownie precisa de 0,74 formas de Brownie Tradicional
+        receitasMiniBrownie = Math.ceil(miniBrownieQuantidade * 0.74);
+        console.log(`📝 Mini Brownie Tradicional: ${miniBrownieQuantidade} pacotes = ${receitasMiniBrownie} receitas (0,74 receitas/pacote)`);
+      }
+
+      // Total de receitas de Brownie Tradicional (tradicional + mini)
+      totalReceitasBrownieTradicional = receitasBrownieTradicional + receitasMiniBrownie;
+      
+      if (totalReceitasBrownieTradicional > 0) {
+        console.log(`📝 Total Brownie Tradicional: ${receitasBrownieTradicional} (tradicional) + ${receitasMiniBrownie} (mini) = ${totalReceitasBrownieTradicional} receitas`);
         
-        // CORREÇÃO ESPECÍFICA PARA MINI BROWNIE TRADICIONAL
-        if (nomeProduto === "Mini Brownie Tradicional") {
-          // Para Mini Brownie Tradicional, usar a receita "Brownie Tradicional"
-          receitaNome = "Brownie Tradicional";
-          // Cada pacote de Mini Brownie precisa de 0,74 formas de Brownie Tradicional
-          numeroReceitas = Math.ceil(quantidadeNecessaria * 0.74);
-          
-          console.log(`📝 ${nomeProduto}: ${quantidadeNecessaria} pacotes = ${numeroReceitas} formas de ${receitaNome} (0,74 formas/pacote)`);
+        const receita = receitas.find(r => r.nome === "Brownie Tradicional");
+        
+        if (receita) {
+          totalReceitas += totalReceitasBrownieTradicional;
+
+          receita.itens.forEach(item => {
+            const quantidadeItem = Number(item.quantidade) * totalReceitasBrownieTradicional;
+            const atual = necessidadeInsumosPorId.get(item.insumo_id) || {
+              nome: item.nome_insumo,
+              unidade: '',
+              quantidade: 0,
+              custoMedio: 0
+            };
+            
+            const insumo = insumos.find(i => i.id === item.insumo_id);
+            if (insumo) {
+              atual.nome = insumo.nome;
+              atual.unidade = insumo.unidade_medida;
+              atual.custoMedio = Number(insumo.custo_medio);
+            }
+            
+            atual.quantidade += quantidadeItem;
+            necessidadeInsumosPorId.set(item.insumo_id, atual);
+          });
         } else {
-          // Para outros produtos, cada receita gera 40 unidades
-          numeroReceitas = Math.ceil(quantidadeNecessaria / 40);
-          console.log(`📝 ${nomeProduto}: ${quantidadeNecessaria} unidades = ${numeroReceitas} receitas (40 unidades/receita)`);
+          console.warn(`⚠️ Receita não encontrada para: Brownie Tradicional`);
+        }
+      }
+
+      // Processar outros produtos (exceto Brownie Tradicional e Mini Brownie que já foram processados)
+      necessidadeProducao.forEach((quantidadeNecessaria, nomeProduto) => {
+        if (nomeProduto === "Brownie Tradicional" || nomeProduto === "Mini Brownie Tradicional") {
+          return; // Já processados acima
         }
         
-        const receita = receitas.find(r => r.nome === receitaNome);
+        const numeroReceitas = Math.ceil(quantidadeNecessaria / 40);
+        console.log(`📝 ${nomeProduto}: ${quantidadeNecessaria} unidades = ${numeroReceitas} receitas (40 unidades/receita)`);
+        
+        const receita = receitas.find(r => r.nome === nomeProduto);
         
         if (!receita) {
-          console.warn(`⚠️ Receita não encontrada para: ${receitaNome} (produto: ${nomeProduto})`);
+          console.warn(`⚠️ Receita não encontrada para: ${nomeProduto}`);
           return;
         }
 
