@@ -17,21 +17,13 @@ export const useAgendamentoActions = () => {
     const agendamento = agendamentos.find(a => String(a.cliente.id) === pedidoId);
     
     if (agendamento) {
-      // Converter para o formato esperado pelo modal com todos os dados necessários
+      // Converter para o formato esperado pelo modal
       const agendamentoFormatado = {
         id: String(agendamento.cliente.id),
         cliente: agendamento.cliente,
         dataReposicao: agendamento.dataReposicao,
-        statusAgendamento: agendamento.statusAgendamento || "Previsto",
         pedido: {
-          id: 0,
-          idCliente: agendamento.cliente.id,
-          dataPedido: new Date(),
-          dataPrevistaEntrega: agendamento.dataReposicao,
-          statusPedido: 'Agendado',
-          itensPedido: agendamento.pedido?.itensPedido || [],
-          totalPedidoUnidades: agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao,
-          tipoPedido: agendamento.pedido?.tipoPedido || "Padrão"
+          totalPedidoUnidades: agendamento.cliente.quantidadePadrao
         }
       };
       
@@ -51,16 +43,8 @@ export const useAgendamentoActions = () => {
             quantidadePadrao: pedidoExpedicao.quantidade_total
           },
           dataReposicao: pedidoExpedicao.data_prevista_entrega,
-          statusAgendamento: "Agendado",
           pedido: {
-            id: pedidoExpedicao.id,
-            idCliente: pedidoExpedicao.cliente_id,
-            dataPedido: new Date(),
-            dataPrevistaEntrega: pedidoExpedicao.data_prevista_entrega,
-            statusPedido: 'Agendado',
-            itensPedido: pedidoExpedicao.itens_personalizados || [],
-            totalPedidoUnidades: pedidoExpedicao.quantidade_total,
-            tipoPedido: pedidoExpedicao.tipo_pedido || "Padrão"
+            totalPedidoUnidades: pedidoExpedicao.quantidade_total
           }
         };
         
@@ -78,16 +62,9 @@ export const useAgendamentoActions = () => {
     try {
       console.log('💾 Salvando agendamento atualizado:', agendamentoAtualizado);
       
-      await salvarAgendamento(agendamentoAtualizado.cliente.id, {
-        status_agendamento: agendamentoAtualizado.statusAgendamento,
+      await salvarAgendamento(agendamentoAtualizado.id, {
         data_proxima_reposicao: agendamentoAtualizado.dataReposicao,
-        tipo_pedido: agendamentoAtualizado.pedido?.tipoPedido || "Padrão",
-        quantidade_total: agendamentoAtualizado.pedido?.totalPedidoUnidades || agendamentoAtualizado.cliente.quantidadePadrao,
-        itens_personalizados: agendamentoAtualizado.pedido?.tipoPedido === "Alterado" ? 
-          agendamentoAtualizado.pedido.itensPedido?.map((item: any) => ({
-            produto: item.nomeSabor || item.produto,
-            quantidade: item.quantidadeSabor || item.quantidade
-          })) : null
+        quantidade_total: agendamentoAtualizado.pedido?.totalPedidoUnidades || agendamentoAtualizado.cliente.quantidadePadrao
       });
       
       // Recarregar dados após atualização
