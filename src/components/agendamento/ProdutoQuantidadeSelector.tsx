@@ -1,270 +1,147 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Plus, Eye, RefreshCw } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useProdutosPorCategoria } from "@/hooks/useProdutosPorCategoria";
-import { toast } from "@/hooks/use-toast";
 
-interface ItemPedido {
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Trash2 } from 'lucide-react';
+import { useProdutoStore } from '@/hooks/useProdutoStore';
+
+interface ProdutoQuantidade {
   produto: string;
   quantidade: number;
 }
 
 interface ProdutoQuantidadeSelectorProps {
-  value: ItemPedido[];
-  onChange: (itens: ItemPedido[]) => void;
+  value: ProdutoQuantidade[];
+  onChange: (produtos: ProdutoQuantidade[]) => void;
   clienteId: string;
   quantidadeTotal: number;
 }
 
-export default function ProdutoQuantidadeSelector({
-  value,
-  onChange,
+export default function ProdutoQuantidadeSelector({ 
+  value, 
+  onChange, 
   clienteId,
-  quantidadeTotal
+  quantidadeTotal 
 }: ProdutoQuantidadeSelectorProps) {
-  const [showDebug, setShowDebug] = useState(false);
-  
-  const { 
-    produtosFiltrados, 
-    categoriasCliente, 
-    loading, 
-    error,
-    carregado,
-    carregarDados,
-    recarregar
-  } = useProdutosPorCategoria(clienteId);
+  const { produtos } = useProdutoStore();
 
-  // Carrega dados uma única vez ao montar o componente
-  useEffect(() => {
-    if (clienteId && !carregado) {
-      carregarDados();
-    }
-  }, [clienteId, carregado, carregarDados]);
+  // Aplicar ordenação alfabética diretamente aqui (fonte única de ordenação)
+  const produtosOrdenados = produtos
+    .filter(produto => produto.ativo)
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { 
+      sensitivity: 'base', // Ignora acentos e capitalização
+      numeric: true 
+    }));
 
   const adicionarProduto = () => {
-    if (produtosFiltrados.length > 0) {
-      const novoProduto = produtosFiltrados[0].nome;
-      // Remove the restriction that prevents adding multiple products
-      onChange([...value, { produto: novoProduto, quantidade: 1 }]);
-    }
+    const novosProdutos = [...value, { produto: '', quantidade: 0 }];
+    onChange(novosProdutos);
   };
 
   const removerProduto = (index: number) => {
-    const novosItens = value.filter((_, i) => i !== index);
-    onChange(novosItens);
+    onChange(value.filter((_, i) => i !== index));
   };
 
-  const atualizarQuantidade = (index: number, quantidade: number) => {
-    const novosItens = [...value];
-    novosItens[index].quantidade = Math.max(0, quantidade);
-    onChange(novosItens);
-  };
-
-  const atualizarProduto = (index: number, novoProduto: string) => {
-    const novosItens = [...value];
-    novosItens[index].produto = novoProduto;
-    onChange(novosItens);
-  };
-
-  const handleRecarregar = () => {
-    recarregar();
-    toast({
-      title: "Lista atualizada",
-      description: "Produtos recarregados com sucesso"
+  const atualizarProduto = (index: number, campo: 'produto' | 'quantidade', valor: string | number) => {
+    const novosProdutos = [...value];
+    if (campo === 'produto') {
+      novosProdutos[index].produto = valor as string;
+    } else {
+      novosProdutos[index].quantidade = Number(valor);
+    }
+    
+    // Reordenar automaticamente após cada alteração para manter consistência
+    const produtosReordenados = novosProdutos.sort((a, b) => {
+      if (!a.produto || !b.produto) return 0;
+      return a.produto.localeCompare(b.produto, 'pt-BR', { 
+        sensitivity: 'base',
+        numeric: true 
+      });
     });
+    
+    onChange(produtosReordenados);
   };
 
-  const handleTentarNovamente = () => {
-    carregarDados(true);
-  };
-
-  const quantidadeDistribuida = value.reduce((sum, item) => sum + item.quantidade, 0);
-  const isValidTotal = quantidadeDistribuida === quantidadeTotal;
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <Label className="text-sm font-medium">Produtos e Quantidades</Label>
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-          <span className="ml-2 text-sm">Carregando produtos...</span>
-        </div>
-      </div>
-    );
-  }
+  const somaQuantidades = value.reduce((soma, item) => soma + item.quantidade, 0);
+  const diferenca = quantidadeTotal - somaQuantidades;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Label className="text-sm font-medium">Produtos e Quantidades</Label>
-        <div className="flex items-center gap-2">
-          {carregado && !error && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRecarregar}
-              className="text-xs"
-            >
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Atualizar Lista
-            </Button>
-          )}
-          <Collapsible open={showDebug} onOpenChange={setShowDebug}>
-            <CollapsibleTrigger asChild>
-              <Button variant="outline" size="sm" className="text-xs">
-                <Eye className="h-3 w-3 mr-1" />
-                Ver passo a passo
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
-        </div>
-      </div>
-
-      <Collapsible open={showDebug} onOpenChange={setShowDebug}>
-        <CollapsibleContent>
-          <Card className="bg-muted/50">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs">Auditoria do Processo</CardTitle>
-            </CardHeader>
-            <CardContent className="text-xs space-y-2">
-              <div>
-                <strong>1. Cliente identificado:</strong> {clienteId}
-              </div>
-              <div>
-                <strong>2. Categorias habilitadas:</strong>{' '}
-                {categoriasCliente.length > 0 ? (
-                  categoriasCliente.map(cat => (
-                    <Badge key={cat} variant="secondary" className="ml-1 text-xs">{cat}</Badge>
-                  ))
-                ) : (
-                  <span className="text-red-500">Nenhuma categoria encontrada</span>
-                )}
-              </div>
-              <div>
-                <strong>3. Produtos disponíveis:</strong>{' '}
-                {produtosFiltrados.length} produtos encontrados
-                {produtosFiltrados.slice(0, 3).map(produto => (
-                  <Badge key={produto.id} variant="outline" className="ml-1 text-xs">
-                    {produto.nome}
-                  </Badge>
-                ))}
-                {produtosFiltrados.length > 3 && (
-                  <span className="text-muted-foreground">...</span>
-                )}
-              </div>
-              <div>
-                <strong>4. Validação de quantidade:</strong>{' '}
-                <span className={isValidTotal ? "text-green-600" : "text-red-500"}>
-                  {quantidadeDistribuida} / {quantidadeTotal}
-                  {isValidTotal ? " ✓" : " ✗"}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription className="flex items-center justify-between">
-            <span>❌ {error}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTentarNovamente}
-              className="ml-2"
-            >
-              🔁 Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {!error && produtosFiltrados.length === 0 && carregado && (
-        <div className="p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
-          <p className="text-sm text-yellow-800">
-            ⚠️ Nenhum produto disponível para as categorias deste cliente.
-            Verifique se o cliente possui categorias habilitadas.
-          </p>
-        </div>
-      )}
-
-      <div className="space-y-3">
-        {value.map((item, index) => (
-          <div key={`${index}-${item.produto}`} className="flex items-center gap-2 p-3 border rounded-lg">
-            <div className="flex-1">
-              <Label htmlFor={`produto-${index}`} className="text-xs">Produto</Label>
-              <Select
-                value={item.produto}
-                onValueChange={(valor) => atualizarProduto(index, valor)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um produto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {produtosFiltrados.map((produto) => (
-                    <SelectItem key={produto.id} value={produto.nome}>
-                      {produto.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="w-24">
-              <Label htmlFor={`quantidade-${index}`} className="text-xs">Qtd</Label>
-              <Input
-                id={`quantidade-${index}`}
-                type="number"
-                value={item.quantidade}
-                onChange={(e) => atualizarQuantidade(index, parseInt(e.target.value) || 0)}
-                min="0"
-                className="text-center"
-              />
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => removerProduto(index)}
-              className="mt-5"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={adicionarProduto}
-          disabled={produtosFiltrados.length === 0 || Boolean(error)}
-        >
-          <Plus className="h-4 w-4 mr-1" />
+        <Label className="text-base font-medium">Produtos e Quantidades</Label>
+        <Button type="button" onClick={adicionarProduto} size="sm">
+          <Plus className="h-4 w-4 mr-2" />
           Adicionar Produto
         </Button>
-        
-        <div className="text-sm">
-          <span className="text-muted-foreground">Total distribuído: </span>
-          <span className={isValidTotal ? "text-green-600 font-medium" : "text-red-500 font-medium"}>
-            {quantidadeDistribuida} / {quantidadeTotal}
-          </span>
-        </div>
       </div>
+      
+      {value.map((item, index) => (
+        <div key={index} className="grid grid-cols-3 gap-4 items-end">
+          <div className="space-y-2">
+            <Label htmlFor={`produto-${index}`}>Produto</Label>
+            <Select
+              value={item.produto}
+              onValueChange={(valor) => atualizarProduto(index, 'produto', valor)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um produto" />
+              </SelectTrigger>
+              <SelectContent>
+                {produtosOrdenados.map(produto => (
+                  <SelectItem key={produto.id} value={produto.nome}>
+                    {produto.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`quantidade-${index}`}>Quantidade</Label>
+            <Input
+              id={`quantidade-${index}`}
+              type="number"
+              min="0"
+              value={item.quantidade}
+              onChange={(e) => atualizarProduto(index, 'quantidade', e.target.value)}
+            />
+          </div>
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="sm"
+            onClick={() => removerProduto(index)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      
+      {value.length === 0 && (
+        <div className="text-center py-4 text-muted-foreground">
+          Nenhum produto adicionado. Clique em "Adicionar Produto" para começar.
+        </div>
+      )}
 
-      {!isValidTotal && quantidadeTotal > 0 && (
-        <div className="p-3 border border-red-200 bg-red-50 rounded-lg">
-          <p className="text-sm text-red-800">
-            ❌ A soma das quantidades ({quantidadeDistribuida}) deve ser igual ao total do pedido ({quantidadeTotal}).
-            Diferença: {Math.abs(quantidadeDistribuida - quantidadeTotal)} unidades.
-          </p>
+      {value.length > 0 && (
+        <div className="mt-4 p-4 bg-gray-50 rounded-md">
+          <div className="flex justify-between items-center text-sm">
+            <span>Total de produtos:</span>
+            <span className="font-medium">{somaQuantidades} unidades</span>
+          </div>
+          <div className="flex justify-between items-center text-sm mt-1">
+            <span>Quantidade total esperada:</span>
+            <span className="font-medium">{quantidadeTotal} unidades</span>
+          </div>
+          {diferenca !== 0 && (
+            <div className={`flex justify-between items-center text-sm mt-1 ${diferenca > 0 ? 'text-orange-600' : 'text-red-600'}`}>
+              <span>Diferença:</span>
+              <span className="font-medium">
+                {diferenca > 0 ? `+${diferenca}` : diferenca} unidades
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>

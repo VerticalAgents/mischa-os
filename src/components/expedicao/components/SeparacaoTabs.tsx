@@ -14,6 +14,25 @@ interface SeparacaoTabsProps {
   handleEditarAgendamento: (pedidoId: string) => void;
 }
 
+// Função para formatar corretamente o nome do dia da semana sem duplicação
+const formatarProximoDiaUtil = () => {
+  const hoje = new Date();
+  const proximoDiaUtil = new Date(hoje);
+  proximoDiaUtil.setDate(hoje.getDate() + 1);
+  
+  // Se for fim de semana, avançar para segunda
+  while (proximoDiaUtil.getDay() === 0 || proximoDiaUtil.getDay() === 6) {
+    proximoDiaUtil.setDate(proximoDiaUtil.getDate() + 1);
+  }
+  
+  const diasSemana = [
+    'Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 
+    'Quinta-feira', 'Sexta-feira', 'Sábado'
+  ];
+  
+  return `Próxima ${diasSemana[proximoDiaUtil.getDay()]}`;
+};
+
 export const SeparacaoTabs = ({
   activeSubTab,
   setActiveSubTab,
@@ -25,6 +44,8 @@ export const SeparacaoTabs = ({
   confirmarSeparacao,
   handleEditarAgendamento
 }: SeparacaoTabsProps) => {
+  const tituloProximoDia = formatarProximoDiaUtil();
+
   return (
     <Tabs 
       defaultValue="todos" 
@@ -41,7 +62,7 @@ export const SeparacaoTabs = ({
           <span className="h-2 w-2 rounded-full bg-red-500"></span> Pedidos Alterados ({pedidosAlterados.length})
         </TabsTrigger>
         <TabsTrigger value="proximos" className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-blue-500"></span> Próximas Separações ({pedidosProximoDia.length})
+          <span className="h-2 w-2 rounded-full bg-blue-500"></span> {tituloProximoDia} ({pedidosProximoDia.length})
         </TabsTrigger>
       </TabsList>
       

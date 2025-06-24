@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -62,7 +61,7 @@ export default function AgendamentoEditModal({
         console.log('🔄 Carregando dados do agendamento no modal:', agendamento);
         
         setDataReposicao(agendamento.dataReposicao);
-        setStatusAgendamento(agendamento.statusAgendamento);
+        setStatusAgendamento(agendamento.statusAgendamento || "Previsto");
         const validTipoPedido = agendamento.pedido?.tipoPedido === "Único" ? "Padrão" : (agendamento.pedido?.tipoPedido || "Padrão");
         setTipoPedido(validTipoPedido as TipoPedidoAgendamento);
         setQuantidadeTotal(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao);
@@ -74,7 +73,11 @@ export default function AgendamentoEditModal({
           
           if (agendamentoAtual && agendamentoAtual.tipo_pedido === 'Alterado' && agendamentoAtual.itens_personalizados) {
             console.log('✅ Carregando itens personalizados salvos:', agendamentoAtual.itens_personalizados);
-            setItensPersonalizados(agendamentoAtual.itens_personalizados);
+            // Aplicar ordenação alfabética aos itens carregados
+            const itensOrdenados = agendamentoAtual.itens_personalizados.sort((a: any, b: any) => 
+              a.produto.localeCompare(b.produto, 'pt-BR', { sensitivity: 'base', numeric: true })
+            );
+            setItensPersonalizados(itensOrdenados);
             setQuantidadeTotal(agendamentoAtual.quantidade_total);
             setTipoPedido('Alterado');
           } else if (agendamento.pedido?.itensPedido && agendamento.pedido.itensPedido.length > 0) {
@@ -83,7 +86,11 @@ export default function AgendamentoEditModal({
               produto: item.nomeSabor || `Sabor ${item.idSabor}`,
               quantidade: item.quantidadeSabor
             }));
-            setItensPersonalizados(itens);
+            // Aplicar ordenação alfabética
+            const itensOrdenados = itens.sort((a, b) => 
+              a.produto.localeCompare(b.produto, 'pt-BR', { sensitivity: 'base', numeric: true })
+            );
+            setItensPersonalizados(itensOrdenados);
           } else {
             setItensPersonalizados([]);
           }
@@ -96,7 +103,11 @@ export default function AgendamentoEditModal({
               produto: item.nomeSabor || `Sabor ${item.idSabor}`,
               quantidade: item.quantidadeSabor
             }));
-            setItensPersonalizados(itens);
+            // Aplicar ordenação alfabética
+            const itensOrdenados = itens.sort((a, b) => 
+              a.produto.localeCompare(b.produto, 'pt-BR', { sensitivity: 'base', numeric: true })
+            );
+            setItensPersonalizados(itensOrdenados);
           } else {
             setItensPersonalizados([]);
           }
