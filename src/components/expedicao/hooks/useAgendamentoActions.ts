@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
@@ -59,7 +58,7 @@ export const useAgendamentoActions = () => {
             dataPedido: new Date(),
             dataPrevistaEntrega: pedidoExpedicao.data_prevista_entrega,
             statusPedido: 'Agendado',
-            itensPedido: pedidoExpedicao.itens || [],
+            itensPedido: pedidoExpedicao.itens_personalizados || [],
             totalPedidoUnidades: pedidoExpedicao.quantidade_total,
             tipoPedido: pedidoExpedicao.tipo_pedido || "Padrão"
           }
