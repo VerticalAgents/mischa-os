@@ -29,6 +29,7 @@ interface ExpedicaoStore {
   carregarPedidos: () => Promise<void>;
   confirmarSeparacao: (pedidoId: string) => Promise<void>;
   desfazerSeparacao: (pedidoId: string) => Promise<void>;
+  retornarParaSeparacao: (pedidoId: string) => Promise<void>;
   confirmarDespacho: (pedidoId: string) => Promise<void>;
   confirmarEntrega: (pedidoId: string, observacao?: string) => Promise<void>;
   confirmarRetorno: (pedidoId: string, observacao?: string) => Promise<void>;
@@ -196,6 +197,40 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         } catch (error) {
           console.error('Erro ao desfazer separação:', error);
           toast.error("Erro ao desfazer separação");
+        }
+      },
+
+      retornarParaSeparacao: async (pedidoId: string) => {
+        try {
+          const pedido = get().pedidos.find(p => p.id === pedidoId);
+          
+          // Atualiza o estado local primeiro
+          set(state => ({
+            pedidos: state.pedidos.map(p => 
+              p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } : p
+            )
+          }));
+
+          // Atualiza no banco de dados
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ substatus_pedido: 'Agendado' })
+            .eq('id', pedidoId);
+
+          if (error) {
+            // Reverte se houver erro
+            set(state => ({
+              pedidos: state.pedidos.map(p => 
+                p.id === pedidoId ? { ...p, substatus_pedido: 'Despachado' as SubstatusPedidoAgendado } : p
+              )
+            }));
+            throw error;
+          }
+
+          toast.success(`${pedido?.cliente_nome} retornado para separação`);
+        } catch (error) {
+          console.error('Erro ao retornar para separação:', error);
+          toast.error("Erro ao retornar pedido para separação");
         }
       },
 

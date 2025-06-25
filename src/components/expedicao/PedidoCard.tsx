@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Package, MapPin, User, Calendar, CheckCircle, Edit, Truck } from "lucide-react";
+import { Package, MapPin, User, Calendar, CheckCircle, Edit, Truck, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import TipoPedidoBadge from "./TipoPedidoBadge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
@@ -21,6 +21,7 @@ interface PedidoCardProps {
   onConfirmarDespacho?: () => void;
   onConfirmarEntrega?: (observacao?: string) => void;
   onConfirmarRetorno?: (observacao?: string) => void;
+  onRetornarParaSeparacao?: () => void;
 }
 
 interface StatusVariantProps {
@@ -42,7 +43,8 @@ export default function PedidoCard({
   showDespachoActions = false,
   onConfirmarDespacho,
   onConfirmarEntrega,
-  onConfirmarRetorno
+  onConfirmarRetorno,
+  onRetornarParaSeparacao
 }: PedidoCardProps) {
   const formatarData = (data: Date) => {
     return format(new Date(data), "dd 'de' MMMM, yyyy", { locale: ptBR });
@@ -181,6 +183,19 @@ export default function PedidoCard({
             {/* Ações de despacho */}
             {showDespachoActions && (
               <>
+                {/* Botão para retornar à separação */}
+                {onRetornarParaSeparacao && (
+                  <Button 
+                    onClick={onRetornarParaSeparacao}
+                    size="sm"
+                    variant="outline"
+                    className="text-orange-600 hover:text-orange-700 border-orange-300 hover:border-orange-400"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    Retornar para Separação
+                  </Button>
+                )}
+
                 {pedido.substatusPedido === 'Separado' && onConfirmarDespacho && (
                   <Button 
                     onClick={onConfirmarDespacho}

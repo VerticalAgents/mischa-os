@@ -8,7 +8,7 @@ import { usePedidoConverter } from "./hooks/usePedidoConverter";
 import { DebugInfo } from "./components/DebugInfo";
 import PedidoCard from "./PedidoCard";
 import { toast } from "sonner";
-import { Truck, Package } from "lucide-react";
+import { Truck, Package, ArrowLeft } from "lucide-react";
 
 interface DespachoProps {
   tipoFiltro: "hoje" | "atrasadas";
@@ -21,6 +21,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     confirmarDespacho,
     confirmarEntrega,
     confirmarRetorno,
+    retornarParaSeparacao,
     confirmarDespachoEmMassa,
     confirmarEntregaEmMassa,
     confirmarRetornoEmMassa,
@@ -68,6 +69,10 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     }
     
     await confirmarRetornoEmMassa(pedidosFiltrados);
+  };
+
+  const handleRetornarParaSeparacao = async (pedidoId: string) => {
+    await retornarParaSeparacao(pedidoId);
   };
 
   if (isLoading) {
@@ -134,6 +139,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 onConfirmarDespacho={() => confirmarDespacho(String(pedido.id))}
                 onConfirmarEntrega={(observacao) => confirmarEntrega(String(pedido.id), observacao)}
                 onConfirmarRetorno={(observacao) => confirmarRetorno(String(pedido.id), observacao)}
+                onRetornarParaSeparacao={() => handleRetornarParaSeparacao(String(pedido.id))}
               />
             ))}
           </div>
