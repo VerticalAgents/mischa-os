@@ -22,79 +22,115 @@ export default function PrecificacaoPorCategoria({
   const { categorias } = useSupabaseCategoriasProduto();
   const { precos, carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
   const [precosLocal, setPrecosLocal] = useState<Record<number, number>>({});
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Carregar preços existentes do cliente ou definir valores padrão
+  // Função para definir valores padrão
+  const definirValoresPadrao = (categoriasIds: number[]) => {
+    const precosIniciais: Record<number, number> = {};
+    categoriasIds.forEach(categoriaId => {
+      const categoria = categorias.find(cat => cat.id === categoriaId);
+      if (categoria && categoria.nome.toLowerCase().includes('revenda padrão')) {
+        precosIniciais[categoriaId] = 4.50;
+      } else {
+        precosIniciais[categoriaId] = 0;
+      }
+    });
+    return precosIniciais;
+  };
+
+  // Carregar preços existentes do cliente
   useEffect(() => {
     const carregarPrecos = async () => {
-      if (clienteId) {
+      if (clienteId && categoriasHabilitadas.length > 0) {
         try {
+          console.log('PrecificacaoPorCategoria: Carregando preços para cliente:', clienteId);
           const precosCarregados = await carregarPrecosPorCliente(clienteId);
-          const precosMap: Record<number, number> = {};
           
+          // Criar mapa de preços carregados
+          const precosMap: Record<number, number> = {};
           precosCarregados.forEach(preco => {
             precosMap[preco.categoria_id] = preco.preco_unitario;
           });
           
-          setPrecosLocal(precosMap);
+          // Definir valores padrão para categorias sem preços definidos
+          const precosCompletos = definirValoresPadrao(categoriasHabilitadas);
+          
+          // Sobrescrever com preços carregados onde existirem
+          categoriasHabilitadas.forEach(categoriaId => {
+            if (precosMap[categoriaId] !== undefined) {
+              precosCompletos[categoriaId] = precosMap[categoriaId];
+            }
+          });
+          
+          console.log('PrecificacaoPorCategoria: Preços finais:', precosCompletos);
+          setPrecosLocal(precosCompletos);
+          setIsLoaded(true);
         } catch (error) {
-          console.error('Erro ao carregar preços:', error);
+          console.error('PrecificacaoPorCategoria: Erro ao carregar preços:', error);
+          // Em caso de erro, usar valores padrão
+          setPrecosLocal(definirValoresPadrao(categoriasHabilitadas));
+          setIsLoaded(true);
         }
+      } else if (categoriasHabilitadas.length > 0) {
+        // Para novo cliente ou sem ID, definir valores padrão
+        console.log('PrecificacaoPorCategoria: Definindo valores padrão para novo cliente');
+        setPrecosLocal(definirValoresPadrao(categoriasHabilitadas));
+        setIsLoaded(true);
       } else {
-        // Para novo cliente, definir valores padrão
-        const precosIniciais: Record<number, number> = {};
-        categoriasHabilitadas.forEach(categoriaId => {
-          const categoria = categorias.find(cat => cat.id === categoriaId);
-          if (categoria && categoria.nome.toLowerCase().includes('revenda padrão')) {
-            precosIniciais[categoriaId] = 4.50;
-          } else {
-            precosIniciais[categoriaId] = 0;
-          }
-        });
-        setPrecosLocal(precosIniciais);
+        // Limpar quando não há categorias
+        setPrecosLocal({});
+        setIsLoaded(true);
       }
     };
 
+    // Reset no carregamento quando mudam as dependências
+    setIsLoaded(false);
     carregarPrecos();
   }, [clienteId, carregarPrecosPorCliente, categoriasHabilitadas, categorias]);
 
   // Atualizar preços quando categorias habilitadas mudarem
   useEffect(() => {
-    setPrecosLocal(prev => {
-      const novosPrecosLocal = { ...prev };
-      
-      // Adicionar preços para novas categorias habilitadas
-      categoriasHabilitadas.forEach(categoriaId => {
-        if (!(categoriaId in novosPrecosLocal)) {
-          const categoria = categorias.find(cat => cat.id === categoriaId);
-          if (categoria && categoria.nome.toLowerCase().includes('revenda padrão')) {
-            novosPrecosLocal[categoriaId] = 4.50;
-          } else {
-            novosPrecosLocal[categoriaId] = 0;
+    if (isLoaded) {
+      setPrecosLocal(prev => {
+        const novosPrecosLocal = { ...prev };
+        
+        // Adicionar preços para novas categorias habilitadas
+        categoriasHabilitadas.forEach(categoriaId => {
+          if (!(categoriaId in novosPrecosLocal)) {
+            const categoria = categorias.find(cat => cat.id === categoriaId);
+            if (categoria && categoria.nome.toLowerCase().includes('revenda padrão')) {
+              novosPrecosLocal[categoriaId] = 4.50;
+            } else {
+              novosPrecosLocal[categoriaId] = 0;
+            }
           }
-        }
+        });
+        
+        // Remover preços de categorias não habilitadas
+        Object.keys(novosPrecosLocal).forEach(categoriaIdStr => {
+          const categoriaId = Number(categoriaIdStr);
+          if (!categoriasHabilitadas.includes(categoriaId)) {
+            delete novosPrecosLocal[categoriaId];
+          }
+        });
+        
+        return novosPrecosLocal;
       });
-      
-      // Remover preços de categorias não habilitadas
-      Object.keys(novosPrecosLocal).forEach(categoriaIdStr => {
-        const categoriaId = Number(categoriaIdStr);
-        if (!categoriasHabilitadas.includes(categoriaId)) {
-          delete novosPrecosLocal[categoriaId];
-        }
-      });
-      
-      return novosPrecosLocal;
-    });
-  }, [categoriasHabilitadas, categorias]);
+    }
+  }, [categoriasHabilitadas, categorias, isLoaded]);
 
   // Notificar mudanças de preços para o componente pai
   useEffect(() => {
-    const precosArray = Object.entries(precosLocal).map(([categoriaId, preco]) => ({
-      categoria_id: Number(categoriaId),
-      preco_unitario: preco || 0
-    }));
-    
-    onPrecosChange(precosArray);
-  }, [precosLocal, onPrecosChange]);
+    if (isLoaded) {
+      const precosArray = Object.entries(precosLocal).map(([categoriaId, preco]) => ({
+        categoria_id: Number(categoriaId),
+        preco_unitario: preco || 0
+      }));
+      
+      console.log('PrecificacaoPorCategoria: Notificando mudanças de preços:', precosArray);
+      onPrecosChange(precosArray);
+    }
+  }, [precosLocal, onPrecosChange, isLoaded]);
 
   const handlePrecoChange = (categoriaId: number, valor: string) => {
     // Remover caracteres não numéricos exceto vírgula e ponto
@@ -106,6 +142,8 @@ export default function PrecificacaoPorCategoria({
     
     // Se não é um número válido, definir como 0
     const precoFinal = isNaN(preco) ? 0 : preco;
+    
+    console.log('PrecificacaoPorCategoria: Alterando preço da categoria', categoriaId, 'para', precoFinal);
     
     setPrecosLocal(prev => ({
       ...prev,
@@ -140,7 +178,6 @@ export default function PrecificacaoPorCategoria({
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* CHANGELOG: [x] Bloco visual renderizado, [ ] Conexão com Supabase concluída, [ ] Página de projeção criada */}
         {categoriasParaPrecificar.map((categoria) => (
           <div key={categoria.id} className="flex items-center gap-4 p-3 border rounded-lg">
             <div className="flex-1">

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,8 @@ import { useSupabaseCategoriasEstabelecimento } from "@/hooks/useSupabaseCategor
 import { useSupabaseTiposLogistica } from "@/hooks/useSupabaseTiposLogistica";
 import { useSupabaseTiposCobranca } from "@/hooks/useSupabaseTiposCobranca";
 import { useSupabaseFormasPagamento } from "@/hooks/useSupabaseFormasPagamento";
+import { useSupabasePrecosCategoriaCliente } from "@/hooks/useSupabasePrecosCategoriaCliente";
+import { useClientesCategorias } from "@/hooks/useClientesCategorias";
 import { toast } from "@/hooks/use-toast";
 import DiasSemanaPicker from "./DiasSemanaPicker";
 import CategoriasProdutoSelector from "./CategoriasProdutoSelector";
@@ -51,6 +54,8 @@ export default function ClienteFormDialog({
   const { tiposLogistica } = useSupabaseTiposLogistica();
   const { tiposCobranca } = useSupabaseTiposCobranca();
   const { formasPagamento } = useSupabaseFormasPagamento();
+  const { salvarPrecos } = useSupabasePrecosCategoriaCliente();
+  const { salvarCategoriasCliente } = useClientesCategorias();
 
   // Estado do formulário
   const [formData, setFormData] = useState<Partial<Cliente>>({
@@ -77,8 +82,9 @@ export default function ClienteFormDialog({
     instrucoesEntrega: ''
   });
 
-  // Novo estado para preços por categoria
+  // Estado para preços por categoria
   const [precosCategoria, setPrecosCategoria] = useState<{ categoria_id: number; preco_unitario: number }[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Carregar dados do cliente quando abrir para edição
   useEffect(() => {
@@ -113,6 +119,7 @@ export default function ClienteFormDialog({
         categoriaEstabelecimentoId: undefined,
         instrucoesEntrega: ''
       });
+      setPrecosCategoria([]);
     }
   }, [cliente, open]);
 
@@ -140,7 +147,6 @@ export default function ClienteFormDialog({
     }));
   };
 
-  // Nova função para lidar com mudanças de preços
   const handlePrecosChange = (precos: { categoria_id: number; preco_unitario: number }[]) => {
     console.log('ClienteFormDialog: Atualizando preços por categoria:', precos);
     setPrecosCategoria(precos);
@@ -158,27 +164,27 @@ export default function ClienteFormDialog({
       return;
     }
 
+    setIsSaving(true);
+
     try {
-      console.log('ClienteFormDialog: Salvando cliente com dados completos:', formData);
+      console.log('ClienteFormDialog: Iniciando salvamento do cliente:', formData);
       console.log('ClienteFormDialog: Preços por categoria a salvar:', precosCategoria);
 
+      let clienteId: string;
+
       if (cliente) {
-        // Atualização
+        // Atualização de cliente existente
         await atualizarCliente(cliente.id, formData);
-        
-        // TODO: Salvar preços por categoria quando implementar backend
-        // await salvarPrecosCategoria(cliente.id, precosCategoria);
+        clienteId = cliente.id;
         
         toast({
           title: "Cliente atualizado",
           description: "Dados do cliente foram salvos com sucesso"
         });
       } else {
-        // Criação
-        await adicionarCliente(formData as Omit<Cliente, 'id' | 'dataCadastro'>);
-        
-        // TODO: Salvar preços por categoria quando implementar backend
-        // await salvarPrecosCategoria(novoClienteId, precosCategoria);
+        // Criação de novo cliente
+        const novoCliente = await adicionarCliente(formData as Omit<Cliente, 'id' | 'dataCadastro'>);
+        clienteId = novoCliente.id;
         
         toast({
           title: "Cliente cadastrado",
@@ -186,15 +192,31 @@ export default function ClienteFormDialog({
         });
       }
 
+      // Salvar categorias habilitadas
+      if (formData.categoriasHabilitadas && formData.categoriasHabilitadas.length > 0) {
+        console.log('ClienteFormDialog: Salvando categorias do cliente:', formData.categoriasHabilitadas);
+        await salvarCategoriasCliente(clienteId, formData.categoriasHabilitadas);
+      }
+
+      // Salvar preços por categoria
+      if (precosCategoria.length > 0) {
+        console.log('ClienteFormDialog: Salvando preços por categoria:', precosCategoria);
+        await salvarPrecos(clienteId, precosCategoria);
+      }
+
+      // Chamar callback de atualização
       onClienteUpdate?.();
       onOpenChange(false);
+
     } catch (error) {
       console.error('ClienteFormDialog: Erro ao salvar cliente:', error);
       toast({
-        title: "Erro",
-        description: "Erro ao salvar cliente",
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar os dados do cliente",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -507,7 +529,7 @@ export default function ClienteFormDialog({
             clienteId={cliente?.id}
           />
 
-          {/* Novo bloco: Precificação por Categoria */}
+          {/* Precificação por Categoria */}
           <PrecificacaoPorCategoria
             categoriasHabilitadas={formData.categoriasHabilitadas || []}
             clienteId={cliente?.id}
@@ -533,7 +555,7 @@ export default function ClienteFormDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || isSaving}>
               <Save className="h-4 w-4 mr-2" />
               {cliente ? 'Atualizar' : 'Cadastrar'}
             </Button>

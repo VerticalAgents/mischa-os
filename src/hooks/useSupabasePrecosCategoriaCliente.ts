@@ -29,16 +29,14 @@ export const useSupabasePrecosCategoriaCliente = () => {
     try {
       console.log('useSupabasePrecosCategoriaCliente: Carregando preços para cliente:', clienteId);
       
-      // Verificar se a tabela existe primeiro
       const { data, error } = await supabase
         .from('precos_categoria_cliente')
         .select('*')
-        .eq('cliente_id', clienteId)
-        .limit(1);
+        .eq('cliente_id', clienteId);
 
       if (error) {
+        // Se a tabela não existe, retornar array vazio silenciosamente
         if (error.message.includes('relation') && error.message.includes('does not exist')) {
-          // Tabela não existe - retornar array vazio sem erro
           console.log('useSupabasePrecosCategoriaCliente: Tabela precos_categoria_cliente não existe, usando valores padrão');
           setPrecos([]);
           return [];
@@ -86,7 +84,7 @@ export const useSupabasePrecosCategoriaCliente = () => {
         description: "ID do cliente é obrigatório",
         variant: "destructive"
       });
-      return;
+      return false;
     }
 
     setLoading(true);
@@ -95,28 +93,23 @@ export const useSupabasePrecosCategoriaCliente = () => {
     try {
       console.log('useSupabasePrecosCategoriaCliente: Salvando preços:', { clienteId, precosCategoria });
       
-      // Verificar se a tabela existe
-      const { error: testError } = await supabase
-        .from('precos_categoria_cliente')
-        .select('id')
-        .limit(1);
-
-      if (testError && testError.message.includes('relation') && testError.message.includes('does not exist')) {
-        console.log('useSupabasePrecosCategoriaCliente: Tabela não existe, salvando apenas no cliente');
-        toast({
-          title: "Preços salvos",
-          description: "Configurações de preço foram salvas nas configurações do cliente"
-        });
-        return;
-      }
-
-      // Remover preços existentes
+      // Primeiro, remover preços existentes do cliente
       const { error: deleteError } = await supabase
         .from('precos_categoria_cliente')
         .delete()
         .eq('cliente_id', clienteId);
 
-      if (deleteError && !deleteError.message.includes('relation')) {
+      if (deleteError) {
+        // Se a tabela não existe, notificar o usuário
+        if (deleteError.message.includes('relation') && deleteError.message.includes('does not exist')) {
+          console.log('useSupabasePrecosCategoriaCliente: Tabela não existe');
+          toast({
+            title: "Aviso",
+            description: "Tabela de preços não configurada. Entre em contato com o administrador.",
+            variant: "default"
+          });
+          return false;
+        }
         throw deleteError;
       }
 
@@ -134,26 +127,33 @@ export const useSupabasePrecosCategoriaCliente = () => {
           .from('precos_categoria_cliente')
           .insert(precosParaInserir);
 
-        if (insertError && !insertError.message.includes('relation')) {
+        if (insertError) {
           throw insertError;
         }
+
+        console.log('useSupabasePrecosCategoriaCliente: Preços inseridos com sucesso:', precosParaInserir);
       }
 
+      // Recarregar dados após salvamento
       await carregarPrecosPorCliente(clienteId);
       
       toast({
         title: "Preços salvos",
         description: "Preços por categoria foram atualizados com sucesso"
       });
+      
+      return true;
     } catch (error: any) {
       console.error('useSupabasePrecosCategoriaCliente: Erro ao salvar preços:', error);
       setError(error.message);
       
       toast({
         title: "Erro ao salvar preços",
-        description: "Não foi possível salvar os preços por categoria",
+        description: "Não foi possível salvar os preços por categoria. Verifique os dados e tente novamente.",
         variant: "destructive"
       });
+      
+      return false;
     } finally {
       setLoading(false);
     }
