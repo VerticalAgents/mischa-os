@@ -73,7 +73,7 @@ export const menuGroups: MenuGroup[] = [
     items: [
       {
         label: "Dashboard & Analytics",
-        path: "/",
+        path: "/dashboard-analytics",
         icon: <BarChart3 className="h-4 w-4" />,
       },
       {

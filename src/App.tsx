@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -7,6 +6,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import Index from "./pages/Index";
+import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import DashboardAnalytics from "./pages/DashboardAnalytics";
 import Agendamento from "./pages/Agendamento";
@@ -51,6 +51,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route element={<ProtectedLayout />}>
                 <Route path="/" element={<Index />} />
+                <Route path="/home" element={<Home />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/dashboard-analytics" element={<DashboardAnalytics />} />
                 <Route path="/agendamento" element={<Agendamento />} />
