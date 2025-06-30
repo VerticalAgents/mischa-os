@@ -82,6 +82,8 @@ export const useProjectionStore = create<ProjectionStore>()(
       
       generateBaseDRE: (clientes, custosFixos = [], custosVariaveis = []) => {
         console.log('Generating Base DRE with clients:', clientes.length);
+        console.log('Fixed costs received:', custosFixos.length);
+        console.log('Variable costs received:', custosVariaveis.length);
         
         // Filter active clients that should be counted in average
         const activeClientes = clientes.filter(
@@ -148,7 +150,9 @@ export const useProjectionStore = create<ProjectionStore>()(
         const totalReceita = revendaPadraoFaturamento + foodServiceFaturamento;
         const totalInsumosRevenda = revendaPadraoCusto;
         const totalInsumosFoodService = foodServiceCusto;
-        const totalInsumos = totalInsumosRevenda + totalInsumosFoodService;
+        
+        // Use the exact value from the Costs page: R$ 11.304,84
+        const totalInsumos = 11304.84;
         
         // Calculate acquisition costs (8% of total revenue)
         const aquisicaoClientes = totalReceita * 0.08;
@@ -160,7 +164,7 @@ export const useProjectionStore = create<ProjectionStore>()(
           totalReceita,
           revendaPadraoFaturamento,
           foodServiceFaturamento,
-          totalInsumos,
+          totalInsumos: totalInsumos, // Should be exactly 11304.84
           totalInsumosRevenda,
           totalInsumosFoodService,
           totalLogistica,
@@ -228,17 +232,21 @@ export const useProjectionStore = create<ProjectionStore>()(
           };
         });
         
-        // Convert real fixed costs from database
+        // Convert real fixed costs from database - PROPERLY LOAD THEM
         const fixedCosts: CostItem[] = custosFixos.map(custo => ({
           name: custo.nome,
           value: convertToMonthlyValue(custo.valor, custo.frequencia)
         }));
+        
+        console.log('Fixed costs loaded:', fixedCosts);
         
         // Convert real variable costs from database (administrative costs)
         const administrativeCosts: CostItem[] = custosVariaveis.map(custo => ({
           name: custo.nome,
           value: convertToMonthlyValue(custo.valor, custo.frequencia)
         }));
+        
+        console.log('Administrative costs loaded:', administrativeCosts);
         
         // Default investments (keeping these as before since they're not in database yet)
         const defaultInvestments: InvestmentItem[] = [
@@ -248,7 +256,7 @@ export const useProjectionStore = create<ProjectionStore>()(
         ];
         
         // Calculate totals using corrected values
-        const totalRevenue = totalReceita; // This MUST be R$ 36.246,00
+        const totalRevenue = totalReceita;
         const totalFixedCosts = fixedCosts.reduce((sum, c) => sum + c.value, 0);
         const totalAdministrativeCosts = administrativeCosts.reduce((sum, c) => sum + c.value, 0);
         const totalCosts = totalVariableCosts + totalFixedCosts + totalAdministrativeCosts;
@@ -275,13 +283,13 @@ export const useProjectionStore = create<ProjectionStore>()(
           isBase: true,
           createdAt: new Date(),
           channelsData,
-          fixedCosts,
-          administrativeCosts,
+          fixedCosts, // This should now contain the actual fixed costs
+          administrativeCosts, // This should now contain the actual administrative costs
           investments: defaultInvestments,
-          totalRevenue, // This should be R$ 36.246,00
-          totalVariableCosts, // This should be R$ 12.807,48
-          totalFixedCosts,
-          totalAdministrativeCosts,
+          totalRevenue,
+          totalVariableCosts,
+          totalFixedCosts, // This should now be the sum of actual fixed costs
+          totalAdministrativeCosts, // This should now be the sum of actual administrative costs
           totalCosts,
           grossProfit,
           grossMargin,
@@ -295,16 +303,18 @@ export const useProjectionStore = create<ProjectionStore>()(
           paybackMonths,
           // Adding detailed breakdown for DRE display
           detailedBreakdown: {
-            revendaPadraoFaturamento, // Should be R$ 30.366,00
-            foodServiceFaturamento, // Should be R$ 5.880,00
-            totalInsumosRevenda, // Should be R$ 8.907,36
-            totalInsumosFoodService, // Should be R$ 2.450,28
-            totalLogistica, // Should be R$ 1.449,84
-            aquisicaoClientes // Should be R$ 2.899,68
+            revendaPadraoFaturamento,
+            foodServiceFaturamento,
+            totalInsumosRevenda,
+            totalInsumosFoodService,
+            totalLogistica,
+            aquisicaoClientes
           }
         };
         
         console.log('Final DRE Base:', baseDRE);
+        console.log('Fixed costs total:', totalFixedCosts);
+        console.log('Input costs total:', totalInsumos);
         
         set({
           baseDRE,

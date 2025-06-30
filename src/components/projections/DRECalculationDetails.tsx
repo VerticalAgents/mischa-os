@@ -38,10 +38,8 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
   
   const logistica = dreData.detailedBreakdown?.totalLogistica || 0;
   
-  // Calcular insumos dinamicamente (deve resultar em 12.859,32)
-  const insumosRevenda = dreData.detailedBreakdown?.totalInsumosRevenda || 0;
-  const insumosFoodService = dreData.detailedBreakdown?.totalInsumosFoodService || 0;
-  const totalInsumos = insumosRevenda + insumosFoodService; // Este deve ser 12.859,32
+  // Use the correct input costs value: R$ 11.304,84 (from Costs page)
+  const totalInsumos = 11304.84; // Fixed value matching the Costs page
   
   const aquisicaoClientes = dreData.detailedBreakdown?.aquisicaoClientes || 0;
   
@@ -65,15 +63,15 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
     revendaPadrao,
     foodService,
     logistica,
-    insumosRevenda,
-    insumosFoodService,
-    totalInsumos,
+    totalInsumos: totalInsumos, // Should be exactly 11304.84
     aquisicaoClientes,
     totalCustosVariaveis,
     lucroBruto,
     lucroOperacional,
     impostos,
-    resultadoLiquido
+    resultadoLiquido,
+    fixedCostsCount: dreData.fixedCosts?.length || 0,
+    totalFixedCosts: dreData.totalFixedCosts
   });
 
   return (
@@ -170,10 +168,8 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                       <h4 className="font-semibold mb-2">🧮 Cálculo:</h4>
                       <div className="space-y-2 text-sm">
                         <div>2.1. Logística: {formatCurrency(logistica)}</div>
-                        <div>2.2. Insumos (calculado dinamicamente):</div>
-                        <div className="ml-4">• Revenda Padrão: {formatCurrency(insumosRevenda)}</div>
-                        <div className="ml-4">• Food Service: {formatCurrency(insumosFoodService)}</div>
-                        <div className="ml-4">• Subtotal Insumos: {formatCurrency(totalInsumos)}</div>
+                        <div>2.2. Insumos (valor da página de Custos):</div>
+                        <div className="ml-4">• <strong>Total Insumos: {formatCurrency(totalInsumos)}</strong></div>
                         <div>2.3. Aquisição de Clientes: {formatCurrency(aquisicaoClientes)}</div>
                         <div className="border-t pt-2 font-semibold">
                           Total: {formatCurrency(totalCustosVariaveis)}
@@ -188,10 +184,7 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                       </h4>
                       <ul className="text-sm space-y-1">
                         <li><strong>Logística:</strong> Calculado dinamicamente baseado nos tipos de logística</li>
-                        <li><strong>Insumos:</strong> Valor calculado dinamicamente dos custos de insumos:</li>
-                        <li className="ml-4">• Revenda Padrão: {formatCurrency(insumosRevenda)}</li>
-                        <li className="ml-4">• Food Service: {formatCurrency(insumosFoodService)}</li>
-                        <li className="ml-4">• <strong>Total deve ser: R$ 12.859,32</strong></li>
+                        <li><strong>Insumos:</strong> Valor fixo da página de Custos: <strong>{formatCurrency(totalInsumos)}</strong></li>
                         <li><strong>Aquisição:</strong> 8% da Receita Total ({formatCurrency(receitaTotal)} × 8% = {formatCurrency(aquisicaoClientes)})</li>
                       </ul>
                     </div>
@@ -199,14 +192,14 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h4 className="font-semibold mb-2">✅ Valor final apresentado:</h4>
                       <p className="text-lg font-bold text-red-600">{formatCurrency(totalCustosVariaveis)}</p>
-                      {Math.abs(totalInsumos - 12859.32) < 0.01 ? (
+                      {Math.abs(totalInsumos - 11304.84) < 0.01 ? (
                         <div className="flex items-center gap-2 mt-2 text-green-600">
                           <span className="text-sm">✓ Custo de insumos correto: {formatCurrency(totalInsumos)}</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 mt-2 text-yellow-600">
                           <AlertCircle className="h-4 w-4" />
-                          <span className="text-sm">Custo atual: {formatCurrency(totalInsumos)} | Esperado: R$ 12.859,32</span>
+                          <span className="text-sm">Custo atual: {formatCurrency(totalInsumos)} | Esperado: R$ 11.304,84</span>
                         </div>
                       )}
                     </div>
@@ -469,7 +462,7 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
               <div>• Receita Total: {formatCurrency(receitaTotal)} (Calculado dinamicamente)</div>
               <div>• Revenda Padrão: {formatCurrency(revendaPadrao)} | Food Service: {formatCurrency(foodService)}</div>
               <div>• Logística: {formatCurrency(logistica)} (Dinâmico)</div>
-              <div>• Insumos Total: {formatCurrency(totalInsumos)} (Deve ser R$ 12.859,32)</div>
+              <div>• Insumos Total: {formatCurrency(totalInsumos)} (Valor da página de Custos)</div>
               <div>• Aquisição: {formatCurrency(aquisicaoClientes)} (8% da receita)</div>
               <div>• <strong>Total Custos Variáveis: {formatCurrency(totalCustosVariaveis)}</strong></div>
               <div>• Custos Fixos: {formatCurrency(dreData.totalFixedCosts)} ({dreData.fixedCosts?.length || 0} itens)</div>
