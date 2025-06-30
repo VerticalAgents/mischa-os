@@ -272,12 +272,18 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
 
           let result;
           if (agendamentoExistente) {
-            // PRESERVAR dados existentes quando não especificado explicitamente
+            // CORREÇÃO: Preservar explicitamente a quantidade_total quando fornecida
             const dadosAtualizacao = {
               ...dadosParaSalvar,
+              // Preservar tipo_pedido explicitamente
               tipo_pedido: dadosAgendamento.tipo_pedido !== undefined 
                 ? dadosAgendamento.tipo_pedido 
                 : agendamentoExistente.tipo_pedido,
+              // CORREÇÃO PRINCIPAL: Preservar quantidade_total explicitamente quando fornecida
+              quantidade_total: dadosAgendamento.quantidade_total !== undefined 
+                ? dadosAgendamento.quantidade_total 
+                : agendamentoExistente.quantidade_total,
+              // Preservar itens_personalizados baseado no tipo de pedido
               itens_personalizados: dadosAgendamento.itens_personalizados !== undefined 
                 ? dadosAgendamento.itens_personalizados 
                 : (dadosAgendamento.tipo_pedido === 'Alterado' || agendamentoExistente.tipo_pedido === 'Alterado')
@@ -289,6 +295,9 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
               id: agendamentoExistente.id,
               tipoAnterior: agendamentoExistente.tipo_pedido,
               tipoNovo: dadosAtualizacao.tipo_pedido,
+              quantidadeAnterior: agendamentoExistente.quantidade_total,
+              quantidadeNova: dadosAtualizacao.quantidade_total,
+              quantidadeRecebida: dadosAgendamento.quantidade_total,
               dataAnterior: agendamentoExistente.data_proxima_reposicao,
               dataNova: dadosAtualizacao.data_proxima_reposicao,
               itensPersonalizados: dadosAtualizacao.itens_personalizados
@@ -323,6 +332,7 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
           }
 
           console.log('✅ Agendamento salvo com sucesso:', result.data);
+          console.log('🔍 Validação pós-salvamento - Quantidade salva:', result.data.quantidade_total);
           
           // Atualizar cache
           const novoCache = new Map(get().agendamentosCompletos);

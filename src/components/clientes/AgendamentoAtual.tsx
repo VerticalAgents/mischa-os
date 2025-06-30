@@ -123,13 +123,26 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
     try {
       const dataReposicao = parseDateFromInput(proximaDataReposicao);
       
-      await salvarAgendamento(cliente.id, {
+      // Log detalhado dos dados que serão enviados
+      const dadosParaSalvar = {
         status_agendamento: statusAgendamento,
         data_proxima_reposicao: dataReposicao,
         tipo_pedido: tipoPedido,
         quantidade_total: quantidadeTotal,
         itens_personalizados: tipoPedido === "Alterado" ? produtosQuantidades : null
+      };
+      
+      console.log('🚀 AgendamentoAtual - Salvando dados:', {
+        clienteId: cliente.id,
+        statusAgendamento,
+        tipoPedido,
+        quantidadeTotal,
+        quantidadeTotalType: typeof quantidadeTotal,
+        dataReposicao,
+        dadosCompletos: dadosParaSalvar
       });
+      
+      await salvarAgendamento(cliente.id, dadosParaSalvar);
 
       toast({
         title: "Sucesso",
@@ -140,7 +153,7 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
       await carregarClientes();
       onAgendamentoUpdate?.();
     } catch (error) {
-      console.error('Erro ao salvar agendamento:', error);
+      console.error('❌ AgendamentoAtual - Erro ao salvar agendamento:', error);
       toast({
         title: "Erro",
         description: "Erro ao salvar agendamento",
