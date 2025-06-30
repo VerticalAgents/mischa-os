@@ -137,6 +137,7 @@ export function SessionNavBar() {
                         )}>
                           <div className={cn(
                             "h-2 w-2 rounded-full",
+                            group.variant === "main" && "bg-indigo-500",
                             group.variant === "operational" && "bg-purple-500",
                             group.variant === "tactical" && "bg-blue-500",
                             group.variant === "strategic" && "bg-green-500",

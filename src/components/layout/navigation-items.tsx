@@ -4,7 +4,7 @@ import {
   BarChart3, Users, Tag, Clipboard, 
   ShoppingBag, Settings, Layers, Truck, FileText,
   Cpu, PackageCheck, DollarSign, LineChart, Receipt,
-  BarChart, Building, HelpingHand, UserCircle, TrendingUp, Calculator
+  BarChart, Building, HelpingHand, UserCircle, TrendingUp, Calculator, Home
 } from "lucide-react";
 
 export type MenuItem = {
@@ -16,10 +16,21 @@ export type MenuItem = {
 export type MenuGroup = {
   title: string;
   items: MenuItem[];
-  variant: 'operational' | 'tactical' | 'strategic' | 'system';
+  variant: 'operational' | 'tactical' | 'strategic' | 'system' | 'main';
 };
 
 export const menuGroups: MenuGroup[] = [
+  {
+    title: "Principal",
+    variant: "main",
+    items: [
+      {
+        label: "Início",
+        path: "/home",
+        icon: <Home className="h-4 w-4" />,
+      },
+    ]
+  },
   {
     title: "Operacional",
     variant: "operational",
