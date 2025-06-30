@@ -1,4 +1,3 @@
-
 import { AgendamentoCliente } from './types';
 import { AgendamentoItem } from '@/components/agendamento/types';
 
@@ -70,16 +69,16 @@ export const convertToAgendamentoItem = (agendamento: any, cliente: any): Agenda
     dataReposicao: agendamento.data_proxima_reposicao ? parseLocalDate(agendamento.data_proxima_reposicao) : new Date(),
     statusAgendamento: agendamento.status_agendamento,
     isPedidoUnico: false,
-    pedido: agendamento.tipo_pedido === 'Alterado' ? {
+    pedido: {
       id: 0,
       idCliente: cliente.id,
       dataPedido: new Date(),
       dataPrevistaEntrega: agendamento.data_proxima_reposicao ? parseLocalDate(agendamento.data_proxima_reposicao) : new Date(),
       statusPedido: 'Agendado',
-      itensPedido: [],
+      itensPedido: agendamento.tipo_pedido === 'Alterado' ? [] : [],
       totalPedidoUnidades: agendamento.quantidade_total,
       tipoPedido: agendamento.tipo_pedido
-    } : undefined
+    }
   };
 };
 
