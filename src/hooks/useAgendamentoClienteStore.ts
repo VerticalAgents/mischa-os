@@ -4,7 +4,7 @@ import { devtools } from 'zustand/middleware';
 import { AgendamentoClienteStore } from './agendamento/types';
 import { createAgendamentoActions } from './agendamento/actions';
 
-export { AgendamentoCliente } from './agendamento/types';
+export type { AgendamentoCliente } from './agendamento/types';
 
 export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
   devtools(
