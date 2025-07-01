@@ -1,220 +1,252 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
-import { useSupabasePrecosCategoriaCliente } from "@/hooks/useSupabasePrecosCategoriaCliente";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { DollarSign, Edit3, Check, X, RotateCcw } from "lucide-react";
+import { Cliente } from "@/types";
+import { useCategoriaStore } from "@/hooks/useCategoriaStore";
+import { usePrecificacaoClienteStore } from "@/hooks/usePrecificacaoClienteStore";
 
 interface PrecificacaoPorCategoriaProps {
-  categoriasHabilitadas: number[];
-  clienteId?: string;
-  onPrecosChange: (precos: { categoria_id: number; preco_unitario: number }[]) => void;
+  cliente: Cliente;
 }
 
-export default function PrecificacaoPorCategoria({
-  categoriasHabilitadas,
-  clienteId,
-  onPrecosChange
-}: PrecificacaoPorCategoriaProps) {
-  const { categorias } = useSupabaseCategoriasProduto();
-  const { precos, carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
-  const [precosLocal, setPrecosLocal] = useState<Record<number, number>>({});
-  const [isLoaded, setIsLoaded] = useState(false);
+export default function PrecificacaoPorCategoria({ cliente }: PrecificacaoPorCategoriaProps) {
+  const { categorias } = useCategoriaStore();
+  const {
+    precosCliente,
+    loading,
+    carregarPrecosCliente,
+    salvarPrecosCliente,
+    atualizarPrecoCategoria,
+    resetarPrecoParaPadrao
+  } = usePrecificacaoClienteStore();
+  
+  const [editingCategory, setEditingCategory] = useState<number | null>(null);
+  const [tempValue, setTempValue] = useState<string>("");
 
-  // Função para definir valores padrão
-  const definirValoresPadrao = (categoriasIds: number[]) => {
-    const precosIniciais: Record<number, number> = {};
-    categoriasIds.forEach(categoriaId => {
-      const categoria = categorias.find(cat => cat.id === categoriaId);
-      if (categoria && categoria.nome.toLowerCase().includes('revenda padrão')) {
-        precosIniciais[categoriaId] = 4.50;
-      } else {
-        precosIniciais[categoriaId] = 0;
-      }
-    });
-    return precosIniciais;
-  };
-
-  // Carregar preços existentes do cliente
+  // Carregar preços quando componente monta ou cliente muda
   useEffect(() => {
-    const carregarPrecos = async () => {
-      if (clienteId && categoriasHabilitadas.length > 0) {
-        try {
-          console.log('PrecificacaoPorCategoria: Carregando preços para cliente:', clienteId);
-          const precosCarregados = await carregarPrecosPorCliente(clienteId);
-          
-          // Criar mapa de preços carregados
-          const precosMap: Record<number, number> = {};
-          precosCarregados.forEach(preco => {
-            precosMap[preco.categoria_id] = preco.preco_unitario;
-          });
-          
-          // Definir valores padrão para categorias sem preços definidos
-          const precosCompletos = definirValoresPadrao(categoriasHabilitadas);
-          
-          // Sobrescrever com preços carregados onde existirem
-          categoriasHabilitadas.forEach(categoriaId => {
-            if (precosMap[categoriaId] !== undefined) {
-              precosCompletos[categoriaId] = precosMap[categoriaId];
-            }
-          });
-          
-          console.log('PrecificacaoPorCategoria: Preços finais:', precosCompletos);
-          setPrecosLocal(precosCompletos);
-          setIsLoaded(true);
-        } catch (error) {
-          console.error('PrecificacaoPorCategoria: Erro ao carregar preços:', error);
-          // Em caso de erro, usar valores padrão
-          setPrecosLocal(definirValoresPadrao(categoriasHabilitadas));
-          setIsLoaded(true);
-        }
-      } else if (categoriasHabilitadas.length > 0) {
-        // Para novo cliente ou sem ID, definir valores padrão
-        console.log('PrecificacaoPorCategoria: Definindo valores padrão para novo cliente');
-        setPrecosLocal(definirValoresPadrao(categoriasHabilitadas));
-        setIsLoaded(true);
-      } else {
-        // Limpar quando não há categorias
-        setPrecosLocal({});
-        setIsLoaded(true);
-      }
-    };
-
-    // Reset no carregamento quando mudam as dependências
-    setIsLoaded(false);
-    carregarPrecos();
-  }, [clienteId, carregarPrecosPorCliente, categoriasHabilitadas, categorias]);
-
-  // Atualizar preços quando categorias habilitadas mudarem
-  useEffect(() => {
-    if (isLoaded) {
-      setPrecosLocal(prev => {
-        const novosPrecosLocal = { ...prev };
-        
-        // Adicionar preços para novas categorias habilitadas
-        categoriasHabilitadas.forEach(categoriaId => {
-          if (!(categoriaId in novosPrecosLocal)) {
-            const categoria = categorias.find(cat => cat.id === categoriaId);
-            if (categoria && categoria.nome.toLowerCase().includes('revenda padrão')) {
-              novosPrecosLocal[categoriaId] = 4.50;
-            } else {
-              novosPrecosLocal[categoriaId] = 0;
-            }
-          }
-        });
-        
-        // Remover preços de categorias não habilitadas
-        Object.keys(novosPrecosLocal).forEach(categoriaIdStr => {
-          const categoriaId = Number(categoriaIdStr);
-          if (!categoriasHabilitadas.includes(categoriaId)) {
-            delete novosPrecosLocal[categoriaId];
-          }
-        });
-        
-        return novosPrecosLocal;
+    if (cliente?.id && cliente?.categoriasHabilitadas?.length) {
+      console.log('🔄 PrecificacaoPorCategoria: Carregando preços para cliente:', {
+        clienteId: cliente.id,
+        categoriasHabilitadas: cliente.categoriasHabilitadas
       });
+      carregarPrecosCliente(cliente.id, cliente.categoriasHabilitadas);
     }
-  }, [categoriasHabilitadas, categorias, isLoaded]);
+  }, [cliente?.id, cliente?.categoriasHabilitadas, carregarPrecosCliente]);
 
-  // Notificar mudanças de preços para o componente pai
-  useEffect(() => {
-    if (isLoaded) {
-      const precosArray = Object.entries(precosLocal).map(([categoriaId, preco]) => ({
-        categoria_id: Number(categoriaId),
-        preco_unitario: preco || 0
-      }));
-      
-      console.log('PrecificacaoPorCategoria: Notificando mudanças de preços:', precosArray);
-      onPrecosChange(precosArray);
-    }
-  }, [precosLocal, onPrecosChange, isLoaded]);
-
-  const handlePrecoChange = (categoriaId: number, valor: string) => {
-    // Remover caracteres não numéricos exceto vírgula e ponto
-    const valorLimpo = valor.replace(/[^\d.,]/g, '');
-    
-    // Converter vírgula para ponto e validar número
-    const valorFormatado = valorLimpo.replace(',', '.');
-    const preco = parseFloat(valorFormatado);
-    
-    // Se não é um número válido, definir como 0
-    const precoFinal = isNaN(preco) ? 0 : preco;
-    
-    console.log('PrecificacaoPorCategoria: Alterando preço da categoria', categoriaId, 'para', precoFinal);
-    
-    setPrecosLocal(prev => ({
-      ...prev,
-      [categoriaId]: precoFinal
-    }));
+  const handleEditStart = (categoriaId: number, currentValue: number) => {
+    setEditingCategory(categoriaId);
+    setTempValue(currentValue.toString());
   };
 
-  const formatarPrecoParaExibicao = (preco: number): string => {
-    if (preco === 0) return '';
-    return preco.toFixed(2).replace('.', ',');
+  const handleEditCancel = () => {
+    setEditingCategory(null);
+    setTempValue("");
   };
 
-  // Filtrar apenas categorias habilitadas
-  const categoriasParaPrecificar = categorias.filter(cat => 
-    categoriasHabilitadas.includes(cat.id)
+  const handleEditSave = async (categoriaId: number) => {
+    const numericValue = Number(tempValue);
+    
+    if (isNaN(numericValue) || numericValue < 0) {
+      return;
+    }
+
+    // Atualizar localmente
+    atualizarPrecoCategoria(categoriaId, numericValue, true);
+
+    // Salvar no banco
+    await salvarPrecosCliente(cliente.id, precosCliente.map(p => 
+      p.categoriaId === categoriaId 
+        ? { ...p, preco: numericValue, precoPersonalizado: true }
+        : p
+    ));
+
+    setEditingCategory(null);
+    setTempValue("");
+  };
+
+  const handleResetToPadrao = async (categoriaId: number) => {
+    resetarPrecoParaPadrao(categoriaId);
+    
+    // Salvar no banco (remove o preço personalizado)
+    await salvarPrecosCliente(cliente.id, precosCliente.filter(p => 
+      p.categoriaId !== categoriaId || !p.precoPersonalizado
+    ));
+  };
+
+  const formatarMoeda = (valor: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(valor);
+  };
+
+  const categoriasHabilitadas = cliente?.categoriasHabilitadas || [];
+  const categoriasComPreco = precosCliente.filter(p => 
+    categoriasHabilitadas.includes(p.categoriaId)
   );
 
-  // Não exibir se não houver categorias habilitadas
-  if (categoriasParaPrecificar.length === 0) {
-    return null;
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-muted-foreground">
+            Carregando preços...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (categoriasHabilitadas.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Precificação por Categoria
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <p>Nenhuma categoria habilitada para este cliente.</p>
+            <p className="text-sm mt-1">
+              Configure as categorias na aba "Dados Gerais" primeiro.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2">
           <DollarSign className="h-5 w-5" />
           Precificação por Categoria
         </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Configure preços específicos para cada categoria habilitada
-        </p>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {categoriasParaPrecificar.map((categoria) => (
-          <div key={categoria.id} className="flex items-center gap-4 p-3 border rounded-lg">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <Badge variant="secondary" className="text-xs">
-                  {categoria.nome}
-                </Badge>
+      <CardContent>
+        <div className="space-y-4">
+          {categoriasComPreco.map((precoCategoria) => {
+            const categoria = categorias.find(c => c.id === precoCategoria.categoriaId);
+            const isEditing = editingCategory === precoCategoria.categoriaId;
+            
+            if (!categoria) return null;
+
+            return (
+              <div key={categoria.id} className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium">{categoria.nome}</h4>
+                    {precoCategoria.precoPersonalizado && (
+                      <Badge variant="secondary" className="text-xs">
+                        Personalizado
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {!isEditing && (
+                      <>
+                        {precoCategoria.precoPersonalizado && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleResetToPadrao(precoCategoria.categoriaId)}
+                            className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
+                            title="Resetar para preço padrão"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditStart(precoCategoria.categoriaId, precoCategoria.preco)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                
                 {categoria.descricao && (
-                  <span className="text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     {categoria.descricao}
-                  </span>
+                  </p>
                 )}
+
+                <div className="flex items-center space-x-2">
+                  {isEditing ? (
+                    <>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={tempValue}
+                        onChange={(e) => setTempValue(e.target.value)}
+                        className="flex-1"
+                        placeholder="0.00"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleEditSave(precoCategoria.categoriaId);
+                          } else if (e.key === 'Escape') {
+                            handleEditCancel();
+                          }
+                        }}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditSave(precoCategoria.categoriaId)}
+                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                        disabled={loading}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleEditCancel}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <div
+                      className="flex-1 p-2 bg-muted rounded cursor-pointer hover:bg-muted/80 transition-colors"
+                      onClick={() => handleEditStart(precoCategoria.categoriaId, precoCategoria.preco)}
+                    >
+                      <span className="text-lg font-semibold">
+                        {formatarMoeda(precoCategoria.preco)}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="w-32">
-              <Label htmlFor={`preco-${categoria.id}`} className="text-xs">
-                Preço Unitário
-              </Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
-                  R$
-                </span>
-                <Input
-                  id={`preco-${categoria.id}`}
-                  type="text"
-                  placeholder="0,00"
-                  value={formatarPrecoParaExibicao(precosLocal[categoria.id] || 0)}
-                  onChange={(e) => handlePrecoChange(categoria.id, e.target.value)}
-                  className="pl-10 text-right"
-                />
-              </div>
-            </div>
+            );
+          })}
+
+          <Separator />
+          
+          <div className="flex justify-between items-center text-sm text-muted-foreground">
+            <span>
+              {categoriasComPreco.length} categoria{categoriasComPreco.length !== 1 ? 's' : ''} configurada{categoriasComPreco.length !== 1 ? 's' : ''}
+            </span>
+            <span>
+              Clique nos preços para editá-los • Enter para salvar • Esc para cancelar
+            </span>
           </div>
-        ))}
-        
-        <div className="text-xs text-muted-foreground bg-blue-50 p-2 rounded">
-          💡 Os preços configurados aqui serão usados para cálculos de projeção de resultados específicos deste cliente.
         </div>
       </CardContent>
     </Card>
