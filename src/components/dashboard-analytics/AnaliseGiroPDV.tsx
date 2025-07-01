@@ -6,8 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, TrendingUp, DollarSign, Users, Package } from 'lucide-react';
 import { useFaturamentoPrevisto } from '@/hooks/useFaturamentoPrevisto';
+import { Cliente } from '@/types';
+import { DREData } from '@/types/projections';
 
-export default function AnaliseGiroPDV() {
+interface AnaliseGiroPDVProps {
+  clientes: Cliente[];
+  baseDRE: DREData | null;
+}
+
+export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProps) {
   const { 
     faturamentoSemanal, 
     faturamentoMensal, 
