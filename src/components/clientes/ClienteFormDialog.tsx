@@ -82,8 +82,7 @@ export default function ClienteFormDialog({
     instrucoesEntrega: ''
   });
 
-  // Estado para preços por categoria
-  const [precosCategoria, setPrecosCategoria] = useState<{ categoria_id: number; preco_unitario: number }[]>([]);
+  // Estado para preços por categoria - removido pois não é mais necessário
   const [isSaving, setIsSaving] = useState(false);
 
   // Carregar dados do cliente quando abrir para edição
@@ -119,7 +118,6 @@ export default function ClienteFormDialog({
         categoriaEstabelecimentoId: undefined,
         instrucoesEntrega: ''
       });
-      setPrecosCategoria([]);
     }
   }, [cliente, open]);
 
@@ -147,11 +145,6 @@ export default function ClienteFormDialog({
     }));
   };
 
-  const handlePrecosChange = (precos: { categoria_id: number; preco_unitario: number }[]) => {
-    console.log('ClienteFormDialog: Atualizando preços por categoria:', precos);
-    setPrecosCategoria(precos);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -168,7 +161,6 @@ export default function ClienteFormDialog({
 
     try {
       console.log('ClienteFormDialog: Iniciando salvamento do cliente:', formData);
-      console.log('ClienteFormDialog: Preços por categoria a salvar:', precosCategoria);
 
       let clienteId: string;
 
@@ -198,12 +190,6 @@ export default function ClienteFormDialog({
         await salvarCategoriasCliente(clienteId, formData.categoriasHabilitadas);
       }
 
-      // Salvar preços por categoria
-      if (precosCategoria.length > 0) {
-        console.log('ClienteFormDialog: Salvando preços por categoria:', precosCategoria);
-        await salvarPrecos(clienteId, precosCategoria);
-      }
-
       // Chamar callback de atualização
       onClienteUpdate?.();
       onOpenChange(false);
@@ -218,6 +204,33 @@ export default function ClienteFormDialog({
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Criar um objeto cliente temporário para passar para o componente PrecificacaoPorCategoria
+  const clienteTemp: Cliente = {
+    id: cliente?.id || '',
+    nome: formData.nome || '',
+    cnpjCpf: formData.cnpjCpf || '',
+    enderecoEntrega: formData.enderecoEntrega || '',
+    contatoNome: formData.contatoNome || '',
+    contatoTelefone: formData.contatoTelefone || '',
+    contatoEmail: formData.contatoEmail || '',
+    quantidadePadrao: formData.quantidadePadrao || 0,
+    periodicidadePadrao: formData.periodicidadePadrao || 7,
+    statusCliente: formData.statusCliente || 'Ativo',
+    tipoLogistica: formData.tipoLogistica || 'Própria',
+    tipoCobranca: formData.tipoCobranca || 'À vista',
+    formaPagamento: formData.formaPagamento || 'Boleto',
+    emiteNotaFiscal: formData.emiteNotaFiscal || true,
+    contabilizarGiroMedio: formData.contabilizarGiroMedio || true,
+    observacoes: formData.observacoes || '',
+    categoriasHabilitadas: formData.categoriasHabilitadas || [],
+    janelasEntrega: formData.janelasEntrega || [],
+    representanteId: formData.representanteId,
+    rotaEntregaId: formData.rotaEntregaId,
+    categoriaEstabelecimentoId: formData.categoriaEstabelecimentoId,
+    instrucoesEntrega: formData.instrucoesEntrega || '',
+    dataCadastro: cliente?.dataCadastro || new Date().toISOString()
   };
 
   return (
@@ -529,11 +542,9 @@ export default function ClienteFormDialog({
             clienteId={cliente?.id}
           />
 
-          {/* Precificação por Categoria */}
+          {/* Precificação por Categoria - Passa o cliente temporário */}
           <PrecificacaoPorCategoria
-            categoriasHabilitadas={formData.categoriasHabilitadas || []}
-            clienteId={cliente?.id}
-            onPrecosChange={handlePrecosChange}
+            cliente={clienteTemp}
           />
 
           {/* Observações */}
