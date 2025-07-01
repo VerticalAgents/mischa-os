@@ -1,403 +1,214 @@
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Calendar } from "lucide-react";
-import { Cliente } from "@/types";
-import { DREData } from "@/types/projections";
-import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
-import { supabase } from "@/integrations/supabase/client";
-import { subDays, format } from "date-fns";
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { RefreshCw, TrendingUp, DollarSign, Users, Package } from 'lucide-react';
+import { useFaturamentoPrevisto } from '@/hooks/useFaturamentoPrevisto';
 
-interface AnaliseGiroPDVProps {
-  clientes: Cliente[];
-  baseDRE: DREData | null;
-}
+export default function AnaliseGiroPDV() {
+  const { 
+    faturamentoSemanal, 
+    faturamentoMensal, 
+    isLoading, 
+    disponivel, 
+    precosDetalhados,
+    recalcular 
+  } = useFaturamentoPrevisto();
 
-interface GiroPDV {
-  clienteId: string;
-  clienteNome: string;
-  giroPrevisto: number; // From cliente.giroMedioSemanal
-  giroRealizado: number; // From historico_entregas last 28 days
-  totalEntregasRealizadas: number;
-  ultimaEntrega?: Date;
-}
-
-interface GiroGlobal {
-  previsto: {
-    giroSemanal: number;
-    giroQuinzenal: number;
-    giroMensal: number;
-    totalPDVsAtivos: number;
-  };
-  realizado: {
-    giroSemanal: number;
-    giroQuinzenal: number;
-    giroMensal: number;
-    totalEntregasUltimos28Dias: number;
-  };
-}
-
-export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProps) {
-  const [dadosGiro, setDadosGiro] = useState<GiroPDV[]>([]);
-  const [giroGlobal, setGiroGlobal] = useState<GiroGlobal>({
-    previsto: {
-      giroSemanal: 0,
-      giroQuinzenal: 0,
-      giroMensal: 0,
-      totalPDVsAtivos: 0
-    },
-    realizado: {
-      giroSemanal: 0,
-      giroQuinzenal: 0,
-      giroMensal: 0,
-      totalEntregasUltimos28Dias: 0
-    }
-  });
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    carregarDadosGiro();
-  }, [clientes]);
-
-  const carregarDadosGiro = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Data limite: 28 dias atrás
-      const dataLimite = subDays(new Date(), 28);
-      
-      // Buscar histórico de entregas dos últimos 28 dias
-      const { data: historico, error } = await supabase
-        .from('historico_entregas')
-        .select('cliente_id, data, quantidade, tipo')
-        .eq('tipo', 'entrega')
-        .gte('data', dataLimite.toISOString());
-
-      if (error) {
-        console.error('Erro ao carregar histórico:', error);
-        return;
-      }
-
-      // Processar dados por cliente
-      const entregasPorCliente = new Map<string, { totalEntregas: number; ultimaEntrega?: Date }>();
-      
-      historico?.forEach(entrega => {
-        const clienteId = entrega.cliente_id;
-        const dataEntrega = new Date(entrega.data);
-        
-        if (!entregasPorCliente.has(clienteId)) {
-          entregasPorCliente.set(clienteId, { 
-            totalEntregas: 0,
-            ultimaEntrega: dataEntrega 
-          });
-        }
-        
-        const dadosCliente = entregasPorCliente.get(clienteId)!;
-        dadosCliente.totalEntregas += entrega.quantidade;
-        
-        if (!dadosCliente.ultimaEntrega || dataEntrega > dadosCliente.ultimaEntrega) {
-          dadosCliente.ultimaEntrega = dataEntrega;
-        }
-      });
-
-      // Filtrar apenas clientes ativos
-      const clientesAtivos = clientes.filter(cliente => 
-        cliente.ativo && cliente.statusCliente === 'Ativo'
-      );
-
-      // Calcular giro por PDV
-      const giroPDVs: GiroPDV[] = [];
-      let totalGiroPrevistoSemanal = 0;
-      let totalGiroRealizadoUltimos28Dias = 0;
-
-      clientesAtivos.forEach(cliente => {
-        const dadosEntregas = entregasPorCliente.get(cliente.id);
-        
-        // Giro previsto: calcular corretamente com base na quantidade padrão e periodicidade
-        let giroPrevisto = 0;
-        if (cliente.quantidadePadrao && cliente.periodicidadePadrao) {
-          // Calcular giro semanal: quantidade / (periodicidade em dias / 7)
-          const semanasPorPeriodo = cliente.periodicidadePadrao / 7;
-          giroPrevisto = Math.round(cliente.quantidadePadrao / semanasPorPeriodo);
-        } else {
-          // Fallback para o valor já calculado no cliente
-          giroPrevisto = cliente.giroMedioSemanal || 0;
-        }
-        
-        // Giro realizado = total entregue nos últimos 28 dias / 4 semanas
-        const giroRealizado = dadosEntregas ? Math.round(dadosEntregas.totalEntregas / 4) : 0;
-        
-        giroPDVs.push({
-          clienteId: cliente.id,
-          clienteNome: cliente.nome,
-          giroPrevisto,
-          giroRealizado,
-          totalEntregasRealizadas: dadosEntregas?.totalEntregas || 0,
-          ultimaEntrega: dadosEntregas?.ultimaEntrega
-        });
-        
-        totalGiroPrevistoSemanal += giroPrevisto;
-        totalGiroRealizadoUltimos28Dias += dadosEntregas?.totalEntregas || 0;
-      });
-
-      // Ordenar por giro previsto decrescente
-      giroPDVs.sort((a, b) => b.giroPrevisto - a.giroPrevisto);
-
-      // Calcular giro global
-      const giroGlobalData: GiroGlobal = {
-        previsto: {
-          giroSemanal: totalGiroPrevistoSemanal,
-          giroQuinzenal: totalGiroPrevistoSemanal * 2, // 14 dias
-          giroMensal: totalGiroPrevistoSemanal * 4, // 28 dias
-          totalPDVsAtivos: clientesAtivos.length
-        },
-        realizado: {
-          giroSemanal: Math.round(totalGiroRealizadoUltimos28Dias / 4), // Total dos últimos 28 dias / 4 semanas
-          giroQuinzenal: Math.round((totalGiroRealizadoUltimos28Dias / 4) * 2), // 14 dias
-          giroMensal: Math.round((totalGiroRealizadoUltimos28Dias / 4) * 4), // 28 dias
-          totalEntregasUltimos28Dias: totalGiroRealizadoUltimos28Dias
-        }
-      };
-
-      setDadosGiro(giroPDVs);
-      setGiroGlobal(giroGlobalData);
-      
-      console.log('✅ Dados de giro carregados:', { 
-        giroPDVs: giroPDVs.length, 
-        giroGlobal: giroGlobalData,
-        clientesAtivos: clientesAtivos.length,
-        totalGiroPrevistoSemanal,
-        mediaPorPDVPrevisto: clientesAtivos.length > 0 ? Math.round(totalGiroPrevistoSemanal / clientesAtivos.length) : 0
-      });
-      
-    } catch (error) {
-      console.error('Erro ao carregar dados de giro:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const formatarMoeda = (valor: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(valor);
   };
 
-  if (isLoading) {
+  const stats = {
+    totalClientes: [...new Set(precosDetalhados.map(p => p.clienteId))].length,
+    totalCategorias: [...new Set(precosDetalhados.map(p => p.categoriaId))].length,
+    precosPersonalizados: precosDetalhados.filter(p => p.precoPersonalizado).length,
+    totalGiroSemanal: precosDetalhados.reduce((sum, p) => sum + p.giroSemanal, 0)
+  };
+
+  if (!disponivel && !isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="text-center py-8">
-          <div className="animate-spin h-8 w-8 border-b-2 border-primary rounded-full mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Carregando análise de giro...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Calcular média por PDV (previsto e realizado) - sem arredondamento prematuro
-  const mediaPorPDVPrevisto = giroGlobal.previsto.totalPDVsAtivos > 0 
-    ? Math.round(giroGlobal.previsto.giroSemanal / giroGlobal.previsto.totalPDVsAtivos) 
-    : 0;
-  
-  const mediaPorPDVRealizado = giroGlobal.previsto.totalPDVsAtivos > 0 
-    ? Math.round(giroGlobal.realizado.giroSemanal / giroGlobal.previsto.totalPDVsAtivos) 
-    : 0;
-
-  return (
-    <div className="space-y-6">
-      {/* Blocos de Giro Previsto */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-500" />
-              Giro Previsto por PDV
-            </CardTitle>
-            <CardDescription>Baseado no cadastro dos clientes (quantidade padrão ÷ periodicidade)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Média Semanal</span>
-                <span className="font-semibold">{mediaPorPDVPrevisto} un</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Média Quinzenal (14d)</span>
-                <span className="font-semibold">{mediaPorPDVPrevisto * 2} un</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Média Mensal (28d)</span>
-                <span className="font-semibold">{mediaPorPDVPrevisto * 4} un</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-500" />
-              Giro Previsto Geral
-            </CardTitle>
-            <CardDescription>Soma de todos os PDVs ativos</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Giro Semanal</span>
-                <span className="font-semibold">{giroGlobal.previsto.giroSemanal.toLocaleString()} un</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Giro Quinzenal (14d)</span>
-                <span className="font-semibold">{giroGlobal.previsto.giroQuinzenal.toLocaleString()} un</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Giro Mensal (28d)</span>
-                <span className="font-semibold">{giroGlobal.previsto.giroMensal.toLocaleString()} un</span>
-              </div>
-              <div className="pt-2 border-t">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">PDVs Ativos</span>
-                  <Badge variant="outline">{giroGlobal.previsto.totalPDVsAtivos}</Badge>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Blocos de Giro Realizado */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingDown className="h-5 w-5 text-green-500" />
-              Giro Realizado por PDV
-            </CardTitle>
-            <CardDescription>Baseado nas entregas dos últimos 28 dias</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Média Semanal</span>
-                <span className="font-semibold">{mediaPorPDVRealizado} un</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Média Quinzenal (14d)</span>
-                <span className="font-semibold">{mediaPorPDVRealizado * 2} un</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Média Mensal (28d)</span>
-                <span className="font-semibold">{mediaPorPDVRealizado * 4} un</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingDown className="h-5 w-5 text-green-500" />
-              Giro Realizado Geral
-            </CardTitle>
-            <CardDescription>Total entregue nos últimos 28 dias</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Giro Semanal</span>
-                <span className="font-semibold">{giroGlobal.realizado.giroSemanal.toLocaleString()} un</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Giro Quinzenal (14d)</span>
-                <span className="font-semibold">{giroGlobal.realizado.giroQuinzenal.toLocaleString()} un</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Giro Mensal (28d)</span>
-                <span className="font-semibold">{giroGlobal.realizado.giroMensal.toLocaleString()} un</span>
-              </div>
-              <div className="pt-2 border-t">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Total Últimos 28 Dias</span>
-                  <Badge variant="secondary">{giroGlobal.realizado.totalEntregasUltimos28Dias.toLocaleString()}</Badge>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabela de PDVs */}
       <Card>
         <CardHeader>
-          <CardTitle>Análise Individual por PDV</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Projeção Detalhada por Cliente
+          </CardTitle>
           <CardDescription>
-            Comparação entre giro previsto (cadastro) e realizado (entregas últimos 28 dias)
+            Análise detalhada do giro médio por PDV com preços personalizados
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {dadosGiro.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead className="text-center">Giro Previsto (Sem.)</TableHead>
-                  <TableHead className="text-center">Giro Realizado (Sem.)</TableHead>
-                  <TableHead className="text-center">Variação</TableHead>
-                  <TableHead className="text-center">Total Entregue (28d)</TableHead>
-                  <TableHead className="text-center">Última Entrega</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dadosGiro.map((pdv, index) => {
-                  const variacao = pdv.giroPrevisto > 0 
-                    ? ((pdv.giroRealizado - pdv.giroPrevisto) / pdv.giroPrevisto * 100)
-                    : 0;
-                  
-                  return (
-                    <TableRow key={pdv.clienteId}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            #{index + 1}
+          <div className="text-center py-8 text-muted-foreground">
+            <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Nenhum dado disponível para análise.</p>
+            <p className="text-sm mt-1">Configure clientes ativos com categorias habilitadas primeiro.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Cards de Resumo */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Faturamento Semanal</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {isLoading ? '...' : formatarMoeda(faturamentoSemanal)}
+                </p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Faturamento Mensal</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {isLoading ? '...' : formatarMoeda(faturamentoMensal)}
+                </p>
+              </div>
+              <DollarSign className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Clientes Ativos</p>
+                <p className="text-2xl font-bold">{stats.totalClientes}</p>
+              </div>
+              <Users className="h-8 w-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Preços Personalizados</p>
+                <p className="text-2xl font-bold text-orange-600">{stats.precosPersonalizados}</p>
+              </div>
+              <Package className="h-8 w-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabela Detalhada */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Projeção Detalhada por Cliente
+              </CardTitle>
+              <CardDescription>
+                Análise detalhada com preços personalizados por cliente e categoria
+              </CardDescription>
+            </div>
+            <Button
+              onClick={recalcular}
+              disabled={isLoading}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Carregando...' : 'Atualizar'}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <RefreshCw className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+                <p className="text-muted-foreground">Carregando projeções detalhadas...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead className="text-right">Preço Unitário</TableHead>
+                    <TableHead className="text-right">Giro Semanal (un)</TableHead>
+                    <TableHead className="text-right">Faturamento Semanal</TableHead>
+                    <TableHead className="text-right">Faturamento Mensal</TableHead>
+                    <TableHead className="text-center">Tipo Preço</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {precosDetalhados.length > 0 ? (
+                    precosDetalhados.map((item, index) => (
+                      <TableRow key={`${item.clienteId}-${item.categoriaId}-${index}`}>
+                        <TableCell className="font-medium">{item.clienteNome}</TableCell>
+                        <TableCell>{item.categoriaNome}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatarMoeda(item.precoUnitario)}
+                        </TableCell>
+                        <TableCell className="text-right">{item.giroSemanal}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatarMoeda(item.faturamentoSemanal)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatarMoeda(item.faturamentoSemanal * 4)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge 
+                            variant={item.precoPersonalizado ? "default" : "secondary"}
+                            className={item.precoPersonalizado ? "bg-orange-100 text-orange-800" : ""}
+                          >
+                            {item.precoPersonalizado ? "Personalizado" : "Padrão"}
                           </Badge>
-                          {pdv.clienteNome}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                          <Package className="h-8 w-8" />
+                          <p>Nenhum dado disponível</p>
+                          <p className="text-sm">Configure clientes e categorias primeiro</p>
                         </div>
                       </TableCell>
-                      <TableCell className="text-center">
-                        <span className="font-semibold text-blue-600">{pdv.giroPrevisto}</span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="font-semibold text-green-600">{pdv.giroRealizado}</span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge 
-                          variant={variacao >= 0 ? "default" : "destructive"}
-                          className="text-xs"
-                        >
-                          {variacao >= 0 ? '+' : ''}{variacao.toFixed(1)}%
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="secondary">{pdv.totalEntregasRealizadas}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {pdv.ultimaEntrega && (
-                          <span className="text-sm text-muted-foreground">
-                            {format(pdv.ultimaEntrega, 'dd/MM/yyyy')}
-                          </span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-8">
-              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                Ainda não há dados suficientes para análise de giro.
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                É necessário pelo menos algumas entregas registradas nos últimos 28 dias.
-              </p>
+                    )
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {/* Resumo da Tabela */}
+          {precosDetalhados.length > 0 && (
+            <div className="mt-4 p-4 bg-muted rounded-lg">
+              <div className="flex flex-wrap gap-4 text-sm">
+                <span><strong>Total de registros:</strong> {precosDetalhados.length}</span>
+                <span><strong>Clientes únicos:</strong> {stats.totalClientes}</span>
+                <span><strong>Preços personalizados:</strong> {stats.precosPersonalizados}</span>
+                <span><strong>Giro semanal total:</strong> {stats.totalGiroSemanal} unidades</span>
+              </div>
             </div>
           )}
         </CardContent>
