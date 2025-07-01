@@ -193,7 +193,7 @@ export default function AnaliseGiroPDV() {
                           <p className="text-sm">Configure clientes e categorias primeiro</p>
                         </div>
                       </TableCell>
-                    )
+                    </TableRow>
                   )}
                 </TableBody>
               </Table>
