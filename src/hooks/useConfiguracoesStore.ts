@@ -69,19 +69,50 @@ export const useConfiguracoesStore = () => {
 
   // Salvar configuração de um módulo
   const salvarConfiguracao = async (modulo: string, novasConfiguracoes: any) => {
+    setLoading(true);
     try {
-      const { error } = await supabase
+      // Primeiro, verificar se já existe uma configuração para este módulo
+      const { data: existingData, error: selectError } = await supabase
         .from('configuracoes_sistema')
-        .upsert({
-          modulo,
-          configuracoes: novasConfiguracoes
-        });
+        .select('id')
+        .eq('modulo', modulo)
+        .maybeSingle();
 
-      if (error) {
-        console.error(`Erro ao salvar configuração do módulo ${modulo}:`, error);
+      if (selectError) {
+        console.error(`Erro ao verificar configuração existente do módulo ${modulo}:`, selectError);
         toast({
           title: "Erro ao salvar configurações",
-          description: error.message,
+          description: selectError.message,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      let result;
+      if (existingData) {
+        // Atualizar registro existente
+        result = await supabase
+          .from('configuracoes_sistema')
+          .update({
+            configuracoes: novasConfiguracoes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('modulo', modulo);
+      } else {
+        // Inserir novo registro
+        result = await supabase
+          .from('configuracoes_sistema')
+          .insert({
+            modulo,
+            configuracoes: novasConfiguracoes
+          });
+      }
+
+      if (result.error) {
+        console.error(`Erro ao salvar configuração do módulo ${modulo}:`, result.error);
+        toast({
+          title: "Erro ao salvar configurações",
+          description: result.error.message,
           variant: "destructive"
         });
         return false;
@@ -96,7 +127,14 @@ export const useConfiguracoesStore = () => {
       return true;
     } catch (error) {
       console.error(`Erro ao salvar configuração do módulo ${modulo}:`, error);
+      toast({
+        title: "Erro ao salvar configurações",
+        description: "Erro interno do sistema",
+        variant: "destructive"
+      });
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 
