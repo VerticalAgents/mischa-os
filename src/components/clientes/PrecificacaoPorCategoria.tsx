@@ -133,7 +133,7 @@ export default function PrecificacaoPorCategoria({ cliente }: PrecificacaoPorCat
               <div className="text-center py-4 text-muted-foreground">
                 <p>Nenhum preço configurado para as categorias habilitadas.</p>
                 <p className="text-sm mt-1">
-                  Configure os preços em Configurações > Precificação primeiro.
+                  Configure os preços em Configurações &gt; Precificação primeiro.
                 </p>
               </div>
             )}
