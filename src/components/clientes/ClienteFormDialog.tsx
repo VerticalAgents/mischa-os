@@ -230,7 +230,13 @@ export default function ClienteFormDialog({
     rotaEntregaId: formData.rotaEntregaId,
     categoriaEstabelecimentoId: formData.categoriaEstabelecimentoId,
     instrucoesEntrega: formData.instrucoesEntrega || '',
-    dataCadastro: cliente?.dataCadastro || new Date().toISOString()
+    dataCadastro: cliente?.dataCadastro ? 
+      (typeof cliente.dataCadastro === 'string' ? new Date(cliente.dataCadastro) : cliente.dataCadastro) : 
+      new Date(),
+    // Add missing required fields from Cliente interface
+    ativo: cliente?.ativo ?? true,
+    categoriaId: cliente?.categoriaId || 0,
+    subcategoriaId: cliente?.subcategoriaId || 0
   };
 
   return (
