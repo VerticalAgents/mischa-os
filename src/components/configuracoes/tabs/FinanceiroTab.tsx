@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,8 +23,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
-import { DollarSign, CreditCard } from "lucide-react";
+import { DollarSign, CreditCard, Tag } from "lucide-react";
 import FormasPagamentoList from "../listas/FormasPagamentoList";
+import PrecificacaoTab from "./PrecificacaoTab";
 import { useConfiguracoesStore } from "@/hooks/useConfiguracoesStore";
 
 // Schema for form validation
@@ -87,13 +87,17 @@ export default function FinanceiroTab() {
           <CardTitle>Configurações Financeiras</CardTitle>
         </div>
         <CardDescription>
-          Configure parâmetros financeiros, margens de lucro e formas de pagamento do sistema
+          Configure parâmetros financeiros, margens de lucro, precificação e formas de pagamento do sistema
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="parametros">Parâmetros Financeiros</TabsTrigger>
+            <TabsTrigger value="precificacao" className="flex items-center gap-1">
+              <Tag className="h-3 w-3" />
+              <span>Precificação</span>
+            </TabsTrigger>
             <TabsTrigger value="pagamento" className="flex items-center gap-1">
               <CreditCard className="h-3 w-3" />
               <span>Formas de Pagamento</span>
@@ -317,6 +321,10 @@ export default function FinanceiroTab() {
                 </div>
               </form>
             </Form>
+          </TabsContent>
+          
+          <TabsContent value="precificacao">
+            <PrecificacaoTab />
           </TabsContent>
           
           <TabsContent value="pagamento">
