@@ -10,6 +10,7 @@ import UsuarioTab from "./tabs/UsuarioTab";
 import SistemaTab from "./tabs/SistemaTab";
 import AgentesIAConfigTab from "./tabs/AgentesIAConfigTab";
 import FinanceiroTab from "./tabs/FinanceiroTab";
+import PrecificacaoTab from "./tabs/PrecificacaoTab";
 import CustosTab from "./tabs/CustosTab";
 import CategoriasProdutoTab from "./tabs/CategoriasProdutoTab";
 import ProporcoesTab from "./tabs/ProporcoesTab";
@@ -32,6 +33,7 @@ const configGroups = [
     title: "Financeiro",
     tabs: [
       { id: "financeiro", label: "Parâmetros", component: FinanceiroTab },
+      { id: "precificacao", label: "Precificação", component: PrecificacaoTab },
       { id: "custos", label: "Custos", component: CustosTab },
     ]
   },
