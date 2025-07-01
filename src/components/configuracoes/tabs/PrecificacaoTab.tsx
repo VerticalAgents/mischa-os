@@ -22,7 +22,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
-import { Tag } from "lucide-react";
+import { Tag, Edit3, Check, X } from "lucide-react";
 import { useCategoriaStore } from "@/hooks/useCategoriaStore";
 import { useConfiguracoesStore } from "@/hooks/useConfiguracoesStore";
 
@@ -34,6 +34,8 @@ const precificacaoSchema = z.object({
 export default function PrecificacaoTab() {
   const { categorias } = useCategoriaStore();
   const { obterConfiguracao, salvarConfiguracao, loading } = useConfiguracoesStore();
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [tempValue, setTempValue] = useState<string>("");
   
   const precificacaoForm = useForm<z.infer<typeof precificacaoSchema>>({
     resolver: zodResolver(precificacaoSchema),
@@ -56,14 +58,49 @@ export default function PrecificacaoTab() {
       precificacaoForm.reset({ precosPorCategoria });
     }
   }, [categorias, precificacaoForm, obterConfiguracao]);
-  
-  const onPrecificacaoSubmit = async (data: z.infer<typeof precificacaoSchema>) => {
-    const sucesso = await salvarConfiguracao('precificacao', data);
+
+  const handleEditStart = (categoriaId: string, currentValue: number) => {
+    setEditingCategory(categoriaId);
+    setTempValue(currentValue.toString());
+  };
+
+  const handleEditCancel = () => {
+    setEditingCategory(null);
+    setTempValue("");
+  };
+
+  const handleEditSave = async (categoriaId: string) => {
+    const numericValue = Number(tempValue);
+    
+    if (isNaN(numericValue) || numericValue < 0) {
+      toast({
+        title: "Valor inválido",
+        description: "Por favor, insira um valor numérico maior ou igual a zero",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Atualizar o valor no formulário
+    const currentValues = precificacaoForm.getValues();
+    const newValues = {
+      ...currentValues,
+      precosPorCategoria: {
+        ...currentValues.precosPorCategoria,
+        [categoriaId]: numericValue
+      }
+    };
+
+    // Salvar no Supabase
+    const sucesso = await salvarConfiguracao('precificacao', newValues);
     
     if (sucesso) {
+      precificacaoForm.reset(newValues);
+      setEditingCategory(null);
+      setTempValue("");
       toast({
-        title: "Preços salvos",
-        description: "Preços padrão por categoria foram atualizados com sucesso",
+        title: "Preço atualizado",
+        description: "O preço foi salvo com sucesso",
       });
     }
   };
@@ -74,6 +111,8 @@ export default function PrecificacaoTab() {
       currency: 'BRL'
     }).format(valor);
   };
+
+  const precosPorCategoria = precificacaoForm.watch("precosPorCategoria") || {};
   
   return (
     <Card>
@@ -83,81 +122,119 @@ export default function PrecificacaoTab() {
           <CardTitle>Precificação por Categoria</CardTitle>
         </div>
         <CardDescription>
-          Configure preços padrão para cada categoria de produto
+          Configure preços padrão para cada categoria de produto. Clique nos valores para editá-los.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...precificacaoForm}>
-          <form 
-            id="precificacao-form" 
-            onSubmit={precificacaoForm.handleSubmit(onPrecificacaoSubmit)}
-            className="space-y-6"
-          >
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Preços por Categoria</h3>
-              
-              {categorias.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Nenhuma categoria de produto encontrada.</p>
-                  <p className="text-sm mt-1">
-                    Cadastre categorias em "Configurações → Categorias" primeiro.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {categorias.map((categoria) => (
-                    <FormField
-                      key={categoria.id}
-                      control={precificacaoForm.control}
-                      name={`precosPorCategoria.${categoria.id}`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center justify-between">
-                            <span>{categoria.nome}</span>
-                            {field.value > 0 && (
-                              <span className="text-sm font-normal text-muted-foreground">
-                                {formatarMoeda(field.value)}
-                              </span>
-                            )}
-                          </FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              min={0} 
-                              step="0.01"
-                              placeholder="0.00"
-                              {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                            />
-                          </FormControl>
-                          {categoria.descricao && (
-                            <FormDescription>
-                              {categoria.descricao}
-                            </FormDescription>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Preços por Categoria</h3>
+            
+            {categorias.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Nenhuma categoria de produto encontrada.</p>
+                <p className="text-sm mt-1">
+                  Cadastre categorias em "Configurações → Categorias" primeiro.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {categorias.map((categoria) => {
+                  const categoriaId = categoria.id.toString();
+                  const currentValue = precosPorCategoria[categoriaId] || 0;
+                  const isEditing = editingCategory === categoriaId;
 
-            {categorias.length > 0 && (
-              <div className="pt-4 border-t">
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-muted-foreground">
-                    {categorias.length} categoria{categorias.length !== 1 ? 's' : ''} configurada{categorias.length !== 1 ? 's' : ''}
-                  </div>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? "Salvando..." : "Salvar Preços"}
-                  </Button>
-                </div>
+                  return (
+                    <div key={categoria.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">{categoria.nome}</h4>
+                        {!isEditing && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditStart(categoriaId, currentValue)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {categoria.descricao && (
+                        <p className="text-sm text-muted-foreground">
+                          {categoria.descricao}
+                        </p>
+                      )}
+
+                      <div className="flex items-center space-x-2">
+                        {isEditing ? (
+                          <>
+                            <Input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={tempValue}
+                              onChange={(e) => setTempValue(e.target.value)}
+                              className="flex-1"
+                              placeholder="0.00"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleEditSave(categoriaId);
+                                } else if (e.key === 'Escape') {
+                                  handleEditCancel();
+                                }
+                              }}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditSave(categoriaId)}
+                              className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                              disabled={loading}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleEditCancel}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <div
+                            className="flex-1 p-2 bg-muted rounded cursor-pointer hover:bg-muted/80 transition-colors"
+                            onClick={() => handleEditStart(categoriaId, currentValue)}
+                          >
+                            <span className="text-lg font-semibold">
+                              {formatarMoeda(currentValue)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
-          </form>
-        </Form>
+          </div>
+
+          {categorias.length > 0 && (
+            <div className="pt-4 border-t">
+              <div className="flex justify-between items-center text-sm text-muted-foreground">
+                <span>
+                  {categorias.length} categoria{categorias.length !== 1 ? 's' : ''} configurada{categorias.length !== 1 ? 's' : ''}
+                </span>
+                <span>
+                  Clique nos valores para editá-los • Enter para salvar • Esc para cancelar
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
