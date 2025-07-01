@@ -7,9 +7,11 @@ import PageHeader from "@/components/common/PageHeader";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useSupabaseTiposLogistica } from "@/hooks/useSupabaseTiposLogistica";
+import { useSupabasePrecosCategoriaCliente } from "@/hooks/useSupabasePrecosCategoriaCliente";
+import { useConfiguracoesStore } from "@/hooks/useConfiguracoesStore";
 import { useEffect, useState } from "react";
 
-// Preços temporários por categoria
+// Preços temporários por categoria (fallback)
 const PRECOS_TEMPORARIOS: Record<string, number> = {
   'revenda padrão': 4.50,
   'food service': 70.00,
@@ -32,6 +34,7 @@ interface ProjecaoCliente {
     nomeCategoria: string;
     giroSemanal: number;
     precoAplicado: number;
+    precoPersonalizado: boolean;
     faturamento: number;
     custoInsumos: number;
     margemUnitaria: number;
@@ -44,6 +47,7 @@ interface ProjecaoCliente {
   custoLogistico: number;
   lucroBruto: number;
 }
+
 interface CalculoDetalhe {
   etapa: string;
   descricao: string;
@@ -51,34 +55,35 @@ interface CalculoDetalhe {
   formula?: string;
   observacao?: string;
 }
+
 interface ClienteDetalhe {
   clienteId: string;
   nomeCliente: string;
   calculos: CalculoDetalhe[];
 }
+
 interface ClienteNaoIncluido {
   nomeCliente: string;
   motivo: string;
 }
+
 export default function ProjecaoResultadosPDV() {
-  const {
-    clientes,
-    carregarClientes
-  } = useClienteStore();
-  const {
-    categorias
-  } = useSupabaseCategoriasProduto();
-  const {
-    tiposLogistica
-  } = useSupabaseTiposLogistica();
+  const { clientes, carregarClientes } = useClienteStore();
+  const { categorias } = useSupabaseCategoriasProduto();
+  const { tiposLogistica } = useSupabaseTiposLogistica();
+  const { carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
+  const { obterConfiguracao } = useConfiguracoesStore();
+  
   const [projecoes, setProjecoes] = useState<ProjecaoCliente[]>([]);
   const [mostrarDetalhes, setMostrarDetalhes] = useState(false);
   const [detalhesCalculos, setDetalhesCalculos] = useState<ClienteDetalhe[]>([]);
   const [clientesNaoIncluidos, setClientesNaoIncluidos] = useState<ClienteNaoIncluido[]>([]);
+
   useEffect(() => {
     console.log('ProjecaoResultadosPDV: Carregando clientes...');
     carregarClientes();
   }, [carregarClientes]);
+
   useEffect(() => {
     console.log('ProjecaoResultadosPDV: Total de clientes carregados:', clientes.length);
     console.log('ProjecaoResultadosPDV: Categorias disponíveis:', categorias.length);
@@ -87,6 +92,7 @@ export default function ProjecaoResultadosPDV() {
       calcularProjecoes();
     }
   }, [clientes, categorias, tiposLogistica]);
+
   const obterPrecoCategoria = (nomeCategoria: string): number => {
     const nomeNormalizado = nomeCategoria.toLowerCase();
     for (const [key, preco] of Object.entries(PRECOS_TEMPORARIOS)) {
@@ -96,6 +102,7 @@ export default function ProjecaoResultadosPDV() {
     }
     return PRECOS_TEMPORARIOS.default;
   };
+
   const obterCustoCategoria = (nomeCategoria: string): number => {
     const nomeNormalizado = nomeCategoria.toLowerCase();
     for (const [key, custo] of Object.entries(CUSTOS_UNITARIOS)) {
@@ -105,6 +112,51 @@ export default function ProjecaoResultadosPDV() {
     }
     return CUSTOS_UNITARIOS.default;
   };
+
+  const obterPrecoPorCliente = async (clienteId: string, categoriaId: number, categoriaNome: string): Promise<{ preco: number; personalizado: boolean }> => {
+    try {
+      // Carregar preços personalizados do cliente
+      const precosPersonalizados = await carregarPrecosPorCliente(clienteId);
+      const precoPersonalizado = precosPersonalizados.find(p => p.categoria_id === categoriaId);
+      
+      if (precoPersonalizado && precoPersonalizado.preco_unitario > 0) {
+        return {
+          preco: precoPersonalizado.preco_unitario,
+          personalizado: true
+        };
+      }
+      
+      // Usar preço padrão da configuração
+      const configPrecificacao = obterConfiguracao('precificacao');
+      const precosPadrao = configPrecificacao?.precosPorCategoria || {};
+      const precoPadrao = precosPadrao[categoriaId.toString()];
+      
+      if (precoPadrao && precoPadrao > 0) {
+        return {
+          preco: precoPadrao,
+          personalizado: false
+        };
+      }
+      
+      // Fallback para preços temporários
+      return {
+        preco: obterPrecoCategoria(categoriaNome),
+        personalizado: false
+      };
+    } catch (error) {
+      console.error(`Erro ao carregar preço para cliente ${clienteId}, categoria ${categoriaId}:`, error);
+      // Fallback em caso de erro
+      const configPrecificacao = obterConfiguracao('precificacao');
+      const precosPadrao = configPrecificacao?.precosPorCategoria || {};
+      const precoPadrao = precosPadrao[categoriaId.toString()];
+      
+      return {
+        preco: precoPadrao || obterPrecoCategoria(categoriaNome),
+        personalizado: false
+      };
+    }
+  };
+
   const obterPercentualLogistico = (tipoLogistica: string): number => {
     console.log('Buscando percentual para tipo:', tipoLogistica);
     console.log('Tipos disponíveis:', tiposLogistica);
@@ -123,20 +175,24 @@ export default function ProjecaoResultadosPDV() {
     }
     return 0; // Valor padrão se não encontrar
   };
+
   const calcularGiroSemanal = (qtdPadrao: number, periodicidade: number): number => {
     if (periodicidade === 0) return 0;
     return Math.round(qtdPadrao / periodicidade * 7);
   };
-  const calcularProjecoes = () => {
+
+  const calcularProjecoes = async () => {
     console.log('ProjecaoResultadosPDV: Iniciando cálculo de projeções...');
 
     // Filtrar apenas clientes ativos
     const clientesAtivos = clientes.filter(cliente => cliente.statusCliente === 'Ativo');
     console.log('ProjecaoResultadosPDV: Clientes ativos encontrados:', clientesAtivos.length);
+    
     const projecoesCalculadas: ProjecaoCliente[] = [];
     const detalhesCalculados: ClienteDetalhe[] = [];
     const clientesExcluidos: ClienteNaoIncluido[] = [];
-    clientesAtivos.forEach(cliente => {
+
+    for (const cliente of clientesAtivos) {
       const detalhesCliente: CalculoDetalhe[] = [];
 
       // Verificar se cliente tem categorias habilitadas
@@ -156,14 +212,18 @@ export default function ProjecaoResultadosPDV() {
           nomeCliente: cliente.nome,
           calculos: detalhesCliente
         });
-        return;
+        continue;
       }
+
       detalhesCliente.push({
         etapa: "DADOS_BASE",
         descricao: "Dados básicos do cliente",
         observacao: `Quantidade padrão: ${cliente.quantidadePadrao}, Periodicidade: ${cliente.periodicidadePadrao} dias, Categorias habilitadas: ${cliente.categoriasHabilitadas.length}`
       });
-      const categoriasCliente = cliente.categoriasHabilitadas.map(categoriaId => {
+
+      const categoriasCliente = [];
+      
+      for (const categoriaId of cliente.categoriasHabilitadas) {
         const categoria = categorias.find(cat => cat.id === categoriaId);
         if (!categoria) {
           detalhesCliente.push({
@@ -171,49 +231,64 @@ export default function ProjecaoResultadosPDV() {
             descricao: `Categoria ID ${categoriaId} não encontrada`,
             observacao: "Esta categoria pode ter sido removida do sistema"
           });
-          return null;
+          continue;
         }
+
         const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
-        const precoAplicado = obterPrecoCategoria(categoria.nome);
+        
+        // Obter preço específico para este cliente e categoria
+        const { preco: precoAplicado, personalizado } = await obterPrecoPorCliente(
+          cliente.id, 
+          categoriaId, 
+          categoria.nome
+        );
+        
         const custoUnitario = obterCustoCategoria(categoria.nome);
         const faturamento = giroSemanal * precoAplicado;
         const custoInsumos = giroSemanal * custoUnitario;
         const margemUnitaria = precoAplicado - custoUnitario;
+
         detalhesCliente.push({
           etapa: "CALCULO_CATEGORIA",
           descricao: `Cálculos para categoria: ${categoria.nome}`,
           formula: `Giro semanal = (${cliente.quantidadePadrao} ÷ ${cliente.periodicidadePadrao}) × 7 = ${giroSemanal}`,
-          observacao: `Preço aplicado: R$ ${precoAplicado.toFixed(2)} | Custo unitário: R$ ${custoUnitario.toFixed(2)} (${categoria.nome.toLowerCase().includes('food service') ? 'custo Food Service' : 'custo padrão'})`
+          observacao: `Preço aplicado: R$ ${precoAplicado.toFixed(2)} ${personalizado ? '(PERSONALIZADO)' : '(PADRÃO)'} | Custo unitário: R$ ${custoUnitario.toFixed(2)} (${categoria.nome.toLowerCase().includes('food service') ? 'custo Food Service' : 'custo padrão'})`
         });
+
         detalhesCliente.push({
           etapa: "FATURAMENTO",
           descricao: `Faturamento da categoria ${categoria.nome}`,
-          formula: `${giroSemanal} × R$ ${precoAplicado.toFixed(2)} = R$ ${faturamento.toFixed(2)}`,
+          formula: `${giroSemanal} × R$ ${precoAplicado.toFixed(2)} ${personalizado ? '(personalizado)' : '(padrão)'} = R$ ${faturamento.toFixed(2)}`,
           valor: faturamento
         });
+
         detalhesCliente.push({
           etapa: "CUSTO_INSUMOS",
           descricao: `Custo de insumos da categoria ${categoria.nome}`,
           formula: `${giroSemanal} × R$ ${custoUnitario.toFixed(2)} = R$ ${custoInsumos.toFixed(2)}`,
           valor: custoInsumos
         });
+
         detalhesCliente.push({
           etapa: "MARGEM_UNITARIA",
           descricao: `Margem unitária da categoria ${categoria.nome}`,
-          formula: `R$ ${precoAplicado.toFixed(2)} - R$ ${custoUnitario.toFixed(2)} = R$ ${margemUnitaria.toFixed(2)}`,
+          formula: `R$ ${precoAplicado.toFixed(2)} ${personalizado ? '(personalizado)' : '(padrão)'} - R$ ${custoUnitario.toFixed(2)} = R$ ${margemUnitaria.toFixed(2)}`,
           valor: margemUnitaria
         });
-        return {
+
+        categoriasCliente.push({
           categoriaId,
           nomeCategoria: categoria.nome,
           giroSemanal,
           precoAplicado,
+          precoPersonalizado: personalizado,
           faturamento,
           custoInsumos,
           margemUnitaria,
           custoUnitario
-        };
-      }).filter(Boolean) as any[];
+        });
+      }
+
       if (categoriasCliente.length === 0) {
         console.log(`ProjecaoResultadosPDV: Cliente ${cliente.nome} sem categorias válidas`);
         clientesExcluidos.push({
@@ -225,22 +300,26 @@ export default function ProjecaoResultadosPDV() {
           nomeCliente: cliente.nome,
           calculos: detalhesCliente
         });
-        return;
+        continue;
       }
+
       const faturamentoTotal = categoriasCliente.reduce((sum, cat) => sum + cat.faturamento, 0);
       const custoInsumosTotal = categoriasCliente.reduce((sum, cat) => sum + cat.custoInsumos, 0);
+
       detalhesCliente.push({
         etapa: "FATURAMENTO_TOTAL",
         descricao: "Faturamento total do cliente",
         formula: `Soma dos faturamentos por categoria = R$ ${faturamentoTotal.toFixed(2)}`,
         valor: faturamentoTotal
       });
+
       detalhesCliente.push({
         etapa: "CUSTO_TOTAL",
         descricao: "Custo total de insumos do cliente",
         formula: `Soma dos custos por categoria = R$ ${custoInsumosTotal.toFixed(2)}`,
         valor: custoInsumosTotal
       });
+
       const impostoTotal = cliente.emiteNotaFiscal ? faturamentoTotal * ALIQUOTA_PROVISORIA : 0;
       detalhesCliente.push({
         etapa: "IMPOSTO",
@@ -260,6 +339,7 @@ export default function ProjecaoResultadosPDV() {
         valor: custoLogistico,
         observacao: `Tipo: ${cliente.tipoLogistica || 'Própria'} - Percentual da configuração`
       });
+
       const lucroBruto = faturamentoTotal - custoInsumosTotal - impostoTotal - custoLogistico;
       detalhesCliente.push({
         etapa: "LUCRO_BRUTO",
@@ -268,6 +348,7 @@ export default function ProjecaoResultadosPDV() {
         valor: lucroBruto,
         observacao: lucroBruto > 0 ? "Lucro positivo" : "Prejuízo ou ponto de equilíbrio"
       });
+
       projecoesCalculadas.push({
         clienteId: cliente.id,
         nomeCliente: cliente.nome,
@@ -279,12 +360,14 @@ export default function ProjecaoResultadosPDV() {
         custoLogistico,
         lucroBruto
       });
+
       detalhesCalculados.push({
         clienteId: cliente.id,
         nomeCliente: cliente.nome,
         calculos: detalhesCliente
       });
-    });
+    }
+
     console.log('ProjecaoResultadosPDV: Projeções calculadas:', projecoesCalculadas.length);
     console.log('ProjecaoResultadosPDV: Clientes não incluídos:', clientesExcluidos.length);
     setProjecoes(projecoesCalculadas);
@@ -424,24 +507,29 @@ export default function ProjecaoResultadosPDV() {
       custoPorCategoria: custoPorCategoriaMensal
     };
   };
+
   const formatarMoeda = (valor: number): string => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(valor);
   };
+
   const formatarPercentual = (valor: number): string => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'percent',
       minimumFractionDigits: 1
     }).format(valor / 100);
   };
+
   const indicadores = calcularIndicadoresGerais();
   // Converter valores semanais para mensais
   const totalGeralMensal = projecoes.reduce((sum, proj) => sum + proj.lucroBruto, 0) * 4;
   const faturamentoGeralMensal = projecoes.reduce((sum, proj) => sum + proj.categorias.reduce((catSum, cat) => catSum + cat.faturamento, 0), 0) * 4;
   const clientesAtivos = clientes.filter(cliente => cliente.statusCliente === 'Ativo');
-  return <div className="space-y-6">
+
+  return (
+    <div className="space-y-6">
       <PageHeader title="Projeção de Resultados por PDV" description="Análise de rentabilidade e projeções por ponto de venda" />
       
       {/* Status do Carregamento - Card existente */}
@@ -484,39 +572,51 @@ export default function ProjecaoResultadosPDV() {
             </div>
           </div>
           
-          {mostrarDetalhes && <div className="mt-4 space-y-4 max-h-96 overflow-y-auto">
+          {mostrarDetalhes && (
+            <div className="mt-4 space-y-4 max-h-96 overflow-y-auto">
               <h4 className="font-semibold text-blue-800">Tipos de Logística Configurados:</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
-                {tiposLogistica.map(tipo => <div key={tipo.id} className="bg-white rounded p-2 border border-blue-200">
+                {tiposLogistica.map(tipo => (
+                  <div key={tipo.id} className="bg-white rounded p-2 border border-blue-200">
                     <div className="font-medium text-blue-700">{tipo.nome}</div>
                     <div className="text-sm text-blue-600">{tipo.percentual_logistico.toFixed(2)}%</div>
-                  </div>)}
+                  </div>
+                ))}
               </div>
               
               {/* Detalhes dos cálculos por cliente */}
               <h4 className="font-semibold text-blue-800 mb-2">Detalhes dos Cálculos por Cliente:</h4>
-              {detalhesCalculos.map(clienteDetalhe => <div key={clienteDetalhe.clienteId} className="border border-blue-200 rounded p-3 bg-white mb-4">
+              {detalhesCalculos.map(clienteDetalhe => (
+                <div key={clienteDetalhe.clienteId} className="border border-blue-200 rounded p-3 bg-white mb-4">
                   <h5 className="font-semibold text-blue-700 mb-2">{clienteDetalhe.nomeCliente}</h5>
                   <div className="space-y-2">
-                    {clienteDetalhe.calculos.map((calculo, index) => <div key={index} className="text-xs">
+                    {clienteDetalhe.calculos.map((calculo, index) => (
+                      <div key={index} className="text-xs">
                         <div className="font-medium text-blue-600">{calculo.etapa}: {calculo.descricao}</div>
                         {calculo.formula && <div className="text-gray-600 ml-2">📐 {calculo.formula}</div>}
                         {calculo.valor !== undefined && <div className="text-green-600 ml-2">💰 Resultado: {formatarMoeda(calculo.valor)}</div>}
                         {calculo.observacao && <div className="text-amber-600 ml-2">ℹ️ {calculo.observacao}</div>}
-                      </div>)}
+                      </div>
+                    ))}
                   </div>
-                </div>)}
+                </div>
+              ))}
 
-              {clientesNaoIncluidos.length > 0 && <div className="border border-red-200 rounded p-3 bg-red-50">
+              {clientesNaoIncluidos.length > 0 && (
+                <div className="border border-red-200 rounded p-3 bg-red-50">
                   <h4 className="font-semibold text-red-800 mb-3">Clientes Não Incluídos na Projeção:</h4>
                   <div className="space-y-2">
-                    {clientesNaoIncluidos.map((cliente, index) => <div key={index} className="text-sm">
+                    {clientesNaoIncluidos.map((cliente, index) => (
+                      <div key={index} className="text-sm">
                         <div className="font-medium text-red-700">❌ {cliente.nomeCliente}</div>
                         <div className="text-red-600 ml-4">Motivo: {cliente.motivo}</div>
-                      </div>)}
+                      </div>
+                    ))}
                   </div>
-                </div>}
-            </div>}
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
       
@@ -525,21 +625,23 @@ export default function ProjecaoResultadosPDV() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-amber-800">
             <AlertTriangle className="h-5 w-5" />
-            Projeção com dados estimados
+            Projeção com preços personalizados por cliente
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-amber-700">
           <p className="mb-2">
-            Esta projeção utiliza valores temporários que serão parametrizados:
+            Esta projeção agora utiliza os preços personalizados por cliente:
           </p>
           <ul className="space-y-1 list-disc list-inside">
-            <li>🔧 Preços por categoria: Revenda Padrão (R$ 4,50), Food Service (R$ 70,00)</li>
+            <li>✅ Preços personalizados por cliente são prioritários</li>
+            <li>🔧 Preços padrão das configurações como fallback</li>
             <li>🔧 Custos unitários: Revenda Padrão (R$ 1,32), Food Service (R$ 29,17)</li>
           </ul>
         </CardContent>
       </Card>
 
-      {projecoes.length === 0 ? <Card>
+      {projecoes.length === 0 ? (
+        <Card>
           <CardContent className="text-center py-8">
             <Info className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Nenhuma projeção disponível</h3>
@@ -547,7 +649,9 @@ export default function ProjecaoResultadosPDV() {
               Dos {clientesAtivos.length} clientes ativos, nenhum possui categorias habilitadas para cálculo.
             </p>
           </CardContent>
-        </Card> : <>
+        </Card>
+      ) : (
+        <>
           {/* Resumo Geral Expandido */}
           <Card>
             <CardHeader>
@@ -705,10 +809,12 @@ export default function ProjecaoResultadosPDV() {
                     Distribuição por Categoria
                   </h4>
                   <div className="space-y-2">
-                    {Object.entries(indicadores.distribuicaoCategorias).map(([categoria, percentual]) => <div key={categoria} className="flex justify-between items-center p-2 bg-blue-50 rounded">
+                    {Object.entries(indicadores.distribuicaoCategorias).map(([categoria, percentual]) => (
+                      <div key={categoria} className="flex justify-between items-center p-2 bg-blue-50 rounded">
                         <span className="text-sm">{categoria}</span>
                         <div className="font-medium text-blue-600">{formatarPercentual(percentual)}</div>
-                      </div>)}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -765,14 +871,15 @@ export default function ProjecaoResultadosPDV() {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               {categoria.nomeCategoria}
-                              <Badge variant="secondary" className="text-xs">🔧</Badge>
                             </div>
                           </TableCell>
                           <TableCell className="text-center">{categoria.giroSemanal}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
                               {formatarMoeda(categoria.precoAplicado)}
-                              <Badge variant="outline" className="text-xs">temp</Badge>
+                              <Badge variant={categoria.precoPersonalizado ? "default" : "outline"} className={`text-xs ${categoria.precoPersonalizado ? 'bg-orange-100 text-orange-800' : ''}`}>
+                                {categoria.precoPersonalizado ? "Personalizado" : "Padrão"}
+                              </Badge>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -831,6 +938,8 @@ export default function ProjecaoResultadosPDV() {
               </div>
             </CardContent>
           </Card>
-        </>}
-    </div>;
+        </>
+      )}
+    </div>
+  );
 }
