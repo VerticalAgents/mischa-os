@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +39,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { useSupabaseReceitas, ReceitaCompleta } from "@/hooks/useSupabaseReceitas";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Edit, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const editarReceitaSchema = z.object({
@@ -74,6 +73,8 @@ export default function EditarReceitaModal({
   const { insumos } = useSupabaseInsumos();
   const { adicionarItemReceita, removerItemReceita } = useSupabaseReceitas();
   const [isAdicionandoItem, setIsAdicionandoItem] = useState(false);
+  const [editandoItem, setEditandoItem] = useState<string | null>(null);
+  const [quantidadeEdicao, setQuantidadeEdicao] = useState<number>(0);
 
   const receitaForm = useForm<EditarReceitaFormValues>({
     resolver: zodResolver(editarReceitaSchema),
@@ -159,6 +160,50 @@ export default function EditarReceitaModal({
     }
   };
 
+  const iniciarEdicaoItem = (itemId: string, quantidadeAtual: number) => {
+    setEditandoItem(itemId);
+    setQuantidadeEdicao(quantidadeAtual);
+  };
+
+  const cancelarEdicaoItem = () => {
+    setEditandoItem(null);
+    setQuantidadeEdicao(0);
+  };
+
+  const salvarEdicaoItem = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from('itens_receita')
+        .update({ quantidade: quantidadeEdicao })
+        .eq('id', itemId);
+
+      if (error) {
+        toast({
+          title: "Erro ao atualizar quantidade",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Quantidade atualizada",
+        description: "Quantidade do ingrediente atualizada com sucesso"
+      });
+      
+      setEditandoItem(null);
+      setQuantidadeEdicao(0);
+      onSuccess();
+    } catch (error) {
+      console.error('Erro ao atualizar quantidade:', error);
+      toast({
+        title: "Erro ao atualizar quantidade",
+        description: "Ocorreu um erro inesperado",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getInsumoInfo = (insumoId: string) => {
     const insumo = insumos.find(i => i.id === insumoId);
     return {
@@ -197,6 +242,7 @@ export default function EditarReceitaModal({
           {/* Formulário da Receita */}
           <Form {...receitaForm}>
             <form onSubmit={receitaForm.handleSubmit(onSubmitReceita)} className="space-y-4">
+              
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={receitaForm.control}
@@ -285,6 +331,7 @@ export default function EditarReceitaModal({
             {isAdicionandoItem && (
               <Form {...itemForm}>
                 <form onSubmit={itemForm.handleSubmit(onSubmitItem)} className="space-y-4 p-4 border rounded">
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={itemForm.control}
@@ -366,24 +413,73 @@ export default function EditarReceitaModal({
                 {receita?.itens.map((item) => {
                   const insumoInfo = getInsumoInfo(item.insumo_id);
                   const custoUnitario = calcularCustoUnitario(item.insumo_id);
-                  const custoTotalItem = calcularCustoItem(item.insumo_id, item.quantidade);
+                  const quantidadeAtual = editandoItem === item.id ? quantidadeEdicao : item.quantidade;
+                  const custoTotalItem = calcularCustoItem(item.insumo_id, quantidadeAtual);
                   
                   return (
                     <TableRow key={item.id}>
                       <TableCell>{insumoInfo.nome}</TableCell>
                       <TableCell>
-                        {item.quantidade} {insumoInfo.unidade_medida}
+                        {editandoItem === item.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={quantidadeEdicao}
+                              onChange={(e) => setQuantidadeEdicao(Number(e.target.value))}
+                              className="w-20"
+                            />
+                            <span className="text-sm text-muted-foreground">
+                              {insumoInfo.unidade_medida}
+                            </span>
+                          </div>
+                        ) : (
+                          <span>
+                            {item.quantidade} {insumoInfo.unidade_medida}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>R$ {custoUnitario.toFixed(4)}</TableCell>
                       <TableCell>R$ {custoTotalItem.toFixed(2)}</TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRemoverItem(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          {editandoItem === item.id ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => salvarEdicaoItem(item.id)}
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={cancelarEdicaoItem}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => iniciarEdicaoItem(item.id, item.quantidade)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRemoverItem(item.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -399,7 +495,8 @@ export default function EditarReceitaModal({
                     <span className="font-medium">Custo Total da Receita:</span>
                     <div className="text-lg font-semibold">
                       R$ {receita.itens.reduce((total, item) => {
-                        return total + calcularCustoItem(item.insumo_id, item.quantidade);
+                        const quantidade = editandoItem === item.id ? quantidadeEdicao : item.quantidade;
+                        return total + calcularCustoItem(item.insumo_id, quantidade);
                       }, 0).toFixed(2)}
                     </div>
                   </div>
@@ -407,7 +504,8 @@ export default function EditarReceitaModal({
                     <span className="font-medium">Custo por {receita.unidade_rendimento}:</span>
                     <div className="text-lg font-semibold">
                       R$ {receita.rendimento > 0 ? (receita.itens.reduce((total, item) => {
-                        return total + calcularCustoItem(item.insumo_id, item.quantidade);
+                        const quantidade = editandoItem === item.id ? quantidadeEdicao : item.quantidade;
+                        return total + calcularCustoItem(item.insumo_id, quantidade);
                       }, 0) / receita.rendimento).toFixed(2) : '0.00'}
                     </div>
                   </div>
