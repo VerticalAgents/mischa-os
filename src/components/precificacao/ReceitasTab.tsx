@@ -18,14 +18,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit, Trash2, Copy } from "lucide-react";
+import { Edit, Trash2, Copy, Plus } from "lucide-react";
 import EditarReceitaModal from "./EditarReceitaModal";
+import CriarReceitaModal from "./CriarReceitaModal";
 
 export default function ReceitasTab() {
   const { receitas, loading, carregarReceitas, removerReceita, duplicarReceita } = useSupabaseReceitas();
   const { insumos } = useSupabaseInsumos();
   const [editandoReceita, setEditandoReceita] = useState<ReceitaCompleta | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const handleRemoverReceita = async (id: string) => {
     if (confirm("Tem certeza que deseja remover esta receita?")) {
@@ -48,6 +50,14 @@ export default function ReceitasTab() {
   const fecharEdicaoReceita = () => {
     setEditandoReceita(null);
     setIsEditModalOpen(false);
+  };
+
+  const abrirCriacaoReceita = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const fecharCriacaoReceita = () => {
+    setIsCreateModalOpen(false);
   };
 
   // Função para calcular o custo unitário correto de um insumo
@@ -81,10 +91,18 @@ export default function ReceitasTab() {
       {/* Lista de receitas */}
       <Card>
         <CardHeader>
-          <CardTitle>Receitas Base Cadastradas</CardTitle>
-          <CardDescription>
-            Lista de todas as receitas base do sistema
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Receitas Base Cadastradas</CardTitle>
+              <CardDescription>
+                Lista de todas as receitas base do sistema
+              </CardDescription>
+            </div>
+            <Button onClick={abrirCriacaoReceita}>
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Receita
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -164,6 +182,13 @@ export default function ReceitasTab() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Modal de Criação */}
+      <CriarReceitaModal
+        isOpen={isCreateModalOpen}
+        onClose={fecharCriacaoReceita}
+        onSuccess={carregarReceitas}
+      />
 
       {/* Modal de Edição */}
       <EditarReceitaModal
