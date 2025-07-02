@@ -171,13 +171,25 @@ export default function EditarReceitaModal({
   };
 
   const salvarEdicaoItem = async (itemId: string) => {
+    if (quantidadeEdicao <= 0) {
+      toast({
+        title: "Quantidade inválida",
+        description: "A quantidade deve ser maior que zero",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
+      console.log('Atualizando item:', itemId, 'Nova quantidade:', quantidadeEdicao);
+      
       const { error } = await supabase
         .from('itens_receita')
         .update({ quantidade: quantidadeEdicao })
         .eq('id', itemId);
 
       if (error) {
+        console.error('Erro ao atualizar quantidade:', error);
         toast({
           title: "Erro ao atualizar quantidade",
           description: error.message,
@@ -186,6 +198,8 @@ export default function EditarReceitaModal({
         return;
       }
 
+      console.log('Quantidade atualizada com sucesso');
+      
       toast({
         title: "Quantidade atualizada",
         description: "Quantidade do ingrediente atualizada com sucesso"
@@ -195,7 +209,7 @@ export default function EditarReceitaModal({
       setQuantidadeEdicao(0);
       onSuccess();
     } catch (error) {
-      console.error('Erro ao atualizar quantidade:', error);
+      console.error('Erro inesperado ao atualizar quantidade:', error);
       toast({
         title: "Erro ao atualizar quantidade",
         description: "Ocorreu um erro inesperado",
