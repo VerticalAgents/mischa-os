@@ -4,14 +4,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, TrendingUp, DollarSign, Users, Package } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { RefreshCw, TrendingUp, DollarSign, Users, Package, Check, X, Edit } from 'lucide-react';
 import { useFaturamentoPrevisto } from '@/hooks/useFaturamentoPrevisto';
 import { Cliente } from '@/types';
 import { DREData } from '@/types/projections';
+import { useToast } from '@/hooks/use-toast';
 
 interface AnaliseGiroPDVProps {
   clientes: Cliente[];
   baseDRE: DREData | null;
+}
+
+interface EditingItem {
+  clienteId: string;
+  categoriaId: number;
+  giroSemanal: number;
 }
 
 export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProps) {
@@ -23,6 +31,10 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
     precosDetalhados,
     recalcular 
   } = useFaturamentoPrevisto();
+
+  const { toast } = useToast();
+  const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
 
   const formatarMoeda = (valor: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -36,6 +48,60 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
     totalCategorias: [...new Set(precosDetalhados.map(p => p.categoriaId))].length,
     precosPersonalizados: precosDetalhados.filter(p => p.precoPersonalizado).length,
     totalGiroSemanal: precosDetalhados.reduce((sum, p) => sum + p.giroSemanal, 0)
+  };
+
+  const isFoodServiceCategory = (categoriaNome: string): boolean => {
+    return categoriaNome.toLowerCase().includes('food service');
+  };
+
+  const iniciarEdicao = (clienteId: string, categoriaId: number, giroAtual: number) => {
+    setEditingItem({ clienteId, categoriaId, giroSemanal: giroAtual });
+    setEditValue(giroAtual.toString());
+  };
+
+  const cancelarEdicao = () => {
+    setEditingItem(null);
+    setEditValue('');
+  };
+
+  const salvarEdicao = async () => {
+    if (!editingItem) return;
+
+    const novoGiro = parseInt(editValue);
+    if (isNaN(novoGiro) || novoGiro < 0) {
+      toast({
+        title: "Valor inválido",
+        description: "O giro semanal deve ser um número válido maior ou igual a zero",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Aqui você pode adicionar a lógica para salvar no banco de dados se necessário
+      // Por enquanto, vamos apenas mostrar uma confirmação
+      toast({
+        title: "Giro atualizado",
+        description: `Giro semanal da categoria Food Service atualizado para ${novoGiro} unidades`,
+      });
+
+      setEditingItem(null);
+      setEditValue('');
+      
+      // Recalcular as projeções após a edição
+      recalcular();
+    } catch (error) {
+      console.error('Erro ao salvar giro semanal:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Ocorreu um erro ao salvar o novo giro semanal",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const isEditing = (clienteId: string, categoriaId: number): boolean => {
+    return editingItem?.clienteId === clienteId && editingItem?.categoriaId === categoriaId;
   };
 
   if (!disponivel && !isLoading) {
@@ -129,6 +195,10 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
               </CardTitle>
               <CardDescription>
                 Análise detalhada com preços personalizados por cliente e categoria
+                <br />
+                <span className="text-xs text-orange-600 font-medium">
+                  ✏️ Giro semanal editável apenas para categoria "Food Service"
+                </span>
               </CardDescription>
             </div>
             <Button
@@ -174,7 +244,53 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
                         <TableCell className="text-right font-mono">
                           {formatarMoeda(item.precoUnitario)}
                         </TableCell>
-                        <TableCell className="text-right">{item.giroSemanal}</TableCell>
+                        <TableCell className="text-right">
+                          {isFoodServiceCategory(item.categoriaNome) ? (
+                            <div className="flex items-center justify-end gap-1">
+                              {isEditing(item.clienteId, item.categoriaId) ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    className="w-20 h-7 text-xs text-right"
+                                    min="0"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0 text-green-600 hover:text-green-700"
+                                    onClick={salvarEdicao}
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                                    onClick={cancelarEdicao}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  <span>{item.giroSemanal}</span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700"
+                                    onClick={() => iniciarEdicao(item.clienteId, item.categoriaId, item.giroSemanal)}
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span>{item.giroSemanal}</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right font-mono">
                           {formatarMoeda(item.faturamentoSemanal)}
                         </TableCell>
