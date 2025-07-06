@@ -245,43 +245,43 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
                           {formatarMoeda(item.precoUnitario)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-end gap-2">
                             {isEditing(item.clienteId, item.categoriaId) ? (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-2">
                                 <Input
                                   type="number"
                                   value={editValue}
                                   onChange={(e) => setEditValue(e.target.value)}
-                                  className="w-20 h-7 text-xs text-right"
+                                  className="w-20 h-8 text-xs text-right"
                                   min="0"
                                 />
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-7 w-7 p-0 text-green-600 hover:text-green-700"
+                                  className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
                                   onClick={salvarEdicao}
                                 >
-                                  <Check className="h-3 w-3" />
+                                  <Check className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                                   onClick={cancelarEdicao}
                                 >
-                                  <X className="h-3 w-3" />
+                                  <X className="h-4 w-4" />
                                 </Button>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1">
-                                <span>{item.giroSemanal}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-mono">{item.giroSemanal}</span>
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700"
+                                  className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                                   onClick={() => iniciarEdicao(item.clienteId, item.categoriaId, item.giroSemanal)}
                                 >
-                                  <Edit className="h-3 w-3" />
+                                  <Edit className="h-4 w-4" />
                                 </Button>
                               </div>
                             )}
