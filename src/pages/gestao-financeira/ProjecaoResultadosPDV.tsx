@@ -2,14 +2,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Calculator, Info, Eye, EyeOff, TrendingUp, Users, DollarSign, Percent } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { AlertTriangle, Calculator, Info, Eye, EyeOff, TrendingUp, Users, DollarSign, Percent, Check, X, Edit } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useSupabaseTiposLogistica } from "@/hooks/useSupabaseTiposLogistica";
 import { useSupabasePrecosCategoriaCliente } from "@/hooks/useSupabasePrecosCategoriaCliente";
+import { useSupabaseGirosSemanaPersonalizados } from "@/hooks/useSupabaseGirosSemanaPersonalizados";
 import { useConfiguracoesStore } from "@/hooks/useConfiguracoesStore";
 import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 // Preços temporários por categoria (fallback)
 const PRECOS_TEMPORARIOS: Record<string, number> = {
@@ -33,6 +36,7 @@ interface ProjecaoCliente {
     categoriaId: number;
     nomeCategoria: string;
     giroSemanal: number;
+    giroPersonalizado: boolean; // Nova propriedade
     precoAplicado: number;
     precoPersonalizado: boolean;
     faturamento: number;
@@ -67,17 +71,29 @@ interface ClienteNaoIncluido {
   motivo: string;
 }
 
+interface EditingGiroItem {
+  clienteId: string;
+  categoriaId: number;
+  giroAtual: number;
+}
+
 export default function ProjecaoResultadosPDV() {
   const { clientes, carregarClientes } = useClienteStore();
   const { categorias } = useSupabaseCategoriasProduto();
   const { tiposLogistica } = useSupabaseTiposLogistica();
   const { carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
+  const { obterGiroPersonalizado, salvarGiroPersonalizado } = useSupabaseGirosSemanaPersonalizados();
   const { obterConfiguracao } = useConfiguracoesStore();
+  const { toast } = useToast();
   
   const [projecoes, setProjecoes] = useState<ProjecaoCliente[]>([]);
   const [mostrarDetalhes, setMostrarDetalhes] = useState(false);
   const [detalhesCalculos, setDetalhesCalculos] = useState<ClienteDetalhe[]>([]);
   const [clientesNaoIncluidos, setClientesNaoIncluidos] = useState<ClienteNaoIncluido[]>([]);
+  
+  // Estados para edição inline do giro
+  const [editingGiro, setEditingGiro] = useState<EditingGiroItem | null>(null);
+  const [editGiroValue, setEditGiroValue] = useState<string>('');
 
   useEffect(() => {
     console.log('ProjecaoResultadosPDV: Carregando clientes...');
@@ -163,28 +179,77 @@ export default function ProjecaoResultadosPDV() {
     const tipo = tiposLogistica.find(t => t.nome.toLowerCase() === tipoLogistica.toLowerCase() || tipoLogistica.toLowerCase().includes(t.nome.toLowerCase()));
     if (tipo) {
       console.log(`Percentual encontrado para ${tipoLogistica}: ${tipo.percentual_logistico}%`);
-      return tipo.percentual_logistico / 100; // Converter para decimal
+      return tipo.percentual_logistico / 100;
     }
 
-    // Fallback para os valores antigos se não encontrar na configuração
     console.log(`Usando percentual padrão para ${tipoLogistica}`);
     if (tipoLogistica === 'Distribuição') {
-      return 0.08; // 8% para distribuição
+      return 0.08;
     } else if (tipoLogistica === 'Própria') {
-      return 0.03; // 3% para logística própria
+      return 0.03;
     }
-    return 0; // Valor padrão se não encontrar
+    return 0;
   };
 
-  const calcularGiroSemanal = (qtdPadrao: number, periodicidade: number): number => {
-    if (periodicidade === 0) return 0;
-    return Math.round(qtdPadrao / periodicidade * 7);
+  const calcularGiroSemanal = (qtdPadrao: number, periodicidade: number, clienteId: string, categoriaId: number): { giro: number; personalizado: boolean } => {
+    // Verificar se existe giro personalizado
+    const giroPersonalizado = obterGiroPersonalizado(clienteId, categoriaId);
+    
+    if (giroPersonalizado !== null) {
+      return { giro: giroPersonalizado, personalizado: true };
+    }
+    
+    // Usar cálculo padrão
+    if (periodicidade === 0) return { giro: 0, personalizado: false };
+    const giroCalculado = Math.round(qtdPadrao / periodicidade * 7);
+    return { giro: giroCalculado, personalizado: false };
+  };
+
+  // Funções para edição inline do giro
+  const iniciarEdicaoGiro = (clienteId: string, categoriaId: number, giroAtual: number) => {
+    setEditingGiro({ clienteId, categoriaId, giroAtual });
+    setEditGiroValue(giroAtual.toString());
+  };
+
+  const cancelarEdicaoGiro = () => {
+    setEditingGiro(null);
+    setEditGiroValue('');
+  };
+
+  const salvarEdicaoGiro = async () => {
+    if (!editingGiro) return;
+
+    const novoGiro = parseInt(editGiroValue);
+    if (isNaN(novoGiro) || novoGiro < 0) {
+      toast({
+        title: "Valor inválido",
+        description: "O giro semanal deve ser um número válido maior ou igual a zero",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const sucesso = await salvarGiroPersonalizado(
+      editingGiro.clienteId, 
+      editingGiro.categoriaId, 
+      novoGiro
+    );
+
+    if (sucesso) {
+      setEditingGiro(null);
+      setEditGiroValue('');
+      // Recalcular projeções
+      calcularProjecoes();
+    }
+  };
+
+  const isEditingGiro = (clienteId: string, categoriaId: number): boolean => {
+    return editingGiro?.clienteId === clienteId && editingGiro?.categoriaId === categoriaId;
   };
 
   const calcularProjecoes = async () => {
     console.log('ProjecaoResultadosPDV: Iniciando cálculo de projeções...');
 
-    // Filtrar apenas clientes ativos
     const clientesAtivos = clientes.filter(cliente => cliente.statusCliente === 'Ativo');
     console.log('ProjecaoResultadosPDV: Clientes ativos encontrados:', clientesAtivos.length);
     
@@ -195,7 +260,6 @@ export default function ProjecaoResultadosPDV() {
     for (const cliente of clientesAtivos) {
       const detalhesCliente: CalculoDetalhe[] = [];
 
-      // Verificar se cliente tem categorias habilitadas
       if (!cliente.categoriasHabilitadas || cliente.categoriasHabilitadas.length === 0) {
         console.log(`ProjecaoResultadosPDV: Cliente ${cliente.nome} sem categorias habilitadas`);
         clientesExcluidos.push({
@@ -234,9 +298,14 @@ export default function ProjecaoResultadosPDV() {
           continue;
         }
 
-        const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
+        // Usar nova função que considera giros personalizados
+        const { giro: giroSemanal, personalizado: giroPersonalizado } = calcularGiroSemanal(
+          cliente.quantidadePadrao, 
+          cliente.periodicidadePadrao,
+          cliente.id,
+          categoriaId
+        );
         
-        // Obter preço específico para este cliente e categoria
         const { preco: precoAplicado, personalizado } = await obterPrecoPorCliente(
           cliente.id, 
           categoriaId, 
@@ -251,7 +320,9 @@ export default function ProjecaoResultadosPDV() {
         detalhesCliente.push({
           etapa: "CALCULO_CATEGORIA",
           descricao: `Cálculos para categoria: ${categoria.nome}`,
-          formula: `Giro semanal = (${cliente.quantidadePadrao} ÷ ${cliente.periodicidadePadrao}) × 7 = ${giroSemanal}`,
+          formula: giroPersonalizado 
+            ? `Giro semanal = ${giroSemanal} (PERSONALIZADO)`
+            : `Giro semanal = (${cliente.quantidadePadrao} ÷ ${cliente.periodicidadePadrao}) × 7 = ${giroSemanal}`,
           observacao: `Preço aplicado: R$ ${precoAplicado.toFixed(2)} ${personalizado ? '(PERSONALIZADO)' : '(PADRÃO)'} | Custo unitário: R$ ${custoUnitario.toFixed(2)} (${categoria.nome.toLowerCase().includes('food service') ? 'custo Food Service' : 'custo padrão'})`
         });
 
@@ -280,6 +351,7 @@ export default function ProjecaoResultadosPDV() {
           categoriaId,
           nomeCategoria: categoria.nome,
           giroSemanal,
+          giroPersonalizado, // Nova propriedade
           precoAplicado,
           precoPersonalizado: personalizado,
           faturamento,
@@ -329,7 +401,6 @@ export default function ProjecaoResultadosPDV() {
         observacao: cliente.emiteNotaFiscal ? "Alíquota provisória de 4%" : "Verificar configuração de nota fiscal"
       });
 
-      // Obter percentual logístico baseado no tipo configurado
       const percentualLogistico = obterPercentualLogistico(cliente.tipoLogistica || 'Própria');
       const custoLogistico = faturamentoTotal * percentualLogistico;
       detalhesCliente.push({
@@ -375,7 +446,6 @@ export default function ProjecaoResultadosPDV() {
     setClientesNaoIncluidos(clientesExcluidos);
   };
 
-  // Cálculos para o Resumo Geral Expandido
   const calcularIndicadoresGerais = () => {
     if (projecoes.length === 0) {
       return {
@@ -413,7 +483,6 @@ export default function ProjecaoResultadosPDV() {
     let totalClientesGiroHabilitados = 0;
 
     projecoes.forEach(projecao => {
-      // Buscar o cliente para verificar configurações
       const cliente = clientes.find(c => c.id === projecao.clienteId);
       const contabilizaGiro = cliente?.contabilizarGiroMedio ?? true;
       const formaPagamento = cliente?.formaPagamento || 'Não informado';
@@ -423,23 +492,16 @@ export default function ProjecaoResultadosPDV() {
         somaCustoInsumos += categoria.custoInsumos;
         totalCategorias++;
 
-        // Acumular faturamento por categoria
         const nomeCategoria = categoria.nomeCategoria;
         faturamentoPorCategoria[nomeCategoria] = (faturamentoPorCategoria[nomeCategoria] || 0) + categoria.faturamento;
-
-        // Acumular custo de insumos por categoria
         custoPorCategoria[nomeCategoria] = (custoPorCategoria[nomeCategoria] || 0) + categoria.custoInsumos;
-
-        // Acumular faturamento por forma de pagamento
         faturamentoPorFormaPagamento[formaPagamento] = (faturamentoPorFormaPagamento[formaPagamento] || 0) + categoria.faturamento;
 
-        // Filtrar preço médio apenas para categoria "Revenda Padrão"
         if (categoria.nomeCategoria.toLowerCase().includes('revenda padrão')) {
           somaPrecos += categoria.precoAplicado;
           totalCategoriasRevenda++;
         }
 
-        // Filtrar giro médio apenas para clientes com checkbox habilitado
         if (contabilizaGiro) {
           somaGiros += categoria.giroSemanal;
           totalGiroClientesHabilitados++;
@@ -458,7 +520,6 @@ export default function ProjecaoResultadosPDV() {
     const totalImpostoSemanal = projecoes.reduce((sum, proj) => sum + proj.impostoTotal, 0);
     const totalLogisticaSemanal = projecoes.reduce((sum, proj) => sum + proj.custoLogistico, 0);
 
-    // Converter valores semanais para mensais (x4)
     const faturamentoTotalMensal = faturamentoTotalSemanal * 4;
     const totalImpostoMensal = totalImpostoSemanal * 4;
     const totalLogisticaMensal = totalLogisticaSemanal * 4;
@@ -466,25 +527,21 @@ export default function ProjecaoResultadosPDV() {
     const somaFaturamentosMensal = somaFaturamentos * 4;
     const custoTotalInsumosMensal = somaCustoInsumos * 4;
 
-    // Converter faturamento por categoria para mensal
     const faturamentoPorCategoriaMensal: Record<string, number> = {};
     Object.keys(faturamentoPorCategoria).forEach(categoria => {
       faturamentoPorCategoriaMensal[categoria] = faturamentoPorCategoria[categoria] * 4;
     });
 
-    // Converter custo por categoria para mensal
     const custoPorCategoriaMensal: Record<string, number> = {};
     Object.keys(custoPorCategoria).forEach(categoria => {
       custoPorCategoriaMensal[categoria] = custoPorCategoria[categoria] * 4;
     });
 
-    // Converter faturamento por forma de pagamento para mensal
     const faturamentoPorFormaPagamentoMensal: Record<string, number> = {};
     Object.keys(faturamentoPorFormaPagamento).forEach(forma => {
       faturamentoPorFormaPagamentoMensal[forma] = faturamentoPorFormaPagamento[forma] * 4;
     });
 
-    // Distribuição percentual por categoria
     const distribuicaoCategorias: Record<string, number> = {};
     Object.keys(categoriasCount).forEach(categoria => {
       distribuicaoCategorias[categoria] = categoriasCount[categoria] / totalCategorias * 100;
@@ -523,7 +580,6 @@ export default function ProjecaoResultadosPDV() {
   };
 
   const indicadores = calcularIndicadoresGerais();
-  // Converter valores semanais para mensais
   const totalGeralMensal = projecoes.reduce((sum, proj) => sum + proj.lucroBruto, 0) * 4;
   const faturamentoGeralMensal = projecoes.reduce((sum, proj) => sum + proj.categorias.reduce((catSum, cat) => catSum + cat.faturamento, 0), 0) * 4;
   const clientesAtivos = clientes.filter(cliente => cliente.statusCliente === 'Ativo');
@@ -634,6 +690,7 @@ export default function ProjecaoResultadosPDV() {
           </p>
           <ul className="space-y-1 list-disc list-inside">
             <li>✅ Preços personalizados por cliente são prioritários</li>
+            <li>✏️ Giros semanais editáveis inline para ajustes precisos</li>
             <li>🔧 Preços padrão das configurações como fallback</li>
             <li>🔧 Custos unitários: Revenda Padrão (R$ 1,32), Food Service (R$ 29,17)</li>
           </ul>
@@ -821,10 +878,16 @@ export default function ProjecaoResultadosPDV() {
             </CardContent>
           </Card>
 
-          {/* Tabela de projeção detalhada */}
+          {/* Tabela de projeção detalhada com edição inline do giro */}
           <Card>
             <CardHeader>
-              <CardTitle>Projeção Detalhada por Cliente</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Calculator className="h-5 w-5" />
+                Projeção Detalhada por Cliente
+                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                  ✏️ Giro editável inline
+                </Badge>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -834,7 +897,7 @@ export default function ProjecaoResultadosPDV() {
                       <TableHead>Cliente</TableHead>
                       <TableHead>Contabiliza Giro</TableHead>
                       <TableHead>Categoria</TableHead>
-                      <TableHead>Giro Semanal</TableHead>
+                      <TableHead>Giro Semanal (un)</TableHead>
                       <TableHead>Preço Aplicado</TableHead>
                       <TableHead>Custo Unit.</TableHead>
                       <TableHead>Faturamento</TableHead>
@@ -873,7 +936,57 @@ export default function ProjecaoResultadosPDV() {
                               {categoria.nomeCategoria}
                             </div>
                           </TableCell>
-                          <TableCell className="text-center">{categoria.giroSemanal}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {isEditingGiro(projecao.clienteId, categoria.categoriaId) ? (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    value={editGiroValue}
+                                    onChange={(e) => setEditGiroValue(e.target.value)}
+                                    className="w-20 h-8 text-xs text-right"
+                                    min="0"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                    onClick={salvarEdicaoGiro}
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    onClick={cancelarEdicaoGiro}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-sm font-mono">{categoria.giroSemanal}</span>
+                                    <Badge 
+                                      variant={categoria.giroPersonalizado ? "default" : "outline"}
+                                      className={`text-xs ${categoria.giroPersonalizado ? 'bg-blue-100 text-blue-800' : ''}`}
+                                    >
+                                      {categoria.giroPersonalizado ? "Custom" : "Auto"}
+                                    </Badge>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                    onClick={() => iniciarEdicaoGiro(projecao.clienteId, categoria.categoriaId, categoria.giroSemanal)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
                               {formatarMoeda(categoria.precoAplicado)}

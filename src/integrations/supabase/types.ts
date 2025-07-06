@@ -436,6 +436,33 @@ export type Database = {
         }
         Relationships: []
       }
+      giros_semanais_personalizados: {
+        Row: {
+          categoria_id: number
+          cliente_id: string
+          created_at: string
+          giro_semanal: number
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          categoria_id: number
+          cliente_id: string
+          created_at?: string
+          giro_semanal?: number
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          categoria_id?: number
+          cliente_id?: string
+          created_at?: string
+          giro_semanal?: number
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       historico_entregas: {
         Row: {
           cliente_id: string
