@@ -44,6 +44,10 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     ? getPedidosParaDespacho() 
     : getPedidosAtrasados();
 
+  // Verificar quantos pedidos estão despachados
+  const pedidosDespachados = pedidosFiltrados.filter(p => p.substatus_pedido === 'Despachado');
+  const todosDespachados = pedidosFiltrados.length > 0 && pedidosDespachados.length === pedidosFiltrados.length;
+
   const handleDespachoEmMassa = async () => {
     if (pedidosFiltrados.length === 0) {
       toast.error("Não há pedidos para despachar.");
@@ -54,8 +58,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   };
 
   const handleEntregaEmMassa = async () => {
-    if (pedidosFiltrados.length === 0) {
-      toast.error("Não há pedidos para entregar.");
+    if (!todosDespachados) {
+      toast.error("Todos os pedidos devem estar despachados para confirmar entrega em massa.");
       return;
     }
     
@@ -63,8 +67,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   };
 
   const handleRetornoEmMassa = async () => {
-    if (pedidosFiltrados.length === 0) {
-      toast.error("Não há pedidos para marcar como retorno.");
+    if (!todosDespachados) {
+      toast.error("Todos os pedidos devem estar despachados para confirmar retorno em massa.");
       return;
     }
     
@@ -87,7 +91,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     );
   }
 
-  const titulo = tipoFiltro === "hoje" ? "Entregas de Hoje" : "Entregas Atrasadas (Ontem)";
+  const titulo = tipoFiltro === "hoje" ? "Entregas de Hoje" : "Entregas Atrasadas";
   const icone = tipoFiltro === "hoje" ? <Truck className="h-5 w-5" /> : <Package className="h-5 w-5" />;
 
   return (
@@ -111,6 +115,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
               onClick={handleEntregaEmMassa} 
               size="sm" 
               className="bg-green-600 hover:bg-green-700"
+              disabled={!todosDespachados}
+              title={!todosDespachados ? "Todos os pedidos devem estar despachados" : ""}
             >
               <Package className="h-4 w-4 mr-1" /> Entregar Todos
             </Button>
@@ -118,6 +124,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
               onClick={handleRetornoEmMassa} 
               size="sm" 
               variant="destructive"
+              disabled={!todosDespachados}
+              title={!todosDespachados ? "Todos os pedidos devem estar despachados" : ""}
             >
               Retorno em Massa
             </Button>

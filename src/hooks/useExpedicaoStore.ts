@@ -1,9 +1,10 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { SubstatusPedidoAgendado } from '@/types';
-import { addBusinessDays, isWeekend, format, addDays } from 'date-fns';
+import { addBusinessDays, isWeekend, format, addDays, isBefore, startOfDay } from 'date-fns';
 import { useHistoricoEntregasStore } from './useHistoricoEntregasStore';
 
 interface PedidoExpedicao {
@@ -24,9 +25,11 @@ interface PedidoExpedicao {
 interface ExpedicaoStore {
   pedidos: PedidoExpedicao[];
   isLoading: boolean;
+  ultimaAtualizacao: Date | null;
   
   // Actions
   carregarPedidos: () => Promise<void>;
+  atualizarDataReferencia: () => Promise<void>;
   confirmarSeparacao: (pedidoId: string) => Promise<void>;
   desfazerSeparacao: (pedidoId: string) => Promise<void>;
   retornarParaSeparacao: (pedidoId: string) => Promise<void>;
@@ -72,6 +75,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
     (set, get) => ({
       pedidos: [],
       isLoading: false,
+      ultimaAtualizacao: null,
+      
+      atualizarDataReferencia: async () => {
+        console.log('🔄 Atualizando data de referência para hoje...');
+        await get().carregarPedidos();
+        set({ ultimaAtualizacao: new Date() });
+        toast.success("Data de referência atualizada com sucesso!");
+      },
       
       carregarPedidos: async () => {
         set({ isLoading: true });
@@ -128,7 +139,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           });
 
           console.log('✅ Pedidos formatados para expedição:', pedidosFormatados.length);
-          set({ pedidos: pedidosFormatados });
+          set({ 
+            pedidos: pedidosFormatados,
+            ultimaAtualizacao: new Date()
+          });
           
         } catch (error) {
           console.error('Erro ao carregar pedidos:', error);
@@ -270,6 +284,12 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           if (!pedido) throw new Error('Pedido não encontrado');
 
+          // Verificar se o pedido foi despachado
+          if (pedido.substatus_pedido !== 'Despachado') {
+            toast.error("Pedido deve estar despachado para confirmar entrega");
+            return;
+          }
+
           console.log('🚚 Processando entrega com preservação de dados:', {
             pedidoId,
             tipoPedido: pedido.tipo_pedido,
@@ -344,6 +364,12 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         try {
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           if (!pedido) throw new Error('Pedido não encontrado');
+
+          // Verificar se o pedido foi despachado
+          if (pedido.substatus_pedido !== 'Despachado') {
+            toast.error("Pedido deve estar despachado para confirmar retorno");
+            return;
+          }
 
           console.log('🔄 Processando retorno com preservação de dados:', {
             pedidoId,
@@ -493,12 +519,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
       confirmarEntregaEmMassa: async (pedidos: PedidoExpedicao[]) => {
         try {
-          const pedidosParaEntregar = pedidos.filter(p => 
-            p.substatus_pedido === 'Separado' || p.substatus_pedido === 'Despachado'
-          );
+          const pedidosParaEntregar = pedidos.filter(p => p.substatus_pedido === 'Despachado');
           
           if (pedidosParaEntregar.length === 0) {
-            toast.error("Não há pedidos para entregar");
+            toast.error("Não há pedidos despachados para entregar");
             return;
           }
 
@@ -569,12 +593,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
       confirmarRetornoEmMassa: async (pedidos: PedidoExpedicao[]) => {
         try {
-          const pedidosParaRetorno = pedidos.filter(p => 
-            p.substatus_pedido === 'Separado' || p.substatus_pedido === 'Despachado'
-          );
+          const pedidosParaRetorno = pedidos.filter(p => p.substatus_pedido === 'Despachado');
           
           if (pedidosParaRetorno.length === 0) {
-            toast.error("Não há pedidos para retorno");
+            toast.error("Não há pedidos despachados para retorno");
             return;
           }
 
@@ -680,17 +702,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       },
 
       getPedidosAtrasados: () => {
-        const hoje = new Date();
-        const ontem = new Date(hoje);
-        ontem.setDate(ontem.getDate() - 1);
-        const ontemStr = format(ontem, 'yyyy-MM-dd');
+        const hoje = startOfDay(new Date());
         
         return get().pedidos.filter(p => {
           const dataEntrega = parseDataSegura(p.data_prevista_entrega);
-          const dataEntregaFormatada = format(dataEntrega, 'yyyy-MM-dd');
+          const dataEntregaComparacao = startOfDay(dataEntrega);
           
           return p.status_agendamento === 'Agendado' &&
-                 dataEntregaFormatada <= ontemStr &&
+                 isBefore(dataEntregaComparacao, hoje) &&
                  p.substatus_pedido !== 'Entregue' && 
                  p.substatus_pedido !== 'Retorno';
         });

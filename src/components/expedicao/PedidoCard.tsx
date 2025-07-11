@@ -1,22 +1,36 @@
 
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { Pedido } from "@/types";
+import { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Check, X, Edit, Calendar, Truck, Package, ArrowLeft, Clock } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { TipoPedidoBadge } from './TipoPedidoBadge';
+import { ProdutoNomeDisplay } from './ProdutoNomeDisplay';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Package, MapPin, User, Calendar, CheckCircle, Edit, Truck, ArrowLeft } from "lucide-react";
-import { cn } from "@/lib/utils";
-import TipoPedidoBadge from "./TipoPedidoBadge";
-import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
+export interface PedidoCardData {
+  id: string;
+  cliente_nome: string;
+  cliente_endereco?: string;
+  cliente_telefone?: string;
+  data_prevista_entrega: Date;
+  quantidade_total: number;
+  tipo_pedido: string;
+  substatus_pedido: string;
+  itens?: Array<{
+    produto_id: string;
+    produto_nome: string;
+    quantidade: number;
+  }>;
+}
 
 interface PedidoCardProps {
-  pedido: Pedido;
-  onMarcarSeparado: (pedidoId: string) => void;
-  onEditarAgendamento?: (pedidoId: string) => void;
-  showAntecipada?: boolean;
+  pedido: PedidoCardData;
+  onMarcarSeparado?: () => void;
+  onEditarAgendamento?: () => void;
   showDespachoActions?: boolean;
   onConfirmarDespacho?: () => void;
   onConfirmarEntrega?: (observacao?: string) => void;
@@ -24,218 +38,231 @@ interface PedidoCardProps {
   onRetornarParaSeparacao?: () => void;
 }
 
-interface StatusVariantProps {
-  status: Pedido['statusPedido'];
-}
-
-function getStatusVariant(status: StatusVariantProps['status']) {
-  if (status === 'Agendado') return 'default';
-  if (status === 'Em Separação') return 'secondary';
-  if (status === 'Cancelado') return 'destructive';
-  return 'default';
-}
-
-export default function PedidoCard({ 
-  pedido, 
-  onMarcarSeparado, 
-  onEditarAgendamento, 
-  showAntecipada,
+export default function PedidoCard({
+  pedido,
+  onMarcarSeparado,
+  onEditarAgendamento,
   showDespachoActions = false,
   onConfirmarDespacho,
   onConfirmarEntrega,
   onConfirmarRetorno,
   onRetornarParaSeparacao
 }: PedidoCardProps) {
-  const formatarData = (data: Date) => {
-    return format(new Date(data), "dd 'de' MMMM, yyyy", { locale: ptBR });
+  const [observacaoEntrega, setObservacaoEntrega] = useState('');
+  const [observacaoRetorno, setObservacaoRetorno] = useState('');
+  const [dialogEntregaAberto, setDialogEntregaAberto] = useState(false);
+  const [dialogRetornoAberto, setDialogRetornoAberto] = useState(false);
+
+  const handleConfirmarEntrega = () => {
+    onConfirmarEntrega?.(observacaoEntrega);
+    setObservacaoEntrega('');
+    setDialogEntregaAberto(false);
   };
 
-  const calcularValorTotal = () => {
-    // Using a default price since ItemPedido doesn't have precoUnitario
-    return pedido.itensPedido.reduce((total, item) => total + (10 * item.quantidadeSabor), 0);
+  const handleConfirmarRetorno = () => {
+    onConfirmarRetorno?.(observacaoRetorno);
+    setObservacaoRetorno('');
+    setDialogRetornoAberto(false);
   };
 
-  // Gerar ID do pedido apenas se for um número válido
-  const getPedidoId = () => {
-    const id = pedido.id;
-    if (id && String(id).length > 0) {
-      return `Pedido #${String(id).substring(0, 8)}`;
-    }
-    return "Pedido"; // Apenas "Pedido" sem o número se não for válido
-  };
-
-  const handleMarcarSeparado = () => {
-    // Garantir que o ID está sendo passado como string
-    const idString = String(pedido.id);
-    console.log('✅ PedidoCard: Marcando como separado - ID original:', pedido.id, 'Tipo:', typeof pedido.id);
-    console.log('✅ PedidoCard: ID convertido para string:', idString, 'Tipo:', typeof idString);
-    onMarcarSeparado(idString);
-  };
-
-  const handleEditarAgendamento = () => {
-    if (onEditarAgendamento) {
-      const idString = String(pedido.id);
-      console.log('🔧 PedidoCard: Editando agendamento - ID original:', pedido.id, 'Tipo:', typeof pedido.id);
-      console.log('🔧 PedidoCard: ID convertido para string:', idString, 'Tipo:', typeof idString);
-      onEditarAgendamento(idString);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Agendado':
+        return 'bg-blue-100 text-blue-800';
+      case 'Separado':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'Despachado':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const isPedidoDespachado = pedido.substatus_pedido === 'Despachado';
 
   return (
-    <Card className={cn(
-      "transition-all duration-200 hover:shadow-md",
-      pedido.substatusPedido === 'Separado' && "bg-green-50 border-green-200",
-      showAntecipada && "border-blue-200 bg-blue-50"
-    )}>
-      <CardHeader className="space-y-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            {getPedidoId()}
-            {showAntecipada && (
-              <Badge variant="outline" className="text-blue-600 border-blue-300">
-                Separação Antecipada
+    <Card className="w-full">
+      <CardContent className="p-4">
+        <div className="space-y-4">
+          {/* Cabeçalho com informações do cliente */}
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-lg truncate">{pedido.cliente_nome}</h3>
+              {pedido.cliente_endereco && (
+                <p className="text-sm text-muted-foreground mt-1">{pedido.cliente_endereco}</p>
+              )}
+              {pedido.cliente_telefone && (
+                <p className="text-sm text-muted-foreground">{pedido.cliente_telefone}</p>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <Badge className={getStatusColor(pedido.substatus_pedido)}>
+                {pedido.substatus_pedido}
               </Badge>
-            )}
-          </CardTitle>
-          <div className="flex gap-2">
-            <TipoPedidoBadge tipo={pedido.tipoPedido || "Padrão"} />
-            <Badge variant={getStatusVariant(pedido.statusPedido)}>
-              {pedido.statusPedido}
-            </Badge>
+              <TipoPedidoBadge tipo={pedido.tipo_pedido} />
+            </div>
           </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">{pedido.cliente?.nome || 'Cliente não informado'}</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span className="truncate">{pedido.cliente?.enderecoEntrega || 'Endereço não informado'}</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span>{formatarData(pedido.dataPrevistaEntrega)}</span>
-          </div>
-        </div>
-      </CardHeader>
 
-      <CardContent className="space-y-4">
-        <div>
-          <h4 className="font-medium mb-2">Itens do Pedido:</h4>
-          <div className="space-y-2">
-            {pedido.itensPedido.map((item, index) => (
-              <div key={index} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-md">
-                <div className="flex items-center gap-3">
-                  <div className="font-medium">
-                    {item.nomeSabor || `Produto ${index}`}
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {item.quantidadeSabor} un.
-                  </Badge>
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  R$ {(10 * item.quantidadeSabor).toFixed(2)}
-                </span>
+          {/* Informações do pedido */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Data de Entrega</p>
+                <p className="text-sm text-muted-foreground">
+                  {format(pedido.data_prevista_entrega, "dd/MM/yyyy", { locale: ptBR })}
+                </p>
               </div>
-            ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Quantidade</p>
+                <p className="text-sm text-muted-foreground">{pedido.quantidade_total} unidades</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Status</p>
+                <p className="text-sm text-muted-foreground">{pedido.substatus_pedido}</p>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <Separator />
+          {/* Lista de produtos */}
+          {pedido.itens && pedido.itens.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm">Produtos:</h4>
+              <div className="space-y-1">
+                {pedido.itens.map((item, index) => (
+                  <div key={index} className="flex justify-between items-center text-sm p-2 bg-background rounded">
+                    <ProdutoNomeDisplay nome={item.produto_nome} />
+                    <span className="font-medium">{item.quantidade}x</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-        <div className="flex items-center justify-between">
-          <div className="text-sm">
-            <span className="text-muted-foreground">Total: </span>
-            <span className="font-semibold text-lg">
-              {pedido.totalPedidoUnidades} un. | R$ {calcularValorTotal().toFixed(2)}
-            </span>
-          </div>
-          
-          <div className="flex gap-2">
-            {/* Ações de separação (padrão) */}
-            {!showDespachoActions && pedido.substatusPedido !== 'Separado' && (
+          {/* Ações */}
+          <div className="flex flex-wrap gap-2 pt-2 border-t">
+            {!showDespachoActions ? (
+              // Ações da separação
               <>
                 <Button
-                  variant="outline"
                   size="sm"
-                  onClick={handleEditarAgendamento}
-                  className="text-blue-600 hover:text-blue-700"
+                  onClick={onMarcarSeparado}
+                  className="flex items-center gap-1"
                 >
-                  <Edit className="h-4 w-4 mr-1" />
-                  Editar Agendamento
-                </Button>
-                <Button 
-                  onClick={handleMarcarSeparado}
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle className="h-4 w-4 mr-1" />
+                  <Check className="h-4 w-4" />
                   Marcar como Separado
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onEditarAgendamento}
+                  className="flex items-center gap-1"
+                >
+                  <Edit className="h-4 w-4" />
+                  Editar Agendamento
+                </Button>
               </>
-            )}
-
-            {/* Ações de despacho */}
-            {showDespachoActions && (
+            ) : (
+              // Ações do despacho
               <>
-                {/* Botão para retornar à separação */}
-                {onRetornarParaSeparacao && (
-                  <Button 
-                    onClick={onRetornarParaSeparacao}
+                {pedido.substatus_pedido === 'Separado' && (
+                  <Button
                     size="sm"
-                    variant="outline"
-                    className="text-orange-600 hover:text-orange-700 border-orange-300 hover:border-orange-400"
+                    onClick={onConfirmarDespacho}
+                    className="flex items-center gap-1"
                   >
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Retornar para Separação
+                    <Truck className="h-4 w-4" />
+                    Despachar Pedido
                   </Button>
                 )}
 
-                {pedido.substatusPedido === 'Separado' && onConfirmarDespacho && (
-                  <Button 
-                    onClick={onConfirmarDespacho}
-                    size="sm"
-                    variant="outline"
-                    className="text-blue-600 hover:text-blue-700"
-                  >
-                    <Truck className="h-4 w-4 mr-1" />
-                    Confirmar Despacho
-                  </Button>
+                {pedido.substatus_pedido === 'Despachado' && (
+                  <>
+                    <Dialog open={dialogEntregaAberto} onOpenChange={setDialogEntregaAberto}>
+                      <DialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 flex items-center gap-1"
+                        >
+                          <Check className="h-4 w-4" />
+                          Confirmar Entrega
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Confirmar Entrega</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <p>Confirmar entrega para <strong>{pedido.cliente_nome}</strong>?</p>
+                          <Textarea
+                            placeholder="Observações (opcional)"
+                            value={observacaoEntrega}
+                            onChange={(e) => setObservacaoEntrega(e.target.value)}
+                          />
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setDialogEntregaAberto(false)}>
+                            Cancelar
+                          </Button>
+                          <Button onClick={handleConfirmarEntrega} className="bg-green-600 hover:bg-green-700">
+                            Confirmar Entrega
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={dialogRetornoAberto} onOpenChange={setDialogRetornoAberto}>
+                      <DialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="flex items-center gap-1"
+                        >
+                          <X className="h-4 w-4" />
+                          Confirmar Retorno
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Confirmar Retorno</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <p>Confirmar retorno para <strong>{pedido.cliente_nome}</strong>?</p>
+                          <Textarea
+                            placeholder="Motivo do retorno (opcional)"
+                            value={observacaoRetorno}
+                            onChange={(e) => setObservacaoRetorno(e.target.value)}
+                          />
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setDialogRetornoAberto(false)}>
+                            Cancelar
+                          </Button>
+                          <Button onClick={handleConfirmarRetorno} variant="destructive">
+                            Confirmar Retorno
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </>
                 )}
-                
-                {onConfirmarEntrega && (
-                  <Button 
-                    onClick={() => onConfirmarEntrega()}
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Confirmar Entrega
-                  </Button>
-                )}
-                
-                {onConfirmarRetorno && (
-                  <Button 
-                    onClick={() => onConfirmarRetorno()}
-                    size="sm"
-                    variant="destructive"
-                  >
-                    Confirmar Retorno
-                  </Button>
-                )}
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onRetornarParaSeparacao}
+                  className="flex items-center gap-1"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Retornar p/ Separação
+                </Button>
               </>
-            )}
-            
-            {pedido.substatusPedido === 'Separado' && !showDespachoActions && (
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Separado
-              </Badge>
             )}
           </div>
         </div>

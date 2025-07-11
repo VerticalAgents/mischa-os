@@ -11,7 +11,8 @@ import { SeparacaoTabs } from "./components/SeparacaoTabs";
 import { DebugInfo } from "./components/DebugInfo";
 import EditarAgendamentoDialog from "../agendamento/EditarAgendamentoDialog";
 import { toast } from "sonner";
-import { Check } from "lucide-react";
+import { Check, RefreshCw } from "lucide-react";
+import { format } from "date-fns";
 
 export const SeparacaoPedidos = () => {
   const [activeSubTab, setActiveSubTab] = useState<string>("todos");
@@ -20,8 +21,10 @@ export const SeparacaoPedidos = () => {
   const {
     pedidos,
     isLoading,
+    ultimaAtualizacao,
     confirmarSeparacao,
     marcarTodosSeparados,
+    atualizarDataReferencia,
     getPedidosParaSeparacao,
     getPedidosProximoDia,
     carregarPedidos
@@ -43,7 +46,7 @@ export const SeparacaoPedidos = () => {
   useEffect(() => {
     if (!mountedRef.current) {
       mountedRef.current = true;
-      console.log('🔄 Carregando pedidos inicial da SeparacaoPedidos');
+      console.log('🔄 Carregamento inicial da SeparacaoPedidos');
       carregarPedidos();
     }
   }, [carregarPedidos]);
@@ -99,6 +102,10 @@ export const SeparacaoPedidos = () => {
     }
   };
 
+  const handleAtualizarData = async () => {
+    await atualizarDataReferencia();
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -115,8 +122,25 @@ export const SeparacaoPedidos = () => {
     <div className="space-y-4">
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <h2 className="text-lg font-semibold">Separação de Pedidos</h2>
+          <div className="flex flex-col">
+            <h2 className="text-lg font-semibold">Separação de Pedidos</h2>
+            {ultimaAtualizacao && (
+              <p className="text-sm text-muted-foreground">
+                Última atualização: {format(ultimaAtualizacao, 'dd/MM/yyyy HH:mm:ss')}
+              </p>
+            )}
+          </div>
           <div className="flex flex-wrap gap-2">
+            <Button 
+              onClick={handleAtualizarData}
+              size="sm" 
+              variant="outline"
+              className="flex items-center gap-1"
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Atualizar Data
+            </Button>
             <Button 
               onClick={marcarTodosComoSeparados} 
               size="sm" 
