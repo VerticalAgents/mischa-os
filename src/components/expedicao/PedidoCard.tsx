@@ -8,8 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Check, X, Edit, Calendar, Truck, Package, ArrowLeft, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { TipoPedidoBadge } from './TipoPedidoBadge';
-import { ProdutoNomeDisplay } from './ProdutoNomeDisplay';
+import TipoPedidoBadge from './TipoPedidoBadge';
+import ProdutoNomeDisplay from './ProdutoNomeDisplay';
 
 export interface PedidoCardData {
   id: string;
@@ -137,7 +137,7 @@ export default function PedidoCard({
               <div className="space-y-1">
                 {pedido.itens.map((item, index) => (
                   <div key={index} className="flex justify-between items-center text-sm p-2 bg-background rounded">
-                    <ProdutoNomeDisplay nome={item.produto_nome} />
+                    <ProdutoNomeDisplay produtoId={item.produto_id} nomeFallback={item.produto_nome} />
                     <span className="font-medium">{item.quantidade}x</span>
                   </div>
                 ))}

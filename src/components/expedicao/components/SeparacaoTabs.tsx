@@ -52,8 +52,8 @@ export const SeparacaoTabs = ({
               <PedidoCard 
                 key={pedido.id}
                 pedido={converterPedidoParaCard(pedido)}
-                onMarcarSeparado={confirmarSeparacao}
-                onEditarAgendamento={handleEditarAgendamento}
+                onMarcarSeparado={() => confirmarSeparacao(pedido.id)}
+                onEditarAgendamento={() => handleEditarAgendamento(pedido.id)}
               />
             ))}
           </div>
@@ -71,8 +71,8 @@ export const SeparacaoTabs = ({
               <PedidoCard 
                 key={pedido.id}
                 pedido={converterPedidoParaCard(pedido)}
-                onMarcarSeparado={confirmarSeparacao}
-                onEditarAgendamento={handleEditarAgendamento}
+                onMarcarSeparado={() => confirmarSeparacao(pedido.id)}
+                onEditarAgendamento={() => handleEditarAgendamento(pedido.id)}
               />
             ))}
           </div>
@@ -90,8 +90,8 @@ export const SeparacaoTabs = ({
               <PedidoCard 
                 key={pedido.id}
                 pedido={converterPedidoParaCard(pedido)}
-                onMarcarSeparado={confirmarSeparacao}
-                onEditarAgendamento={handleEditarAgendamento}
+                onMarcarSeparado={() => confirmarSeparacao(pedido.id)}
+                onEditarAgendamento={() => handleEditarAgendamento(pedido.id)}
               />
             ))}
           </div>
@@ -109,9 +109,8 @@ export const SeparacaoTabs = ({
               <PedidoCard 
                 key={pedido.id}
                 pedido={converterPedidoParaCard(pedido)}
-                onMarcarSeparado={confirmarSeparacao}
-                onEditarAgendamento={handleEditarAgendamento}
-                showAntecipada={true}
+                onMarcarSeparado={() => confirmarSeparacao(pedido.id)}
+                onEditarAgendamento={() => handleEditarAgendamento(pedido.id)}
               />
             ))}
           </div>
