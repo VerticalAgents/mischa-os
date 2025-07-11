@@ -32,6 +32,7 @@ interface PedidoCardProps {
   onMarcarSeparado?: () => void;
   onEditarAgendamento?: () => void;
   showDespachoActions?: boolean;
+  showReagendarButton?: boolean;
   onConfirmarDespacho?: () => void;
   onConfirmarEntrega?: (observacao?: string) => void;
   onConfirmarRetorno?: (observacao?: string) => void;
@@ -43,6 +44,7 @@ export default function PedidoCard({
   onMarcarSeparado,
   onEditarAgendamento,
   showDespachoActions = false,
+  showReagendarButton = false,
   onConfirmarDespacho,
   onConfirmarEntrega,
   onConfirmarRetorno,
@@ -251,6 +253,19 @@ export default function PedidoCard({
                       </DialogContent>
                     </Dialog>
                   </>
+                )}
+
+                {/* Botão de reagendar para pedidos atrasados */}
+                {showReagendarButton && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={onEditarAgendamento}
+                    className="flex items-center gap-1"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Reagendar
+                  </Button>
                 )}
 
                 <Button

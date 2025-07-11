@@ -35,7 +35,7 @@ export default function Expedicao() {
                 🟢 Entregas de Hoje
               </TabsTrigger>
               <TabsTrigger value="atrasadas" className="data-[state=active]:bg-yellow-500/10 data-[state=active]:text-yellow-700">
-                🟡 Entregas Atrasadas (Ontem)
+                🟡 Entregas Atrasadas
               </TabsTrigger>
             </TabsList>
 

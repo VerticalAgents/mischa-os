@@ -5,8 +5,10 @@ import { Card } from "@/components/ui/card";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
 import { usePedidoConverter } from "./hooks/usePedidoConverter";
+import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
 import { DebugInfo } from "./components/DebugInfo";
 import PedidoCard from "./PedidoCard";
+import EditarAgendamentoDialog from "../agendamento/EditarAgendamentoDialog";
 import { toast } from "sonner";
 import { Truck, Package, ArrowLeft } from "lucide-react";
 
@@ -31,6 +33,13 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   } = useExpedicaoStore();
 
   const { converterPedidoParaCard } = usePedidoConverter();
+  const {
+    modalEditarAberto,
+    setModalEditarAberto,
+    agendamentoParaEditar,
+    handleEditarAgendamento,
+    handleSalvarAgendamento
+  } = useAgendamentoActions();
 
   // Usar hook de sincronização
   useExpedicaoSync();
@@ -142,8 +151,9 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 key={pedido.id}
                 pedido={converterPedidoParaCard(pedido)}
                 onMarcarSeparado={() => {}} // Não usado no despacho
-                onEditarAgendamento={() => {}} // Não usado no despacho
+                onEditarAgendamento={() => handleEditarAgendamento(String(pedido.id))} // Agora funciona no despacho também
                 showDespachoActions={true}
+                showReagendarButton={tipoFiltro === "atrasadas" && pedido.substatus_pedido === 'Agendado'}
                 onConfirmarDespacho={() => confirmarDespacho(String(pedido.id))}
                 onConfirmarEntrega={(observacao) => confirmarEntrega(String(pedido.id), observacao)}
                 onConfirmarRetorno={(observacao) => confirmarRetorno(String(pedido.id), observacao)}
@@ -160,6 +170,16 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
           </div>
         )}
       </Card>
+
+      {/* Modal de edição de agendamento */}
+      {agendamentoParaEditar && (
+        <EditarAgendamentoDialog
+          agendamento={agendamentoParaEditar}
+          open={modalEditarAberto}
+          onOpenChange={setModalEditarAberto}
+          onSalvar={handleSalvarAgendamento}
+        />
+      )}
     </div>
   );
 };
