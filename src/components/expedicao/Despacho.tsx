@@ -8,7 +8,7 @@ import { usePedidoConverter } from "./hooks/usePedidoConverter";
 import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
 import { DebugInfo } from "./components/DebugInfo";
 import PedidoCard from "./PedidoCard";
-import EditarAgendamentoDialog from "../agendamento/EditarAgendamentoDialog";
+import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
 import { toast } from "sonner";
 import { Truck, Package, ArrowLeft } from "lucide-react";
 
@@ -171,9 +171,9 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
         )}
       </Card>
 
-      {/* Modal de edição de agendamento */}
+      {/* Modal de edição de agendamento completo */}
       {agendamentoParaEditar && (
-        <EditarAgendamentoDialog
+        <AgendamentoEditModal
           agendamento={agendamentoParaEditar}
           open={modalEditarAberto}
           onOpenChange={setModalEditarAberto}

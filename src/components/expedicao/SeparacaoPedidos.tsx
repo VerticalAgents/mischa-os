@@ -9,7 +9,7 @@ import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
 import { PrintingActions } from "./components/PrintingActions";
 import { SeparacaoTabs } from "./components/SeparacaoTabs";
 import { DebugInfo } from "./components/DebugInfo";
-import EditarAgendamentoDialog from "../agendamento/EditarAgendamentoDialog";
+import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
 import { toast } from "sonner";
 import { Check, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
@@ -174,9 +174,9 @@ export const SeparacaoPedidos = () => {
         />
       </Card>
 
-      {/* Modal de edição de agendamento */}
+      {/* Modal de edição de agendamento completo */}
       {agendamentoParaEditar && (
-        <EditarAgendamentoDialog
+        <AgendamentoEditModal
           agendamento={agendamentoParaEditar}
           open={modalEditarAberto}
           onOpenChange={setModalEditarAberto}
