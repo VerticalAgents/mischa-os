@@ -63,7 +63,7 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
   const salvarEdicao = async () => {
     if (!editingItem) return;
 
-    const novoGiro = parseInt(editValue);
+    const novoGiro = parseFloat(editValue);
     if (isNaN(novoGiro) || novoGiro < 0) {
       toast({
         title: "Valor inválido",
@@ -197,7 +197,7 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
                 Análise detalhada com preços personalizados por cliente e categoria
                 <br />
                 <span className="text-xs text-blue-600 font-medium">
-                  ✏️ Giro semanal editável para todas as categorias - clique no ícone de edição
+                  ✏️ Giro semanal editável para todas as categorias - clique no ícone de edição (aceita valores decimais como 0.5)
                 </span>
               </CardDescription>
             </div>
@@ -254,6 +254,7 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
                                   onChange={(e) => setEditValue(e.target.value)}
                                   className="w-20 h-8 text-xs text-right"
                                   min="0"
+                                  step="0.1"
                                 />
                                 <Button
                                   size="sm"
@@ -274,7 +275,9 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
                               </div>
                             ) : (
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-mono">{item.giroSemanal}</span>
+                                <span className="text-sm font-mono">
+                                  {item.giroSemanal % 1 === 0 ? item.giroSemanal : item.giroSemanal.toFixed(1)}
+                                </span>
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -326,7 +329,7 @@ export default function AnaliseGiroPDV({ clientes, baseDRE }: AnaliseGiroPDVProp
                 <span><strong>Total de registros:</strong> {precosDetalhados.length}</span>
                 <span><strong>Clientes únicos:</strong> {stats.totalClientes}</span>
                 <span><strong>Preços personalizados:</strong> {stats.precosPersonalizados}</span>
-                <span><strong>Giro semanal total:</strong> {stats.totalGiroSemanal} unidades</span>
+                <span><strong>Giro semanal total:</strong> {stats.totalGiroSemanal.toFixed(1)} unidades</span>
               </div>
             </div>
           )}
