@@ -4,6 +4,7 @@ import { useClienteStore } from '@/hooks/useClienteStore';
 import { useSupabaseCategoriasProduto } from '@/hooks/useSupabaseCategoriasProduto';
 import { useConfiguracoesStore } from '@/hooks/useConfiguracoesStore';
 import { useSupabasePrecosCategoriaCliente } from '@/hooks/useSupabasePrecosCategoriaCliente';
+import { useSupabaseGirosSemanaPersonalizados } from '@/hooks/useSupabaseGirosSemanaPersonalizados';
 
 // Preços temporários por categoria (fallback quando não há configuração)
 const PRECOS_TEMPORARIOS: Record<string, number> = {
@@ -32,6 +33,7 @@ export function useFaturamentoPrevisto() {
   const { categorias } = useSupabaseCategoriasProduto();
   const { obterConfiguracao } = useConfiguracoesStore();
   const { carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
+  const { obterGiroPersonalizado } = useSupabaseGirosSemanaPersonalizados();
 
   const obterPrecoCategoria = (nomeCategoria: string): number => {
     const nomeNormalizado = nomeCategoria.toLowerCase();
@@ -46,6 +48,34 @@ export function useFaturamentoPrevisto() {
   const calcularGiroSemanal = (qtdPadrao: number, periodicidade: number): number => {
     if (periodicidade === 0) return 0;
     return Math.round((qtdPadrao / periodicidade) * 7);
+  };
+
+  const obterGiroSemanalPorCategoria = (clienteId: string, categoriaId: number, categoriaNome: string, giroSemanalPadrao: number): number => {
+    // 1. Primeiro, verificar se há giro personalizado salvo
+    const giroPersonalizado = obterGiroPersonalizado(clienteId, categoriaId);
+    if (giroPersonalizado !== null) {
+      console.log(`🎯 Usando giro personalizado para cliente ${clienteId}, categoria ${categoriaId}: ${giroPersonalizado}`);
+      return giroPersonalizado;
+    }
+
+    // 2. Se não há giro personalizado, aplicar regras por categoria
+    const nomeCategoria = categoriaNome.toLowerCase();
+    
+    if (nomeCategoria.includes('food service') || nomeCategoria.includes('foodservice')) {
+      // Para Food Service, usar um percentual menor do giro padrão
+      const giroFoodService = Math.round(giroSemanalPadrao * 0.4); // 40% do giro padrão
+      console.log(`🍽️ Giro Food Service calculado: ${giroFoodService} (40% de ${giroSemanalPadrao})`);
+      return giroFoodService;
+    } else if (nomeCategoria.includes('revenda') || nomeCategoria.includes('padrão')) {
+      // Para Revenda Padrão, usar o giro padrão completo
+      console.log(`🏪 Giro Revenda Padrão: ${giroSemanalPadrao}`);
+      return giroSemanalPadrao;
+    } else {
+      // Para outras categorias, usar um percentual do giro padrão
+      const giroOutras = Math.round(giroSemanalPadrao * 0.6); // 60% do giro padrão
+      console.log(`📦 Giro outras categorias: ${giroOutras} (60% de ${giroSemanalPadrao})`);
+      return giroOutras;
+    }
   };
 
   const obterPrecoPorCliente = async (clienteId: string, categoriaId: number, categoriaNome: string): Promise<{ preco: number; personalizado: boolean }> => {
@@ -118,12 +148,21 @@ export function useFaturamentoPrevisto() {
           continue;
         }
 
+        // Calcular giro semanal padrão do cliente
+        const giroSemanalPadrao = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
+
         // Processar cada categoria habilitada do cliente
         for (const categoriaId of cliente.categoriasHabilitadas) {
           const categoria = categorias.find(cat => cat.id === categoriaId);
           if (!categoria) continue;
 
-          const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
+          // Obter giro semanal específico para esta categoria
+          const giroSemanal = obterGiroSemanalPorCategoria(
+            cliente.id, 
+            categoriaId, 
+            categoria.nome, 
+            giroSemanalPadrao
+          );
           
           // Obter preço específico para este cliente e categoria
           const { preco: precoAplicado, personalizado } = await obterPrecoPorCliente(
@@ -147,6 +186,8 @@ export function useFaturamentoPrevisto() {
             giroSemanal,
             faturamentoSemanal
           });
+
+          console.log(`📊 Cliente: ${cliente.nome} | Categoria: ${categoria.nome} | Giro: ${giroSemanal} | Preço: ${precoAplicado} | Faturamento: ${faturamentoSemanal}`);
         }
       }
 
@@ -157,7 +198,7 @@ export function useFaturamentoPrevisto() {
       setPrecosDetalhados(detalhes);
       setDisponivel(totalFaturamentoSemanal > 0);
       
-      console.log('💰 Faturamento calculado com preços personalizados:', {
+      console.log('💰 Faturamento calculado com giros específicos por categoria:', {
         totalSemanal: totalFaturamentoSemanal,
         totalMensal: totalFaturamentoMensal,
         detalhes: detalhes.length
