@@ -293,17 +293,21 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           console.log('🚚 Processando entrega com preservação de dados:', {
             pedidoId,
             tipoPedido: pedido.tipo_pedido,
-            itensPersonalizados: !!pedido.itens_personalizados
+            itensPersonalizados: !!pedido.itens_personalizados,
+            dataPrevistaEntrega: pedido.data_prevista_entrega
           });
 
           // CRÍTICO: Gravar no histórico ANTES de alterar o agendamento
           const historicoStore = useHistoricoEntregasStore.getState();
           
-          console.log('📝 Criando NOVO registro de entrega no histórico...');
+          // CORREÇÃO: Usar a data prevista de entrega do pedido como data da entrega
+          const dataEntrega = pedido.data_prevista_entrega;
+          
+          console.log('📝 Criando NOVO registro de entrega no histórico com data prevista:', dataEntrega);
           await historicoStore.adicionarRegistro({
             cliente_id: pedido.cliente_id,
             cliente_nome: pedido.cliente_nome,
-            data: new Date(), // Data/hora atual da confirmação
+            data: dataEntrega, // Usar data prevista do pedido, não data atual
             tipo: 'entrega',
             quantidade: pedido.quantidade_total,
             itens: pedido.itens_personalizados || [],
@@ -323,7 +327,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .eq('id', pedido.cliente_id)
             .single();
 
-          const proximaData = addDays(pedido.data_prevista_entrega, cliente?.periodicidade_padrao || 7);
+          // CORREÇÃO: Calcular próxima data baseada na data prevista original, não na data atual
+          const proximaData = addDays(dataEntrega, cliente?.periodicidade_padrao || 7);
           const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
           // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido e itens personalizados
@@ -352,8 +357,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .update(dadosAtualizacao)
             .eq('id', pedidoId);
 
-          console.log('✅ Entrega confirmada - NOVO registro criado no histórico');
-          toast.success(`Entrega confirmada para ${pedido.cliente_nome}. Reagendado como Previsto preservando configurações.`);
+          console.log('✅ Entrega confirmada - NOVO registro criado no histórico com data prevista');
+          toast.success(`Entrega confirmada para ${pedido.cliente_nome} na data ${format(dataEntrega, 'dd/MM/yyyy')}. Reagendado como Previsto preservando configurações.`);
         } catch (error) {
           console.error('❌ Erro ao confirmar entrega:', error);
           toast.error("Erro ao confirmar entrega");
@@ -374,17 +379,21 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           console.log('🔄 Processando retorno com preservação de dados:', {
             pedidoId,
             tipoPedido: pedido.tipo_pedido,
-            itensPersonalizados: !!pedido.itens_personalizados
+            itensPersonalizados: !!pedido.itens_personalizados,
+            dataPrevistaEntrega: pedido.data_prevista_entrega
           });
 
           // CRÍTICO: Gravar no histórico ANTES de alterar o agendamento
           const historicoStore = useHistoricoEntregasStore.getState();
           
-          console.log('📝 Criando NOVO registro de retorno no histórico...');
+          // CORREÇÃO: Usar a data prevista de entrega do pedido como data do retorno
+          const dataRetorno = pedido.data_prevista_entrega;
+          
+          console.log('📝 Criando NOVO registro de retorno no histórico com data prevista:', dataRetorno);
           await historicoStore.adicionarRegistro({
             cliente_id: pedido.cliente_id,
             cliente_nome: pedido.cliente_nome,
-            data: new Date(), // Data/hora atual da confirmação
+            data: dataRetorno, // Usar data prevista do pedido, não data atual
             tipo: 'retorno',
             quantidade: pedido.quantidade_total,
             itens: pedido.itens_personalizados || [],
@@ -397,8 +406,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             pedidos: state.pedidos.filter(p => p.id !== pedidoId)
           }));
 
-          // Reagendar para próximo dia útil
-          const proximaData = getProximoDiaUtil(pedido.data_prevista_entrega);
+          // Reagendar para próximo dia útil baseado na data prevista original
+          const proximaData = getProximoDiaUtil(dataRetorno);
           const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
           // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido e itens personalizados
@@ -427,8 +436,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .update(dadosAtualizacao)
             .eq('id', pedidoId);
 
-          console.log('✅ Retorno confirmado - NOVO registro criado no histórico');
-          toast.success(`Retorno registrado para ${pedido.cliente_nome}. Reagendado como Previsto preservando configurações.`);
+          console.log('✅ Retorno confirmado - NOVO registro criado no histórico com data prevista');
+          toast.success(`Retorno registrado para ${pedido.cliente_nome} na data ${format(dataRetorno, 'dd/MM/yyyy')}. Reagendado como Previsto preservando configurações.`);
         } catch (error) {
           console.error('❌ Erro ao confirmar retorno:', error);
           toast.error("Erro ao confirmar retorno");
@@ -540,11 +549,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           for (const pedido of pedidosParaEntregar) {
             console.log(`📝 Criando registro de entrega para ${pedido.cliente_nome}...`);
             
+            // CORREÇÃO: Usar a data prevista de entrega do pedido
+            const dataEntrega = pedido.data_prevista_entrega;
+            
             // Gravar no histórico - NOVO registro para cada pedido
             await historicoStore.adicionarRegistro({
               cliente_id: pedido.cliente_id,
               cliente_nome: pedido.cliente_nome,
-              data: new Date(), // Data/hora atual da confirmação em massa
+              data: dataEntrega, // Usar data prevista do pedido, não data atual
               tipo: 'entrega',
               quantidade: pedido.quantidade_total,
               itens: pedido.itens_personalizados || [],
@@ -557,7 +569,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               .eq('id', pedido.cliente_id)
               .single();
 
-            const proximaData = addDays(pedido.data_prevista_entrega, cliente?.periodicidade_padrao || 7);
+            // CORREÇÃO: Calcular próxima data baseada na data prevista original
+            const proximaData = addDays(dataEntrega, cliente?.periodicidade_padrao || 7);
             const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
             // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido
@@ -583,8 +596,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               .eq('id', pedido.id);
           }
 
-          console.log(`✅ ${pedidosParaEntregar.length} entregas confirmadas - NOVOS registros criados no histórico`);
-          toast.success(`${pedidosParaEntregar.length} entregas confirmadas e reagendadas como Previsto`);
+          console.log(`✅ ${pedidosParaEntregar.length} entregas confirmadas - NOVOS registros criados no histórico com datas previstas`);
+          toast.success(`${pedidosParaEntregar.length} entregas confirmadas nas respectivas datas previstas e reagendadas como Previsto`);
         } catch (error) {
           console.error('❌ Erro na entrega em massa:', error);
           toast.error("Erro na entrega em massa");
@@ -614,18 +627,22 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           for (const pedido of pedidosParaRetorno) {
             console.log(`📝 Criando registro de retorno para ${pedido.cliente_nome}...`);
             
+            // CORREÇÃO: Usar a data prevista de entrega do pedido
+            const dataRetorno = pedido.data_prevista_entrega;
+            
             // Gravar no histórico - NOVO registro para cada pedido
             await historicoStore.adicionarRegistro({
               cliente_id: pedido.cliente_id,
               cliente_nome: pedido.cliente_nome,
-              data: new Date(), // Data/hora atual da confirmação em massa
+              data: dataRetorno, // Usar data prevista do pedido, não data atual
               tipo: 'retorno',
               quantidade: pedido.quantidade_total,
               itens: pedido.itens_personalizados || [],
               status_anterior: pedido.substatus_pedido || 'Agendado'
             });
 
-            const proximaData = getProximoDiaUtil(pedido.data_prevista_entrega);
+            // Reagendar para próximo dia útil baseado na data prevista original
+            const proximaData = getProximoDiaUtil(dataRetorno);
             const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
             // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido
@@ -651,8 +668,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               .eq('id', pedido.id);
           }
 
-          console.log(`✅ ${pedidosParaRetorno.length} retornos confirmados - NOVOS registros criados no histórico`);
-          toast.success(`${pedidosParaRetorno.length} retornos registrados e reagendados como Previsto`);
+          console.log(`✅ ${pedidosParaRetorno.length} retornos confirmados - NOVOS registros criados no histórico com datas previstas`);
+          toast.success(`${pedidosParaRetorno.length} retornos registrados nas respectivas datas previstas e reagendados como Previsto`);
         } catch (error) {
           console.error('❌ Erro no retorno em massa:', error);
           toast.error("Erro no retorno em massa");
