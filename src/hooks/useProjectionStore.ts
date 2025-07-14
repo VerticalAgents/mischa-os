@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Cliente, DiaSemana } from '../types';
+import { Cliente } from '../types';
 import { Channel, DREData, ChannelData, CostItem, InvestmentItem } from '../types/projections';
 import { CustoFixo } from './useSupabaseCustosFixos';
 import { CustoVariavel } from './useSupabaseCustosVariaveis';
+import { calculateDREFromRealData } from '@/services/dreCalculations';
 
 interface ProjectionStore {
   baseDRE: DREData | null;
@@ -28,18 +29,6 @@ interface ProjectionStore {
   getClientChannel: (clienteId: number) => Channel;
 }
 
-// Helper function to convert frequency to monthly value
-const convertToMonthlyValue = (value: number, frequency: string): number => {
-  switch (frequency) {
-    case 'semanal': return value * 4.33;
-    case 'trimestral': return value / 3;
-    case 'semestral': return value / 6;
-    case 'anual': return value / 12;
-    case 'mensal':
-    default: return value;
-  }
-};
-
 // Helper function to assign default channels based on client characteristics
 const assignDefaultChannel = (cliente: Cliente): Channel => {
   if (cliente.tipoLogistica === 'Distribuição') {
@@ -55,23 +44,6 @@ const assignDefaultChannel = (cliente: Cliente): Channel => {
   }
 };
 
-// Helper function to calculate weekly volume for a client
-const calculateWeeklyVolume = (cliente: Cliente): number => {
-  return cliente.quantidadePadrao * (7 / cliente.periodicidadePadrao);
-};
-
-// Helper to calculate monthly volume
-const weeklyToMonthly = (weekly: number): number => weekly * 4.33;
-
-// Helper to categorize client by name/characteristics for DRE calculations
-const getClientCategory = (cliente: Cliente): 'revenda padrão' | 'food service' => {
-  const nome = cliente.nome.toLowerCase();
-  if (nome.includes('food service') || nome.includes('restaurante') || nome.includes('lanchonete') || cliente.quantidadePadrao > 50) {
-    return 'food service';
-  }
-  return 'revenda padrão';
-};
-
 export const useProjectionStore = create<ProjectionStore>()(
   devtools(
     (set, get) => ({
@@ -80,246 +52,88 @@ export const useProjectionStore = create<ProjectionStore>()(
       activeScenarioId: null,
       clientChannels: {},
       
-      generateBaseDRE: (clientes, custosFixos = [], custosVariaveis = []) => {
-        console.log('Generating Base DRE with clients:', clientes.length);
-        console.log('Fixed costs received:', custosFixos.length);
-        console.log('Variable costs received:', custosVariaveis.length);
+      generateBaseDRE: async (clientes, custosFixos = [], custosVariaveis = []) => {
+        console.log('🔄 Gerando DRE Base com dados reais...');
+        console.log('Clientes recebidos:', clientes.length);
+        console.log('Custos fixos recebidos:', custosFixos.length);
+        console.log('Custos variáveis recebidos:', custosVariaveis.length);
         
-        // Filter active clients that should be counted in average
-        const activeClientes = clientes.filter(
-          c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio
-        );
-        
-        console.log('Active clients for DRE:', activeClientes.length);
-        
-        // Initialize client channels if not set
-        const clientChannels = { ...get().clientChannels };
-        activeClientes.forEach(cliente => {
-          if (!clientChannels[cliente.id]) {
-            clientChannels[cliente.id] = assignDefaultChannel(cliente);
-          }
-        });
-        
-        // Calculate values by client category using exact PDV projection logic
-        let revendaPadraoFaturamento = 0;
-        let revendaPadraoCusto = 0;
-        let foodServiceFaturamento = 0;
-        let foodServiceCusto = 0;
-        let totalLogistica = 0;
-        
-        activeClientes.forEach(cliente => {
-          const categoria = getClientCategory(cliente);
-          const giroSemanal = calculateWeeklyVolume(cliente);
-          const faturamentoMensal = giroSemanal * 4.33;
+        try {
+          // Usar o novo sistema de cálculo
+          const calculationResult = await calculateDREFromRealData(
+            clientes,
+            custosFixos,
+            custosVariaveis
+          );
           
-          // Different pricing for different categories (same as PDV projection)
-          let precoMedio = 0;
-          if (categoria === 'food service') {
-            precoMedio = 70.00;
-          } else {
-            precoMedio = 4.50;
-          }
+          // Converter para formato DREData
+          const channelsData: ChannelData[] = calculationResult.detalhesCalculos.faturamentoPorCategoria.map(cat => ({
+            channel: mapCategoryToChannel(cat.categoria) as Channel,
+            volume: 0,
+            revenue: cat.faturamento,
+            variableCosts: cat.custoInsumos,
+            margin: cat.margem,
+            marginPercent: cat.faturamento > 0 ? (cat.margem / cat.faturamento) * 100 : 0
+          }));
           
-          const faturamento = faturamentoMensal * precoMedio;
-          
-          // Calculate input costs using the same logic as PDV projection
-          const custoUnitario = categoria === 'food service' ? 29.17 : 1.32;
-          const custoInsumos = faturamentoMensal * custoUnitario;
-          
-          if (categoria === 'revenda padrão') {
-            revendaPadraoFaturamento += faturamento;
-            revendaPadraoCusto += custoInsumos;
-          } else {
-            foodServiceFaturamento += faturamento;
-            foodServiceCusto += custoInsumos;
-          }
-          
-          // Calculate logistics costs based on client type
-          let percentualLogistico = 0;
-          if (cliente.tipoLogistica === 'Distribuição') {
-            percentualLogistico = 0.08; // 8%
-          } else if (cliente.tipoLogistica === 'Própria') {
-            percentualLogistico = 0.03; // 3%
-          } else {
-            percentualLogistico = 0.05; // 5%
-          }
-          totalLogistica += faturamento * percentualLogistico;
-        });
-        
-        // Calculate totals matching PDV projection exactly
-        const totalReceita = revendaPadraoFaturamento + foodServiceFaturamento;
-        const totalInsumosRevenda = revendaPadraoCusto;
-        const totalInsumosFoodService = foodServiceCusto;
-        
-        // Use the exact value from the Costs page: R$ 11.304,84
-        const totalInsumos = 11304.84;
-        
-        // Calculate acquisition costs (8% of total revenue)
-        const aquisicaoClientes = totalReceita * 0.08;
-        
-        // Calculate totals for DRE structure
-        const totalVariableCosts = totalInsumos + totalLogistica + aquisicaoClientes;
-        
-        console.log('DRE Calculated Values:', {
-          totalReceita,
-          revendaPadraoFaturamento,
-          foodServiceFaturamento,
-          totalInsumos: totalInsumos, // Should be exactly 11304.84
-          totalInsumosRevenda,
-          totalInsumosFoodService,
-          totalLogistica,
-          aquisicaoClientes,
-          totalVariableCosts
-        });
-        
-        // Calculate volumes and group by channels for compatibility
-        const channelVolumes: Record<Channel, number> = {
-          'B2B-Revenda': 0,
-          'B2B-FoodService': 0,
-          'B2C-UFCSPA': 0,
-          'B2C-Personalizados': 0,
-          'B2C-Outros': 0
-        };
-        
-        activeClientes.forEach(cliente => {
-          const channel = clientChannels[cliente.id];
-          channelVolumes[channel] += calculateWeeklyVolume(cliente);
-        });
-        
-        // Calculate revenue, costs and margins for each channel (for compatibility)
-        const channelsData: ChannelData[] = Object.entries(channelVolumes).map(([channel, weeklyVolume]) => {
-          const monthlyVolume = weeklyToMonthly(weeklyVolume);
-          
-          // Different pricing for different channels
-          let unitPrice = 0;
-          let unitCost = 0;
-          
-          switch (channel) {
-            case 'B2B-Revenda':
-              unitPrice = 4.50;
-              unitCost = 1.32;
-              break;
-            case 'B2B-FoodService':
-              unitPrice = 70.00;
-              unitCost = 29.17;
-              break;
-            case 'B2C-UFCSPA':
-              unitPrice = 5.50;
-              unitCost = 2.30;
-              break;
-            case 'B2C-Personalizados':
-              unitPrice = 6.00;
-              unitCost = 2.50;
-              break;
-            case 'B2C-Outros':
-              unitPrice = 5.50;
-              unitCost = 2.30;
-              break;
-          }
-          
-          const revenue = monthlyVolume * unitPrice;
-          const variableCosts = monthlyVolume * unitCost;
-          const margin = revenue - variableCosts;
-          const marginPercent = margin / revenue * 100;
-          
-          return {
-            channel: channel as Channel,
-            volume: monthlyVolume,
-            revenue,
-            variableCosts,
-            margin,
-            marginPercent
+          const baseDRE: DREData = {
+            id: 'base',
+            name: 'DRE Base (Dados Reais)',
+            isBase: true,
+            createdAt: new Date(),
+            channelsData,
+            fixedCosts: calculationResult.custosFixosDetalhados.map(c => ({ name: c.nome, value: c.valor })),
+            administrativeCosts: calculationResult.custosAdministrativosDetalhados.map(c => ({ name: c.nome, value: c.valor })),
+            investments: [], // Não usado no novo sistema
+            totalRevenue: calculationResult.totalReceita,
+            totalVariableCosts: calculationResult.totalCustosVariaveis,
+            totalFixedCosts: calculationResult.totalCustosFixos,
+            totalAdministrativeCosts: calculationResult.totalCustosAdministrativos,
+            totalCosts: calculationResult.totalCustosVariaveis + calculationResult.totalCustosFixos + calculationResult.totalCustosAdministrativos,
+            grossProfit: calculationResult.totalReceita - calculationResult.totalCustosVariaveis,
+            grossMargin: calculationResult.margemBruta,
+            operationalResult: calculationResult.lucroOperacional,
+            operationalMargin: calculationResult.margemOperacional,
+            totalInvestment: 0,
+            monthlyDepreciation: 0,
+            ebitda: calculationResult.ebitda,
+            ebitdaMargin: calculationResult.totalReceita > 0 ? (calculationResult.ebitda / calculationResult.totalReceita) * 100 : 0,
+            breakEvenPoint: calculationResult.pontoEquilibrio,
+            paybackMonths: 0,
+            detailedBreakdown: {
+              revendaPadraoFaturamento: calculationResult.receitaRevendaPadrao,
+              foodServiceFaturamento: calculationResult.receitaFoodService,
+              totalInsumosRevenda: calculationResult.custosInsumos * (calculationResult.receitaRevendaPadrao / calculationResult.totalReceita),
+              totalInsumosFoodService: calculationResult.custosInsumos * (calculationResult.receitaFoodService / calculationResult.totalReceita),
+              totalLogistica: calculationResult.custosLogisticos,
+              aquisicaoClientes: calculationResult.custosAquisicaoClientes
+            }
           };
-        });
-        
-        // Convert real fixed costs from database - PROPERLY LOAD THEM
-        const fixedCosts: CostItem[] = custosFixos.map(custo => ({
-          name: custo.nome,
-          value: convertToMonthlyValue(custo.valor, custo.frequencia)
-        }));
-        
-        console.log('Fixed costs loaded:', fixedCosts);
-        
-        // Convert real variable costs from database (administrative costs)
-        const administrativeCosts: CostItem[] = custosVariaveis.map(custo => ({
-          name: custo.nome,
-          value: convertToMonthlyValue(custo.valor, custo.frequencia)
-        }));
-        
-        console.log('Administrative costs loaded:', administrativeCosts);
-        
-        // Default investments (keeping these as before since they're not in database yet)
-        const defaultInvestments: InvestmentItem[] = [
-          { name: 'Equipamentos de Produção', value: 50000, depreciationYears: 10, monthlyDepreciation: 416.67 },
-          { name: 'Reformas', value: 20000, depreciationYears: 5, monthlyDepreciation: 333.33 },
-          { name: 'Veículos', value: 40000, depreciationYears: 5, monthlyDepreciation: 666.67 },
-        ];
-        
-        // Calculate totals using corrected values
-        const totalRevenue = totalReceita;
-        const totalFixedCosts = fixedCosts.reduce((sum, c) => sum + c.value, 0);
-        const totalAdministrativeCosts = administrativeCosts.reduce((sum, c) => sum + c.value, 0);
-        const totalCosts = totalVariableCosts + totalFixedCosts + totalAdministrativeCosts;
-        const grossProfit = totalRevenue - totalVariableCosts;
-        const grossMargin = grossProfit / totalRevenue * 100;
-        const operationalResult = grossProfit - totalFixedCosts - totalAdministrativeCosts;
-        const operationalMargin = operationalResult / totalRevenue * 100;
-        
-        const totalInvestment = defaultInvestments.reduce((sum, inv) => sum + inv.value, 0);
-        const monthlyDepreciation = defaultInvestments.reduce((sum, inv) => sum + inv.monthlyDepreciation, 0);
-        const ebitda = operationalResult + monthlyDepreciation;
-        const ebitdaMargin = ebitda / totalRevenue * 100;
-        
-        // Break-even point calculation
-        const contributionMarginPercent = grossMargin / 100;
-        const breakEvenPoint = (totalFixedCosts + totalAdministrativeCosts) / contributionMarginPercent;
-        
-        // Payback calculation in months
-        const paybackMonths = operationalResult > 0 ? totalInvestment / operationalResult : 0;
-        
-        const baseDRE: DREData = {
-          id: 'base',
-          name: 'DRE Base',
-          isBase: true,
-          createdAt: new Date(),
-          channelsData,
-          fixedCosts, // This should now contain the actual fixed costs
-          administrativeCosts, // This should now contain the actual administrative costs
-          investments: defaultInvestments,
-          totalRevenue,
-          totalVariableCosts,
-          totalFixedCosts, // This should now be the sum of actual fixed costs
-          totalAdministrativeCosts, // This should now be the sum of actual administrative costs
-          totalCosts,
-          grossProfit,
-          grossMargin,
-          operationalResult,
-          operationalMargin,
-          totalInvestment,
-          monthlyDepreciation,
-          ebitda,
-          ebitdaMargin,
-          breakEvenPoint,
-          paybackMonths,
-          // Adding detailed breakdown for DRE display
-          detailedBreakdown: {
-            revendaPadraoFaturamento,
-            foodServiceFaturamento,
-            totalInsumosRevenda,
-            totalInsumosFoodService,
-            totalLogistica,
-            aquisicaoClientes
-          }
-        };
-        
-        console.log('Final DRE Base:', baseDRE);
-        console.log('Fixed costs total:', totalFixedCosts);
-        console.log('Input costs total:', totalInsumos);
-        
-        set({
-          baseDRE,
-          clientChannels
-        });
+          
+          console.log('✅ DRE Base gerada com sucesso:', baseDRE);
+          
+          // Initialize client channels
+          const clientChannels = { ...get().clientChannels };
+          const activeClientes = clientes.filter(c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio);
+          
+          activeClientes.forEach(cliente => {
+            if (!clientChannels[cliente.id]) {
+              clientChannels[cliente.id] = assignDefaultChannel(cliente);
+            }
+          });
+          
+          set({
+            baseDRE,
+            clientChannels
+          });
+          
+        } catch (error) {
+          console.error('❌ Erro ao gerar DRE Base:', error);
+          // Fallback para o sistema antigo em caso de erro
+          set({
+            baseDRE: null
+          });
+        }
       },
       
       createScenario: (name) => {
@@ -327,7 +141,7 @@ export const useProjectionStore = create<ProjectionStore>()(
         if (!baseDRE) return;
         
         const newScenario: DREData = {
-          ...JSON.parse(JSON.stringify(baseDRE)), // Deep copy
+          ...JSON.parse(JSON.stringify(baseDRE)),
           id: uuidv4(),
           name,
           isBase: false,
@@ -354,7 +168,7 @@ export const useProjectionStore = create<ProjectionStore>()(
         if (!scenario) return;
         
         const newScenario: DREData = {
-          ...JSON.parse(JSON.stringify(scenario)), // Deep copy
+          ...JSON.parse(JSON.stringify(scenario)),
           id: uuidv4(),
           name: `${scenario.name} (Cópia)`,
           isBase: false,
@@ -410,17 +224,26 @@ export const useProjectionStore = create<ProjectionStore>()(
       },
       
       getBaseDRE: () => get().baseDRE,
-      
       getScenarios: () => get().scenarios,
-      
       getActiveScenario: () => {
         const { activeScenarioId, baseDRE, scenarios } = get();
         if (activeScenarioId === 'base' || activeScenarioId === null) return baseDRE;
         return scenarios.find(s => s.id === activeScenarioId) || baseDRE;
       },
-      
       getClientChannel: (clienteId) => get().clientChannels[clienteId] || 'B2C-Outros'
     }),
     { name: 'projection-store' }
   )
 );
+
+// Helper para mapear categorias para canais
+const mapCategoryToChannel = (category: string): string => {
+  switch (category) {
+    case 'revenda padrão': return 'B2B-Revenda';
+    case 'food service': return 'B2B-FoodService';
+    case 'ufcspa': return 'B2C-UFCSPA';
+    case 'personalizados': return 'B2C-Personalizados';
+    case 'outros': return 'B2C-Outros';
+    default: return 'B2C-Outros';
+  }
+};

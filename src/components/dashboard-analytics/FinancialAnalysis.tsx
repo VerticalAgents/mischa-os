@@ -1,11 +1,13 @@
 
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, TrendingUp, PieChart, BarChart3 } from "lucide-react";
+import { ArrowRight, TrendingUp, PieChart, BarChart3, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DREData } from "@/types/projections";
 import { DashboardData } from "@/types";
+import { useDREData } from "@/hooks/useDREData";
 import { 
   BarChart, 
   Bar, 
@@ -32,10 +34,17 @@ export default function FinancialAnalysis({
   const [channelRevenueData, setChannelRevenueData] = useState<any[]>([]);
   const [marginData, setMarginData] = useState<any[]>([]);
   
+  // Usar dados reais da DRE
+  const { dreData, dreCalculationResult, isLoading, error } = useDREData();
+  
+  // Usar dados reais se disponíveis, senão usar dados antigos
+  const currentDREData = dreData || baseDRE;
+  const currentCalculationResult = dreCalculationResult;
+  
   useEffect(() => {
-    if (baseDRE) {
-      // Transform channelsData for the bar chart
-      const revenueData = baseDRE.channelsData.map(channel => ({
+    if (currentDREData) {
+      // Transform channelsData for the bar chart usando dados reais
+      const revenueData = currentDREData.channelsData.map(channel => ({
         name: mapChannelName(channel.channel),
         revenue: Math.round(channel.revenue),
         margin: Math.round(channel.margin)
@@ -43,17 +52,17 @@ export default function FinancialAnalysis({
       
       setChannelRevenueData(revenueData);
       
-      // Create margin data for pie chart
+      // Create margin data for pie chart usando dados reais
       const pie = [
-        { name: 'Custos Variáveis', value: Math.round(baseDRE.totalVariableCosts) },
-        { name: 'Custos Fixos', value: Math.round(baseDRE.totalFixedCosts) },
-        { name: 'Custos Adm.', value: Math.round(baseDRE.totalAdministrativeCosts) },
-        { name: 'Resultado Op.', value: Math.round(baseDRE.operationalResult) }
+        { name: 'Custos Variáveis', value: Math.round(currentDREData.totalVariableCosts) },
+        { name: 'Custos Fixos', value: Math.round(currentDREData.totalFixedCosts) },
+        { name: 'Custos Adm.', value: Math.round(currentDREData.totalAdministrativeCosts) },
+        { name: 'Resultado Op.', value: Math.round(currentDREData.operationalResult) }
       ];
       
       setMarginData(pie);
     }
-  }, [baseDRE]);
+  }, [currentDREData]);
   
   // Helper function to map channel names to more readable versions
   const mapChannelName = (channel: string) => {
@@ -77,8 +86,40 @@ export default function FinancialAnalysis({
   const COLORS = ['#8b5cf6', '#f59e0b', '#10b981', '#3b82f6', '#ec4899'];
   const PIE_COLORS = ['#f87171', '#facc15', '#a3a3a3', '#4ade80'];
   
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Carregando dados financeiros reais...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Alert className="mb-6">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Erro ao carregar dados financeiros: {error}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  
   return (
     <div className="space-y-6">
+      {/* Indicador de dados reais */}
+      {dreData && (
+        <Alert>
+          <TrendingUp className="h-4 w-4" />
+          <AlertDescription>
+            ✅ Dados atualizados com base nas projeções reais dos clientes e custos do sistema
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -87,7 +128,10 @@ export default function FinancialAnalysis({
                 <BarChart3 className="h-5 w-5 text-muted-foreground" />
                 Receita por Canal
               </CardTitle>
-              <CardDescription>Distribuição de faturamento por segmento</CardDescription>
+              <CardDescription>
+                Distribuição de faturamento por segmento
+                {dreData && <span className="text-green-600 font-medium"> (Dados Reais)</span>}
+              </CardDescription>
             </div>
             <Button variant="ghost" asChild className="text-xs">
               <Link to="/projecoes" className="flex items-center">
@@ -110,7 +154,7 @@ export default function FinancialAnalysis({
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full">
-                <p className="text-muted-foreground">Carregando dados...</p>
+                <p className="text-muted-foreground">Nenhum dado disponível</p>
               </div>
             )}
           </CardContent>
@@ -123,7 +167,10 @@ export default function FinancialAnalysis({
                 <PieChart className="h-5 w-5 text-muted-foreground" />
                 Composição do Resultado
               </CardTitle>
-              <CardDescription>Distribuição entre custos e margem operacional</CardDescription>
+              <CardDescription>
+                Distribuição entre custos e margem operacional
+                {dreData && <span className="text-green-600 font-medium"> (Dados Reais)</span>}
+              </CardDescription>
             </div>
             <Button variant="ghost" asChild className="text-xs">
               <Link to="/projecoes" className="flex items-center">
@@ -155,7 +202,7 @@ export default function FinancialAnalysis({
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full">
-                <p className="text-muted-foreground">Carregando dados...</p>
+                <p className="text-muted-foreground">Nenhum dado disponível</p>
               </div>
             )}
           </CardContent>
@@ -169,7 +216,10 @@ export default function FinancialAnalysis({
               <TrendingUp className="h-5 w-5 text-muted-foreground" />
               Indicadores Financeiros
             </CardTitle>
-            <CardDescription>Métricas e KPIs financeiros</CardDescription>
+            <CardDescription>
+              Métricas e KPIs financeiros
+              {dreData && <span className="text-green-600 font-medium"> (Dados Reais)</span>}
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -177,28 +227,53 @@ export default function FinancialAnalysis({
             <div className="rounded-lg border p-3">
               <div className="text-sm font-medium text-muted-foreground">Margem Bruta</div>
               <div className="mt-1 text-2xl font-bold">
-                {baseDRE ? `${baseDRE.grossMargin.toFixed(1)}%` : "-"}
+                {currentDREData ? `${currentDREData.grossMargin.toFixed(1)}%` : "-"}
               </div>
             </div>
             <div className="rounded-lg border p-3">
               <div className="text-sm font-medium text-muted-foreground">Margem Operacional</div>
               <div className="mt-1 text-2xl font-bold">
-                {baseDRE ? `${baseDRE.operationalMargin.toFixed(1)}%` : "-"}
+                {currentDREData ? `${currentDREData.operationalMargin.toFixed(1)}%` : "-"}
               </div>
             </div>
             <div className="rounded-lg border p-3">
               <div className="text-sm font-medium text-muted-foreground">EBITDA</div>
               <div className="mt-1 text-2xl font-bold">
-                {baseDRE ? formatCurrency(baseDRE.ebitda) : "-"}
+                {currentDREData ? formatCurrency(currentDREData.ebitda) : "-"}
               </div>
             </div>
             <div className="rounded-lg border p-3">
-              <div className="text-sm font-medium text-muted-foreground">Payback (meses)</div>
+              <div className="text-sm font-medium text-muted-foreground">Ponto de Equilíbrio</div>
               <div className="mt-1 text-2xl font-bold">
-                {baseDRE ? baseDRE.paybackMonths.toFixed(1) : "-"}
+                {currentDREData ? formatCurrency(currentDREData.breakEvenPoint) : "-"}
               </div>
             </div>
           </div>
+          
+          {/* Detalhes adicionais se temos dados reais */}
+          {currentCalculationResult && (
+            <div className="mt-4 p-4 bg-muted rounded-lg">
+              <h4 className="font-medium text-sm mb-2">Detalhes do Cálculo:</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                <div>
+                  <span className="text-muted-foreground">Clientes Ativos:</span>
+                  <span className="ml-2 font-medium">{currentCalculationResult.detalhesCalculos.clientesAtivos}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Com NF:</span>
+                  <span className="ml-2 font-medium">{currentCalculationResult.detalhesCalculos.clientesComNF}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">% Impostos:</span>
+                  <span className="ml-2 font-medium">{currentCalculationResult.detalhesCalculos.percentualImpostos.toFixed(1)}%</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Categorias:</span>
+                  <span className="ml-2 font-medium">{currentCalculationResult.detalhesCalculos.faturamentoPorCategoria.length}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
