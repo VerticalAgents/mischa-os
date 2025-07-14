@@ -55,7 +55,7 @@ export interface DRECalculationResult {
 // Helper para converter frequência para valor mensal
 const convertToMonthlyValue = (value: number, frequency: string): number => {
   switch (frequency) {
-    case 'semanal': return value * 4.33;
+    case 'semanal': return value * 4; // Alterado de 4.33 para 4
     case 'trimestral': return value / 3;
     case 'semestral': return value / 6;
     case 'anual': return value / 12;
@@ -110,7 +110,7 @@ export const calculateDREFromRealData = async (
   
   precosDetalhados.forEach(detalhe => {
     const categoria = getCategoryGroup(detalhe.categoriaNome);
-    const faturamentoCategoria = detalhe.faturamentoSemanal * 4.33; // Converter para mensal
+    const faturamentoCategoria = detalhe.faturamentoSemanal * 4; // Alterado de 4.33 para 4
     
     faturamentoPorCategoria.set(categoria, 
       (faturamentoPorCategoria.get(categoria) || 0) + faturamentoCategoria
@@ -153,7 +153,7 @@ export const calculateDREFromRealData = async (
   clientesAtivos.forEach(cliente => {
     const faturamentoCliente = precosDetalhados
       .filter(p => p.clienteId === cliente.id)
-      .reduce((sum, p) => sum + (p.faturamentoSemanal * 4.33), 0);
+      .reduce((sum, p) => sum + (p.faturamentoSemanal * 4), 0); // Alterado de 4.33 para 4
     
     let percentualLogistico = 0;
     if (cliente.tipoLogistica === 'Distribuição') {

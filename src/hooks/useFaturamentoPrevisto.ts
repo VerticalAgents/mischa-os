@@ -170,6 +170,7 @@ export function useFaturamentoPrevisto() {
         }
       }
 
+      // Alterar multiplicador de 4.33 para 4 semanas
       const totalFaturamentoMensal = totalFaturamentoSemanal * 4;
 
       setFaturamentoSemanal(totalFaturamentoSemanal);
