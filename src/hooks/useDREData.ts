@@ -24,15 +24,23 @@ export const useDREData = (): DREDataHook => {
   const { clientes } = useClienteStore();
   const { custosFixos } = useSupabaseCustosFixos();
   const { custosVariaveis } = useSupabaseCustosVariaveis();
-  const { faturamentoMensal, precosDetalhados } = useFaturamentoPrevisto();
+  const { faturamentoMensal, precosDetalhados, disponivel } = useFaturamentoPrevisto();
 
   const calculateDRE = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log('🔄 Calculando DRE com dados reais...');
-      console.log('Clientes ativos:', clientes.filter(c => c.statusCliente === 'Ativo').length);
+      // Aguardar até que os dados de faturamento estejam disponíveis
+      if (!disponivel || !precosDetalhados || precosDetalhados.length === 0) {
+        console.log('⏳ Aguardando dados de faturamento...');
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log('🔄 Calculando DRE com dados da página de projeções...');
+      console.log('Faturamento mensal:', faturamentoMensal);
+      console.log('Detalhes de preços:', precosDetalhados.length);
       console.log('Custos fixos:', custosFixos.length);
       console.log('Custos variáveis:', custosVariaveis.length);
       
@@ -43,12 +51,12 @@ export const useDREData = (): DREDataHook => {
         { faturamentoMensal, precosDetalhados }
       );
       
-      console.log('✅ DRE calculada:', calculationResult);
+      console.log('✅ DRE calculada com sucesso:', calculationResult);
       
       // Converter para formato DREData para compatibilidade
       const channelsData: ChannelData[] = calculationResult.detalhesCalculos.faturamentoPorCategoria.map(cat => ({
         channel: mapCategoryToChannel(cat.categoria),
-        volume: 0, // Não usado no novo sistema
+        volume: 0,
         revenue: cat.faturamento,
         variableCosts: cat.custoInsumos,
         margin: cat.margem,
@@ -63,7 +71,7 @@ export const useDREData = (): DREDataHook => {
         channelsData,
         fixedCosts: calculationResult.custosFixosDetalhados.map(c => ({ name: c.nome, value: c.valor })),
         administrativeCosts: calculationResult.custosAdministrativosDetalhados.map(c => ({ name: c.nome, value: c.valor })),
-        investments: [], // Não usado no novo sistema
+        investments: [],
         totalRevenue: calculationResult.totalReceita,
         totalVariableCosts: calculationResult.totalCustosVariaveis,
         totalFixedCosts: calculationResult.totalCustosFixos,
@@ -73,17 +81,17 @@ export const useDREData = (): DREDataHook => {
         grossMargin: calculationResult.margemBruta,
         operationalResult: calculationResult.lucroOperacional,
         operationalMargin: calculationResult.margemOperacional,
-        totalInvestment: 0, // Não usado no novo sistema
-        monthlyDepreciation: 0, // Não usado no novo sistema
+        totalInvestment: 0,
+        monthlyDepreciation: 0,
         ebitda: calculationResult.ebitda,
         ebitdaMargin: calculationResult.totalReceita > 0 ? (calculationResult.ebitda / calculationResult.totalReceita) * 100 : 0,
         breakEvenPoint: calculationResult.pontoEquilibrio,
-        paybackMonths: 0, // Não usado no novo sistema
+        paybackMonths: 0,
         detailedBreakdown: {
           revendaPadraoFaturamento: calculationResult.receitaRevendaPadrao,
           foodServiceFaturamento: calculationResult.receitaFoodService,
-          totalInsumosRevenda: calculationResult.custosInsumos * (calculationResult.receitaRevendaPadrao / calculationResult.totalReceita),
-          totalInsumosFoodService: calculationResult.custosInsumos * (calculationResult.receitaFoodService / calculationResult.totalReceita),
+          totalInsumosRevenda: calculationResult.custosInsumosRevendaPadrao,
+          totalInsumosFoodService: calculationResult.custosInsumosFoodService,
           totalLogistica: calculationResult.custosLogisticos,
           aquisicaoClientes: calculationResult.custosAquisicaoClientes
         }
@@ -105,10 +113,10 @@ export const useDREData = (): DREDataHook => {
   };
 
   useEffect(() => {
-    if (clientes.length > 0) {
+    if (clientes.length > 0 && disponivel) {
       calculateDRE();
     }
-  }, [clientes, custosFixos, custosVariaveis, faturamentoMensal]);
+  }, [clientes, custosFixos, custosVariaveis, faturamentoMensal, precosDetalhados, disponivel]);
 
   return {
     dreData,

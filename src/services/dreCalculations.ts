@@ -1,8 +1,8 @@
 
 import { Cliente } from '@/types';
-import { useFaturamentoPrevisto } from '@/hooks/useFaturamentoPrevisto';
 import { CustoFixo } from '@/hooks/useSupabaseCustosFixos';
 import { CustoVariavel } from '@/hooks/useSupabaseCustosVariaveis';
+import { useFaturamentoPrevisto } from '@/hooks/useFaturamentoPrevisto';
 
 export interface DRECalculationResult {
   // Receitas
@@ -16,6 +16,8 @@ export interface DRECalculationResult {
   // Custos Variáveis
   totalCustosVariaveis: number;
   custosInsumos: number;
+  custosInsumosRevendaPadrao: number;
+  custosInsumosFoodService: number;
   custosLogisticos: number;
   custosAquisicaoClientes: number;
   custosImpostos: number;
@@ -62,36 +64,30 @@ const convertToMonthlyValue = (value: number, frequency: string): number => {
   }
 };
 
-// Helper para categorizar cliente
-const getClientCategory = (cliente: Cliente): 'revenda padrão' | 'food service' | 'ufcspa' | 'personalizados' | 'outros' => {
-  const nome = cliente.nome.toLowerCase();
-  
-  if (nome.includes('ufcspa')) return 'ufcspa';
-  if (nome.includes('personalizado')) return 'personalizados';
-  if (nome.includes('food service') || nome.includes('restaurante') || cliente.quantidadePadrao > 50) {
-    return 'food service';
-  }
-  if (cliente.tipoLogistica === 'Distribuição') return 'revenda padrão';
-  
+// Mapeamento de categorias para grupos
+const getCategoryGroup = (categoryName: string): string => {
+  const name = categoryName.toLowerCase();
+  if (name.includes('revenda') || name.includes('padrão')) return 'revenda padrão';
+  if (name.includes('food service') || name.includes('foodservice')) return 'food service';
+  if (name.includes('ufcspa')) return 'ufcspa';
+  if (name.includes('personalizado')) return 'personalizados';
   return 'outros';
 };
 
-// Preços por categoria (baseado na lógica existente)
-const PRECOS_POR_CATEGORIA = {
-  'revenda padrão': 4.50,
-  'food service': 70.00,
-  'ufcspa': 5.50,
-  'personalizados': 6.00,
-  'outros': 5.50
-};
-
-// Custos unitários por categoria
-const CUSTOS_UNITARIOS_POR_CATEGORIA = {
-  'revenda padrão': 1.32,
-  'food service': 29.17,
-  'ufcspa': 2.30,
-  'personalizados': 2.50,
-  'outros': 2.30
+// Função para calcular custos de insumos baseado na lógica da página de projeções
+const calculateInsumoCosts = (faturamento: number, categoryName: string): number => {
+  const category = getCategoryGroup(categoryName);
+  
+  // Percentuais de custo de insumos por categoria (baseado na lógica da página)
+  const percentuais = {
+    'revenda padrão': 0.31, // 31%
+    'food service': 0.42, // 42%
+    'ufcspa': 0.42, // 42%
+    'personalizados': 0.42, // 42%
+    'outros': 0.42 // 42%
+  };
+  
+  return faturamento * (percentuais[category] || 0.42);
 };
 
 export const calculateDREFromRealData = async (
@@ -101,70 +97,64 @@ export const calculateDREFromRealData = async (
   faturamentoPrevisto?: { faturamentoMensal: number; precosDetalhados: any[] }
 ): Promise<DRECalculationResult> => {
   
+  // Usar dados do faturamento previsto se disponível
+  if (!faturamentoPrevisto || !faturamentoPrevisto.precosDetalhados) {
+    throw new Error('Dados de faturamento previsto não disponíveis');
+  }
+  
+  const { faturamentoMensal, precosDetalhados } = faturamentoPrevisto;
+  
+  // Calcular faturamento por categoria baseado nos dados reais
+  const faturamentoPorCategoria = new Map<string, number>();
+  const custosInsumosPorCategoria = new Map<string, number>();
+  
+  precosDetalhados.forEach(detalhe => {
+    const categoria = getCategoryGroup(detalhe.categoriaNome);
+    const faturamentoCategoria = detalhe.faturamentoSemanal * 4.33; // Converter para mensal
+    
+    faturamentoPorCategoria.set(categoria, 
+      (faturamentoPorCategoria.get(categoria) || 0) + faturamentoCategoria
+    );
+    
+    const custoInsumos = calculateInsumoCosts(faturamentoCategoria, detalhe.categoriaNome);
+    custosInsumosPorCategoria.set(categoria,
+      (custosInsumosPorCategoria.get(categoria) || 0) + custoInsumos
+    );
+  });
+  
+  // Receitas por categoria
+  const receitaRevendaPadrao = faturamentoPorCategoria.get('revenda padrão') || 0;
+  const receitaFoodService = faturamentoPorCategoria.get('food service') || 0;
+  const receitaUFCSPA = faturamentoPorCategoria.get('ufcspa') || 0;
+  const receitaPersonalizados = faturamentoPorCategoria.get('personalizados') || 0;
+  const receitaOutros = faturamentoPorCategoria.get('outros') || 0;
+  
+  // Custos de insumos por categoria
+  const custosInsumosRevendaPadrao = custosInsumosPorCategoria.get('revenda padrão') || 0;
+  const custosInsumosFoodService = custosInsumosPorCategoria.get('food service') || 0;
+  const custosInsumosUFCSPA = custosInsumosPorCategoria.get('ufcspa') || 0;
+  const custosInsumosPersonalizados = custosInsumosPorCategoria.get('personalizados') || 0;
+  const custosInsumosOutros = custosInsumosPorCategoria.get('outros') || 0;
+  
+  // Totais
+  const totalReceita = faturamentoMensal;
+  const custosInsumos = custosInsumosRevendaPadrao + custosInsumosFoodService + 
+                       custosInsumosUFCSPA + custosInsumosPersonalizados + custosInsumosOutros;
+  
   // Filtrar clientes ativos
   const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio);
   
-  // Calcular receitas por categoria
-  let receitaRevendaPadrao = 0;
-  let receitaFoodService = 0;
-  let receitaUFCSPA = 0;
-  let receitaPersonalizados = 0;
-  let receitaOutros = 0;
+  // Contar clientes com NF
+  const clientesComNF = clientesAtivos.filter(c => c.emiteNotaFiscal).length;
+  const percentualImpostos = clientesComNF / clientesAtivos.length;
   
-  // Calcular custos de insumos por categoria
-  let custosInsumosRevenda = 0;
-  let custosInsumosFoodService = 0;
-  let custosInsumosUFCSPA = 0;
-  let custosInsumosPersonalizados = 0;
-  let custosInsumosOutros = 0;
-  
-  let custosLogisticosTotal = 0;
-  let clientesComNF = 0;
-  
-  const faturamentoPorCategoria: Array<{
-    categoria: string;
-    faturamento: number;
-    custoInsumos: number;
-    margem: number;
-  }> = [];
-  
-  // Calcular para cada cliente
+  // Calcular custos logísticos baseado no tipo de logística
+  let custosLogisticos = 0;
   clientesAtivos.forEach(cliente => {
-    const categoria = getClientCategory(cliente);
-    const giroSemanal = cliente.quantidadePadrao * (7 / cliente.periodicidadePadrao);
-    const giroMensal = giroSemanal * 4.33;
+    const faturamentoCliente = precosDetalhados
+      .filter(p => p.clienteId === cliente.id)
+      .reduce((sum, p) => sum + (p.faturamentoSemanal * 4.33), 0);
     
-    const precoUnitario = PRECOS_POR_CATEGORIA[categoria];
-    const custoUnitario = CUSTOS_UNITARIOS_POR_CATEGORIA[categoria];
-    
-    const faturamento = giroMensal * precoUnitario;
-    const custoInsumos = giroMensal * custoUnitario;
-    
-    // Acumular receitas por categoria
-    switch (categoria) {
-      case 'revenda padrão':
-        receitaRevendaPadrao += faturamento;
-        custosInsumosRevenda += custoInsumos;
-        break;
-      case 'food service':
-        receitaFoodService += faturamento;
-        custosInsumosFoodService += custoInsumos;
-        break;
-      case 'ufcspa':
-        receitaUFCSPA += faturamento;
-        custosInsumosUFCSPA += custoInsumos;
-        break;
-      case 'personalizados':
-        receitaPersonalizados += faturamento;
-        custosInsumosPersonalizados += custoInsumos;
-        break;
-      case 'outros':
-        receitaOutros += faturamento;
-        custosInsumosOutros += custoInsumos;
-        break;
-    }
-    
-    // Calcular custos logísticos
     let percentualLogistico = 0;
     if (cliente.tipoLogistica === 'Distribuição') {
       percentualLogistico = 0.08; // 8%
@@ -174,49 +164,17 @@ export const calculateDREFromRealData = async (
       percentualLogistico = 0.05; // 5%
     }
     
-    custosLogisticosTotal += faturamento * percentualLogistico;
-    
-    // Contar clientes com NF
-    if (cliente.emiteNotaFiscal) {
-      clientesComNF++;
-    }
+    custosLogisticos += faturamentoCliente * percentualLogistico;
   });
-  
-  // Preparar dados por categoria para auditoria
-  const categorias = [
-    { nome: 'revenda padrão', faturamento: receitaRevendaPadrao, custoInsumos: custosInsumosRevenda },
-    { nome: 'food service', faturamento: receitaFoodService, custoInsumos: custosInsumosFoodService },
-    { nome: 'ufcspa', faturamento: receitaUFCSPA, custoInsumos: custosInsumosUFCSPA },
-    { nome: 'personalizados', faturamento: receitaPersonalizados, custoInsumos: custosInsumosPersonalizados },
-    { nome: 'outros', faturamento: receitaOutros, custoInsumos: custosInsumosOutros }
-  ];
-  
-  categorias.forEach(cat => {
-    if (cat.faturamento > 0) {
-      faturamentoPorCategoria.push({
-        categoria: cat.nome,
-        faturamento: cat.faturamento,
-        custoInsumos: cat.custoInsumos,
-        margem: cat.faturamento - cat.custoInsumos
-      });
-    }
-  });
-  
-  // Totais de receita
-  const totalReceita = receitaRevendaPadrao + receitaFoodService + receitaUFCSPA + receitaPersonalizados + receitaOutros;
-  
-  // Custos de insumos total
-  const custosInsumos = custosInsumosRevenda + custosInsumosFoodService + custosInsumosUFCSPA + custosInsumosPersonalizados + custosInsumosOutros;
   
   // Custos de aquisição (8% do faturamento)
   const custosAquisicaoClientes = totalReceita * 0.08;
   
-  // Custos de impostos (baseado na proporção de clientes com NF)
-  const percentualImpostos = clientesComNF / clientesAtivos.length;
-  const custosImpostos = totalReceita * percentualImpostos * 0.15; // 15% sobre faturamento com NF
+  // Custos de impostos (15% sobre faturamento com NF)
+  const custosImpostos = totalReceita * percentualImpostos * 0.15;
   
   // Total de custos variáveis
-  const totalCustosVariaveis = custosInsumos + custosLogisticosTotal + custosAquisicaoClientes + custosImpostos;
+  const totalCustosVariaveis = custosInsumos + custosLogisticos + custosAquisicaoClientes + custosImpostos;
   
   // Processar custos fixos
   const custosFixosDetalhados = custosFixos.map(custo => ({
@@ -245,6 +203,33 @@ export const calculateDREFromRealData = async (
   const margemContribuicao = totalReceita - totalCustosVariaveis;
   const pontoEquilibrio = margemContribuicao > 0 ? (totalCustosFixos + totalCustosAdministrativos) / (margemContribuicao / totalReceita) : 0;
   
+  // Preparar dados por categoria para auditoria
+  const categoriasDados = [
+    { nome: 'revenda padrão', faturamento: receitaRevendaPadrao, custoInsumos: custosInsumosRevendaPadrao },
+    { nome: 'food service', faturamento: receitaFoodService, custoInsumos: custosInsumosFoodService },
+    { nome: 'ufcspa', faturamento: receitaUFCSPA, custoInsumos: custosInsumosUFCSPA },
+    { nome: 'personalizados', faturamento: receitaPersonalizados, custoInsumos: custosInsumosPersonalizados },
+    { nome: 'outros', faturamento: receitaOutros, custoInsumos: custosInsumosOutros }
+  ];
+  
+  const faturamentoPorCategoriaArray = categoriasDados
+    .filter(cat => cat.faturamento > 0)
+    .map(cat => ({
+      categoria: cat.nome,
+      faturamento: cat.faturamento,
+      custoInsumos: cat.custoInsumos,
+      margem: cat.faturamento - cat.custoInsumos
+    }));
+  
+  console.log('📊 DRE Calculada com dados da página de projeções:', {
+    totalReceita,
+    custosInsumos,
+    receitaRevendaPadrao,
+    receitaFoodService,
+    custosInsumosRevendaPadrao,
+    custosInsumosFoodService
+  });
+  
   return {
     // Receitas
     totalReceita,
@@ -257,7 +242,9 @@ export const calculateDREFromRealData = async (
     // Custos Variáveis
     totalCustosVariaveis,
     custosInsumos,
-    custosLogisticos: custosLogisticosTotal,
+    custosInsumosRevendaPadrao,
+    custosInsumosFoodService,
+    custosLogisticos,
     custosAquisicaoClientes,
     custosImpostos,
     
@@ -282,7 +269,7 @@ export const calculateDREFromRealData = async (
       clientesComNF,
       clientesSemNF: clientesAtivos.length - clientesComNF,
       percentualImpostos: percentualImpostos * 100,
-      faturamentoPorCategoria
+      faturamentoPorCategoria: faturamentoPorCategoriaArray
     }
   };
 };
