@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import BreadcrumbNavigation from '@/components/common/Breadcrumb';
@@ -11,6 +10,7 @@ import { ScenarioTabs } from '@/components/projections/ScenarioTabs';
 import { ComparisonView } from '@/components/projections/ComparisonView';
 import { ProjectionsHeader } from '@/components/projections/ProjectionsHeader';
 import { DREAuditoria } from '@/components/projections/DREAuditoria';
+import { DREDebugTab } from '@/components/projections/DREDebugTab';
 
 export default function Projections() {
   const { clientes } = useClienteStore();
@@ -18,7 +18,7 @@ export default function Projections() {
   const { custosVariaveis } = useSupabaseCustosVariaveis();
   const { generateBaseDRE, baseDRE } = useProjectionStore();
   const { disponivel } = useFaturamentoPrevisto();
-  const [activeView, setActiveView] = useState<'scenarios' | 'comparison' | 'audit'>('scenarios');
+  const [activeView, setActiveView] = useState<'scenarios' | 'comparison' | 'audit' | 'debug'>('scenarios');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -71,6 +71,16 @@ export default function Projections() {
         >
           Auditoria DRE
         </button>
+        <button
+          onClick={() => setActiveView('debug')}
+          className={`px-4 py-2 rounded-lg ${
+            activeView === 'debug' 
+              ? 'bg-amber-600 text-white' 
+              : 'bg-amber-100 hover:bg-amber-200 text-amber-800'
+          }`}
+        >
+          🐛 Debug DRE
+        </button>
       </div>
       
       {isLoading ? (
@@ -85,6 +95,7 @@ export default function Projections() {
           {activeView === 'scenarios' && <ScenarioTabs />}
           {activeView === 'comparison' && <ComparisonView />}
           {activeView === 'audit' && <DREAuditoria />}
+          {activeView === 'debug' && <DREDebugTab />}
         </div>
       )}
     </div>
