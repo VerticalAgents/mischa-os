@@ -1,11 +1,9 @@
+
 import { useEffect, useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import BreadcrumbNavigation from '@/components/common/Breadcrumb';
-import { useClienteStore } from '@/hooks/useClienteStore';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
-import { useSupabaseCustosFixos } from '@/hooks/useSupabaseCustosFixos';
-import { useSupabaseCustosVariaveis } from '@/hooks/useSupabaseCustosVariaveis';
-import { useFaturamentoPrevisto } from '@/hooks/useFaturamentoPrevisto';
+import { useDREData } from '@/hooks/useDREData';
 import { ScenarioTabs } from '@/components/projections/ScenarioTabs';
 import { ComparisonView } from '@/components/projections/ComparisonView';
 import { ProjectionsHeader } from '@/components/projections/ProjectionsHeader';
@@ -13,23 +11,16 @@ import { DREAuditoria } from '@/components/projections/DREAuditoria';
 import { DREDebugTab } from '@/components/projections/DREDebugTab';
 
 export default function Projections() {
-  const { clientes } = useClienteStore();
-  const { custosFixos } = useSupabaseCustosFixos();
-  const { custosVariaveis } = useSupabaseCustosVariaveis();
-  const { generateBaseDRE, baseDRE } = useProjectionStore();
-  const { disponivel } = useFaturamentoPrevisto();
+  const { setBaseDRE } = useProjectionStore();
+  const { dreData, isLoading, error } = useDREData();
   const [activeView, setActiveView] = useState<'scenarios' | 'comparison' | 'audit' | 'debug'>('scenarios');
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (clientes.length > 0 && disponivel) {
-      // Generate base DRE with real costs data
-      if (!baseDRE) {
-        generateBaseDRE(clientes, custosFixos, custosVariaveis);
-      }
-      setIsLoading(false);
+    if (dreData) {
+      console.log('📊 Atualizando DRE Base com dados da auditoria:', dreData);
+      setBaseDRE(dreData);
     }
-  }, [clientes, custosFixos, custosVariaveis, generateBaseDRE, baseDRE, disponivel]);
+  }, [dreData, setBaseDRE]);
 
   return (
     <div className="container mx-auto py-6">
@@ -88,6 +79,12 @@ export default function Projections() {
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
             <p className="mt-4 text-muted-foreground">Carregando dados para projeções...</p>
+          </div>
+        </div>
+      ) : error ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <p className="text-red-500">Erro ao carregar dados: {error}</p>
           </div>
         </div>
       ) : (

@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -5,7 +6,6 @@ import { Cliente } from '../types';
 import { Channel, DREData, ChannelData, CostItem, InvestmentItem } from '../types/projections';
 import { CustoFixo } from './useSupabaseCustosFixos';
 import { CustoVariavel } from './useSupabaseCustosVariaveis';
-import { calculateDREFromRealData } from '@/services/dreCalculations';
 
 interface ProjectionStore {
   baseDRE: DREData | null;
@@ -14,7 +14,7 @@ interface ProjectionStore {
   clientChannels: Record<number, Channel>;
   
   // Actions
-  generateBaseDRE: (clientes: Cliente[], custosFixos?: CustoFixo[], custosVariaveis?: CustoVariavel[]) => void;
+  setBaseDRE: (dreData: DREData) => void;
   createScenario: (name: string) => void;
   duplicateScenario: (id: string) => void;
   updateScenario: (id: string, data: Partial<DREData>) => void;
@@ -49,91 +49,12 @@ export const useProjectionStore = create<ProjectionStore>()(
     (set, get) => ({
       baseDRE: null,
       scenarios: [],
-      activeScenarioId: null,
+      activeScenarioId: 'base',
       clientChannels: {},
       
-      generateBaseDRE: async (clientes, custosFixos = [], custosVariaveis = []) => {
-        console.log('🔄 Gerando DRE Base com dados reais...');
-        console.log('Clientes recebidos:', clientes.length);
-        console.log('Custos fixos recebidos:', custosFixos.length);
-        console.log('Custos variáveis recebidos:', custosVariaveis.length);
-        
-        try {
-          // Usar o novo sistema de cálculo
-          const calculationResult = await calculateDREFromRealData(
-            clientes,
-            custosFixos,
-            custosVariaveis
-          );
-          
-          // Converter para formato DREData
-          const channelsData: ChannelData[] = calculationResult.detalhesCalculos.faturamentoPorCategoria.map(cat => ({
-            channel: mapCategoryToChannel(cat.categoria) as Channel,
-            volume: 0,
-            revenue: cat.faturamento,
-            variableCosts: cat.custoInsumos,
-            margin: cat.margem,
-            marginPercent: cat.faturamento > 0 ? (cat.margem / cat.faturamento) * 100 : 0
-          }));
-          
-          const baseDRE: DREData = {
-            id: 'base',
-            name: 'DRE Base (Dados Reais)',
-            isBase: true,
-            createdAt: new Date(),
-            channelsData,
-            fixedCosts: calculationResult.custosFixosDetalhados.map(c => ({ name: c.nome, value: c.valor })),
-            administrativeCosts: calculationResult.custosAdministrativosDetalhados.map(c => ({ name: c.nome, value: c.valor })),
-            investments: [], // Não usado no novo sistema
-            totalRevenue: calculationResult.totalReceita,
-            totalVariableCosts: calculationResult.totalCustosVariaveis,
-            totalFixedCosts: calculationResult.totalCustosFixos,
-            totalAdministrativeCosts: calculationResult.totalCustosAdministrativos,
-            totalCosts: calculationResult.totalCustosVariaveis + calculationResult.totalCustosFixos + calculationResult.totalCustosAdministrativos,
-            grossProfit: calculationResult.totalReceita - calculationResult.totalCustosVariaveis,
-            grossMargin: calculationResult.margemBruta,
-            operationalResult: calculationResult.lucroOperacional,
-            operationalMargin: calculationResult.margemOperacional,
-            totalInvestment: 0,
-            monthlyDepreciation: 0,
-            ebitda: calculationResult.ebitda,
-            ebitdaMargin: calculationResult.totalReceita > 0 ? (calculationResult.ebitda / calculationResult.totalReceita) * 100 : 0,
-            breakEvenPoint: calculationResult.pontoEquilibrio,
-            paybackMonths: 0,
-            detailedBreakdown: {
-              revendaPadraoFaturamento: calculationResult.receitaRevendaPadrao,
-              foodServiceFaturamento: calculationResult.receitaFoodService,
-              totalInsumosRevenda: calculationResult.custosInsumos * (calculationResult.receitaRevendaPadrao / calculationResult.totalReceita),
-              totalInsumosFoodService: calculationResult.custosInsumos * (calculationResult.receitaFoodService / calculationResult.totalReceita),
-              totalLogistica: calculationResult.custosLogisticos,
-              aquisicaoClientes: calculationResult.custosAquisicaoClientes
-            }
-          };
-          
-          console.log('✅ DRE Base gerada com sucesso:', baseDRE);
-          
-          // Initialize client channels
-          const clientChannels = { ...get().clientChannels };
-          const activeClientes = clientes.filter(c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio);
-          
-          activeClientes.forEach(cliente => {
-            if (!clientChannels[cliente.id]) {
-              clientChannels[cliente.id] = assignDefaultChannel(cliente);
-            }
-          });
-          
-          set({
-            baseDRE,
-            clientChannels
-          });
-          
-        } catch (error) {
-          console.error('❌ Erro ao gerar DRE Base:', error);
-          // Fallback para o sistema antigo em caso de erro
-          set({
-            baseDRE: null
-          });
-        }
+      setBaseDRE: (dreData) => {
+        console.log('🔄 Definindo DRE Base no store:', dreData);
+        set({ baseDRE: dreData });
       },
       
       createScenario: (name) => {
@@ -235,15 +156,3 @@ export const useProjectionStore = create<ProjectionStore>()(
     { name: 'projection-store' }
   )
 );
-
-// Helper para mapear categorias para canais
-const mapCategoryToChannel = (category: string): string => {
-  switch (category) {
-    case 'revenda padrão': return 'B2B-Revenda';
-    case 'food service': return 'B2B-FoodService';
-    case 'ufcspa': return 'B2C-UFCSPA';
-    case 'personalizados': return 'B2C-Personalizados';
-    case 'outros': return 'B2C-Outros';
-    default: return 'B2C-Outros';
-  }
-};

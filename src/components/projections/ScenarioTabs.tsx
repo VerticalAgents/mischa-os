@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Plus, Copy, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { DREData } from '@/types/projections';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
 import { DRETableHierarchical } from './DRETableHierarchical';
 import { ScenarioForm } from './ScenarioForm';
@@ -40,10 +39,9 @@ export function ScenarioTabs() {
     }
   };
 
-  const allScenarios: DREData[] = [
-    ...(baseDRE ? [baseDRE] : []),
-    ...scenarios
-  ];
+  console.log('🔍 ScenarioTabs - baseDRE:', baseDRE);
+  console.log('🔍 ScenarioTabs - scenarios:', scenarios);
+  console.log('🔍 ScenarioTabs - activeScenarioId:', activeScenarioId);
 
   return (
     <>
@@ -88,7 +86,13 @@ export function ScenarioTabs() {
 
         <TabsContent value="base">
           <div className="space-y-6">
-            {baseDRE && <DRETableHierarchical dreData={baseDRE} />}
+            {baseDRE ? (
+              <DRETableHierarchical dreData={baseDRE} />
+            ) : (
+              <div className="flex justify-center items-center h-32">
+                <p className="text-muted-foreground">Carregando DRE Base...</p>
+              </div>
+            )}
           </div>
         </TabsContent>
         
