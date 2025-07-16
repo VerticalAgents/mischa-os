@@ -88,7 +88,10 @@ export default function Analytics() {
         );
       case 'giro-pdv':
         return (
-          <AnaliseGiroPDV />
+          <AnaliseGiroPDV 
+            clientes={clientes}
+            baseDRE={dreData}
+          />
         );
       default:
         return (
