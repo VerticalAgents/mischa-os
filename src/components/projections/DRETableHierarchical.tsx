@@ -45,39 +45,39 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
     }).format(value) + '%';
   };
 
-  // USAR OS VALORES EXATOS DA DRE BASE (que agora vêm da auditoria)
-  const receitaTotal = dreData.totalRevenue; // R$ 40.794,00
-  const revendaPadrao = dreData.detailedBreakdown?.revendaPadraoFaturamento || 30954.00;
-  const foodService = dreData.detailedBreakdown?.foodServiceFaturamento || 9840.00;
+  // USAR OS VALORES DINÂMICOS DA DRE (que agora vêm da projeção em tempo real)
+  const receitaTotal = dreData.totalRevenue;
+  const revendaPadrao = dreData.detailedBreakdown?.revendaPadraoFaturamento || 0;
+  const foodService = dreData.detailedBreakdown?.foodServiceFaturamento || 0;
   
-  const logistica = dreData.detailedBreakdown?.totalLogistica || 1567.76;
-  const totalInsumos = (dreData.detailedBreakdown?.totalInsumosRevenda || 0) + (dreData.detailedBreakdown?.totalInsumosFoodService || 0) || 13625.28;
+  const logistica = dreData.detailedBreakdown?.totalLogistica || 0;
+  const totalInsumos = (dreData.detailedBreakdown?.totalInsumosRevenda || 0) + (dreData.detailedBreakdown?.totalInsumosFoodService || 0);
   
-  // VALORES CORRIGIDOS DOS SUBITENS DE INSUMOS conforme "Projeção de Resultados por PDV"
-  const insumosRevendaPadrao = 9424.80; // R$ 9.424,80 (valor exato da página de projeções)
-  const insumosFoodService = 4200.48; // R$ 4.200,48 (valor exato da página de projeções)
+  // VALORES DINÂMICOS DOS SUBITENS DE INSUMOS (vindos da projeção real)
+  const insumosRevendaPadrao = dreData.detailedBreakdown?.totalInsumosRevenda || 0;
+  const insumosFoodService = dreData.detailedBreakdown?.totalInsumosFoodService || 0;
   
-  const aquisicaoClientes = dreData.detailedBreakdown?.aquisicaoClientes || 3263.52;
+  const aquisicaoClientes = dreData.detailedBreakdown?.aquisicaoClientes || 0;
   
-  const totalCustosVariaveis = dreData.totalVariableCosts; // R$ 18.456,56
-  const lucroBruto = dreData.grossProfit; // R$ 22.337,44
-  const custosFixos = dreData.totalFixedCosts; // R$ 13.204,28
-  const custoAdm = dreData.totalAdministrativeCosts; // R$ 0,00
-  const lucroOperacional = dreData.operationalResult; // R$ 9.133,16
+  const totalCustosVariaveis = dreData.totalVariableCosts;
+  const lucroBruto = dreData.grossProfit;
+  const custosFixos = dreData.totalFixedCosts;
+  const custoAdm = dreData.totalAdministrativeCosts;
+  const lucroOperacional = dreData.operationalResult;
   
   // Tax calculation (3.2% from receita total)
   const taxaImposto = 3.2; // 3.2%
-  const impostos = receitaTotal * (taxaImposto / 100); // R$ 1.305,41
-  const resultadoLiquido = lucroOperacional - impostos; // R$ 7.827,75
+  const impostos = receitaTotal * (taxaImposto / 100);
+  const resultadoLiquido = lucroOperacional - impostos;
 
-  console.log('DRE Values (synchronized with audit - INSUMOS CORRIGIDOS FINAIS):', {
+  console.log('DRE Values (DINÂMICOS - sincronizados com projeção em tempo real):', {
     receitaTotal,
     revendaPadrao,
     foodService,
     logistica,
     totalInsumos,
-    insumosRevendaPadrao, // CORRIGIDO FINAL: R$ 9.424,80
-    insumosFoodService, // CORRIGIDO FINAL: R$ 4.200,48
+    insumosRevendaPadrao, // DINÂMICO: valor real da projeção
+    insumosFoodService, // DINÂMICO: valor real da projeção
     aquisicaoClientes,
     totalCustosVariaveis,
     lucroBruto,
@@ -142,13 +142,13 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
           children: [{
             id: '2.2.1',
             categoria: '2.2.1. Revenda Padrão',
-            valor: insumosRevendaPadrao, // CORRIGIDO FINAL: R$ 9.424,80
+            valor: insumosRevendaPadrao, // DINÂMICO: valor real da projeção
             percentual: insumosRevendaPadrao / receitaTotal * 100,
             level: 2
           }, {
             id: '2.2.2',
             categoria: '2.2.2. Food Service',
-            valor: insumosFoodService, // CORRIGIDO FINAL: R$ 4.200,48
+            valor: insumosFoodService, // DINÂMICO: valor real da projeção
             percentual: insumosFoodService / receitaTotal * 100,
             level: 2
           }]
@@ -393,10 +393,10 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
       <div className="text-sm text-muted-foreground mt-4 print:hidden space-y-1">
         <p>📊 Os percentuais são calculados com base na Receita Operacional total</p>
         <p>💡 Clique nos ícones de seta para expandir/recolher categorias</p>
-        <p>🔍 Dados sincronizados com auditoria "Ver passo a passo"</p>
+        <p>🔍 Dados DINÂMICOS sincronizados com "Projeção de Resultados por PDV"</p>
         <p>✅ Receita: R$ {formatCurrency(receitaTotal).replace('R$ ', '')} | Custos Variáveis: R$ {formatCurrency(totalCustosVariaveis).replace('R$ ', '')} | Lucro Bruto: R$ {formatCurrency(lucroBruto).replace('R$ ', '')}</p>
         <p>💰 Impostos ({taxaImposto}%): R$ {formatCurrency(impostos).replace('R$ ', '')} | Resultado Líquido: R$ {formatCurrency(resultadoLiquido).replace('R$ ', '')}</p>
-        <p className="text-xs text-blue-600">📋 Insumos corrigidos: Revenda Padrão R$ {formatCurrency(insumosRevendaPadrao).replace('R$ ', '')} | Food Service R$ {formatCurrency(insumosFoodService).replace('R$ ', '')}</p>
+        <p className="text-xs text-green-600">🔄 Insumos DINÂMICOS: Revenda Padrão R$ {formatCurrency(insumosRevendaPadrao).replace('R$ ', '')} | Food Service R$ {formatCurrency(insumosFoodService).replace('R$ ', '')}</p>
       </div>
 
       <DRECalculationDetails 
