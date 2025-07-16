@@ -1,5 +1,3 @@
-
-
 import { Cliente } from './index';
 
 export type Channel = 'B2B-Revenda' | 'B2B-FoodService' | 'B2C-UFCSPA' | 'B2C-Personalizados' | 'B2C-Outros';
@@ -68,9 +66,8 @@ export interface DREData {
   // Included/excluded clients for scenarios
   includedClients?: number[];
   excludedClients?: number[];
-  // Growth factors for scenarios
-  channelGrowthFactors?: Record<Channel, { type: 'percentage' | 'absolute', value: number }>;
+  // Growth factors for scenarios - agora suporta subitens específicos
+  channelGrowthFactors?: Record<string, { type: 'percentage' | 'absolute', value: number }>;
   // Detailed breakdown for DRE display
   detailedBreakdown?: DetailedBreakdown;
 }
-

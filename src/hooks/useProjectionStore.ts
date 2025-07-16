@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -70,11 +69,10 @@ export const useProjectionStore = create<ProjectionStore>()(
           includedClients: [],
           excludedClients: [],
           channelGrowthFactors: {
-            'B2B-Revenda': { type: 'percentage', value: 0 },
-            'B2B-FoodService': { type: 'percentage', value: 0 },
-            'B2C-UFCSPA': { type: 'percentage', value: 0 },
-            'B2C-Personalizados': { type: 'percentage', value: 0 },
-            'B2C-Outros': { type: 'percentage', value: 0 }
+            'revendaPadraoFaturamento': { type: 'percentage', value: 0 },
+            'totalInsumosRevenda': { type: 'percentage', value: 0 },
+            'foodServiceFaturamento': { type: 'percentage', value: 0 },
+            'totalInsumosFoodService': { type: 'percentage', value: 0 },
           }
         };
         
