@@ -31,22 +31,24 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
     }).format(value / 100);
   };
 
-  // Valores exatos da auditoria
+  // Valores corrigidos conforme página "Projeção de Resultados por PDV"
   const receitaTotal = 40794.00;
   const revendaPadrao = 30954.00;
   const foodService = 9840.00;
-  const logistica = 1093.62;
-  const totalInsumos = 11304.84;
+  const logistica = 1567.76; // Valor corrigido (3,8% do faturamento)
+  const totalInsumos = 13625.28; // Valor corrigido
+  const insumosRevendaPadrao = 9424.80; // Valor corrigido
+  const insumosFoodService = 4200.48; // Valor corrigido
   const aquisicaoClientes = 3263.52;
-  const totalCustosVariaveis = 21295.90;
+  const totalCustosVariaveis = 18456.56; // Recalculado: 1567.76 + 13625.28 + 3263.52
   const custoFixosTotal = 13204.28;
   const custosAdministrativos = 0.00;
   const impostos = 1305.41;
   
-  // Valores calculados
-  const lucroBruto = 19498.10;
-  const lucroOperacional = 6293.82;
-  const resultadoLiquido = 4988.41;
+  // Valores recalculados
+  const lucroBruto = 22337.44; // 40794.00 - 18456.56
+  const lucroOperacional = 9133.16; // 22337.44 - 13204.28
+  const resultadoLiquido = 7827.75; // 9133.16 - 1305.41
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -57,7 +59,7 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
             Cálculo Detalhado da DRE Base
           </SheetTitle>
           <SheetDescription>
-            Auditoria completa dos cálculos realizados para compor os valores da DRE Base
+            Auditoria completa dos cálculos realizados para compor os valores da DRE Base (valores corrigidos)
           </SheetDescription>
         </SheetHeader>
 
@@ -96,7 +98,7 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                         <Database className="h-4 w-4" />
                         📌 Fonte dos dados:
                       </h4>
-                      <p className="text-sm"><strong>Auditoria DRE:</strong> Valores calculados dinamicamente</p>
+                      <p className="text-sm"><strong>Página "Projeção de Resultados por PDV"</strong></p>
                       <p className="text-sm">• Revenda Padrão: {formatCurrency(revendaPadrao)}</p>
                       <p className="text-sm">• Food Service: {formatCurrency(foodService)}</p>
                     </div>
@@ -105,7 +107,7 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                       <h4 className="font-semibold mb-2">✅ Valor final apresentado:</h4>
                       <p className="text-lg font-bold text-green-600">{formatCurrency(receitaTotal)}</p>
                       <div className="flex items-center gap-2 mt-2 text-green-600">
-                        <span className="text-sm">✓ Valores validados pela auditoria</span>
+                        <span className="text-sm">✓ Valores validados pela página de projeções</span>
                       </div>
                     </div>
                   </CardContent>
@@ -125,15 +127,31 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                 <Card>
                   <CardContent className="pt-6 space-y-4">
                     <div className="bg-red-50 p-4 rounded-lg">
-                      <h4 className="font-semibold mb-2">🧮 Cálculo:</h4>
+                      <h4 className="font-semibold mb-2">🧮 Cálculo (CORRIGIDO):</h4>
                       <div className="space-y-2 text-sm">
-                        <div>Logística: {formatCurrency(logistica)}</div>
+                        <div>Logística: {formatCurrency(logistica)} <span className="text-blue-600">(3,8% do faturamento)</span></div>
                         <div>Insumos Total: {formatCurrency(totalInsumos)}</div>
-                        <div>Aquisição de Clientes: {formatCurrency(aquisicaoClientes)}</div>
+                        <div className="ml-4 text-xs text-gray-600">
+                          • Revenda Padrão: {formatCurrency(insumosRevendaPadrao)}
+                        </div>
+                        <div className="ml-4 text-xs text-gray-600">
+                          • Food Service: {formatCurrency(insumosFoodService)}
+                        </div>
+                        <div>Aquisição de Clientes: {formatCurrency(aquisicaoClientes)} <span className="text-blue-600">(8% da receita)</span></div>
                         <div className="border-t pt-2 font-semibold">
                           Total: {formatCurrency(totalCustosVariaveis)}
                         </div>
                       </div>
+                    </div>
+                    
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <h4 className="font-semibold mb-2 flex items-center gap-2">
+                        <Database className="h-4 w-4" />
+                        📌 Valores corrigidos conforme:
+                      </h4>
+                      <p className="text-sm"><strong>Página "Projeção de Resultados por PDV"</strong></p>
+                      <p className="text-sm">• Logística atualizada: {formatCurrency(logistica)}</p>
+                      <p className="text-sm">• Insumos atualizados: {formatCurrency(totalInsumos)}</p>
                     </div>
                     
                     <div className="bg-gray-50 p-4 rounded-lg">
@@ -157,14 +175,14 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                 <Card>
                   <CardContent className="pt-6 space-y-4">
                     <div className="bg-green-50 p-4 rounded-lg">
-                      <h4 className="font-semibold mb-2">🧮 Cálculo:</h4>
+                      <h4 className="font-semibold mb-2">🧮 Cálculo (RECALCULADO):</h4>
                       <div className="space-y-2 text-sm">
                         <div>Receita Total: {formatCurrency(receitaTotal)}</div>
-                        <div>(-) Custos Variáveis: {formatCurrency(totalCustosVariaveis)}</div>
+                        <div>(-) Custos Variáveis: {formatCurrency(totalCustosVariaveis)} <span className="text-red-600">(corrigido)</span></div>
                         <div className="border-t pt-2 font-semibold">
-                          Lucro Bruto: {formatCurrency(lucroBruto)}
+                          Lucro Bruto: {formatCurrency(lucroBruto)} <span className="text-green-600">(recalculado)</span>
                         </div>
-                        <div>Margem Bruta: {formatPercent((lucroBruto / receitaTotal) * 100)}</div>
+                        <div>Margem Bruta: {formatPercent((lucroBruto / receitaTotal) * 100)} <span className="text-green-600">(54,8%)</span></div>
                       </div>
                     </div>
                     
@@ -237,7 +255,7 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h4 className="font-semibold mb-2">✅ Valor final apresentado:</h4>
                       <p className="text-lg font-bold text-orange-600">{formatCurrency(custosAdministrativos)}</p>
-                      <p className="text-sm text-gray-600 mt-2">Nenhum custo administrativo identificado na auditoria</p>
+                      <p className="text-sm text-gray-600 mt-2">Nenhum custo administrativo identificado</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -256,15 +274,15 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                 <Card>
                   <CardContent className="pt-6 space-y-4">
                     <div className="bg-purple-50 p-4 rounded-lg">
-                      <h4 className="font-semibold mb-2">🧮 Cálculo:</h4>
+                      <h4 className="font-semibold mb-2">🧮 Cálculo (RECALCULADO):</h4>
                       <div className="space-y-2 text-sm">
-                        <div>Lucro Bruto: {formatCurrency(lucroBruto)}</div>
+                        <div>Lucro Bruto: {formatCurrency(lucroBruto)} <span className="text-green-600">(recalculado)</span></div>
                         <div>(-) Custos Fixos: {formatCurrency(custoFixosTotal)}</div>
                         <div>(-) Custos Administrativos: {formatCurrency(custosAdministrativos)}</div>
                         <div className="border-t pt-2 font-semibold">
-                          Lucro Operacional: {formatCurrency(lucroOperacional)}
+                          Lucro Operacional: {formatCurrency(lucroOperacional)} <span className="text-purple-600">(recalculado)</span>
                         </div>
-                        <div>Margem Operacional: {formatPercent((lucroOperacional / receitaTotal) * 100)}</div>
+                        <div>Margem Operacional: {formatPercent((lucroOperacional / receitaTotal) * 100)} <span className="text-purple-600">(22,4%)</span></div>
                       </div>
                     </div>
                     
@@ -320,14 +338,14 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                 <Card>
                   <CardContent className="pt-6 space-y-4">
                     <div className="bg-green-50 p-4 rounded-lg">
-                      <h4 className="font-semibold mb-2">🧮 Cálculo:</h4>
+                      <h4 className="font-semibold mb-2">🧮 Cálculo (RECALCULADO):</h4>
                       <div className="space-y-2 text-sm">
-                        <div>Lucro Operacional: {formatCurrency(lucroOperacional)}</div>
+                        <div>Lucro Operacional: {formatCurrency(lucroOperacional)} <span className="text-purple-600">(recalculado)</span></div>
                         <div>(-) Impostos (3,2%): {formatCurrency(impostos)}</div>
                         <div className="border-t pt-2 font-semibold">
-                          Resultado Líquido: {formatCurrency(resultadoLiquido)}
+                          Resultado Líquido: {formatCurrency(resultadoLiquido)} <span className="text-green-600">(recalculado)</span>
                         </div>
-                        <div>Margem Líquida: {formatPercent((resultadoLiquido / receitaTotal) * 100)}</div>
+                        <div>Margem Líquida: {formatPercent((resultadoLiquido / receitaTotal) * 100)} <span className="text-green-600">(19,2%)</span></div>
                       </div>
                     </div>
                     
@@ -342,19 +360,23 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
           </Accordion>
 
           <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <h3 className="font-semibold text-yellow-800 mb-2">📋 Resumo da Auditoria</h3>
+            <h3 className="font-semibold text-yellow-800 mb-2">📋 Resumo da Auditoria (CORRIGIDO)</h3>
             <div className="text-sm space-y-1">
-              <div><strong>Todos os valores foram validados pela auditoria detalhada</strong></div>
+              <div><strong>Valores corrigidos conforme página "Projeção de Resultados por PDV"</strong></div>
               <div>• Receita Total: {formatCurrency(receitaTotal)}</div>
               <div>• Revenda Padrão: {formatCurrency(revendaPadrao)} | Food Service: {formatCurrency(foodService)}</div>
-              <div>• Logística: {formatCurrency(logistica)}</div>
-              <div>• Insumos Total: {formatCurrency(totalInsumos)}</div>
+              <div>• <span className="text-blue-600 font-semibold">Logística: {formatCurrency(logistica)} (3,8% da receita) - CORRIGIDO</span></div>
+              <div>• <span className="text-blue-600 font-semibold">Insumos Total: {formatCurrency(totalInsumos)} - CORRIGIDO</span></div>
+              <div className="ml-4 text-xs">
+                - Revenda Padrão: {formatCurrency(insumosRevendaPadrao)} | Food Service: {formatCurrency(insumosFoodService)}
+              </div>
               <div>• Aquisição: {formatCurrency(aquisicaoClientes)} (8% da receita)</div>
-              <div>• <strong>Total Custos Variáveis: {formatCurrency(totalCustosVariaveis)}</strong></div>
+              <div>• <strong>Total Custos Variáveis: {formatCurrency(totalCustosVariaveis)} - RECALCULADO</strong></div>
+              <div>• <strong>Lucro Bruto: {formatCurrency(lucroBruto)} (54,8%) - RECALCULADO</strong></div>
               <div>• Custos Fixos: {formatCurrency(custoFixosTotal)}</div>
-              <div>• Custos Administrativos: {formatCurrency(custosAdministrativos)}</div>
+              <div>• <strong>Lucro Operacional: {formatCurrency(lucroOperacional)} (22,4%) - RECALCULADO</strong></div>
               <div>• Impostos: {formatCurrency(impostos)} (3,2% sobre receita)</div>
-              <div>• <strong>Resultado Líquido: {formatCurrency(resultadoLiquido)}</strong></div>
+              <div>• <strong>Resultado Líquido: {formatCurrency(resultadoLiquido)} (19,2%) - RECALCULADO</strong></div>
             </div>
           </div>
         </div>

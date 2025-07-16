@@ -49,22 +49,43 @@ export const useDREData = (): DREDataHook => {
       
       console.log('✅ DRE calculada com sucesso:', calculationResult);
       
-      // VALORES EXATOS DA AUDITORIA (conforme "Ver passo a passo")
+      // VALORES EXATOS DA AUDITORIA (corrigidos com base na página "Projeção de Resultados por PDV")
       const receitaTotal = 40794.00;
       const revendaPadrao = 30954.00;
       const foodService = 9840.00;
-      const logistica = 1093.62;
-      const totalInsumos = 11304.84;
+      
+      // VALORES CORRIGIDOS - Logística e Insumos conforme página "Projeção de Resultados por PDV"
+      const logistica = 1567.76; // Valor correto da página de projeções (3,8% do faturamento)
+      const totalInsumos = 13625.28; // Valor correto da página de projeções
+      const insumosRevendaPadrao = 9424.80; // Valor correto da página de projeções
+      const insumosFoodService = 4200.48; // Valor correto da página de projeções
+      
       const aquisicaoClientes = 3263.52; // 8% da receita
-      const totalCustosVariaveis = 21295.90; // 1093.62 + 11304.84 + 3263.52 + outros
+      
+      // Recalcular total de custos variáveis com valores corretos
+      const totalCustosVariaveis = logistica + totalInsumos + aquisicaoClientes; // 1567.76 + 13625.28 + 3263.52 = 18456.56
+      
       const custoFixosTotal = 13204.28;
       const custosAdministrativos = 0.00;
       const impostos = 1305.41; // 3.2% da receita
       
-      // Calcular valores derivados usando os valores exatos da auditoria
-      const lucroBruto = 19498.10; // Valor exato da auditoria
-      const lucroOperacional = 6293.82; // Valor exato da auditoria
-      const resultadoLiquido = 4988.41; // Valor exato da auditoria
+      // Calcular valores derivados usando os valores corrigidos
+      const lucroBruto = receitaTotal - totalCustosVariaveis; // 40794.00 - 18456.56 = 22337.44
+      const lucroOperacional = lucroBruto - custoFixosTotal - custosAdministrativos; // 22337.44 - 13204.28 = 9133.16
+      const resultadoLiquido = lucroOperacional - impostos; // 9133.16 - 1305.41 = 7827.75
+
+      console.log('📊 Valores corrigidos da DRE:', {
+        receitaTotal,
+        logistica,
+        totalInsumos,
+        insumosRevendaPadrao,
+        insumosFoodService,
+        aquisicaoClientes,
+        totalCustosVariaveis,
+        lucroBruto,
+        lucroOperacional,
+        resultadoLiquido
+      });
 
       // Criar dados de canais baseados nos valores reais
       const channelsData: ChannelData[] = [
@@ -110,7 +131,7 @@ export const useDREData = (): DREDataHook => {
         }
       ];
       
-      // Criar estrutura DREData usando valores exatos da auditoria
+      // Criar estrutura DREData usando valores corrigidos da auditoria
       const dreDataAuditoria: DREData = {
         id: 'base-auditoria',
         name: 'DRE Base (Auditoria Detalhada)',
@@ -127,18 +148,18 @@ export const useDREData = (): DREDataHook => {
         })),
         investments: [],
         
-        // VALORES PRINCIPAIS DA DRE (usando dados exatos da auditoria)
+        // VALORES PRINCIPAIS DA DRE (usando dados corrigidos da auditoria)
         totalRevenue: receitaTotal, // R$ 40.794,00
-        totalVariableCosts: totalCustosVariaveis, // R$ 21.295,90
+        totalVariableCosts: totalCustosVariaveis, // R$ 18.456,56 (corrigido)
         totalFixedCosts: custoFixosTotal, // R$ 13.204,28
         totalAdministrativeCosts: custosAdministrativos, // R$ 0,00
         totalCosts: totalCustosVariaveis + custoFixosTotal + custosAdministrativos,
         
-        // INDICADORES DE RENTABILIDADE (valores exatos da auditoria)
-        grossProfit: lucroBruto, // R$ 19.498,10
-        grossMargin: (lucroBruto / receitaTotal) * 100, // 47,8%
-        operationalResult: lucroOperacional, // R$ 6.293,82
-        operationalMargin: (lucroOperacional / receitaTotal) * 100, // 15,4%
+        // INDICADORES DE RENTABILIDADE (valores corrigidos da auditoria)
+        grossProfit: lucroBruto, // R$ 22.337,44 (corrigido)
+        grossMargin: (lucroBruto / receitaTotal) * 100, // 54,8% (corrigido)
+        operationalResult: lucroOperacional, // R$ 9.133,16 (corrigido)
+        operationalMargin: (lucroOperacional / receitaTotal) * 100, // 22,4% (corrigido)
         
         // Investimentos e depreciação
         totalInvestment: 0,
@@ -152,20 +173,22 @@ export const useDREData = (): DREDataHook => {
         breakEvenPoint: custoFixosTotal / ((lucroBruto / receitaTotal)),
         paybackMonths: 0,
         
-        // Breakdown detalhado conforme auditoria
+        // Breakdown detalhado conforme auditoria CORRIGIDA
         detailedBreakdown: {
           revendaPadraoFaturamento: revendaPadrao, // R$ 30.954,00
           foodServiceFaturamento: foodService, // R$ 9.840,00
-          totalInsumosRevenda: totalInsumos * (revendaPadrao / receitaTotal),
-          totalInsumosFoodService: totalInsumos * (foodService / receitaTotal),
-          totalLogistica: logistica, // R$ 1.093,62
+          totalInsumosRevenda: insumosRevendaPadrao, // R$ 9.424,80 (corrigido)
+          totalInsumosFoodService: insumosFoodService, // R$ 4.200,48 (corrigido)
+          totalLogistica: logistica, // R$ 1.567,76 (corrigido)
           aquisicaoClientes: aquisicaoClientes // R$ 3.263,52
         }
       };
       
-      console.log('📊 DRE Base criada com valores exatos da auditoria:', {
+      console.log('📊 DRE Base criada com valores CORRIGIDOS da página de projeções:', {
         receita: dreDataAuditoria.totalRevenue,
         custosVariaveis: dreDataAuditoria.totalVariableCosts,
+        logistica: dreDataAuditoria.detailedBreakdown?.totalLogistica,
+        totalInsumos: dreDataAuditoria.detailedBreakdown?.totalInsumosRevenda + dreDataAuditoria.detailedBreakdown?.totalInsumosFoodService,
         lucroBruto: dreDataAuditoria.grossProfit,
         custoFixos: dreDataAuditoria.totalFixedCosts,
         lucroOperacional: dreDataAuditoria.operationalResult,
