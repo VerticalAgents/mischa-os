@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DREData, Channel, CostItem, InvestmentItem } from '@/types/projections';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
-import { ModernDRETable } from './ModernDRETable';
+import { DRETableHierarchical } from './DRETableHierarchical';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -183,7 +183,7 @@ export function ScenarioForm({ scenario }: ScenarioFormProps) {
           {/* Left column - DRE Table (takes 2 columns in 2xl screens) */}
           <div className="2xl:col-span-2 min-w-0">
             <div className="w-full overflow-x-auto">
-              <ModernDRETable dreData={scenario} />
+              <DRETableHierarchical dreData={scenario} />
             </div>
           </div>
 
