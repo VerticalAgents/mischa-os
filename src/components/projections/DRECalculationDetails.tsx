@@ -36,9 +36,9 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
   const revendaPadrao = 30954.00;
   const foodService = 9840.00;
   const logistica = 1567.76; // Valor corrigido (3,8% do faturamento)
-  const totalInsumos = 13625.28; // Valor corrigido
-  const insumosRevendaPadrao = 9424.80; // Valor corrigido
-  const insumosFoodService = 4200.48; // Valor corrigido
+  const totalInsumos = 13625.28; // Valor correto total
+  const insumosRevendaPadrao = 9424.80; // R$ 9.424,80 (valor exato da página "Projeção de Resultados por PDV")
+  const insumosFoodService = 4200.48; // R$ 4.200,48 (valor exato da página "Projeção de Resultados por PDV")
   const aquisicaoClientes = 3263.52;
   const totalCustosVariaveis = 18456.56; // Recalculado: 1567.76 + 13625.28 + 3263.52
   const custoFixosTotal = 13204.28;
@@ -132,10 +132,10 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                         <div>Logística: {formatCurrency(logistica)} <span className="text-blue-600">(3,8% do faturamento)</span></div>
                         <div>Insumos Total: {formatCurrency(totalInsumos)}</div>
                         <div className="ml-4 text-xs text-gray-600">
-                          • Revenda Padrão: {formatCurrency(insumosRevendaPadrao)}
+                          • Revenda Padrão: {formatCurrency(insumosRevendaPadrao)} <span className="text-green-600 font-semibold">(valor exato da página)</span>
                         </div>
                         <div className="ml-4 text-xs text-gray-600">
-                          • Food Service: {formatCurrency(insumosFoodService)}
+                          • Food Service: {formatCurrency(insumosFoodService)} <span className="text-green-600 font-semibold">(valor exato da página)</span>
                         </div>
                         <div>Aquisição de Clientes: {formatCurrency(aquisicaoClientes)} <span className="text-blue-600">(8% da receita)</span></div>
                         <div className="border-t pt-2 font-semibold">
@@ -151,7 +151,9 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
                       </h4>
                       <p className="text-sm"><strong>Página "Projeção de Resultados por PDV"</strong></p>
                       <p className="text-sm">• Logística atualizada: {formatCurrency(logistica)}</p>
-                      <p className="text-sm">• Insumos atualizados: {formatCurrency(totalInsumos)}</p>
+                      <p className="text-sm">• <span className="font-semibold text-green-600">Insumos Revenda Padrão: {formatCurrency(insumosRevendaPadrao)} (EXATO)</span></p>
+                      <p className="text-sm">• <span className="font-semibold text-green-600">Insumos Food Service: {formatCurrency(insumosFoodService)} (EXATO)</span></p>
+                      <p className="text-sm">• Total Insumos: {formatCurrency(totalInsumos)}</p>
                     </div>
                     
                     <div className="bg-gray-50 p-4 rounded-lg">
@@ -368,7 +370,10 @@ export function DRECalculationDetails({ open, onOpenChange, dreData }: DRECalcul
               <div>• <span className="text-blue-600 font-semibold">Logística: {formatCurrency(logistica)} (3,8% da receita) - CORRIGIDO</span></div>
               <div>• <span className="text-blue-600 font-semibold">Insumos Total: {formatCurrency(totalInsumos)} - CORRIGIDO</span></div>
               <div className="ml-4 text-xs">
-                - Revenda Padrão: {formatCurrency(insumosRevendaPadrao)} | Food Service: {formatCurrency(insumosFoodService)}
+                - <span className="text-green-600 font-semibold">Revenda Padrão: {formatCurrency(insumosRevendaPadrao)} (EXATO da página)</span>
+              </div>
+              <div className="ml-4 text-xs">
+                - <span className="text-green-600 font-semibold">Food Service: {formatCurrency(insumosFoodService)} (EXATO da página)</span>
               </div>
               <div>• Aquisição: {formatCurrency(aquisicaoClientes)} (8% da receita)</div>
               <div>• <strong>Total Custos Variáveis: {formatCurrency(totalCustosVariaveis)} - RECALCULADO</strong></div>

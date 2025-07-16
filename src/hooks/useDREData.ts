@@ -57,8 +57,8 @@ export const useDREData = (): DREDataHook => {
       // VALORES CORRIGIDOS - Logística e Insumos conforme página "Projeção de Resultados por PDV"
       const logistica = 1567.76; // Valor correto da página de projeções (3,8% do faturamento)
       const totalInsumos = 13625.28; // Valor correto da página de projeções
-      const insumosRevendaPadrao = 9424.80; // Valor correto da página de projeções
-      const insumosFoodService = 4200.48; // Valor correto da página de projeções
+      const insumosRevendaPadrao = 9424.80; // R$ 9.424,80 (valor exato da página "Projeção de Resultados por PDV")
+      const insumosFoodService = 4200.48; // R$ 4.200,48 (valor exato da página "Projeção de Resultados por PDV")
       
       const aquisicaoClientes = 3263.52; // 8% da receita
       
@@ -177,8 +177,8 @@ export const useDREData = (): DREDataHook => {
         detailedBreakdown: {
           revendaPadraoFaturamento: revendaPadrao, // R$ 30.954,00
           foodServiceFaturamento: foodService, // R$ 9.840,00
-          totalInsumosRevenda: insumosRevendaPadrao, // R$ 9.424,80 (corrigido)
-          totalInsumosFoodService: insumosFoodService, // R$ 4.200,48 (corrigido)
+          totalInsumosRevenda: insumosRevendaPadrao, // R$ 9.424,80 (valor exato da página)
+          totalInsumosFoodService: insumosFoodService, // R$ 4.200,48 (valor exato da página)
           totalLogistica: logistica, // R$ 1.567,76 (corrigido)
           aquisicaoClientes: aquisicaoClientes // R$ 3.263,52
         }
@@ -188,7 +188,9 @@ export const useDREData = (): DREDataHook => {
         receita: dreDataAuditoria.totalRevenue,
         custosVariaveis: dreDataAuditoria.totalVariableCosts,
         logistica: dreDataAuditoria.detailedBreakdown?.totalLogistica,
-        totalInsumos: dreDataAuditoria.detailedBreakdown?.totalInsumosRevenda + dreDataAuditoria.detailedBreakdown?.totalInsumosFoodService,
+        totalInsumos: (dreDataAuditoria.detailedBreakdown?.totalInsumosRevenda || 0) + (dreDataAuditoria.detailedBreakdown?.totalInsumosFoodService || 0),
+        insumosRevendaPadrao: dreDataAuditoria.detailedBreakdown?.totalInsumosRevenda,
+        insumosFoodService: dreDataAuditoria.detailedBreakdown?.totalInsumosFoodService,
         lucroBruto: dreDataAuditoria.grossProfit,
         custoFixos: dreDataAuditoria.totalFixedCosts,
         lucroOperacional: dreDataAuditoria.operationalResult,
