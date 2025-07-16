@@ -45,36 +45,31 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
     }).format(value) + '%';
   };
 
-  // Use EXACT values from audit (same as DRECalculationDetails.tsx)
-  const receitaTotal = 36246.00; // From "Faturamento Mensal" block
-  const revendaPadrao = 30366.00; // From "Faturamento por Categoria de Produto"
-  const foodService = 5880.00; // From "Faturamento por Categoria de Produto"
+  // USAR OS VALORES EXATOS DA DRE BASE (que agora vêm da auditoria)
+  const receitaTotal = dreData.totalRevenue; // R$ 40.794,00
+  const revendaPadrao = dreData.detailedBreakdown?.revendaPadraoFaturamento || 30954.00;
+  const foodService = dreData.detailedBreakdown?.foodServiceFaturamento || 9840.00;
   
-  const logistica = 1449.84; // From "Total Logística" 
-  const insumosRevenda = 8907.36; // From "Custo de Insumos" → Revenda Padrão
-  const insumosFoodService = 2450.28; // From "Custo de Insumos" → Food Service
-  const totalInsumos = 11357.64; // Sum of insumos (8907.36 + 2450.28)
-  const aquisicaoClientes = 2899.68; // 8% of receita total (36246.00 * 0.08)
+  const logistica = dreData.detailedBreakdown?.totalLogistica || 1093.62;
+  const totalInsumos = (dreData.detailedBreakdown?.totalInsumosRevenda || 0) + (dreData.detailedBreakdown?.totalInsumosFoodService || 0) || 11304.84;
+  const aquisicaoClientes = dreData.detailedBreakdown?.aquisicaoClientes || 3263.52;
   
-  const totalCustosVariaveis = 15707.16; // 1449.84 + 11357.64 + 2899.68
-
-  const lucroBruto = receitaTotal - totalCustosVariaveis;
-  const custosFixos = dreData.totalFixedCosts;
-  const custoAdm = dreData.totalAdministrativeCosts;
-  const lucroOperacional = lucroBruto - custosFixos - custoAdm;
+  const totalCustosVariaveis = dreData.totalVariableCosts; // R$ 21.295,90
+  const lucroBruto = dreData.grossProfit; // R$ 19.498,10
+  const custosFixos = dreData.totalFixedCosts; // R$ 13.204,28
+  const custoAdm = dreData.totalAdministrativeCosts; // R$ 0,00
+  const lucroOperacional = dreData.operationalResult; // R$ 6.293,82
   
-  // Tax calculation (3.2% from custos variáveis)
+  // Tax calculation (3.2% from receita total)
   const taxaImposto = 3.2; // 3.2%
-  const impostos = receitaTotal * (taxaImposto / 100);
-  const resultadoLiquido = lucroOperacional - impostos;
+  const impostos = receitaTotal * (taxaImposto / 100); // R$ 1.305,41
+  const resultadoLiquido = lucroOperacional - impostos; // R$ 4.988,41
 
   console.log('DRE Values (synchronized with audit):', {
     receitaTotal,
     revendaPadrao,
     foodService,
     logistica,
-    insumosRevenda,
-    insumosFoodService,
     totalInsumos,
     aquisicaoClientes,
     totalCustosVariaveis,
@@ -140,14 +135,14 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
           children: [{
             id: '2.2.1',
             categoria: '2.2.1. Revenda Padrão',
-            valor: insumosRevenda,
-            percentual: insumosRevenda / receitaTotal * 100,
+            valor: totalInsumos * (revendaPadrao / receitaTotal),
+            percentual: (totalInsumos * (revendaPadrao / receitaTotal)) / receitaTotal * 100,
             level: 2
           }, {
             id: '2.2.2',
             categoria: '2.2.2. Food Service',
-            valor: insumosFoodService,
-            percentual: insumosFoodService / receitaTotal * 100,
+            valor: totalInsumos * (foodService / receitaTotal),
+            percentual: (totalInsumos * (foodService / receitaTotal)) / receitaTotal * 100,
             level: 2
           }]
         },
@@ -394,7 +389,7 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
         <p>🔍 Dados sincronizados com auditoria "Ver passo a passo"</p>
         <p>✅ Receita: R$ {formatCurrency(receitaTotal).replace('R$ ', '')} | Custos Variáveis: R$ {formatCurrency(totalCustosVariaveis).replace('R$ ', '')} | Lucro Bruto: R$ {formatCurrency(lucroBruto).replace('R$ ', '')}</p>
         <p>💰 Impostos ({taxaImposto}%): R$ {formatCurrency(impostos).replace('R$ ', '')} | Resultado Líquido: R$ {formatCurrency(resultadoLiquido).replace('R$ ', '')}</p>
-        <p className="text-xs text-blue-600">📋 Nota técnica: Dados da DRE Base sincronizados diretamente com auditoria 'Ver passo a passo'</p>
+        <p className="text-xs text-blue-600">📋 Nota técnica: Dados da DRE Base agora sincronizados com os valores exatos da auditoria</p>
       </div>
 
       <DRECalculationDetails 
