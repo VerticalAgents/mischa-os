@@ -53,7 +53,7 @@ export const useDREData = (): DREDataHook => {
       
       console.log('✅ DRE calculada com sucesso:', calculationResult);
       
-      // Converter para formato DREData para compatibilidade
+      // Converter para formato DREData para compatibilidade - usar valores exatos da auditoria
       const channelsData: ChannelData[] = calculationResult.detalhesCalculos.faturamentoPorCategoria.map(cat => ({
         channel: mapCategoryToChannel(cat.categoria),
         volume: 0,
@@ -72,6 +72,7 @@ export const useDREData = (): DREDataHook => {
         fixedCosts: calculationResult.custosFixosDetalhados.map(c => ({ name: c.nome, value: c.valor })),
         administrativeCosts: calculationResult.custosAdministrativosDetalhados.map(c => ({ name: c.nome, value: c.valor })),
         investments: [],
+        // Usar valores exatos da auditoria para garantir consistência
         totalRevenue: calculationResult.totalReceita,
         totalVariableCosts: calculationResult.totalCustosVariaveis,
         totalFixedCosts: calculationResult.totalCustosFixos,
@@ -88,6 +89,7 @@ export const useDREData = (): DREDataHook => {
         breakEvenPoint: calculationResult.pontoEquilibrio,
         paybackMonths: 0,
         detailedBreakdown: {
+          // Usar valores exatos da auditoria para garantir consistência com a página "Cálculo Detalhado da DRE Base"
           revendaPadraoFaturamento: calculationResult.receitaRevendaPadrao,
           foodServiceFaturamento: calculationResult.receitaFoodService,
           totalInsumosRevenda: calculationResult.custosInsumosRevendaPadrao,
@@ -96,6 +98,13 @@ export const useDREData = (): DREDataHook => {
           aquisicaoClientes: calculationResult.custosAquisicaoClientes
         }
       };
+      
+      console.log('📊 DRE Data convertida para compatibilidade:', {
+        totalRevenue: dreDataConverted.totalRevenue,
+        revendaPadraoFaturamento: dreDataConverted.detailedBreakdown?.revendaPadraoFaturamento,
+        foodServiceFaturamento: dreDataConverted.detailedBreakdown?.foodServiceFaturamento,
+        totalVariableCosts: dreDataConverted.totalVariableCosts
+      });
       
       setDreData(dreDataConverted);
       setDreCalculationResult(calculationResult);
