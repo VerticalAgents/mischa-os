@@ -2,13 +2,13 @@
 import { useEffect, useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import BreadcrumbNavigation from '@/components/common/Breadcrumb';
-import { OperationalSummary } from '@/components/dashboard-analytics/OperationalSummary';
-import { ProductionIndicators } from '@/components/dashboard-analytics/ProductionIndicators';
-import { CustomerBehavior } from '@/components/dashboard-analytics/CustomerBehavior';
-import { FinancialAnalysis } from '@/components/dashboard-analytics/FinancialAnalysis';
-import { AlertsRisks } from '@/components/dashboard-analytics/AlertsRisks';
-import { ProducaoSimuladaTab } from '@/components/dashboard-analytics/ProducaoSimuladaTab';
-import { AnaliseGiroPDV } from '@/components/dashboard-analytics/AnaliseGiroPDV';
+import OperationalSummary from '@/components/dashboard-analytics/OperationalSummary';
+import ProductionIndicators from '@/components/dashboard-analytics/ProductionIndicators';
+import CustomerBehavior from '@/components/dashboard-analytics/CustomerBehavior';
+import FinancialAnalysis from '@/components/dashboard-analytics/FinancialAnalysis';
+import AlertsRisks from '@/components/dashboard-analytics/AlertsRisks';
+import ProducaoSimuladaTab from '@/components/dashboard-analytics/ProducaoSimuladaTab';
+import AnaliseGiroPDV from '@/components/dashboard-analytics/AnaliseGiroPDV';
 import { useDREData } from '@/hooks/useDREData';
 
 export default function Analytics() {
