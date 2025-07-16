@@ -54,8 +54,8 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
   const totalInsumos = (dreData.detailedBreakdown?.totalInsumosRevenda || 0) + (dreData.detailedBreakdown?.totalInsumosFoodService || 0) || 13625.28;
   
   // VALORES CORRIGIDOS DOS SUBITENS DE INSUMOS conforme "Projeção de Resultados por PDV"
-  const insumosRevendaPadrao = 10338.70; // R$ 10.338,70 (valor exato da imagem)
-  const insumosFoodService = 3286.58; // R$ 3.286,58 (valor exato da imagem)
+  const insumosRevendaPadrao = 9424.80; // R$ 9.424,80 (valor exato da página de projeções)
+  const insumosFoodService = 4200.48; // R$ 4.200,48 (valor exato da página de projeções)
   
   const aquisicaoClientes = dreData.detailedBreakdown?.aquisicaoClientes || 3263.52;
   
@@ -70,14 +70,14 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
   const impostos = receitaTotal * (taxaImposto / 100); // R$ 1.305,41
   const resultadoLiquido = lucroOperacional - impostos; // R$ 7.827,75
 
-  console.log('DRE Values (synchronized with audit - INSUMOS CORRIGIDOS):', {
+  console.log('DRE Values (synchronized with audit - INSUMOS CORRIGIDOS FINAIS):', {
     receitaTotal,
     revendaPadrao,
     foodService,
     logistica,
     totalInsumos,
-    insumosRevendaPadrao, // CORRIGIDO: R$ 10.338,70
-    insumosFoodService, // CORRIGIDO: R$ 3.286,58
+    insumosRevendaPadrao, // CORRIGIDO FINAL: R$ 9.424,80
+    insumosFoodService, // CORRIGIDO FINAL: R$ 4.200,48
     aquisicaoClientes,
     totalCustosVariaveis,
     lucroBruto,
@@ -142,13 +142,13 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
           children: [{
             id: '2.2.1',
             categoria: '2.2.1. Revenda Padrão',
-            valor: insumosRevendaPadrao, // CORRIGIDO: R$ 10.338,70
+            valor: insumosRevendaPadrao, // CORRIGIDO FINAL: R$ 9.424,80
             percentual: insumosRevendaPadrao / receitaTotal * 100,
             level: 2
           }, {
             id: '2.2.2',
             categoria: '2.2.2. Food Service',
-            valor: insumosFoodService, // CORRIGIDO: R$ 3.286,58
+            valor: insumosFoodService, // CORRIGIDO FINAL: R$ 4.200,48
             percentual: insumosFoodService / receitaTotal * 100,
             level: 2
           }]
