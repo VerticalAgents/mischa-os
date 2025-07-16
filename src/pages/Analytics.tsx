@@ -10,10 +10,25 @@ import AlertsRisks from '@/components/dashboard-analytics/AlertsRisks';
 import ProducaoSimuladaTab from '@/components/dashboard-analytics/ProducaoSimuladaTab';
 import AnaliseGiroPDV from '@/components/dashboard-analytics/AnaliseGiroPDV';
 import { useDREData } from '@/hooks/useDREData';
+import { useClienteStore } from '@/hooks/useClienteStore';
+import { useDashboardStore } from '@/hooks/useDashboardStore';
+import { usePedidoStore } from '@/hooks/usePedidoStore';
 
 export default function Analytics() {
   const [activeTab, setActiveTab] = useState('overview');
   const { dreData, dreCalculationResult } = useDREData();
+  const { clientes } = useClienteStore();
+  const { pedidos } = usePedidoStore();
+  const { atualizarDashboard, dashboardData } = useDashboardStore();
+
+  // Update dashboard data when the component mounts or data changes
+  useEffect(() => {
+    atualizarDashboard(clientes, pedidos);
+  }, [atualizarDashboard, clientes, pedidos]);
+
+  // Get mock production data for components that need it
+  const registrosProducao: any[] = [];
+  const planejamentoProducao: any[] = [];
 
   const tabs = [
     { id: 'overview', label: 'Visão Geral', component: OperationalSummary },
@@ -26,6 +41,65 @@ export default function Analytics() {
   ];
 
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || OperationalSummary;
+
+  const renderActiveComponent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <OperationalSummary 
+            dashboardData={dashboardData} 
+            baseDRE={dreData} 
+            clientes={clientes}
+          />
+        );
+      case 'production':
+        return (
+          <ProductionIndicators
+            registrosProducao={registrosProducao}
+            planejamentoProducao={planejamentoProducao}
+          />
+        );
+      case 'customers':
+        return (
+          <CustomerBehavior
+            clientes={clientes}
+            baseDRE={dreData}
+          />
+        );
+      case 'financial':
+        return (
+          <FinancialAnalysis
+            baseDRE={dreData}
+            dashboardData={dashboardData}
+          />
+        );
+      case 'alerts':
+        return (
+          <AlertsRisks
+            clientes={clientes}
+            pedidos={pedidos}
+            registrosProducao={registrosProducao}
+            planejamentoProducao={planejamentoProducao}
+          />
+        );
+      case 'producao-simulada':
+        return (
+          <ProducaoSimuladaTab clientes={clientes} />
+        );
+      case 'giro-pdv':
+        return (
+          <AnaliseGiroPDV />
+        );
+      default:
+        return (
+          <OperationalSummary 
+            dashboardData={dashboardData} 
+            baseDRE={dreData} 
+            clientes={clientes}
+          />
+        );
+    }
+  };
 
   return (
     <div className="container mx-auto py-6">
@@ -52,7 +126,7 @@ export default function Analytics() {
         ))}
       </div>
 
-      <ActiveComponent />
+      {renderActiveComponent()}
     </div>
   );
 }
