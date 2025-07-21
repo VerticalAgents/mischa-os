@@ -15,13 +15,13 @@ export const useOptimizedFinancialData = () => {
 
   // Memoize the loading state
   const isLoading = useMemo(() => {
-    return faturamentoQuery.loading || custosFixosQuery.loading || custosVariaveisQuery.loading;
-  }, [faturamentoQuery.loading, custosFixosQuery.loading, custosVariaveisQuery.loading]);
+    return faturamentoQuery.isLoading || custosFixosQuery.isLoading || custosVariaveisQuery.isLoading;
+  }, [faturamentoQuery.isLoading, custosFixosQuery.isLoading, custosVariaveisQuery.isLoading]);
 
-  // Memoize the error state
+  // Memoize the error state - since the hooks don't return error, we'll handle this internally
   const hasError = useMemo(() => {
-    return faturamentoQuery.error || custosFixosQuery.error || custosVariaveisQuery.error;
-  }, [faturamentoQuery.error, custosFixosQuery.error, custosVariaveisQuery.error]);
+    return false; // The hooks handle their own errors with toast notifications
+  }, []);
 
   // Update loading state
   useEffect(() => {
@@ -45,7 +45,7 @@ export const useOptimizedFinancialData = () => {
       faturamento: {
         mensal: faturamentoQuery.faturamentoMensal || 0,
         semanal: faturamentoQuery.faturamentoSemanal || 0,
-        detalhes: faturamentoQuery.detalhesFaturamento || []
+        detalhes: faturamentoQuery.precosDetalhados || []
       },
       custosFixos: {
         dados: custosFixosQuery.custosFixos || [],
@@ -60,7 +60,7 @@ export const useOptimizedFinancialData = () => {
     isLoading,
     faturamentoQuery.faturamentoMensal,
     faturamentoQuery.faturamentoSemanal,
-    faturamentoQuery.detalhesFaturamento,
+    faturamentoQuery.precosDetalhados,
     custosFixosQuery.custosFixos,
     custosVariaveisQuery.custosVariaveis
   ]);
@@ -70,9 +70,9 @@ export const useOptimizedFinancialData = () => {
     loading,
     error,
     refetch: () => {
-      faturamentoQuery.refetch?.();
-      custosFixosQuery.carregarCustosFixos?.();
-      custosVariaveisQuery.carregarCustosVariaveis?.();
+      faturamentoQuery.recalcular?.();
+      custosFixosQuery.recarregarCustosFixos?.();
+      custosVariaveisQuery.recarregarCustosVariaveis?.();
     }
   };
 };
