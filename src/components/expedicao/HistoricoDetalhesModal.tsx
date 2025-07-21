@@ -102,7 +102,7 @@ export const HistoricoDetalhesModal = ({ open, onOpenChange, registro }: Histori
               <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                 {registro.itens.map((item: any, index: number) => (
                   <div key={index} className="flex justify-between items-center text-sm">
-                    <span>{item.nome || `Item ${index + 1}`}</span>
+                    <span>{item.produto || item.nome || item.produto_nome || `Item ${index + 1}`}</span>
                     <span className="font-mono">{item.quantidade} un</span>
                   </div>
                 ))}
