@@ -1,11 +1,11 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
@@ -17,7 +17,30 @@ const LoginPage = () => {
   const [signupFullName, setSignupFullName] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth();
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, isAuthenticated, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirecionar para /home se já estiver autenticado
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      console.log('👤 Usuário já autenticado, redirecionando para /home');
+      navigate('/home', { replace: true });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
+
+  // Mostrar loading enquanto verifica autenticação
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
+      </div>
+    );
+  }
+
+  // Se já estiver autenticado, não renderizar o formulário
+  if (isAuthenticated) {
+    return null;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,10 +52,10 @@ const LoginPage = () => {
     setIsLoading(true);
     try {
       await signInWithEmail(loginEmail, loginPassword);
-      toast.success('Login realizado com sucesso!');
+      // O redirecionamento será feito pelo AuthContext
     } catch (error: any) {
       console.error('Erro no login:', error);
-      toast.error('Erro ao fazer login: ' + (error.message || 'Erro desconhecido'));
+      // Não mostrar toast de erro aqui pois já é mostrado no AuthContext
     } finally {
       setIsLoading(false);
     }
@@ -58,10 +81,9 @@ const LoginPage = () => {
     setIsLoading(true);
     try {
       await signUpWithEmail(signupEmail, signupPassword, signupFullName);
-      toast.success('Conta criada com sucesso! Verifique seu email para confirmar.');
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
-      toast.error('Erro ao criar conta: ' + (error.message || 'Erro desconhecido'));
+      // Não mostrar toast de erro aqui pois já é mostrado no AuthContext
     } finally {
       setIsLoading(false);
     }
@@ -71,9 +93,10 @@ const LoginPage = () => {
     setIsLoading(true);
     try {
       await signInWithGoogle();
+      // O redirecionamento será feito pelo AuthContext
     } catch (error: any) {
       console.error('Erro no login com Google:', error);
-      toast.error('Erro ao fazer login com Google: ' + (error.message || 'Erro desconhecido'));
+      // Não mostrar toast de erro aqui pois já é mostrado no AuthContext
     } finally {
       setIsLoading(false);
     }

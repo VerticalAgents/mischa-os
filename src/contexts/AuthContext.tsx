@@ -55,19 +55,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         if (event === 'SIGNED_IN' && session) {
-          // For now, just ensure user is authenticated
-          // Role assignment will be handled separately once database types are updated
-          
-          // Só navegar se estivermos na página de auth
-          if (location.pathname === '/auth' || location.pathname === '/login') {
-            const from = location.state?.from?.pathname || '/';
-            navigate(from, { replace: true });
-            toast.success("Login realizado com sucesso");
-          }
+          // Redirecionar sempre para /home após login bem-sucedido
+          console.log('🚀 Redirecionando para /home após login');
+          navigate('/home', { replace: true });
+          toast.success("Login realizado com sucesso");
         }
 
         if (event === 'SIGNED_OUT') {
-          navigate('/auth');
+          navigate('/login');
           toast.info("Você foi desconectado");
         }
       }
@@ -83,7 +78,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, isInitialized]);
 
   const signInWithEmail = async (email: string, password: string): Promise<void> => {
     try {
@@ -101,6 +96,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
         throw error;
       }
+      
+      // O redirecionamento será feito pelo onAuthStateChange
     } catch (error) {
       if (error instanceof Error && !error.message.includes('Invalid login credentials')) {
         toast.error("Erro inesperado ao fazer login");
@@ -116,7 +113,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setLoading(true);
       
       // Get current origin for redirect
-      const redirectTo = `${window.location.origin}/auth`;
+      const redirectTo = `${window.location.origin}/home`;
       
       const { error } = await supabase.auth.signUp({
         email,
@@ -155,7 +152,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth`
+          redirectTo: `${window.location.origin}/home`
         }
       });
 
