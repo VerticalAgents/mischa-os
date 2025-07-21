@@ -6,7 +6,6 @@ import { Layers } from "lucide-react";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
 
 // Import components
-import AjusteEstoqueTab from "@/components/pcp/AjusteEstoqueTab";
 import ProjecaoProducaoTab from "@/components/pcp/ProjecaoProducaoTab";
 import NecessidadeDiariaTab from "@/components/pcp/NecessidadeDiariaTab";
 import ProducaoAgendadaTab from "@/components/pcp/ProducaoAgendadaTab";
@@ -14,7 +13,7 @@ import HistoricoProducao from "@/components/pcp/HistoricoProducao";
 import AuditoriaPCPTab from "@/components/pcp/AuditoriaPCPTab";
 
 export default function PCP() {
-  const { activeTab, changeTab } = useTabPersistence("ajuste-estoque");
+  const { activeTab, changeTab } = useTabPersistence("projecao-producao");
 
   return (
     <div className="container mx-auto py-6">
@@ -26,17 +25,12 @@ export default function PCP() {
       
       <Tabs value={activeTab} onValueChange={changeTab} className="mt-6">
         <TabsList className="w-full justify-start">
-          <TabsTrigger value="ajuste-estoque">Ajuste de Estoque</TabsTrigger>
           <TabsTrigger value="projecao-producao">Projeção de Produção</TabsTrigger>
           <TabsTrigger value="necessidade-diaria">Necessidade Diária</TabsTrigger>
           <TabsTrigger value="producao-agendada">Produção Agendada</TabsTrigger>
           <TabsTrigger value="historico">Histórico</TabsTrigger>
           <TabsTrigger value="auditoria-pcp">Auditoria PCP</TabsTrigger>
         </TabsList>
-      
-        <TabsContent value="ajuste-estoque" className="space-y-6 mt-6">
-          <AjusteEstoqueTab />
-        </TabsContent>
         
         <TabsContent value="projecao-producao" className="space-y-6 mt-6">
           <ProjecaoProducaoTab />
