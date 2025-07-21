@@ -1,416 +1,223 @@
-import { useState } from "react";
-import PageHeader from "@/components/common/PageHeader";
-import BreadcrumbNavigation from "@/components/common/Breadcrumb";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calculator, TrendingUp, Target, AlertTriangle, BarChart3, Package, Factory, Utensils } from "lucide-react";
-import { useSupabaseCustosFixos } from "@/hooks/useSupabaseCustosFixos";
-import { useSupabaseCustosVariaveis } from "@/hooks/useSupabaseCustosVariaveis";
-import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
-import { useClienteStore } from "@/hooks/useClienteStore";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
+import { TrendingUp, TrendingDown, DollarSign, AlertTriangle } from "lucide-react";
+import { useOptimizedFinancialData } from "@/hooks/useOptimizedFinancialData";
 
 export default function PontoEquilibrio() {
-  const { custosFixos } = useSupabaseCustosFixos();
-  const { custosVariaveis } = useSupabaseCustosVariaveis();
-  const { faturamentoMensal, disponivel: faturamentoDisponivel } = useFaturamentoPrevisto();
-  const { clientes } = useClienteStore();
+  const { data: financialData, loading, error } = useOptimizedFinancialData();
 
-  // Calculate normalized monthly value for fixed costs
-  const calcularValorMensal = (custo: any): number => {
-    let valorMensal = custo.valor;
-    switch (custo.frequencia) {
-      case "semanal": valorMensal *= 4.33; break;
-      case "trimestral": valorMensal /= 3; break;
-      case "semestral": valorMensal /= 6; break;
-      case "anual": valorMensal /= 12; break;
-    }
-    return valorMensal;
-  };
+  // Memoize calculations to prevent unnecessary recalculations
+  const calculations = useMemo(() => {
+    if (!financialData) return null;
 
-  // Calculate input costs
-  const calcularCustoInsumos = (): number => {
-    if (!clientes.length) return 0;
-    const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio);
-    const custoMedioInsumosPorUnidade = 2.10;
-    const volumeMensalTotal = clientesAtivos.reduce((total, cliente) => {
-      const volumeSemanal = cliente.quantidadePadrao * (7 / cliente.periodicidadePadrao);
-      return total + volumeSemanal * 4.33;
-    }, 0);
-    return volumeMensalTotal * custoMedioInsumosPorUnidade;
-  };
-
-  // Calculate totals (fixed + variable only, excluding inputs for break-even calculation)
-  const totalCustosFixos = custosFixos.reduce((total, custo) => total + calcularValorMensal(custo), 0);
-  
-  // Calculate variable costs with real values when available
-  const totalCustosVariaveis = custosVariaveis.reduce((total, custo) => {
-    let valorFinal = custo.valor || 0;
+    const { faturamento, custosFixos, custosVariaveis } = financialData;
     
-    // Use real values for taxes and logistics
-    if (faturamentoDisponivel) {
-      if (custo.nome.toLowerCase().includes('imposto')) {
-        valorFinal = 1212.96; // Real value from PDV projection
-      } else if (custo.nome.toLowerCase().includes('logistic') || custo.subcategoria === 'Logística') {
-        valorFinal = 1500.24; // Real value from PDV projection
-      } else {
-        const percentualPart = faturamentoMensal * custo.percentual_faturamento / 100;
-        valorFinal += percentualPart;
-      }
-    }
-    return total + valorFinal;
-  }, 0);
-
-  // Calculate input costs
-  const totalCustoInsumos = calcularCustoInsumos();
-
-  // Total costs for break-even (fixed + variable only, as specified)
-  const custosParaEquilibrio = totalCustosFixos + totalCustosVariaveis;
-
-  // Dynamic break-even calculation using the formula: (Custos a Cobrir) ÷ 3.18 × 4.50
-  const margemContribuicaoUnitaria = 3.18; // Fixed contribution margin per unit
-  const precoVendaUnitario = 4.50; // Fixed unit selling price
-  const pontoEquilibrioPrincipal = (custosParaEquilibrio / margemContribuicaoUnitaria) * precoVendaUnitario;
-
-  // Total costs including inputs for chart visualization
-  const custosTotal = totalCustosFixos + totalCustosVariaveis + totalCustoInsumos;
-
-  // Product data with real contribution margins
-  const produtos = [
-    {
-      nome: "Brownies (Revenda Padrão)",
-      precoVenda: 4.50,
-      margemContribuicao: 3.18, // Margin provided
-      custoInsumo: 1.32, // Cost per unit for inputs
-      icon: Package,
-      color: "blue"
-    },
-    {
-      nome: "Formas (40 unidades)",
-      precoVenda: 127.20,
-      margemContribuicao: 127.20, // Margin provided
-      custoInsumo: 0, // No input cost for forms
-      icon: Factory,
-      color: "purple"
-    },
-    {
-      nome: "Mini Brownie Tradicional (Food Service)",
-      precoVenda: 40.83,
-      margemContribuicao: 40.83, // Margin provided
-      custoInsumo: 29.17, // Cost per package for inputs
-      icon: Utensils,
-      color: "green"
-    }
-  ];
-
-  // Calculate break-even quantities using provided margins (without inputs)
-  const pontosEquilibrio = produtos.map(produto => {
-    const quantidadeEquilibrio = Math.ceil(custosParaEquilibrio / produto.margemContribuicao);
-    const faturamentoEquilibrio = quantidadeEquilibrio * produto.precoVenda;
+    const faturamentoMensal = faturamento.mensal;
+    const custoFixoTotal = custosFixos.total;
+    const custoVariavelTotal = custosVariaveis.total;
+    
+    const margem = faturamentoMensal - custoFixoTotal - custoVariavelTotal;
+    const margemPercentual = faturamentoMensal > 0 ? (margem / faturamentoMensal) * 100 : 0;
+    
+    // Ponto de equilíbrio: Custos Fixos / (Receita - Custos Variáveis) * Receita
+    const margemContribuicao = faturamentoMensal - custoVariavelTotal;
+    const pontoEquilibrio = margemContribuicao > 0 ? (custoFixoTotal / margemContribuicao) * faturamentoMensal : 0;
     
     return {
-      ...produto,
-      quantidadeEquilibrio,
-      faturamentoEquilibrio
+      faturamentoMensal,
+      custoFixoTotal,
+      custoVariavelTotal,
+      margem,
+      margemPercentual,
+      pontoEquilibrio,
+      margemContribuicao
     };
-  });
+  }, [financialData]);
 
-  const margemSegurancaAtual = faturamentoDisponivel && pontoEquilibrioPrincipal > 0 
-    ? ((faturamentoMensal - pontoEquilibrioPrincipal) / faturamentoMensal) * 100 
-    : 0;
-
-  // Chart data for break-even visualization - corrected to show realistic intersection
-  const chartData = Array.from({ length: 12 }, (_, i) => {
-    const faturamento = (i + 1) * (pontoEquilibrioPrincipal / 6);
-    
-    // Calculate variable costs as percentage of revenue
-    const percentualCustosVariaveis = totalCustosVariaveis / faturamentoMensal;
-    const custosVariaveisChart = faturamento * percentualCustosVariaveis;
-    
-    // Calculate input costs based on volume (proportional to revenue)
-    const percentualCustoInsumos = totalCustoInsumos / faturamentoMensal;
-    const custoInsumosChart = faturamento * percentualCustoInsumos;
-    
-    // Total costs including all components
-    const custosTotal = totalCustosFixos + custosVariaveisChart + custoInsumosChart;
-    
-    return {
-      faturamento: Math.round(faturamento),
-      custosFixos: Math.round(totalCustosFixos),
-      custosVariaveis: Math.round(custosVariaveisChart),
-      custoInsumos: Math.round(custoInsumosChart),
-      custosTotal: Math.round(custosTotal),
-      resultado: Math.round(faturamento - custosTotal)
-    };
-  });
-
-  // Format currency
-  const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('pt-BR', { 
-      style: 'currency', 
-      currency: 'BRL' 
-    }).format(value);
-  };
-
-  const getColorClasses = (color: string) => {
-    const colors = {
-      blue: "border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-800",
-      purple: "border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 text-purple-800",
-      green: "border-green-200 bg-gradient-to-br from-green-50 to-green-100 text-green-800"
-    };
-    return colors[color as keyof typeof colors] || colors.blue;
-  };
-
-  const getIconColorClasses = (color: string) => {
-    const colors = {
-      blue: "bg-blue-500/10 text-blue-600",
-      purple: "bg-purple-500/10 text-purple-600", 
-      green: "bg-green-500/10 text-green-600"
-    };
-    return colors[color as keyof typeof colors] || colors.blue;
-  };
-
-  return (
-    <div className="container mx-auto">
-      <BreadcrumbNavigation />
-      
-      <PageHeader
-        title="Ponto de Equilíbrio"
-        description="Análise detalhada do break-even point da operação"
-      />
-
-      {/* Warning about data availability */}
-      {!faturamentoDisponivel && (
-        <Card className="border-amber-200 bg-amber-50 mt-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-amber-800">
-              <AlertTriangle className="h-5 w-5" />
-              Dados de faturamento necessários
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-amber-700">
-            <p>
-              Para cálculos precisos do ponto de equilíbrio, configure dados na aba "Gestão Financeira &gt; Projeção de Resultados por PDV".
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Main break-even metric */}
-      <div className="mt-6 mb-8">
-        <div className="flex items-center gap-2 mb-6">
-          <Target className="h-6 w-6 text-orange-600" />
-          <h2 className="text-2xl font-bold">Faturamento de Equilíbrio</h2>
-          <span className="text-sm text-muted-foreground bg-orange-50 px-2 py-1 rounded">Base: custos fixos + variáveis</span>
-        </div>
-
-        <Card className="relative overflow-hidden border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100 mb-6">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-orange-500/10 rounded-bl-3xl flex items-center justify-center">
-            <Calculator className="h-8 w-8 text-orange-600" />
-          </div>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-2xl text-orange-800">Ponto de Equilíbrio Mensal</CardTitle>
-            <p className="text-sm text-orange-600">Faturamento mínimo para cobrir custos fixos e variáveis</p>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold text-orange-700 mb-4">
-              {formatCurrency(pontoEquilibrioPrincipal)}
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-orange-600">Custos a cobrir:</span>
-                <div className="font-semibold">{formatCurrency(custosParaEquilibrio)}</div>
-              </div>
-              <div>
-                <span className="text-orange-600">Margem de segurança:</span>
-                <div className="font-semibold flex items-center gap-2">
-                  {margemSegurancaAtual.toFixed(1)}%
-                  <Badge variant={margemSegurancaAtual > 20 ? "default" : margemSegurancaAtual > 10 ? "secondary" : "destructive"} className="text-xs">
-                    {margemSegurancaAtual > 20 ? "Segura" : margemSegurancaAtual > 10 ? "Moderada" : "Risco"}
-                  </Badge>
+  if (loading) {
+    return (
+      <div className="grid gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <div className="animate-pulse">
+                  <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                  <div className="h-8 bg-muted rounded w-1/2"></div>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Product break-even quantities */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-6">
-          <BarChart3 className="h-6 w-6 text-slate-600" />
-          <h2 className="text-2xl font-bold">Unidades por Categoria para Equilíbrio</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {pontosEquilibrio.map((produto, index) => {
-            const Icon = produto.icon;
-            return (
-              <Card key={index} className={`relative overflow-hidden border-2 ${getColorClasses(produto.color)}`}>
-                <div className={`absolute top-0 right-0 w-12 h-12 ${getIconColorClasses(produto.color)} rounded-bl-3xl flex items-center justify-center`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{produto.nome}</CardTitle>
-                  <p className="text-xs opacity-80">Preço: {formatCurrency(produto.precoVenda)}</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold mb-2">
-                    {produto.quantidadeEquilibrio.toLocaleString()} 
-                    <span className="text-base font-normal ml-1">
-                      {produto.nome.includes('Formas') ? 'formas' : 'unidades'}
-                    </span>
-                  </div>
-                  <div className="text-sm opacity-80">
-                    <div>Margem: {formatCurrency(produto.margemContribuicao)}</div>
-                    <div>Faturamento: {formatCurrency(produto.faturamentoEquilibrio)}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
+    );
+  }
 
-      {/* Current performance metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Faturamento Atual
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(faturamentoMensal)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {faturamentoMensal > pontoEquilibrioPrincipal ? "✅ Acima" : "⚠️ Abaixo"} do ponto de equilíbrio
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Custos Fixos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(totalCustosFixos)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Base mensal
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Custos Variáveis
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {formatCurrency(totalCustosVariaveis)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Base mensal
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total para Equilíbrio
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {formatCurrency(custosParaEquilibrio)}
-            </div>
-            <p className="text-xs text-orange-600 mt-1">
-              Fixos + Variáveis
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Break-even chart */}
+  if (error) {
+    return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            📊 Gráfico de Break-Even
-          </CardTitle>
-          <CardDescription>
-            Visualização do ponto de equilíbrio: Faturamento vs. Custos Totais (incluindo insumos)
-            <br />
-            <span className="text-xs text-muted-foreground">Interseção em R$ {pontoEquilibrioPrincipal.toLocaleString()}</span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="faturamento" 
-                tickFormatter={(value) => `${(value/1000).toFixed(0)}k`}
-              />
-              <YAxis tickFormatter={(value) => `R$ ${(value/1000).toFixed(0)}k`} />
-              <Tooltip 
-                formatter={(value, name) => [formatCurrency(Number(value)), name]}
-                labelFormatter={(value) => `Faturamento: ${formatCurrency(Number(value))}`}
-              />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="faturamento" 
-                stroke="#8b5cf6" 
-                name="Faturamento"
-                strokeWidth={3}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="custosTotal" 
-                stroke="#f59e0b" 
-                name="Custos Totais (inclui insumos)"
-                strokeWidth={3}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="custosFixos" 
-                stroke="#ef4444" 
-                name="Custos Fixos"
-                strokeDasharray="5 5"
-                strokeWidth={2}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="custoInsumos" 
-                stroke="#06b6d4" 
-                name="Custos de Insumos"
-                strokeDasharray="3 3"
-                strokeWidth={2}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="resultado" 
-                stroke="#10b981" 
-                name="Resultado"
-                strokeWidth={2}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-          <div className="mt-2 text-xs text-muted-foreground text-center">
-            Custo total inclui insumos conforme projeção mensal real
+        <CardContent className="p-6">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            <span>{error}</span>
           </div>
         </CardContent>
       </Card>
+    );
+  }
+
+  if (!calculations) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-muted-foreground">
+            Dados financeiros não disponíveis
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const {
+    faturamentoMensal,
+    custoFixoTotal,
+    custoVariavelTotal,
+    margem,
+    margemPercentual,
+    pontoEquilibrio
+  } = calculations;
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold mb-2">Ponto de Equilíbrio</h2>
+        <p className="text-muted-foreground">
+          Análise do ponto de equilíbrio baseado no faturamento previsto e custos atuais
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Faturamento Mensal</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {formatCurrency(faturamentoMensal)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Custos Fixos</CardTitle>
+            <TrendingDown className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {formatCurrency(custoFixoTotal)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Custos Variáveis</CardTitle>
+            <TrendingDown className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">
+              {formatCurrency(custoVariavelTotal)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Margem Líquida</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${margem >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(margem)}
+            </div>
+            <Badge variant={margem >= 0 ? "default" : "destructive"} className="mt-1">
+              {margemPercentual.toFixed(1)}%
+            </Badge>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Ponto de Equilíbrio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <div className="text-3xl font-bold text-blue-600">
+                  {formatCurrency(pontoEquilibrio)}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Faturamento necessário para cobrir todos os custos
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm">Faturamento Atual:</span>
+                  <span className="text-sm font-medium">{formatCurrency(faturamentoMensal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm">Diferença:</span>
+                  <span className={`text-sm font-medium ${faturamentoMensal >= pontoEquilibrio ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(faturamentoMensal - pontoEquilibrio)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Análise de Risco</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {faturamentoMensal >= pontoEquilibrio ? (
+                <div className="flex items-center gap-2 text-green-600">
+                  <TrendingUp className="h-5 w-5" />
+                  <span className="font-medium">Situação Positiva</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-red-600">
+                  <AlertTriangle className="h-5 w-5" />
+                  <span className="font-medium">Atenção Necessária</span>
+                </div>
+              )}
+              
+              <div className="text-sm text-muted-foreground">
+                {faturamentoMensal >= pontoEquilibrio 
+                  ? "O faturamento atual está acima do ponto de equilíbrio, gerando lucro."
+                  : "O faturamento atual está abaixo do ponto de equilíbrio. Considere aumentar as vendas ou reduzir custos."
+                }
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { ExternalLink, Calendar, ArrowUp, ArrowDown, Check } from "lucide-react";
+
+import { ExternalLink, Calendar, ArrowUp, ArrowDown, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Cliente, StatusCliente } from "@/types";
@@ -17,6 +18,7 @@ interface ClientesTableProps {
   visibleColumns: string[];
   columnOptions: ColumnOption[];
   onSelectCliente: (id: string) => void;
+  onDeleteCliente?: (id: string) => void;
   selectedClientes?: string[];
   onSelectAllClientes?: () => void;
   onToggleClienteSelection?: (id: string) => void;
@@ -34,6 +36,7 @@ export default function ClientesTable({
   visibleColumns,
   columnOptions,
   onSelectCliente,
+  onDeleteCliente,
   selectedClientes = [],
   onToggleClienteSelection,
   onSelectAllClientes,
@@ -339,17 +342,33 @@ export default function ClientesTable({
                         case "acoes":
                           return (
                             <TableCell key={`${cliente.id}-${columnId}`} className="text-right">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onSelectCliente(cliente.id);
-                                }}
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                                <span className="sr-only">Ver detalhes</span>
-                              </Button>
+                              <div className="flex justify-end gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelectCliente(cliente.id);
+                                  }}
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                  <span className="sr-only">Ver detalhes</span>
+                                </Button>
+                                {onDeleteCliente && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDeleteCliente(cliente.id);
+                                    }}
+                                    className="text-destructive hover:text-destructive/90"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Excluir cliente</span>
+                                  </Button>
+                                )}
+                              </div>
                             </TableCell>
                           );
                         default:
