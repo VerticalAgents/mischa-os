@@ -12,7 +12,7 @@ import { DREDebugTab } from '@/components/projections/DREDebugTab';
 
 export default function Projections() {
   const { setBaseDRE } = useProjectionStore();
-  const { dreData, isLoading, error } = useDREData();
+  const { data: dreData, isLoading, error } = useDREData();
   const [activeView, setActiveView] = useState<'scenarios' | 'comparison' | 'audit' | 'debug'>('scenarios');
 
   useEffect(() => {

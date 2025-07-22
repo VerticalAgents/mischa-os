@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, TrendingUp, PieChart, BarChart3, AlertCircle } from "lucide-react";
@@ -35,11 +34,10 @@ export default function FinancialAnalysis({
   const [marginData, setMarginData] = useState<any[]>([]);
   
   // Usar dados reais da DRE
-  const { dreData, dreCalculationResult, isLoading, error } = useDREData();
+  const { data: dreData, isLoading, error } = useDREData();
   
   // Usar dados reais se disponíveis, senão usar dados antigos
   const currentDREData = dreData || baseDRE;
-  const currentCalculationResult = dreCalculationResult;
   
   useEffect(() => {
     if (currentDREData) {
@@ -249,31 +247,6 @@ export default function FinancialAnalysis({
               </div>
             </div>
           </div>
-          
-          {/* Detalhes adicionais se temos dados reais */}
-          {currentCalculationResult && (
-            <div className="mt-4 p-4 bg-muted rounded-lg">
-              <h4 className="font-medium text-sm mb-2">Detalhes do Cálculo:</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                <div>
-                  <span className="text-muted-foreground">Clientes Ativos:</span>
-                  <span className="ml-2 font-medium">{currentCalculationResult.detalhesCalculos.clientesAtivos}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Com NF:</span>
-                  <span className="ml-2 font-medium">{currentCalculationResult.detalhesCalculos.clientesComNF}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">% Impostos:</span>
-                  <span className="ml-2 font-medium">{currentCalculationResult.detalhesCalculos.percentualImpostos.toFixed(1)}%</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Categorias:</span>
-                  <span className="ml-2 font-medium">{currentCalculationResult.detalhesCalculos.faturamentoPorCategoria.length}</span>
-                </div>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
