@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { useClienteStore } from './useClienteStore';
 import { useSupabaseCustosFixos } from './useSupabaseCustosFixos';
@@ -11,7 +12,7 @@ export function useDREData() {
   const { clientes } = useClienteStore();
   const { custosFixos } = useSupabaseCustosFixos();
   const { custosVariaveis } = useSupabaseCustosVariaveis();
-  const { data: faturamentoPrevisto, isLoading: isLoadingFaturamento } = useFaturamentoPrevisto();
+  const faturamentoPrevisto = useFaturamentoPrevisto(); // This returns the object directly, not { data }
   const { indicadores } = useProjecaoIndicadores();
 
   const queryResult = useQuery({
@@ -141,7 +142,7 @@ export function useDREData() {
         }
       };
     },
-    enabled: !!faturamentoPrevisto && !isLoadingFaturamento && clientes.length > 0 && !!indicadores,
+    enabled: !!faturamentoPrevisto && !faturamentoPrevisto.isLoading && clientes.length > 0 && !!indicadores,
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000 // 10 minutos
   });

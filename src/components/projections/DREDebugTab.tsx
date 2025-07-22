@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Bug, CheckCircle } from "lucide-react";
@@ -10,8 +11,8 @@ import { useClienteStore } from "@/hooks/useClienteStore";
 export function DREDebugTab() {
   const { data: dreData, isLoading, error } = useDREData();
   const faturamentoPrevisto = useFaturamentoPrevisto();
-  const { custosFixos } = useSupabaseCustosFixos();
-  const { custosVariaveis } = useSupabaseCustosVariaveis();
+  const { custosFixos, isLoading: custosFixosLoading, /* error handled in hook */ } = useSupabaseCustosFixos();
+  const { custosVariaveis, isLoading: custosVariaveisLoading, /* error handled in hook */ } = useSupabaseCustosVariaveis();
   const { clientes } = useClienteStore();
 
   if (isLoading) {
@@ -91,8 +92,6 @@ export function DREDebugTab() {
         <CardContent>
           {faturamentoPrevisto.isLoading ? (
             <p>Carregando dados de faturamento...</p>
-          ) : faturamentoPrevisto.error ? (
-            <p className="text-red-500">Erro: {faturamentoPrevisto.error}</p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               <div>
@@ -122,19 +121,17 @@ export function DREDebugTab() {
           <CardDescription>Dados detalhados dos custos fixos</CardDescription>
         </CardHeader>
         <CardContent>
-          {custosFixos.isLoading ? (
+          {custosFixosLoading ? (
             <p>Carregando custos fixos...</p>
-          ) : custosFixos.error ? (
-            <p className="text-red-500">Erro: {custosFixos.error}</p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total de Custos Fixos</p>
-                <p className="text-lg font-bold">R$ {custosFixos.custosFixos?.reduce((sum, custo) => sum + custo.valor, 0).toLocaleString()}</p>
+                <p className="text-lg font-bold">R$ {custosFixos?.reduce((sum, custo) => sum + custo.valor, 0).toLocaleString()}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Número de Custos Fixos</p>
-                <p className="text-lg font-bold">{custosFixos.custosFixos?.length || 0}</p>
+                <p className="text-lg font-bold">{custosFixos?.length || 0}</p>
               </div>
             </div>
           )}
@@ -147,19 +144,17 @@ export function DREDebugTab() {
           <CardDescription>Dados detalhados dos custos variáveis</CardDescription>
         </CardHeader>
         <CardContent>
-          {custosVariaveis.isLoading ? (
+          {custosVariaveisLoading ? (
             <p>Carregando custos variáveis...</p>
-          ) : custosVariaveis.error ? (
-            <p className="text-red-500">Erro: {custosVariaveis.error}</p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total de Custos Variáveis</p>
-                <p className="text-lg font-bold">R$ {custosVariaveis.custosVariaveis?.reduce((sum, custo) => sum + custo.valor, 0).toLocaleString()}</p>
+                <p className="text-lg font-bold">R$ {custosVariaveis?.reduce((sum, custo) => sum + custo.valor, 0).toLocaleString()}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Número de Custos Variáveis</p>
-                <p className="text-lg font-bold">{custosVariaveis.custosVariaveis?.length || 0}</p>
+                <p className="text-lg font-bold">{custosVariaveis?.length || 0}</p>
               </div>
             </div>
           )}

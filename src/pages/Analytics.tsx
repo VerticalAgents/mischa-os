@@ -1,15 +1,16 @@
+
 import { useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import BreadcrumbNavigation from '@/components/common/Breadcrumb';
 import { useDREData } from '@/hooks/useDREData';
 import { useDashboardStore } from '@/hooks/useDashboardStore';
-import { OperationalSummary } from '@/components/dashboard-analytics/OperationalSummary';
-import { ProductionIndicators } from '@/components/dashboard-analytics/ProductionIndicators';
-import { FinancialAnalysis } from '@/components/dashboard-analytics/FinancialAnalysis';
-import { CustomerBehavior } from '@/components/dashboard-analytics/CustomerBehavior';
-import { AlertsRisks } from '@/components/dashboard-analytics/AlertsRisks';
-import { AnaliseGiroPDV } from '@/components/dashboard-analytics/AnaliseGiroPDV';
-import { ProducaoSimuladaTab } from '@/components/dashboard-analytics/ProducaoSimuladaTab';
+import OperationalSummary from '@/components/dashboard-analytics/OperationalSummary';
+import ProductionIndicators from '@/components/dashboard-analytics/ProductionIndicators';
+import FinancialAnalysis from '@/components/dashboard-analytics/FinancialAnalysis';
+import CustomerBehavior from '@/components/dashboard-analytics/CustomerBehavior';
+import AlertsRisks from '@/components/dashboard-analytics/AlertsRisks';
+import AnaliseGiroPDV from '@/components/dashboard-analytics/AnaliseGiroPDV';
+import ProducaoSimuladaTab from '@/components/dashboard-analytics/ProducaoSimuladaTab';
 
 export default function Analytics() {
   const { data: dreData, isLoading, error } = useDREData();
@@ -98,13 +99,13 @@ export default function Analytics() {
         </button>
       </div>
 
-      {activeTab === 'operational' && <OperationalSummary dashboardData={dashboardData} />}
-      {activeTab === 'production' && <ProductionIndicators dashboardData={dashboardData} />}
-      {activeTab === 'financial' && <FinancialAnalysis baseDRE={null} dashboardData={dashboardData} />}
-      {activeTab === 'customer' && <CustomerBehavior dashboardData={dashboardData} />}
-      {activeTab === 'alerts' && <AlertsRisks dashboardData={dashboardData} />}
-      {activeTab === 'giro' && <AnaliseGiroPDV dashboardData={dashboardData} />}
-      {activeTab === 'simulacao' && <ProducaoSimuladaTab dashboardData={dashboardData} />}
+      {activeTab === 'operational' && <OperationalSummary dashboardData={dashboardData} baseDRE={dreData} clientes={dashboardData.clientes} />}
+      {activeTab === 'production' && <ProductionIndicators registrosProducao={dashboardData.registrosProducao} planejamentoProducao={dashboardData.planejamentoProducao} />}
+      {activeTab === 'financial' && <FinancialAnalysis baseDRE={dreData} dashboardData={dashboardData} />}
+      {activeTab === 'customer' && <CustomerBehavior clientes={dashboardData.clientes} baseDRE={dreData} />}
+      {activeTab === 'alerts' && <AlertsRisks clientes={dashboardData.clientes} pedidos={dashboardData.pedidos} registrosProducao={dashboardData.registrosProducao} planejamentoProducao={dashboardData.planejamentoProducao} />}
+      {activeTab === 'giro' && <AnaliseGiroPDV clientes={dashboardData.clientes} baseDRE={dreData} />}
+      {activeTab === 'simulacao' && <ProducaoSimuladaTab clientes={dashboardData.clientes} />}
     </div>
   );
 }
