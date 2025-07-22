@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, DollarSign, Percent, Truck, FileText, Calculator } from 'lucide-react';
+import { TrendingUp, DollarSign, Percent, Truck, FileText, Calculator, Tag } from 'lucide-react';
+import { useClienteStore } from '@/hooks/useClienteStore';
 
 interface ResumoGeralTabProps {
   faturamentoMensal: number;
@@ -22,6 +23,8 @@ export default function ResumoGeralTab({
   faturamentoSemanal, 
   precosDetalhados 
 }: ResumoGeralTabProps) {
+  const { clientes } = useClienteStore();
+
   // Percentuais conforme mostrado na página de Projeção de Resultados por PDV
   const PERCENTUAL_IMPOSTOS = 2.1; // 2,1%
   const PERCENTUAL_LOGISTICA = 3.8; // 3,8%
@@ -42,6 +45,51 @@ export default function ResumoGeralTab({
   const faturamentoRevenda = categoriaRevenda.reduce((sum, item) => sum + (item.faturamentoSemanal * 4), 0);
   const faturamentoFoodService = categoriaFoodService.reduce((sum, item) => sum + (item.faturamentoSemanal * 4), 0);
   const outrosFaturamento = faturamentoMensal - faturamentoRevenda - faturamentoFoodService;
+
+  // Calcular preço médio de venda para categoria Revenda Padrão (apenas clientes com giro habilitado)
+  const calcularPrecoMedioRevenda = () => {
+    // Filtrar apenas dados da categoria "Revenda Padrão"
+    const dadosRevenda = precosDetalhados.filter(item => 
+      item.categoriaNome.toLowerCase().includes('revenda') || 
+      item.categoriaNome.toLowerCase().includes('padrão')
+    );
+
+    // Filtrar apenas clientes que têm o giro habilitado (contabilizar_giro_medio = true)
+    const dadosRevendaComGiroHabilitado = dadosRevenda.filter(item => {
+      const cliente = clientes.find(c => c.id === item.clienteId);
+      return cliente && cliente.contabilizarGiroMedio === true;
+    });
+
+    if (dadosRevendaComGiroHabilitado.length === 0) {
+      return {
+        precoMedio: 0,
+        quantidadeClientes: 0,
+        totalVolume: 0
+      };
+    }
+
+    // Calcular média ponderada pelo volume (giro semanal)
+    const somaPrecosPonderados = dadosRevendaComGiroHabilitado.reduce((sum, item) => {
+      return sum + (item.precoUnitario * item.giroSemanal);
+    }, 0);
+
+    const somaVolume = dadosRevendaComGiroHabilitado.reduce((sum, item) => {
+      return sum + item.giroSemanal;
+    }, 0);
+
+    const precoMedio = somaVolume > 0 ? somaPrecosPonderados / somaVolume : 0;
+
+    // Contar clientes únicos
+    const clientesUnicos = new Set(dadosRevendaComGiroHabilitado.map(item => item.clienteId));
+
+    return {
+      precoMedio,
+      quantidadeClientes: clientesUnicos.size,
+      totalVolume: somaVolume
+    };
+  };
+
+  const { precoMedio, quantidadeClientes, totalVolume } = calcularPrecoMedioRevenda();
 
   // Calcular custos
   const custosInsumosRevenda = faturamentoRevenda * (PERCENTUAL_INSUMOS_REVENDA / 100);
@@ -146,8 +194,62 @@ export default function ResumoGeralTab({
         </Card>
       </div>
 
+      {/* Novo card para Preço Médio de Venda */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Tag className="h-4 w-4 text-indigo-600" />
+              Preço Médio - Revenda Padrão
+            </CardTitle>
+            <CardDescription>
+              Apenas clientes com giro habilitado
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-3">
+              <div>
+                <div className="text-2xl font-bold text-indigo-600">
+                  {formatarMoeda(precoMedio)}
+                </div>
+                <p className="text-xs text-muted-foreground">Preço médio por unidade</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Clientes:</span>
+                  <div className="font-semibold">{quantidadeClientes}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Volume Semanal:</span>
+                  <div className="font-semibold">{Math.round(totalVolume)} unidades</div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Calculator className="h-4 w-4 text-green-600" />
+              Margem Bruta
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div>
+              <div className="text-xl font-bold text-green-600">
+                {formatarMoeda(margemBruta)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {formatarPercentual(percentualMargemBruta)} do faturamento
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Cards de Custos */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -181,25 +283,6 @@ export default function ResumoGeralTab({
               </div>
               <p className="text-xs text-muted-foreground">
                 {formatarPercentual(PERCENTUAL_IMPOSTOS)} do faturamento
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Calculator className="h-4 w-4 text-green-600" />
-              Margem Bruta
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div>
-              <div className="text-xl font-bold text-green-600">
-                {formatarMoeda(margemBruta)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {formatarPercentual(percentualMargemBruta)} do faturamento
               </p>
             </div>
           </CardContent>
