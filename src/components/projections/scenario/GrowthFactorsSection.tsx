@@ -13,12 +13,10 @@ interface GrowthFactorsSectionProps {
 export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
   const { updateScenario } = useProjectionStore();
 
-  // Subitens da Revenda (baseado nos dados reais da DRE)
+  // Apenas os itens de faturamento (sem custos de insumos)
   const revendaSubitems = [
     { key: 'revendaPadraoFaturamento', label: 'Revenda Padrão - Faturamento', baseValue: scenario.detailedBreakdown?.revendaPadraoFaturamento || 0 },
-    { key: 'totalInsumosRevenda', label: 'Revenda Padrão - Insumos', baseValue: scenario.detailedBreakdown?.totalInsumosRevenda || 0 },
     { key: 'foodServiceFaturamento', label: 'Food Service - Faturamento', baseValue: scenario.detailedBreakdown?.foodServiceFaturamento || 0 },
-    { key: 'totalInsumosFoodService', label: 'Food Service - Insumos', baseValue: scenario.detailedBreakdown?.totalInsumosFoodService || 0 },
   ];
 
   const updateGrowthFactor = (subitemKey: string, type: 'percentage' | 'absolute', value: number) => {
@@ -30,6 +28,7 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
     // Recalcular os valores com base nos fatores de crescimento
     const updatedBreakdown = { ...scenario.detailedBreakdown };
     
+    // Calcular os novos valores de faturamento
     revendaSubitems.forEach(subitem => {
       const growth = updatedGrowthFactors[subitem.key];
       if (growth) {
@@ -42,6 +41,23 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
         updatedBreakdown[subitem.key as keyof typeof updatedBreakdown] = newValue;
       }
     });
+
+    // Calcular proporcionalmente os custos de insumos baseados no crescimento do faturamento
+    const baseRevendaFaturamento = scenario.detailedBreakdown?.revendaPadraoFaturamento || 0;
+    const baseFoodServiceFaturamento = scenario.detailedBreakdown?.foodServiceFaturamento || 0;
+    const baseRevendaInsumos = scenario.detailedBreakdown?.totalInsumosRevenda || 0;
+    const baseFoodServiceInsumos = scenario.detailedBreakdown?.totalInsumosFoodService || 0;
+
+    // Calcular o fator de crescimento proporcional para cada canal
+    if (baseRevendaFaturamento > 0) {
+      const revendaGrowthFactor = updatedBreakdown.revendaPadraoFaturamento / baseRevendaFaturamento;
+      updatedBreakdown.totalInsumosRevenda = baseRevendaInsumos * revendaGrowthFactor;
+    }
+
+    if (baseFoodServiceFaturamento > 0) {
+      const foodServiceGrowthFactor = updatedBreakdown.foodServiceFaturamento / baseFoodServiceFaturamento;
+      updatedBreakdown.totalInsumosFoodService = baseFoodServiceInsumos * foodServiceGrowthFactor;
+    }
 
     // Recalcular totais
     const totalRevenue = updatedBreakdown.revendaPadraoFaturamento + updatedBreakdown.foodServiceFaturamento;

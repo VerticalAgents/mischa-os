@@ -70,9 +70,7 @@ export const useProjectionStore = create<ProjectionStore>()(
           excludedClients: [],
           channelGrowthFactors: {
             'revendaPadraoFaturamento': { type: 'percentage', value: 0 },
-            'totalInsumosRevenda': { type: 'percentage', value: 0 },
             'foodServiceFaturamento': { type: 'percentage', value: 0 },
-            'totalInsumosFoodService': { type: 'percentage', value: 0 },
           }
         };
         
