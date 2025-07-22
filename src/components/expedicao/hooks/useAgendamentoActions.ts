@@ -69,8 +69,10 @@ export const useAgendamentoActions = () => {
       });
       
       // Recarregar dados após atualização
-      await carregarPedidos();
-      await carregarTodosAgendamentos();
+      await Promise.all([
+        carregarPedidos(), // MODIFICADO: Garantir que os pedidos são recarregados
+        carregarTodosAgendamentos()
+      ]);
       
       toast.success("Agendamento atualizado com sucesso!");
       setModalEditarAberto(false);

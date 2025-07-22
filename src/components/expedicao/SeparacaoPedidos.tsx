@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -39,17 +38,17 @@ export const SeparacaoPedidos = () => {
     handleSalvarAgendamento
   } = useAgendamentoActions();
 
-  // Usar hook de sincronização
-  useExpedicaoSync();
+  // Usar hook de sincronização aprimorado
+  const { recarregarDados } = useExpedicaoSync();
 
   // Carregar pedidos apenas uma vez ao montar
   useEffect(() => {
     if (!mountedRef.current) {
       mountedRef.current = true;
       console.log('🔄 Carregamento inicial da SeparacaoPedidos');
-      carregarPedidos();
+      recarregarDados(); // Usar o método aprimorado
     }
-  }, [carregarPedidos]);
+  }, [recarregarDados]);
 
   // Obter pedidos filtrados
   const pedidosParaSeparacao = getPedidosParaSeparacao();
@@ -82,6 +81,8 @@ export const SeparacaoPedidos = () => {
     
     console.log('✅ Marcando todos como separados:', listaAtual.map(p => p.id));
     await marcarTodosSeparados(listaAtual);
+    // Recarregar dados após a operação em massa
+    await recarregarDados();
   };
 
   const handleConfirmarSeparacao = async (pedidoId: string) => {
@@ -95,6 +96,8 @@ export const SeparacaoPedidos = () => {
       console.log('🔍 Todos os IDs disponíveis:', pedidos.map(p => ({ id: p.id, tipo: typeof p.id })));
       
       await confirmarSeparacao(pedidoId);
+      // Recarregar dados após a confirmação individual
+      await recarregarDados();
       console.log('✅ Separação confirmada com sucesso para pedido:', pedidoId);
     } catch (error) {
       console.error('❌ Erro ao confirmar separação:', error);
@@ -104,6 +107,8 @@ export const SeparacaoPedidos = () => {
 
   const handleAtualizarData = async () => {
     await atualizarDataReferencia();
+    // Recarregar dados após atualização da data
+    await recarregarDados();
   };
 
   if (isLoading) {
