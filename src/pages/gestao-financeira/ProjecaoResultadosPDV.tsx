@@ -11,6 +11,9 @@ import { useSupabaseCategoriasProduto } from '@/hooks/useSupabaseCategoriasProdu
 import { useSupabaseGirosSemanaPersonalizados } from '@/hooks/useSupabaseGirosSemanaPersonalizados';
 import GiroInlineEditor from '@/components/gestao-financeira/GiroInlineEditor';
 import ResumoGeralTab from '@/components/gestao-financeira/ResumoGeralTab';
+import FaturamentoTable from '@/components/gestao-financeira/FaturamentoTable';
+import CustosTable from '@/components/gestao-financeira/CustosTable';
+import ResultadosTable from '@/components/gestao-financeira/ResultadosTable';
 
 export default function ProjecaoResultadosPDV() {
   const { precosDetalhados, isLoading, recalcular, faturamentoMensal, faturamentoSemanal } = useFaturamentoPrevisto();
@@ -203,68 +206,36 @@ export default function ProjecaoResultadosPDV() {
         </TabsList>
 
         <TabsContent value="detalhada" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Projeção Detalhada por Cliente</CardTitle>
-              <CardDescription>
-                Detalhamento do faturamento previsto por cliente e categoria com edição inline de giros
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Cliente</th>
-                      <th className="text-left p-2">Categoria</th>
-                      <th className="text-right p-2">Giro Semanal</th>
-                      <th className="text-right p-2">Preço Unit.</th>
-                      <th className="text-right p-2">Fat. Semanal</th>
-                      <th className="text-right p-2">Fat. Mensal</th>
-                      <th className="text-center p-2">Preço Personalizado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {precosDetalhados?.map((item, index) => (
-                      <tr key={index} className="border-b hover:bg-muted/50">
-                        <td className="p-2 font-medium">{item.clienteNome}</td>
-                        <td className="p-2">
-                          <Badge variant={isCategoriaRevenda(item.categoriaNome) ? "default" : "secondary"}>
-                            {item.categoriaNome}
-                          </Badge>
-                        </td>
-                        <td className="p-2 text-right">
-                          <GiroInlineEditor
-                            clienteId={item.clienteId}
-                            categoriaId={item.categoriaId}
-                            giroAtual={item.giroSemanal}
-                            isPersonalizado={verificarSeGiroPersonalizado(item.clienteId, item.categoriaId)}
-                            onGiroAtualizado={handleGiroAtualizado}
-                          />
-                        </td>
-                        <td className="p-2 text-right">
-                          R$ {item.precoUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </td>
-                        <td className="p-2 text-right">
-                          R$ {item.faturamentoSemanal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </td>
-                        <td className="p-2 text-right font-semibold">
-                          R$ {(item.faturamentoSemanal * 4).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </td>
-                        <td className="p-2 text-center">
-                          {item.precoPersonalizado ? (
-                            <Badge variant="outline" className="text-green-600">Sim</Badge>
-                          ) : (
-                            <Badge variant="outline">Não</Badge>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+          <Tabs defaultValue="faturamento" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="faturamento">Faturamento</TabsTrigger>
+              <TabsTrigger value="custos">Custos</TabsTrigger>
+              <TabsTrigger value="resultados">Resultados</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="faturamento" className="space-y-4">
+              <FaturamentoTable
+                precosDetalhados={precosDetalhados || []}
+                verificarSeGiroPersonalizado={verificarSeGiroPersonalizado}
+                handleGiroAtualizado={handleGiroAtualizado}
+                isCategoriaRevenda={isCategoriaRevenda}
+              />
+            </TabsContent>
+
+            <TabsContent value="custos" className="space-y-4">
+              <CustosTable
+                precosDetalhados={precosDetalhados || []}
+                isCategoriaRevenda={isCategoriaRevenda}
+              />
+            </TabsContent>
+
+            <TabsContent value="resultados" className="space-y-4">
+              <ResultadosTable
+                precosDetalhados={precosDetalhados || []}
+                isCategoriaRevenda={isCategoriaRevenda}
+              />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="categoria" className="space-y-4">
