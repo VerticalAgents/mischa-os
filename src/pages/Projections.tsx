@@ -4,6 +4,7 @@ import PageHeader from '@/components/common/PageHeader';
 import BreadcrumbNavigation from '@/components/common/Breadcrumb';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
 import { useDREData } from '@/hooks/useDREData';
+import { useFaturamentoMedioPDV } from '@/hooks/useFaturamentoMedioPDV';
 import { ScenarioTabs } from '@/components/projections/ScenarioTabs';
 import { ComparisonView } from '@/components/projections/ComparisonView';
 import { ProjectionsHeader } from '@/components/projections/ProjectionsHeader';
@@ -11,8 +12,9 @@ import { DREAuditoria } from '@/components/projections/DREAuditoria';
 import { DREDebugTab } from '@/components/projections/DREDebugTab';
 
 export default function Projections() {
-  const { setBaseDRE } = useProjectionStore();
+  const { setBaseDRE, setFaturamentoMedioPDV } = useProjectionStore();
   const { data: dreData, isLoading, error } = useDREData();
+  const { faturamentoMedioRevenda } = useFaturamentoMedioPDV();
   const [activeView, setActiveView] = useState<'scenarios' | 'comparison' | 'audit' | 'debug'>('scenarios');
 
   useEffect(() => {
@@ -21,6 +23,13 @@ export default function Projections() {
       setBaseDRE(dreData);
     }
   }, [dreData, setBaseDRE]);
+
+  useEffect(() => {
+    if (faturamentoMedioRevenda > 0) {
+      console.log('💰 Atualizando faturamento médio por PDV no store:', faturamentoMedioRevenda);
+      setFaturamentoMedioPDV(faturamentoMedioRevenda);
+    }
+  }, [faturamentoMedioRevenda, setFaturamentoMedioPDV]);
 
   return (
     <div className="container mx-auto py-6">

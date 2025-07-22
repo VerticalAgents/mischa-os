@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,6 +12,7 @@ interface ProjectionStore {
   scenarios: DREData[];
   activeScenarioId: string | null;
   clientChannels: Record<number, Channel>;
+  faturamentoMedioPDV: number;
   
   // Actions
   setBaseDRE: (dreData: DREData) => void;
@@ -20,6 +22,7 @@ interface ProjectionStore {
   deleteScenario: (id: string) => void;
   setActiveScenario: (id: string | null) => void;
   setClientChannel: (clienteId: number, channel: Channel) => void;
+  setFaturamentoMedioPDV: (valor: number) => void;
   
   // Getters
   getBaseDRE: () => DREData | null;
@@ -50,6 +53,7 @@ export const useProjectionStore = create<ProjectionStore>()(
       scenarios: [],
       activeScenarioId: 'base',
       clientChannels: {},
+      faturamentoMedioPDV: 0,
       
       setBaseDRE: (dreData) => {
         console.log('🔄 Definindo DRE Base no store:', dreData);
@@ -139,6 +143,10 @@ export const useProjectionStore = create<ProjectionStore>()(
             [clienteId]: channel
           }
         }));
+      },
+
+      setFaturamentoMedioPDV: (valor) => {
+        set({ faturamentoMedioPDV: valor });
       },
       
       getBaseDRE: () => get().baseDRE,
