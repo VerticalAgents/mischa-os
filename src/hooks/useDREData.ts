@@ -1,235 +1,204 @@
 
-import { useState, useEffect } from 'react';
-import { useClienteStore } from '@/hooks/useClienteStore';
-import { useSupabaseCustosFixos } from '@/hooks/useSupabaseCustosFixos';
-import { useSupabaseCustosVariaveis } from '@/hooks/useSupabaseCustosVariaveis';
-import { useFaturamentoPrevisto } from '@/hooks/useFaturamentoPrevisto';
-import { useProjecaoIndicadores } from '@/hooks/useProjecaoIndicadores';
-import { calculateDREFromRealData, DRECalculationResult } from '@/services/dreCalculations';
+import { useQuery } from '@tanstack/react-query';
+import { useClienteStore } from './useClienteStore';
+import { useSupabaseCustosFixos } from './useSupabaseCustosFixos';
+import { useSupabaseCustosVariaveis } from './useSupabaseCustosVariaveis';
+import { useFaturamentoPrevisto } from './useFaturamentoPrevisto';
 import { DREData, ChannelData } from '@/types/projections';
+import { v4 as uuidv4 } from 'uuid';
 
-export interface DREDataHook {
-  dreData: DREData | null;
-  dreCalculationResult: DRECalculationResult | null;
-  isLoading: boolean;
-  error: string | null;
-  recalculate: () => Promise<void>;
-}
-
-export const useDREData = (): DREDataHook => {
-  const [dreData, setDreData] = useState<DREData | null>(null);
-  const [dreCalculationResult, setDreCalculationResult] = useState<DRECalculationResult | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
+export function useDREData() {
   const { clientes } = useClienteStore();
   const { custosFixos } = useSupabaseCustosFixos();
   const { custosVariaveis } = useSupabaseCustosVariaveis();
-  const { faturamentoMensal, precosDetalhados, disponivel } = useFaturamentoPrevisto();
-  const { indicadores: projecaoIndicadores, isLoading: projecaoLoading } = useProjecaoIndicadores();
+  const { data: faturamentoPrevisto, isLoading: isLoadingFaturamento } = useFaturamentoPrevisto();
 
-  const calculateDRE = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Aguardar até que os dados de faturamento e projeção estejam disponíveis
-      if (!disponivel || !precosDetalhados || precosDetalhados.length === 0 || !projecaoIndicadores || projecaoLoading) {
-        console.log('⏳ Aguardando dados de faturamento e projeção...');
-        setIsLoading(false);
-        return;
+  return useQuery({
+    queryKey: ['dre-data', clientes.length, custosFixos.length, custosVariaveis.length, faturamentoPrevisto],
+    queryFn: async (): Promise<DREData> => {
+      if (!faturamentoPrevisto || !faturamentoPrevisto.precosDetalhados) {
+        throw new Error('Dados de faturamento não disponíveis');
       }
-      
-      console.log('🔄 Calculando DRE com dados dinâmicos da projeção...');
-      
-      const calculationResult = await calculateDREFromRealData(
-        clientes,
-        custosFixos,
-        custosVariaveis,
-        { faturamentoMensal, precosDetalhados }
-      );
-      
-      console.log('✅ DRE calculada com sucesso:', calculationResult);
-      
-      // USAR VALORES DINÂMICOS DA PROJEÇÃO (não mais hardcoded)
-      const receitaTotal = projecaoIndicadores.faturamentoGeralMensal;
-      const revendaPadrao = projecaoIndicadores.faturamentoRevendaPadrao;
-      const foodService = projecaoIndicadores.faturamentoFoodService;
-      
-      // VALORES DINÂMICOS - Logística e Insumos da projeção real
-      const logistica = projecaoIndicadores.custoLogistico;
-      const totalInsumos = projecaoIndicadores.totalCustoInsumosMensal;
-      const insumosRevendaPadrao = projecaoIndicadores.custoInsumosRevendaPadrao;
-      const insumosFoodService = projecaoIndicadores.custoInsumosFoodService;
-      
-      const aquisicaoClientes = receitaTotal * 0.08; // 8% da receita
-      
-      // Recalcular total de custos variáveis com valores dinâmicos
-      const totalCustosVariaveis = logistica + totalInsumos + aquisicaoClientes;
-      
-      const custoFixosTotal = custosFixos.reduce((sum, custo) => 
-        sum + (custo.frequencia === 'anual' ? custo.valor / 12 : custo.valor), 0
-      );
-      const custosAdministrativos = custosVariaveis
-        .filter(custo => custo.subcategoria === 'Administrativo')
-        .reduce((sum, custo) => sum + (custo.frequencia === 'anual' ? custo.valor / 12 : custo.valor), 0);
-      
-      const impostos = projecaoIndicadores.impostos; // Usar impostos calculados dinamicamente
-      
-      // Calcular valores derivados usando os valores dinâmicos
-      const lucroBruto = receitaTotal - totalCustosVariaveis;
-      const lucroOperacional = lucroBruto - custoFixosTotal - custosAdministrativos;
-      const resultadoLiquido = lucroOperacional - impostos;
 
-      console.log('📊 Valores dinâmicos da DRE (sincronizados com projeção):', {
-        receitaTotal,
-        logistica,
-        totalInsumos,
-        insumosRevendaPadrao,
-        insumosFoodService,
-        aquisicaoClientes,
-        totalCustosVariaveis,
-        lucroBruto,
-        lucroOperacional,
-        resultadoLiquido
+      // Usar os mesmos percentuais da página de Projeção de Resultados por PDV
+      const PERCENTUAL_LOGISTICA_DISTRIBUICAO = 8; // 8%
+      const PERCENTUAL_LOGISTICA_PROPRIA = 3; // 3%
+      const PERCENTUAL_LOGISTICA_OUTROS = 5; // 5%
+      const PERCENTUAL_AQUISICAO_CLIENTES = 8; // 8%
+      const PERCENTUAL_IMPOSTOS = 15; // 15%
+      
+      // Calcular faturamento por categoria
+      const faturamentoPorCategoria = new Map<string, number>();
+      const custosInsumosPorCategoria = new Map<string, number>();
+      
+      faturamentoPrevisto.precosDetalhados.forEach(detalhe => {
+        const categoria = getCategoryGroup(detalhe.categoriaNome);
+        const faturamentoSemanal = detalhe.faturamentoSemanal * 4; // 4 semanas por mês
+        
+        faturamentoPorCategoria.set(categoria, 
+          (faturamentoPorCategoria.get(categoria) || 0) + faturamentoSemanal
+        );
+        
+        const custoInsumos = calculateInsumoCosts(faturamentoSemanal, detalhe.categoriaNome);
+        custosInsumosPorCategoria.set(categoria,
+          (custosInsumosPorCategoria.get(categoria) || 0) + custoInsumos
+        );
       });
 
-      // Criar dados de canais baseados nos valores dinâmicos
+      const revendaPadraoFaturamento = faturamentoPorCategoria.get('revenda padrão') || 0;
+      const foodServiceFaturamento = faturamentoPorCategoria.get('food service') || 0;
+      const ufcspaFaturamento = faturamentoPorCategoria.get('ufcspa') || 0;
+      const personalizadosFaturamento = faturamentoPorCategoria.get('personalizados') || 0;
+      const outrosFaturamento = faturamentoPorCategoria.get('outros') || 0;
+
+      const totalInsumosRevenda = custosInsumosPorCategoria.get('revenda padrão') || 0;
+      const totalInsumosFoodService = custosInsumosPorCategoria.get('food service') || 0;
+
+      const totalRevenue = faturamentoPrevisto.faturamentoMensal;
+      
+      // Calcular custos logísticos usando os mesmos percentuais da Projeção de Resultados por PDV
+      const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio);
+      let custosLogisticos = 0;
+      
+      clientesAtivos.forEach(cliente => {
+        const faturamentoCliente = faturamentoPrevisto.precosDetalhados
+          .filter(p => p.clienteId === cliente.id)
+          .reduce((sum, p) => sum + (p.faturamentoSemanal * 4), 0);
+        
+        let percentualLogistico = 0;
+        if (cliente.tipoLogistica === 'Distribuição') {
+          percentualLogistico = PERCENTUAL_LOGISTICA_DISTRIBUICAO / 100;
+        } else if (cliente.tipoLogistica === 'Própria') {
+          percentualLogistico = PERCENTUAL_LOGISTICA_PROPRIA / 100;
+        } else {
+          percentualLogistico = PERCENTUAL_LOGISTICA_OUTROS / 100;
+        }
+        
+        custosLogisticos += faturamentoCliente * percentualLogistico;
+      });
+
+      const clientesComNF = clientesAtivos.filter(c => c.emiteNotaFiscal).length;
+      const percentualImpostos = clientesComNF / clientesAtivos.length;
+      
+      const aquisicaoClientes = totalRevenue * (PERCENTUAL_AQUISICAO_CLIENTES / 100);
+      const impostos = totalRevenue * percentualImpostos * (PERCENTUAL_IMPOSTOS / 100);
+      
+      const totalCustosVariaveis = totalInsumosRevenda + totalInsumosFoodService + custosLogisticos + aquisicaoClientes + impostos;
+
+      const custosFixosDetalhados = custosFixos.map(custo => ({
+        name: custo.nome,
+        value: convertToMonthlyValue(custo.valor, custo.frequencia)
+      }));
+      const totalCustosFixos = custosFixosDetalhados.reduce((sum, custo) => sum + custo.value, 0);
+
+      const custosAdministrativosDetalhados = custosVariaveis.map(custo => ({
+        name: custo.nome,
+        value: convertToMonthlyValue(custo.valor, custo.frequencia)
+      }));
+      const totalCustosAdministrativos = custosAdministrativosDetalhados.reduce((sum, custo) => sum + custo.value, 0);
+
+      const grossProfit = totalRevenue - totalCustosVariaveis;
+      const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+      const operationalResult = grossProfit - totalCustosFixos - totalCustosAdministrativos;
+      const operationalMargin = totalRevenue > 0 ? (operationalResult / totalRevenue) * 100 : 0;
+
+      const totalInvestment = 0;
+      const monthlyDepreciation = totalCustosFixos * 0.1;
+      const ebitda = operationalResult + monthlyDepreciation;
+      const ebitdaMargin = totalRevenue > 0 ? (ebitda / totalRevenue) * 100 : 0;
+      const breakEvenPoint = grossMargin > 0 ? (totalCustosFixos + totalCustosAdministrativos) / (grossMargin / 100) : 0;
+      const paybackMonths = totalInvestment > 0 ? totalInvestment / Math.max(operationalResult, 1) : 0;
+
       const channelsData: ChannelData[] = [
         {
           channel: 'B2B-Revenda',
-          volume: 0,
-          revenue: revendaPadrao,
-          variableCosts: revendaPadrao * (totalCustosVariaveis / receitaTotal),
-          margin: revendaPadrao * (lucroBruto / receitaTotal),
-          marginPercent: (lucroBruto / receitaTotal) * 100
+          volume: 100,
+          revenue: revendaPadraoFaturamento,
+          variableCosts: totalInsumosRevenda,
+          margin: revendaPadraoFaturamento - totalInsumosRevenda,
+          marginPercent: revendaPadraoFaturamento > 0 ? ((revendaPadraoFaturamento - totalInsumosRevenda) / revendaPadraoFaturamento) * 100 : 0
         },
         {
           channel: 'B2B-FoodService',
-          volume: 0,
-          revenue: foodService,
-          variableCosts: foodService * (totalCustosVariaveis / receitaTotal),
-          margin: foodService * (lucroBruto / receitaTotal),
-          marginPercent: (lucroBruto / receitaTotal) * 100
-        },
-        {
-          channel: 'B2C-UFCSPA',
-          volume: 0,
-          revenue: 0,
-          variableCosts: 0,
-          margin: 0,
-          marginPercent: 0
-        },
-        {
-          channel: 'B2C-Personalizados',
-          volume: 0,
-          revenue: 0,
-          variableCosts: 0,
-          margin: 0,
-          marginPercent: 0
-        },
-        {
-          channel: 'B2C-Outros',
-          volume: 0,
-          revenue: 0,
-          variableCosts: 0,
-          margin: 0,
-          marginPercent: 0
+          volume: 100,
+          revenue: foodServiceFaturamento,
+          variableCosts: totalInsumosFoodService,
+          margin: foodServiceFaturamento - totalInsumosFoodService,
+          marginPercent: foodServiceFaturamento > 0 ? ((foodServiceFaturamento - totalInsumosFoodService) / foodServiceFaturamento) * 100 : 0
         }
       ];
-      
-      // Criar estrutura DREData usando valores dinâmicos da projeção
-      const dreDataDinamica: DREData = {
-        id: 'base-dinamica',
-        name: 'DRE Base (Dados Dinâmicos da Projeção)',
+
+      return {
+        id: 'base',
+        name: 'DRE Base',
         isBase: true,
         createdAt: new Date(),
         channelsData,
-        fixedCosts: custosFixos.map(custo => ({
-          name: custo.nome,
-          value: custo.frequencia === 'anual' ? custo.valor / 12 : custo.valor
-        })),
-        administrativeCosts: custosVariaveis.filter(custo => custo.subcategoria === 'Administrativo').map(custo => ({
-          name: custo.nome,
-          value: custo.frequencia === 'anual' ? custo.valor / 12 : custo.valor
-        })),
+        fixedCosts: custosFixosDetalhados,
+        administrativeCosts: custosAdministrativosDetalhados,
         investments: [],
-        
-        // VALORES PRINCIPAIS DA DRE (usando dados dinâmicos da projeção)
-        totalRevenue: receitaTotal,
+        totalRevenue,
         totalVariableCosts: totalCustosVariaveis,
-        totalFixedCosts: custoFixosTotal,
-        totalAdministrativeCosts: custosAdministrativos,
-        totalCosts: totalCustosVariaveis + custoFixosTotal + custosAdministrativos,
-        
-        // INDICADORES DE RENTABILIDADE (valores dinâmicos da projeção)
-        grossProfit: lucroBruto,
-        grossMargin: (lucroBruto / receitaTotal) * 100,
-        operationalResult: lucroOperacional,
-        operationalMargin: (lucroOperacional / receitaTotal) * 100,
-        
-        // Investimentos e depreciação
-        totalInvestment: 0,
-        monthlyDepreciation: 0,
-        
-        // EBITDA
-        ebitda: lucroOperacional + 0,
-        ebitdaMargin: ((lucroOperacional + 0) / receitaTotal) * 100,
-        
-        // Ponto de equilíbrio
-        breakEvenPoint: custoFixosTotal / ((lucroBruto / receitaTotal)),
-        paybackMonths: 0,
-        
-        // Breakdown detalhado com valores dinâmicos
+        totalFixedCosts: totalCustosFixos,
+        totalAdministrativeCosts: totalCustosAdministrativos,
+        totalCosts: totalCustosVariaveis + totalCustosFixos + totalCustosAdministrativos,
+        grossProfit,
+        grossMargin,
+        operationalResult,
+        operationalMargin,
+        totalInvestment,
+        monthlyDepreciation,
+        ebitda,
+        ebitdaMargin,
+        breakEvenPoint,
+        paybackMonths,
         detailedBreakdown: {
-          revendaPadraoFaturamento: revendaPadrao,
-          foodServiceFaturamento: foodService,
-          totalInsumosRevenda: insumosRevendaPadrao,
-          totalInsumosFoodService: insumosFoodService,
-          totalLogistica: logistica,
-          aquisicaoClientes: aquisicaoClientes
+          revendaPadraoFaturamento,
+          foodServiceFaturamento,
+          totalInsumosRevenda,
+          totalInsumosFoodService,
+          totalLogistica: custosLogisticos,
+          aquisicaoClientes
         }
       };
-      
-      console.log('📊 DRE Base criada com valores DINÂMICOS (sincronizada com projeção em tempo real):', {
-        receita: dreDataDinamica.totalRevenue,
-        custosVariaveis: dreDataDinamica.totalVariableCosts,
-        logistica: dreDataDinamica.detailedBreakdown?.totalLogistica,
-        totalInsumos: (dreDataDinamica.detailedBreakdown?.totalInsumosRevenda || 0) + (dreDataDinamica.detailedBreakdown?.totalInsumosFoodService || 0),
-        insumosRevendaPadrao: dreDataDinamica.detailedBreakdown?.totalInsumosRevenda,
-        insumosFoodService: dreDataDinamica.detailedBreakdown?.totalInsumosFoodService,
-        lucroBruto: dreDataDinamica.grossProfit,
-        custoFixos: dreDataDinamica.totalFixedCosts,
-        lucroOperacional: dreDataDinamica.operationalResult,
-        resultadoLiquido: resultadoLiquido
-      });
-      
-      setDreData(dreDataDinamica);
-      setDreCalculationResult(calculationResult);
-      
-    } catch (err) {
-      console.error('❌ Erro ao calcular DRE:', err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    enabled: !!faturamentoPrevisto && !isLoadingFaturamento && clientes.length > 0,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 10 * 60 * 1000 // 10 minutos
+  });
+}
 
-  const recalculate = async () => {
-    await calculateDRE();
-  };
+// Helper functions
+const convertToMonthlyValue = (value: number, frequency: string): number => {
+  switch (frequency) {
+    case 'semanal': return value * 4;
+    case 'trimestral': return value / 3;
+    case 'semestral': return value / 6;
+    case 'anual': return value / 12;
+    case 'mensal':
+    default: return value;
+  }
+};
 
-  useEffect(() => {
-    if (clientes.length > 0 && disponivel && projecaoIndicadores && !projecaoLoading) {
-      calculateDRE();
-    }
-  }, [clientes, custosFixos, custosVariaveis, faturamentoMensal, precosDetalhados, disponivel, projecaoIndicadores, projecaoLoading]);
+const getCategoryGroup = (categoryName: string): string => {
+  const name = categoryName.toLowerCase();
+  if (name.includes('revenda') || name.includes('padrão')) return 'revenda padrão';
+  if (name.includes('food service') || name.includes('foodservice')) return 'food service';
+  if (name.includes('ufcspa')) return 'ufcspa';
+  if (name.includes('personalizado')) return 'personalizados';
+  return 'outros';
+};
 
-  return {
-    dreData,
-    dreCalculationResult,
-    isLoading: isLoading || projecaoLoading,
-    error,
-    recalculate
+const calculateInsumoCosts = (faturamento: number, categoryName: string): number => {
+  const category = getCategoryGroup(categoryName);
+  
+  const percentuais = {
+    'revenda padrão': 0.31, // 31%
+    'food service': 0.42, // 42%
+    'ufcspa': 0.42, // 42%
+    'personalizados': 0.42, // 42%
+    'outros': 0.42 // 42%
   };
+  
+  return faturamento * (percentuais[category] || 0.42);
 };
