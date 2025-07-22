@@ -4,6 +4,8 @@ import PageHeader from '@/components/common/PageHeader';
 import BreadcrumbNavigation from '@/components/common/Breadcrumb';
 import { useDREData } from '@/hooks/useDREData';
 import { useDashboardStore } from '@/hooks/useDashboardStore';
+import { useClienteStore } from '@/hooks/useClienteStore';
+import { usePedidoStore } from '@/hooks/usePedidoStore';
 import OperationalSummary from '@/components/dashboard-analytics/OperationalSummary';
 import ProductionIndicators from '@/components/dashboard-analytics/ProductionIndicators';
 import FinancialAnalysis from '@/components/dashboard-analytics/FinancialAnalysis';
@@ -13,9 +15,15 @@ import AnaliseGiroPDV from '@/components/dashboard-analytics/AnaliseGiroPDV';
 import ProducaoSimuladaTab from '@/components/dashboard-analytics/ProducaoSimuladaTab';
 
 export default function Analytics() {
-  const { data: dreData, isLoading, error } = useDREData();
+  const { baseDRE, isLoading, error } = useDREData();
   const { dashboardData } = useDashboardStore();
+  const { clientes } = useClienteStore();
+  const { pedidos } = usePedidoStore();
   const [activeTab, setActiveTab] = useState('operational');
+
+  // Mock data for production since we don't have these stores yet
+  const registrosProducao: any[] = [];
+  const planejamentoProducao: any[] = [];
 
   return (
     <div className="container mx-auto py-6">
@@ -99,13 +107,13 @@ export default function Analytics() {
         </button>
       </div>
 
-      {activeTab === 'operational' && <OperationalSummary dashboardData={dashboardData} baseDRE={dreData} clientes={dashboardData.clientes} />}
-      {activeTab === 'production' && <ProductionIndicators registrosProducao={dashboardData.registrosProducao} planejamentoProducao={dashboardData.planejamentoProducao} />}
-      {activeTab === 'financial' && <FinancialAnalysis baseDRE={dreData} dashboardData={dashboardData} />}
-      {activeTab === 'customer' && <CustomerBehavior clientes={dashboardData.clientes} baseDRE={dreData} />}
-      {activeTab === 'alerts' && <AlertsRisks clientes={dashboardData.clientes} pedidos={dashboardData.pedidos} registrosProducao={dashboardData.registrosProducao} planejamentoProducao={dashboardData.planejamentoProducao} />}
-      {activeTab === 'giro' && <AnaliseGiroPDV clientes={dashboardData.clientes} baseDRE={dreData} />}
-      {activeTab === 'simulacao' && <ProducaoSimuladaTab clientes={dashboardData.clientes} />}
+      {activeTab === 'operational' && <OperationalSummary dashboardData={dashboardData} baseDRE={baseDRE} clientes={clientes} />}
+      {activeTab === 'production' && <ProductionIndicators registrosProducao={registrosProducao} planejamentoProducao={planejamentoProducao} />}
+      {activeTab === 'financial' && <FinancialAnalysis baseDRE={baseDRE} dashboardData={dashboardData} />}
+      {activeTab === 'customer' && <CustomerBehavior clientes={clientes} baseDRE={baseDRE} />}
+      {activeTab === 'alerts' && <AlertsRisks clientes={clientes} pedidos={pedidos} registrosProducao={registrosProducao} planejamentoProducao={planejamentoProducao} />}
+      {activeTab === 'giro' && <AnaliseGiroPDV clientes={clientes} baseDRE={baseDRE} />}
+      {activeTab === 'simulacao' && <ProducaoSimuladaTab clientes={clientes} />}
     </div>
   );
 }
