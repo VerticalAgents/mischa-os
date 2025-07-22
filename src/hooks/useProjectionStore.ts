@@ -71,6 +71,7 @@ export const useProjectionStore = create<ProjectionStore>()(
           channelGrowthFactors: {
             'revendaPadraoFaturamento': { type: 'percentage', value: 0 },
             'foodServiceFaturamento': { type: 'percentage', value: 0 },
+            'pdvsAtivos': { type: 'absolute', value: 0 },
           }
         };
         

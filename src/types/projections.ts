@@ -1,3 +1,4 @@
+
 import { Cliente } from './index';
 
 export type Channel = 'B2B-Revenda' | 'B2B-FoodService' | 'B2C-UFCSPA' | 'B2C-Personalizados' | 'B2C-Outros';
@@ -70,4 +71,6 @@ export interface DREData {
   channelGrowthFactors?: Record<string, { type: 'percentage' | 'absolute', value: number }>;
   // Detailed breakdown for DRE display
   detailedBreakdown?: DetailedBreakdown;
+  // Novo campo para número de PDVs ativos
+  pdvsAtivos?: number;
 }
