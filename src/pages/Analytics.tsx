@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import BreadcrumbNavigation from '@/components/common/Breadcrumb';
@@ -15,7 +14,7 @@ import AnaliseGiroPDV from '@/components/dashboard-analytics/AnaliseGiroPDV';
 import ProducaoSimuladaTab from '@/components/dashboard-analytics/ProducaoSimuladaTab';
 
 export default function Analytics() {
-  const { baseDRE, isLoading, error } = useDREData();
+  const { data: baseDRE, isLoading, error } = useDREData();
   const { dashboardData } = useDashboardStore();
   const { clientes } = useClienteStore();
   const { pedidos } = usePedidoStore();
