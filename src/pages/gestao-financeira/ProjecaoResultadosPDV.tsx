@@ -1,20 +1,22 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Calculator, TrendingUp, Users, DollarSign, Package, Truck } from 'lucide-react';
 import PageHeader from '@/components/common/PageHeader';
 import BreadcrumbNavigation from '@/components/common/Breadcrumb';
 import { useFaturamentoPrevisto } from '@/hooks/useFaturamentoPrevisto';
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { useSupabaseCategoriasProduto } from '@/hooks/useSupabaseCategoriasProduto';
+import { useSupabaseGirosSemanaPersonalizados } from '@/hooks/useSupabaseGirosSemanaPersonalizados';
+import GiroInlineEditor from '@/components/gestao-financeira/GiroInlineEditor';
+import ResumoGeralTab from '@/components/gestao-financeira/ResumoGeralTab';
 
 export default function ProjecaoResultadosPDV() {
-  const { precosDetalhados, isLoading } = useFaturamentoPrevisto();
+  const { precosDetalhados, isLoading, recalcular, faturamentoMensal, faturamentoSemanal } = useFaturamentoPrevisto();
   const { clientes } = useClienteStore();
   const { categorias } = useSupabaseCategoriasProduto();
+  const { obterGiroPersonalizado } = useSupabaseGirosSemanaPersonalizados();
   const [faturamentoMedioRevenda, setFaturamentoMedioRevenda] = useState(0);
 
   // Função para verificar se uma categoria é "Revenda Padrão"
@@ -95,6 +97,14 @@ export default function ProjecaoResultadosPDV() {
     faturamentoMensal: dados.faturamentoMensal,
     faturamentoMedio: dados.clientes.size > 0 ? dados.faturamentoMensal / dados.clientes.size : 0
   }));
+
+  const verificarSeGiroPersonalizado = (clienteId: string, categoriaId: number): boolean => {
+    return obterGiroPersonalizado(clienteId, categoriaId) !== null;
+  };
+
+  const handleGiroAtualizado = () => {
+    recalcular();
+  };
 
   if (isLoading) {
     return (
@@ -185,10 +195,11 @@ export default function ProjecaoResultadosPDV() {
       </div>
 
       <Tabs defaultValue="detalhada" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="detalhada">Projeção Detalhada por Cliente</TabsTrigger>
           <TabsTrigger value="categoria">Análise por Categoria</TabsTrigger>
           <TabsTrigger value="resumo">Resumo Executivo</TabsTrigger>
+          <TabsTrigger value="resumo-geral">Resumo Geral</TabsTrigger>
         </TabsList>
 
         <TabsContent value="detalhada" className="space-y-4">
@@ -196,7 +207,7 @@ export default function ProjecaoResultadosPDV() {
             <CardHeader>
               <CardTitle>Projeção Detalhada por Cliente</CardTitle>
               <CardDescription>
-                Detalhamento do faturamento previsto por cliente e categoria
+                Detalhamento do faturamento previsto por cliente e categoria com edição inline de giros
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -222,7 +233,15 @@ export default function ProjecaoResultadosPDV() {
                             {item.categoriaNome}
                           </Badge>
                         </td>
-                        <td className="p-2 text-right">{item.giroSemanal}</td>
+                        <td className="p-2 text-right">
+                          <GiroInlineEditor
+                            clienteId={item.clienteId}
+                            categoriaId={item.categoriaId}
+                            giroAtual={item.giroSemanal}
+                            isPersonalizado={verificarSeGiroPersonalizado(item.clienteId, item.categoriaId)}
+                            onGiroAtualizado={handleGiroAtualizado}
+                          />
+                        </td>
                         <td className="p-2 text-right">
                           R$ {item.precoUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </td>
@@ -333,6 +352,14 @@ export default function ProjecaoResultadosPDV() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="resumo-geral" className="space-y-4">
+          <ResumoGeralTab
+            faturamentoMensal={faturamentoMensal}
+            faturamentoSemanal={faturamentoSemanal}
+            precosDetalhados={precosDetalhados || []}
+          />
         </TabsContent>
       </Tabs>
     </div>

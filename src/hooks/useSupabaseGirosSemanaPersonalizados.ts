@@ -39,6 +39,21 @@ export function useSupabaseGirosSemanaPersonalizados() {
     }
   };
 
+  const carregarGirosPorCliente = async (clienteId: string): Promise<GiroSemanalPersonalizado[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('giros_semanais_personalizados')
+        .select('*')
+        .eq('cliente_id', clienteId);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Erro ao carregar giros personalizados por cliente:', error);
+      return [];
+    }
+  };
+
   const obterGiroPersonalizado = (clienteId: string, categoriaId: number): number | null => {
     const giro = giros.find(g => g.cliente_id === clienteId && g.categoria_id === categoriaId);
     return giro ? giro.giro_semanal : null;
@@ -126,6 +141,7 @@ export function useSupabaseGirosSemanaPersonalizados() {
     giros,
     isLoading,
     carregarGiros,
+    carregarGirosPorCliente,
     obterGiroPersonalizado,
     salvarGiroPersonalizado,
     removerGiroPersonalizado
