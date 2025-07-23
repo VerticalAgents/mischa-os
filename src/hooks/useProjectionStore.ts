@@ -56,7 +56,7 @@ export const useProjectionStore = create<ProjectionStore>()(
       faturamentoMedioPDV: 0,
       
       setBaseDRE: (dreData) => {
-        console.log('🔄 Definindo DRE Base no store:', dreData);
+        console.log('🔄 [useProjectionStore] Definindo DRE Base no store:', dreData);
         set({ baseDRE: dreData });
       },
       
@@ -146,7 +146,10 @@ export const useProjectionStore = create<ProjectionStore>()(
       },
 
       setFaturamentoMedioPDV: (valor) => {
-        set({ faturamentoMedioPDV: valor });
+        // Garantir que sempre seja arredondado para 2 casas decimais
+        const valorFormatado = Math.round(valor * 100) / 100;
+        console.log(`💰 [useProjectionStore] Atualizando faturamento médio por PDV: R$ ${valorFormatado.toFixed(2)}`);
+        set({ faturamentoMedioPDV: valorFormatado });
       },
       
       getBaseDRE: () => get().baseDRE,

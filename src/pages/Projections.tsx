@@ -19,14 +19,14 @@ export default function Projections() {
 
   useEffect(() => {
     if (dreData) {
-      console.log('📊 Atualizando DRE Base com dados da auditoria:', dreData);
+      console.log('📊 [Projections] Atualizando DRE Base com dados da auditoria:', dreData);
       setBaseDRE(dreData);
     }
   }, [dreData, setBaseDRE]);
 
   useEffect(() => {
     if (faturamentoMedioRevenda > 0) {
-      console.log('💰 Atualizando faturamento médio por PDV no store:', faturamentoMedioRevenda);
+      console.log('💰 [Projections] Atualizando faturamento médio por PDV no store:', faturamentoMedioRevenda.toFixed(2));
       setFaturamentoMedioPDV(faturamentoMedioRevenda);
     }
   }, [faturamentoMedioRevenda, setFaturamentoMedioPDV]);
@@ -39,6 +39,18 @@ export default function Projections() {
         title="Projeções"
         description="Projeções financeiras, simulação de cenários e análise de desempenho"
       />
+      
+      {/* Debug info para verificar sincronização */}
+      {faturamentoMedioRevenda > 0 && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Faturamento Médio por PDV (Revenda Padrão):</strong> R$ {faturamentoMedioRevenda.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+          <p className="text-xs text-blue-600 mt-1">
+            Este valor é sincronizado com a página "Projeção de Resultados por PDV" → aba "Análise por Categoria"
+          </p>
+        </div>
+      )}
       
       <div className="flex gap-4 mb-6">
         <button

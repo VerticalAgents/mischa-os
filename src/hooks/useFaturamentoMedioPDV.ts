@@ -20,10 +20,14 @@ export function useFaturamentoMedioPDV() {
       return;
     }
 
+    console.log('🔍 [useFaturamentoMedioPDV] Calculando faturamento médio para clientes Revenda Padrão...');
+
     // Filtrar apenas dados de clientes com categoria "Revenda Padrão"
     const dadosRevenda = precosDetalhados.filter(detalhe => 
       isCategoriaRevenda(detalhe.categoriaNome)
     );
+
+    console.log('📊 [useFaturamentoMedioPDV] Dados filtrados para Revenda Padrão:', dadosRevenda.length);
 
     if (dadosRevenda.length === 0) {
       setFaturamentoMedioRevenda(0);
@@ -42,10 +46,22 @@ export function useFaturamentoMedioPDV() {
     // Calcular média
     const totalFaturamento = Array.from(faturamentoPorCliente.values()).reduce((sum, valor) => sum + valor, 0);
     const numeroClientes = faturamentoPorCliente.size;
-    const media = numeroClientes > 0 ? totalFaturamento / numeroClientes : 0;
+    const mediaCalculada = numeroClientes > 0 ? totalFaturamento / numeroClientes : 0;
 
-    setFaturamentoMedioRevenda(media);
+    // Aplicar arredondamento para 2 casas decimais para evitar problemas de precisão
+    const mediaFormatada = Math.round(mediaCalculada * 100) / 100;
+
+    console.log('💰 [useFaturamentoMedioPDV] Faturamento médio calculado:', {
+      totalFaturamento,
+      numeroClientes,
+      mediaCalculada,
+      mediaFormatada
+    });
+
+    setFaturamentoMedioRevenda(mediaFormatada);
   }, [precosDetalhados]);
 
-  return { faturamentoMedioRevenda };
+  return { 
+    faturamentoMedioRevenda: Math.round(faturamentoMedioRevenda * 100) / 100 // Garantir sempre 2 casas decimais
+  };
 }

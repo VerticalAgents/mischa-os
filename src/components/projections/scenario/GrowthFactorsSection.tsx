@@ -26,6 +26,9 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
   ];
 
   const updateGrowthFactor = (subitemKey: string, type: 'percentage' | 'absolute', value: number) => {
+    console.log(`🔄 [GrowthFactorsSection] Atualizando fator de crescimento: ${subitemKey}, tipo: ${type}, valor: ${value}`);
+    console.log(`💰 [GrowthFactorsSection] Faturamento médio por PDV usado: R$ ${faturamentoMedioPDV}`);
+
     const updatedGrowthFactors = {
       ...scenario.channelGrowthFactors,
       [subitemKey]: { type, value }
@@ -40,17 +43,22 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
       let novoPDVs = 0;
       
       if (growth.type === 'percentage') {
-        novoPDVs = Math.round(pdvsAtivosBase * (growth.value / 100));
+        // Percentual sobre o número base de PDVs
+        const variacaoPDVs = Math.round(pdvsAtivosBase * (growth.value / 100));
+        novoPDVs = variacaoPDVs;
       } else {
+        // Valor absoluto
         novoPDVs = growth.value;
       }
       
-      // Calcular variação do faturamento baseado no faturamento médio por PDV
+      console.log(`📊 [GrowthFactorsSection] Variação de PDVs calculada: ${novoPDVs} PDVs`);
+      
+      // Calcular variação do faturamento baseado no faturamento médio por PDV (com 2 casas decimais)
       const variacaoFaturamento = novoPDVs * faturamentoMedioPDV;
       
-      console.log(`📊 Variação de PDVs: ${novoPDVs} PDVs × R$ ${faturamentoMedioPDV} = R$ ${variacaoFaturamento}`);
+      console.log(`💵 [GrowthFactorsSection] Variação de faturamento: ${novoPDVs} PDVs × R$ ${faturamentoMedioPDV.toFixed(2)} = R$ ${variacaoFaturamento.toFixed(2)}`);
       
-      // Aplicar a variação proporcionalmente aos faturamentos
+      // Aplicar a variação proporcionalmente aos faturamentos baseado na distribuição atual
       const faturamentoBaseTotal = (scenario.detailedBreakdown?.revendaPadraoFaturamento || 0) + 
                                    (scenario.detailedBreakdown?.foodServiceFaturamento || 0);
       
@@ -58,13 +66,23 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
         const percentualRevenda = (scenario.detailedBreakdown?.revendaPadraoFaturamento || 0) / faturamentoBaseTotal;
         const percentualFoodService = (scenario.detailedBreakdown?.foodServiceFaturamento || 0) / faturamentoBaseTotal;
         
-        updatedBreakdown.revendaPadraoFaturamento = (scenario.detailedBreakdown?.revendaPadraoFaturamento || 0) + 
-                                                   (variacaoFaturamento * percentualRevenda);
-        updatedBreakdown.foodServiceFaturamento = (scenario.detailedBreakdown?.foodServiceFaturamento || 0) + 
-                                                 (variacaoFaturamento * percentualFoodService);
+        console.log(`📈 [GrowthFactorsSection] Distribuição atual - Revenda: ${(percentualRevenda * 100).toFixed(1)}%, Food Service: ${(percentualFoodService * 100).toFixed(1)}%`);
+        
+        // Aplicar variação proporcionalmente
+        const variacaoRevenda = variacaoFaturamento * percentualRevenda;
+        const variacaoFoodService = variacaoFaturamento * percentualFoodService;
+        
+        updatedBreakdown.revendaPadraoFaturamento = (scenario.detailedBreakdown?.revendaPadraoFaturamento || 0) + variacaoRevenda;
+        updatedBreakdown.foodServiceFaturamento = (scenario.detailedBreakdown?.foodServiceFaturamento || 0) + variacaoFoodService;
+        
+        console.log(`💰 [GrowthFactorsSection] Novos faturamentos - Revenda: R$ ${updatedBreakdown.revendaPadraoFaturamento.toFixed(2)}, Food Service: R$ ${updatedBreakdown.foodServiceFaturamento.toFixed(2)}`);
+      } else {
+        // Se não há faturamento base, aplicar toda a variação na revenda padrão
+        updatedBreakdown.revendaPadraoFaturamento = (scenario.detailedBreakdown?.revendaPadraoFaturamento || 0) + variacaoFaturamento;
+        console.log(`💰 [GrowthFactorsSection] Faturamento base zero, aplicando toda variação na Revenda: R$ ${updatedBreakdown.revendaPadraoFaturamento.toFixed(2)}`);
       }
       
-      // Calcular o percentual de crescimento do faturamento total
+      // Calcular o percentual de crescimento do faturamento total para aplicar aos custos
       const novoFaturamentoTotal = updatedBreakdown.revendaPadraoFaturamento + updatedBreakdown.foodServiceFaturamento;
       const percentualCrescimentoFaturamento = faturamentoBaseTotal > 0 ? 
         (novoFaturamentoTotal - faturamentoBaseTotal) / faturamentoBaseTotal : 0;
@@ -76,8 +94,8 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
       updatedBreakdown.totalInsumosRevenda = baseRevendaInsumos * (1 + percentualCrescimentoFaturamento);
       updatedBreakdown.totalInsumosFoodService = baseFoodServiceInsumos * (1 + percentualCrescimentoFaturamento);
       
-      console.log(`📈 Crescimento do faturamento: ${(percentualCrescimentoFaturamento * 100).toFixed(2)}%`);
-      console.log(`💰 Novos custos de insumos - Revenda: R$ ${updatedBreakdown.totalInsumosRevenda.toFixed(2)}, Food Service: R$ ${updatedBreakdown.totalInsumosFoodService.toFixed(2)}`);
+      console.log(`📈 [GrowthFactorsSection] Crescimento do faturamento: ${(percentualCrescimentoFaturamento * 100).toFixed(2)}%`);
+      console.log(`🧮 [GrowthFactorsSection] Novos custos de insumos - Revenda: R$ ${updatedBreakdown.totalInsumosRevenda.toFixed(2)}, Food Service: R$ ${updatedBreakdown.totalInsumosFoodService.toFixed(2)}`);
       
     } else {
       // Calcular os novos valores de faturamento para outros itens
@@ -122,6 +140,8 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
     const operationalResult = grossProfit - scenario.totalFixedCosts - scenario.totalAdministrativeCosts;
     const operationalMargin = operationalResult / totalRevenue * 100;
 
+    console.log(`📊 [GrowthFactorsSection] Totais recalculados - Receita: R$ ${totalRevenue.toFixed(2)}, Lucro Bruto: R$ ${grossProfit.toFixed(2)}`);
+
     updateScenario(scenario.id, {
       channelGrowthFactors: updatedGrowthFactors,
       detailedBreakdown: updatedBreakdown,
@@ -140,7 +160,7 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
         <CardTitle className="text-lg">Fatores de Crescimento</CardTitle>
         {faturamentoMedioPDV > 0 && (
           <p className="text-sm text-muted-foreground">
-            Faturamento médio por PDV: R$ {faturamentoMedioPDV.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            Faturamento médio por PDV: R$ {faturamentoMedioPDV.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         )}
       </CardHeader>
@@ -157,7 +177,7 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
               <div className="text-xs text-muted-foreground mb-2">
                 {isPDVs 
                   ? `PDVs ativos atuais: ${subitem.baseValue}`
-                  : `Valor base: R$ ${subitem.baseValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                  : `Valor base: R$ ${subitem.baseValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 }
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -200,7 +220,7 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
                             ? Math.round(subitem.baseValue * (growth.value / 100))
                             : growth.value
                           ) * faturamentoMedioPDV
-                        ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        ).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </>
                   ) : (
@@ -208,7 +228,7 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
                       (growth.type === 'percentage' 
                         ? subitem.baseValue * (1 + growth.value / 100)
                         : subitem.baseValue + growth.value
-                      ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+                      ).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                     }`
                   )}
                 </div>
