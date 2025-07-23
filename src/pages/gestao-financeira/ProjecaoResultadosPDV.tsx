@@ -261,7 +261,7 @@ export default function ProjecaoResultadosPDV() {
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Faturamento Médio:</span>
                     <span className="font-semibold">
-                      R$ {categoria.faturamentoMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {categoria.faturamentoMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex justify-between">
