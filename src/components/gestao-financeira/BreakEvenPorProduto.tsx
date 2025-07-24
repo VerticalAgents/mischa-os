@@ -289,7 +289,7 @@ export default function BreakEvenPorProduto({ faturamentoPrevisto, custoFixoTota
                                 strokeWidth={2}
                                 label={{ 
                                   value: `Break Even: ${produto.unidadesBreakEven.toLocaleString()} un`, 
-                                  position: "topLeft",
+                                  position: "top",
                                   style: {
                                     fill: '#3b82f6',
                                     fontWeight: 'bold',
