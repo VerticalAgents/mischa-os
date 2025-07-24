@@ -4,9 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, DollarSign, AlertTriangle } from "lucide-react";
 import { useOptimizedFinancialData } from "@/hooks/useOptimizedFinancialData";
+import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
+import BreakEvenPorProduto from "@/components/gestao-financeira/BreakEvenPorProduto";
 
 export default function PontoEquilibrio() {
   const { data: financialData, loading, error } = useOptimizedFinancialData();
+  const faturamentoPrevisto = useFaturamentoPrevisto();
 
   // Memoize calculations to prevent unnecessary recalculations
   const calculations = useMemo(() => {
@@ -36,7 +39,7 @@ export default function PontoEquilibrio() {
     };
   }, [financialData]);
 
-  if (loading) {
+  if (loading || faturamentoPrevisto.isLoading) {
     return (
       <div className="grid gap-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -218,6 +221,12 @@ export default function PontoEquilibrio() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Nova seção Break Even por Produto */}
+      <BreakEvenPorProduto 
+        faturamentoPrevisto={faturamentoPrevisto}
+        custoFixoTotal={custoFixoTotal}
+      />
     </div>
   );
 }
