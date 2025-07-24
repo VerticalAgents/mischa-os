@@ -1,3 +1,4 @@
+
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,72 +13,82 @@ export default function PontoEquilibrio() {
   const faturamentoPrevisto = useFaturamentoPrevisto();
   const { clientes } = useClienteStore();
 
-  // Memoize calculations to prevent unnecessary recalculations
   const calculations = useMemo(() => {
     if (!financialData || !faturamentoPrevisto.precosDetalhados) return null;
 
     const { faturamento, custosFixos, custosVariaveis } = financialData;
     
+    // Dados básicos
     const faturamentoMensal = faturamento.mensal;
     const custoFixoTotal = custosFixos.total;
     const custoVariavelTotal = custosVariaveis.total;
     
+    // Margem atual
     const margem = faturamentoMensal - custoFixoTotal - custoVariavelTotal;
     const margemPercentual = faturamentoMensal > 0 ? (margem / faturamentoMensal) * 100 : 0;
     
-    // Filtrar clientes que devem ser contabilizados (mesma lógica do ResumoGeralTab)
+    // Filtrar clientes contabilizados
     const clientesContabilizados = clientes.filter(cliente => cliente.contabilizarGiroMedio);
     const clientesContabilizadosIds = new Set(clientesContabilizados.map(c => c.id));
     
-    // Função para verificar se é categoria "Revenda Padrão"
-    const isRevendaPadrao = (categoriaNome: string): boolean => {
-      const nome = categoriaNome.toLowerCase();
-      return nome.includes('revenda') || nome.includes('padrão');
-    };
-    
-    // Filtrar dados apenas de clientes contabilizados e categoria Revenda Padrão
-    const dadosRevendaPadrao = faturamentoPrevisto.precosDetalhados.filter(detalhe => 
-      clientesContabilizadosIds.has(detalhe.clienteId) && isRevendaPadrao(detalhe.categoriaNome)
+    // Filtrar dados apenas de clientes contabilizados
+    const dadosContabilizados = faturamentoPrevisto.precosDetalhados.filter(detalhe => 
+      clientesContabilizadosIds.has(detalhe.clienteId)
     );
     
-    // Calcular preço médio ponderado baseado apenas na Revenda Padrão (mesma lógica do ResumoGeralTab)
-    let faturamentoTotalRevendaPadrao = 0;
-    let volumeTotalRevendaPadrao = 0;
+    // Separar por categoria
+    const dadosRevendaPadrao = dadosContabilizados.filter(detalhe => {
+      const nome = detalhe.categoriaNome.toLowerCase();
+      return nome.includes('revenda') || nome.includes('padrão');
+    });
+    
+    const dadosFoodService = dadosContabilizados.filter(detalhe => {
+      const nome = detalhe.categoriaNome.toLowerCase();
+      return nome.includes('food service') || nome.includes('foodservice');
+    });
+    
+    // Calcular totais de Revenda Padrão
+    let faturamentoRevendaPadrao = 0;
+    let volumeRevendaPadrao = 0;
     
     dadosRevendaPadrao.forEach(detalhe => {
-      const faturamentoMensalDetalhe = detalhe.faturamentoSemanal * 4;
-      const volumeMensalDetalhe = detalhe.giroSemanal * 4;
+      const faturamentoMensal = detalhe.faturamentoSemanal * 4;
+      const volumeMensal = detalhe.giroSemanal * 4;
       
-      faturamentoTotalRevendaPadrao += faturamentoMensalDetalhe;
-      volumeTotalRevendaPadrao += volumeMensalDetalhe;
+      faturamentoRevendaPadrao += faturamentoMensal;
+      volumeRevendaPadrao += volumeMensal;
     });
     
-    // Preço médio ponderado correto (R$ 4,25) - baseado apenas em Revenda Padrão
-    const precoMedioPonderado = volumeTotalRevendaPadrao > 0 ? faturamentoTotalRevendaPadrao / volumeTotalRevendaPadrao : 0;
+    // Calcular totais de Food Service
+    let faturamentoFoodService = 0;
+    let volumeFoodService = 0;
     
-    // Para o cálculo de custos, usar todos os dados (não apenas Revenda Padrão)
-    let faturamentoTotalGeral = 0;
-    let volumeTotalGeral = 0;
-    
-    faturamentoPrevisto.precosDetalhados.forEach(detalhe => {
-      const faturamentoMensalDetalhe = detalhe.faturamentoSemanal * 4;
-      const volumeMensalDetalhe = detalhe.giroSemanal * 4;
+    dadosFoodService.forEach(detalhe => {
+      const faturamentoMensal = detalhe.faturamentoSemanal * 4;
+      const volumeMensal = detalhe.giroSemanal * 4;
       
-      faturamentoTotalGeral += faturamentoMensalDetalhe;
-      volumeTotalGeral += volumeMensalDetalhe;
+      faturamentoFoodService += faturamentoMensal;
+      volumeFoodService += volumeMensal;
     });
     
-    // Custo unitário médio baseado nos custos variáveis totais
-    const custoUnitarioMedio = volumeTotalGeral > 0 ? custoVariavelTotal / volumeTotalGeral : 0;
+    // Preços médios por categoria
+    const precoMedioRevendaPadrao = volumeRevendaPadrao > 0 ? faturamentoRevendaPadrao / volumeRevendaPadrao : 0;
+    const precoMedioFoodService = volumeFoodService > 0 ? faturamentoFoodService / volumeFoodService : 0;
     
-    // Margem de contribuição unitária usando preço médio da Revenda Padrão
-    const margemContribuicaoUnitaria = precoMedioPonderado - custoUnitarioMedio;
+    // Volume total mensal
+    const volumeTotalMensal = volumeRevendaPadrao + volumeFoodService;
     
-    // Unidades necessárias para break even (custos fixos ÷ margem unitária)
+    // Custo unitário médio baseado nos custos variáveis
+    const custoUnitarioMedio = volumeTotalMensal > 0 ? custoVariavelTotal / volumeTotalMensal : 0;
+    
+    // Para o cálculo de break even, usar apenas Revenda Padrão (conforme acordado)
+    const margemContribuicaoUnitaria = precoMedioRevendaPadrao - custoUnitarioMedio;
+    
+    // Unidades necessárias para break even
     const unidadesBreakEven = margemContribuicaoUnitaria > 0 ? Math.ceil(custoFixoTotal / margemContribuicaoUnitaria) : 0;
     
-    // Faturamento necessário para break even = unidades × preço médio da Revenda Padrão
-    const faturamentoBreakEven = unidadesBreakEven * precoMedioPonderado;
+    // Faturamento necessário para break even
+    const faturamentoBreakEven = unidadesBreakEven * precoMedioRevendaPadrao;
     
     return {
       faturamentoMensal,
@@ -85,12 +96,17 @@ export default function PontoEquilibrio() {
       custoVariavelTotal,
       margem,
       margemPercentual,
-      precoMedioPonderado,
+      precoMedioRevendaPadrao,
+      precoMedioFoodService,
       custoUnitarioMedio,
       margemContribuicaoUnitaria,
       unidadesBreakEven,
       faturamentoBreakEven,
-      volumeTotalMensal: volumeTotalGeral
+      volumeTotalMensal,
+      volumeRevendaPadrao,
+      volumeFoodService,
+      faturamentoRevendaPadrao,
+      faturamentoFoodService
     };
   }, [financialData, faturamentoPrevisto.precosDetalhados, clientes]);
 
@@ -144,11 +160,17 @@ export default function PontoEquilibrio() {
     custoVariavelTotal,
     margem,
     margemPercentual,
-    precoMedioPonderado,
+    precoMedioRevendaPadrao,
+    precoMedioFoodService,
+    custoUnitarioMedio,
+    margemContribuicaoUnitaria,
     unidadesBreakEven,
     faturamentoBreakEven,
     volumeTotalMensal,
-    margemContribuicaoUnitaria
+    volumeRevendaPadrao,
+    volumeFoodService,
+    faturamentoRevendaPadrao,
+    faturamentoFoodService
   } = calculations;
 
   const formatCurrency = (value: number) => {
@@ -167,6 +189,7 @@ export default function PontoEquilibrio() {
         </p>
       </div>
 
+      {/* Cards de Resumo Financeiro */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -220,10 +243,65 @@ export default function PontoEquilibrio() {
         </Card>
       </div>
 
+      {/* Análise Detalhada por Categoria */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
+            <CardTitle>Análise por Categoria</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="border-b pb-4">
+                <h4 className="font-semibold text-blue-600 mb-2">Revenda Padrão</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Faturamento:</span>
+                    <div className="font-medium">{formatCurrency(faturamentoRevendaPadrao)}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Volume:</span>
+                    <div className="font-medium">{volumeRevendaPadrao.toLocaleString()} un</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Preço Médio:</span>
+                    <div className="font-bold text-blue-600">{formatCurrency(precoMedioRevendaPadrao)}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Custo Unit.:</span>
+                    <div className="font-medium">{formatCurrency(custoUnitarioMedio)}</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold text-orange-600 mb-2">Food Service</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Faturamento:</span>
+                    <div className="font-medium">{formatCurrency(faturamentoFoodService)}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Volume:</span>
+                    <div className="font-medium">{volumeFoodService.toLocaleString()} un</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Preço Médio:</span>
+                    <div className="font-bold text-orange-600">{formatCurrency(precoMedioFoodService)}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Custo Unit.:</span>
+                    <div className="font-medium">{formatCurrency(custoUnitarioMedio)}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Ponto de Equilíbrio</CardTitle>
+            <p className="text-sm text-muted-foreground">Baseado na categoria Revenda Padrão</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -239,11 +317,11 @@ export default function PontoEquilibrio() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm">Unidades Necessárias:</span>
-                  <span className="text-sm font-medium">{unidadesBreakEven.toLocaleString()} un</span>
+                  <span className="text-sm font-bold">{unidadesBreakEven.toLocaleString()} un</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm">Preço Médio (Revenda):</span>
-                  <span className="text-sm font-medium">{formatCurrency(precoMedioPonderado)}</span>
+                  <span className="text-sm font-medium">{formatCurrency(precoMedioRevendaPadrao)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm">Margem Unit.:</span>
@@ -255,7 +333,7 @@ export default function PontoEquilibrio() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm">Diferença:</span>
-                  <span className={`text-sm font-medium ${faturamentoMensal >= faturamentoBreakEven ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`text-sm font-bold ${faturamentoMensal >= faturamentoBreakEven ? 'text-green-600' : 'text-red-600'}`}>
                     {formatCurrency(faturamentoMensal - faturamentoBreakEven)}
                   </span>
                 </div>
@@ -263,45 +341,55 @@ export default function PontoEquilibrio() {
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Análise de Risco</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {faturamentoMensal >= faturamentoBreakEven ? (
-                <div className="flex items-center gap-2 text-green-600">
-                  <TrendingUp className="h-5 w-5" />
-                  <span className="font-medium">Situação Positiva</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-red-600">
-                  <AlertTriangle className="h-5 w-5" />
-                  <span className="font-medium">Atenção Necessária</span>
-                </div>
-              )}
-              
-              <div className="text-sm text-muted-foreground">
-                {faturamentoMensal >= faturamentoBreakEven 
-                  ? "O faturamento atual está acima do ponto de equilíbrio, gerando lucro."
-                  : `É necessário vender ${(unidadesBreakEven - volumeTotalMensal).toLocaleString()} unidades adicionais ou aumentar o preço médio para atingir o break even.`
-                }
+      {/* Análise de Situação */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Análise de Situação</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {faturamentoMensal >= faturamentoBreakEven ? (
+              <div className="flex items-center gap-2 text-green-600">
+                <TrendingUp className="h-5 w-5" />
+                <span className="font-medium">Situação Positiva - Acima do Break Even</span>
               </div>
-              
-              <div className="text-xs text-muted-foreground mt-4">
-                <div>Volume atual: {volumeTotalMensal.toLocaleString()} un/mês</div>
-                <div>Volume necessário: {unidadesBreakEven.toLocaleString()} un/mês</div>
-                <div className="mt-2 text-orange-600">
-                  * Preço médio baseado apenas em clientes Revenda Padrão contabilizados
+            ) : (
+              <div className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="font-medium">Atenção - Abaixo do Break Even</span>
+              </div>
+            )}
+            
+            <div className="text-sm text-muted-foreground">
+              {faturamentoMensal >= faturamentoBreakEven 
+                ? `O faturamento atual está ${formatCurrency(faturamentoMensal - faturamentoBreakEven)} acima do ponto de equilíbrio, gerando lucro operacional.`
+                : `É necessário aumentar o faturamento em ${formatCurrency(faturamentoBreakEven - faturamentoMensal)} ou vender ${(unidadesBreakEven - volumeTotalMensal).toLocaleString()} unidades adicionais para atingir o break even.`
+              }
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground mt-4 pt-4 border-t">
+              <div>
+                <div className="font-medium">Volume Atual:</div>
+                <div>{volumeTotalMensal.toLocaleString()} un/mês</div>
+              </div>
+              <div>
+                <div className="font-medium">Volume Necessário:</div>
+                <div>{unidadesBreakEven.toLocaleString()} un/mês</div>
+              </div>
+              <div>
+                <div className="font-medium">Gap:</div>
+                <div className={unidadesBreakEven > volumeTotalMensal ? 'text-red-600' : 'text-green-600'}>
+                  {(unidadesBreakEven - volumeTotalMensal).toLocaleString()} un
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Nova seção Break Even por Produto */}
+      {/* Componente de Break Even por Produto */}
       <BreakEvenPorProduto 
         faturamentoPrevisto={faturamentoPrevisto}
         custoFixoTotal={custoFixoTotal}
