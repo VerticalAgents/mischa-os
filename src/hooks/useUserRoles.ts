@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 export type AppRole = 'admin' | 'user';
 
 export function useUserRoles() {
-  const { user } from useAuth();
+  const { user } = useAuth();
   const [userRole, setUserRole] = useState<AppRole>('user');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
