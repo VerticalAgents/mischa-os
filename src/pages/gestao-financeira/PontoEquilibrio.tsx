@@ -1,4 +1,3 @@
-
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +46,7 @@ export default function PontoEquilibrio() {
     // Unidades necessárias para break even
     const unidadesBreakEven = margemContribuicaoUnitaria > 0 ? Math.ceil(custoFixoTotal / margemContribuicaoUnitaria) : 0;
     
-    // Faturamento necessário para break even
+    // Faturamento necessário para break even = unidades × preço médio
     const faturamentoBreakEven = unidadesBreakEven * precoMedioPonderado;
     
     return {
