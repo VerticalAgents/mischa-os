@@ -1,11 +1,10 @@
-
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { TrendingUp, Calculator, BarChart3 } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from "recharts";
 
 interface BreakEvenPorProdutoProps {
   faturamentoPrevisto: {
@@ -100,9 +99,25 @@ export default function BreakEvenPorProduto({ faturamentoPrevisto, custoFixoTota
     }).format(value);
   };
 
+  const formatCurrencyCompact = (value: number) => {
+    if (value >= 1000000) {
+      return `R$ ${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `R$ ${(value / 1000).toFixed(0)}K`;
+    }
+    return formatCurrency(value);
+  };
+
+  const formatNumber = (value: number) => {
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}K`;
+    }
+    return value.toString();
+  };
+
   const generateChartData = (unidadesBreakEven: number, precoMedio: number, custoUnitario: number) => {
-    const maxUnidades = Math.max(unidadesBreakEven * 1.5, 100);
-    const step = Math.ceil(maxUnidades / 20);
+    const maxUnidades = Math.max(unidadesBreakEven * 1.8, 100);
+    const step = Math.ceil(maxUnidades / 15);
     const data = [];
     
     for (let unidades = 0; unidades <= maxUnidades; unidades += step) {
@@ -195,48 +210,98 @@ export default function BreakEvenPorProduto({ faturamentoPrevisto, custoFixoTota
                           Ver Gráfico
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-4xl">
+                      <DialogContent className="max-w-5xl max-h-[90vh]">
                         <DialogHeader>
                           <DialogTitle>Break Even - {produto.categoria}</DialogTitle>
                         </DialogHeader>
-                        <div className="h-80">
+                        <div className="h-96 w-full">
                           <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={generateChartData(produto.unidadesBreakEven, produto.precoMedio, produto.custoUnitario)}>
+                            <LineChart 
+                              data={generateChartData(produto.unidadesBreakEven, produto.precoMedio, produto.custoUnitario)}
+                              margin={{ top: 20, right: 30, left: 60, bottom: 60 }}
+                            >
                               <CartesianGrid strokeDasharray="3 3" />
                               <XAxis 
                                 dataKey="unidades" 
-                                label={{ value: 'Unidades Vendidas', position: 'insideBottom', offset: -5 }}
+                                label={{ 
+                                  value: 'Unidades Vendidas', 
+                                  position: 'insideBottom', 
+                                  offset: -10,
+                                  style: { textAnchor: 'middle' }
+                                }}
+                                tickFormatter={formatNumber}
+                                angle={-45}
+                                textAnchor="end"
+                                height={80}
                               />
                               <YAxis 
-                                label={{ value: 'Valor (R$)', angle: -90, position: 'insideLeft' }}
-                                tickFormatter={(value) => formatCurrency(value)}
+                                label={{ 
+                                  value: 'Valor (R$)', 
+                                  angle: -90, 
+                                  position: 'insideLeft',
+                                  style: { textAnchor: 'middle' }
+                                }}
+                                tickFormatter={formatCurrencyCompact}
+                                width={80}
                               />
                               <Tooltip 
-                                formatter={(value: number, name: string) => [formatCurrency(value), name]}
-                                labelFormatter={(label) => `${label} unidades`}
+                                formatter={(value: number, name: string) => {
+                                  const labels: Record<string, string> = {
+                                    'receita': 'Receita',
+                                    'custoTotal': 'Custo Total',
+                                    'lucro': 'Lucro/Prejuízo'
+                                  };
+                                  return [formatCurrency(value), labels[name] || name];
+                                }}
+                                labelFormatter={(label) => `${Number(label).toLocaleString()} unidades`}
+                                contentStyle={{ 
+                                  backgroundColor: 'hsl(var(--background))',
+                                  border: '1px solid hsl(var(--border))',
+                                  borderRadius: '8px'
+                                }}
+                              />
+                              <Legend 
+                                wrapperStyle={{ paddingTop: '20px' }}
+                                iconType="line"
                               />
                               <Line 
                                 type="monotone" 
                                 dataKey="receita" 
                                 stroke="#10b981" 
-                                strokeWidth={2}
+                                strokeWidth={3}
                                 name="Receita"
+                                dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                                activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2 }}
                               />
                               <Line 
                                 type="monotone" 
                                 dataKey="custoTotal" 
                                 stroke="#ef4444" 
-                                strokeWidth={2}
+                                strokeWidth={3}
                                 name="Custo Total"
+                                dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
+                                activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2 }}
                               />
                               <ReferenceLine 
                                 x={produto.unidadesBreakEven} 
                                 stroke="#3b82f6" 
-                                strokeDasharray="5 5"
-                                label={{ value: "Break Even", position: "top" }}
+                                strokeDasharray="8 4"
+                                strokeWidth={2}
+                                label={{ 
+                                  value: `Break Even: ${produto.unidadesBreakEven.toLocaleString()} un`, 
+                                  position: "topLeft",
+                                  style: {
+                                    fill: '#3b82f6',
+                                    fontWeight: 'bold',
+                                    fontSize: '12px'
+                                  }
+                                }}
                               />
                             </LineChart>
                           </ResponsiveContainer>
+                        </div>
+                        <div className="text-sm text-muted-foreground text-center mt-4">
+                          O ponto de equilíbrio é atingido quando a receita (linha verde) cruza com o custo total (linha vermelha)
                         </div>
                       </DialogContent>
                     </Dialog>
