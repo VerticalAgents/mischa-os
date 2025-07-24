@@ -1,34 +1,24 @@
-import React, { useState } from 'react';
-import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Download, Printer, ChevronDown, ChevronRight, Calculator } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+import React from 'react';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell
+} from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { DREData } from '@/types/projections';
-import { DRECalculationDetails } from './DRECalculationDetails';
 
 interface DRETableHierarchicalProps {
   dreData: DREData;
+  compact?: boolean;
 }
 
-interface DREItem {
-  id: string;
-  categoria: string;
-  valor: number;
-  percentual: number;
-  level: number;
-  isExpandable?: boolean;
-  isExpanded?: boolean;
-  isTotal?: boolean;
-  isSubtotal?: boolean;
-  isHighlight?: boolean;
-  parentId?: string;
-  children?: DREItem[];
-}
-
-export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  const [showCalculationDetails, setShowCalculationDetails] = useState(false);
-
+export function DRETableHierarchical({ dreData, compact = false }: DRETableHierarchicalProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -37,373 +27,226 @@ export function DRETableHierarchical({ dreData }: DRETableHierarchicalProps) {
       maximumFractionDigits: 2
     }).format(value);
   };
-
+  
   const formatPercent = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
+      style: 'percent',
       minimumFractionDigits: 1,
       maximumFractionDigits: 1
-    }).format(value) + '%';
+    }).format(value/100);
   };
 
-  // USAR OS VALORES DINÂMICOS DA DRE (que agora vêm da projeção em tempo real)
-  const receitaTotal = dreData.totalRevenue;
-  const revendaPadrao = dreData.detailedBreakdown?.revendaPadraoFaturamento || 0;
-  const foodService = dreData.detailedBreakdown?.foodServiceFaturamento || 0;
-  
-  const logistica = dreData.detailedBreakdown?.totalLogistica || 0;
-  const totalInsumos = (dreData.detailedBreakdown?.totalInsumosRevenda || 0) + (dreData.detailedBreakdown?.totalInsumosFoodService || 0);
-  
-  // VALORES DINÂMICOS DOS SUBITENS DE INSUMOS (vindos da projeção real)
-  const insumosRevendaPadrao = dreData.detailedBreakdown?.totalInsumosRevenda || 0;
-  const insumosFoodService = dreData.detailedBreakdown?.totalInsumosFoodService || 0;
-  
-  const aquisicaoClientes = dreData.detailedBreakdown?.aquisicaoClientes || 0;
-  
-  const totalCustosVariaveis = dreData.totalVariableCosts;
-  const lucroBruto = dreData.grossProfit;
-  const custosFixos = dreData.totalFixedCosts;
-  const custoAdm = dreData.totalAdministrativeCosts;
-  const lucroOperacional = dreData.operationalResult;
-  
-  // Tax calculation (3.2% from receita total)
-  const taxaImposto = 3.2; // 3.2%
-  const impostos = receitaTotal * (taxaImposto / 100);
-  const resultadoLiquido = lucroOperacional - impostos;
-
-  console.log('DRE Values (DINÂMICOS - sincronizados com projeção em tempo real):', {
-    receitaTotal,
-    revendaPadrao,
-    foodService,
-    logistica,
-    totalInsumos,
-    insumosRevendaPadrao, // DINÂMICO: valor real da projeção
-    insumosFoodService, // DINÂMICO: valor real da projeção
-    aquisicaoClientes,
-    totalCustosVariaveis,
-    lucroBruto,
-    lucroOperacional,
-    impostos,
-    resultadoLiquido
-  });
-
-  const dreItems: DREItem[] = [
-    {
-      id: '1',
-      categoria: '1. RECEITA OPERACIONAL',
-      valor: receitaTotal,
-      percentual: 100,
-      level: 0,
-      isTotal: true,
-      isExpandable: true,
-      children: [{
-        id: '1.1',
-        categoria: '1.1. REVENDA',
-        valor: revendaPadrao + foodService,
-        percentual: (revendaPadrao + foodService) / receitaTotal * 100,
-        level: 1,
-        isExpandable: true,
-        children: [{
-          id: '1.1.1',
-          categoria: '1.1.1. Revenda Padrão',
-          valor: revendaPadrao,
-          percentual: revendaPadrao / receitaTotal * 100,
-          level: 2
-        }, {
-          id: '1.1.2',
-          categoria: '1.1.2. Food Service',
-          valor: foodService,
-          percentual: foodService / receitaTotal * 100,
-          level: 2
-        }]
-      }]
-    },
-    {
-      id: '2',
-      categoria: '2. CUSTOS VARIÁVEIS',
-      valor: totalCustosVariaveis,
-      percentual: totalCustosVariaveis / receitaTotal * 100,
-      level: 0,
-      isExpandable: true,
-      children: [
-        {
-          id: '2.1',
-          categoria: '2.1. LOGÍSTICA',
-          valor: logistica,
-          percentual: logistica / receitaTotal * 100,
-          level: 1
-        },
-        {
-          id: '2.2',
-          categoria: '2.2. INSUMOS',
-          valor: totalInsumos,
-          percentual: totalInsumos / receitaTotal * 100,
-          level: 1,
-          isExpandable: true,
-          children: [{
-            id: '2.2.1',
-            categoria: '2.2.1. Revenda Padrão',
-            valor: insumosRevendaPadrao, // DINÂMICO: valor real da projeção
-            percentual: insumosRevendaPadrao / receitaTotal * 100,
-            level: 2
-          }, {
-            id: '2.2.2',
-            categoria: '2.2.2. Food Service',
-            valor: insumosFoodService, // DINÂMICO: valor real da projeção
-            percentual: insumosFoodService / receitaTotal * 100,
-            level: 2
-          }]
-        },
-        {
-          id: '2.3',
-          categoria: '2.3. AQUISIÇÃO DE CLIENTES',
-          valor: aquisicaoClientes,
-          percentual: aquisicaoClientes / receitaTotal * 100,
-          level: 1
-        }
-      ]
-    },
-    {
-      id: '3',
-      categoria: '3. LUCRO BRUTO MENSAL',
-      valor: lucroBruto,
-      percentual: lucroBruto / receitaTotal * 100,
-      level: 0,
-      isSubtotal: true
-    },
-    {
-      id: '4',
-      categoria: '4. CUSTOS FIXOS',
-      valor: custosFixos,
-      percentual: custosFixos / receitaTotal * 100,
-      level: 0,
-      isExpandable: true,
-      children: dreData.fixedCosts.map((cost, index) => ({
-        id: `4.${index + 1}`,
-        categoria: `4.${index + 1}. ${cost.name}`,
-        valor: cost.value,
-        percentual: cost.value / receitaTotal * 100,
-        level: 1
-      }))
-    },
-    {
-      id: '5',
-      categoria: '5. CUSTOS ADMINISTRATIVOS',
-      valor: custoAdm,
-      percentual: custoAdm / receitaTotal * 100,
-      level: 0,
-      isExpandable: true,
-      children: dreData.administrativeCosts.map((cost, index) => ({
-        id: `5.${index + 1}`,
-        categoria: `5.${index + 1}. ${cost.name}`,
-        valor: cost.value,
-        percentual: cost.value / receitaTotal * 100,
-        level: 1
-      }))
-    },
-    {
-      id: '6',
-      categoria: '6. LUCRO OPERACIONAL',
-      valor: lucroOperacional,
-      percentual: lucroOperacional / receitaTotal * 100,
-      level: 0,
-      isSubtotal: true
-    },
-    {
-      id: '7',
-      categoria: '7. IMPOSTOS',
-      valor: impostos,
-      percentual: impostos / receitaTotal * 100,
-      level: 0,
-      isExpandable: false
-    },
-    {
-      id: '8',
-      categoria: '8. RESULTADO LÍQUIDO',
-      valor: resultadoLiquido,
-      percentual: resultadoLiquido / receitaTotal * 100,
-      level: 0,
-      isHighlight: true
-    }
-  ];
-
-  const isDataLoaded = dreData && dreData.detailedBreakdown && dreData.totalRevenue > 0;
-
-  const toggleExpansion = (itemId: string) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(itemId)) {
-      newExpanded.delete(itemId);
-    } else {
-      newExpanded.add(itemId);
-    }
-    setExpandedItems(newExpanded);
+  const getCodePrefix = () => {
+    if (dreData.isBase) return 'DRE-BASE';
+    return `DRE-${dreData.id.slice(0, 8).toUpperCase()}`;
   };
 
-  const renderDREItems = (items: DREItem[]): React.ReactNode[] => {
-    const result: React.ReactNode[] = [];
-
-    items.forEach(item => {
-      const rowClass = item.isTotal
-        ? 'bg-blue-50 font-semibold border-t-2 border-blue-200'
-        : item.isSubtotal
-        ? 'bg-green-50 font-semibold border-t border-green-200'
-        : item.isHighlight
-        ? 'bg-purple-50 font-semibold border-t border-purple-200'
-        : item.level === 1
-        ? 'bg-slate-25'
-        : item.level === 2
-        ? 'bg-slate-15'
-        : item.level === 3
-        ? 'bg-slate-10'
-        : '';
-
-      const isExpanded = expandedItems.has(item.id);
-      const paddingLeft = item.level * 16;
-
-      result.push(
-        <TableRow key={item.id} className={rowClass}>
-          <TableCell 
-            className="font-medium min-w-0" 
-            style={{ paddingLeft: `${paddingLeft + 16}px` }}
-          >
-            <div className="flex items-center min-w-0">
-              {item.isExpandable && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 mr-2 flex-shrink-0"
-                  onClick={() => toggleExpansion(item.id)}
-                >
-                  {isExpanded ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </Button>
-              )}
-              {!item.isExpandable && <div className="w-10 flex-shrink-0" />}
-              <span className="break-words hyphens-auto text-sm leading-tight" style={{ wordBreak: 'break-word' }}>
-                {item.categoria}
-              </span>
-            </div>
-          </TableCell>
-          <TableCell className="text-right font-mono whitespace-nowrap min-w-[120px]">
-            {formatCurrency(item.valor)}
-          </TableCell>
-          <TableCell className="text-right font-mono whitespace-nowrap min-w-[80px]">
-            {formatPercent(item.percentual)}
-          </TableCell>
-        </TableRow>
-      );
-
-      if (isExpanded && item.children) {
-        result.push(...renderDREItems(item.children));
-      }
-    });
-
-    return result;
-  };
-
-  const exportData = () => {
-    const flattenItems = (items: DREItem[]): DREItem[] => {
-      const result: DREItem[] = [];
-      items.forEach(item => {
-        result.push(item);
-        if (item.children) {
-          result.push(...flattenItems(item.children));
-        }
-      });
-      return result;
-    };
-
-    const allItems = flattenItems(dreItems);
-    const csvContent = [
-      'Categoria,Valor,Percentual',
-      ...allItems.map(item => 
-        `"${item.categoria}","${formatCurrency(item.valor)}","${formatPercent(item.percentual)}"`
-      )
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `DRE-${dreData.name}-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-  };
-
-  const printDRE = () => {
-    window.print();
-  };
+  const codePrefix = getCodePrefix();
 
   return (
-    <div className="space-y-4 w-full min-w-0">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="text-lg font-semibold truncate">DRE - {dreData.name}</h3>
-        <div className="flex gap-2 flex-shrink-0">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setShowCalculationDetails(true)}
-                  disabled={!isDataLoaded}
-                  className="flex items-center gap-2"
-                >
-                  <Calculator className="h-4 w-4" />
-                  Ver passo a passo
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isDataLoaded 
-                  ? "Visualizar cálculos detalhados da DRE" 
-                  : "Disponível apenas após o carregamento completo da DRE"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <Button variant="outline" size="sm" onClick={exportData}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
-          </Button>
-          <Button variant="outline" size="sm" onClick={printDRE}>
-            <Printer className="h-4 w-4 mr-2" />
-            Imprimir
-          </Button>
-        </div>
-      </div>
-
-      <div className="w-full overflow-x-auto border rounded-md">
-        <div className="min-w-[600px]">
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <span>{dreData.name}</span>
+          {dreData.isBase && <Badge variant="secondary">Base</Badge>}
+          <Badge variant="outline">{codePrefix}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-md border">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-100">
-                <TableHead className="font-bold min-w-[300px]">Categoria</TableHead>
-                <TableHead className="text-right font-bold min-w-[120px]">Valor</TableHead>
-                <TableHead className="text-right font-bold min-w-[80px]">%</TableHead>
+              <TableRow className="bg-muted/50">
+                <TableHead className="w-[60px] font-bold">Código</TableHead>
+                <TableHead className="font-bold">Descrição</TableHead>
+                <TableHead className="text-right font-bold">Valores</TableHead>
+                {!compact && <TableHead className="text-right font-bold">%</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {renderDREItems(dreItems)}
+              {/* 1. RECEITA OPERACIONAL */}
+              <TableRow className="bg-green-50 font-medium">
+                <TableCell className="text-xs text-muted-foreground">{codePrefix}-001</TableCell>
+                <TableCell>1. RECEITA OPERACIONAL</TableCell>
+                <TableCell className="text-right font-bold">{formatCurrency(dreData.totalRevenue)}</TableCell>
+                {!compact && <TableCell className="text-right font-bold">100,0%</TableCell>}
+              </TableRow>
+
+              {/* Channel breakdown */}
+              {!compact && dreData.channelsData.map((channel, index) => (
+                <TableRow key={channel.channel}>
+                  <TableCell className="text-xs text-muted-foreground">{codePrefix}-00{index + 2}</TableCell>
+                  <TableCell className="pl-8 text-sm">{channel.channel}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(channel.revenue)}</TableCell>
+                  <TableCell className="text-right">
+                    {formatPercent(channel.revenue / dreData.totalRevenue * 100)}
+                  </TableCell>
+                </TableRow>
+              ))}
+
+              {/* 2. CUSTOS VARIÁVEIS */}
+              <TableRow className="bg-red-50 font-medium">
+                <TableCell className="text-xs text-muted-foreground">{codePrefix}-010</TableCell>
+                <TableCell>2. CUSTOS VARIÁVEIS</TableCell>
+                <TableCell className="text-right font-bold">{formatCurrency(dreData.totalVariableCosts)}</TableCell>
+                {!compact && <TableCell className="text-right font-bold">
+                  {formatPercent(dreData.totalVariableCosts / dreData.totalRevenue * 100)}
+                </TableCell>}
+              </TableRow>
+
+              {/* Variable costs breakdown */}
+              {!compact && dreData.detailedBreakdown && (
+                <>
+                  <TableRow>
+                    <TableCell className="text-xs text-muted-foreground">{codePrefix}-011</TableCell>
+                    <TableCell className="pl-8 text-sm">Insumos Revenda Padrão</TableCell>
+                    <TableCell className="text-right">{formatCurrency(dreData.detailedBreakdown.totalInsumosRevenda)}</TableCell>
+                    <TableCell className="text-right">
+                      {formatPercent(dreData.detailedBreakdown.totalInsumosRevenda / dreData.totalRevenue * 100)}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-xs text-muted-foreground">{codePrefix}-012</TableCell>
+                    <TableCell className="pl-8 text-sm">Insumos Food Service</TableCell>
+                    <TableCell className="text-right">{formatCurrency(dreData.detailedBreakdown.totalInsumosFoodService)}</TableCell>
+                    <TableCell className="text-right">
+                      {formatPercent(dreData.detailedBreakdown.totalInsumosFoodService / dreData.totalRevenue * 100)}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-xs text-muted-foreground">{codePrefix}-013</TableCell>
+                    <TableCell className="pl-8 text-sm">Logística</TableCell>
+                    <TableCell className="text-right">{formatCurrency(dreData.detailedBreakdown.totalLogistica)}</TableCell>
+                    <TableCell className="text-right">
+                      {formatPercent(dreData.detailedBreakdown.totalLogistica / dreData.totalRevenue * 100)}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="text-xs text-muted-foreground">{codePrefix}-014</TableCell>
+                    <TableCell className="pl-8 text-sm">Aquisição de Clientes</TableCell>
+                    <TableCell className="text-right">{formatCurrency(dreData.detailedBreakdown.aquisicaoClientes)}</TableCell>
+                    <TableCell className="text-right">
+                      {formatPercent(dreData.detailedBreakdown.aquisicaoClientes / dreData.totalRevenue * 100)}
+                    </TableCell>
+                  </TableRow>
+                </>
+              )}
+
+              {/* 3. MARGEM DE CONTRIBUIÇÃO */}
+              <TableRow className="bg-blue-50 font-medium">
+                <TableCell className="text-xs text-muted-foreground">{codePrefix}-020</TableCell>
+                <TableCell>3. MARGEM DE CONTRIBUIÇÃO</TableCell>
+                <TableCell className="text-right font-bold">{formatCurrency(dreData.grossProfit)}</TableCell>
+                {!compact && <TableCell className="text-right font-bold">{formatPercent(dreData.grossMargin)}</TableCell>}
+              </TableRow>
+
+              {/* 4. CUSTOS FIXOS */}
+              <TableRow className="bg-orange-50 font-medium">
+                <TableCell className="text-xs text-muted-foreground">{codePrefix}-030</TableCell>
+                <TableCell>4. CUSTOS FIXOS</TableCell>
+                <TableCell className="text-right font-bold">{formatCurrency(dreData.totalFixedCosts)}</TableCell>
+                {!compact && <TableCell className="text-right font-bold">
+                  {formatPercent(dreData.totalFixedCosts / dreData.totalRevenue * 100)}
+                </TableCell>}
+              </TableRow>
+
+              {/* Fixed costs breakdown */}
+              {!compact && dreData.fixedCosts.map((cost, index) => (
+                <TableRow key={`fixed-${cost.name}`}>
+                  <TableCell className="text-xs text-muted-foreground">{codePrefix}-0{31 + index}</TableCell>
+                  <TableCell className="pl-8 text-sm">{cost.name}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(cost.value)}</TableCell>
+                  <TableCell className="text-right">
+                    {formatPercent(cost.value / dreData.totalRevenue * 100)}
+                  </TableCell>
+                </TableRow>
+              ))}
+
+              {/* 5. CUSTOS ADMINISTRATIVOS */}
+              <TableRow className="bg-purple-50 font-medium">
+                <TableCell className="text-xs text-muted-foreground">{codePrefix}-040</TableCell>
+                <TableCell>5. CUSTOS ADMINISTRATIVOS</TableCell>
+                <TableCell className="text-right font-bold">{formatCurrency(dreData.totalAdministrativeCosts)}</TableCell>
+                {!compact && <TableCell className="text-right font-bold">
+                  {formatPercent(dreData.totalAdministrativeCosts / dreData.totalRevenue * 100)}
+                </TableCell>}
+              </TableRow>
+
+              {/* Administrative costs breakdown */}
+              {!compact && dreData.administrativeCosts.map((cost, index) => (
+                <TableRow key={`admin-${cost.name}`}>
+                  <TableCell className="text-xs text-muted-foreground">{codePrefix}-0{41 + index}</TableCell>
+                  <TableCell className="pl-8 text-sm">{cost.name}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(cost.value)}</TableCell>
+                  <TableCell className="text-right">
+                    {formatPercent(cost.value / dreData.totalRevenue * 100)}
+                  </TableCell>
+                </TableRow>
+              ))}
+
+              {/* 6. RESULTADO OPERACIONAL */}
+              <TableRow className="bg-green-100 font-medium">
+                <TableCell className="text-xs text-muted-foreground">{codePrefix}-050</TableCell>
+                <TableCell>6. RESULTADO OPERACIONAL</TableCell>
+                <TableCell className="text-right font-bold">{formatCurrency(dreData.operationalResult)}</TableCell>
+                {!compact && <TableCell className="text-right font-bold">{formatPercent(dreData.operationalMargin)}</TableCell>}
+              </TableRow>
+
+              {/* 7. DEPRECIAÇÃO MENSAL */}
+              <TableRow>
+                <TableCell className="text-xs text-muted-foreground">{codePrefix}-060</TableCell>
+                <TableCell>7. DEPRECIAÇÃO MENSAL</TableCell>
+                <TableCell className="text-right">{formatCurrency(dreData.monthlyDepreciation)}</TableCell>
+                {!compact && <TableCell className="text-right">
+                  {formatPercent(dreData.monthlyDepreciation / dreData.totalRevenue * 100)}
+                </TableCell>}
+              </TableRow>
+
+              {/* 8. EBITDA */}
+              <TableRow className="bg-yellow-100 font-medium">
+                <TableCell className="text-xs text-muted-foreground">{codePrefix}-070</TableCell>
+                <TableCell>8. EBITDA</TableCell>
+                <TableCell className="text-right font-bold">{formatCurrency(dreData.ebitda)}</TableCell>
+                {!compact && <TableCell className="text-right font-bold">{formatPercent(dreData.ebitdaMargin)}</TableCell>}
+              </TableRow>
             </TableBody>
+            <TableFooter>
+              <TableRow>
+                <TableCell colSpan={!compact ? 4 : 3}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">{codePrefix}-080</span>
+                        <span className="font-medium">Investimento Total:</span>
+                        <span className="font-bold">{formatCurrency(dreData.totalInvestment)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">{codePrefix}-081</span>
+                        <span className="text-sm text-muted-foreground">Payback estimado:</span>
+                        <span className="text-sm font-medium">{dreData.paybackMonths.toFixed(1)} meses</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">{codePrefix}-082</span>
+                        <span className="font-medium">Ponto de Equilíbrio:</span>
+                        <span className="font-bold">{formatCurrency(dreData.breakEvenPoint)}</span>
+                      </div>
+                      {dreData.pdvsAtivos && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-muted-foreground">{codePrefix}-083</span>
+                          <span className="text-sm text-muted-foreground">PDVs Ativos:</span>
+                          <span className="text-sm font-medium">{dreData.pdvsAtivos}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            </TableFooter>
           </Table>
         </div>
-      </div>
-
-      <div className="text-sm text-muted-foreground mt-4 print:hidden space-y-1">
-        <p>📊 Os percentuais são calculados com base na Receita Operacional total</p>
-        <p>💡 Clique nos ícones de seta para expandir/recolher categorias</p>
-        <p>🔍 Dados DINÂMICOS sincronizados com "Projeção de Resultados por PDV"</p>
-        <p>✅ Receita: R$ {formatCurrency(receitaTotal).replace('R$ ', '')} | Custos Variáveis: R$ {formatCurrency(totalCustosVariaveis).replace('R$ ', '')} | Lucro Bruto: R$ {formatCurrency(lucroBruto).replace('R$ ', '')}</p>
-        <p>💰 Impostos ({taxaImposto}%): R$ {formatCurrency(impostos).replace('R$ ', '')} | Resultado Líquido: R$ {formatCurrency(resultadoLiquido).replace('R$ ', '')}</p>
-        <p className="text-xs text-green-600">🔄 Insumos DINÂMICOS: Revenda Padrão R$ {formatCurrency(insumosRevendaPadrao).replace('R$ ', '')} | Food Service R$ {formatCurrency(insumosFoodService).replace('R$ ', '')}</p>
-      </div>
-
-      <DRECalculationDetails 
-        open={showCalculationDetails}
-        onOpenChange={setShowCalculationDetails}
-        dreData={dreData}
-      />
-    </div>
+      </CardContent>
+    </Card>
   );
 }
