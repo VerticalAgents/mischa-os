@@ -13,7 +13,7 @@ export default function PontoEquilibrio() {
 
   // Memoize calculations to prevent unnecessary recalculations
   const calculations = useMemo(() => {
-    if (!financialData) return null;
+    if (!financialData || !faturamentoPrevisto.precosDetalhados) return null;
 
     const { faturamento, custosFixos, custosVariaveis } = financialData;
     
@@ -24,9 +24,31 @@ export default function PontoEquilibrio() {
     const margem = faturamentoMensal - custoFixoTotal - custoVariavelTotal;
     const margemPercentual = faturamentoMensal > 0 ? (margem / faturamentoMensal) * 100 : 0;
     
-    // Ponto de equilíbrio: Custos Fixos / (Receita - Custos Variáveis) * Receita
-    const margemContribuicao = faturamentoMensal - custoVariavelTotal;
-    const pontoEquilibrio = margemContribuicao > 0 ? (custoFixoTotal / margemContribuicao) * faturamentoMensal : 0;
+    // Calcular preço médio ponderado baseado no faturamento real
+    let faturamentoTotalDetalhado = 0;
+    let volumeTotalDetalhado = 0;
+    
+    faturamentoPrevisto.precosDetalhados.forEach(detalhe => {
+      const faturamentoMensalDetalhe = detalhe.faturamentoSemanal * 4;
+      const volumeMensalDetalhe = detalhe.giroSemanal * 4;
+      
+      faturamentoTotalDetalhado += faturamentoMensalDetalhe;
+      volumeTotalDetalhado += volumeMensalDetalhe;
+    });
+    
+    const precoMedioPonderado = volumeTotalDetalhado > 0 ? faturamentoTotalDetalhado / volumeTotalDetalhado : 0;
+    
+    // Calcular custo unitário médio baseado nos custos variáveis
+    const custoUnitarioMedio = volumeTotalDetalhado > 0 ? custoVariavelTotal / volumeTotalDetalhado : 0;
+    
+    // Margem de contribuição unitária
+    const margemContribuicaoUnitaria = precoMedioPonderado - custoUnitarioMedio;
+    
+    // Unidades necessárias para break even
+    const unidadesBreakEven = margemContribuicaoUnitaria > 0 ? Math.ceil(custoFixoTotal / margemContribuicaoUnitaria) : 0;
+    
+    // Faturamento necessário para break even
+    const faturamentoBreakEven = unidadesBreakEven * precoMedioPonderado;
     
     return {
       faturamentoMensal,
@@ -34,10 +56,14 @@ export default function PontoEquilibrio() {
       custoVariavelTotal,
       margem,
       margemPercentual,
-      pontoEquilibrio,
-      margemContribuicao
+      precoMedioPonderado,
+      custoUnitarioMedio,
+      margemContribuicaoUnitaria,
+      unidadesBreakEven,
+      faturamentoBreakEven,
+      volumeTotalMensal: volumeTotalDetalhado
     };
-  }, [financialData]);
+  }, [financialData, faturamentoPrevisto.precosDetalhados]);
 
   if (loading || faturamentoPrevisto.isLoading) {
     return (
@@ -89,7 +115,11 @@ export default function PontoEquilibrio() {
     custoVariavelTotal,
     margem,
     margemPercentual,
-    pontoEquilibrio
+    precoMedioPonderado,
+    unidadesBreakEven,
+    faturamentoBreakEven,
+    volumeTotalMensal,
+    margemContribuicaoUnitaria
   } = calculations;
 
   const formatCurrency = (value: number) => {
@@ -170,7 +200,7 @@ export default function PontoEquilibrio() {
             <div className="space-y-4">
               <div>
                 <div className="text-3xl font-bold text-blue-600">
-                  {formatCurrency(pontoEquilibrio)}
+                  {formatCurrency(faturamentoBreakEven)}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Faturamento necessário para cobrir todos os custos
@@ -179,13 +209,25 @@ export default function PontoEquilibrio() {
               
               <div className="space-y-2">
                 <div className="flex justify-between">
+                  <span className="text-sm">Unidades Necessárias:</span>
+                  <span className="text-sm font-medium">{unidadesBreakEven.toLocaleString()} un</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm">Preço Médio:</span>
+                  <span className="text-sm font-medium">{formatCurrency(precoMedioPonderado)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm">Margem Unit.:</span>
+                  <span className="text-sm font-medium">{formatCurrency(margemContribuicaoUnitaria)}</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
                   <span className="text-sm">Faturamento Atual:</span>
                   <span className="text-sm font-medium">{formatCurrency(faturamentoMensal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm">Diferença:</span>
-                  <span className={`text-sm font-medium ${faturamentoMensal >= pontoEquilibrio ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(faturamentoMensal - pontoEquilibrio)}
+                  <span className={`text-sm font-medium ${faturamentoMensal >= faturamentoBreakEven ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(faturamentoMensal - faturamentoBreakEven)}
                   </span>
                 </div>
               </div>
@@ -199,7 +241,7 @@ export default function PontoEquilibrio() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {faturamentoMensal >= pontoEquilibrio ? (
+              {faturamentoMensal >= faturamentoBreakEven ? (
                 <div className="flex items-center gap-2 text-green-600">
                   <TrendingUp className="h-5 w-5" />
                   <span className="font-medium">Situação Positiva</span>
@@ -212,10 +254,15 @@ export default function PontoEquilibrio() {
               )}
               
               <div className="text-sm text-muted-foreground">
-                {faturamentoMensal >= pontoEquilibrio 
+                {faturamentoMensal >= faturamentoBreakEven 
                   ? "O faturamento atual está acima do ponto de equilíbrio, gerando lucro."
-                  : "O faturamento atual está abaixo do ponto de equilíbrio. Considere aumentar as vendas ou reduzir custos."
+                  : `É necessário vender ${(unidadesBreakEven - volumeTotalMensal).toLocaleString()} unidades adicionais ou aumentar o preço médio para atingir o break even.`
                 }
+              </div>
+              
+              <div className="text-xs text-muted-foreground mt-4">
+                <div>Volume atual: {volumeTotalMensal.toLocaleString()} un/mês</div>
+                <div>Volume necessário: {unidadesBreakEven.toLocaleString()} un/mês</div>
               </div>
             </div>
           </CardContent>
