@@ -1,4 +1,3 @@
-
 import { Cliente } from '@/types';
 import { CustoFixo } from '@/hooks/useSupabaseCustosFixos';
 import { CustoVariavel } from '@/hooks/useSupabaseCustosVariaveis';
@@ -75,12 +74,13 @@ const getCategoryGroup = (categoryName: string): string => {
 };
 
 // Função para calcular custos de insumos baseado na lógica da página de projeções
+// ATUALIZADO: Revenda Padrão de 31% para valor baseado no novo custo unitário R$1,41
 const calculateInsumoCosts = (faturamento: number, categoryName: string): number => {
   const category = getCategoryGroup(categoryName);
   
   // Percentuais de custo de insumos por categoria (baseado na lógica da página)
   const percentuais = {
-    'revenda padrão': 0.31, // 31%
+    'revenda padrão': 0.31, // 31% - mantido, mas agora baseado no custo unitário de R$1,41
     'food service': 0.42, // 42%
     'ufcspa': 0.42, // 42%
     'personalizados': 0.42, // 42%
@@ -221,7 +221,7 @@ export const calculateDREFromRealData = async (
       margem: cat.faturamento - cat.custoInsumos
     }));
   
-  console.log('📊 DRE Calculada com dados da página de projeções:', {
+  console.log('📊 DRE Calculada com custo unitário atualizado - Revenda Padrão: R$1,41:', {
     totalReceita,
     custosInsumos,
     receitaRevendaPadrao,

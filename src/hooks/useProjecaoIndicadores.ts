@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { useSupabaseCategoriasProduto } from '@/hooks/useSupabaseCategoriasProduto';
@@ -14,11 +13,11 @@ const PRECOS_TEMPORARIOS: Record<string, number> = {
   'default': 5.00
 };
 
-// Custos diferenciados por categoria
+// Custos diferenciados por categoria - ATUALIZADO: Revenda Padrão de R$1,32 para R$1,41
 const CUSTOS_UNITARIOS: Record<string, number> = {
-  'revenda padrão': 1.32,
+  'revenda padrão': 1.41,
   'food service': 29.17,
-  'default': 1.32
+  'default': 1.41
 };
 
 const ALIQUOTA_PROVISORIA = 0.04; // 4%
