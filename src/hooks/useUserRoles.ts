@@ -19,8 +19,8 @@ export function useUserRoles() {
     }
 
     try {
-      // Query the user_roles table to get the user's role
-      const { data, error } = await supabase
+      // Use any to bypass type checking for the new user_roles table
+      const { data, error } = await (supabase as any)
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
@@ -59,7 +59,8 @@ export function useUserRoles() {
 
   const assignRole = async (userId: string, role: AppRole) => {
     try {
-      const { error } = await supabase
+      // Use any to bypass type checking for the new user_roles table
+      const { error } = await (supabase as any)
         .from('user_roles')
         .upsert({
           user_id: userId,
