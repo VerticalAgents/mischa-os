@@ -42,21 +42,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔐 Auth event:', event, session ? 'Session exists' : 'No session');
         
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Só processar eventos após a inicialização
+        // Only process events after initialization
         if (!isInitialized) {
           setIsInitialized(true);
           return;
         }
 
         if (event === 'SIGNED_IN' && session) {
-          // Redirecionar sempre para /home após login bem-sucedido
-          console.log('🚀 Redirecionando para /home após login');
+          // Redirect to /home after successful login
           navigate('/home', { replace: true });
           toast.success("Login realizado com sucesso");
         }
@@ -70,7 +68,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('🔍 Session inicial:', session ? 'Existe' : 'Não existe');
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -97,7 +94,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         throw error;
       }
       
-      // O redirecionamento será feito pelo onAuthStateChange
+      // Redirection will be handled by onAuthStateChange
     } catch (error) {
       if (error instanceof Error && !error.message.includes('Invalid login credentials')) {
         toast.error("Erro inesperado ao fazer login");

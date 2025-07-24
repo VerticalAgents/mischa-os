@@ -1,11 +1,12 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export type AppRole = 'admin' | 'user';
 
 export function useUserRoles() {
-  const { user } = useAuth();
+  const { user } from useAuth();
   const [userRole, setUserRole] = useState<AppRole>('user');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,18 +19,21 @@ export function useUserRoles() {
     }
 
     try {
-      // For now, use user metadata or email to determine admin status
-      // This is a temporary solution until Supabase types are updated
-      const userMetadata = user.user_metadata || {};
-      const email = user.email || '';
-      
-      // Check if user is admin based on email or metadata
-      const isAdminEmail = email === 'admin@example.com' || email.includes('admin');
-      const isAdminFromMetadata = userMetadata.role === 'admin';
-      
-      if (isAdminEmail || isAdminFromMetadata) {
-        setUserRole('admin');
+      // Query the user_roles table to get the user's role
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+        console.error('Error fetching user role:', error);
+        setError('Failed to fetch user role');
+        setUserRole('user');
+      } else if (data) {
+        setUserRole(data.role as AppRole);
       } else {
+        // No role found, default to 'user'
         setUserRole('user');
       }
     } catch (err) {
@@ -55,10 +59,21 @@ export function useUserRoles() {
 
   const assignRole = async (userId: string, role: AppRole) => {
     try {
-      // This would normally update the user_roles table
-      // For now, this is a placeholder
-      console.log('Role assignment not implemented yet - need Supabase types update');
-      throw new Error('Role assignment requires database migration to be completed');
+      const { error } = await supabase
+        .from('user_roles')
+        .upsert({
+          user_id: userId,
+          role: role
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      // Refresh role if assigning to current user
+      if (userId === user?.id) {
+        await fetchUserRole();
+      }
     } catch (err) {
       console.error('Error assigning role:', err);
       throw err;

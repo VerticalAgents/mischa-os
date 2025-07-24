@@ -1,37 +1,30 @@
 
-// Utilitário para validação de PIN administrativo
-export const PIN_MESTRE = "651998";
+import { validateAdminAccess } from './secureAdminValidation';
+
+/**
+ * @deprecated Use validateAdminAccess from secureAdminValidation.ts instead
+ * This file is maintained for backward compatibility only
+ */
+
+// Remove the hardcoded PIN for security
+export const PIN_MESTRE = ""; // Deprecated - PIN-based auth removed for security
 
 export function validarPinAdmin(pin: string): boolean {
-  return pin === PIN_MESTRE;
+  console.warn('PIN-based admin validation is deprecated and disabled for security reasons. Use role-based authentication instead.');
+  return false;
 }
 
 export function validateAdminPin(pin: string): boolean {
-  return pin === PIN_MESTRE;
+  console.warn('PIN-based admin validation is deprecated and disabled for security reasons. Use role-based authentication instead.');
+  return false;
 }
 
-// Função atualizada que retorna Promise<boolean> para ser usada com modal
 export function solicitarPinAdminModal(): Promise<boolean> {
-  return new Promise((resolve) => {
-    // Esta função será substituída pelo componente PinDialog
-    // Mantida apenas para compatibilidade
-    resolve(false);
-  });
+  console.warn('PIN-based admin validation is deprecated. Use validateAdminAccess() instead.');
+  return validateAdminAccess();
 }
 
-// Versão legacy mantida para compatibilidade
 export function solicitarPinAdmin(): Promise<boolean> {
-  return new Promise((resolve) => {
-    const pin = prompt("Digite o PIN de administrador:");
-    if (pin === null) {
-      resolve(false);
-      return;
-    }
-    
-    const isValid = validarPinAdmin(pin);
-    if (!isValid) {
-      alert("PIN inválido!");
-    }
-    resolve(isValid);
-  });
+  console.warn('PIN-based admin validation is deprecated. Use validateAdminAccess() instead.');
+  return validateAdminAccess();
 }

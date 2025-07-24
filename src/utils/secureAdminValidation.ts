@@ -1,96 +1,88 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-export async function validateAdminAccess(userId: string): Promise<boolean> {
+/**
+ * Secure admin validation using database roles instead of hardcoded PINs
+ */
+export async function validateAdminAccess(): Promise<boolean> {
   try {
-    // Get user from auth
-    const { data: user, error } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (error || !user.user || user.user.id !== userId) {
-      console.warn('Admin validation failed: User not found or ID mismatch');
+    if (!user) {
       return false;
     }
 
-    // For now, use email pattern or user metadata to determine admin status
-    // This is temporary until Supabase types are updated with user_roles table
-    const userMetadata = user.user.user_metadata || {};
-    const email = user.user.email || '';
-    
-    // Check if user is admin based on email or metadata
-    const isAdminEmail = email === 'admin@example.com' || email.includes('admin');
-    const isAdminFromMetadata = userMetadata.role === 'admin';
-    
-    const isAdmin = isAdminEmail || isAdminFromMetadata;
-    
-    if (isAdmin) {
-      console.log('✅ Admin access validated for user:', email);
-      return true;
-    } else {
-      console.warn('❌ Admin access denied for user:', email);
+    // Check if user has admin role using the secure database function
+    const { data, error } = await supabase.rpc('has_role', {
+      _user_id: user.id,
+      _role: 'admin'
+    });
+
+    if (error) {
+      console.error('Error checking admin role:', error);
       return false;
     }
+
+    return data === true;
   } catch (error) {
     console.error('Error validating admin access:', error);
     return false;
   }
 }
 
-export async function assignUserRole(targetUserId: string, role: 'admin' | 'user'): Promise<boolean> {
+/**
+ * Assign admin role to a user
+ */
+export async function assignAdminRole(userId: string): Promise<boolean> {
   try {
-    // Validate that current user is admin
-    const { data: currentUser } = await supabase.auth.getUser();
-    if (!currentUser.user) {
-      throw new Error('Not authenticated');
-    }
-
-    const isCurrentUserAdmin = await validateAdminAccess(currentUser.user.id);
+    // Only existing admins can assign admin roles
+    const isCurrentUserAdmin = await validateAdminAccess();
     if (!isCurrentUserAdmin) {
-      throw new Error('Insufficient permissions');
+      throw new Error('Only administrators can assign admin roles');
     }
 
-    // For now, log the role assignment since we can't update the database
-    console.log('Role assignment requested:', {
-      targetUserId,
-      role,
-      assignedBy: currentUser.user.email
-    });
+    const { error } = await supabase
+      .from('user_roles')
+      .upsert({
+        user_id: userId,
+        role: 'admin'
+      });
 
-    // TODO: Once Supabase types are updated, implement actual role assignment:
-    // const { error } = await supabase
-    //   .from('user_roles')
-    //   .upsert({
-    //     user_id: targetUserId,
-    //     role: role
-    //   });
+    if (error) {
+      throw error;
+    }
 
-    console.warn('Role assignment not implemented yet - need Supabase types update');
-    return false;
+    return true;
   } catch (error) {
-    console.error('Error assigning user role:', error);
+    console.error('Error assigning admin role:', error);
     return false;
   }
 }
 
-export async function getUserRole(userId: string): Promise<'admin' | 'user'> {
+/**
+ * Remove admin role from a user
+ */
+export async function removeAdminRole(userId: string): Promise<boolean> {
   try {
-    // Get user from auth
-    const { data: user, error } = await supabase.auth.getUser();
-    
-    if (error || !user.user || user.user.id !== userId) {
-      return 'user';
+    // Only existing admins can remove admin roles
+    const isCurrentUserAdmin = await validateAdminAccess();
+    if (!isCurrentUserAdmin) {
+      throw new Error('Only administrators can remove admin roles');
     }
 
-    // For now, use email pattern or user metadata to determine admin status
-    const userMetadata = user.user.user_metadata || {};
-    const email = user.user.email || '';
-    
-    // Check if user is admin based on email or metadata
-    const isAdminEmail = email === 'admin@example.com' || email.includes('admin');
-    const isAdminFromMetadata = userMetadata.role === 'admin';
-    
-    return (isAdminEmail || isAdminFromMetadata) ? 'admin' : 'user';
+    const { error } = await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId)
+      .eq('role', 'admin');
+
+    if (error) {
+      throw error;
+    }
+
+    return true;
   } catch (error) {
-    console.error('Error getting user role:', error);
-    return 'user';
+    console.error('Error removing admin role:', error);
+    return false;
   }
 }
