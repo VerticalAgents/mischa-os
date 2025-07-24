@@ -37,6 +37,15 @@ export default function BreakEvenPorProduto({ faturamentoPrevisto, custoFixoTota
       });
     });
 
+    // Preços médios corretos conforme solicitado
+    const precosMediosCorretos: Record<string, number> = {
+      'revenda padrão': 4.25, // Preço correto da página de projeção por PDV
+      'food service': 70.00,  // Valor mock solicitado
+      'ufcspa': 70.00,
+      'personalizados': 70.00,
+      'outros': 4.25
+    };
+
     // Custos unitários por categoria
     const custosUnitarios: Record<string, number> = {
       'revenda padrão': 1.41,
@@ -44,6 +53,16 @@ export default function BreakEvenPorProduto({ faturamentoPrevisto, custoFixoTota
       'ufcspa': 29.17,
       'personalizados': 29.17,
       'outros': 1.41
+    };
+
+    const getPrecoMedio = (categoriaNome: string): number => {
+      const nome = categoriaNome.toLowerCase();
+      for (const [key, preco] of Object.entries(precosMediosCorretos)) {
+        if (nome.includes(key.toLowerCase()) || key.includes(nome)) {
+          return preco;
+        }
+      }
+      return precosMediosCorretos['outros'];
     };
 
     const getCustoUnitario = (categoriaNome: string): number => {
@@ -57,13 +76,14 @@ export default function BreakEvenPorProduto({ faturamentoPrevisto, custoFixoTota
     };
 
     return Array.from(categoriaData.entries()).map(([categoria, data]) => {
+      const precoMedio = getPrecoMedio(categoria);
       const custoUnitario = getCustoUnitario(categoria);
-      const margemBrutaUnitaria = Math.max(0, data.precoMedio - custoUnitario);
+      const margemBrutaUnitaria = Math.max(0, precoMedio - custoUnitario);
       const unidadesBreakEven = margemBrutaUnitaria > 0 ? Math.ceil(custoFixoTotal / margemBrutaUnitaria) : 0;
       
       return {
         categoria,
-        precoMedio: data.precoMedio,
+        precoMedio,
         custoUnitario,
         margemBrutaUnitaria: Math.round(margemBrutaUnitaria * 100) / 100,
         unidadesBreakEven,
@@ -213,7 +233,7 @@ export default function BreakEvenPorProduto({ faturamentoPrevisto, custoFixoTota
                                 x={produto.unidadesBreakEven} 
                                 stroke="#3b82f6" 
                                 strokeDasharray="5 5"
-                                label={{ value: "Break Even", position: "topRight" }}
+                                label={{ value: "Break Even", position: "top" }}
                               />
                             </LineChart>
                           </ResponsiveContainer>
