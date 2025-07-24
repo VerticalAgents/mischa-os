@@ -4,11 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, DollarSign, AlertTriangle } from "lucide-react";
 import { useOptimizedFinancialData } from "@/hooks/useOptimizedFinancialData";
 import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import BreakEvenPorProduto from "@/components/gestao-financeira/BreakEvenPorProduto";
 
 export default function PontoEquilibrio() {
   const { data: financialData, loading, error } = useOptimizedFinancialData();
   const faturamentoPrevisto = useFaturamentoPrevisto();
+  const { clientes } = useClienteStore();
 
   // Memoize calculations to prevent unnecessary recalculations
   const calculations = useMemo(() => {
@@ -23,31 +25,58 @@ export default function PontoEquilibrio() {
     const margem = faturamentoMensal - custoFixoTotal - custoVariavelTotal;
     const margemPercentual = faturamentoMensal > 0 ? (margem / faturamentoMensal) * 100 : 0;
     
-    // Calcular preço médio ponderado baseado no faturamento real
-    let faturamentoTotalDetalhado = 0;
-    let volumeTotalDetalhado = 0;
+    // Filtrar clientes que devem ser contabilizados (mesma lógica do ResumoGeralTab)
+    const clientesContabilizados = clientes.filter(cliente => cliente.contabilizarGiroMedio);
+    const clientesContabilizadosIds = new Set(clientesContabilizados.map(c => c.id));
+    
+    // Função para verificar se é categoria "Revenda Padrão"
+    const isRevendaPadrao = (categoriaNome: string): boolean => {
+      const nome = categoriaNome.toLowerCase();
+      return nome.includes('revenda') || nome.includes('padrão');
+    };
+    
+    // Filtrar dados apenas de clientes contabilizados e categoria Revenda Padrão
+    const dadosRevendaPadrao = faturamentoPrevisto.precosDetalhados.filter(detalhe => 
+      clientesContabilizadosIds.has(detalhe.clienteId) && isRevendaPadrao(detalhe.categoriaNome)
+    );
+    
+    // Calcular preço médio ponderado baseado apenas na Revenda Padrão (mesma lógica do ResumoGeralTab)
+    let faturamentoTotalRevendaPadrao = 0;
+    let volumeTotalRevendaPadrao = 0;
+    
+    dadosRevendaPadrao.forEach(detalhe => {
+      const faturamentoMensalDetalhe = detalhe.faturamentoSemanal * 4;
+      const volumeMensalDetalhe = detalhe.giroSemanal * 4;
+      
+      faturamentoTotalRevendaPadrao += faturamentoMensalDetalhe;
+      volumeTotalRevendaPadrao += volumeMensalDetalhe;
+    });
+    
+    // Preço médio ponderado correto (R$ 4,25) - baseado apenas em Revenda Padrão
+    const precoMedioPonderado = volumeTotalRevendaPadrao > 0 ? faturamentoTotalRevendaPadrao / volumeTotalRevendaPadrao : 0;
+    
+    // Para o cálculo de custos, usar todos os dados (não apenas Revenda Padrão)
+    let faturamentoTotalGeral = 0;
+    let volumeTotalGeral = 0;
     
     faturamentoPrevisto.precosDetalhados.forEach(detalhe => {
       const faturamentoMensalDetalhe = detalhe.faturamentoSemanal * 4;
       const volumeMensalDetalhe = detalhe.giroSemanal * 4;
       
-      faturamentoTotalDetalhado += faturamentoMensalDetalhe;
-      volumeTotalDetalhado += volumeMensalDetalhe;
+      faturamentoTotalGeral += faturamentoMensalDetalhe;
+      volumeTotalGeral += volumeMensalDetalhe;
     });
     
-    // Preço médio ponderado correto
-    const precoMedioPonderado = volumeTotalDetalhado > 0 ? faturamentoTotalDetalhado / volumeTotalDetalhado : 0;
+    // Custo unitário médio baseado nos custos variáveis totais
+    const custoUnitarioMedio = volumeTotalGeral > 0 ? custoVariavelTotal / volumeTotalGeral : 0;
     
-    // Custo unitário médio baseado nos custos variáveis
-    const custoUnitarioMedio = volumeTotalDetalhado > 0 ? custoVariavelTotal / volumeTotalDetalhado : 0;
-    
-    // Margem de contribuição unitária
+    // Margem de contribuição unitária usando preço médio da Revenda Padrão
     const margemContribuicaoUnitaria = precoMedioPonderado - custoUnitarioMedio;
     
     // Unidades necessárias para break even (custos fixos ÷ margem unitária)
     const unidadesBreakEven = margemContribuicaoUnitaria > 0 ? Math.ceil(custoFixoTotal / margemContribuicaoUnitaria) : 0;
     
-    // Faturamento necessário para break even = unidades × preço médio
+    // Faturamento necessário para break even = unidades × preço médio da Revenda Padrão
     const faturamentoBreakEven = unidadesBreakEven * precoMedioPonderado;
     
     return {
@@ -61,9 +90,9 @@ export default function PontoEquilibrio() {
       margemContribuicaoUnitaria,
       unidadesBreakEven,
       faturamentoBreakEven,
-      volumeTotalMensal: volumeTotalDetalhado
+      volumeTotalMensal: volumeTotalGeral
     };
-  }, [financialData, faturamentoPrevisto.precosDetalhados]);
+  }, [financialData, faturamentoPrevisto.precosDetalhados, clientes]);
 
   if (loading || faturamentoPrevisto.isLoading) {
     return (
@@ -213,7 +242,7 @@ export default function PontoEquilibrio() {
                   <span className="text-sm font-medium">{unidadesBreakEven.toLocaleString()} un</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm">Preço Médio:</span>
+                  <span className="text-sm">Preço Médio (Revenda):</span>
                   <span className="text-sm font-medium">{formatCurrency(precoMedioPonderado)}</span>
                 </div>
                 <div className="flex justify-between">
@@ -263,6 +292,9 @@ export default function PontoEquilibrio() {
               <div className="text-xs text-muted-foreground mt-4">
                 <div>Volume atual: {volumeTotalMensal.toLocaleString()} un/mês</div>
                 <div>Volume necessário: {unidadesBreakEven.toLocaleString()} un/mês</div>
+                <div className="mt-2 text-orange-600">
+                  * Preço médio baseado apenas em clientes Revenda Padrão contabilizados
+                </div>
               </div>
             </div>
           </CardContent>
