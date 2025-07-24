@@ -70,28 +70,28 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
 
     console.log(`📊 [GrowthFactorsSection] Valores base carregados:`, updatedBreakdown);
 
-    // Aplicar todos os fatores de crescimento sobre os valores base
-    const allFactors = updatedGrowthFactors;
-    
-    // Aplicar fatores de crescimento direto nos faturamentos
-    const revendaFactor = allFactors['revendaPadraoFaturamento'] || { type: 'percentage', value: 0 };
-    const foodServiceFactor = allFactors['foodServiceFaturamento'] || { type: 'percentage', value: 0 };
-    const pdvsFactor = allFactors['pdvsAtivos'] || { type: 'absolute', value: 0 };
+    // Aplicar fatores de crescimento APENAS para os subitens específicos
+    const revendaFactor = updatedGrowthFactors['revendaPadraoFaturamento'] || { type: 'percentage', value: 0 };
+    const foodServiceFactor = updatedGrowthFactors['foodServiceFaturamento'] || { type: 'percentage', value: 0 };
+    const pdvsFactor = updatedGrowthFactors['pdvsAtivos'] || { type: 'absolute', value: 0 };
 
-    // Calcular novos faturamentos
+    // Aplicar fator de crescimento para Revenda Padrão
     if (revendaFactor.value !== 0) {
       if (revendaFactor.type === 'percentage') {
-        updatedBreakdown.revendaPadraoFaturamento = updatedBreakdown.revendaPadraoFaturamento * (1 + revendaFactor.value / 100);
+        updatedBreakdown.revendaPadraoFaturamento = (baseDRE.detailedBreakdown?.revendaPadraoFaturamento || 0) * (1 + revendaFactor.value / 100);
       } else {
-        updatedBreakdown.revendaPadraoFaturamento = updatedBreakdown.revendaPadraoFaturamento + revendaFactor.value;
+        // Para absoluto, o novo valor É o valor absoluto
+        updatedBreakdown.revendaPadraoFaturamento = revendaFactor.value;
       }
     }
 
+    // Aplicar fator de crescimento para Food Service
     if (foodServiceFactor.value !== 0) {
       if (foodServiceFactor.type === 'percentage') {
-        updatedBreakdown.foodServiceFaturamento = updatedBreakdown.foodServiceFaturamento * (1 + foodServiceFactor.value / 100);
+        updatedBreakdown.foodServiceFaturamento = (baseDRE.detailedBreakdown?.foodServiceFaturamento || 0) * (1 + foodServiceFactor.value / 100);
       } else {
-        updatedBreakdown.foodServiceFaturamento = updatedBreakdown.foodServiceFaturamento + foodServiceFactor.value;
+        // Para absoluto, o novo valor É o valor absoluto
+        updatedBreakdown.foodServiceFaturamento = foodServiceFactor.value;
       }
     }
 
@@ -102,7 +102,8 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
       if (pdvsFactor.type === 'percentage') {
         variacaoPDVs = Math.round(pdvsAtivosBase * (pdvsFactor.value / 100));
       } else {
-        variacaoPDVs = pdvsFactor.value;
+        // Para PDVs absoluto, calculamos a variação
+        variacaoPDVs = pdvsFactor.value - pdvsAtivosBase;
       }
       
       console.log(`📊 [GrowthFactorsSection] Variação de PDVs: ${variacaoPDVs > 0 ? '+' : ''}${variacaoPDVs} PDVs`);
@@ -198,6 +199,17 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
           const growth = scenario.channelGrowthFactors?.[subitem.key] || { type: 'absolute', value: 0 };
           const isPDVs = subitem.key === 'pdvsAtivos';
           
+          // Calcular o novo valor para exibição
+          let novoValor = subitem.baseValue;
+          if (growth.value !== 0) {
+            if (growth.type === 'percentage') {
+              novoValor = subitem.baseValue * (1 + growth.value / 100);
+            } else {
+              // Para absoluto, o novo valor É o valor absoluto
+              novoValor = growth.value;
+            }
+          }
+          
           return (
             <div key={subitem.key} className="space-y-2 p-3 border rounded-md">
               <label className="text-sm font-medium block flex items-center gap-2">
@@ -241,26 +253,21 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
                       <div>
                         {growth.type === 'percentage' 
                           ? `Variação: ${growth.value > 0 ? '+' : ''}${Math.round(subitem.baseValue * (growth.value / 100))} PDVs`
-                          : `Variação: ${growth.value > 0 ? '+' : ''}${growth.value} PDVs`
+                          : `Novo total: ${growth.value} PDVs (${growth.value - subitem.baseValue > 0 ? '+' : ''}${growth.value - subitem.baseValue} PDVs)`
                         }
                       </div>
                       <div>
                         Impacto no faturamento: {(() => {
                           const variacaoPDVs = growth.type === 'percentage' 
                             ? Math.round(subitem.baseValue * (growth.value / 100))
-                            : growth.value;
+                            : (growth.value - subitem.baseValue);
                           const impacto = variacaoPDVs * faturamentoMedioPDV;
                           return `${impacto >= 0 ? '+' : ''}R$ ${impacto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                         })()}
                       </div>
                     </>
                   ) : (
-                    `Novo valor: R$ ${
-                      (growth.type === 'percentage' 
-                        ? subitem.baseValue * (1 + growth.value / 100)
-                        : subitem.baseValue + growth.value
-                      ).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                    }`
+                    `Novo valor: R$ ${novoValor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                   )}
                 </div>
               )}
