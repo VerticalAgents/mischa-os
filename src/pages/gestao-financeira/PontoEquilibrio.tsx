@@ -21,6 +21,7 @@ export default function PontoEquilibrio() {
     // [PE-001] Dados básicos financeiros
     const faturamentoMensal = faturamento.mensal;
     const custoFixoTotal = custosFixos.total;
+    // [PE-CORRIGIDO] Usar custos variáveis da aba resumo geral
     const custoVariavelTotal = custosVariaveis.total;
     
     // [PE-002] Margem atual
@@ -72,23 +73,24 @@ export default function PontoEquilibrio() {
       volumeFoodService += volumeMensal;
     });
     
-    // [PE-009] Preços médios por categoria
+    // [PE-009] Preço médio Revenda Padrão
     const precoMedioRevendaPadrao = volumeRevendaPadrao > 0 ? faturamentoRevendaPadrao / volumeRevendaPadrao : 0;
+    
+    // [PE-010] Preço médio Food Service
     const precoMedioFoodService = volumeFoodService > 0 ? faturamentoFoodService / volumeFoodService : 0;
     
-    // [PE-010] Volume total mensal
-    const volumeTotalMensal = volumeRevendaPadrao + volumeFoodService;
+    // [PE-011] Custo unitário corrigido para R$ 1,41
+    const custoUnitarioMedio = 1.41;
     
-    // [PE-011] Custo unitário médio baseado nos custos variáveis
-    const custoUnitarioMedio = volumeTotalMensal > 0 ? custoVariavelTotal / volumeTotalMensal : 0;
-    
-    // [PE-012] Margem de contribuição unitária (base: Revenda Padrão)
+    // [PE-012] Margem de contribuição unitária (PE-009 - PE-011)
     const margemContribuicaoUnitaria = precoMedioRevendaPadrao - custoUnitarioMedio;
     
-    // [PE-013] Unidades necessárias para break even
-    const unidadesBreakEven = margemContribuicaoUnitaria > 0 ? Math.ceil(custoFixoTotal / margemContribuicaoUnitaria) : 0;
+    // [PE-013] Volume total mensal
+    const volumeTotalMensal = volumeRevendaPadrao + volumeFoodService;
     
-    // [PE-014] Faturamento necessário para break even
+    // [PE-014] Faturamento necessário para break even (corrigido)
+    // Fórmula: (Custos fixos / margem unitária) * preço médio
+    const unidadesBreakEven = margemContribuicaoUnitaria > 0 ? Math.ceil(custoFixoTotal / margemContribuicaoUnitaria) : 0;
     const faturamentoBreakEven = unidadesBreakEven * precoMedioRevendaPadrao;
     
     return {
@@ -238,7 +240,7 @@ export default function PontoEquilibrio() {
               {formatCurrency(custoVariavelTotal)}
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              Baseado em PE-001
+              Da aba Resumo Geral
             </div>
           </CardContent>
         </Card>
@@ -291,14 +293,14 @@ export default function PontoEquilibrio() {
                     <div className="text-xs text-muted-foreground">PE-007</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Preço Médio:</span>
+                    <span className="text-muted-foreground">[PE-009] Preço Médio:</span>
                     <div className="font-bold text-blue-600">{formatCurrency(precoMedioRevendaPadrao)}</div>
                     <div className="text-xs text-muted-foreground">PE-009</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Custo Unit.:</span>
-                    <div className="font-medium">{formatCurrency(custoUnitarioMedio)}</div>
-                    <div className="text-xs text-muted-foreground">PE-011</div>
+                    <span className="text-muted-foreground">[PE-011] Custo Unit.:</span>
+                    <div className="font-medium text-red-600">{formatCurrency(custoUnitarioMedio)}</div>
+                    <div className="text-xs text-muted-foreground">R$ 1,41 fixo</div>
                   </div>
                 </div>
               </div>
@@ -319,14 +321,14 @@ export default function PontoEquilibrio() {
                     <div className="text-xs text-muted-foreground">PE-008</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Preço Médio:</span>
+                    <span className="text-muted-foreground">[PE-010] Preço Médio:</span>
                     <div className="font-bold text-orange-600">{formatCurrency(precoMedioFoodService)}</div>
-                    <div className="text-xs text-muted-foreground">PE-009</div>
+                    <div className="text-xs text-muted-foreground">PE-010</div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Custo Unit.:</span>
                     <div className="font-medium">{formatCurrency(custoUnitarioMedio)}</div>
-                    <div className="text-xs text-muted-foreground">PE-011</div>
+                    <div className="text-xs text-muted-foreground">Same as PE-011</div>
                   </div>
                 </div>
               </div>
@@ -346,10 +348,10 @@ export default function PontoEquilibrio() {
                   {formatCurrency(faturamentoBreakEven)}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Faturamento necessário para cobrir todos os custos
+                  Faturamento necessário para cobrir custos fixos
                 </p>
                 <div className="text-xs text-muted-foreground mt-1">
-                  Baseado em PE-014
+                  [PE-014] Fórmula corrigida: (Custos fixos ÷ margem unitária) × preço médio
                 </div>
               </div>
               
@@ -358,25 +360,32 @@ export default function PontoEquilibrio() {
                   <span className="text-sm">Unidades Necessárias:</span>
                   <span className="text-sm font-bold">{unidadesBreakEven.toLocaleString()} un</span>
                 </div>
-                <div className="text-xs text-muted-foreground text-right">PE-013</div>
+                <div className="text-xs text-muted-foreground text-right">
+                  Custos fixos ÷ margem unitária
+                </div>
                 
-                <div className="flex justify-between">
-                  <span className="text-sm">Preço Médio (Revenda):</span>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-sm">[PE-009] Preço Médio:</span>
                   <span className="text-sm font-medium">{formatCurrency(precoMedioRevendaPadrao)}</span>
                 </div>
-                <div className="text-xs text-muted-foreground text-right">PE-009</div>
                 
                 <div className="flex justify-between">
-                  <span className="text-sm">Margem Unit.:</span>
+                  <span className="text-sm">[PE-011] Custo Unitário:</span>
+                  <span className="text-sm font-medium text-red-600">{formatCurrency(custoUnitarioMedio)}</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-sm">[PE-012] Margem Unitária:</span>
                   <span className="text-sm font-medium">{formatCurrency(margemContribuicaoUnitaria)}</span>
                 </div>
-                <div className="text-xs text-muted-foreground text-right">PE-012</div>
+                <div className="text-xs text-muted-foreground text-right">
+                  PE-009 - PE-011 = {formatCurrency(precoMedioRevendaPadrao)} - {formatCurrency(custoUnitarioMedio)}
+                </div>
                 
                 <div className="flex justify-between border-t pt-2">
                   <span className="text-sm">Faturamento Atual:</span>
                   <span className="text-sm font-medium">{formatCurrency(faturamentoMensal)}</span>
                 </div>
-                <div className="text-xs text-muted-foreground text-right">PE-001</div>
                 
                 <div className="flex justify-between">
                   <span className="text-sm">Diferença:</span>
@@ -420,12 +429,12 @@ export default function PontoEquilibrio() {
               <div>
                 <div className="font-medium">[PE-S02] Volume Atual:</div>
                 <div>{volumeTotalMensal.toLocaleString()} un/mês</div>
-                <div className="text-xs">PE-010</div>
+                <div className="text-xs">PE-013</div>
               </div>
               <div>
                 <div className="font-medium">[PE-S03] Volume Necessário:</div>
                 <div>{unidadesBreakEven.toLocaleString()} un/mês</div>
-                <div className="text-xs">PE-013</div>
+                <div className="text-xs">Custos fixos ÷ margem unitária</div>
               </div>
               <div>
                 <div className="font-medium">[PE-S04] Gap:</div>
