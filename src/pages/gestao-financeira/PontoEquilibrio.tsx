@@ -35,15 +35,16 @@ export default function PontoEquilibrio() {
       volumeTotalDetalhado += volumeMensalDetalhe;
     });
     
+    // Preço médio ponderado correto
     const precoMedioPonderado = volumeTotalDetalhado > 0 ? faturamentoTotalDetalhado / volumeTotalDetalhado : 0;
     
-    // Calcular custo unitário médio baseado nos custos variáveis
+    // Custo unitário médio baseado nos custos variáveis
     const custoUnitarioMedio = volumeTotalDetalhado > 0 ? custoVariavelTotal / volumeTotalDetalhado : 0;
     
     // Margem de contribuição unitária
     const margemContribuicaoUnitaria = precoMedioPonderado - custoUnitarioMedio;
     
-    // Unidades necessárias para break even
+    // Unidades necessárias para break even (custos fixos ÷ margem unitária)
     const unidadesBreakEven = margemContribuicaoUnitaria > 0 ? Math.ceil(custoFixoTotal / margemContribuicaoUnitaria) : 0;
     
     // Faturamento necessário para break even = unidades × preço médio
