@@ -7,17 +7,19 @@ import {
   TabsContent
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Plus, Copy, Trash2 } from "lucide-react";
+import { Plus, Copy, Trash2, Calculator } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useProjectionStore } from '@/hooks/useProjectionStore';
 import { DRETableHierarchical } from './DRETableHierarchical';
 import { ScenarioForm } from './ScenarioForm';
+import { ScenarioCalculationDetails } from './ScenarioCalculationDetails';
 
 export function ScenarioTabs() {
   const { baseDRE, scenarios, activeScenarioId, createScenario, duplicateScenario, deleteScenario, setActiveScenario } = useProjectionStore();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newScenarioName, setNewScenarioName] = useState('');
+  const [showCalculationDetails, setShowCalculationDetails] = useState(false);
 
   const handleCreateScenario = () => {
     if (newScenarioName.trim()) {
@@ -38,6 +40,8 @@ export function ScenarioTabs() {
       deleteScenario(activeScenarioId);
     }
   };
+
+  const activeScenario = activeScenarioId === 'base' ? baseDRE : scenarios.find(s => s.id === activeScenarioId);
 
   console.log('🔍 ScenarioTabs - baseDRE:', baseDRE);
   console.log('🔍 ScenarioTabs - scenarios:', scenarios);
@@ -81,6 +85,16 @@ export function ScenarioTabs() {
             >
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
+            {activeScenarioId && activeScenarioId !== 'base' && (
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => setShowCalculationDetails(!showCalculationDetails)}
+              >
+                <Calculator className="h-4 w-4 mr-1" />
+                {showCalculationDetails ? 'Ocultar' : 'Ver'} Cálculos
+              </Button>
+            )}
           </div>
         </div>
 
@@ -100,6 +114,11 @@ export function ScenarioTabs() {
           <TabsContent key={scenario.id} value={scenario.id}>
             <div className="space-y-6">
               <DRETableHierarchical dreData={scenario} />
+              
+              {showCalculationDetails && (
+                <ScenarioCalculationDetails scenario={scenario} />
+              )}
+              
               <ScenarioForm scenario={scenario} />
             </div>
           </TabsContent>
