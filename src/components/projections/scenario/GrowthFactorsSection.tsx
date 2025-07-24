@@ -18,11 +18,30 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
   // Número atual de PDVs ativos
   const pdvsAtivosBase = clientes.filter(c => c.statusCliente === 'Ativo').length;
 
+  // Gerar prefixo do código baseado no ID do cenário
+  const getCodePrefix = () => `GF-${scenario.id.slice(0, 8).toUpperCase()}`;
+  const codePrefix = getCodePrefix();
+
   // Apenas os itens de faturamento (sem custos de insumos) + PDVs
   const revendaSubitems = [
-    { key: 'revendaPadraoFaturamento', label: 'Revenda Padrão - Faturamento', baseValue: scenario.detailedBreakdown?.revendaPadraoFaturamento || 0 },
-    { key: 'foodServiceFaturamento', label: 'Food Service - Faturamento', baseValue: scenario.detailedBreakdown?.foodServiceFaturamento || 0 },
-    { key: 'pdvsAtivos', label: 'PDVs Ativos', baseValue: pdvsAtivosBase },
+    { 
+      key: 'revendaPadraoFaturamento', 
+      label: 'Revenda Padrão - Faturamento', 
+      baseValue: scenario.detailedBreakdown?.revendaPadraoFaturamento || 0,
+      code: `${codePrefix}-001`
+    },
+    { 
+      key: 'foodServiceFaturamento', 
+      label: 'Food Service - Faturamento', 
+      baseValue: scenario.detailedBreakdown?.foodServiceFaturamento || 0,
+      code: `${codePrefix}-002`
+    },
+    { 
+      key: 'pdvsAtivos', 
+      label: 'PDVs Ativos', 
+      baseValue: pdvsAtivosBase,
+      code: `${codePrefix}-003`
+    },
   ];
 
   const updateGrowthFactor = (subitemKey: string, type: 'percentage' | 'absolute', value: number) => {
@@ -161,9 +180,13 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Fatores de Crescimento</CardTitle>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <span>Fatores de Crescimento</span>
+          <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">{codePrefix}</span>
+        </CardTitle>
         {faturamentoMedioPDV > 0 && (
           <p className="text-sm text-muted-foreground">
+            <span className="text-xs text-muted-foreground bg-blue-50 px-2 py-1 rounded mr-2">{codePrefix}-000</span>
             Faturamento médio por PDV (Revenda Padrão): R$ {faturamentoMedioPDV.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         )}
@@ -175,8 +198,9 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
           
           return (
             <div key={subitem.key} className="space-y-2 p-3 border rounded-md">
-              <label className="text-sm font-medium block">
-                {subitem.label}
+              <label className="text-sm font-medium block flex items-center gap-2">
+                <span className="text-xs text-muted-foreground bg-blue-50 px-2 py-1 rounded">{subitem.code}</span>
+                <span>{subitem.label}</span>
               </label>
               <div className="text-xs text-muted-foreground mb-2">
                 {isPDVs 
