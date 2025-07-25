@@ -52,6 +52,15 @@ export function GiroAnalysisFiltersComponent({
 
   const activeFiltersCount = Object.values(filtros).filter(Boolean).length;
 
+  // Helper function to filter out invalid values
+  const filterValidValues = (arr: string[]): string[] => {
+    return arr.filter(item => item && typeof item === 'string' && item.trim() !== '' && item !== 'null' && item !== 'undefined');
+  };
+
+  const validRepresentantes = filterValidValues(representantes);
+  const validRotas = filterValidValues(rotas);
+  const validCategorias = filterValidValues(categorias);
+
   return (
     <Card className="mb-6">
       <CardHeader>
@@ -99,7 +108,7 @@ export function GiroAnalysisFiltersComponent({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
-                  {representantes.filter(rep => rep && rep.trim() !== '').map((rep) => (
+                  {validRepresentantes.map((rep) => (
                     <SelectItem key={rep} value={rep}>
                       {rep}
                     </SelectItem>
@@ -120,7 +129,7 @@ export function GiroAnalysisFiltersComponent({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
-                  {rotas.filter(rota => rota && rota.trim() !== '').map((rota) => (
+                  {validRotas.map((rota) => (
                     <SelectItem key={rota} value={rota}>
                       {rota}
                     </SelectItem>
@@ -141,7 +150,7 @@ export function GiroAnalysisFiltersComponent({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
-                  {categorias.filter(cat => cat && cat.trim() !== '').map((cat) => (
+                  {validCategorias.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
                     </SelectItem>
