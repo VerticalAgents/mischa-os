@@ -245,8 +245,8 @@ export function PassoAPassoDebug({ dadosConsolidados }: PassoAPassoDebugProps) {
                 <div className="border-l-4 border-blue-500 pl-4">
                   <h4 className="font-semibold">1. Busca das Entregas (Últimas 4 Semanas)</h4>
                   <p className="text-sm text-muted-foreground">
-                    Consulta: historico_entregas WHERE cliente_id = '{dadosDebug.cliente.cliente_id}' 
-                    AND tipo = 'entrega' AND data >= últimas 4 semanas
+                    Consulta: historico_entregas WHERE cliente_id = &apos;{dadosDebug.cliente.cliente_id}&apos; 
+                    AND tipo = &apos;entrega&apos; AND data &gt;= últimas 4 semanas
                   </p>
                   <p className="text-sm">
                     Resultado: {dadosDebug.entregas4Semanas.length} entregas encontradas

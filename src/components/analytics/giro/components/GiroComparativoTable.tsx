@@ -45,7 +45,7 @@ export function GiroComparativoTable({ dados }: GiroComparativoTableProps) {
       <TableBody>
         {dados.map((item) => {
           const giroProjetado = calcularGiroProjetado(item);
-          // Usar giro_medio_historico como histórico de 4 semanas
+          // Usar giro_medio_historico como histórico de 4 semanas (já corrigido no service)
           const giroHistorico = item.giro_medio_historico;
           const diferenca = giroProjetado > 0 ? ((giroHistorico - giroProjetado) / giroProjetado) * 100 : 0;
           const { status, cor } = getStatusAjuste(giroHistorico, giroProjetado);
