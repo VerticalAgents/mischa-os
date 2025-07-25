@@ -41,25 +41,56 @@ export default function CategoriasEstabelecimentoList() {
     nome: "",
     descricao: ""
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const resetForm = () => {
+    setFormData({ nome: "", descricao: "" });
+    setEditingItem(null);
+  };
 
   const handleAdd = async () => {
-    if (!formData.nome.trim()) return;
+    if (!formData.nome.trim()) {
+      return;
+    }
     
-    const success = await adicionarCategoria(formData);
-    if (success) {
-      setFormData({ nome: "", descricao: "" });
-      setIsAddModalOpen(false);
+    setIsSubmitting(true);
+    try {
+      const success = await adicionarCategoria({
+        nome: formData.nome,
+        descricao: formData.descricao
+      });
+      
+      if (success) {
+        resetForm();
+        setIsAddModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Erro ao adicionar categoria:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleEdit = async () => {
-    if (!formData.nome.trim() || !editingItem) return;
+    if (!formData.nome.trim() || !editingItem) {
+      return;
+    }
     
-    const success = await atualizarCategoria(editingItem.id, formData);
-    if (success) {
-      setFormData({ nome: "", descricao: "" });
-      setIsEditModalOpen(false);
-      setEditingItem(null);
+    setIsSubmitting(true);
+    try {
+      const success = await atualizarCategoria(editingItem.id, {
+        nome: formData.nome,
+        descricao: formData.descricao
+      });
+      
+      if (success) {
+        resetForm();
+        setIsEditModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Erro ao editar categoria:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -72,14 +103,29 @@ export default function CategoriasEstabelecimentoList() {
   const openEditModal = (item: any) => {
     setEditingItem(item);
     setFormData({
-      nome: item.nome,
+      nome: item.nome || "",
       descricao: item.descricao || ""
     });
     setIsEditModalOpen(true);
   };
 
+  const closeAddModal = () => {
+    resetForm();
+    setIsAddModalOpen(false);
+  };
+
+  const closeEditModal = () => {
+    resetForm();
+    setIsEditModalOpen(false);
+  };
+
   if (loading) {
-    return <div>Carregando categorias de estabelecimento...</div>;
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <span className="ml-2">Carregando categorias de estabelecimento...</span>
+      </div>
+    );
   }
 
   return (
@@ -108,6 +154,7 @@ export default function CategoriasEstabelecimentoList() {
                   value={formData.nome}
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                   placeholder="Ex: Padaria"
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -117,14 +164,17 @@ export default function CategoriasEstabelecimentoList() {
                   value={formData.descricao}
                   onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                   placeholder="Descrição da categoria"
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
+              <Button variant="outline" onClick={closeAddModal} disabled={isSubmitting}>
                 Cancelar
               </Button>
-              <Button onClick={handleAdd}>Adicionar</Button>
+              <Button onClick={handleAdd} disabled={!formData.nome.trim() || isSubmitting}>
+                {isSubmitting ? "Adicionando..." : "Adicionar"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -140,35 +190,43 @@ export default function CategoriasEstabelecimentoList() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {categorias.map((categoria) => (
-            <TableRow key={categoria.id}>
-              <TableCell className="font-medium">{categoria.nome}</TableCell>
-              <TableCell>{categoria.descricao || "-"}</TableCell>
-              <TableCell>
-                <Badge variant={categoria.ativo ? "default" : "secondary"}>
-                  {categoria.ativo ? "Ativo" : "Inativo"}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openEditModal(categoria)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(categoria.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+          {categorias.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={4} className="text-center py-8">
+                Nenhuma categoria encontrada
               </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            categorias.map((categoria) => (
+              <TableRow key={categoria.id}>
+                <TableCell className="font-medium">{categoria.nome}</TableCell>
+                <TableCell>{categoria.descricao || "-"}</TableCell>
+                <TableCell>
+                  <Badge variant={categoria.ativo ? "default" : "secondary"}>
+                    {categoria.ativo ? "Ativo" : "Inativo"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditModal(categoria)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(categoria.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
 
@@ -189,6 +247,7 @@ export default function CategoriasEstabelecimentoList() {
                 value={formData.nome}
                 onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                 placeholder="Ex: Padaria"
+                disabled={isSubmitting}
               />
             </div>
             <div>
@@ -198,14 +257,17 @@ export default function CategoriasEstabelecimentoList() {
                 value={formData.descricao}
                 onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                 placeholder="Descrição da categoria"
+                disabled={isSubmitting}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+            <Button variant="outline" onClick={closeEditModal} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button onClick={handleEdit}>Salvar</Button>
+            <Button onClick={handleEdit} disabled={!formData.nome.trim() || isSubmitting}>
+              {isSubmitting ? "Salvando..." : "Salvar"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
