@@ -109,9 +109,16 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
           entregasFiltradas.map(async (entrega) => {
             const faturamento = await calcularFaturamento(entrega);
             return {
-              ...entrega,
-              faturamento
-            };
+              id: entrega.id,
+              cliente_id: entrega.cliente_id,
+              cliente_nome: entrega.cliente_nome || 'Cliente não encontrado',
+              data: entrega.data,
+              quantidade: entrega.quantidade,
+              itens: entrega.itens,
+              tipo: entrega.tipo,
+              faturamento,
+              observacao: entrega.observacao
+            } as EntregaAuditoria;
           })
         );
         
