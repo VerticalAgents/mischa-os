@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Target, Search, BarChart3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Target, Search, BarChart3, Bug, ArrowLeft } from 'lucide-react';
 import { DadosAnaliseGiroConsolidados } from '@/types/giroAnalysis';
 import { GiroComparativoTable } from './components/GiroComparativoTable';
+import { PassoAPassoDebug } from './components/PassoAPassoDebug';
 
 interface GiroOtimizacaoPeriodicidadeProps {
   dadosConsolidados: DadosAnaliseGiroConsolidados[];
@@ -15,6 +17,7 @@ interface GiroOtimizacaoPeriodicidadeProps {
 export function GiroOtimizacaoPeriodicidade({ dadosConsolidados, isLoading }: GiroOtimizacaoPeriodicidadeProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todos');
+  const [mostrarPassoAPasso, setMostrarPassoAPasso] = useState(false);
 
   if (isLoading) {
     return (
@@ -27,6 +30,26 @@ export function GiroOtimizacaoPeriodicidade({ dadosConsolidados, isLoading }: Gi
           </div>
         </CardContent>
       </Card>
+    );
+  }
+
+  // Se está mostrando o passo a passo, renderizar apenas ele
+  if (mostrarPassoAPasso) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => setMostrarPassoAPasso(false)}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </Button>
+          <h2 className="text-lg font-semibold">Passo a Passo - Debug dos Dados</h2>
+        </div>
+        <PassoAPassoDebug dadosConsolidados={dadosConsolidados} />
+      </div>
     );
   }
 
@@ -43,7 +66,6 @@ export function GiroOtimizacaoPeriodicidade({ dadosConsolidados, isLoading }: Gi
       
       if (giroProjetado === 0) return false;
       
-      // Usar giro_medio_historico como histórico de 4 semanas
       const giroHistorico = item.giro_medio_historico;
       const diferenca = ((giroHistorico - giroProjetado) / giroProjetado) * 100;
       
@@ -172,6 +194,14 @@ export function GiroOtimizacaoPeriodicidade({ dadosConsolidados, isLoading }: Gi
                 <SelectItem value="abaixo">🔴 Abaixo</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              onClick={() => setMostrarPassoAPasso(true)}
+              className="flex items-center gap-2"
+            >
+              <Bug className="h-4 w-4" />
+              Passo a Passo
+            </Button>
           </div>
         </CardContent>
       </Card>
