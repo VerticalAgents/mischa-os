@@ -1,7 +1,6 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { secureIPService } from '@/utils/secureIPService';
 
 interface AuditLogEntry {
   action: string;
@@ -11,6 +10,17 @@ interface AuditLogEntry {
   new_values?: Record<string, any>;
 }
 
+// Helper function to get client IP
+const getClientIP = async (): Promise<string> => {
+  try {
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json();
+    return data.ip || '127.0.0.1';
+  } catch {
+    return '127.0.0.1';
+  }
+};
+
 export function useAuditLog() {
   const { user } = useAuth();
 
@@ -18,9 +28,9 @@ export function useAuditLog() {
     if (!user) return;
 
     try {
-      // Get client information securely
+      // Get client information
       const userAgent = navigator.userAgent;
-      const ipAddress = await secureIPService.getClientIP();
+      const ipAddress = await getClientIP();
       
       const { error } = await supabase
         .from('audit_logs')

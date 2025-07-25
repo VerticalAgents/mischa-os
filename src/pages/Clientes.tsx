@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useColumnVisibility } from "@/hooks/useColumnVisibility";
@@ -29,8 +29,7 @@ export default function Clientes() {
     clienteAtual,
     selecionarCliente,
     removerCliente,
-    getClientePorId,
-    verificarConsistenciaDados
+    getClientePorId
   } = useClienteStore();
 
   // Clear selected client when component mounts to always show list view
@@ -38,33 +37,13 @@ export default function Clientes() {
     selecionarCliente(null);
   }, [selecionarCliente]);
 
-  // Garantir carregamento inicial dos clientes
+  // Carregar clientes ao montar o componente
   useEffect(() => {
-    const loadInitialData = async () => {
-      console.log('Clientes page: Iniciando carregamento inicial');
-      try {
-        await carregarClientes();
-        console.log('Clientes page: Carregamento inicial concluído');
-        
-        // Verificar consistência dos dados após carregamento
-        await verificarConsistenciaDados();
-      } catch (error) {
-        console.error('Clientes page: Erro no carregamento inicial:', error);
-      }
-    };
-    
-    loadInitialData();
-  }, [carregarClientes, verificarConsistenciaDados]);
-
-  // Otimização: Memoizar clientes filtrados
-  const clientes = useMemo(() => {
-    const clientesFiltrados = getClientesFiltrados();
-    console.log('Clientes page: Clientes filtrados:', clientesFiltrados.length);
-    return clientesFiltrados;
-  }, [getClientesFiltrados, filtros, refreshTrigger]);
+    carregarClientes();
+  }, [carregarClientes, refreshTrigger]);
 
   // Available columns for the table
-  const columnOptions: ColumnOption[] = useMemo(() => [
+  const columnOptions: ColumnOption[] = [
     { id: "nome", label: "Nome", canToggle: false },
     { id: "giroSemanal", label: "Giro Semanal", canToggle: false },
     { id: "cnpjCpf", label: "CNPJ/CPF", canToggle: true },
@@ -76,7 +55,7 @@ export default function Clientes() {
     { id: "statusAgendamento", label: "Status Agendamento", canToggle: true },
     { id: "proximaDataReposicao", label: "Próx. Reposição", canToggle: true },
     { id: "acoes", label: "Ações", canToggle: false }
-  ], []);
+  ];
 
   // Column visibility state with persistence
   const defaultColumns = [
@@ -88,6 +67,8 @@ export default function Clientes() {
     'clientes-visible-columns',
     defaultColumns
   );
+
+  const clientes = getClientesFiltrados();
   
   const handleOpenForm = () => {
     setIsFormOpen(true);
@@ -191,7 +172,7 @@ export default function Clientes() {
 
       {loading ? (
         <div className="flex justify-center items-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="text-muted-foreground">Carregando clientes...</div>
         </div>
       ) : (
         <ClientesTable 

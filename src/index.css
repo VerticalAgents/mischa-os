@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -78,37 +77,5 @@
 	body {
 		@apply bg-background text-foreground;
 		font-feature-settings: 'rlig' 1, 'calt' 1;
-	}
-
-	/* Default text alignment improvements */
-	h1, h2, h3, h4, h5, h6 {
-		@apply text-left;
-	}
-
-	p {
-		@apply text-left;
-	}
-
-	/* Table improvements */
-	table {
-		@apply text-left;
-	}
-
-	th {
-		@apply text-left;
-	}
-
-	td {
-		@apply text-left;
-	}
-
-	/* Button text alignment */
-	button {
-		@apply text-left;
-	}
-
-	/* Card content alignment */
-	.card-content {
-		@apply text-left;
 	}
 }

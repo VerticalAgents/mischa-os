@@ -1,11 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { SecureInputValidator } from './secureInputValidator';
 
 export type AppRole = 'admin' | 'user';
 
 /**
- * Validates if the current user has admin access using secure database roles
+ * Validates if the current user has admin access using database roles
  */
 export async function validateAdminAccess(): Promise<boolean> {
   try {
@@ -36,23 +35,23 @@ export async function validateAdminAccess(): Promise<boolean> {
 }
 
 /**
- * Securely assigns a role to a user (requires admin access)
+ * Assigns a role to a user (requires admin access)
  */
 export async function assignUserRole(userId: string, role: AppRole): Promise<boolean> {
   try {
-    // Input validation
-    if (!SecureInputValidator.validateLength(userId, 1, 100)) {
-      throw new Error('Invalid user ID format');
-    }
-
-    if (!['admin', 'user'].includes(role)) {
-      throw new Error('Invalid role specified');
-    }
-
     // First check if current user is admin
     const isAdmin = await validateAdminAccess();
     if (!isAdmin) {
       throw new Error('Insufficient permissions to assign roles');
+    }
+
+    // Validate input
+    if (!userId || !role) {
+      throw new Error('User ID and role are required');
+    }
+
+    if (!['admin', 'user'].includes(role)) {
+      throw new Error('Invalid role specified');
     }
 
     const { error } = await supabase
@@ -75,11 +74,11 @@ export async function assignUserRole(userId: string, role: AppRole): Promise<boo
 }
 
 /**
- * Securely gets the role of a specific user
+ * Gets the role of a specific user
  */
 export async function getUserRole(userId: string): Promise<AppRole> {
   try {
-    if (!SecureInputValidator.validateLength(userId, 1, 100)) {
+    if (!userId) {
       return 'user';
     }
 
@@ -100,13 +99,13 @@ export async function getUserRole(userId: string): Promise<AppRole> {
 }
 
 /**
- * Creates an admin user with proper validation
+ * Creates an admin user (should only be used for initial setup)
  */
 export async function createAdminUser(userId: string): Promise<boolean> {
   try {
     // Additional validation for admin creation
-    if (!SecureInputValidator.validateLength(userId, 1, 100)) {
-      throw new Error('Invalid user ID format');
+    if (!userId) {
+      throw new Error('User ID is required');
     }
 
     return await assignUserRole(userId, 'admin');
@@ -117,15 +116,10 @@ export async function createAdminUser(userId: string): Promise<boolean> {
 }
 
 /**
- * Securely revokes admin access from a user
+ * Revokes admin access from a user
  */
 export async function revokeAdminAccess(userId: string): Promise<boolean> {
   try {
-    // Input validation
-    if (!SecureInputValidator.validateLength(userId, 1, 100)) {
-      throw new Error('Invalid user ID format');
-    }
-
     // First check if current user is admin
     const isAdmin = await validateAdminAccess();
     if (!isAdmin) {

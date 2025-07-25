@@ -30,7 +30,7 @@ export default function PageHeader({
 }: PageHeaderProps) {
   return (
     <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8", className)}>
-      <div className="text-left">
+      <div>
         {backLink && (
           <Link to={backLink} className="flex items-center text-muted-foreground hover:text-foreground mb-2 transition-colors">
             <ArrowLeft className="h-4 w-4 mr-1" />
@@ -39,9 +39,9 @@ export default function PageHeader({
         )}
         <div className="flex items-center gap-2">
           {icon && icon}
-          <h1 className="text-3xl font-bold tracking-tight text-left">{title}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
         </div>
-        {description && <p className="text-muted-foreground mt-1 text-left">{description}</p>}
+        {description && <p className="text-muted-foreground mt-1">{description}</p>}
       </div>
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         {children}
