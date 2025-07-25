@@ -37,14 +37,26 @@ export default function Clientes() {
     selecionarCliente(null);
   }, [selecionarCliente]);
 
-  // Carregar clientes apenas uma vez ao montar o componente
+  // Garantir carregamento inicial dos clientes
   useEffect(() => {
-    carregarClientes();
+    const loadInitialData = async () => {
+      console.log('Clientes page: Iniciando carregamento inicial');
+      try {
+        await carregarClientes();
+        console.log('Clientes page: Carregamento inicial concluído');
+      } catch (error) {
+        console.error('Clientes page: Erro no carregamento inicial:', error);
+      }
+    };
+    
+    loadInitialData();
   }, [carregarClientes]);
 
   // Otimização: Memoizar clientes filtrados
   const clientes = useMemo(() => {
-    return getClientesFiltrados();
+    const clientesFiltrados = getClientesFiltrados();
+    console.log('Clientes page: Clientes filtrados:', clientesFiltrados.length);
+    return clientesFiltrados;
   }, [getClientesFiltrados, filtros, refreshTrigger]);
 
   // Available columns for the table

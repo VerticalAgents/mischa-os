@@ -9,6 +9,7 @@ interface ClienteStore {
   clientes: Cliente[];
   clienteAtual: Cliente | null;
   loading: boolean;
+  initialized: boolean;
   filtros: {
     termo: string;
     status: StatusCliente | 'Todos';
@@ -129,15 +130,30 @@ export const useClienteStore = create<ClienteStore>()(
       clientes: [],
       clienteAtual: null,
       loading: false,
+      initialized: false,
       filtros: {
         termo: '',
         status: 'Todos'
       },
       
       carregarClientes: async () => {
+        const state = get();
+        
+        // Evitar múltiplas chamadas simultâneas
+        if (state.loading) {
+          console.log('useClienteStore: Carregamento já em andamento, aguardando...');
+          return;
+        }
+        
+        // Se já carregou e tem dados, não recarregar desnecessariamente
+        if (state.initialized && state.clientes.length > 0) {
+          console.log('useClienteStore: Clientes já carregados, usando cache');
+          return;
+        }
+        
         set({ loading: true });
         try {
-          console.log('useClienteStore: Carregando clientes otimizado...');
+          console.log('useClienteStore: Iniciando carregamento de clientes...');
           
           const { data: clientesData, error: clientesError } = await supabase
             .from('clientes')
@@ -168,14 +184,17 @@ export const useClienteStore = create<ClienteStore>()(
             .order('created_at', { ascending: false });
 
           if (clientesError) {
-            console.error('Erro ao carregar clientes:', clientesError);
+            console.error('useClienteStore: Erro ao carregar clientes:', clientesError);
             toast({
               title: "Erro",
               description: "Não foi possível carregar os clientes",
               variant: "destructive"
             });
+            set({ loading: false });
             return;
           }
+
+          console.log('useClienteStore: Clientes carregados do banco:', clientesData?.length || 0);
 
           const clienteIds = clientesData?.map(c => c.id) || [];
           let agendamentosPorCliente = new Map();
@@ -190,6 +209,9 @@ export const useClienteStore = create<ClienteStore>()(
               agendamentosData.forEach(agendamento => {
                 agendamentosPorCliente.set(agendamento.cliente_id, agendamento);
               });
+              console.log('useClienteStore: Agendamentos carregados:', agendamentosData.length);
+            } else if (agendamentosError) {
+              console.error('useClienteStore: Erro ao carregar agendamentos:', agendamentosError);
             }
           }
 
@@ -198,16 +220,21 @@ export const useClienteStore = create<ClienteStore>()(
             return convertSupabaseToCliente(cliente, agendamento);
           }) || [];
 
-          console.log('useClienteStore: Clientes carregados com sucesso:', clientesConvertidos.length);
-          set({ clientes: clientesConvertidos });
+          console.log('useClienteStore: Clientes processados e convertidos:', clientesConvertidos.length);
+          
+          set({ 
+            clientes: clientesConvertidos,
+            initialized: true,
+            loading: false
+          });
+          
         } catch (error) {
-          console.error('Erro ao carregar clientes:', error);
+          console.error('useClienteStore: Erro inesperado ao carregar clientes:', error);
           toast({
             title: "Erro",
             description: "Erro inesperado ao carregar clientes",
             variant: "destructive"
           });
-        } finally {
           set({ loading: false });
         }
       },
@@ -480,7 +507,12 @@ export const useClienteStore = create<ClienteStore>()(
       getClientesFiltrados: () => {
         const { clientes, filtros } = get();
         
-        return clientes.filter(cliente => {
+        if (!clientes || clientes.length === 0) {
+          console.log('useClienteStore: Nenhum cliente disponível para filtrar');
+          return [];
+        }
+        
+        const clientesFiltrados = clientes.filter(cliente => {
           const termoMatch = filtros.termo === '' || 
             cliente.nome.toLowerCase().includes(filtros.termo.toLowerCase()) ||
             (cliente.cnpjCpf && cliente.cnpjCpf.includes(filtros.termo));
@@ -489,6 +521,9 @@ export const useClienteStore = create<ClienteStore>()(
           
           return termoMatch && statusMatch;
         });
+        
+        console.log('useClienteStore: Clientes filtrados:', clientesFiltrados.length, 'de', clientes.length);
+        return clientesFiltrados;
       },
       
       getClientePorId: (id) => {
