@@ -8,7 +8,7 @@ interface FiltrosLocalizacaoProps {
 }
 
 export default function FiltrosLocalizacao({ onFiltroChange }: FiltrosLocalizacaoProps) {
-  const [rotaSelecionada, setRotaSelecionada] = useState<string>("");
+  const [rotaSelecionada, setRotaSelecionada] = useState<string>("todas");
 
   const handleRotaChange = (rota: string) => {
     setRotaSelecionada(rota);

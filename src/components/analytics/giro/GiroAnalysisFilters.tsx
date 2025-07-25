@@ -33,7 +33,7 @@ export function GiroAnalysisFiltersComponent({
   const handleFilterChange = (key: keyof GiroAnalysisFilters, value: any) => {
     onFiltrosChange({
       ...filtros,
-      [key]: value || undefined
+      [key]: value === "todos" ? undefined : value
     });
   };
 
@@ -82,14 +82,14 @@ export function GiroAnalysisFiltersComponent({
             <div className="space-y-2">
               <Label htmlFor="representante">Representante</Label>
               <Select
-                value={filtros.representante || ''}
+                value={filtros.representante || 'todos'}
                 onValueChange={(value) => handleFilterChange('representante', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="todos">Todos</SelectItem>
                   {representantes.map((rep) => (
                     <SelectItem key={rep} value={rep}>
                       {rep}
@@ -103,14 +103,14 @@ export function GiroAnalysisFiltersComponent({
             <div className="space-y-2">
               <Label htmlFor="rota">Rota</Label>
               <Select
-                value={filtros.rota || ''}
+                value={filtros.rota || 'todas'}
                 onValueChange={(value) => handleFilterChange('rota', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="todas">Todas</SelectItem>
                   {rotas.map((rota) => (
                     <SelectItem key={rota} value={rota}>
                       {rota}
@@ -124,14 +124,14 @@ export function GiroAnalysisFiltersComponent({
             <div className="space-y-2">
               <Label htmlFor="categoria">Categoria</Label>
               <Select
-                value={filtros.categoria_estabelecimento || ''}
+                value={filtros.categoria_estabelecimento || 'todas'}
                 onValueChange={(value) => handleFilterChange('categoria_estabelecimento', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="todas">Todas</SelectItem>
                   {categorias.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
@@ -145,14 +145,14 @@ export function GiroAnalysisFiltersComponent({
             <div className="space-y-2">
               <Label htmlFor="semaforo">Performance</Label>
               <Select
-                value={filtros.semaforo || ''}
+                value={filtros.semaforo || 'todas'}
                 onValueChange={(value) => handleFilterChange('semaforo', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="todas">Todas</SelectItem>
                   <SelectItem value="verde">🟢 Verde</SelectItem>
                   <SelectItem value="amarelo">🟡 Amarelo</SelectItem>
                   <SelectItem value="vermelho">🔴 Vermelho</SelectItem>
