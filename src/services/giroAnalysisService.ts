@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 
 export interface DadosAnaliseGiroConsolidados {
   cliente_id: string;
@@ -86,6 +87,61 @@ export interface GiroPredicao {
   };
   fatores_sazonais: Record<string, number>;
   probabilidade_meta: number;
+}
+
+// Helper function to safely parse JSON arrays
+function parseJsonArray(jsonValue: Json): number[] | null {
+  if (!jsonValue) return null;
+  
+  try {
+    if (Array.isArray(jsonValue)) {
+      return jsonValue.filter(item => typeof item === 'number') as number[];
+    }
+    
+    if (typeof jsonValue === 'string') {
+      const parsed = JSON.parse(jsonValue);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(item => typeof item === 'number') as number[];
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error parsing JSON array:', error);
+    return null;
+  }
+}
+
+// Helper function to transform database row to our interface
+function transformDatabaseRow(row: any): DadosAnaliseGiroConsolidados {
+  return {
+    cliente_id: row.cliente_id,
+    cliente_nome: row.cliente_nome,
+    status_cliente: row.status_cliente,
+    cnpj_cpf: row.cnpj_cpf,
+    endereco_entrega: row.endereco_entrega,
+    contato_nome: row.contato_nome,
+    contato_telefone: row.contato_telefone,
+    contato_email: row.contato_email,
+    quantidade_padrao: row.quantidade_padrao,
+    periodicidade_padrao: row.periodicidade_padrao,
+    meta_giro_semanal: row.meta_giro_semanal,
+    categorias_habilitadas: parseJsonArray(row.categorias_habilitadas),
+    representante_nome: row.representante_nome,
+    rota_entrega_nome: row.rota_entrega_nome,
+    categoria_estabelecimento_nome: row.categoria_estabelecimento_nome,
+    giro_semanal_calculado: Number(row.giro_semanal_calculado || 0),
+    giro_medio_historico: Number(row.giro_medio_historico || 0),
+    giro_ultima_semana: Number(row.giro_ultima_semana || 0),
+    desvio_padrao_giro: Number(row.desvio_padrao_giro || 0),
+    variacao_percentual: Number(row.variacao_percentual || 0),
+    achievement_meta: Number(row.achievement_meta || 0),
+    semaforo_performance: row.semaforo_performance || 'vermelho',
+    faturamento_semanal_previsto: Number(row.faturamento_semanal_previsto || 0),
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    data_consolidacao: row.data_consolidacao,
+  };
 }
 
 export class GiroAnalysisService {
@@ -181,8 +237,9 @@ export class GiroAnalysisService {
       throw error;
     }
 
-    await this.setCachedData(cacheKey, filtros, data);
-    return data || [];
+    const transformedData = (data || []).map(transformDatabaseRow);
+    await this.setCachedData(cacheKey, filtros, transformedData);
+    return transformedData;
   }
 
   // Get client ranking
@@ -376,7 +433,7 @@ export class GiroAnalysisService {
       max: previsaoProximaSemana + desvio
     };
 
-    const probabilidadeMeta = clienteData.meta_giro_semanal > 0 
+    const probabilidadeMeta = clienteData.meta_giro_semanal && clienteData.meta_giro_semanal > 0 
       ? Math.min(100, (previsaoProximaSemana / clienteData.meta_giro_semanal) * 100)
       : 0;
 
