@@ -10,9 +10,11 @@ import {
   GiroRegionalData,
   GiroPredicao
 } from '@/services/giroAnalysisService';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { logAction } = useAuditLog();
 
   const {
     data: dadosConsolidados,
@@ -65,6 +67,17 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
   const refreshAll = async () => {
     setIsRefreshing(true);
     try {
+      // Log the refresh action
+      await logAction({
+        action: 'GIRO_ANALYSIS_REFRESH',
+        table_name: 'dados_analise_giro_materialized',
+        new_values: {
+          action: 'manual_refresh',
+          filters: filtros,
+          timestamp: new Date().toISOString()
+        }
+      });
+
       console.log('🔄 Refreshing materialized view...');
       await GiroAnalysisService.refreshMaterializedView();
       
@@ -83,8 +96,31 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
       ]);
       
       console.log('✅ Data refresh completed');
+
+      // Log successful refresh
+      await logAction({
+        action: 'GIRO_ANALYSIS_REFRESH_SUCCESS',
+        table_name: 'dados_analise_giro_materialized',
+        new_values: {
+          action: 'manual_refresh_completed',
+          filters: filtros,
+          timestamp: new Date().toISOString()
+        }
+      });
     } catch (error) {
       console.error('❌ Error refreshing data:', error);
+      
+      // Log failed refresh
+      await logAction({
+        action: 'GIRO_ANALYSIS_REFRESH_ERROR',
+        table_name: 'dados_analise_giro_materialized',
+        new_values: {
+          action: 'manual_refresh_failed',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          filters: filtros,
+          timestamp: new Date().toISOString()
+        }
+      });
     } finally {
       setIsRefreshing(false);
     }

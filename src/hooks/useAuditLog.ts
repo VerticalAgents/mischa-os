@@ -10,6 +10,17 @@ interface AuditLogEntry {
   new_values?: Record<string, any>;
 }
 
+// Helper function to get client IP
+const getClientIP = async (): Promise<string> => {
+  try {
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json();
+    return data.ip || '127.0.0.1';
+  } catch {
+    return '127.0.0.1';
+  }
+};
+
 export function useAuditLog() {
   const { user } = useAuth();
 
@@ -19,6 +30,7 @@ export function useAuditLog() {
     try {
       // Get client information
       const userAgent = navigator.userAgent;
+      const ipAddress = await getClientIP();
       
       const { error } = await supabase
         .from('audit_logs')
@@ -29,7 +41,8 @@ export function useAuditLog() {
           record_id: entry.record_id,
           old_values: entry.old_values,
           new_values: entry.new_values,
-          user_agent: userAgent
+          user_agent: userAgent,
+          ip_address: ipAddress
         });
 
       if (error) {

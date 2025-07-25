@@ -114,6 +114,33 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_attempts: {
+        Row: {
+          attempt_type: string
+          created_at: string | null
+          email: string | null
+          id: string
+          ip_address: unknown
+          success: boolean
+        }
+        Insert: {
+          attempt_type: string
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          ip_address: unknown
+          success?: boolean
+        }
+        Update: {
+          attempt_type?: string
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          ip_address?: unknown
+          success?: boolean
+        }
+        Relationships: []
+      }
       cache_analise_giro: {
         Row: {
           created_at: string | null
@@ -1437,6 +1464,16 @@ export type Database = {
       }
     }
     Functions: {
+      check_rate_limit: {
+        Args: {
+          p_ip_address: unknown
+          p_email?: string
+          p_attempt_type?: string
+          p_time_window?: unknown
+          p_max_attempts?: number
+        }
+        Returns: boolean
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1455,6 +1492,14 @@ export type Database = {
       refresh_dados_analise_giro: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      validate_cnpj_cpf: {
+        Args: { doc: string }
+        Returns: boolean
+      }
+      validate_email: {
+        Args: { email: string }
+        Returns: boolean
       }
     }
     Enums: {

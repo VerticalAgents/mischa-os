@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { useFinancialCache } from '@/hooks/useFinancialCache';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { toast } from '@/hooks/use-toast';
 
 interface RefreshButtonProps {
@@ -13,10 +14,21 @@ interface RefreshButtonProps {
 export default function RefreshButton({ onRefresh, lastUpdated }: RefreshButtonProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { refreshData } = useFinancialCache();
+  const { logAction } = useAuditLog();
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
+      // Log the refresh action
+      await logAction({
+        action: 'DATA_REFRESH',
+        table_name: 'financial_cache',
+        new_values: {
+          action: 'manual_refresh',
+          timestamp: new Date().toISOString()
+        }
+      });
+
       await refreshData();
       if (onRefresh) {
         await onRefresh();
@@ -26,6 +38,17 @@ export default function RefreshButton({ onRefresh, lastUpdated }: RefreshButtonP
         description: "Os indicadores financeiros foram recalculados com sucesso.",
       });
     } catch (error) {
+      // Log the error
+      await logAction({
+        action: 'DATA_REFRESH_ERROR',
+        table_name: 'financial_cache',
+        new_values: {
+          action: 'manual_refresh_failed',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString()
+        }
+      });
+
       toast({
         title: "Erro ao atualizar",
         description: "Não foi possível atualizar os dados financeiros.",

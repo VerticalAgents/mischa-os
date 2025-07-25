@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -30,6 +31,64 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Helper function to get client IP (simplified)
+const getClientIP = async (): Promise<string> => {
+  try {
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json();
+    return data.ip || '127.0.0.1';
+  } catch {
+    return '127.0.0.1';
+  }
+};
+
+// Helper function to log authentication attempts
+const logAuthAttempt = async (
+  email: string, 
+  attemptType: string, 
+  success: boolean, 
+  ipAddress: string
+) => {
+  try {
+    const { error } = await supabase
+      .from('auth_attempts')
+      .insert({
+        email,
+        attempt_type: attemptType,
+        success,
+        ip_address: ipAddress
+      });
+    
+    if (error) {
+      console.warn('Failed to log auth attempt:', error);
+    }
+  } catch (err) {
+    console.warn('Failed to log auth attempt:', err);
+  }
+};
+
+// Helper function to check rate limits
+const checkRateLimit = async (email: string, ipAddress: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .rpc('check_rate_limit', {
+        p_ip_address: ipAddress,
+        p_email: email,
+        p_attempt_type: 'login'
+      });
+
+    if (error) {
+      console.warn('Rate limit check failed:', error);
+      return true; // Allow on error to prevent lockout
+    }
+
+    return data === true;
+  } catch (err) {
+    console.warn('Rate limit check failed:', err);
+    return true; // Allow on error
+  }
+};
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -37,12 +96,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { logAction } = useAuditLog();
 
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -54,12 +113,38 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         if (event === 'SIGNED_IN' && session) {
+          // Log successful login
+          await logAction({
+            action: 'LOGIN',
+            table_name: 'auth',
+            record_id: session.user.id,
+            new_values: {
+              user_id: session.user.id,
+              email: session.user.email,
+              timestamp: new Date().toISOString()
+            }
+          });
+
           // Redirect to /home after successful login
           navigate('/home', { replace: true });
           toast.success("Login realizado com sucesso");
         }
 
         if (event === 'SIGNED_OUT') {
+          // Log logout
+          if (user) {
+            await logAction({
+              action: 'LOGOUT',
+              table_name: 'auth',
+              record_id: user.id,
+              old_values: {
+                user_id: user.id,
+                email: user.email,
+                timestamp: new Date().toISOString()
+              }
+            });
+          }
+
           navigate('/login');
           toast.info("Você foi desconectado");
         }
@@ -75,17 +160,44 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate, isInitialized]);
+  }, [navigate, isInitialized, user, logAction]);
 
   const signInWithEmail = async (email: string, password: string): Promise<void> => {
     try {
       setLoading(true);
+      
+      // Input validation
+      if (!email || !password) {
+        toast.error("Email e senha são obrigatórios");
+        return;
+      }
+
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        toast.error("Por favor, insira um email válido");
+        return;
+      }
+
+      const clientIP = await getClientIP();
+
+      // Check rate limits
+      const isAllowed = await checkRateLimit(email, clientIP);
+      if (!isAllowed) {
+        toast.error("Muitas tentativas de login. Tente novamente em 15 minutos.");
+        await logAuthAttempt(email, 'login', false, clientIP);
+        return;
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) {
+        // Log failed attempt
+        await logAuthAttempt(email, 'login', false, clientIP);
+        
         if (error.message.includes('Invalid login credentials')) {
           toast.error("Email ou senha incorretos");
         } else {
@@ -93,6 +205,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
         throw error;
       }
+      
+      // Log successful attempt
+      await logAuthAttempt(email, 'login', true, clientIP);
       
       // Redirection will be handled by onAuthStateChange
     } catch (error) {
@@ -109,6 +224,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setLoading(true);
       
+      // Input validation
+      if (!email || !password || !fullName) {
+        toast.error("Todos os campos são obrigatórios");
+        return;
+      }
+
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        toast.error("Por favor, insira um email válido");
+        return;
+      }
+
+      // Password strength validation
+      if (password.length < 6) {
+        toast.error("A senha deve ter pelo menos 6 caracteres");
+        return;
+      }
+
+      const clientIP = await getClientIP();
+
+      // Check rate limits for signup
+      const isAllowed = await checkRateLimit(email, clientIP);
+      if (!isAllowed) {
+        toast.error("Muitas tentativas de cadastro. Tente novamente em 15 minutos.");
+        await logAuthAttempt(email, 'signup', false, clientIP);
+        return;
+      }
+      
       // Get current origin for redirect
       const redirectTo = `${window.location.origin}/home`;
       
@@ -124,6 +268,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (error) {
+        // Log failed attempt
+        await logAuthAttempt(email, 'signup', false, clientIP);
+        
         if (error.message.includes('User already registered')) {
           toast.error("Este email já está cadastrado. Tente fazer login.");
         } else {
@@ -131,6 +278,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
         throw error;
       } else {
+        // Log successful attempt
+        await logAuthAttempt(email, 'signup', true, clientIP);
         toast.success("Conta criada com sucesso! Verifique seu email para confirmar.");
       }
     } catch (error) {
