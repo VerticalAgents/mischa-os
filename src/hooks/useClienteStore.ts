@@ -24,6 +24,7 @@ interface ClienteStore {
   setFiltroTermo: (termo: string) => void;
   setFiltroStatus: (status: StatusCliente | 'Todos') => void;
   setMetaGiro: (idCliente: string, metaSemanal: number) => Promise<void>;
+  verificarConsistenciaDados: () => Promise<void>;
   
   // Getters
   getClientesFiltrados: () => Cliente[];
@@ -106,7 +107,7 @@ function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>)
     quantidade_padrao: cliente.quantidadePadrao || 0,
     periodicidade_padrao: cliente.periodicidadePadrao || 7,
     status_cliente: cliente.statusCliente || 'Ativo',
-    ativo: cliente.ativo !== undefined ? cliente.ativo : true,
+    ativo: cliente.statusCliente === 'Ativo' ? true : false, // Sincronizar com status_cliente
     giro_medio_semanal: giroCalculado,
     meta_giro_semanal: Math.round(giroCalculado * 1.2),
     janelas_entrega: cliente.janelasEntrega || null,
@@ -155,6 +156,7 @@ export const useClienteStore = create<ClienteStore>()(
         try {
           console.log('useClienteStore: Iniciando carregamento de clientes...');
           
+          // Carregar todos os clientes, incluindo inativos com agendamentos
           const { data: clientesData, error: clientesError } = await supabase
             .from('clientes')
             .select(`
@@ -180,7 +182,6 @@ export const useClienteStore = create<ClienteStore>()(
               created_at,
               categorias_habilitadas
             `)
-            .eq('ativo', true)
             .order('created_at', { ascending: false });
 
           if (clientesError) {
@@ -195,6 +196,21 @@ export const useClienteStore = create<ClienteStore>()(
           }
 
           console.log('useClienteStore: Clientes carregados do banco:', clientesData?.length || 0);
+
+          // Verificar inconsistências de dados
+          const inconsistencias = clientesData?.filter(cliente => 
+            (cliente.ativo === false && cliente.status_cliente === 'Ativo') ||
+            (cliente.ativo === true && cliente.status_cliente === 'Inativo')
+          ) || [];
+
+          if (inconsistencias.length > 0) {
+            console.warn('useClienteStore: Inconsistências detectadas:', inconsistencias.length);
+            toast({
+              title: "Aviso",
+              description: `Foram detectadas ${inconsistencias.length} inconsistências nos dados de clientes`,
+              variant: "destructive"
+            });
+          }
 
           const clienteIds = clientesData?.map(c => c.id) || [];
           let agendamentosPorCliente = new Map();
@@ -215,10 +231,16 @@ export const useClienteStore = create<ClienteStore>()(
             }
           }
 
-          const clientesConvertidos = clientesData?.map(cliente => {
+          // Filtrar clientes: mostrar ativos OU inativos com agendamentos
+          const clientesFiltrados = clientesData?.filter(cliente => {
+            const temAgendamento = agendamentosPorCliente.has(cliente.id);
+            return cliente.status_cliente === 'Ativo' || temAgendamento;
+          }) || [];
+
+          const clientesConvertidos = clientesFiltrados.map(cliente => {
             const agendamento = agendamentosPorCliente.get(cliente.id);
             return convertSupabaseToCliente(cliente, agendamento);
-          }) || [];
+          });
 
           console.log('useClienteStore: Clientes processados e convertidos:', clientesConvertidos.length);
           
@@ -236,6 +258,31 @@ export const useClienteStore = create<ClienteStore>()(
             variant: "destructive"
           });
           set({ loading: false });
+        }
+      },
+      
+      verificarConsistenciaDados: async () => {
+        try {
+          const { data, error } = await supabase
+            .rpc('check_cliente_status_consistency');
+
+          if (error) {
+            console.error('Erro ao verificar consistência:', error);
+            return;
+          }
+
+          if (data && data.length > 0) {
+            console.warn('Inconsistências detectadas:', data);
+            toast({
+              title: "Inconsistências Detectadas",
+              description: `${data.length} clientes com dados inconsistentes foram encontrados`,
+              variant: "destructive"
+            });
+          } else {
+            console.log('Nenhuma inconsistência encontrada');
+          }
+        } catch (error) {
+          console.error('Erro ao verificar consistência:', error);
         }
       },
       
@@ -315,6 +362,25 @@ export const useClienteStore = create<ClienteStore>()(
             return;
           }
 
+          // Validar se cliente tem agendamentos antes de desativar
+          if (dadosCliente.statusCliente === 'Inativo' || dadosCliente.ativo === false) {
+            const { data: agendamentos, error: agendamentoError } = await supabase
+              .from('agendamentos_clientes')
+              .select('id')
+              .eq('cliente_id', id)
+              .limit(1);
+
+            if (agendamentoError) {
+              console.error('Erro ao verificar agendamentos:', agendamentoError);
+            } else if (agendamentos && agendamentos.length > 0) {
+              toast({
+                title: "Aviso",
+                description: "Este cliente possui agendamentos ativos. Considere tratá-los antes de desativar.",
+                variant: "destructive"
+              });
+            }
+          }
+
           // Validate updated data
           if (dadosCliente.nome && !SecureInputValidator.validateLength(dadosCliente.nome, 1, 255)) {
             throw new Error('Nome do cliente deve ter entre 1 e 255 caracteres');
@@ -341,7 +407,13 @@ export const useClienteStore = create<ClienteStore>()(
           if (dadosCliente.contatoEmail !== undefined) dadosSupabase.contato_email = dadosCliente.contatoEmail;
           if (dadosCliente.quantidadePadrao !== undefined) dadosSupabase.quantidade_padrao = dadosCliente.quantidadePadrao;
           if (dadosCliente.periodicidadePadrao !== undefined) dadosSupabase.periodicidade_padrao = dadosCliente.periodicidadePadrao;
-          if (dadosCliente.statusCliente !== undefined) dadosSupabase.status_cliente = dadosCliente.statusCliente;
+          
+          // Sincronizar ativo com status_cliente
+          if (dadosCliente.statusCliente !== undefined) {
+            dadosSupabase.status_cliente = dadosCliente.statusCliente;
+            dadosSupabase.ativo = dadosCliente.statusCliente === 'Ativo' ? true : false;
+          }
+          
           if (dadosCliente.metaGiroSemanal !== undefined) dadosSupabase.meta_giro_semanal = dadosCliente.metaGiroSemanal;
           if (dadosCliente.janelasEntrega !== undefined) dadosSupabase.janelas_entrega = dadosCliente.janelasEntrega;
           if (dadosCliente.representanteId !== undefined) dadosSupabase.representante_id = dadosCliente.representanteId;

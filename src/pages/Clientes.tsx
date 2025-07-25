@@ -29,7 +29,8 @@ export default function Clientes() {
     clienteAtual,
     selecionarCliente,
     removerCliente,
-    getClientePorId
+    getClientePorId,
+    verificarConsistenciaDados
   } = useClienteStore();
 
   // Clear selected client when component mounts to always show list view
@@ -44,13 +45,16 @@ export default function Clientes() {
       try {
         await carregarClientes();
         console.log('Clientes page: Carregamento inicial concluído');
+        
+        // Verificar consistência dos dados após carregamento
+        await verificarConsistenciaDados();
       } catch (error) {
         console.error('Clientes page: Erro no carregamento inicial:', error);
       }
     };
     
     loadInitialData();
-  }, [carregarClientes]);
+  }, [carregarClientes, verificarConsistenciaDados]);
 
   // Otimização: Memoizar clientes filtrados
   const clientes = useMemo(() => {
