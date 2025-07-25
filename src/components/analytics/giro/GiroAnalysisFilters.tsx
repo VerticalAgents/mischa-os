@@ -52,7 +52,7 @@ export function GiroAnalysisFiltersComponent({
 
   const activeFiltersCount = Object.values(filtros).filter(Boolean).length;
 
-  // Enhanced helper function to filter out invalid values
+  // Ultra-safe helper function to filter out invalid values
   const filterValidValues = (arr: string[]): string[] => {
     if (!Array.isArray(arr)) {
       console.warn('filterValidValues received non-array:', arr);
@@ -62,24 +62,38 @@ export function GiroAnalysisFiltersComponent({
     const filtered = arr.filter(item => {
       // Check if item exists and is a valid string
       if (!item || typeof item !== 'string') {
+        console.warn('Invalid item type:', typeof item, item);
         return false;
       }
       
       // Check if item is not just whitespace
       const trimmed = item.trim();
       if (trimmed === '') {
+        console.warn('Empty string item:', item);
         return false;
       }
       
       // Check for string representations of null/undefined
-      if (trimmed === 'null' || trimmed === 'undefined' || trimmed === 'NULL') {
+      if (trimmed === 'null' || trimmed === 'undefined' || trimmed === 'NULL' || trimmed === 'UNDEFINED') {
+        console.warn('Invalid string representation:', trimmed);
+        return false;
+      }
+      
+      // Additional length check
+      if (trimmed.length === 0) {
+        console.warn('Zero length string:', item);
         return false;
       }
       
       return true;
     });
     
-    console.log('Filtered values:', { original: arr.length, filtered: filtered.length });
+    console.log('Filtered values:', { 
+      original: arr.length, 
+      filtered: filtered.length,
+      originalItems: arr.slice(0, 5),
+      filteredItems: filtered.slice(0, 5)
+    });
     return filtered;
   };
 
@@ -142,17 +156,18 @@ export function GiroAnalysisFiltersComponent({
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
                   {validRepresentantes.map((rep) => {
-                    // Extra safety check before rendering
-                    if (!rep || rep.trim() === '') {
-                      console.warn('Invalid representante value:', rep);
+                    // Final safety check with guaranteed non-empty value
+                    const safeValue = rep && rep.trim() ? rep.trim() : null;
+                    if (!safeValue) {
+                      console.warn('Skipping invalid representante:', rep);
                       return null;
                     }
                     return (
-                      <SelectItem key={rep} value={rep}>
-                        {rep}
+                      <SelectItem key={safeValue} value={safeValue}>
+                        {safeValue}
                       </SelectItem>
                     );
-                  })}
+                  }).filter(Boolean)}
                 </SelectContent>
               </Select>
             </div>
@@ -170,17 +185,18 @@ export function GiroAnalysisFiltersComponent({
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
                   {validRotas.map((rota) => {
-                    // Extra safety check before rendering
-                    if (!rota || rota.trim() === '') {
-                      console.warn('Invalid rota value:', rota);
+                    // Final safety check with guaranteed non-empty value
+                    const safeValue = rota && rota.trim() ? rota.trim() : null;
+                    if (!safeValue) {
+                      console.warn('Skipping invalid rota:', rota);
                       return null;
                     }
                     return (
-                      <SelectItem key={rota} value={rota}>
-                        {rota}
+                      <SelectItem key={safeValue} value={safeValue}>
+                        {safeValue}
                       </SelectItem>
                     );
-                  })}
+                  }).filter(Boolean)}
                 </SelectContent>
               </Select>
             </div>
@@ -198,17 +214,18 @@ export function GiroAnalysisFiltersComponent({
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
                   {validCategorias.map((cat) => {
-                    // Extra safety check before rendering
-                    if (!cat || cat.trim() === '') {
-                      console.warn('Invalid categoria value:', cat);
+                    // Final safety check with guaranteed non-empty value
+                    const safeValue = cat && cat.trim() ? cat.trim() : null;
+                    if (!safeValue) {
+                      console.warn('Skipping invalid categoria:', cat);
                       return null;
                     }
                     return (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
+                      <SelectItem key={safeValue} value={safeValue}>
+                        {safeValue}
                       </SelectItem>
                     );
-                  })}
+                  }).filter(Boolean)}
                 </SelectContent>
               </Select>
             </div>

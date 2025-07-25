@@ -15,6 +15,14 @@ export default function FiltrosLocalizacao({ onFiltroChange }: FiltrosLocalizaca
     onFiltroChange({ rota: rota === "todas" ? undefined : rota });
   };
 
+  // Define valid route options
+  const rotasOptions = [
+    { value: "todas", label: "Todas as rotas" },
+    { value: "rota1", label: "Rota 1 - Centro" },
+    { value: "rota2", label: "Rota 2 - Zona Sul" },
+    { value: "rota3", label: "Rota 3 - Zona Norte" }
+  ];
+
   return (
     <div className="flex gap-4 items-end">
       <div className="flex-1">
@@ -24,10 +32,11 @@ export default function FiltrosLocalizacao({ onFiltroChange }: FiltrosLocalizaca
             <SelectValue placeholder="Todas as rotas" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todas">Todas as rotas</SelectItem>
-            <SelectItem value="rota1">Rota 1 - Centro</SelectItem>
-            <SelectItem value="rota2">Rota 2 - Zona Sul</SelectItem>
-            <SelectItem value="rota3">Rota 3 - Zona Norte</SelectItem>
+            {rotasOptions.map((rota) => (
+              <SelectItem key={rota.value} value={rota.value}>
+                {rota.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
