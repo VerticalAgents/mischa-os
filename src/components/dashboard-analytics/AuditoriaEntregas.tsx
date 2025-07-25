@@ -114,8 +114,18 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
 
   // Função para obter nome da categoria por ID
   const obterNomeCategoria = (categoriaId: string | number) => {
-    // Implementar lógica para obter nome da categoria
-    return `Categoria ${categoriaId}`;
+    const categoriaIdNum = Number(categoriaId);
+    // Buscar nas categorias de produtos disponíveis
+    const categoriasDisponiveis = [
+      { id: 1, nome: 'Pães' },
+      { id: 2, nome: 'Bolos' },
+      { id: 3, nome: 'Doces' },
+      { id: 4, nome: 'Salgados' },
+      { id: 5, nome: 'Biscoitos' }
+    ];
+    
+    const categoria = categoriasDisponiveis.find(cat => cat.id === categoriaIdNum);
+    return categoria?.nome || `Categoria ${categoriaId}`;
   };
 
   // Carregar dados quando período muda
@@ -152,7 +162,7 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
               cliente_nome: entrega.cliente_nome || 'Cliente não encontrado',
               data: entrega.data,
               quantidade: entrega.quantidade,
-              itens: entrega.itens,
+              itens: entrega.itens || [],
               tipo: entrega.tipo,
               faturamento,
               precosPraticados,
@@ -377,24 +387,22 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
                                     const subtotal = precoItem ? (Number(item.quantidade) * precoItem) : 0;
                                     
                                     return (
-                                      <div key={index} className="text-sm p-2 bg-background rounded border">
-                                        <div className="font-medium">{obterNomeProduto(item.produto_id) || item.nome}</div>
-                                        <div className="text-muted-foreground">
-                                          Quantidade: {item.quantidade} unidades
+                                      <div key={index} className="text-sm p-3 bg-background rounded-lg border">
+                                        <div className="font-medium text-primary mb-1">
+                                          {item.nome || obterNomeProduto(item.produto_id)}
                                         </div>
-                                        <div className="text-muted-foreground">
-                                          Categoria: {obterNomeCategoria(item.categoria_id)}
+                                        <div className="text-muted-foreground text-xs space-y-1">
+                                          <div>Quantidade: <span className="font-medium">{item.quantidade}</span> unidades</div>
+                                          <div>Categoria: <span className="font-medium">{obterNomeCategoria(item.categoria_id)}</span></div>
+                                          {precoItem && (
+                                            <>
+                                              <div>Preço unitário: <span className="font-medium text-green-600">R$ {precoItem.toFixed(2).replace('.', ',')}</span></div>
+                                              <div className="pt-1 border-t">
+                                                <span className="font-medium text-green-700">Subtotal: R$ {subtotal.toFixed(2).replace('.', ',')}</span>
+                                              </div>
+                                            </>
+                                          )}
                                         </div>
-                                        {precoItem && (
-                                          <>
-                                            <div className="text-muted-foreground">
-                                              Preço unitário: R$ {precoItem.toFixed(2).replace('.', ',')}
-                                            </div>
-                                            <div className="font-medium text-green-600">
-                                              Subtotal: R$ {subtotal.toFixed(2).replace('.', ',')}
-                                            </div>
-                                          </>
-                                        )}
                                       </div>
                                     );
                                   })}
