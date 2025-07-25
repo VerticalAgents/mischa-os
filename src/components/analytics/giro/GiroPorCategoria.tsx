@@ -48,7 +48,11 @@ export function GiroPorCategoria({ dadosConsolidados, isLoading }: GiroPorCatego
     acc[categoria].giroTotal += item.giro_semanal_calculado;
     acc[categoria].faturamentoTotal += item.faturamento_semanal_previsto;
     acc[categoria].achievementMedio += item.achievement_meta;
-    acc[categoria].distribuicaoPerformance[item.semaforo_performance as keyof typeof acc[categoria].distribuicaoPerformance]++;
+    
+    const semaforo = item.semaforo_performance;
+    if (semaforo === 'verde' || semaforo === 'amarelo' || semaforo === 'vermelho') {
+      acc[categoria].distribuicaoPerformance[semaforo]++;
+    }
     
     return acc;
   }, {} as Record<string, any>);
