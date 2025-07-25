@@ -12,9 +12,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
-import { Lock, Unlock, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { AdminGuard } from "@/components/auth/AdminGuard";
+import { PinDialog } from "@/components/ui/pin-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,11 +34,9 @@ interface HistoricoEditModalProps {
   registro: any;
 }
 
-const PIN_MESTRE = "651998";
-
 export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEditModalProps) => {
-  const [pin, setPin] = useState("");
-  const [pinValidado, setPinValidado] = useState(false);
+  const [showPinDialog, setShowPinDialog] = useState(false);
+  const [adminVerified, setAdminVerified] = useState(false);
   const [quantidade, setQuantidade] = useState("");
   const [observacao, setObservacao] = useState("");
   const [dataEntrega, setDataEntrega] = useState("");
@@ -50,24 +50,22 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
       setObservacao(registro.observacao || "");
       setDataEntrega(format(new Date(registro.data), "yyyy-MM-dd'T'HH:mm"));
       setTipoEntrega(registro.tipo);
-      setPin("");
-      setPinValidado(false);
+      setShowPinDialog(true);
+      setAdminVerified(false);
     }
   }, [open, registro]);
 
-  const handleValidarPin = () => {
-    if (pin === PIN_MESTRE) {
-      setPinValidado(true);
-      toast.success("PIN validado com sucesso");
-    } else {
-      toast.error("PIN inválido");
-      setPin("");
+  const handlePinConfirm = (success: boolean) => {
+    setShowPinDialog(false);
+    setAdminVerified(success);
+    if (!success) {
+      onOpenChange(false);
     }
   };
 
   const handleSalvar = async () => {
-    if (!pinValidado) {
-      toast.error("É necessário validar o PIN mestre primeiro");
+    if (!adminVerified) {
+      toast.error("É necessário verificação de administrador");
       return;
     }
 
@@ -97,8 +95,8 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
   };
 
   const handleExcluir = async () => {
-    if (!pinValidado) {
-      toast.error("É necessário validar o PIN mestre primeiro");
+    if (!adminVerified) {
+      toast.error("É necessário verificação de administrador");
       return;
     }
 
@@ -113,9 +111,9 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
   };
 
   const handleClose = () => {
-    setPin("");
-    setPinValidado(false);
+    setShowPinDialog(false);
     setShowDeleteDialog(false);
+    setAdminVerified(false);
     onOpenChange(false);
   };
 
@@ -126,49 +124,20 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {pinValidado ? (
-                <Unlock className="h-5 w-5 text-green-500" />
-              ) : (
-                <Lock className="h-5 w-5 text-red-500" />
-              )}
+            <DialogTitle>
               Editar Registro de {registro.tipo === 'entrega' ? 'Entrega' : 'Retorno'}
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4">
-            {!pinValidado ? (
+          <AdminGuard fallback={
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                Você precisa de permissões de administrador para editar registros.
+              </p>
+            </div>
+          }>
+            {adminVerified && (
               <div className="space-y-4">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-sm text-yellow-800">
-                    🔒 Esta ação requer autenticação com PIN mestre.
-                  </p>
-                </div>
-                
-                <div>
-                  <Label htmlFor="pin">PIN Mestre</Label>
-                  <Input
-                    id="pin"
-                    type="password"
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value)}
-                    placeholder="Digite o PIN mestre"
-                    onKeyPress={(e) => e.key === 'Enter' && handleValidarPin()}
-                  />
-                </div>
-                
-                <Button onClick={handleValidarPin} className="w-full">
-                  Validar PIN
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <p className="text-sm text-green-800">
-                    ✅ PIN validado. Você pode editar o registro.
-                  </p>
-                </div>
-
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="font-medium">Cliente:</span>
@@ -243,9 +212,17 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
                 </div>
               </div>
             )}
-          </div>
+          </AdminGuard>
         </DialogContent>
       </Dialog>
+
+      <PinDialog
+        isOpen={showPinDialog}
+        onClose={() => setShowPinDialog(false)}
+        onConfirm={handlePinConfirm}
+        title="Verificação de Administrador"
+        description="Editar registros de entrega requer privilégios de administrador."
+      />
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

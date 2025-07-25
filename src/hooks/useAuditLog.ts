@@ -1,5 +1,6 @@
 
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuditLogEntry {
   action: string;
@@ -19,32 +20,21 @@ export function useAuditLog() {
       // Get client information
       const userAgent = navigator.userAgent;
       
-      // For now, just log to console until audit_logs table is available in types
-      console.log('Audit Log Entry:', {
-        user_id: user.id,
-        user_email: user.email,
-        action: entry.action,
-        table_name: entry.table_name,
-        record_id: entry.record_id,
-        old_values: entry.old_values,
-        new_values: entry.new_values,
-        user_agent: userAgent,
-        timestamp: new Date().toISOString()
-      });
+      const { error } = await supabase
+        .from('audit_logs')
+        .insert({
+          user_id: user.id,
+          action: entry.action,
+          table_name: entry.table_name,
+          record_id: entry.record_id,
+          old_values: entry.old_values,
+          new_values: entry.new_values,
+          user_agent: userAgent
+        });
 
-      // TODO: Once Supabase types are updated, use this:
-      // const { error } = await supabase
-      //   .from('audit_logs')
-      //   .insert({
-      //     user_id: user.id,
-      //     action: entry.action,
-      //     table_name: entry.table_name,
-      //     record_id: entry.record_id,
-      //     old_values: entry.old_values,
-      //     new_values: entry.new_values,
-      //     user_agent: userAgent
-      //   });
-
+      if (error) {
+        console.error('Error logging audit entry:', error);
+      }
     } catch (err) {
       console.error('Error logging audit entry:', err);
     }

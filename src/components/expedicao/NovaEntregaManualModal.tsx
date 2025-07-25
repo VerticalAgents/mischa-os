@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
-import { Lock, Unlock } from "lucide-react";
+import { AdminGuard } from "@/components/auth/AdminGuard";
+import { PinDialog } from "@/components/ui/pin-dialog";
 import { toast } from "sonner";
 
 interface NovaEntregaManualModalProps {
@@ -21,11 +22,8 @@ interface NovaEntregaManualModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const PIN_MESTRE = "651998";
-
 export const NovaEntregaManualModal = ({ open, onOpenChange }: NovaEntregaManualModalProps) => {
-  const [pin, setPin] = useState("");
-  const [pinValidado, setPinValidado] = useState(false);
+  const [showPinDialog, setShowPinDialog] = useState(false);
   const [clienteId, setClienteId] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [observacao, setObservacao] = useState("");
@@ -42,27 +40,18 @@ export const NovaEntregaManualModal = ({ open, onOpenChange }: NovaEntregaManual
       setObservacao("");
       setDataEntrega("");
       setTipoEntrega('entrega');
-      setPin("");
-      setPinValidado(false);
+      setShowPinDialog(true);
     }
   }, [open]);
 
-  const handleValidarPin = () => {
-    if (pin === PIN_MESTRE) {
-      setPinValidado(true);
-      toast.success("PIN validado com sucesso");
-    } else {
-      toast.error("PIN inválido");
-      setPin("");
+  const handlePinConfirm = (success: boolean) => {
+    setShowPinDialog(false);
+    if (!success) {
+      onOpenChange(false);
     }
   };
 
   const handleSalvar = async () => {
-    if (!pinValidado) {
-      toast.error("É necessário validar o PIN mestre primeiro");
-      return;
-    }
-
     if (!clienteId) {
       toast.error("Selecione um cliente");
       return;
@@ -97,60 +86,27 @@ export const NovaEntregaManualModal = ({ open, onOpenChange }: NovaEntregaManual
   };
 
   const handleClose = () => {
-    setPin("");
-    setPinValidado(false);
     onOpenChange(false);
   };
 
   const clientesAtivos = clientes.filter(c => c.ativo);
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {pinValidado ? (
-              <Unlock className="h-5 w-5 text-green-500" />
-            ) : (
-              <Lock className="h-5 w-5 text-red-500" />
-            )}
-            Nova Entrega Manual
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-4">
-          {!pinValidado ? (
-            <div className="space-y-4">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">
-                  🔒 Esta ação requer autenticação com PIN mestre.
-                </p>
-              </div>
-              
-              <div>
-                <Label htmlFor="pin">PIN Mestre</Label>
-                <Input
-                  id="pin"
-                  type="password"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  placeholder="Digite o PIN mestre"
-                  onKeyPress={(e) => e.key === 'Enter' && handleValidarPin()}
-                />
-              </div>
-              
-              <Button onClick={handleValidarPin} className="w-full">
-                Validar PIN
-              </Button>
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nova Entrega Manual</DialogTitle>
+          </DialogHeader>
+          
+          <AdminGuard fallback={
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                Você precisa de permissões de administrador para criar entregas manuais.
+              </p>
             </div>
-          ) : (
+          }>
             <div className="space-y-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-sm text-green-800">
-                  ✅ PIN validado. Você pode criar uma nova entrega.
-                </p>
-              </div>
-
               <div>
                 <Label htmlFor="cliente">Cliente</Label>
                 <Select value={clienteId} onValueChange={setClienteId}>
@@ -222,9 +178,17 @@ export const NovaEntregaManualModal = ({ open, onOpenChange }: NovaEntregaManual
                 </Button>
               </div>
             </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+          </AdminGuard>
+        </DialogContent>
+      </Dialog>
+
+      <PinDialog
+        isOpen={showPinDialog}
+        onClose={() => setShowPinDialog(false)}
+        onConfirm={handlePinConfirm}
+        title="Verificação de Administrador"
+        description="Criar entregas manuais requer privilégios de administrador."
+      />
+    </>
   );
 };
