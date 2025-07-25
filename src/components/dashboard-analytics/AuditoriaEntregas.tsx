@@ -50,7 +50,8 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
       const precosMap: { [key: string]: number } = {};
       
       precos.forEach(preco => {
-        precosMap[preco.categoria_id.toString()] = preco.preco_unitario;
+        const categoriaKey = String(preco.categoria_id);
+        precosMap[categoriaKey] = preco.preco_unitario;
       });
       
       return precosMap;
@@ -71,9 +72,10 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
       if (entrega.itens && entrega.itens.length > 0) {
         // Calcular baseado nos itens específicos da entrega
         entrega.itens.forEach((item: any) => {
-          const precoItem = precosPraticados[item.categoria_id?.toString()];
+          const categoriaKey = String(item.categoria_id);
+          const precoItem = precosPraticados[categoriaKey];
           if (precoItem && item.quantidade) {
-            faturamentoTotal += item.quantidade * precoItem;
+            faturamentoTotal += Number(item.quantidade) * precoItem;
           }
         });
       } else {
@@ -84,7 +86,8 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
           const quantidadePorCategoria = entrega.quantidade / totalCategorias;
           
           cliente.categoriasHabilitadas.forEach((categoria: any) => {
-            const precoCategoria = precosPraticados[categoria.id?.toString()];
+            const categoriaKey = String(categoria.id);
+            const precoCategoria = precosPraticados[categoriaKey];
             if (precoCategoria) {
               faturamentoTotal += quantidadePorCategoria * precoCategoria;
             }
@@ -107,6 +110,12 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
   const obterNomeProduto = (produtoId: string) => {
     const produto = produtos.find(p => p.id === produtoId);
     return produto?.nome || `Produto ${produtoId}`;
+  };
+
+  // Função para obter nome da categoria por ID
+  const obterNomeCategoria = (categoriaId: string | number) => {
+    // Implementar lógica para obter nome da categoria
+    return `Categoria ${categoriaId}`;
   };
 
   // Carregar dados quando período muda
@@ -362,19 +371,33 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
                               <div>
                                 <h4 className="font-medium mb-2">Itens da Entrega:</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                                  {entrega.itens.map((item: any, index: number) => (
-                                    <div key={index} className="text-sm p-2 bg-background rounded">
-                                      <div className="font-medium">{obterNomeProduto(item.produto_id) || item.nome}</div>
-                                      <div className="text-muted-foreground">
-                                        Quantidade: {item.quantidade} unidades
-                                      </div>
-                                      {item.categoria_id && entrega.precosPraticados[item.categoria_id] && (
+                                  {entrega.itens.map((item: any, index: number) => {
+                                    const categoriaKey = String(item.categoria_id);
+                                    const precoItem = entrega.precosPraticados[categoriaKey];
+                                    const subtotal = precoItem ? (Number(item.quantidade) * precoItem) : 0;
+                                    
+                                    return (
+                                      <div key={index} className="text-sm p-2 bg-background rounded border">
+                                        <div className="font-medium">{obterNomeProduto(item.produto_id) || item.nome}</div>
                                         <div className="text-muted-foreground">
-                                          Preço: R$ {entrega.precosPraticados[item.categoria_id].toFixed(2).replace('.', ',')}
+                                          Quantidade: {item.quantidade} unidades
                                         </div>
-                                      )}
-                                    </div>
-                                  ))}
+                                        <div className="text-muted-foreground">
+                                          Categoria: {obterNomeCategoria(item.categoria_id)}
+                                        </div>
+                                        {precoItem && (
+                                          <>
+                                            <div className="text-muted-foreground">
+                                              Preço unitário: R$ {precoItem.toFixed(2).replace('.', ',')}
+                                            </div>
+                                            <div className="font-medium text-green-600">
+                                              Subtotal: R$ {subtotal.toFixed(2).replace('.', ',')}
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             ) : (
@@ -382,8 +405,8 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
                                 <h4 className="font-medium mb-2">Preços Praticados:</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                                   {Object.entries(entrega.precosPraticados).map(([categoriaId, preco]) => (
-                                    <div key={categoriaId} className="text-sm p-2 bg-background rounded">
-                                      <div className="font-medium">Categoria {categoriaId}</div>
+                                    <div key={categoriaId} className="text-sm p-2 bg-background rounded border">
+                                      <div className="font-medium">{obterNomeCategoria(categoriaId)}</div>
                                       <div className="text-muted-foreground">
                                         Preço: R$ {preco.toFixed(2).replace('.', ',')}
                                       </div>
