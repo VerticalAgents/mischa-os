@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, TrendingUp, Package, DollarSign, Users, FileText } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
+import { useSupabasePrecosCategoriaCliente } from "@/hooks/useSupabasePrecosCategoriaCliente";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import AuditoriaEntregas from "./AuditoriaEntregas";
 import EntregasIndicadores from "./EntregasIndicadores";
 
@@ -16,10 +19,109 @@ export default function EntregasAnalyticsTab() {
   const [dataInicio, setDataInicio] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [dataFim, setDataFim] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [showAuditoria, setShowAuditoria] = useState(false);
+  const [indicadoresResumo, setIndicadoresResumo] = useState({
+    totalEntregas: 0,
+    faturamentoTotal: 0,
+    clientesAtendidos: 0,
+    ticketMedio: 0
+  });
+  const [loading, setLoading] = useState(false);
+
+  const { carregarHistorico, registros } = useHistoricoEntregasStore();
+  const { carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
+  const { clientes } = useClienteStore();
+
+  // Calcular indicadores do período
+  const calcularIndicadores = async () => {
+    if (!registros || registros.length === 0) return;
+
+    setLoading(true);
+    try {
+      const dataInicioDate = new Date(dataInicio);
+      const dataFimDate = new Date(dataFim);
+      
+      const entregasPeriodo = registros.filter(h => {
+        const dataEntrega = new Date(h.data);
+        return dataEntrega >= dataInicioDate && dataEntrega <= dataFimDate;
+      });
+
+      const entregas = entregasPeriodo.filter(e => e.tipo === 'entrega');
+      let faturamentoTotal = 0;
+      let ticketTotal = 0;
+
+      // Calcular faturamento por entrega
+      for (const entrega of entregas) {
+        try {
+          const precos = await carregarPrecosPorCliente(entrega.cliente_id);
+          const precosMap: { [key: string]: number } = {};
+          
+          precos.forEach(preco => {
+            precosMap[preco.categoria_id.toString()] = preco.preco_unitario;
+          });
+
+          let faturamentoEntrega = 0;
+          
+          if (entrega.itens && entrega.itens.length > 0) {
+            entrega.itens.forEach((item: any) => {
+              const precoItem = precosMap[item.categoria_id?.toString()];
+              if (precoItem && item.quantidade) {
+                faturamentoEntrega += item.quantidade * precoItem;
+              }
+            });
+          } else {
+            const cliente = clientes.find(c => c.id === entrega.cliente_id);
+            if (cliente?.categoriasHabilitadas && Array.isArray(cliente.categoriasHabilitadas)) {
+              const totalCategorias = cliente.categoriasHabilitadas.length;
+              const quantidadePorCategoria = entrega.quantidade / totalCategorias;
+              
+              cliente.categoriasHabilitadas.forEach((categoria: any) => {
+                const precoCategoria = precosMap[categoria.id?.toString()];
+                if (precoCategoria) {
+                  faturamentoEntrega += quantidadePorCategoria * precoCategoria;
+                }
+              });
+            }
+          }
+
+          faturamentoTotal += faturamentoEntrega;
+          ticketTotal += faturamentoEntrega;
+        } catch (error) {
+          console.error('Erro ao calcular faturamento da entrega:', error);
+        }
+      }
+
+      const clientesUnicos = new Set(entregas.map(e => e.cliente_id));
+      const ticketMedio = entregas.length > 0 ? ticketTotal / entregas.length : 0;
+
+      setIndicadoresResumo({
+        totalEntregas: entregas.length,
+        faturamentoTotal,
+        clientesAtendidos: clientesUnicos.size,
+        ticketMedio
+      });
+    } catch (error) {
+      console.error('Erro ao calcular indicadores:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carregar dados quando período ou registros mudam
+  useEffect(() => {
+    const carregarDados = async () => {
+      await carregarHistorico();
+      await calcularIndicadores();
+    };
+    
+    carregarDados();
+  }, [dataInicio, dataFim]);
+
+  useEffect(() => {
+    calcularIndicadores();
+  }, [registros]);
 
   const handlePeriodoChange = () => {
-    // Trigger refetch when period changes
-    console.log('Período alterado:', { dataInicio, dataFim });
+    calcularIndicadores();
   };
 
   return (
@@ -68,7 +170,9 @@ export default function EntregasAnalyticsTab() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">
+              {loading ? '...' : indicadoresResumo.totalEntregas}
+            </div>
             <p className="text-xs text-muted-foreground">
               no período selecionado
             </p>
@@ -81,7 +185,9 @@ export default function EntregasAnalyticsTab() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 0,00</div>
+            <div className="text-2xl font-bold">
+              {loading ? '...' : `R$ ${indicadoresResumo.faturamentoTotal.toFixed(2).replace('.', ',')}`}
+            </div>
             <p className="text-xs text-muted-foreground">
               valor faturado no período
             </p>
@@ -94,7 +200,9 @@ export default function EntregasAnalyticsTab() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">
+              {loading ? '...' : indicadoresResumo.clientesAtendidos}
+            </div>
             <p className="text-xs text-muted-foreground">
               clientes únicos no período
             </p>
@@ -107,7 +215,9 @@ export default function EntregasAnalyticsTab() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 0,00</div>
+            <div className="text-2xl font-bold">
+              {loading ? '...' : `R$ ${indicadoresResumo.ticketMedio.toFixed(2).replace('.', ',')}`}
+            </div>
             <p className="text-xs text-muted-foreground">
               por entrega no período
             </p>
