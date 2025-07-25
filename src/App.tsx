@@ -51,8 +51,8 @@ function App() {
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
-          <AuthProvider>
-            <Router>
+          <Router>
+            <AuthProvider>
               <SidebarProvider>
                 <div className="min-h-screen w-full">
                   <Routes>
@@ -94,9 +94,9 @@ function App() {
                   </Routes>
                 </div>
               </SidebarProvider>
-            </Router>
-            <Toaster />
-          </AuthProvider>
+              <Toaster />
+            </AuthProvider>
+          </Router>
         </ThemeProvider>
       </QueryClientProvider>
     </React.StrictMode>
