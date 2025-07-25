@@ -11,6 +11,7 @@ import { DadosAnaliseGiroConsolidados } from '@/types/giroAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 interface EntregaDetalhada {
   id: string;
@@ -46,13 +47,24 @@ export function PassoAPassoDebug({ dadosConsolidados }: PassoAPassoDebugProps) {
 
   const analisarCliente = async (clienteId: string) => {
     setLoading(true);
+    setDadosDebug(null); // Limpar dados anteriores
+    
     try {
+      console.log('🔍 Iniciando análise do cliente:', clienteId);
+      
       const cliente = dadosConsolidados.find(c => c.cliente_id === clienteId);
-      if (!cliente) return;
+      if (!cliente) {
+        toast.error('Cliente não encontrado');
+        return;
+      }
 
-      // 1. Buscar entregas das últimas 4 semanas
+      console.log('✅ Cliente encontrado:', cliente.cliente_nome);
+
+      // 1. Buscar entregas das últimas 4 semanas (28 dias)
       const dataLimite = new Date();
       dataLimite.setDate(dataLimite.getDate() - 28);
+      
+      console.log('📅 Buscando entregas desde:', dataLimite.toISOString());
 
       const { data: entregas, error } = await supabase
         .from('historico_entregas')
@@ -62,22 +74,40 @@ export function PassoAPassoDebug({ dadosConsolidados }: PassoAPassoDebugProps) {
         .gte('data', dataLimite.toISOString())
         .order('data', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro na consulta Supabase:', error);
+        toast.error('Erro ao buscar entregas do cliente');
+        throw error;
+      }
 
-      // 2. Calcular giro histórico correto
+      console.log('📦 Entregas encontradas:', entregas?.length || 0);
+
+      // 2. Calcular giro histórico correto (média semanal das últimas 4 semanas)
       const totalEntregas = entregas?.reduce((total, entrega) => total + entrega.quantidade, 0) || 0;
       const giroHistoricoCalculado = Math.round(totalEntregas / 4);
 
-      // 3. Calcular giro projetado
+      console.log('🔢 Cálculo do giro histórico:', {
+        totalEntregas,
+        semanas: 4,
+        giroHistoricoCalculado
+      });
+
+      // 3. Calcular giro projetado baseado na periodicidade
       const giroProjetado = cliente.quantidade_padrao && cliente.periodicidade_padrao 
         ? Math.round((cliente.quantidade_padrao / cliente.periodicidade_padrao) * 7)
         : 0;
+
+      console.log('📊 Giro projetado:', {
+        quantidade_padrao: cliente.quantidade_padrao,
+        periodicidade_padrao: cliente.periodicidade_padrao,
+        giroProjetado
+      });
 
       // 4. Calcular achievement
       const metaGiroSemanal = cliente.meta_giro_semanal || 0;
       const achievement = metaGiroSemanal > 0 ? (giroHistoricoCalculado / metaGiroSemanal) * 100 : 0;
 
-      // 5. Determinar semáforo
+      // 5. Determinar semáforo baseado no achievement
       let semaforo: 'verde' | 'amarelo' | 'vermelho' = 'vermelho';
       if (achievement >= 90) {
         semaforo = 'verde';
@@ -85,7 +115,7 @@ export function PassoAPassoDebug({ dadosConsolidados }: PassoAPassoDebugProps) {
         semaforo = 'amarelo';
       }
 
-      // 6. Gerar alertas
+      // 6. Gerar alertas para inconsistências
       const alertas: string[] = [];
       
       if (!entregas || entregas.length === 0) {
@@ -104,7 +134,12 @@ export function PassoAPassoDebug({ dadosConsolidados }: PassoAPassoDebugProps) {
         alertas.push('⚠️ Meta de giro semanal não definida');
       }
 
-      setDadosDebug({
+      if (totalEntregas > 0 && entregas && entregas.length < 4) {
+        alertas.push(`📊 Poucas entregas encontradas (${entregas.length} registros) para cálculo confiável`);
+      }
+
+      // Montar resultado final
+      const resultado: PassoAPassoData = {
         cliente,
         entregas4Semanas: entregas || [],
         giroHistoricoCalculado,
@@ -113,10 +148,15 @@ export function PassoAPassoDebug({ dadosConsolidados }: PassoAPassoDebugProps) {
         achievement: Math.round(achievement),
         semaforo,
         alertas
-      });
+      };
+
+      console.log('✅ Análise concluída:', resultado);
+      setDadosDebug(resultado);
+      toast.success('Análise concluída com sucesso');
 
     } catch (error) {
-      console.error('Erro ao analisar cliente:', error);
+      console.error('❌ Erro geral na análise:', error);
+      toast.error('Erro ao analisar cliente. Verifique o console para mais detalhes.');
     } finally {
       setLoading(false);
     }
