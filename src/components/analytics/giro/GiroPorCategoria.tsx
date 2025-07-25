@@ -55,10 +55,18 @@ export function GiroPorCategoria({ dadosConsolidados, isLoading }: GiroPorCatego
     }
     
     return acc;
-  }, {} as Record<string, any>);
+  }, {} as Record<string, {
+    nome: string;
+    totalClientes: number;
+    giroTotal: number;
+    giroMedio: number;
+    faturamentoTotal: number;
+    achievementMedio: number;
+    distribuicaoPerformance: { verde: number; amarelo: number; vermelho: number };
+  }>);
 
   // Calcular médias
-  Object.values(categoriaStats).forEach((categoria: any) => {
+  Object.values(categoriaStats).forEach((categoria) => {
     categoria.giroMedio = categoria.giroTotal / categoria.totalClientes;
     categoria.achievementMedio = categoria.achievementMedio / categoria.totalClientes;
   });
@@ -66,14 +74,14 @@ export function GiroPorCategoria({ dadosConsolidados, isLoading }: GiroPorCatego
   const categoriasArray = Object.values(categoriaStats);
   
   // Dados para gráfico de pizza
-  const dadosPieChart = categoriasArray.map((categoria: any) => ({
+  const dadosPieChart = categoriasArray.map((categoria) => ({
     name: categoria.nome,
     value: categoria.totalClientes,
     giro: categoria.giroMedio
   }));
 
   // Dados para gráfico de barras
-  const dadosBarChart = categoriasArray.map((categoria: any) => ({
+  const dadosBarChart = categoriasArray.map((categoria) => ({
     categoria: categoria.nome,
     giro_medio: categoria.giroMedio,
     achievement: categoria.achievementMedio,
@@ -104,7 +112,7 @@ export function GiroPorCategoria({ dadosConsolidados, isLoading }: GiroPorCatego
               <div>
                 <p className="text-sm text-muted-foreground">Giro Médio Global</p>
                 <p className="text-2xl font-bold">
-                  {(categoriasArray.reduce((sum: number, cat: any) => sum + cat.giroMedio, 0) / categoriasArray.length).toFixed(1)}
+                  {(categoriasArray.reduce((sum, cat) => sum + cat.giroMedio, 0) / categoriasArray.length).toFixed(1)}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-600" />
@@ -134,7 +142,7 @@ export function GiroPorCategoria({ dadosConsolidados, isLoading }: GiroPorCatego
                     style: 'currency', 
                     currency: 'BRL',
                     notation: 'compact'
-                  }).format(categoriasArray.reduce((sum: number, cat: any) => sum + cat.faturamentoTotal, 0))}
+                  }).format(categoriasArray.reduce((sum, cat) => sum + cat.faturamentoTotal, 0))}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-orange-600" />
@@ -211,7 +219,7 @@ export function GiroPorCategoria({ dadosConsolidados, isLoading }: GiroPorCatego
               </TableRow>
             </TableHeader>
             <TableBody>
-              {categoriasArray.map((categoria: any) => (
+              {categoriasArray.map((categoria) => (
                 <TableRow key={categoria.nome}>
                   <TableCell className="font-medium">{categoria.nome}</TableCell>
                   <TableCell className="text-right">{categoria.totalClientes}</TableCell>
