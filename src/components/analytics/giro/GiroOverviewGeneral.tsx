@@ -3,15 +3,17 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BarChart3, TrendingUp, Users, Target, Bug, ArrowLeft } from 'lucide-react';
-import { DadosAnaliseGiroConsolidados } from '@/types/giroAnalysis';
+import { DadosAnaliseGiroConsolidados, GiroOverview, GiroRegionalData } from '@/types/giroAnalysis';
 import { DebugClientesCarregamento } from './components/DebugClientesCarregamento';
 
 interface GiroOverviewGeneralProps {
   dadosConsolidados: DadosAnaliseGiroConsolidados[];
+  overview?: GiroOverview;
+  regional?: GiroRegionalData[];
   isLoading: boolean;
 }
 
-export function GiroOverviewGeneral({ dadosConsolidados, isLoading }: GiroOverviewGeneralProps) {
+export function GiroOverviewGeneral({ dadosConsolidados, overview, regional, isLoading }: GiroOverviewGeneralProps) {
   const [mostrarDebugCarregamento, setMostrarDebugCarregamento] = useState(false);
 
   if (isLoading) {
