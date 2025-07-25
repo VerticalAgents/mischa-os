@@ -22,6 +22,7 @@ import {
 import { ArrowUp, ArrowDown, Filter, AlertCircle } from "lucide-react";
 import { Cliente } from "@/types";
 import GiroMetricCard from "./GiroMetricCard";
+import GiroComparativoBlock from "./GiroComparativoBlock";
 import { useGiroAnalise } from "@/hooks/useGiroAnalise";
 
 interface AnaliseGiroProps {
@@ -117,7 +118,7 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
   }));
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between gap-4">
         <Button variant="outline" className="self-start flex gap-2 items-center">
           <Filter className="h-4 w-4" />
@@ -129,6 +130,9 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
           <Badge variant="outline" className="font-medium">{dadosGiro.mediaHistorica} unidades/semana</Badge>
         </div>
       </div>
+
+      {/* Novo bloco comparativo */}
+      <GiroComparativoBlock cliente={cliente} mediaHistorica={dadosGiro.mediaHistorica} />
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <GiroMetricCard
