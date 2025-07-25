@@ -3,6 +3,7 @@ import { devtools } from 'zustand/middleware';
 import { Cliente, StatusCliente } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { SecureInputValidator } from '@/utils/secureInputValidator';
 
 interface ClienteStore {
   clientes: Cliente[];
@@ -38,10 +39,10 @@ const parseDateFromDatabase = (dateString: string): Date => {
 function convertSupabaseToCliente(data: any, agendamento?: any): Cliente {
   return {
     id: data.id,
-    nome: data.nome,
+    nome: SecureInputValidator.sanitizeInput(data.nome),
     cnpjCpf: data.cnpj_cpf,
-    enderecoEntrega: data.endereco_entrega,
-    contatoNome: data.contato_nome,
+    enderecoEntrega: SecureInputValidator.sanitizeInput(data.endereco_entrega || ''),
+    contatoNome: SecureInputValidator.sanitizeInput(data.contato_nome || ''),
     contatoTelefone: data.contato_telefone,
     contatoEmail: data.contato_email,
     quantidadePadrao: data.quantidade_padrao || 0,
@@ -50,40 +51,55 @@ function convertSupabaseToCliente(data: any, agendamento?: any): Cliente {
     dataCadastro: new Date(data.created_at),
     metaGiroSemanal: data.meta_giro_semanal || 0,
     ultimaDataReposicaoEfetiva: data.ultima_data_reposicao_efetiva ? new Date(data.ultima_data_reposicao_efetiva) : undefined,
-    // Usar dados do agendamento se disponível, senão usar dados do cliente (fallback)
     statusAgendamento: agendamento?.status_agendamento || data.status_agendamento || 'Não Agendado',
     proximaDataReposicao: agendamento?.data_proxima_reposicao 
       ? parseDateFromDatabase(agendamento.data_proxima_reposicao) 
       : (data.proxima_data_reposicao ? new Date(data.proxima_data_reposicao) : undefined),
     ativo: data.ativo || true,
     giroMedioSemanal: data.giro_medio_semanal || calcularGiroSemanal(data.quantidade_padrao || 0, data.periodicidade_padrao || 7),
-    // Garantir que os campos sejam carregados corretamente
     janelasEntrega: data.janelas_entrega || [],
     representanteId: data.representante_id,
     rotaEntregaId: data.rota_entrega_id,
     categoriaEstabelecimentoId: data.categoria_estabelecimento_id,
-    instrucoesEntrega: data.instrucoes_entrega,
+    instrucoesEntrega: SecureInputValidator.sanitizeInput(data.instrucoes_entrega || ''),
     contabilizarGiroMedio: data.contabilizar_giro_medio !== undefined ? data.contabilizar_giro_medio : true,
     tipoLogistica: data.tipo_logistica || 'Própria',
     emiteNotaFiscal: data.emite_nota_fiscal !== undefined ? data.emite_nota_fiscal : true,
     tipoCobranca: data.tipo_cobranca || 'À vista',
     formaPagamento: data.forma_pagamento || 'Boleto',
-    observacoes: data.observacoes,
+    observacoes: SecureInputValidator.sanitizeInput(data.observacoes || ''),
     categoriaId: 1, // Default value
     subcategoriaId: 1, // Default value
-    categoriasHabilitadas: data.categorias_habilitadas || [] // Carregar do banco corretamente
+    categoriasHabilitadas: data.categorias_habilitadas || []
   };
 }
 
-// Helper para converter Cliente para dados do Supabase
+// Helper para converter Cliente para dados do Supabase com validação
 function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>) {
+  // Validate input data
+  if (!SecureInputValidator.validateLength(cliente.nome, 1, 255)) {
+    throw new Error('Nome do cliente deve ter entre 1 e 255 caracteres');
+  }
+
+  if (cliente.cnpjCpf && !SecureInputValidator.validateCnpjCpf(cliente.cnpjCpf)) {
+    throw new Error('CNPJ/CPF inválido');
+  }
+
+  if (cliente.contatoEmail && !SecureInputValidator.validateEmail(cliente.contatoEmail)) {
+    throw new Error('Email inválido');
+  }
+
+  if (cliente.contatoTelefone && !SecureInputValidator.validatePhoneNumber(cliente.contatoTelefone)) {
+    throw new Error('Telefone inválido');
+  }
+
   const giroCalculado = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
   
   return {
-    nome: cliente.nome,
+    nome: SecureInputValidator.sanitizeInput(cliente.nome),
     cnpj_cpf: cliente.cnpjCpf || null,
-    endereco_entrega: cliente.enderecoEntrega || null,
-    contato_nome: cliente.contatoNome || null,
+    endereco_entrega: SecureInputValidator.sanitizeInput(cliente.enderecoEntrega || '') || null,
+    contato_nome: SecureInputValidator.sanitizeInput(cliente.contatoNome || '') || null,
     contato_telefone: cliente.contatoTelefone || null,
     contato_email: cliente.contatoEmail || null,
     quantidade_padrao: cliente.quantidadePadrao || 0,
@@ -92,20 +108,17 @@ function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>)
     ativo: cliente.ativo !== undefined ? cliente.ativo : true,
     giro_medio_semanal: giroCalculado,
     meta_giro_semanal: Math.round(giroCalculado * 1.2),
-    // Campos de entrega e logística
     janelas_entrega: cliente.janelasEntrega || null,
     representante_id: cliente.representanteId || null,
     rota_entrega_id: cliente.rotaEntregaId || null,
     categoria_estabelecimento_id: cliente.categoriaEstabelecimentoId || null,
-    instrucoes_entrega: cliente.instrucoesEntrega || null,
-    // Campos financeiros e fiscais
+    instrucoes_entrega: SecureInputValidator.sanitizeInput(cliente.instrucoesEntrega || '') || null,
     contabilizar_giro_medio: cliente.contabilizarGiroMedio !== undefined ? cliente.contabilizarGiroMedio : true,
     tipo_logistica: cliente.tipoLogistica || 'Própria',
     emite_nota_fiscal: cliente.emiteNotaFiscal !== undefined ? cliente.emiteNotaFiscal : true,
     tipo_cobranca: cliente.tipoCobranca || 'À vista',
     forma_pagamento: cliente.formaPagamento || 'Boleto',
-    observacoes: cliente.observacoes || null,
-    // Categorias de produto habilitadas - salvar no JSONB para compatibilidade
+    observacoes: SecureInputValidator.sanitizeInput(cliente.observacoes || '') || null,
     categorias_habilitadas: cliente.categoriasHabilitadas || []
   };
 }
@@ -126,7 +139,6 @@ export const useClienteStore = create<ClienteStore>()(
         try {
           console.log('useClienteStore: Carregando clientes otimizado...');
           
-          // Otimização 1: Buscar apenas os campos necessários para a listagem
           const { data: clientesData, error: clientesError } = await supabase
             .from('clientes')
             .select(`
@@ -165,7 +177,6 @@ export const useClienteStore = create<ClienteStore>()(
             return;
           }
 
-          // Otimização 2: Buscar agendamentos apenas para clientes ativos
           const clienteIds = clientesData?.map(c => c.id) || [];
           let agendamentosPorCliente = new Map();
           
@@ -182,7 +193,6 @@ export const useClienteStore = create<ClienteStore>()(
             }
           }
 
-          // Otimização 3: Conversão mais eficiente
           const clientesConvertidos = clientesData?.map(cliente => {
             const agendamento = agendamentosPorCliente.get(cliente.id);
             return convertSupabaseToCliente(cliente, agendamento);
@@ -226,7 +236,6 @@ export const useClienteStore = create<ClienteStore>()(
             throw error;
           }
 
-          // Salvar as categorias na tabela de relacionamento
           if (cliente.categoriasHabilitadas && cliente.categoriasHabilitadas.length > 0) {
             const categoriasRelacao = cliente.categoriasHabilitadas.map(categoriaId => ({
               cliente_id: data.id,
@@ -239,7 +248,6 @@ export const useClienteStore = create<ClienteStore>()(
 
             if (categoriaError) {
               console.error('Erro ao salvar categorias do cliente:', categoriaError);
-              // Não impedir o cadastro por conta das categorias
             }
           }
 
@@ -280,41 +288,45 @@ export const useClienteStore = create<ClienteStore>()(
             return;
           }
 
+          // Validate updated data
+          if (dadosCliente.nome && !SecureInputValidator.validateLength(dadosCliente.nome, 1, 255)) {
+            throw new Error('Nome do cliente deve ter entre 1 e 255 caracteres');
+          }
+
+          if (dadosCliente.cnpjCpf && !SecureInputValidator.validateCnpjCpf(dadosCliente.cnpjCpf)) {
+            throw new Error('CNPJ/CPF inválido');
+          }
+
+          if (dadosCliente.contatoEmail && !SecureInputValidator.validateEmail(dadosCliente.contatoEmail)) {
+            throw new Error('Email inválido');
+          }
+
           console.log('useClienteStore: Atualizando cliente com dados:', dadosCliente);
 
-          // Converter dadosCliente para formato Supabase, incluindo todos os campos
           const dadosSupabase: any = {};
           
-          // Dados básicos
-          if (dadosCliente.nome !== undefined) dadosSupabase.nome = dadosCliente.nome;
+          // Sanitize and validate all text fields
+          if (dadosCliente.nome !== undefined) dadosSupabase.nome = SecureInputValidator.sanitizeInput(dadosCliente.nome);
           if (dadosCliente.cnpjCpf !== undefined) dadosSupabase.cnpj_cpf = dadosCliente.cnpjCpf;
-          if (dadosCliente.enderecoEntrega !== undefined) dadosSupabase.endereco_entrega = dadosCliente.enderecoEntrega;
-          if (dadosCliente.contatoNome !== undefined) dadosSupabase.contato_nome = dadosCliente.contatoNome;
+          if (dadosCliente.enderecoEntrega !== undefined) dadosSupabase.endereco_entrega = SecureInputValidator.sanitizeInput(dadosCliente.enderecoEntrega);
+          if (dadosCliente.contatoNome !== undefined) dadosSupabase.contato_nome = SecureInputValidator.sanitizeInput(dadosCliente.contatoNome);
           if (dadosCliente.contatoTelefone !== undefined) dadosSupabase.contato_telefone = dadosCliente.contatoTelefone;
           if (dadosCliente.contatoEmail !== undefined) dadosSupabase.contato_email = dadosCliente.contatoEmail;
-          
-          // Configurações comerciais
           if (dadosCliente.quantidadePadrao !== undefined) dadosSupabase.quantidade_padrao = dadosCliente.quantidadePadrao;
           if (dadosCliente.periodicidadePadrao !== undefined) dadosSupabase.periodicidade_padrao = dadosCliente.periodicidadePadrao;
           if (dadosCliente.statusCliente !== undefined) dadosSupabase.status_cliente = dadosCliente.statusCliente;
           if (dadosCliente.metaGiroSemanal !== undefined) dadosSupabase.meta_giro_semanal = dadosCliente.metaGiroSemanal;
-          
-          // Entrega e logística
           if (dadosCliente.janelasEntrega !== undefined) dadosSupabase.janelas_entrega = dadosCliente.janelasEntrega;
           if (dadosCliente.representanteId !== undefined) dadosSupabase.representante_id = dadosCliente.representanteId;
           if (dadosCliente.rotaEntregaId !== undefined) dadosSupabase.rota_entrega_id = dadosCliente.rotaEntregaId;
           if (dadosCliente.categoriaEstabelecimentoId !== undefined) dadosSupabase.categoria_estabelecimento_id = dadosCliente.categoriaEstabelecimentoId;
-          if (dadosCliente.instrucoesEntrega !== undefined) dadosSupabase.instrucoes_entrega = dadosCliente.instrucoesEntrega;
+          if (dadosCliente.instrucoesEntrega !== undefined) dadosSupabase.instrucoes_entrega = SecureInputValidator.sanitizeInput(dadosCliente.instrucoesEntrega);
           if (dadosCliente.tipoLogistica !== undefined) dadosSupabase.tipo_logistica = dadosCliente.tipoLogistica;
-          
-          // Configurações financeiras e fiscais
           if (dadosCliente.contabilizarGiroMedio !== undefined) dadosSupabase.contabilizar_giro_medio = dadosCliente.contabilizarGiroMedio;
           if (dadosCliente.emiteNotaFiscal !== undefined) dadosSupabase.emite_nota_fiscal = dadosCliente.emiteNotaFiscal;
           if (dadosCliente.tipoCobranca !== undefined) dadosSupabase.tipo_cobranca = dadosCliente.tipoCobranca;
           if (dadosCliente.formaPagamento !== undefined) dadosSupabase.forma_pagamento = dadosCliente.formaPagamento;
-          
-          // Observações e categorias
-          if (dadosCliente.observacoes !== undefined) dadosSupabase.observacoes = dadosCliente.observacoes;
+          if (dadosCliente.observacoes !== undefined) dadosSupabase.observacoes = SecureInputValidator.sanitizeInput(dadosCliente.observacoes);
           if (dadosCliente.categoriasHabilitadas !== undefined) dadosSupabase.categorias_habilitadas = dadosCliente.categoriasHabilitadas;
 
           console.log('useClienteStore: Dados convertidos para Supabase:', dadosSupabase);
@@ -334,11 +346,8 @@ export const useClienteStore = create<ClienteStore>()(
             return;
           }
 
-          // Se as categorias foram atualizadas, salvar na tabela de relacionamento
+          // Update categories if needed
           if (dadosCliente.categoriasHabilitadas !== undefined) {
-            console.log('useClienteStore: Atualizando categorias na tabela de relacionamento:', dadosCliente.categoriasHabilitadas);
-            
-            // Remover categorias existentes
             const { error: deleteError } = await supabase
               .from('clientes_categorias')
               .delete()
@@ -348,7 +357,6 @@ export const useClienteStore = create<ClienteStore>()(
               console.error('Erro ao remover categorias existentes:', deleteError);
             }
 
-            // Inserir novas categorias
             if (dadosCliente.categoriasHabilitadas.length > 0) {
               const novasRelacoes = dadosCliente.categoriasHabilitadas.map(categoriaId => ({
                 cliente_id: id,
@@ -444,10 +452,11 @@ export const useClienteStore = create<ClienteStore>()(
       },
       
       setFiltroTermo: (termo) => {
+        const sanitizedTermo = SecureInputValidator.sanitizeInput(termo);
         set(state => ({
           filtros: {
             ...state.filtros,
-            termo
+            termo: sanitizedTermo
           }
         }));
       },
@@ -462,6 +471,9 @@ export const useClienteStore = create<ClienteStore>()(
       },
       
       setMetaGiro: async (idCliente, metaSemanal) => {
+        if (!SecureInputValidator.validateNumeric(metaSemanal)) {
+          throw new Error('Meta semanal deve ser um número válido');
+        }
         await get().atualizarCliente(idCliente, { metaGiroSemanal: metaSemanal });
       },
       
@@ -469,12 +481,10 @@ export const useClienteStore = create<ClienteStore>()(
         const { clientes, filtros } = get();
         
         return clientes.filter(cliente => {
-          // Filtro por termo
           const termoMatch = filtros.termo === '' || 
             cliente.nome.toLowerCase().includes(filtros.termo.toLowerCase()) ||
             (cliente.cnpjCpf && cliente.cnpjCpf.includes(filtros.termo));
           
-          // Filtro por status
           const statusMatch = filtros.status === 'Todos' || cliente.statusCliente === filtros.status;
           
           return termoMatch && statusMatch;
