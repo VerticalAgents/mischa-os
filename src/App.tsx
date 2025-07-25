@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
@@ -36,60 +37,69 @@ import LoginPage from '@/pages/auth/LoginPage';
 import NotFound from '@/pages/NotFound';
 import './App.css';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
-        <AuthProvider>
-          <Router>
-            <SidebarProvider>
-              <div className="min-h-screen w-full">
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<AuthPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="*" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Routes>
-                          <Route path="/home" element={<Home />} />
-                          <Route path="/clientes" element={<Clientes />} />
-                          <Route path="/agendamento" element={<Agendamento />} />
-                          <Route path="/expedicao" element={<Expedicao />} />
-                          <Route path="/estoque/insumos" element={<EstoqueInsumos />} />
-                          <Route path="/estoque" element={<Estoque />} />
-                          <Route path="/pcp" element={<PCP />} />
-                          <Route path="/precificacao" element={<Precificacao />} />
-                          <Route path="/gestao-comercial" element={<GestaoComercial />} />
-                          <Route path="/gestao-comercial/funil-leads" element={<FunilLeads />} />
-                          <Route path="/gestao-comercial/distribuidores" element={<Distribuidores />} />
-                          <Route path="/gestao-comercial/parceiros" element={<Parceiros />} />
-                          <Route path="/dashboard-analytics" element={<DashboardAnalytics />} />
-                          <Route path="/analise-giro" element={<AnaliseGiro />} />
-                          <Route path="/gestao-financeira" element={<GestaoFinanceira />} />
-                          <Route path="/gestao-financeira/projecao-resultados-pdv" element={<ProjecaoResultadosPDV />} />
-                          <Route path="/gestao-financeira/ponto-equilibrio" element={<PontoEquilibrio />} />
-                          <Route path="/configuracoes" element={<Configuracoes />} />
-                          <Route path="/agentes-ia" element={<AgentesIA />} />
-                          <Route path="/agentes-ia/:id" element={<AgenteIAPage />} />
-                          <Route path="/projecoes" element={<Projections />} />
-                          <Route path="/dashboard" element={<Dashboard />} />
-                          <Route path="/custos" element={<Custos />} />
-                          <Route path="*" element={<NotFound />} />
-                        </Routes>
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                </Routes>
-              </div>
-            </SidebarProvider>
-          </Router>
-          <Toaster />
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+          <AuthProvider>
+            <Router>
+              <SidebarProvider>
+                <div className="min-h-screen w-full">
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/auth" element={<AuthPage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="*" element={
+                      <ProtectedRoute>
+                        <AppLayout>
+                          <Routes>
+                            <Route path="/home" element={<Home />} />
+                            <Route path="/clientes" element={<Clientes />} />
+                            <Route path="/agendamento" element={<Agendamento />} />
+                            <Route path="/expedicao" element={<Expedicao />} />
+                            <Route path="/estoque/insumos" element={<EstoqueInsumos />} />
+                            <Route path="/estoque" element={<Estoque />} />
+                            <Route path="/pcp" element={<PCP />} />
+                            <Route path="/precificacao" element={<Precificacao />} />
+                            <Route path="/gestao-comercial" element={<GestaoComercial />} />
+                            <Route path="/gestao-comercial/funil-leads" element={<FunilLeads />} />
+                            <Route path="/gestao-comercial/distribuidores" element={<Distribuidores />} />
+                            <Route path="/gestao-comercial/parceiros" element={<Parceiros />} />
+                            <Route path="/dashboard-analytics" element={<DashboardAnalytics />} />
+                            <Route path="/analise-giro" element={<AnaliseGiro />} />
+                            <Route path="/gestao-financeira" element={<GestaoFinanceira />} />
+                            <Route path="/gestao-financeira/projecao-resultados-pdv" element={<ProjecaoResultadosPDV />} />
+                            <Route path="/gestao-financeira/ponto-equilibrio" element={<PontoEquilibrio />} />
+                            <Route path="/configuracoes" element={<Configuracoes />} />
+                            <Route path="/agentes-ia" element={<AgentesIA />} />
+                            <Route path="/agentes-ia/:id" element={<AgenteIAPage />} />
+                            <Route path="/projecoes" element={<Projections />} />
+                            <Route path="/dashboard" element={<Dashboard />} />
+                            <Route path="/custos" element={<Custos />} />
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </AppLayout>
+                      </ProtectedRoute>
+                    } />
+                  </Routes>
+                </div>
+              </SidebarProvider>
+            </Router>
+            <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </React.StrictMode>
   );
 }
 
