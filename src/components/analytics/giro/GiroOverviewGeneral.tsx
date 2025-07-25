@@ -172,7 +172,7 @@ export function GiroOverviewGeneral({ dadosConsolidados, isLoading }: GiroOvervi
               <div>
                 <p className="text-sm text-muted-foreground">Performance Vermelha</p>
                 <p className="text-3xl font-bold text-red-600">{distribuicaoSemaforo.vermelho || 0}</p>
-                <p className="text-xs text-muted-foreground">Achievement < 70%</p>
+                <p className="text-xs text-muted-foreground">Achievement &lt; 70%</p>
               </div>
               <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
                 <div className="h-6 w-6 bg-red-600 rounded-full"></div>
