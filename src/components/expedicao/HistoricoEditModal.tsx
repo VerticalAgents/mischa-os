@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -127,15 +126,17 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
     setItensEntrega(novosItens);
   };
 
-  const atualizarItem = (index: number, campo: keyof ItemEntrega, valor: any) => {
+  const atualizarItem = (index: number, campo: keyof ItemEntrega, valor: string | number) => {
     const novosItens: ItemEntrega[] = [...itensEntrega];
     
     if (campo === 'produto_id') {
       const produto = produtos.find(p => p.id.toString() === valor);
-      novosItens[index].produto_id = valor;
+      novosItens[index].produto_id = valor as string;
       novosItens[index].produto_nome = produto?.nome || '';
+    } else if (campo === 'quantidade') {
+      novosItens[index].quantidade = valor as number;
     } else {
-      novosItens[index][campo] = valor;
+      (novosItens[index] as any)[campo] = valor;
     }
     
     setItensEntrega(novosItens);
