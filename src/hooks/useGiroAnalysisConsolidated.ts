@@ -1,0 +1,123 @@
+
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { 
+  GiroAnalysisService, 
+  DadosAnaliseGiroConsolidados,
+  GiroAnalysisFilters,
+  GiroRanking,
+  GiroTemporalData,
+  GiroRegionalData,
+  GiroPredicao
+} from '@/services/giroAnalysisService';
+
+export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const {
+    data: dadosConsolidados,
+    isLoading: loadingDados,
+    error: errorDados,
+    refetch: refetchDados
+  } = useQuery({
+    queryKey: ['giro-analysis-consolidated', filtros],
+    queryFn: () => GiroAnalysisService.getDadosConsolidados(filtros),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+
+  const {
+    data: overview,
+    isLoading: loadingOverview,
+    error: errorOverview,
+    refetch: refetchOverview
+  } = useQuery({
+    queryKey: ['giro-analysis-overview', filtros],
+    queryFn: () => GiroAnalysisService.getGiroOverview(filtros),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const {
+    data: ranking,
+    isLoading: loadingRanking,
+    error: errorRanking,
+    refetch: refetchRanking
+  } = useQuery({
+    queryKey: ['giro-analysis-ranking', filtros],
+    queryFn: () => GiroAnalysisService.getGiroRanking(filtros),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const {
+    data: regional,
+    isLoading: loadingRegional,
+    error: errorRegional,
+    refetch: refetchRegional
+  } = useQuery({
+    queryKey: ['giro-analysis-regional', filtros],
+    queryFn: () => GiroAnalysisService.getGiroRegional(filtros),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const refreshAll = async () => {
+    setIsRefreshing(true);
+    try {
+      console.log('🔄 Refreshing materialized view...');
+      await GiroAnalysisService.refreshMaterializedView();
+      
+      console.log('📊 Populating historical data...');
+      await GiroAnalysisService.populateHistoricalData();
+      
+      console.log('🗑️ Clearing cache...');
+      await GiroAnalysisService.clearCache();
+      
+      console.log('♻️ Refetching data...');
+      await Promise.all([
+        refetchDados(),
+        refetchOverview(),
+        refetchRanking(),
+        refetchRegional()
+      ]);
+      
+      console.log('✅ Data refresh completed');
+    } catch (error) {
+      console.error('❌ Error refreshing data:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  return {
+    dadosConsolidados: dadosConsolidados || [],
+    overview,
+    ranking: ranking || [],
+    regional: regional || [],
+    isLoading: loadingDados || loadingOverview || loadingRanking || loadingRegional,
+    isRefreshing,
+    error: errorDados || errorOverview || errorRanking || errorRegional,
+    refreshAll
+  };
+};
+
+export const useGiroTemporalData = (clienteId: string) => {
+  return useQuery({
+    queryKey: ['giro-temporal', clienteId],
+    queryFn: () => GiroAnalysisService.getGiroTemporal(clienteId),
+    enabled: !!clienteId,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useGiroPredicao = (clienteId: string) => {
+  return useQuery({
+    queryKey: ['giro-predicao', clienteId],
+    queryFn: () => GiroAnalysisService.getGiroPredicao(clienteId),
+    enabled: !!clienteId,
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnWindowFocus: false,
+  });
+};
