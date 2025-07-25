@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Check, X, Package, Calendar, User, Edit } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
+import { useEffect, useState } from "react";
 
 interface HistoricoDetalhesModalProps {
   open: boolean;
@@ -16,7 +18,61 @@ interface HistoricoDetalhesModalProps {
   registro: any;
 }
 
+interface ItemCalculado {
+  produto_nome: string;
+  quantidade: number;
+  percentual: number;
+}
+
 export const HistoricoDetalhesModal = ({ open, onOpenChange, registro }: HistoricoDetalhesModalProps) => {
+  const { proporcoes } = useSupabaseProporoesPadrao();
+  const [itensCalculados, setItensCalculados] = useState<ItemCalculado[]>([]);
+  const [tipoEntrega, setTipoEntrega] = useState<'padrao' | 'alterada' | 'indefinido'>('indefinido');
+
+  useEffect(() => {
+    if (!registro || !open) return;
+
+    // Determinar tipo de entrega baseado na presença de itens detalhados
+    const temItensDetalhados = registro.itens && registro.itens.length > 0;
+    
+    if (temItensDetalhados) {
+      setTipoEntrega('alterada');
+      setItensCalculados([]);
+    } else {
+      setTipoEntrega('padrao');
+      calcularItensPadrao();
+    }
+  }, [registro, open, proporcoes]);
+
+  const calcularItensPadrao = () => {
+    if (!registro || !proporcoes || proporcoes.length === 0) return;
+
+    const quantidadeTotal = registro.quantidade || 0;
+    const proporcoesAtivas = proporcoes.filter(p => p.percentual > 0);
+    
+    if (proporcoesAtivas.length === 0) return;
+
+    // Calcular quantidades usando Math.floor + distribuição do resto
+    const itensComQuantidade = proporcoesAtivas.map(prop => ({
+      produto_nome: prop.produto_nome,
+      percentual: prop.percentual,
+      quantidade: Math.floor((prop.percentual / 100) * quantidadeTotal)
+    }));
+
+    // Calcular resto e distribuir para o produto com maior proporção
+    const totalCalculado = itensComQuantidade.reduce((sum, item) => sum + item.quantidade, 0);
+    const resto = quantidadeTotal - totalCalculado;
+    
+    if (resto > 0) {
+      const produtoMaiorProporcao = itensComQuantidade.reduce((prev, current) => 
+        prev.percentual > current.percentual ? prev : current
+      );
+      produtoMaiorProporcao.quantidade += resto;
+    }
+
+    setItensCalculados(itensComQuantidade.filter(item => item.quantidade > 0));
+  };
+
   if (!registro) return null;
 
   return (
@@ -29,7 +85,7 @@ export const HistoricoDetalhesModal = ({ open, onOpenChange, registro }: Histori
             ) : (
               <X className="h-5 w-5 text-red-500" />
             )}
-            Detalhes do {registro.tipo === 'entrega' ? 'Entrega' : 'Retorno'}
+            Detalhes da {registro.tipo === 'entrega' ? 'Entrega' : 'Retorno'}
             {registro.editado_manualmente && (
               <Badge variant="outline" className="ml-2">
                 <Edit className="h-3 w-3 mr-1" />
@@ -87,6 +143,14 @@ export const HistoricoDetalhesModal = ({ open, onOpenChange, registro }: Histori
             </div>
           </div>
 
+          {/* Tipo de entrega */}
+          <div>
+            <p className="text-sm font-medium mb-1">Tipo de Entrega</p>
+            <Badge variant={tipoEntrega === 'padrao' ? 'default' : 'secondary'}>
+              {tipoEntrega === 'padrao' ? 'Padrão' : tipoEntrega === 'alterada' ? 'Alterada' : 'Indefinido'}
+            </Badge>
+          </div>
+
           {/* Status anterior */}
           {registro.status_anterior && (
             <div>
@@ -95,10 +159,10 @@ export const HistoricoDetalhesModal = ({ open, onOpenChange, registro }: Histori
             </div>
           )}
 
-          {/* Itens detalhados */}
-          {registro.itens && registro.itens.length > 0 && (
+          {/* Itens entregues - Entrega Alterada */}
+          {tipoEntrega === 'alterada' && registro.itens && registro.itens.length > 0 && (
             <div>
-              <p className="text-sm font-medium mb-2">Itens Entregues</p>
+              <p className="text-sm font-medium mb-2">Itens Entregues (Alterada)</p>
               <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                 {registro.itens.map((item: any, index: number) => (
                   <div key={index} className="flex justify-between items-center text-sm">
@@ -107,6 +171,29 @@ export const HistoricoDetalhesModal = ({ open, onOpenChange, registro }: Histori
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Itens calculados - Entrega Padrão */}
+          {tipoEntrega === 'padrao' && itensCalculados.length > 0 && (
+            <div>
+              <p className="text-sm font-medium mb-2">Produtos Entregues (Padrão - Calculado)</p>
+              <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                {itensCalculados.map((item, index) => (
+                  <div key={index} className="flex justify-between items-center text-sm">
+                    <div className="flex items-center gap-2">
+                      <span>{item.produto_nome}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {item.percentual}%
+                      </Badge>
+                    </div>
+                    <span className="font-mono">{item.quantidade} un</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                * Quantidades calculadas baseadas nas proporções padrão configuradas
+              </p>
             </div>
           )}
 

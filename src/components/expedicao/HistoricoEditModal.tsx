@@ -15,8 +15,7 @@ import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { AdminGuard } from "@/components/auth/AdminGuard";
-import { PinDialog } from "@/components/ui/pin-dialog";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,8 +34,7 @@ interface HistoricoEditModalProps {
 }
 
 export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEditModalProps) => {
-  const [showPinDialog, setShowPinDialog] = useState(false);
-  const [adminVerified, setAdminVerified] = useState(false);
+  const { isAuthenticated } = useAuth();
   const [quantidade, setQuantidade] = useState("");
   const [observacao, setObservacao] = useState("");
   const [dataEntrega, setDataEntrega] = useState("");
@@ -50,22 +48,12 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
       setObservacao(registro.observacao || "");
       setDataEntrega(format(new Date(registro.data), "yyyy-MM-dd'T'HH:mm"));
       setTipoEntrega(registro.tipo);
-      setShowPinDialog(true);
-      setAdminVerified(false);
     }
   }, [open, registro]);
 
-  const handlePinConfirm = (success: boolean) => {
-    setShowPinDialog(false);
-    setAdminVerified(success);
-    if (!success) {
-      onOpenChange(false);
-    }
-  };
-
   const handleSalvar = async () => {
-    if (!adminVerified) {
-      toast.error("É necessário verificação de administrador");
+    if (!isAuthenticated) {
+      toast.error("É necessário estar logado para editar registros");
       return;
     }
 
@@ -95,8 +83,8 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
   };
 
   const handleExcluir = async () => {
-    if (!adminVerified) {
-      toast.error("É necessário verificação de administrador");
+    if (!isAuthenticated) {
+      toast.error("É necessário estar logado para excluir registros");
       return;
     }
 
@@ -111,9 +99,7 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
   };
 
   const handleClose = () => {
-    setShowPinDialog(false);
     setShowDeleteDialog(false);
-    setAdminVerified(false);
     onOpenChange(false);
   };
 
@@ -129,100 +115,90 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
             </DialogTitle>
           </DialogHeader>
           
-          <AdminGuard fallback={
+          {!isAuthenticated ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">
-                Você precisa de permissões de administrador para editar registros.
+                Você precisa estar logado para editar registros.
               </p>
             </div>
-          }>
-            {adminVerified && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Cliente:</span>
-                    <p>{registro.cliente_nome}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">Data Original:</span>
-                    <p>{format(new Date(registro.data), "dd/MM/yyyy HH:mm")}</p>
-                  </div>
-                </div>
-                
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <Label htmlFor="dataEntrega">Data da Entrega</Label>
-                  <Input
-                    id="dataEntrega"
-                    type="datetime-local"
-                    value={dataEntrega}
-                    onChange={(e) => setDataEntrega(e.target.value)}
-                  />
+                  <span className="font-medium">Cliente:</span>
+                  <p>{registro.cliente_nome}</p>
                 </div>
-
                 <div>
-                  <Label htmlFor="tipoEntrega">Tipo</Label>
-                  <Select value={tipoEntrega} onValueChange={(value: 'entrega' | 'retorno') => setTipoEntrega(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="entrega">Entrega</SelectItem>
-                      <SelectItem value="retorno">Retorno</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <Label htmlFor="quantidade">Quantidade (unidades)</Label>
-                  <Input
-                    id="quantidade"
-                    type="number"
-                    value={quantidade}
-                    onChange={(e) => setQuantidade(e.target.value)}
-                    min="1"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="observacao">Observação</Label>
-                  <Textarea
-                    id="observacao"
-                    value={observacao}
-                    onChange={(e) => setObservacao(e.target.value)}
-                    placeholder="Adicione uma observação sobre a edição..."
-                    rows={3}
-                  />
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={handleClose} className="flex-1">
-                    Cancelar
-                  </Button>
-                  <Button 
-                    variant="destructive" 
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Excluir
-                  </Button>
-                  <Button onClick={handleSalvar} className="flex-1">
-                    Salvar Alterações
-                  </Button>
+                  <span className="font-medium">Data Original:</span>
+                  <p>{format(new Date(registro.data), "dd/MM/yyyy HH:mm")}</p>
                 </div>
               </div>
-            )}
-          </AdminGuard>
+              
+              <div>
+                <Label htmlFor="dataEntrega">Data da Entrega</Label>
+                <Input
+                  id="dataEntrega"
+                  type="datetime-local"
+                  value={dataEntrega}
+                  onChange={(e) => setDataEntrega(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="tipoEntrega">Tipo</Label>
+                <Select value={tipoEntrega} onValueChange={(value: 'entrega' | 'retorno') => setTipoEntrega(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="entrega">Entrega</SelectItem>
+                    <SelectItem value="retorno">Retorno</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="quantidade">Quantidade (unidades)</Label>
+                <Input
+                  id="quantidade"
+                  type="number"
+                  value={quantidade}
+                  onChange={(e) => setQuantidade(e.target.value)}
+                  min="1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="observacao">Observação</Label>
+                <Textarea
+                  id="observacao"
+                  value={observacao}
+                  onChange={(e) => setObservacao(e.target.value)}
+                  placeholder="Adicione uma observação sobre a edição..."
+                  rows={3}
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleClose} className="flex-1">
+                  Cancelar
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Excluir
+                </Button>
+                <Button onClick={handleSalvar} className="flex-1">
+                  Salvar Alterações
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
-
-      <PinDialog
-        isOpen={showPinDialog}
-        onClose={() => setShowPinDialog(false)}
-        onConfirm={handlePinConfirm}
-        title="Verificação de Administrador"
-        description="Editar registros de entrega requer privilégios de administrador."
-      />
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
