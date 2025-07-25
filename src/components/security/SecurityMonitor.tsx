@@ -12,15 +12,15 @@ interface AuditLogEntry {
   id: string;
   user_id: string;
   action: string;
-  table_name: string;
-  record_id: string;
-  user_agent: string;
-  ip_address: string;
+  table_name: string | null;
+  record_id: string | null;
+  user_agent: string | null;
+  ip_address: string | null;
   created_at: string;
   profiles?: {
-    full_name: string;
-    email: string;
-  };
+    full_name: string | null;
+    email: string | null;
+  } | null;
 }
 
 export function SecurityMonitor() {
@@ -50,7 +50,22 @@ export function SecurityMonitor() {
         return;
       }
 
-      setAuditLogs(data || []);
+      // Transform the data to match our interface
+      const transformedData: AuditLogEntry[] = (data || []).map(log => ({
+        id: log.id,
+        user_id: log.user_id,
+        action: log.action,
+        table_name: log.table_name,
+        record_id: log.record_id,
+        user_agent: log.user_agent,
+        ip_address: log.ip_address as string | null,
+        created_at: log.created_at,
+        profiles: Array.isArray(log.profiles) 
+          ? log.profiles[0] || null 
+          : log.profiles || null
+      }));
+
+      setAuditLogs(transformedData);
     } catch (err) {
       console.error('Error fetching audit logs:', err);
     } finally {
@@ -170,7 +185,7 @@ export function SecurityMonitor() {
                           {log.profiles?.full_name || 'Usuário não encontrado'}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {log.profiles?.email}
+                          {log.profiles?.email || 'Email não disponível'}
                         </div>
                       </div>
                     </TableCell>
