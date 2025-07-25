@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -118,10 +117,9 @@ export default function ClientesTable({
             <div className="flex items-center gap-2">
               {cliente.nome}
               {isInconsistent && (
-                <AlertTriangle 
-                  className="h-4 w-4 text-yellow-500" 
-                  title="Dados inconsistentes: verifique status do cliente"
-                />
+                <div title="Dados inconsistentes: verifique status do cliente">
+                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                </div>
               )}
             </div>
           </TableCell>
@@ -188,7 +186,6 @@ export default function ClientesTable({
           <TableCell>
             <StatusBadge 
               status={cliente.statusCliente} 
-              variant={getStatusVariant(cliente.statusCliente)}
             />
           </TableCell>
         )}
@@ -197,7 +194,6 @@ export default function ClientesTable({
           <TableCell>
             <StatusBadge 
               status={cliente.statusAgendamento || 'Não Agendado'} 
-              variant={getAgendamentoStatusVariant(cliente.statusAgendamento || 'Não Agendado')}
             />
           </TableCell>
         )}

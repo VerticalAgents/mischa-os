@@ -3,7 +3,7 @@ import { StatusCliente, StatusPedido } from "@/types";
 import { cn } from "@/lib/utils";
 
 type StatusBadgeProps = {
-  status: StatusCliente | StatusPedido;
+  status: StatusCliente | StatusPedido | string;
   size?: "sm" | "md";
   className?: string;
 };
@@ -32,12 +32,24 @@ export default function StatusBadge({ status, size = "md", className }: StatusBa
     "Entregue": "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
     "Cancelado": "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
   };
+
+  // Definir as classes específicas para status de agendamento
+  const agendamentoStatusClasses = {
+    "Agendado": "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
+    "Pendente": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100",
+    "Não Agendado": "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100",
+    "Atrasado": "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
+  };
   
   // Determinar qual conjunto de classes usar com base no status
   const statusClasses = 
     status in clienteStatusClasses 
       ? clienteStatusClasses[status as StatusCliente]
-      : pedidoStatusClasses[status as StatusPedido];
+      : status in pedidoStatusClasses 
+      ? pedidoStatusClasses[status as StatusPedido]
+      : status in agendamentoStatusClasses
+      ? agendamentoStatusClasses[status as keyof typeof agendamentoStatusClasses]
+      : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100"; // fallback
   
   return (
     <span 
