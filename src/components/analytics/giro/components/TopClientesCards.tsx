@@ -44,7 +44,7 @@ export function TopClientesCards({ dados }: TopClientesCardsProps) {
             <div className="space-y-3">
               <h3 className="font-semibold text-lg">{item.cliente_nome}</h3>
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold">{item.giro_semanal_calculado.toFixed(1)}</span>
+                <span className="text-2xl font-bold">{item.giro_medio_historico.toFixed(1)}</span>
                 <span className="text-sm text-muted-foreground">un/semana</span>
               </div>
               <div className="flex items-center gap-4">

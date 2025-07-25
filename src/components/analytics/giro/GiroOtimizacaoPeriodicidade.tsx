@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Target, Search, BarChart3 } from 'lucide-react';
 import { DadosAnaliseGiroConsolidados } from '@/types/giroAnalysis';
 import { GiroComparativoTable } from './components/GiroComparativoTable';
@@ -44,7 +43,9 @@ export function GiroOtimizacaoPeriodicidade({ dadosConsolidados, isLoading }: Gi
       
       if (giroProjetado === 0) return false;
       
-      const diferenca = ((item.giro_medio_historico - giroProjetado) / giroProjetado) * 100;
+      // Usar giro_medio_historico como histórico de 4 semanas
+      const giroHistorico = item.giro_medio_historico;
+      const diferenca = ((giroHistorico - giroProjetado) / giroProjetado) * 100;
       
       if (filtroStatus === 'ajustado') return diferenca >= -10 && diferenca <= 10;
       if (filtroStatus === 'acima') return diferenca > 10;
@@ -61,7 +62,8 @@ export function GiroOtimizacaoPeriodicidade({ dadosConsolidados, isLoading }: Gi
       ? Math.round((item.quantidade_padrao / item.periodicidade_padrao) * 7)
       : 0;
     if (giroProjetado === 0) return false;
-    const diferenca = ((item.giro_medio_historico - giroProjetado) / giroProjetado) * 100;
+    const giroHistorico = item.giro_medio_historico;
+    const diferenca = ((giroHistorico - giroProjetado) / giroProjetado) * 100;
     return diferenca >= -10 && diferenca <= 10;
   }).length;
 
@@ -70,7 +72,8 @@ export function GiroOtimizacaoPeriodicidade({ dadosConsolidados, isLoading }: Gi
       ? Math.round((item.quantidade_padrao / item.periodicidade_padrao) * 7)
       : 0;
     if (giroProjetado === 0) return false;
-    const diferenca = ((item.giro_medio_historico - giroProjetado) / giroProjetado) * 100;
+    const giroHistorico = item.giro_medio_historico;
+    const diferenca = ((giroHistorico - giroProjetado) / giroProjetado) * 100;
     return diferenca > 10;
   }).length;
 
@@ -79,7 +82,8 @@ export function GiroOtimizacaoPeriodicidade({ dadosConsolidados, isLoading }: Gi
       ? Math.round((item.quantidade_padrao / item.periodicidade_padrao) * 7)
       : 0;
     if (giroProjetado === 0) return false;
-    const diferenca = ((item.giro_medio_historico - giroProjetado) / giroProjetado) * 100;
+    const giroHistorico = item.giro_medio_historico;
+    const diferenca = ((giroHistorico - giroProjetado) / giroProjetado) * 100;
     return diferenca < -10;
   }).length;
 

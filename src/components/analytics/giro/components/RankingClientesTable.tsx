@@ -36,7 +36,7 @@ export function RankingClientesTable({ dados }: RankingClientesTableProps) {
           <TableHead className="w-16">Pos.</TableHead>
           <TableHead>Cliente</TableHead>
           <TableHead>Representante</TableHead>
-          <TableHead className="text-right">Giro Atual</TableHead>
+          <TableHead className="text-right">Giro Histórico</TableHead>
           <TableHead className="text-right">Achievement</TableHead>
           <TableHead className="text-right">Variação</TableHead>
           <TableHead className="text-center">Performance</TableHead>
@@ -49,7 +49,7 @@ export function RankingClientesTable({ dados }: RankingClientesTableProps) {
             <TableCell className="font-medium">{item.cliente_nome}</TableCell>
             <TableCell>{item.representante_nome || '-'}</TableCell>
             <TableCell className="text-right font-mono">
-              {item.giro_semanal_calculado.toFixed(1)}
+              {item.giro_medio_historico.toFixed(1)}
             </TableCell>
             <TableCell className="text-right font-mono">
               {item.achievement_meta.toFixed(1)}%

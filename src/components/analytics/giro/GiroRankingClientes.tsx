@@ -19,7 +19,7 @@ export function GiroRankingClientes({
   isLoading 
 }: GiroRankingClientesProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('giro_atual');
+  const [sortBy, setSortBy] = useState('giro_historico');
   const [filterPerformance, setFilterPerformance] = useState('todos');
 
   if (isLoading) {
@@ -44,8 +44,8 @@ export function GiroRankingClientes({
     )
     .sort((a, b) => {
       switch (sortBy) {
-        case 'giro_atual':
-          return b.giro_semanal_calculado - a.giro_semanal_calculado;
+        case 'giro_historico':
+          return b.giro_medio_historico - a.giro_medio_historico;
         case 'achievement':
           return b.achievement_meta - a.achievement_meta;
         case 'variacao':
@@ -62,7 +62,7 @@ export function GiroRankingClientes({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-yellow-600" />
-            Ranking de Clientes por Giro
+            Ranking de Clientes por Giro Histórico
           </CardTitle>
         </CardHeader>
         <CardContent>

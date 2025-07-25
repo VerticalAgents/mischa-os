@@ -29,22 +29,13 @@ export function GiroComparativoTable({ dados }: GiroComparativoTableProps) {
     }
   };
 
-  const getProgressColor = (status: string) => {
-    switch (status) {
-      case 'ajustado': return 'bg-green-500';
-      case 'acima': return 'bg-blue-500';
-      case 'abaixo': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Cliente</TableHead>
           <TableHead>Representante</TableHead>
-          <TableHead className="text-right">Giro Histórico</TableHead>
+          <TableHead className="text-right">Giro Histórico (4 sem)</TableHead>
           <TableHead className="text-right">Giro Projetado</TableHead>
           <TableHead className="text-right">Diferença</TableHead>
           <TableHead className="text-center">Progresso</TableHead>
@@ -54,6 +45,7 @@ export function GiroComparativoTable({ dados }: GiroComparativoTableProps) {
       <TableBody>
         {dados.map((item) => {
           const giroProjetado = calcularGiroProjetado(item);
+          // Usar giro_medio_historico como histórico de 4 semanas
           const giroHistorico = item.giro_medio_historico;
           const diferenca = giroProjetado > 0 ? ((giroHistorico - giroProjetado) / giroProjetado) * 100 : 0;
           const { status, cor } = getStatusAjuste(giroHistorico, giroProjetado);
