@@ -52,14 +52,47 @@ export function GiroAnalysisFiltersComponent({
 
   const activeFiltersCount = Object.values(filtros).filter(Boolean).length;
 
-  // Helper function to filter out invalid values
+  // Enhanced helper function to filter out invalid values
   const filterValidValues = (arr: string[]): string[] => {
-    return arr.filter(item => item && typeof item === 'string' && item.trim() !== '' && item !== 'null' && item !== 'undefined');
+    if (!Array.isArray(arr)) {
+      console.warn('filterValidValues received non-array:', arr);
+      return [];
+    }
+    
+    const filtered = arr.filter(item => {
+      // Check if item exists and is a valid string
+      if (!item || typeof item !== 'string') {
+        return false;
+      }
+      
+      // Check if item is not just whitespace
+      const trimmed = item.trim();
+      if (trimmed === '') {
+        return false;
+      }
+      
+      // Check for string representations of null/undefined
+      if (trimmed === 'null' || trimmed === 'undefined' || trimmed === 'NULL') {
+        return false;
+      }
+      
+      return true;
+    });
+    
+    console.log('Filtered values:', { original: arr.length, filtered: filtered.length });
+    return filtered;
   };
 
-  const validRepresentantes = filterValidValues(representantes);
-  const validRotas = filterValidValues(rotas);
-  const validCategorias = filterValidValues(categorias);
+  const validRepresentantes = filterValidValues(representantes || []);
+  const validRotas = filterValidValues(rotas || []);
+  const validCategorias = filterValidValues(categorias || []);
+
+  // Additional safety check - log any issues
+  console.log('Filter data:', {
+    representantes: { total: representantes?.length, valid: validRepresentantes.length },
+    rotas: { total: rotas?.length, valid: validRotas.length },
+    categorias: { total: categorias?.length, valid: validCategorias.length }
+  });
 
   return (
     <Card className="mb-6">
@@ -108,11 +141,18 @@ export function GiroAnalysisFiltersComponent({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
-                  {validRepresentantes.map((rep) => (
-                    <SelectItem key={rep} value={rep}>
-                      {rep}
-                    </SelectItem>
-                  ))}
+                  {validRepresentantes.map((rep) => {
+                    // Extra safety check before rendering
+                    if (!rep || rep.trim() === '') {
+                      console.warn('Invalid representante value:', rep);
+                      return null;
+                    }
+                    return (
+                      <SelectItem key={rep} value={rep}>
+                        {rep}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -129,11 +169,18 @@ export function GiroAnalysisFiltersComponent({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
-                  {validRotas.map((rota) => (
-                    <SelectItem key={rota} value={rota}>
-                      {rota}
-                    </SelectItem>
-                  ))}
+                  {validRotas.map((rota) => {
+                    // Extra safety check before rendering
+                    if (!rota || rota.trim() === '') {
+                      console.warn('Invalid rota value:', rota);
+                      return null;
+                    }
+                    return (
+                      <SelectItem key={rota} value={rota}>
+                        {rota}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -150,11 +197,18 @@ export function GiroAnalysisFiltersComponent({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
-                  {validCategorias.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
+                  {validCategorias.map((cat) => {
+                    // Extra safety check before rendering
+                    if (!cat || cat.trim() === '') {
+                      console.warn('Invalid categoria value:', cat);
+                      return null;
+                    }
+                    return (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
