@@ -9,7 +9,8 @@ import { Search, Download, Eye } from "lucide-react";
 import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabasePrecosCategoriaCliente } from "@/hooks/useSupabasePrecosCategoriaCliente";
-import { useProdutoStore } from "@/hooks/useProdutoStore";
+import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
+import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -32,6 +33,10 @@ interface AuditoriaEntregasProps {
   dataFim: string;
 }
 
+// Cache para preços por cliente
+const precosCache = new Map<string, { precos: { [key: string]: number }, timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntregasProps) {
   const [entregas, setEntregas] = useState<EntregaAuditoria[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,17 +46,30 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
   const { carregarHistorico, registros } = useHistoricoEntregasStore();
   const { clientes } = useClienteStore();
   const { carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
-  const { produtos } = useProdutoStore();
+  const { produtos } = useSupabaseProdutos();
+  const { categorias } = useSupabaseCategoriasProduto();
 
-  // Função para buscar preços praticados pelo cliente
+  // Função para buscar preços praticados pelo cliente com cache
   const obterPrecosPraticados = async (clienteId: string) => {
     try {
+      // Verificar cache
+      const cached = precosCache.get(clienteId);
+      if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+        return cached.precos;
+      }
+
       const precos = await carregarPrecosPorCliente(clienteId);
       const precosMap: { [key: string]: number } = {};
       
       precos.forEach(preco => {
-        const categoriaKey = String(preco.categoria_id);
+        const categoriaKey = preco.categoria_id.toString();
         precosMap[categoriaKey] = preco.preco_unitario;
+      });
+      
+      // Atualizar cache
+      precosCache.set(clienteId, {
+        precos: precosMap,
+        timestamp: Date.now()
       });
       
       return precosMap;
@@ -72,7 +90,7 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
       if (entrega.itens && entrega.itens.length > 0) {
         // Calcular baseado nos itens específicos da entrega
         entrega.itens.forEach((item: any) => {
-          const categoriaKey = String(item.categoria_id);
+          const categoriaKey = item.categoria_id?.toString() || '';
           const precoItem = precosPraticados[categoriaKey];
           if (precoItem && item.quantidade) {
             faturamentoTotal += Number(item.quantidade) * precoItem;
@@ -86,7 +104,7 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
           const quantidadePorCategoria = entrega.quantidade / totalCategorias;
           
           cliente.categoriasHabilitadas.forEach((categoria: any) => {
-            const categoriaKey = String(categoria.id);
+            const categoriaKey = categoria.id?.toString() || '';
             const precoCategoria = precosPraticados[categoriaKey];
             if (precoCategoria) {
               faturamentoTotal += quantidadePorCategoria * precoCategoria;
@@ -106,25 +124,18 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
     }
   };
 
-  // Função para obter nome do produto por ID
+  // Função para obter nome do produto por ID usando dados reais
   const obterNomeProduto = (produtoId: string) => {
+    if (!produtoId) return 'Produto não identificado';
     const produto = produtos.find(p => p.id === produtoId);
     return produto?.nome || `Produto ${produtoId}`;
   };
 
-  // Função para obter nome da categoria por ID
+  // Função para obter nome da categoria por ID usando dados reais
   const obterNomeCategoria = (categoriaId: string | number) => {
+    if (!categoriaId) return 'Categoria não identificada';
     const categoriaIdNum = Number(categoriaId);
-    // Buscar nas categorias de produtos disponíveis
-    const categoriasDisponiveis = [
-      { id: 1, nome: 'Pães' },
-      { id: 2, nome: 'Bolos' },
-      { id: 3, nome: 'Doces' },
-      { id: 4, nome: 'Salgados' },
-      { id: 5, nome: 'Biscoitos' }
-    ];
-    
-    const categoria = categoriasDisponiveis.find(cat => cat.id === categoriaIdNum);
+    const categoria = categorias.find(cat => cat.id === categoriaIdNum);
     return categoria?.nome || `Categoria ${categoriaId}`;
   };
 
@@ -151,7 +162,7 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
           return dataEntrega >= dataInicioDate && dataEntrega <= dataFimDate;
         });
         
-        // Calcular faturamento detalhado para cada entrega
+        // Calcular faturamento detalhado para cada entrega em paralelo
         const entregasComDetalhes = await Promise.all(
           entregasFiltradas.map(async (entrega) => {
             const { faturamento, precosPraticados, ticketEntrega } = await calcularFaturamentoDetalhado(entrega);
@@ -382,7 +393,7 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
                                 <h4 className="font-medium mb-2">Itens da Entrega:</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                                   {entrega.itens.map((item: any, index: number) => {
-                                    const categoriaKey = String(item.categoria_id);
+                                    const categoriaKey = item.categoria_id?.toString() || '';
                                     const precoItem = entrega.precosPraticados[categoriaKey];
                                     const subtotal = precoItem ? (Number(item.quantidade) * precoItem) : 0;
                                     
