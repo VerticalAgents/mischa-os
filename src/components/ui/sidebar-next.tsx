@@ -23,48 +23,46 @@ const sidebarVariants = {
     width: "3.05rem"
   }
 };
+
 const contentVariants = {
   open: {
-    display: "block",
     opacity: 1
   },
   closed: {
-    display: "block",
     opacity: 1
   }
 };
+
 const variants = {
   open: {
     x: 0,
     opacity: 1,
     transition: {
-      x: {
-        stiffness: 1000,
-        velocity: -100
-      }
+      duration: 0.1,
+      ease: "easeOut"
     }
   },
   closed: {
-    x: -20,
+    x: -10,
     opacity: 0,
     transition: {
-      x: {
-        stiffness: 100
-      }
+      duration: 0.1,
+      ease: "easeIn"
     }
   }
 };
+
 const transitionProps = {
   type: "tween",
   ease: "easeOut",
-  duration: 0.2,
-  staggerChildren: 0.1
+  duration: 0.1
 };
+
 const staggerVariants = {
   open: {
     transition: {
-      staggerChildren: 0.03,
-      delayChildren: 0.02
+      staggerChildren: 0.01,
+      delayChildren: 0.01
     }
   }
 };
@@ -144,7 +142,7 @@ export function SessionNavBar() {
                             group.variant === "system" && "bg-gray-400"
                           )}/>
                           {!isCollapsed && (
-                            <span className="ml-2 text-xs font-medium uppercase text-muted-foreground">
+                            <span className="ml-2 text-xs font-medium uppercase text-muted-foreground text-left">
                               {group.title}
                             </span>
                           )}
@@ -163,7 +161,7 @@ export function SessionNavBar() {
                             >
                               {item.icon}
                               <motion.li variants={variants}>
-                                {!isCollapsed && <p className="ml-2 text-sm">{item.label}</p>}
+                                {!isCollapsed && <p className="ml-2 text-sm text-left">{item.label}</p>}
                               </motion.li>
                             </Link>
                           ))}

@@ -174,26 +174,26 @@ export default function TodosAgendamentos() {
       </div>
 
       <Table>
-        <TableCaption>Lista de todos os agendamentos.</TableCaption>
+        <TableCaption className="text-left">Lista de todos os agendamentos.</TableCaption>
         <TableHeader>
           <TableRow>
-            <TableHead>PDV</TableHead>
-            <TableHead>Data Reposição</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Tipo</TableHead>
-            <TableHead className="text-right">Ações</TableHead>
+            <TableHead className="text-left">PDV</TableHead>
+            <TableHead className="text-left">Data Reposição</TableHead>
+            <TableHead className="text-left">Status</TableHead>
+            <TableHead className="text-left">Tipo</TableHead>
+            <TableHead className="text-left">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sortedAgendamentos.map((agendamento) => (
             <TableRow key={agendamento.cliente.id}>
-              <TableCell>{agendamento.cliente.nome}</TableCell>
-              <TableCell>
+              <TableCell className="text-left">{agendamento.cliente.nome}</TableCell>
+              <TableCell className="text-left">
                 {format(agendamento.dataReposicao, "dd 'de' MMMM 'de' yyyy", {
                   locale: ptBR,
                 })}
               </TableCell>
-              <TableCell>
+              <TableCell className="text-left">
                 <Badge 
                   variant={
                     agendamento.statusAgendamento === "Agendado" ? "default" :
@@ -203,11 +203,11 @@ export default function TodosAgendamentos() {
                   {agendamento.statusAgendamento}
                 </Badge>
               </TableCell>
-              <TableCell>
+              <TableCell className="text-left">
                 <TipoPedidoBadge tipo={agendamento.pedido?.tipoPedido || 'Padrão'} />
               </TableCell>
-              <TableCell className="text-right">
-                <div className="flex gap-2 justify-end">
+              <TableCell className="text-left">
+                <div className="flex gap-2">
                   {agendamento.statusAgendamento === "Previsto" && (
                     <Button
                       variant="default"
