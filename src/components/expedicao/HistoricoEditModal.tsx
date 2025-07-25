@@ -123,12 +123,12 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
   };
 
   const removerItem = (index: number) => {
-    const novosItens = itensEntrega.filter((_, i) => i !== index);
+    const novosItens: ItemEntrega[] = itensEntrega.filter((_, i) => i !== index);
     setItensEntrega(novosItens);
   };
 
   const atualizarItem = (index: number, campo: keyof ItemEntrega, valor: any) => {
-    const novosItens = [...itensEntrega];
+    const novosItens: ItemEntrega[] = [...itensEntrega];
     
     if (campo === 'produto_id') {
       const produto = produtos.find(p => p.id.toString() === valor);
