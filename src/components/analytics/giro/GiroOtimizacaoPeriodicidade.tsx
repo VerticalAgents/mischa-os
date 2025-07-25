@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +7,7 @@ import { Target, Search, BarChart3, Bug, ArrowLeft } from 'lucide-react';
 import { DadosAnaliseGiroConsolidados } from '@/types/giroAnalysis';
 import { GiroComparativoTable } from './components/GiroComparativoTable';
 import { PassoAPassoDebug } from './components/PassoAPassoDebug';
+import { DebugClientesCarregamento } from './components/DebugClientesCarregamento';
 
 interface GiroOtimizacaoPeriodicidadeProps {
   dadosConsolidados: DadosAnaliseGiroConsolidados[];
@@ -18,6 +18,7 @@ export function GiroOtimizacaoPeriodicidade({ dadosConsolidados, isLoading }: Gi
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [mostrarPassoAPasso, setMostrarPassoAPasso] = useState(false);
+  const [mostrarDebugCarregamento, setMostrarDebugCarregamento] = useState(false);
 
   if (isLoading) {
     return (
@@ -30,6 +31,29 @@ export function GiroOtimizacaoPeriodicidade({ dadosConsolidados, isLoading }: Gi
           </div>
         </CardContent>
       </Card>
+    );
+  }
+
+  // Se está mostrando o debug de carregamento, renderizar apenas ele
+  if (mostrarDebugCarregamento) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => setMostrarDebugCarregamento(false)}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </Button>
+          <h2 className="text-lg font-semibold">Debug de Carregamento - Otimização de Periodicidade</h2>
+        </div>
+        <DebugClientesCarregamento 
+          nomeAba="Otimização de Periodicidade"
+          dadosConsolidados={dadosConsolidados}
+        />
+      </div>
     );
   }
 
@@ -194,6 +218,14 @@ export function GiroOtimizacaoPeriodicidade({ dadosConsolidados, isLoading }: Gi
                 <SelectItem value="abaixo">🔴 Abaixo</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              onClick={() => setMostrarDebugCarregamento(true)}
+              className="flex items-center gap-2"
+            >
+              <Bug className="h-4 w-4" />
+              Debug Carregamento
+            </Button>
             <Button
               variant="outline"
               onClick={() => setMostrarPassoAPasso(true)}
