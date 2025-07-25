@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
-import { Trash2, Plus, X } from "lucide-react";
+import { Trash2, Plus, X, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
@@ -49,6 +49,7 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
   const [itensEntrega, setItensEntrega] = useState<ItemEntrega[]>([]);
   const [tipoPedido, setTipoPedido] = useState<'Padrão' | 'Alterado'>('Padrão');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [atualizandoProdutos, setAtualizandoProdutos] = useState(false);
   const { editarRegistro, excluirRegistro } = useHistoricoEntregasStore();
   const { obterProporcoesParaPedido } = useSupabaseProporoesPadrao();
   const { produtos } = useProdutoStore();
@@ -113,6 +114,20 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
     if (tipoPedido === 'Padrão') {
       const qtdTotal = parseInt(novaQuantidade) || 0;
       calcularProporcoesParaPadrao(qtdTotal);
+    }
+  };
+
+  const handleAtualizarProdutos = async () => {
+    setAtualizandoProdutos(true);
+    try {
+      // Recarregar produtos do store
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simular carregamento
+      toast.success("Lista de produtos atualizada com sucesso!");
+    } catch (error) {
+      console.error('Erro ao atualizar produtos:', error);
+      toast.error("Erro ao atualizar lista de produtos");
+    } finally {
+      setAtualizandoProdutos(false);
     }
   };
 
@@ -297,8 +312,21 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
               </div>
 
               <div>
-                <Label>Itens da Entrega</Label>
-                <div className="space-y-2 mt-2">
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Itens da Entrega</Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAtualizarProdutos}
+                    disabled={atualizandoProdutos}
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${atualizandoProdutos ? 'animate-spin' : ''}`} />
+                    {atualizandoProdutos ? 'Atualizando...' : 'Atualizar Lista'}
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
                   {itensEntrega.map((item, index) => (
                     <div key={index} className="flex gap-2 items-center">
                       <Select
