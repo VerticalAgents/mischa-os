@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -7,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Package, TrendingUp, Users, DollarSign } from 'lucide-react';
 import { DadosAnaliseGiroConsolidados } from '@/types/giroAnalysis';
+import { ClientesPorCategoriaDropdown } from './components/ClientesPorCategoriaDropdown';
 
 interface GiroPorCategoriaProps {
   dadosConsolidados: DadosAnaliseGiroConsolidados[];
@@ -14,6 +14,8 @@ interface GiroPorCategoriaProps {
 }
 
 export function GiroPorCategoria({ dadosConsolidados, isLoading }: GiroPorCategoriaProps) {
+  const [categoriaDropdownAberto, setCategoriaDropdownAberto] = useState<string | null>(null);
+
   if (isLoading) {
     return (
       <Card>
@@ -89,6 +91,12 @@ export function GiroPorCategoria({ dadosConsolidados, isLoading }: GiroPorCatego
   }));
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+
+  const toggleCategoriaDropdown = (categoria: string) => {
+    setCategoriaDropdownAberto(
+      categoriaDropdownAberto === categoria ? null : categoria
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -201,60 +209,24 @@ export function GiroPorCategoria({ dadosConsolidados, isLoading }: GiroPorCatego
         </Card>
       </div>
 
-      {/* Tabela detalhada */}
+      {/* Tabela detalhada com dropdown */}
       <Card>
         <CardHeader>
           <CardTitle>Análise Detalhada por Categoria</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Categoria</TableHead>
-                <TableHead className="text-right">Clientes</TableHead>
-                <TableHead className="text-right">Giro Médio</TableHead>
-                <TableHead className="text-right">Achievement</TableHead>
-                <TableHead className="text-right">Faturamento</TableHead>
-                <TableHead className="text-center">Performance</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {categoriasArray.map((categoria) => (
-                <TableRow key={categoria.nome}>
-                  <TableCell className="font-medium">{categoria.nome}</TableCell>
-                  <TableCell className="text-right">{categoria.totalClientes}</TableCell>
-                  <TableCell className="text-right font-mono">
-                    {categoria.giroMedio.toFixed(1)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono">{categoria.achievementMedio.toFixed(1)}%</span>
-                      <Progress value={categoria.achievementMedio} className="w-16 h-2" />
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {new Intl.NumberFormat('pt-BR', { 
-                      style: 'currency', 
-                      currency: 'BRL' 
-                    }).format(categoria.faturamentoTotal)}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex gap-1 justify-center">
-                      <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
-                        {categoria.distribuicaoPerformance.verde}
-                      </Badge>
-                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs">
-                        {categoria.distribuicaoPerformance.amarelo}
-                      </Badge>
-                      <Badge variant="secondary" className="bg-red-100 text-red-800 text-xs">
-                        {categoria.distribuicaoPerformance.vermelho}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="space-y-2">
+            {categoriasArray.map((categoria) => (
+              <div key={categoria.nome} className="border rounded-lg">
+                <ClientesPorCategoriaDropdown
+                  categoria={categoria.nome}
+                  dadosConsolidados={dadosConsolidados}
+                  isOpen={categoriaDropdownAberto === categoria.nome}
+                  onToggle={() => toggleCategoriaDropdown(categoria.nome)}
+                />
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>
