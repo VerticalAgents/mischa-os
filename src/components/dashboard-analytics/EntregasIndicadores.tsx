@@ -31,7 +31,7 @@ export default function EntregasIndicadores({ dataInicio, dataFim }: EntregasInd
   });
   const [loading, setLoading] = useState(false);
 
-  const { carregarHistorico, historico } = useHistoricoEntregasStore();
+  const { carregarHistorico, registros } = useHistoricoEntregasStore();
   const { clientes } = useClienteStore();
   const { carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
 
@@ -52,9 +52,9 @@ export default function EntregasIndicadores({ dataInicio, dataFim }: EntregasInd
         });
       } else {
         const cliente = clientes.find(c => c.id === entrega.cliente_id);
-        if (cliente && cliente.categorias_habilitadas) {
-          const categorias = Array.isArray(cliente.categorias_habilitadas) 
-            ? cliente.categorias_habilitadas 
+        if (cliente && cliente.categoriasHabilitadas) {
+          const categorias = Array.isArray(cliente.categoriasHabilitadas) 
+            ? cliente.categoriasHabilitadas 
             : [];
           
           categorias.forEach((categoria: any) => {
@@ -81,11 +81,18 @@ export default function EntregasIndicadores({ dataInicio, dataFim }: EntregasInd
       try {
         await carregarHistorico();
         
+        // Verificar se registros existe e não está vazio
+        if (!registros || registros.length === 0) {
+          console.log('Nenhum registro encontrado');
+          setLoading(false);
+          return;
+        }
+        
         // Filtrar por período
         const dataInicioDate = new Date(dataInicio);
         const dataFimDate = new Date(dataFim);
         
-        const entregasPeriodo = historico.filter(h => {
+        const entregasPeriodo = registros.filter(h => {
           const dataEntrega = new Date(h.data);
           return dataEntrega >= dataInicioDate && dataEntrega <= dataFimDate;
         });
@@ -188,7 +195,7 @@ export default function EntregasIndicadores({ dataInicio, dataFim }: EntregasInd
     };
     
     processarDados();
-  }, [dataInicio, dataFim, historico.length]);
+  }, [dataInicio, dataFim, registros?.length || 0]);
 
   if (loading) {
     return <div className="text-center py-8">Carregando indicadores...</div>;

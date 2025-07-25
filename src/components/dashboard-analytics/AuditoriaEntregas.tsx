@@ -35,7 +35,7 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
   const [filtroCliente, setFiltroCliente] = useState("");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-  const { carregarHistorico, historico } = useHistoricoEntregasStore();
+  const { carregarHistorico, registros } = useHistoricoEntregasStore();
   const { clientes } = useClienteStore();
   const { carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
 
@@ -58,9 +58,9 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
       } else {
         // Calcular baseado na quantidade padrão
         const cliente = clientes.find(c => c.id === entrega.cliente_id);
-        if (cliente && cliente.categorias_habilitadas) {
-          const categorias = Array.isArray(cliente.categorias_habilitadas) 
-            ? cliente.categorias_habilitadas 
+        if (cliente && cliente.categoriasHabilitadas) {
+          const categorias = Array.isArray(cliente.categoriasHabilitadas) 
+            ? cliente.categoriasHabilitadas 
             : [];
           
           categorias.forEach((categoria: any) => {
@@ -87,11 +87,19 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
       try {
         await carregarHistorico();
         
+        // Verificar se registros existe e não está vazio
+        if (!registros || registros.length === 0) {
+          console.log('Nenhum registro encontrado');
+          setEntregas([]);
+          setLoading(false);
+          return;
+        }
+        
         // Filtrar por período
         const dataInicioDate = new Date(dataInicio);
         const dataFimDate = new Date(dataFim);
         
-        const entregasFiltradas = historico.filter(h => {
+        const entregasFiltradas = registros.filter(h => {
           const dataEntrega = new Date(h.data);
           return dataEntrega >= dataInicioDate && dataEntrega <= dataFimDate;
         });
@@ -116,7 +124,7 @@ export default function AuditoriaEntregas({ dataInicio, dataFim }: AuditoriaEntr
     };
     
     carregarDados();
-  }, [dataInicio, dataFim, historico.length]);
+  }, [dataInicio, dataFim, registros?.length || 0]);
 
   // Filtrar entregas por cliente
   const entregasFiltradas = entregas.filter(entrega =>
