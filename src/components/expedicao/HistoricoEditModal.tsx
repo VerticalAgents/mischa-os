@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -17,6 +18,7 @@ import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
+import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,7 +54,8 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
   const [atualizandoProdutos, setAtualizandoProdutos] = useState(false);
   const { editarRegistro, excluirRegistro } = useHistoricoEntregasStore();
   const { obterProporcoesParaPedido } = useSupabaseProporoesPadrao();
-  const { produtos } = useProdutoStore();
+  const { produtos, inicializar } = useProdutoStore();
+  const { carregarProdutos } = useSupabaseProdutos();
 
   useEffect(() => {
     if (open && registro) {
@@ -120,8 +123,10 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
   const handleAtualizarProdutos = async () => {
     setAtualizandoProdutos(true);
     try {
-      // Recarregar produtos do store
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simular carregamento
+      // Recarregar produtos do Supabase
+      await carregarProdutos();
+      // Reinicializar o store com os dados atualizados
+      inicializar();
       toast.success("Lista de produtos atualizada com sucesso!");
     } catch (error) {
       console.error('Erro ao atualizar produtos:', error);
@@ -335,10 +340,12 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
                         disabled={tipoPedido === 'Padrão'}
                       >
                         <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Selecione um produto" />
+                          <SelectValue placeholder="Selecione um produto">
+                            {item.produto_nome || "Selecione um produto"}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          {produtos.map(produto => (
+                          {produtos.filter(produto => produto.ativo).map(produto => (
                             <SelectItem key={produto.id} value={produto.id.toString()}>
                               {produto.nome}
                             </SelectItem>
