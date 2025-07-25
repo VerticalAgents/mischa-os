@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
-import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -67,6 +66,40 @@ const logAuthAttempt = async (
   }
 };
 
+// Helper function to log audit events without circular dependency
+const logAuditEvent = async (
+  userId: string,
+  action: string,
+  table_name?: string,
+  record_id?: string,
+  old_values?: Record<string, any>,
+  new_values?: Record<string, any>
+) => {
+  try {
+    const userAgent = navigator.userAgent;
+    const ipAddress = await getClientIP();
+    
+    const { error } = await supabase
+      .from('audit_logs')
+      .insert({
+        user_id: userId,
+        action,
+        table_name,
+        record_id,
+        old_values,
+        new_values,
+        user_agent: userAgent,
+        ip_address: ipAddress
+      });
+
+    if (error) {
+      console.error('Error logging audit entry:', error);
+    }
+  } catch (err) {
+    console.error('Error logging audit entry:', err);
+  }
+};
+
 // Helper function to check rate limits
 const checkRateLimit = async (email: string, ipAddress: string): Promise<boolean> => {
   try {
@@ -96,7 +129,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { logAction } = useAuditLog();
 
   useEffect(() => {
     // Set up auth state listener
@@ -114,16 +146,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         if (event === 'SIGNED_IN' && session) {
           // Log successful login
-          await logAction({
-            action: 'LOGIN',
-            table_name: 'auth',
-            record_id: session.user.id,
-            new_values: {
+          await logAuditEvent(
+            session.user.id,
+            'LOGIN',
+            'auth',
+            session.user.id,
+            undefined,
+            {
               user_id: session.user.id,
               email: session.user.email,
               timestamp: new Date().toISOString()
             }
-          });
+          );
 
           // Redirect to /home after successful login
           navigate('/home', { replace: true });
@@ -133,16 +167,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (event === 'SIGNED_OUT') {
           // Log logout
           if (user) {
-            await logAction({
-              action: 'LOGOUT',
-              table_name: 'auth',
-              record_id: user.id,
-              old_values: {
+            await logAuditEvent(
+              user.id,
+              'LOGOUT',
+              'auth',
+              user.id,
+              {
                 user_id: user.id,
                 email: user.email,
                 timestamp: new Date().toISOString()
               }
-            });
+            );
           }
 
           navigate('/login');
@@ -160,7 +195,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate, isInitialized, user, logAction]);
+  }, [navigate, isInitialized, user]);
 
   const signInWithEmail = async (email: string, password: string): Promise<void> => {
     try {

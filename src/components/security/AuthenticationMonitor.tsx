@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,19 +46,29 @@ export function AuthenticationMonitor() {
         return;
       }
 
-      setAuthAttempts(data || []);
+      // Transform data to ensure ip_address is properly typed
+      const transformedData: AuthAttempt[] = (data || []).map(attempt => ({
+        id: attempt.id,
+        ip_address: String(attempt.ip_address || '127.0.0.1'),
+        email: attempt.email,
+        attempt_type: attempt.attempt_type,
+        success: attempt.success,
+        created_at: attempt.created_at
+      }));
+
+      setAuthAttempts(transformedData);
 
       // Calculate stats
-      const totalAttempts = data?.length || 0;
-      const successfulAttempts = data?.filter(a => a.success).length || 0;
+      const totalAttempts = transformedData.length;
+      const successfulAttempts = transformedData.filter(a => a.success).length;
       const failedAttempts = totalAttempts - successfulAttempts;
-      const uniqueIPs = new Set(data?.map(a => a.ip_address)).size;
+      const uniqueIPs = new Set(transformedData.map(a => a.ip_address)).size;
       
       // Suspicious activity: more than 5 failed attempts from same IP in last hour
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      const recentFailures = data?.filter(a => 
+      const recentFailures = transformedData.filter(a => 
         !a.success && new Date(a.created_at) > oneHourAgo
-      ) || [];
+      );
       
       const failuresByIP = recentFailures.reduce((acc, attempt) => {
         acc[attempt.ip_address] = (acc[attempt.ip_address] || 0) + 1;
