@@ -17,6 +17,7 @@ import CustomerBehavior from "@/components/dashboard-analytics/CustomerBehavior"
 import ProductionIndicators from "@/components/dashboard-analytics/ProductionIndicators";
 import AlertsRisks from "@/components/dashboard-analytics/AlertsRisks";
 import ProducaoSimuladaTab from "@/components/dashboard-analytics/ProducaoSimuladaTab";
+import EntregasAnalyticsTab from "@/components/dashboard-analytics/EntregasAnalyticsTab";
 
 // PDF Export
 import { jsPDF } from "jspdf";
@@ -109,6 +110,7 @@ export default function DashboardAnalytics() {
             <TabsTrigger value="customer-behavior">Análise de PDV e Giro</TabsTrigger>
             <TabsTrigger value="production-indicators">Indicadores de Produção</TabsTrigger>
             <TabsTrigger value="producao-simulada">Produção Simulada (Mensal)</TabsTrigger>
+            <TabsTrigger value="entregas">Entregas</TabsTrigger>
             <TabsTrigger value="alerts-risks">Alertas e Riscos</TabsTrigger>
           </TabsList>
           
@@ -143,6 +145,10 @@ export default function DashboardAnalytics() {
           
           <TabsContent value="producao-simulada" className="mt-0">
             <ProducaoSimuladaTab clientes={clientes} />
+          </TabsContent>
+          
+          <TabsContent value="entregas" className="mt-0">
+            <EntregasAnalyticsTab />
           </TabsContent>
           
           <TabsContent value="alerts-risks" className="mt-0">
