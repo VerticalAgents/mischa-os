@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useColumnVisibility } from "@/hooks/useColumnVisibility";
@@ -37,13 +37,18 @@ export default function Clientes() {
     selecionarCliente(null);
   }, [selecionarCliente]);
 
-  // Carregar clientes ao montar o componente
+  // Carregar clientes apenas uma vez ao montar o componente
   useEffect(() => {
     carregarClientes();
-  }, [carregarClientes, refreshTrigger]);
+  }, [carregarClientes]);
+
+  // Otimização: Memoizar clientes filtrados
+  const clientes = useMemo(() => {
+    return getClientesFiltrados();
+  }, [getClientesFiltrados, filtros, refreshTrigger]);
 
   // Available columns for the table
-  const columnOptions: ColumnOption[] = [
+  const columnOptions: ColumnOption[] = useMemo(() => [
     { id: "nome", label: "Nome", canToggle: false },
     { id: "giroSemanal", label: "Giro Semanal", canToggle: false },
     { id: "cnpjCpf", label: "CNPJ/CPF", canToggle: true },
@@ -55,7 +60,7 @@ export default function Clientes() {
     { id: "statusAgendamento", label: "Status Agendamento", canToggle: true },
     { id: "proximaDataReposicao", label: "Próx. Reposição", canToggle: true },
     { id: "acoes", label: "Ações", canToggle: false }
-  ];
+  ], []);
 
   // Column visibility state with persistence
   const defaultColumns = [
@@ -67,8 +72,6 @@ export default function Clientes() {
     'clientes-visible-columns',
     defaultColumns
   );
-
-  const clientes = getClientesFiltrados();
   
   const handleOpenForm = () => {
     setIsFormOpen(true);
@@ -172,7 +175,7 @@ export default function Clientes() {
 
       {loading ? (
         <div className="flex justify-center items-center py-8">
-          <div className="text-muted-foreground">Carregando clientes...</div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       ) : (
         <ClientesTable 

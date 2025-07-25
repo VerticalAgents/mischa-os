@@ -124,12 +124,35 @@ export const useClienteStore = create<ClienteStore>()(
       carregarClientes: async () => {
         set({ loading: true });
         try {
-          console.log('useClienteStore: Carregando clientes com dados de agendamento...');
+          console.log('useClienteStore: Carregando clientes otimizado...');
           
-          // Carregar clientes junto com seus agendamentos
+          // Otimização 1: Buscar apenas os campos necessários para a listagem
           const { data: clientesData, error: clientesError } = await supabase
             .from('clientes')
-            .select('*')
+            .select(`
+              id,
+              nome,
+              cnpj_cpf,
+              endereco_entrega,
+              contato_nome,
+              contato_telefone,
+              contato_email,
+              quantidade_padrao,
+              periodicidade_padrao,
+              status_cliente,
+              meta_giro_semanal,
+              giro_medio_semanal,
+              representante_id,
+              rota_entrega_id,
+              categoria_estabelecimento_id,
+              tipo_logistica,
+              tipo_cobranca,
+              forma_pagamento,
+              ativo,
+              created_at,
+              categorias_habilitadas
+            `)
+            .eq('ativo', true)
             .order('created_at', { ascending: false });
 
           if (clientesError) {
@@ -142,32 +165,30 @@ export const useClienteStore = create<ClienteStore>()(
             return;
           }
 
-          // Carregar todos os agendamentos
-          const { data: agendamentosData, error: agendamentosError } = await supabase
-            .from('agendamentos_clientes')
-            .select('*');
+          // Otimização 2: Buscar agendamentos apenas para clientes ativos
+          const clienteIds = clientesData?.map(c => c.id) || [];
+          let agendamentosPorCliente = new Map();
+          
+          if (clienteIds.length > 0) {
+            const { data: agendamentosData, error: agendamentosError } = await supabase
+              .from('agendamentos_clientes')
+              .select('cliente_id, status_agendamento, data_proxima_reposicao')
+              .in('cliente_id', clienteIds);
 
-          if (agendamentosError) {
-            console.error('Erro ao carregar agendamentos:', agendamentosError);
-            // Continuar mesmo se houver erro nos agendamentos
+            if (!agendamentosError && agendamentosData) {
+              agendamentosData.forEach(agendamento => {
+                agendamentosPorCliente.set(agendamento.cliente_id, agendamento);
+              });
+            }
           }
 
-          // Mapear agendamentos por cliente_id para fácil acesso
-          const agendamentosPorCliente = new Map();
-          if (agendamentosData) {
-            agendamentosData.forEach(agendamento => {
-              agendamentosPorCliente.set(agendamento.cliente_id, agendamento);
-            });
-          }
-
-          // Converter clientes incluindo dados de agendamento
+          // Otimização 3: Conversão mais eficiente
           const clientesConvertidos = clientesData?.map(cliente => {
             const agendamento = agendamentosPorCliente.get(cliente.id);
-            console.log(`useClienteStore: Cliente ${cliente.nome} - Agendamento:`, agendamento);
             return convertSupabaseToCliente(cliente, agendamento);
           }) || [];
 
-          console.log('useClienteStore: Total de clientes carregados:', clientesConvertidos.length);
+          console.log('useClienteStore: Clientes carregados com sucesso:', clientesConvertidos.length);
           set({ clientes: clientesConvertidos });
         } catch (error) {
           console.error('Erro ao carregar clientes:', error);
