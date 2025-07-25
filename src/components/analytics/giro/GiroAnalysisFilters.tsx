@@ -31,9 +31,18 @@ export function GiroAnalysisFiltersComponent({
   const [isOpen, setIsOpen] = useState(false);
 
   const handleFilterChange = (key: keyof GiroAnalysisFilters, value: any) => {
+    const defaultValues = {
+      representante: 'todos',
+      rota: 'todas',
+      categoria_estabelecimento: 'todas',
+      semaforo: 'todas'
+    };
+    
+    const defaultValue = defaultValues[key as keyof typeof defaultValues];
+    
     onFiltrosChange({
       ...filtros,
-      [key]: value === "todos" ? undefined : value
+      [key]: value === defaultValue ? undefined : value
     });
   };
 
@@ -90,7 +99,7 @@ export function GiroAnalysisFiltersComponent({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
-                  {representantes.map((rep) => (
+                  {representantes.filter(rep => rep && rep.trim() !== '').map((rep) => (
                     <SelectItem key={rep} value={rep}>
                       {rep}
                     </SelectItem>
@@ -111,7 +120,7 @@ export function GiroAnalysisFiltersComponent({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
-                  {rotas.map((rota) => (
+                  {rotas.filter(rota => rota && rota.trim() !== '').map((rota) => (
                     <SelectItem key={rota} value={rota}>
                       {rota}
                     </SelectItem>
@@ -132,7 +141,7 @@ export function GiroAnalysisFiltersComponent({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
-                  {categorias.map((cat) => (
+                  {categorias.filter(cat => cat && cat.trim() !== '').map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
                     </SelectItem>
