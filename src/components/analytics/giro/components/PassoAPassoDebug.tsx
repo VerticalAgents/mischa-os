@@ -1,203 +1,329 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Database, Calculator, TrendingUp, AlertCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Search, AlertTriangle, CheckCircle, Calculator, Database } from 'lucide-react';
 import { DadosAnaliseGiroConsolidados } from '@/types/giroAnalysis';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+interface EntregaDetalhada {
+  id: string;
+  data: string;
+  quantidade: number;
+  tipo: string;
+}
+
+interface PassoAPassoData {
+  cliente: DadosAnaliseGiroConsolidados;
+  entregas4Semanas: EntregaDetalhada[];
+  giroHistoricoCalculado: number;
+  giroProjetado: number;
+  metaGiroSemanal: number;
+  achievement: number;
+  semaforo: 'verde' | 'amarelo' | 'vermelho';
+  alertas: string[];
+}
 
 interface PassoAPassoDebugProps {
   dadosConsolidados: DadosAnaliseGiroConsolidados[];
 }
 
 export function PassoAPassoDebug({ dadosConsolidados }: PassoAPassoDebugProps) {
-  const [expandedCliente, setExpandedCliente] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [clienteSelecionado, setClienteSelecionado] = useState<string>('');
+  const [dadosDebug, setDadosDebug] = useState<PassoAPassoData | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const toggleExpanded = (clienteId: string) => {
-    setExpandedCliente(expandedCliente === clienteId ? null : clienteId);
-  };
+  const clientesFiltrados = dadosConsolidados.filter(cliente => 
+    cliente.cliente_nome.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const calcularGiroProjetado = (item: DadosAnaliseGiroConsolidados): number => {
-    if (!item.quantidade_padrao || !item.periodicidade_padrao) return 0;
-    return Math.round((item.quantidade_padrao / item.periodicidade_padrao) * 7);
+  const analisarCliente = async (clienteId: string) => {
+    setLoading(true);
+    try {
+      const cliente = dadosConsolidados.find(c => c.cliente_id === clienteId);
+      if (!cliente) return;
+
+      // 1. Buscar entregas das últimas 4 semanas
+      const dataLimite = new Date();
+      dataLimite.setDate(dataLimite.getDate() - 28);
+
+      const { data: entregas, error } = await supabase
+        .from('historico_entregas')
+        .select('id, data, quantidade, tipo')
+        .eq('cliente_id', clienteId)
+        .eq('tipo', 'entrega')
+        .gte('data', dataLimite.toISOString())
+        .order('data', { ascending: false });
+
+      if (error) throw error;
+
+      // 2. Calcular giro histórico correto
+      const totalEntregas = entregas?.reduce((total, entrega) => total + entrega.quantidade, 0) || 0;
+      const giroHistoricoCalculado = Math.round(totalEntregas / 4);
+
+      // 3. Calcular giro projetado
+      const giroProjetado = cliente.quantidade_padrao && cliente.periodicidade_padrao 
+        ? Math.round((cliente.quantidade_padrao / cliente.periodicidade_padrao) * 7)
+        : 0;
+
+      // 4. Calcular achievement
+      const metaGiroSemanal = cliente.meta_giro_semanal || 0;
+      const achievement = metaGiroSemanal > 0 ? (giroHistoricoCalculado / metaGiroSemanal) * 100 : 0;
+
+      // 5. Determinar semáforo
+      let semaforo: 'verde' | 'amarelo' | 'vermelho' = 'vermelho';
+      if (achievement >= 90) {
+        semaforo = 'verde';
+      } else if (achievement >= 70) {
+        semaforo = 'amarelo';
+      }
+
+      // 6. Gerar alertas
+      const alertas: string[] = [];
+      
+      if (!entregas || entregas.length === 0) {
+        alertas.push('⚠️ Nenhuma entrega encontrada nas últimas 4 semanas');
+      }
+      
+      if (giroHistoricoCalculado !== cliente.giro_medio_historico) {
+        alertas.push(`🔍 Discrepância: Giro histórico calculado (${giroHistoricoCalculado}) difere do valor na base (${cliente.giro_medio_historico})`);
+      }
+      
+      if (giroProjetado === 0) {
+        alertas.push('⚠️ Não foi possível calcular giro projetado (quantidade_padrao ou periodicidade_padrao não definidos)');
+      }
+      
+      if (metaGiroSemanal === 0) {
+        alertas.push('⚠️ Meta de giro semanal não definida');
+      }
+
+      setDadosDebug({
+        cliente,
+        entregas4Semanas: entregas || [],
+        giroHistoricoCalculado,
+        giroProjetado,
+        metaGiroSemanal,
+        achievement: Math.round(achievement),
+        semaforo,
+        alertas
+      });
+
+    } catch (error) {
+      console.error('Erro ao analisar cliente:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* Explicação geral */}
+      {/* Seletor de Cliente */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-blue-600" />
-            Passo a Passo - Origem dos Dados
+            <Database className="h-5 w-5" />
+            Análise Passo a Passo - Debug de Dados
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">1. Dados Consolidados (Materialized View)</h3>
-              <p className="text-sm text-gray-700">
-                Os dados vêm da tabela <code className="bg-gray-100 px-1 rounded">dados_analise_giro_materialized</code> 
-                que é uma view materializada no Supabase que consolida informações de múltiplas tabelas.
-              </p>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Buscar cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
-
-            <div className="bg-green-50 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">2. Giro Histórico</h3>
-              <p className="text-sm text-gray-700">
-                Campo <code className="bg-gray-100 px-1 rounded">giro_medio_historico</code> - 
-                Calculado com base no histórico de entregas das últimas 4 semanas.
-              </p>
-            </div>
-
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">3. Giro Projetado</h3>
-              <p className="text-sm text-gray-700">
-                Calculado como: <code className="bg-gray-100 px-1 rounded">(quantidade_padrao / periodicidade_padrao) * 7</code>
-              </p>
+            
+            <div className="max-h-48 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Giro Histórico (Base)</TableHead>
+                    <TableHead>Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {clientesFiltrados.map((cliente) => (
+                    <TableRow key={cliente.cliente_id}>
+                      <TableCell>{cliente.cliente_nome}</TableCell>
+                      <TableCell>{cliente.giro_medio_historico}</TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setClienteSelecionado(cliente.cliente_id);
+                            analisarCliente(cliente.cliente_id);
+                          }}
+                          disabled={loading}
+                        >
+                          {loading && clienteSelecionado === cliente.cliente_id ? 'Analisando...' : 'Analisar'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Lista de clientes com detalhes */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Detalhes por Cliente</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[600px]">
-            <div className="space-y-3">
-              {dadosConsolidados.map((item) => {
-                const giroProjetado = calcularGiroProjetado(item);
-                const giroHistorico = item.giro_medio_historico;
-                const diferenca = giroProjetado > 0 ? ((giroHistorico - giroProjetado) / giroProjetado) * 100 : 0;
-                const isExpanded = expandedCliente === item.cliente_id;
-                
-                return (
-                  <div key={item.cliente_id} className="border rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleExpanded(item.cliente_id)}
-                          className="p-1 h-6 w-6"
-                        >
-                          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        </Button>
-                        <span className="font-medium">{item.cliente_nome}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">
-                          Histórico: {giroHistorico.toFixed(1)}
-                        </Badge>
-                        <Badge variant="outline">
-                          Projetado: {giroProjetado.toFixed(1)}
-                        </Badge>
-                        <Badge 
-                          variant={diferenca >= -10 && diferenca <= 10 ? 'default' : 'destructive'}
-                        >
-                          {diferenca > 0 ? '+' : ''}{diferenca.toFixed(1)}%
-                        </Badge>
-                      </div>
-                    </div>
+      {/* Resultado da Análise */}
+      {dadosDebug && (
+        <div className="space-y-6">
+          {/* Alertas */}
+          {dadosDebug.alertas.length > 0 && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-1">
+                  {dadosDebug.alertas.map((alerta, index) => (
+                    <div key={index}>{alerta}</div>
+                  ))}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
-                    {isExpanded && (
-                      <div className="mt-4 space-y-4">
-                        <Separator />
-                        
-                        {/* Dados brutos */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-gray-50 p-3 rounded">
-                            <h4 className="font-semibold mb-2 flex items-center gap-2">
-                              <Database className="h-4 w-4" />
-                              Dados Brutos (Banco)
-                            </h4>
-                            <div className="space-y-1 text-sm">
-                              <p><strong>ID:</strong> {item.cliente_id}</p>
-                              <p><strong>Status:</strong> {item.status_cliente}</p>
-                              <p><strong>Quantidade Padrão:</strong> {item.quantidade_padrao || 'N/A'}</p>
-                              <p><strong>Periodicidade Padrão:</strong> {item.periodicidade_padrao || 'N/A'} dias</p>
-                              <p><strong>Giro Médio Histórico:</strong> {item.giro_medio_historico}</p>
-                              <p><strong>Giro Última Semana:</strong> {item.giro_ultima_semana}</p>
-                              <p><strong>Desvio Padrão:</strong> {item.desvio_padrao_giro.toFixed(2)}</p>
-                              <p><strong>Variação %:</strong> {item.variacao_percentual.toFixed(1)}%</p>
-                            </div>
-                          </div>
+          {/* Resumo dos Cálculos */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calculator className="h-5 w-5" />
+                Resumo dos Cálculos - {dadosDebug.cliente.cliente_nome}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{dadosDebug.giroHistoricoCalculado}</div>
+                  <div className="text-sm text-muted-foreground">Giro Histórico Correto</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{dadosDebug.giroProjetado}</div>
+                  <div className="text-sm text-muted-foreground">Giro Projetado</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{dadosDebug.achievement}%</div>
+                  <div className="text-sm text-muted-foreground">Achievement</div>
+                </div>
+                <div className="text-center">
+                  <Badge 
+                    variant="secondary" 
+                    className={
+                      dadosDebug.semaforo === 'verde' ? 'bg-green-100 text-green-800' :
+                      dadosDebug.semaforo === 'amarelo' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }
+                  >
+                    {dadosDebug.semaforo}
+                  </Badge>
+                  <div className="text-sm text-muted-foreground mt-1">Semáforo</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-                          <div className="bg-blue-50 p-3 rounded">
-                            <h4 className="font-semibold mb-2 flex items-center gap-2">
-                              <Calculator className="h-4 w-4" />
-                              Cálculos Derivados
-                            </h4>
-                            <div className="space-y-1 text-sm">
-                              <p><strong>Giro Projetado:</strong></p>
-                              <p className="ml-2">({item.quantidade_padrao || 0} / {item.periodicidade_padrao || 0}) × 7</p>
-                              <p className="ml-2">= {giroProjetado.toFixed(1)} unidades/semana</p>
-                              
-                              <p className="mt-2"><strong>Diferença:</strong></p>
-                              <p className="ml-2">({giroHistorico} - {giroProjetado}) / {giroProjetado} × 100</p>
-                              <p className="ml-2">= {diferenca.toFixed(1)}%</p>
-                            </div>
-                          </div>
-                        </div>
+          {/* Passo a Passo do Cálculo */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Passo a Passo do Cálculo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="border-l-4 border-blue-500 pl-4">
+                  <h4 className="font-semibold">1. Busca das Entregas (Últimas 4 Semanas)</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Consulta: historico_entregas WHERE cliente_id = '{dadosDebug.cliente.cliente_id}' 
+                    AND tipo = 'entrega' AND data >= últimas 4 semanas
+                  </p>
+                  <p className="text-sm">
+                    Resultado: {dadosDebug.entregas4Semanas.length} entregas encontradas
+                  </p>
+                </div>
 
-                        {/* Análise */}
-                        <div className="bg-yellow-50 p-3 rounded">
-                          <h4 className="font-semibold mb-2 flex items-center gap-2">
-                            <TrendingUp className="h-4 w-4" />
-                            Análise
-                          </h4>
-                          <div className="space-y-2 text-sm">
-                            <p><strong>Semáforo:</strong> 
-                              <Badge 
-                                variant={item.semaforo_performance === 'verde' ? 'default' : 'destructive'}
-                                className="ml-2"
-                              >
-                                {item.semaforo_performance}
-                              </Badge>
-                            </p>
-                            <p><strong>Achievement Meta:</strong> {item.achievement_meta.toFixed(1)}%</p>
-                            <p><strong>Faturamento Semanal Previsto:</strong> R$ {item.faturamento_semanal_previsto.toFixed(2)}</p>
-                            <p><strong>Data Consolidação:</strong> {new Date(item.data_consolidacao).toLocaleDateString()}</p>
-                          </div>
-                        </div>
+                <div className="border-l-4 border-green-500 pl-4">
+                  <h4 className="font-semibold">2. Cálculo do Giro Histórico</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Fórmula: SOMA(quantidade_entregas) / 4 semanas
+                  </p>
+                  <p className="text-sm">
+                    Cálculo: {dadosDebug.entregas4Semanas.reduce((sum, e) => sum + e.quantidade, 0)} unidades ÷ 4 semanas = {dadosDebug.giroHistoricoCalculado} unidades/semana
+                  </p>
+                </div>
 
-                        {/* Alertas */}
-                        {(Math.abs(diferenca) > 50) && (
-                          <div className="bg-red-50 p-3 rounded border border-red-200">
-                            <h4 className="font-semibold mb-2 flex items-center gap-2 text-red-700">
-                              <AlertCircle className="h-4 w-4" />
-                              Possíveis Problemas
-                            </h4>
-                            <div className="space-y-1 text-sm text-red-700">
-                              {diferenca > 50 && (
-                                <p>• Giro histórico muito acima do projetado - verificar se há entregas extras não planejadas</p>
-                              )}
-                              {diferenca < -50 && (
-                                <p>• Giro histórico muito abaixo do projetado - verificar se há entregas em atraso ou canceladas</p>
-                              )}
-                              {!item.quantidade_padrao && (
-                                <p>• Quantidade padrão não definida - cliente pode estar mal configurado</p>
-                              )}
-                              {!item.periodicidade_padrao && (
-                                <p>• Periodicidade padrão não definida - cliente pode estar mal configurado</p>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+                <div className="border-l-4 border-purple-500 pl-4">
+                  <h4 className="font-semibold">3. Cálculo do Giro Projetado</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Fórmula: (quantidade_padrao / periodicidade_padrao) × 7 dias
+                  </p>
+                  <p className="text-sm">
+                    Cálculo: ({dadosDebug.cliente.quantidade_padrao || 0} ÷ {dadosDebug.cliente.periodicidade_padrao || 0}) × 7 = {dadosDebug.giroProjetado} unidades/semana
+                  </p>
+                </div>
+
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h4 className="font-semibold">4. Cálculo do Achievement</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Fórmula: (giro_historico / meta_giro_semanal) × 100
+                  </p>
+                  <p className="text-sm">
+                    Cálculo: ({dadosDebug.giroHistoricoCalculado} ÷ {dadosDebug.metaGiroSemanal}) × 100 = {dadosDebug.achievement}%
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Detalhes das Entregas */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Entregas das Últimas 4 Semanas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {dadosDebug.entregas4Semanas.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Quantidade</TableHead>
+                      <TableHead>Tipo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dadosDebug.entregas4Semanas.map((entrega) => (
+                      <TableRow key={entrega.id}>
+                        <TableCell>
+                          {format(new Date(entrega.data), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                        </TableCell>
+                        <TableCell>{entrega.quantidade}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{entrega.tipo}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  Nenhuma entrega encontrada nas últimas 4 semanas
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

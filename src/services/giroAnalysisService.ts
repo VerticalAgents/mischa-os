@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -112,8 +111,56 @@ function parseJsonArray(jsonValue: Json): number[] | null {
   }
 }
 
+// Helper function to calculate historical giro from deliveries
+async function calcularGiroHistoricoPorEntregas(clienteId: string): Promise<number> {
+  const dataLimite = new Date();
+  dataLimite.setDate(dataLimite.getDate() - 28); // Últimas 4 semanas (28 dias)
+
+  const { data: entregas, error } = await supabase
+    .from('historico_entregas')
+    .select('quantidade, data')
+    .eq('cliente_id', clienteId)
+    .eq('tipo', 'entrega')
+    .gte('data', dataLimite.toISOString())
+    .order('data', { ascending: false });
+
+  if (error) {
+    console.error('Erro ao buscar entregas para cliente', clienteId, error);
+    return 0;
+  }
+
+  if (!entregas || entregas.length === 0) {
+    return 0;
+  }
+
+  // Somar todas as entregas das últimas 4 semanas
+  const totalEntregas = entregas.reduce((total, entrega) => total + entrega.quantidade, 0);
+  
+  // Calcular média semanal (total dividido por 4 semanas)
+  const giroHistorico = Math.round(totalEntregas / 4);
+  
+  console.log(`Cliente ${clienteId}: ${entregas.length} entregas nas últimas 4 semanas, total: ${totalEntregas}, média semanal: ${giroHistorico}`);
+  
+  return giroHistorico;
+}
+
 // Helper function to transform database row to our interface
-function transformDatabaseRow(row: any): DadosAnaliseGiroConsolidados {
+async function transformDatabaseRow(row: any): Promise<DadosAnaliseGiroConsolidados> {
+  // Calcular giro histórico correto baseado nas entregas
+  const giroHistoricoCorreto = await calcularGiroHistoricoPorEntregas(row.cliente_id);
+  
+  // Recalcular métricas baseadas no giro histórico correto
+  const metaGiroSemanal = row.meta_giro_semanal || 0;
+  const achievement = metaGiroSemanal > 0 ? (giroHistoricoCorreto / metaGiroSemanal) * 100 : 0;
+  
+  // Calcular semáforo baseado no achievement
+  let semaforo: 'verde' | 'amarelo' | 'vermelho' = 'vermelho';
+  if (achievement >= 90) {
+    semaforo = 'verde';
+  } else if (achievement >= 70) {
+    semaforo = 'amarelo';
+  }
+
   return {
     cliente_id: row.cliente_id,
     cliente_nome: row.cliente_nome,
@@ -131,12 +178,12 @@ function transformDatabaseRow(row: any): DadosAnaliseGiroConsolidados {
     rota_entrega_nome: row.rota_entrega_nome,
     categoria_estabelecimento_nome: row.categoria_estabelecimento_nome,
     giro_semanal_calculado: Number(row.giro_semanal_calculado || 0),
-    giro_medio_historico: Number(row.giro_medio_historico || 0),
+    giro_medio_historico: giroHistoricoCorreto, // Usar o giro histórico correto
     giro_ultima_semana: Number(row.giro_ultima_semana || 0),
     desvio_padrao_giro: Number(row.desvio_padrao_giro || 0),
     variacao_percentual: Number(row.variacao_percentual || 0),
-    achievement_meta: Number(row.achievement_meta || 0),
-    semaforo_performance: row.semaforo_performance || 'vermelho',
+    achievement_meta: Math.round(achievement),
+    semaforo_performance: semaforo,
     faturamento_semanal_previsto: Number(row.faturamento_semanal_previsto || 0),
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -199,16 +246,17 @@ export class GiroAnalysisService {
   // Get consolidated giro data
   static async getDadosConsolidados(filtros: GiroAnalysisFilters = {}): Promise<DadosAnaliseGiroConsolidados[]> {
     const cacheKey = 'dados_consolidados';
-    const cached = await this.getCachedData(cacheKey, filtros);
     
-    if (cached) {
-      return cached;
-    }
+    // Não usar cache para garantir dados atualizados
+    // const cached = await this.getCachedData(cacheKey, filtros);
+    // if (cached) {
+    //   return cached;
+    // }
 
     let query = supabase
       .from('dados_analise_giro_materialized')
       .select('*')
-      .order('giro_medio_historico', { ascending: false });
+      .order('cliente_nome', { ascending: true });
 
     // Apply filters
     if (filtros.representante) {
@@ -237,9 +285,18 @@ export class GiroAnalysisService {
       throw error;
     }
 
-    const transformedData = (data || []).map(transformDatabaseRow);
-    await this.setCachedData(cacheKey, filtros, transformedData);
-    return transformedData;
+    // Transform data with correct historical giro calculation
+    const transformedData = await Promise.all(
+      (data || []).map(row => transformDatabaseRow(row))
+    );
+
+    // Reordenar por giro histórico correto
+    const sortedData = transformedData.sort((a, b) => b.giro_medio_historico - a.giro_medio_historico);
+
+    // Não fazer cache para garantir dados sempre atualizados
+    // await this.setCachedData(cacheKey, filtros, sortedData);
+    
+    return sortedData;
   }
 
   // Get client ranking
