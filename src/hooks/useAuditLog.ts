@@ -1,7 +1,7 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { SecureIPService } from '@/utils/secureIPService';
+import { secureIPService } from '@/utils/secureIPService';
 
 interface AuditLogEntry {
   action: string;
@@ -20,7 +20,7 @@ export function useAuditLog() {
     try {
       // Get client information securely
       const userAgent = navigator.userAgent;
-      const ipAddress = await SecureIPService.getClientIP();
+      const ipAddress = await secureIPService.getClientIP();
       
       const { error } = await supabase
         .from('audit_logs')
