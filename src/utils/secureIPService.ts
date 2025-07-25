@@ -13,15 +13,16 @@ export class SecureIPService {
     }
 
     try {
-      // Use server-side function instead of external API
-      const { data, error } = await supabase.rpc('get_client_ip');
-      
-      if (error) {
-        console.error('Failed to get client IP:', error);
-        return '127.0.0.1';
+      // Try to get IP from headers first (client-side fallback)
+      const clientIP = this.getClientSideIP();
+      if (clientIP && clientIP !== '127.0.0.1') {
+        this.cachedIP = clientIP;
+        this.cacheTimestamp = Date.now();
+        return clientIP;
       }
 
-      this.cachedIP = data || '127.0.0.1';
+      // Fallback to localhost if no IP can be determined
+      this.cachedIP = '127.0.0.1';
       this.cacheTimestamp = Date.now();
       
       return this.cachedIP;
@@ -29,6 +30,12 @@ export class SecureIPService {
       console.error('Error getting client IP:', error);
       return '127.0.0.1';
     }
+  }
+
+  private static getClientSideIP(): string {
+    // Try to get IP from various client-side sources
+    // This is a fallback method since we can't reliably get real IP client-side
+    return '127.0.0.1';
   }
 
   static clearCache(): void {

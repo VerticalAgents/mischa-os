@@ -1,3 +1,4 @@
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
@@ -6,21 +7,13 @@ import { Toaster } from '@/components/ui/sonner';
 import './index.css';
 import { applySecurityHeaders } from './utils/securityHeaders';
 import App from './App';
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
+import LoginPage from '@/pages/auth/LoginPage';
 import Dashboard from '@/pages/Dashboard';
-import RequireAuth from '@/components/RequireAuth';
-import Clients from '@/pages/Clients';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import Clientes from '@/pages/Clientes';
 import Expedicao from '@/pages/Expedicao';
-import Produtos from '@/pages/Produtos';
-import Agendamentos from '@/pages/Agendamentos';
+import Agendamento from '@/pages/Agendamento';
 import ConfirmacaoReposicao from '@/pages/ConfirmacaoReposicao';
-import Admin from '@/pages/Admin';
-import Unauthorized from '@/pages/Unauthorized';
-import RequireAdmin from '@/components/RequireAdmin';
-import Categorias from '@/pages/Categorias';
 import Configuracoes from '@/pages/Configuracoes';
 
 // Apply security headers
@@ -33,101 +26,59 @@ const router = createBrowserRouter([
     children: [
       {
         path: "/",
-        element: <Login />,
+        element: <LoginPage />,
       },
       {
         path: "/login",
-        element: <Login />,
-      },
-      {
-        path: "/register",
-        element: <Register />,
-      },
-      {
-        path: "/forgot-password",
-        element: <ForgotPassword />,
-      },
-      {
-        path: "/reset-password",
-        element: <ResetPassword />,
+        element: <LoginPage />,
       },
       {
         path: "/dashboard",
         element: (
-          <RequireAuth>
+          <ProtectedRoute>
             <Dashboard />
-          </RequireAuth>
+          </ProtectedRoute>
         ),
       },
       {
-        path: "/clients",
+        path: "/clientes",
         element: (
-          <RequireAuth>
-            <Clients />
-          </RequireAuth>
+          <ProtectedRoute>
+            <Clientes />
+          </ProtectedRoute>
         ),
       },
       {
         path: "/expedicao",
         element: (
-          <RequireAuth>
+          <ProtectedRoute>
             <Expedicao />
-          </RequireAuth>
+          </ProtectedRoute>
         ),
       },
       {
-        path: "/produtos",
+        path: "/agendamento",
         element: (
-          <RequireAuth>
-            <Produtos />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "/agendamentos",
-        element: (
-          <RequireAuth>
-            <Agendamentos />
-          </RequireAuth>
+          <ProtectedRoute>
+            <Agendamento />
+          </ProtectedRoute>
         ),
       },
       {
         path: "/confirmacao-reposicao",
         element: (
-          <RequireAuth>
+          <ProtectedRoute>
             <ConfirmacaoReposicao />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "/categorias",
-        element: (
-          <RequireAuth>
-            <Categorias />
-          </RequireAuth>
+          </ProtectedRoute>
         ),
       },
       {
         path: "/configuracoes",
         element: (
-          <RequireAuth>
+          <ProtectedRoute>
             <Configuracoes />
-          </RequireAuth>
+          </ProtectedRoute>
         ),
-      },
-      {
-        path: "/admin",
-        element: (
-          <RequireAuth>
-            <RequireAdmin>
-              <Admin />
-            </RequireAdmin>
-          </RequireAuth>
-        ),
-      },
-      {
-        path: "/unauthorized",
-        element: <Unauthorized />,
       },
     ],
   },
