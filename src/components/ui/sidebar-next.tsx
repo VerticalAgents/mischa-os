@@ -57,14 +57,14 @@ const variants = {
 const transitionProps = {
   type: "tween",
   ease: "easeOut",
-  duration: 0.2,
-  staggerChildren: 0.1
+  duration: 0.15, // Reduced from 0.2 to 0.15 for faster animation
+  staggerChildren: 0.05 // Reduced from 0.1 to 0.05 for faster stagger
 };
 const staggerVariants = {
   open: {
     transition: {
-      staggerChildren: 0.03,
-      delayChildren: 0.02
+      staggerChildren: 0.015, // Reduced from 0.03 to 0.015
+      delayChildren: 0.01 // Reduced from 0.02 to 0.01
     }
   }
 };
@@ -163,7 +163,7 @@ export function SessionNavBar() {
                             >
                               {item.icon}
                               <motion.li variants={variants}>
-                                {!isCollapsed && <p className="ml-2 text-sm">{item.label}</p>}
+                                {!isCollapsed && <p className="ml-2 text-sm text-left">{item.label}</p>}
                               </motion.li>
                             </Link>
                           ))}

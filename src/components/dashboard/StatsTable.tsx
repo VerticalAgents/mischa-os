@@ -26,8 +26,8 @@ export default function StatsTable<T>({ data, columns, title, description }: Sta
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        {description && <CardDescription>{description}</CardDescription>}
+        <CardTitle className="text-left">{title}</CardTitle>
+        {description && <CardDescription className="text-left">{description}</CardDescription>}
       </CardHeader>
       <CardContent>
         {data.length > 0 ? (
@@ -35,7 +35,7 @@ export default function StatsTable<T>({ data, columns, title, description }: Sta
             <TableHeader>
               <TableRow>
                 {columns.map((column, index) => (
-                  <TableHead key={index}>{column.header}</TableHead>
+                  <TableHead key={index} className="text-left">{column.header}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>
@@ -43,7 +43,7 @@ export default function StatsTable<T>({ data, columns, title, description }: Sta
               {data.map((item, rowIndex) => (
                 <TableRow key={rowIndex}>
                   {columns.map((column, colIndex) => (
-                    <TableCell key={colIndex}>
+                    <TableCell key={colIndex} className="text-left">
                       {column.cell 
                         ? column.cell(item)
                         : typeof column.accessorKey === 'function'
@@ -57,7 +57,7 @@ export default function StatsTable<T>({ data, columns, title, description }: Sta
             </TableBody>
           </Table>
         ) : (
-          <div className="py-6 text-center text-muted-foreground">
+          <div className="py-6 text-left text-muted-foreground">
             Sem dados para exibir
           </div>
         )}

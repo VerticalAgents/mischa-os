@@ -25,11 +25,11 @@ export default function StatusCard({
   return (
     <div className={cn("dashboard-card", className)}>
       <div className="flex justify-between items-start">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <h3 className="text-2xl font-bold mt-1">{value}</h3>
+        <div className="text-left">
+          <p className="text-sm font-medium text-muted-foreground text-left">{title}</p>
+          <h3 className="text-2xl font-bold mt-1 text-left">{value}</h3>
           {description && (
-            <p className="text-xs text-muted-foreground mt-1">{description}</p>
+            <p className="text-xs text-muted-foreground mt-1 text-left">{description}</p>
           )}
           {trend && (
             <div className="flex items-center mt-2">
