@@ -42,7 +42,7 @@ interface ItemEntrega {
 }
 
 export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEditModalProps) => {
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [quantidade, setQuantidade] = useState("");
   const [observacao, setObservacao] = useState("");
   const [dataEntrega, setDataEntrega] = useState("");
@@ -100,7 +100,7 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
       const qtdTotal = parseInt(quantidade) || 0;
       calcularProporcoesParaPadrao(qtdTotal);
     } else {
-      // Para alterado, manter itens atuais ou inicializar vazio
+      // Para alterado, manter itens atuais ou inicializar com um item vazio
       if (itensEntrega.length === 0) {
         setItensEntrega([{ produto_id: '', produto_nome: '', quantidade: 0 }]);
       }
@@ -118,7 +118,8 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
   };
 
   const adicionarItem = () => {
-    setItensEntrega([...itensEntrega, { produto_id: '', produto_nome: '', quantidade: 0 }]);
+    const novosItens: ItemEntrega[] = [...itensEntrega, { produto_id: '', produto_nome: '', quantidade: 0 }];
+    setItensEntrega(novosItens);
   };
 
   const removerItem = (index: number) => {
@@ -146,7 +147,7 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
   };
 
   const handleSalvar = async () => {
-    if (!isAuthenticated) {
+    if (!user) {
       toast.error("É necessário estar logado para editar registros");
       return;
     }
@@ -189,7 +190,7 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
   };
 
   const handleExcluir = async () => {
-    if (!isAuthenticated) {
+    if (!user) {
       toast.error("É necessário estar logado para excluir registros");
       return;
     }
@@ -221,7 +222,7 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
             </DialogTitle>
           </DialogHeader>
           
-          {!isAuthenticated ? (
+          {!user ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">
                 Você precisa estar logado para editar registros.
@@ -308,7 +309,7 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
                         </SelectTrigger>
                         <SelectContent>
                           {produtos.map(produto => (
-                            <SelectItem key={produto.id} value={produto.id}>
+                            <SelectItem key={produto.id} value={produto.id.toString()}>
                               {produto.nome}
                             </SelectItem>
                           ))}
@@ -317,7 +318,7 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
                       
                       <Input
                         type="number"
-                        value={item.quantidade}
+                        value={item.quantidade.toString()}
                         onChange={(e) => atualizarItem(index, 'quantidade', parseInt(e.target.value) || 0)}
                         className="w-20"
                         min="0"
