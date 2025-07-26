@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
@@ -27,7 +26,7 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
     queryKey: ['giro-analysis-consolidated', filtros],
     queryFn: () => GiroAnalysisService.getDadosConsolidados(filtros),
     staleTime: 0, // Sempre considerar dados como obsoletos
-    cacheTime: 0, // Não fazer cache
+    gcTime: 0, // Não fazer cache - usar gcTime ao invés de cacheTime
     refetchOnWindowFocus: false,
   });
 
@@ -40,7 +39,7 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
     queryKey: ['giro-analysis-overview', filtros],
     queryFn: () => GiroAnalysisService.getGiroOverview(filtros),
     staleTime: 0,
-    cacheTime: 0,
+    gcTime: 0, // Não fazer cache - usar gcTime ao invés de cacheTime
     refetchOnWindowFocus: false,
   });
 
@@ -53,7 +52,7 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
     queryKey: ['giro-analysis-ranking', filtros],
     queryFn: () => GiroAnalysisService.getGiroRanking(filtros),
     staleTime: 0,
-    cacheTime: 0,
+    gcTime: 0, // Não fazer cache - usar gcTime ao invés de cacheTime
     refetchOnWindowFocus: false,
   });
 
@@ -66,7 +65,7 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
     queryKey: ['giro-analysis-regional', filtros],
     queryFn: () => GiroAnalysisService.getGiroRegional(filtros),
     staleTime: 0,
-    cacheTime: 0,
+    gcTime: 0, // Não fazer cache - usar gcTime ao invés de cacheTime
     refetchOnWindowFocus: false,
   });
 
