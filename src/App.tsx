@@ -72,6 +72,8 @@ function App() {
                             <Route path="/pcp" element={<PCP />} />
                             <Route path="/precificacao" element={<Precificacao />} />
                             <Route path="/gestao-comercial" element={<GestaoComercial />} />
+                            <Route path="/gestao-comercial/dashboard" element={<GestaoComercial />} />
+                            <Route path="/gestao-comercial/metas" element={<GestaoComercial />} />
                             <Route path="/gestao-comercial/funil-leads" element={<FunilLeads />} />
                             <Route path="/gestao-comercial/distribuidores" element={<Distribuidores />} />
                             <Route path="/gestao-comercial/parceiros" element={<Parceiros />} />

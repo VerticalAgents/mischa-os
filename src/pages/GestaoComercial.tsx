@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -10,12 +10,41 @@ import DashboardComercial from "./gestao-comercial/DashboardComercial";
 import MetasProspeccao from "./gestao-comercial/MetasProspeccao";
 
 export default function GestaoComercial() {
-  const [activeTab, setActiveTab] = useState("funil-leads");
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Determinar aba ativa baseada na URL atual
+  const getActiveTabFromPath = () => {
+    const path = location.pathname;
+    if (path.includes('/dashboard')) return 'dashboard';
+    if (path.includes('/metas')) return 'metas';
+    return 'funil-leads';
+  };
+
+  const [activeTab, setActiveTab] = useState(getActiveTabFromPath());
+
+  // Atualizar aba quando a rota mudar
+  useEffect(() => {
+    setActiveTab(getActiveTabFromPath());
+  }, [location.pathname]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    navigate(`/gestao-comercial/${value}`);
+    
+    // Navegar para a rota correta
+    switch (value) {
+      case 'funil-leads':
+        navigate('/gestao-comercial');
+        break;
+      case 'dashboard':
+        navigate('/gestao-comercial/dashboard');
+        break;
+      case 'metas':
+        navigate('/gestao-comercial/metas');
+        break;
+      default:
+        navigate('/gestao-comercial');
+    }
   };
 
   return (
