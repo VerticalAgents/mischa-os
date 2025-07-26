@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AnaliseGiroData } from '@/types/giro';
@@ -63,12 +64,15 @@ function gerarUltimas12Semanas(): Array<{ ano: number; semana: number; chave: st
 
 // Nova função para calcular data inicial e final da semana
 function calcularPeriodoSemana(ano: number, numeroSemana: number): { dataInicial: string; dataFinal: string } {
-  // Primeiro dia do ano
-  const primeiroDia = new Date(ano, 0, 1);
+  // Encontrar a primeira quinta-feira do ano (semana 1 ISO)
+  const jan4 = new Date(ano, 0, 4);
+  const diasParaPrimeiraQuinta = ((4 - jan4.getDay()) + 7) % 7;
+  const primeiraQuinta = new Date(jan4);
+  primeiraQuinta.setDate(jan4.getDate() + diasParaPrimeiraQuinta);
   
-  // Encontrar a primeira segunda-feira do ano
-  const diasParaPrimeiraSegunda = ((8 - primeiroDia.getDay()) % 7) || 7;
-  const primeiraSegunda = new Date(ano, 0, 1 + diasParaPrimeiraSegunda);
+  // Calcular a segunda-feira da semana 1
+  const primeiraSegunda = new Date(primeiraQuinta);
+  primeiraSegunda.setDate(primeiraQuinta.getDate() - 3);
   
   // Calcular a data da semana desejada
   const dataInicial = new Date(primeiraSegunda);
@@ -134,7 +138,11 @@ export function useGiroAnalise(cliente: Cliente) {
           if (giroSemanal.has(chave)) {
             const semanaData = giroSemanal.get(chave)!;
             semanaData.total += entrega.quantidade;
-            semanaData.entregas.push(entrega);
+            semanaData.entregas.push({
+              data: entrega.data,
+              quantidade: entrega.quantidade,
+              tipo: entrega.tipo as 'entrega' | 'retorno'
+            });
             giroSemanal.set(chave, semanaData);
           }
         });
