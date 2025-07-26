@@ -7,7 +7,6 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   ResponsiveContainer, 
@@ -19,7 +18,7 @@ import {
   Tooltip, 
   Legend
 } from "recharts";
-import { ArrowUp, ArrowDown, Filter, AlertCircle } from "lucide-react";
+import { ArrowUp, ArrowDown, AlertCircle } from "lucide-react";
 import { Cliente } from "@/types";
 import GiroMetricCard from "./GiroMetricCard";
 import GiroComparativoBlock from "./GiroComparativoBlock";
@@ -33,8 +32,7 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
   const { dadosGiro, isLoading, error } = useGiroAnalise(cliente);
   
   // Giro semanal médio geral (valor simulado - deve vir do dashboard/analytics)
-  // TODO: buscar valor real do dashboard "Análise de PDV e Giro"
-  const giroSemanalMedioGeral = 150; // Valor placeholder
+  const giroSemanalMedioGeral = 150;
   
   if (isLoading) {
     return (
@@ -114,24 +112,22 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
   const dadosGrafico = dadosGiro.historico.map(item => ({
     semana: item.semana,
     giro: item.valor,
-    mediaHistorica: dadosGiro.mediaHistorica // Linha azul da média histórica
+    mediaHistorica: dadosGiro.mediaHistorica,
+    entregas: item.entregas || [],
+    periodo: item.periodo || '',
+    dataInicial: item.dataInicial || '',
+    dataFinal: item.dataFinal || ''
   }));
   
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between gap-4">
-        <Button variant="outline" className="self-start flex gap-2 items-center">
-          <Filter className="h-4 w-4" />
-          Filtrar dados
-        </Button>
-        
+      <div className="flex justify-end">
         <div className="flex gap-2 items-center">
           <span className="text-sm text-muted-foreground">Média histórica:</span>
           <Badge variant="outline" className="font-medium">{dadosGiro.mediaHistorica} unidades/semana</Badge>
         </div>
       </div>
 
-      {/* Novo bloco comparativo */}
       <GiroComparativoBlock cliente={cliente} mediaHistorica={dadosGiro.mediaHistorica} />
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -187,23 +183,56 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
                 <Tooltip 
                   content={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      const entregas = data.entregas || [];
+                      
                       return (
-                        <div className="bg-background border border-border rounded-md shadow-lg p-3">
-                          <div className="font-medium">{label}</div>
-                          <div className="mt-2 space-y-1">
+                        <div className="bg-background border border-border rounded-md shadow-lg p-4 max-w-sm">
+                          <div className="font-semibold text-base mb-2">{label}</div>
+                          <div className="text-sm text-muted-foreground mb-3">
+                            Período: {data.periodo}
+                          </div>
+                          
+                          <div className="space-y-2 mb-3">
                             <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 bg-primary rounded-full" />
+                              <div className="w-3 h-3 bg-primary rounded-full" />
                               <span className="text-muted-foreground">Giro:</span>
-                              <span className="font-medium">{payload[0].value} unidades</span>
+                              <span className="font-semibold">{payload[0].value} unidades</span>
                             </div>
                             {payload[1] && (
                               <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                                <div className="w-3 h-3 bg-blue-500 rounded-full" />
                                 <span className="text-muted-foreground">Média Histórica:</span>
-                                <span className="font-medium">{payload[1].value} unidades</span>
+                                <span className="font-semibold">{payload[1].value} unidades</span>
                               </div>
                             )}
                           </div>
+
+                          {entregas.length > 0 && (
+                            <div className="border-t pt-2">
+                              <div className="text-sm font-medium mb-2">
+                                Entregas realizadas ({entregas.length}):
+                              </div>
+                              <div className="max-h-24 overflow-y-auto space-y-1">
+                                {entregas.map((entrega: any, index: number) => (
+                                  <div key={index} className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">
+                                      {new Date(entrega.data).toLocaleDateString('pt-BR')}
+                                    </span>
+                                    <span className="font-medium">
+                                      {entrega.quantidade} un
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {entregas.length === 0 && (
+                            <div className="border-t pt-2 text-xs text-muted-foreground">
+                              Nenhuma entrega realizada nesta semana
+                            </div>
+                          )}
                         </div>
                       );
                     }

@@ -1,7 +1,15 @@
 
 export interface GiroHistorico {
-  semana: string; // Formato: "YYYY-WW" (ano-número da semana)
+  semana: string;
   valor: number;
+  entregas?: Array<{
+    data: string;
+    quantidade: number;
+    tipo: 'entrega' | 'retorno';
+  }>;
+  periodo?: string;
+  dataInicial?: string;
+  dataFinal?: string;
 }
 
 export interface MetaGiro {

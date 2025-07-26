@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AnaliseGiroData } from '@/types/giro';
@@ -15,6 +14,9 @@ interface GiroSemanal {
   ano: number;
   numeroSemana: number;
   totalEntregues: number;
+  entregas: EntregaHistorico[];
+  dataInicial: string;
+  dataFinal: string;
 }
 
 // Função para obter o número da semana ISO
@@ -59,6 +61,28 @@ function gerarUltimas12Semanas(): Array<{ ano: number; semana: number; chave: st
   return semanas;
 }
 
+// Nova função para calcular data inicial e final da semana
+function calcularPeriodoSemana(ano: number, numeroSemana: number): { dataInicial: string; dataFinal: string } {
+  // Primeiro dia do ano
+  const primeiroDia = new Date(ano, 0, 1);
+  
+  // Encontrar a primeira segunda-feira do ano
+  const diasParaPrimeiraSegunda = ((8 - primeiroDia.getDay()) % 7) || 7;
+  const primeiraSegunda = new Date(ano, 0, 1 + diasParaPrimeiraSegunda);
+  
+  // Calcular a data da semana desejada
+  const dataInicial = new Date(primeiraSegunda);
+  dataInicial.setDate(primeiraSegunda.getDate() + (numeroSemana - 1) * 7);
+  
+  const dataFinal = new Date(dataInicial);
+  dataFinal.setDate(dataInicial.getDate() + 6);
+  
+  return {
+    dataInicial: dataInicial.toLocaleDateString('pt-BR'),
+    dataFinal: dataFinal.toLocaleDateString('pt-BR')
+  };
+}
+
 export function useGiroAnalise(cliente: Cliente) {
   const [dadosGiro, setDadosGiro] = useState<AnaliseGiroData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -93,12 +117,12 @@ export function useGiroAnalise(cliente: Cliente) {
         console.log('📊 Histórico carregado:', historico?.length || 0, 'entregas');
 
         // Processar dados por semana
-        const giroSemanal = new Map<string, number>();
+        const giroSemanal = new Map<string, { total: number; entregas: EntregaHistorico[] }>();
         
         // Inicializar todas as 12 semanas com 0
         const ultimas12Semanas = gerarUltimas12Semanas();
         ultimas12Semanas.forEach(semana => {
-          giroSemanal.set(semana.chave, 0);
+          giroSemanal.set(semana.chave, { total: 0, entregas: [] });
         });
 
         // Agrupar entregas por semana
@@ -108,21 +132,32 @@ export function useGiroAnalise(cliente: Cliente) {
           const chave = `${year}-${week.toString().padStart(2, '0')}`;
           
           if (giroSemanal.has(chave)) {
-            const valorAtual = giroSemanal.get(chave) || 0;
-            giroSemanal.set(chave, valorAtual + entrega.quantidade);
+            const semanaData = giroSemanal.get(chave)!;
+            semanaData.total += entrega.quantidade;
+            semanaData.entregas.push(entrega);
+            giroSemanal.set(chave, semanaData);
           }
         });
 
-        // Preparar dados do gráfico
-        const dadosGrafico = ultimas12Semanas.map(semana => ({
-          semana: semana.display,
-          valor: giroSemanal.get(semana.chave) || 0
-        }));
+        // Preparar dados do gráfico com informações detalhadas
+        const dadosGrafico = ultimas12Semanas.map(semana => {
+          const dadosSemana = giroSemanal.get(semana.chave) || { total: 0, entregas: [] };
+          const { dataInicial, dataFinal } = calcularPeriodoSemana(semana.ano, semana.semana);
+          
+          return {
+            semana: semana.display,
+            valor: dadosSemana.total,
+            entregas: dadosSemana.entregas,
+            periodo: `${dataInicial} - ${dataFinal}`,
+            dataInicial,
+            dataFinal
+          };
+        });
 
         console.log('📈 Dados do gráfico preparados:', dadosGrafico);
 
         // Calcular métricas
-        const valoresSemanas = Array.from(giroSemanal.values());
+        const valoresSemanas = Array.from(giroSemanal.values()).map(item => item.total);
         const ultimasSemanas = valoresSemanas.slice(-4); // Últimas 4 semanas
         const ultimaSemana = valoresSemanas[valoresSemanas.length - 1] || 0;
         
