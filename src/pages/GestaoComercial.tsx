@@ -4,10 +4,10 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Building, HelpingHand, UserCircle } from "lucide-react";
+import { UserCircle, BarChart3, Target } from "lucide-react";
 import FunilLeads from "./gestao-comercial/FunilLeads";
-import Distribuidores from "./gestao-comercial/Distribuidores";
-import Parceiros from "./gestao-comercial/Parceiros";
+import DashboardComercial from "./gestao-comercial/DashboardComercial";
+import MetasProspeccao from "./gestao-comercial/MetasProspeccao";
 
 export default function GestaoComercial() {
   const [activeTab, setActiveTab] = useState("funil-leads");
@@ -24,7 +24,7 @@ export default function GestaoComercial() {
       
       <PageHeader
         title="Gestão Comercial"
-        description="Gerencie leads, distribuidores e parcerias comerciais"
+        description="Gerencie leads, acompanhe dashboards e defina metas de prospecção"
       />
 
       <div className="mt-6">
@@ -39,13 +39,13 @@ export default function GestaoComercial() {
                 <UserCircle className="h-4 w-4" />
                 <span>Funil de Leads</span>
               </TabsTrigger>
-              <TabsTrigger value="distribuidores" className="flex items-center gap-1">
-                <Building className="h-4 w-4" />
-                <span>Distribuidores</span>
+              <TabsTrigger value="dashboard" className="flex items-center gap-1">
+                <BarChart3 className="h-4 w-4" />
+                <span>Dashboard</span>
               </TabsTrigger>
-              <TabsTrigger value="parceiros" className="flex items-center gap-1">
-                <HelpingHand className="h-4 w-4" />
-                <span>Parceiros</span>
+              <TabsTrigger value="metas" className="flex items-center gap-1">
+                <Target className="h-4 w-4" />
+                <span>Metas de Prospecção</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -54,12 +54,12 @@ export default function GestaoComercial() {
             <FunilLeads />
           </TabsContent>
 
-          <TabsContent value="distribuidores">
-            <Distribuidores />
+          <TabsContent value="dashboard">
+            <DashboardComercial />
           </TabsContent>
 
-          <TabsContent value="parceiros">
-            <Parceiros />
+          <TabsContent value="metas">
+            <MetasProspeccao />
           </TabsContent>
         </Tabs>
       </div>
