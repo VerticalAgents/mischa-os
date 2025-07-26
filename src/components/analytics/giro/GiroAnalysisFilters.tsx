@@ -54,16 +54,16 @@ export function GiroAnalysisFiltersComponent({
                 Representante
               </label>
               <Select
-                value={filtros.representante || ""}
+                value={filtros.representante || "all"}
                 onValueChange={(value) => 
-                  onFiltrosChange({ ...filtros, representante: value || undefined })
+                  onFiltrosChange({ ...filtros, representante: value === "all" ? undefined : value })
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todos os representantes" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os representantes</SelectItem>
+                  <SelectItem value="all">Todos os representantes</SelectItem>
                   {representantes.map((rep) => (
                     <SelectItem key={rep} value={rep}>
                       {rep}
@@ -79,16 +79,16 @@ export function GiroAnalysisFiltersComponent({
                 Rota de Entrega
               </label>
               <Select
-                value={filtros.rota || ""}
+                value={filtros.rota || "all"}
                 onValueChange={(value) => 
-                  onFiltrosChange({ ...filtros, rota: value || undefined })
+                  onFiltrosChange({ ...filtros, rota: value === "all" ? undefined : value })
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todas as rotas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as rotas</SelectItem>
+                  <SelectItem value="all">Todas as rotas</SelectItem>
                   {rotas.map((rota) => (
                     <SelectItem key={rota} value={rota}>
                       {rota}
@@ -104,16 +104,16 @@ export function GiroAnalysisFiltersComponent({
                 Categoria
               </label>
               <Select
-                value={filtros.categoria_estabelecimento || ""}
+                value={filtros.categoria_estabelecimento || "all"}
                 onValueChange={(value) => 
-                  onFiltrosChange({ ...filtros, categoria_estabelecimento: value || undefined })
+                  onFiltrosChange({ ...filtros, categoria_estabelecimento: value === "all" ? undefined : value })
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todas as categorias" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as categorias</SelectItem>
+                  <SelectItem value="all">Todas as categorias</SelectItem>
                   {categorias.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
@@ -129,16 +129,16 @@ export function GiroAnalysisFiltersComponent({
                 Performance
               </label>
               <Select
-                value={filtros.semaforo || ""}
+                value={filtros.semaforo || "all"}
                 onValueChange={(value) => 
-                  onFiltrosChange({ ...filtros, semaforo: value as any || undefined })
+                  onFiltrosChange({ ...filtros, semaforo: value === "all" ? undefined : value as any })
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Todas as performances" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as performances</SelectItem>
+                  <SelectItem value="all">Todas as performances</SelectItem>
                   <SelectItem value="verde">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
