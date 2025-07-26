@@ -29,10 +29,7 @@ interface AnaliseGiroProps {
 }
 
 export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
-  const { dadosGiro, isLoading, error } = useGiroAnalise(cliente);
-  
-  // Giro semanal médio geral (valor simulado - deve vir do dashboard/analytics)
-  const giroSemanalMedioGeral = 150;
+  const { dadosGiro, giroGeralSemanal, isLoading, error } = useGiroAnalise(cliente);
   
   if (isLoading) {
     return (
@@ -104,15 +101,19 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
   }
   
   // Calcular comparativo com giro geral
-  const comparativoGiroGeral = giroSemanalMedioGeral > 0 
-    ? Math.round((dadosGiro.mediaHistorica / giroSemanalMedioGeral) * 100)
+  const comparativoGiroGeral = giroGeralSemanal > 0 
+    ? Math.round((dadosGiro.mediaHistorica / giroGeralSemanal) * 100)
     : 0;
   
-  // Preparar dados para o gráfico - agora com média histórica ao invés de meta
+  // Determinar cor da linha da média histórica baseada na comparação com o giro geral
+  const corMediaHistorica = dadosGiro.mediaHistorica >= giroGeralSemanal ? "#22c55e" : "#ef4444"; // verde ou vermelho
+  
+  // Preparar dados para o gráfico - incluir giro geral
   const dadosGrafico = dadosGiro.historico.map(item => ({
     semana: item.semana,
     giro: item.valor,
     mediaHistorica: dadosGiro.mediaHistorica,
+    giroGeral: giroGeralSemanal,
     entregas: item.entregas || [],
     periodo: item.periodo || '',
     dataInicial: item.dataInicial || '',
@@ -121,10 +122,16 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
   
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <div className="flex gap-2 items-center">
-          <span className="text-sm text-muted-foreground">Média histórica:</span>
-          <Badge variant="outline" className="font-medium">{dadosGiro.mediaHistorica} unidades/semana</Badge>
+      <div className="flex justify-between items-center">
+        <div className="flex gap-4 items-center">
+          <div className="flex gap-2 items-center">
+            <span className="text-sm text-muted-foreground">Média histórica (4 semanas):</span>
+            <Badge variant="outline" className="font-medium">{dadosGiro.mediaHistorica} unidades/semana</Badge>
+          </div>
+          <div className="flex gap-2 items-center">
+            <span className="text-sm text-muted-foreground">Giro geral:</span>
+            <Badge variant="secondary" className="font-medium">{giroGeralSemanal} unidades/semana</Badge>
+          </div>
         </div>
       </div>
 
@@ -162,7 +169,7 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
         <CardHeader>
           <CardTitle>Giro Semanal - Últimas 12 semanas</CardTitle>
           <CardDescription>
-            Evolução do giro semanal baseado no histórico real de entregas com média histórica
+            Evolução do giro semanal com comparativo da média histórica e giro geral
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -201,9 +208,16 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
                             </div>
                             {payload[1] && (
                               <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-blue-500 rounded-full" />
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: corMediaHistorica }} />
                                 <span className="text-muted-foreground">Média Histórica:</span>
                                 <span className="font-semibold">{payload[1].value} unidades</span>
+                              </div>
+                            )}
+                            {payload[2] && (
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-blue-500 rounded-full" />
+                                <span className="text-muted-foreground">Giro Geral:</span>
+                                <span className="font-semibold">{payload[2].value} unidades</span>
                               </div>
                             )}
                           </div>
@@ -252,9 +266,18 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
                 <Line
                   type="monotone"
                   dataKey="mediaHistorica"
-                  name="Média Histórica"
-                  stroke="#3b82f6"
+                  name="Média Histórica (4 semanas)"
+                  stroke={corMediaHistorica}
                   strokeDasharray="5 5"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="giroGeral"
+                  name="Giro Geral"
+                  stroke="#3b82f6"
+                  strokeDasharray="8 4"
                   strokeWidth={2}
                   dot={false}
                 />
