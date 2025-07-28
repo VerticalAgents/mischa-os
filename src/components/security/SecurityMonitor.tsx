@@ -1,237 +1,286 @@
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useUserRoles } from '@/hooks/useUserRoles';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, AlertTriangle, Activity, Users, Database, Eye } from 'lucide-react';
-import { AdminGuard } from '@/components/auth/AdminGuard';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertTriangle, Shield, Eye, Activity, RefreshCw } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
-interface SecurityMetrics {
-  totalAuthAttempts: number;
-  failedAuthAttempts: number;
-  activeUsers: number;
-  recentSecurityEvents: any[];
-  systemAlerts: any[];
-}
-
-interface SecurityEvent {
+type AuditLog = {
   id: string;
+  user_id: string;
+  action: string;
+  table_name: string;
+  record_id: string;
+  old_values: any;
+  new_values: any;
   created_at: string;
-  new_values: {
-    event_type?: string;
-    severity?: string;
-    details?: any;
-  } | null;
-}
+  user_agent: string;
+  ip_address: unknown;
+};
+
+type AuthAttempt = {
+  id: string;
+  ip_address: string;
+  email: string;
+  attempt_type: string;
+  success: boolean;
+  created_at: string;
+};
 
 export function SecurityMonitor() {
-  const { user } = useAuth();
-  const { isAdmin } = useUserRoles();
-  const [metrics, setMetrics] = useState<SecurityMetrics>({
-    totalAuthAttempts: 0,
-    failedAuthAttempts: 0,
-    activeUsers: 0,
-    recentSecurityEvents: [],
-    systemAlerts: []
-  });
-  const [loading, setLoading] = useState(true);
+  const [severityFilter, setSeverityFilter] = useState<string>('all');
+  const [timeRange, setTimeRange] = useState<string>('24h');
 
-  const fetchSecurityMetrics = async () => {
-    if (!user || !isAdmin()) return;
-
-    try {
-      setLoading(true);
-
-      // Get authentication attempts (last 24 hours)
-      const { data: authAttempts } = await supabase
-        .from('auth_attempts')
-        .select('*')
-        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-        .order('created_at', { ascending: false });
-
-      // Get recent security events
-      const { data: securityEvents } = await supabase
+  const { data: auditLogs, isLoading: auditLoading, refetch: refetchAudit } = useQuery({
+    queryKey: ['audit-logs', timeRange],
+    queryFn: async () => {
+      const hoursAgo = timeRange === '24h' ? 24 : timeRange === '7d' ? 168 : 720;
+      const { data, error } = await supabase
         .from('audit_logs')
         .select('*')
-        .eq('action', 'SECURITY_EVENT')
-        .limit(10)
-        .order('created_at', { ascending: false });
+        .gte('created_at', new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(100);
 
-      // Get user profiles count (approximation of active users)
-      const { count: userCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
+      if (error) throw error;
+      return data as AuditLog[];
+    },
+  });
 
-      // Process metrics
-      const totalAttempts = authAttempts?.length || 0;
-      const failedAttempts = authAttempts?.filter(attempt => !attempt.success).length || 0;
+  const { data: authAttempts, isLoading: authLoading, refetch: refetchAuth } = useQuery({
+    queryKey: ['auth-attempts', timeRange],
+    queryFn: async () => {
+      const hoursAgo = timeRange === '24h' ? 24 : timeRange === '7d' ? 168 : 720;
+      const { data, error } = await supabase
+        .from('auth_attempts')
+        .select('*')
+        .gte('created_at', new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(100);
 
-      // Create system alerts based on security events
-      const alerts = [];
-      
-      if (failedAttempts > 10) {
-        alerts.push({
-          type: 'warning',
-          message: `${failedAttempts} tentativas de login falharam nas últimas 24 horas`,
-          timestamp: new Date()
-        });
-      }
+      if (error) throw error;
+      return data as AuthAttempt[];
+    },
+  });
 
-      if (securityEvents && securityEvents.length > 0) {
-        const criticalEvents = securityEvents.filter((event: SecurityEvent) => {
-          const newValues = event.new_values as any;
-          return newValues?.severity === 'CRITICAL' || newValues?.severity === 'ERROR';
-        });
-        
-        if (criticalEvents.length > 0) {
-          alerts.push({
-            type: 'error',
-            message: `${criticalEvents.length} eventos de segurança críticos detectados`,
-            timestamp: new Date()
-          });
-        }
-      }
+  const handleRefresh = () => {
+    refetchAudit();
+    refetchAuth();
+  };
 
-      setMetrics({
-        totalAuthAttempts: totalAttempts,
-        failedAuthAttempts: failedAttempts,
-        activeUsers: userCount || 0,
-        recentSecurityEvents: securityEvents || [],
-        systemAlerts: alerts
-      });
+  // Filter security events from audit logs
+  const securityEvents = auditLogs?.filter((log: AuditLog) => {
+    // Check if it's a security event
+    if (log.action !== 'SECURITY_EVENT') return false;
+    
+    // Apply severity filter
+    if (severityFilter !== 'all') {
+      const newValues = log.new_values as any;
+      const severity = newValues?.severity;
+      if (severity !== severityFilter) return false;
+    }
+    
+    return true;
+  }) || [];
 
-    } catch (error) {
-      console.error('Error fetching security metrics:', error);
-    } finally {
-      setLoading(false);
+  const failedAttempts = authAttempts?.filter(attempt => !attempt.success) || [];
+  const suspiciousIPs = [...new Set(failedAttempts.map(attempt => attempt.ip_address))];
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity?.toLowerCase()) {
+      case 'critical': return 'bg-red-100 text-red-800 border-red-200';
+      case 'error': return 'bg-red-50 text-red-700 border-red-100';
+      case 'warning': return 'bg-yellow-50 text-yellow-700 border-yellow-100';
+      default: return 'bg-blue-50 text-blue-700 border-blue-100';
     }
   };
 
-  useEffect(() => {
-    fetchSecurityMetrics();
-    
-    // Refresh metrics every 5 minutes
-    const interval = setInterval(fetchSecurityMetrics, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [user, isAdmin]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="flex items-center gap-2">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <span className="text-sm text-muted-foreground">Carregando métricas de segurança...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <AdminGuard>
-      <div className="space-y-6">
-        <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-semibold">Monitor de Segurança</h2>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Monitor de Segurança</h1>
+        <Button onClick={handleRefresh} variant="outline" size="sm">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Atualizar
+        </Button>
+      </div>
 
-        {/* System Alerts */}
-        {metrics.systemAlerts.length > 0 && (
-          <div className="space-y-2">
-            {metrics.systemAlerts.map((alert, index) => (
-              <Alert key={index} variant={alert.type === 'error' ? 'destructive' : 'default'}>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{alert.message}</AlertDescription>
-              </Alert>
-            ))}
-          </div>
-        )}
-
-        {/* Security Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tentativas de Login</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.totalAuthAttempts}</div>
-              <p className="text-xs text-muted-foreground">Últimas 24 horas</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Falhas de Autenticação</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">{metrics.failedAuthAttempts}</div>
-              <p className="text-xs text-muted-foreground">Tentativas falharam</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Usuários Ativos</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.activeUsers}</div>
-              <p className="text-xs text-muted-foreground">Total de usuários</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recent Security Events */}
+      {/* Security Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              Eventos de Segurança Recentes
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Shield className="h-4 w-4 text-green-500" />
+              Eventos Totais
             </CardTitle>
-            <CardDescription>
-              Últimos 10 eventos de segurança registrados no sistema
-            </CardDescription>
           </CardHeader>
           <CardContent>
-            {metrics.recentSecurityEvents.length > 0 ? (
-              <div className="space-y-3">
-                {metrics.recentSecurityEvents.map((event: SecurityEvent, index) => {
-                  const newValues = event.new_values as any;
-                  return (
-                    <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{newValues?.event_type || 'Evento de Segurança'}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(event.created_at).toLocaleString('pt-BR')}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant={
-                        newValues?.severity === 'CRITICAL' ? 'destructive' :
-                        newValues?.severity === 'ERROR' ? 'destructive' :
-                        newValues?.severity === 'WARNING' ? 'secondary' :
-                        'default'
-                      }>
-                        {newValues?.severity || 'INFO'}
-                      </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center py-4">
-                Nenhum evento de segurança registrado
-              </p>
-            )}
+            <div className="text-2xl font-bold">{securityEvents.length}</div>
+            <p className="text-xs text-muted-foreground">Últimas {timeRange}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+              Tentativas Falhas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{failedAttempts.length}</div>
+            <p className="text-xs text-muted-foreground">Falhas de login</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Eye className="h-4 w-4 text-blue-500" />
+              IPs Suspeitos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{suspiciousIPs.length}</div>
+            <p className="text-xs text-muted-foreground">IPs únicos com falhas</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Activity className="h-4 w-4 text-purple-500" />
+              Atividade Total
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{(auditLogs?.length || 0) + (authAttempts?.length || 0)}</div>
+            <p className="text-xs text-muted-foreground">Logs de auditoria</p>
           </CardContent>
         </Card>
       </div>
-    </AdminGuard>
+
+      {/* Filters */}
+      <div className="flex gap-4">
+        <Select value={severityFilter} onValueChange={setSeverityFilter}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Filtrar por severidade" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as severidades</SelectItem>
+            <SelectItem value="INFO">Info</SelectItem>
+            <SelectItem value="WARNING">Aviso</SelectItem>
+            <SelectItem value="ERROR">Erro</SelectItem>
+            <SelectItem value="CRITICAL">Crítico</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={timeRange} onValueChange={setTimeRange}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Período" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="24h">Últimas 24h</SelectItem>
+            <SelectItem value="7d">Últimos 7 dias</SelectItem>
+            <SelectItem value="30d">Últimos 30 dias</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Security Events */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Eventos de Segurança</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {auditLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : securityEvents.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Nenhum evento de segurança encontrado
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {securityEvents.map((event) => {
+                const newValues = event.new_values as any;
+                const severity = newValues?.severity || 'INFO';
+                const eventType = newValues?.event_type || 'UNKNOWN';
+                const details = newValues?.details || {};
+
+                return (
+                  <div
+                    key={event.id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Badge className={getSeverityColor(severity)}>
+                        {severity}
+                      </Badge>
+                      <div>
+                        <p className="font-medium">{eventType}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(event.created_at), 'dd/MM/yyyy HH:mm:ss')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">Usuário: {event.user_id}</p>
+                      {details.email && (
+                        <p className="text-sm text-muted-foreground">
+                          {details.email}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Failed Login Attempts */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Tentativas de Login Falhadas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {authLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : failedAttempts.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Nenhuma tentativa de login falhada encontrada
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {failedAttempts.map((attempt) => (
+                <div
+                  key={attempt.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium">{attempt.email}</p>
+                    <p className="text-sm text-muted-foreground">
+                      IP: {attempt.ip_address} • {format(new Date(attempt.created_at), 'dd/MM/yyyy HH:mm:ss')}
+                    </p>
+                  </div>
+                  <Badge variant="destructive">
+                    {attempt.attempt_type}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

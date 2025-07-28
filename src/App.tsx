@@ -66,9 +66,9 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Router>
+      <TooltipProvider>
+        <Router>
+          <AuthProvider>
             <Routes>
               <Route path="/login" element={<EnhancedAuthPage />} />
               <Route path="/auth" element={<EnhancedAuthPage />} />
@@ -113,10 +113,10 @@ function App() {
                 </ProtectedRoute>
               } />
             </Routes>
-          </Router>
-          <Toaster />
-        </TooltipProvider>
-      </AuthProvider>
+          </AuthProvider>
+        </Router>
+        <Toaster />
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }
