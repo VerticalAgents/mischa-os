@@ -72,7 +72,7 @@ function App() {
             <Routes>
               <Route path="/login" element={<EnhancedAuthPage />} />
               <Route path="/auth" element={<EnhancedAuthPage />} />
-              <Route path="/" element={
+              <Route path="/*" element={
                 <ProtectedRoute>
                   <AppLayout>
                     <Routes>
