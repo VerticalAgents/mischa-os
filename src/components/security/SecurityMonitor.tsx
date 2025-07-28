@@ -17,6 +17,16 @@ interface SecurityMetrics {
   systemAlerts: any[];
 }
 
+interface SecurityEvent {
+  id: string;
+  created_at: string;
+  new_values: {
+    event_type?: string;
+    severity?: string;
+    details?: any;
+  } | null;
+}
+
 export function SecurityMonitor() {
   const { user } = useAuth();
   const { isAdmin } = useUserRoles();
@@ -71,9 +81,10 @@ export function SecurityMonitor() {
       }
 
       if (securityEvents && securityEvents.length > 0) {
-        const criticalEvents = securityEvents.filter(event => 
-          event.new_values?.severity === 'CRITICAL' || event.new_values?.severity === 'ERROR'
-        );
+        const criticalEvents = securityEvents.filter((event: SecurityEvent) => {
+          const newValues = event.new_values as any;
+          return newValues?.severity === 'CRITICAL' || newValues?.severity === 'ERROR';
+        });
         
         if (criticalEvents.length > 0) {
           alerts.push({
@@ -188,27 +199,30 @@ export function SecurityMonitor() {
           <CardContent>
             {metrics.recentSecurityEvents.length > 0 ? (
               <div className="space-y-3">
-                {metrics.recentSecurityEvents.map((event, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{event.new_values?.event_type || 'Evento de Segurança'}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(event.created_at).toLocaleString('pt-BR')}
-                        </p>
+                {metrics.recentSecurityEvents.map((event: SecurityEvent, index) => {
+                  const newValues = event.new_values as any;
+                  return (
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">{newValues?.event_type || 'Evento de Segurança'}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(event.created_at).toLocaleString('pt-BR')}
+                          </p>
+                        </div>
                       </div>
+                      <Badge variant={
+                        newValues?.severity === 'CRITICAL' ? 'destructive' :
+                        newValues?.severity === 'ERROR' ? 'destructive' :
+                        newValues?.severity === 'WARNING' ? 'secondary' :
+                        'default'
+                      }>
+                        {newValues?.severity || 'INFO'}
+                      </Badge>
                     </div>
-                    <Badge variant={
-                      event.new_values?.severity === 'CRITICAL' ? 'destructive' :
-                      event.new_values?.severity === 'ERROR' ? 'destructive' :
-                      event.new_values?.severity === 'WARNING' ? 'secondary' :
-                      'default'
-                    }>
-                      {event.new_values?.severity || 'INFO'}
-                    </Badge>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-4">

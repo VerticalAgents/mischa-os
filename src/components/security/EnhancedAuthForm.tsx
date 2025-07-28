@@ -26,7 +26,8 @@ const registerSchema = z.object({
     .regex(/[a-z]/, 'Senha deve conter pelo menos uma letra minúscula')
     .regex(/[0-9]/, 'Senha deve conter pelo menos um número')
     .regex(/[!@#$%^&*(),.?":{}|<>]/, 'Senha deve conter pelo menos um caractere especial'),
-  confirmPassword: z.string()
+  confirmPassword: z.string(),
+  fullName: z.string().min(1, 'Nome é obrigatório')
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Senhas não coincidem',
   path: ['confirmPassword']
@@ -42,7 +43,7 @@ export function EnhancedAuthForm({ mode, onModeChange }: EnhancedAuthFormProps) 
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  const { login, register } = useAuth();
+  const { signInWithEmail, signUpWithEmail } = useAuth();
   const { 
     logAuthAttempt, 
     logSecurityEvent, 
@@ -99,9 +100,11 @@ export function EnhancedAuthForm({ mode, onModeChange }: EnhancedAuthFormProps) 
       let success = false;
       
       if (mode === 'login') {
-        success = await login(data.email, data.password);
+        await signInWithEmail(data.email, data.password);
+        success = true;
       } else {
-        success = await register(data.email, data.password);
+        await signUpWithEmail(data.email, data.password, data.fullName);
+        success = true;
       }
 
       // Log the authentication attempt
@@ -118,12 +121,6 @@ export function EnhancedAuthForm({ mode, onModeChange }: EnhancedAuthFormProps) 
           title: mode === 'login' ? "Login realizado" : "Cadastro realizado",
           description: mode === 'login' ? "Bem-vindo de volta!" : "Conta criada com sucesso!",
         });
-      } else {
-        await logSecurityEvent('FAILED_AUTH', 'WARNING', {
-          email: data.email,
-          auth_type: mode,
-          timestamp: new Date().toISOString()
-        });
       }
 
     } catch (error) {
@@ -134,9 +131,12 @@ export function EnhancedAuthForm({ mode, onModeChange }: EnhancedAuthFormProps) 
         timestamp: new Date().toISOString()
       });
 
+      // Log failed attempt
+      await logAuthAttempt(data.email, false, mode);
+
       toast({
         title: "Erro na autenticação",
-        description: "Ocorreu um erro. Tente novamente.",
+        description: error instanceof Error ? error.message : "Ocorreu um erro. Tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -174,6 +174,24 @@ export function EnhancedAuthForm({ mode, onModeChange }: EnhancedAuthFormProps) 
         )}
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+          {mode === 'register' && (
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Nome Completo</Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="Seu nome completo"
+                disabled={isLoading || accountLocked}
+                {...formRegister('fullName')}
+              />
+              {errors.fullName && (
+                <p className="text-sm text-destructive">
+                  {typeof errors.fullName.message === 'string' ? errors.fullName.message : 'Erro no nome'}
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -184,7 +202,9 @@ export function EnhancedAuthForm({ mode, onModeChange }: EnhancedAuthFormProps) 
               {...formRegister('email')}
             />
             {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+              <p className="text-sm text-destructive">
+                {typeof errors.email.message === 'string' ? errors.email.message : 'Email inválido'}
+              </p>
             )}
           </div>
 
@@ -214,7 +234,9 @@ export function EnhancedAuthForm({ mode, onModeChange }: EnhancedAuthFormProps) 
               </Button>
             </div>
             {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
+              <p className="text-sm text-destructive">
+                {typeof errors.password.message === 'string' ? errors.password.message : 'Senha inválida'}
+              </p>
             )}
           </div>
 
@@ -245,7 +267,9 @@ export function EnhancedAuthForm({ mode, onModeChange }: EnhancedAuthFormProps) 
                 </Button>
               </div>
               {errors.confirmPassword && (
-                <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+                <p className="text-sm text-destructive">
+                  {typeof errors.confirmPassword.message === 'string' ? errors.confirmPassword.message : 'Senhas não coincidem'}
+                </p>
               )}
             </div>
           )}

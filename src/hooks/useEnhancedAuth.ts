@@ -80,19 +80,18 @@ export function useEnhancedAuth() {
     }
   };
 
-  // Log security events
+  // Log security events using audit logs
   const logSecurityEvent = async (eventType: string, severity: SecurityEvent['severity'], details: Record<string, any>) => {
     try {
-      const { error } = await supabase
-        .rpc('log_security_event', {
-          p_event_type: eventType,
-          p_severity: severity,
-          p_details: details
-        });
-
-      if (error) {
-        logger.error('Failed to log security event:', error);
-      }
+      await logAction({
+        action: 'SECURITY_EVENT',
+        table_name: 'security_events',
+        new_values: {
+          event_type: eventType,
+          severity: severity,
+          details: details
+        }
+      });
     } catch (error) {
       logger.error('Error logging security event:', error);
     }
