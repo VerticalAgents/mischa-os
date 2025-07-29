@@ -20,12 +20,14 @@ import {
 } from "lucide-react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
+import { useGiroAnalysisConsolidated } from "@/hooks/useGiroAnalysisConsolidated";
 import { Cliente } from "@/types";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 export default function Representantes() {
   const { clientes, loading: clientesLoading, carregarClientes } = useClienteStore();
   const { representantes, loading: representantesLoading, carregarRepresentantes } = useSupabaseRepresentantes();
+  const { dados: dadosGiro } = useGiroAnalysisConsolidated();
   
   const [representanteSelecionado, setRepresentanteSelecionado] = useState<string>("todos");
 
@@ -42,15 +44,19 @@ export default function Representantes() {
     ? clientes 
     : clientes.filter(cliente => cliente.representanteId?.toString() === representanteSelecionado);
 
-  // Calcular métricas
+  // Calcular métricas com giro real dos dados consolidados
   const clientesAtivos = clientesDoRepresentante.filter(c => c.statusCliente === 'Ativo');
   const clientesEmAnalise = clientesDoRepresentante.filter(c => c.statusCliente === 'Em análise');
   const clientesAtivar = clientesDoRepresentante.filter(c => c.statusCliente === 'A ativar');
   const clientesInativos = clientesDoRepresentante.filter(c => c.statusCliente === 'Inativo');
   const clientesStandby = clientesDoRepresentante.filter(c => c.statusCliente === 'Standby');
 
-  const giroTotal = clientesAtivos.reduce((sum, c) => sum + (c.giroMedioSemanal || 0), 0);
-  const metaTotal = clientesAtivos.reduce((sum, c) => sum + (c.metaGiroSemanal || 0), 0);
+  // Usar giro real dos dados consolidados
+  const giroTotalReal = clientesAtivos.reduce((sum, c) => {
+    const dadoGiro = dadosGiro.find(d => d.cliente_id === c.id);
+    return sum + (dadoGiro?.giro_semanal_calculado || 0);
+  }, 0);
+
   const taxaConversao = clientesDoRepresentante.length > 0 
     ? (clientesAtivos.length / clientesDoRepresentante.length) * 100 
     : 0;
@@ -58,27 +64,48 @@ export default function Representantes() {
   // Dados para gráficos
   const dadosStatusPie = [
     { name: 'Ativos', value: clientesAtivos.length, color: '#22c55e' },
-    { name: 'Em análise', value: clientesEmAnalise.length, color: '#f59e0b' },
-    { name: 'A ativar', value: clientesAtivar.length, color: '#3b82f6' },
+    { name: 'Em análise', value: clientesEmAnalise.length, color: '#3b82f6' },
+    { name: 'A ativar', value: clientesAtivar.length, color: '#f59e0b' },
     { name: 'Standby', value: clientesStandby.length, color: '#6b7280' },
     { name: 'Inativos', value: clientesInativos.length, color: '#ef4444' }
   ].filter(item => item.value > 0);
 
-  const dadosGiroBar = clientesAtivos.slice(0, 10).map(cliente => ({
-    nome: cliente.nome.substring(0, 20) + (cliente.nome.length > 20 ? '...' : ''),
-    giro: cliente.giroMedioSemanal || 0,
-    meta: cliente.metaGiroSemanal || 0
-  }));
+  const dadosGiroBar = clientesAtivos.slice(0, 10).map(cliente => {
+    const dadoGiro = dadosGiro.find(d => d.cliente_id === cliente.id);
+    return {
+      nome: cliente.nome.substring(0, 20) + (cliente.nome.length > 20 ? '...' : ''),
+      giro: dadoGiro?.giro_semanal_calculado || 0
+    };
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Ativo': return 'bg-green-100 text-green-800';
-      case 'Em análise': return 'bg-yellow-100 text-yellow-800';
+      case 'Em análise': return 'bg-blue-100 text-blue-800';
       case 'Inativo': return 'bg-red-100 text-red-800';
-      case 'A ativar': return 'bg-blue-100 text-blue-800';
+      case 'A ativar': return 'bg-yellow-100 text-yellow-800';
       case 'Standby': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  // Função para calcular performance baseada na categoria
+  const calcularPerformanceCategoria = (clienteId: string) => {
+    const dadoCliente = dadosGiro.find(d => d.cliente_id === clienteId);
+    if (!dadoCliente || !dadoCliente.giro_semanal_calculado) return 0;
+
+    // Buscar média da categoria (simplificado - em produção seria mais complexo)
+    const clientesCategoria = dadosGiro.filter(d => 
+      d.categoria_estabelecimento_nome === dadoCliente.categoria_estabelecimento_nome
+    );
+    
+    if (clientesCategoria.length === 0) return 0;
+    
+    const mediaCategoria = clientesCategoria.reduce((sum, d) => 
+      sum + (d.giro_semanal_calculado || 0), 0
+    ) / clientesCategoria.length;
+
+    return mediaCategoria > 0 ? (dadoCliente.giro_semanal_calculado / mediaCategoria) * 100 : 0;
   };
 
   if (clientesLoading || representantesLoading) {
@@ -133,13 +160,13 @@ export default function Representantes() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Giro Semanal</CardTitle>
+            <CardTitle className="text-sm font-medium">Giro Semanal Real</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{giroTotal.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{giroTotalReal.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              Meta: {metaTotal.toLocaleString()}
+              Baseado em dados reais
             </p>
           </CardContent>
         </Card>
@@ -159,15 +186,13 @@ export default function Representantes() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Performance</CardTitle>
+            <CardTitle className="text-sm font-medium">Em Análise</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {metaTotal > 0 ? ((giroTotal / metaTotal) * 100).toFixed(1) : 0}%
-            </div>
+            <div className="text-2xl font-bold">{clientesEmAnalise.length}</div>
             <p className="text-xs text-muted-foreground">
-              Giro atual vs Meta
+              Clientes em observação
             </p>
           </CardContent>
         </Card>
@@ -235,8 +260,8 @@ export default function Representantes() {
         {/* Gráfico de Giro */}
         <Card>
           <CardHeader>
-            <CardTitle>Top 10 Clientes - Giro Semanal</CardTitle>
-            <CardDescription>Giro atual vs meta por cliente</CardDescription>
+            <CardTitle>Top 10 Clientes - Giro Semanal Real</CardTitle>
+            <CardDescription>Giro atual por cliente</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -246,8 +271,7 @@ export default function Representantes() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="giro" fill="#3b82f6" name="Giro Atual" />
-                <Bar dataKey="meta" fill="#22c55e" name="Meta" />
+                <Bar dataKey="giro" fill="#3b82f6" name="Giro Real" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -261,35 +285,37 @@ export default function Representantes() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="ativos" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="ativos">Ativos ({clientesAtivos.length})</TabsTrigger>
-              <TabsTrigger value="pipeline">Pipeline ({clientesEmAnalise.length + clientesAtivar.length})</TabsTrigger>
+              <TabsTrigger value="em-analise">Em Análise ({clientesEmAnalise.length})</TabsTrigger>
+              <TabsTrigger value="pipeline">Pipeline ({clientesAtivar.length})</TabsTrigger>
               <TabsTrigger value="standby">Standby ({clientesStandby.length})</TabsTrigger>
               <TabsTrigger value="inativos">Inativos ({clientesInativos.length})</TabsTrigger>
               <TabsTrigger value="todos">Todos ({clientesDoRepresentante.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="ativos" className="space-y-4">
-              <ClientesTable clientes={clientesAtivos} titulo="Clientes Ativos" />
+              <ClientesTable clientes={clientesAtivos} titulo="Clientes Ativos" dadosGiro={dadosGiro} calcularPerformanceCategoria={calcularPerformanceCategoria} />
+            </TabsContent>
+
+            <TabsContent value="em-analise" className="space-y-4">
+              <ClientesTable clientes={clientesEmAnalise} titulo="Clientes em Análise" dadosGiro={dadosGiro} calcularPerformanceCategoria={calcularPerformanceCategoria} />
             </TabsContent>
 
             <TabsContent value="pipeline" className="space-y-4">
-              <ClientesTable 
-                clientes={[...clientesEmAnalise, ...clientesAtivar]} 
-                titulo="Pipeline de Leads" 
-              />
+              <ClientesTable clientes={clientesAtivar} titulo="Pipeline de Leads" dadosGiro={dadosGiro} calcularPerformanceCategoria={calcularPerformanceCategoria} />
             </TabsContent>
 
             <TabsContent value="standby" className="space-y-4">
-              <ClientesTable clientes={clientesStandby} titulo="Clientes em Standby" />
+              <ClientesTable clientes={clientesStandby} titulo="Clientes em Standby" dadosGiro={dadosGiro} calcularPerformanceCategoria={calcularPerformanceCategoria} />
             </TabsContent>
 
             <TabsContent value="inativos" className="space-y-4">
-              <ClientesTable clientes={clientesInativos} titulo="Clientes Inativos" />
+              <ClientesTable clientes={clientesInativos} titulo="Clientes Inativos" dadosGiro={dadosGiro} calcularPerformanceCategoria={calcularPerformanceCategoria} />
             </TabsContent>
 
             <TabsContent value="todos" className="space-y-4">
-              <ClientesTable clientes={clientesDoRepresentante} titulo="Todos os Clientes" />
+              <ClientesTable clientes={clientesDoRepresentante} titulo="Todos os Clientes" dadosGiro={dadosGiro} calcularPerformanceCategoria={calcularPerformanceCategoria} />
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -298,17 +324,33 @@ export default function Representantes() {
   );
 }
 
-// Componente da tabela de clientes
-function ClientesTable({ clientes, titulo }: { clientes: Cliente[]; titulo: string }) {
+// Componente da tabela de clientes atualizado
+function ClientesTable({ 
+  clientes, 
+  titulo, 
+  dadosGiro, 
+  calcularPerformanceCategoria 
+}: { 
+  clientes: Cliente[]; 
+  titulo: string; 
+  dadosGiro: any[];
+  calcularPerformanceCategoria: (clienteId: string) => number;
+}) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Ativo': return 'bg-green-100 text-green-800';
-      case 'Em análise': return 'bg-yellow-100 text-yellow-800';
+      case 'Em análise': return 'bg-blue-100 text-blue-800';
       case 'Inativo': return 'bg-red-100 text-red-800';
-      case 'A ativar': return 'bg-blue-100 text-blue-800';
+      case 'A ativar': return 'bg-yellow-100 text-yellow-800';
       case 'Standby': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const getPerformanceBadge = (performance: number) => {
+    if (performance >= 100) return { color: 'bg-green-100 text-green-800', icon: <TrendingUp className="h-4 w-4" /> };
+    if (performance >= 80) return { color: 'bg-yellow-100 text-yellow-800', icon: null };
+    return { color: 'bg-red-100 text-red-800', icon: <AlertTriangle className="h-4 w-4" /> };
   };
 
   return (
@@ -321,16 +363,16 @@ function ClientesTable({ clientes, titulo }: { clientes: Cliente[]; titulo: stri
             <TableHead>Contato</TableHead>
             <TableHead>Localização</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="text-right">Giro Semanal</TableHead>
-            <TableHead className="text-right">Meta</TableHead>
-            <TableHead className="text-right">Performance</TableHead>
+            <TableHead className="text-right">Giro Semanal Real</TableHead>
+            <TableHead className="text-right">Performance vs Categoria</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {clientes.map((cliente) => {
-            const performance = cliente.metaGiroSemanal && cliente.metaGiroSemanal > 0 
-              ? ((cliente.giroMedioSemanal || 0) / cliente.metaGiroSemanal) * 100 
-              : 0;
+            const dadoGiro = dadosGiro.find(d => d.cliente_id === cliente.id);
+            const giroReal = dadoGiro?.giro_semanal_calculado || 0;
+            const performanceCategoria = calcularPerformanceCategoria(cliente.id);
+            const performanceBadge = getPerformanceBadge(performanceCategoria);
 
             return (
               <TableRow key={cliente.id}>
@@ -377,22 +419,14 @@ function ClientesTable({ clientes, titulo }: { clientes: Cliente[]; titulo: stri
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right font-mono">
-                  {cliente.giroMedioSemanal || 0}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {cliente.metaGiroSemanal || 0}
+                  {giroReal.toLocaleString()}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <span className="font-mono text-sm">
-                      {performance.toFixed(1)}%
-                    </span>
-                    {performance >= 100 && (
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                    )}
-                    {performance < 80 && performance > 0 && (
-                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                    )}
+                    <Badge className={performanceBadge.color}>
+                      {performanceCategoria.toFixed(1)}%
+                    </Badge>
+                    {performanceBadge.icon}
                   </div>
                 </TableCell>
               </TableRow>
