@@ -1,525 +1,396 @@
 import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
-import { toast } from "@/hooks/use-toast";
-import { Pedido, StatusPedido, ItemPedido, Cliente, SubstatusPedidoAgendado, AlteracaoStatusPedido } from '../types';
-import { calcularDistribuicaoSabores, calcularDeltaEfetivo, deltaForaTolerancia, calcularGiroSemanalPDV, calcularNovoQp } from '../utils/calculations';
+import { Pedido, StatusPedido } from '../types';
+import { supabase } from '../integrations/supabase/client';
 import { useClienteStore } from './useClienteStore';
-import { useSaborStore } from './useSaborStore';
-import { addDays, isWeekend } from 'date-fns';
 
 interface PedidoStore {
   pedidos: Pedido[];
-  pedidoAtual: Pedido | null;
-  filtros: {
-    dataInicio?: Date;
-    dataFim?: Date;
-    idCliente?: string;
-    status?: StatusPedido | 'Todos';
-    substatus?: SubstatusPedidoAgendado | 'Todos';
-  };
-  
-  // Ações
-  setPedidos: (pedidos: Pedido[]) => void;
-  criarNovoPedido: (idCliente: string) => Pedido | null;
-  adicionarPedido: (pedido: Omit<Pedido, 'id' | 'dataPedido'>) => Pedido;
-  atualizarPedido: (id: number, dadosPedido: Partial<Pedido>) => void;
-  atualizarItensPedido: (idPedido: number, itens: Omit<ItemPedido, 'id' | 'idPedido'>[]) => void;
-  removerPedido: (id: number) => void;
-  selecionarPedido: (id: number | null) => void;
-  
-  // Ações de workflow
-  confirmarEntrega: (idPedido: number, dataEfetiva: Date, itensEntregues: {idSabor: number, quantidadeEntregue: number}[]) => void;
-  despacharPedido: (idPedido: number) => void;
-  cancelarPedido: (idPedido: number) => void;
-  atualizarSubstatusPedido: (idPedido: number, novoSubstatus: SubstatusPedidoAgendado, observacao?: string) => void;
-  
-  // Ações de filtro
-  setFiltroDataInicio: (data?: Date) => void;
-  setFiltroDataFim: (data?: Date) => void;
-  setFiltroCliente: (idCliente?: string) => void;
-  setFiltroStatus: (status?: StatusPedido | 'Todos') => void;
-  setFiltroSubstatus: (substatus?: SubstatusPedidoAgendado | 'Todos') => void;
-  limparFiltros: () => void;
-  
-  // Getters
-  getPedidosFiltrados: () => Pedido[];
-  getPedidoPorId: (id: number) => Pedido | undefined;
-  getPedidosPorCliente: (idCliente: string) => Pedido[];
-  getPedidosPorStatus: (status: StatusPedido) => Pedido[];
-  getPedidosPorSubstatus: (substatus: SubstatusPedidoAgendado) => Pedido[];
-  getPedidosFuturos: () => Pedido[];
-  getPedidosUnicos: () => Pedido[];
+  loading: boolean;
+  error: string | null;
+  carregarPedidos: () => Promise<void>;
+  adicionarPedido: (pedidoData: Omit<Pedido, 'id'>) => Promise<void>;
+  editarPedido: (id: string, pedidoData: Partial<Pedido>) => Promise<void>;
+  excluirPedido: (id: string) => Promise<void>;
+  buscarPedidoPorId: (id: string) => Promise<Pedido | null>;
+  finalizarPedido: (pedidoId: string) => Promise<void>;
+  atualizarStatusPedido: (pedidoId: string, novoStatus: StatusPedido) => Promise<void>;
+  reagendarPedido: (pedidoId: string, novaData: Date) => Promise<void>;
 }
 
-const getProximoDiaUtil = (data: Date): Date => {
-  const proximaData = addDays(new Date(data), 1);
-  return isWeekend(proximaData) ? getProximoDiaUtil(proximaData) : proximaData;
-};
+export const usePedidoStore = create<PedidoStore>((set, get) => ({
+  pedidos: [],
+  loading: false,
+  error: null,
 
-export const usePedidoStore = create<PedidoStore>()(
-  devtools(
-    (set, get) => ({
-      pedidos: [], // Iniciando vazio
-      pedidoAtual: null,
-      filtros: {
-        status: 'Todos',
-        substatus: 'Todos'
-      },
-      
-      setPedidos: (pedidos) => set({ pedidos }),
-      
-      criarNovoPedido: (idCliente: string) => {
-        const cliente = useClienteStore.getState().getClientePorId(idCliente);
-        
-        if (!cliente) {
-          toast({
-            title: "Erro",
-            description: "Cliente não encontrado",
-            variant: "destructive"
-          });
-          return null;
-        }
-        
-        let dataPrevistaEntrega = new Date();
-        if (cliente.ultimaDataReposicaoEfetiva) {
-          dataPrevistaEntrega = new Date(cliente.ultimaDataReposicaoEfetiva);
-          dataPrevistaEntrega.setDate(dataPrevistaEntrega.getDate() + cliente.periodicidadePadrao);
-        } else {
-          dataPrevistaEntrega.setDate(dataPrevistaEntrega.getDate() + 1);
-        }
-        
-        const novoPedido: Omit<Pedido, 'id'> = {
-          idCliente: idCliente, // Changed to use string idCliente directly
-          cliente,
-          dataPedido: new Date(),
-          dataPrevistaEntrega,
-          totalPedidoUnidades: cliente.quantidadePadrao,
-          tipoPedido: "Padrão",
-          statusPedido: "Agendado",
-          substatusPedido: "Agendado",
-          itensPedido: [],
-          historicoAlteracoesStatus: [{
-            dataAlteracao: new Date(),
-            statusAnterior: "Agendado",
-            statusNovo: "Agendado",
-            substatusNovo: "Agendado",
-            observacao: "Pedido criado"
-          }]
-        };
-        
-        const saboresAtivos = useSaborStore.getState().getSaboresAtivos();
-        const itensPedido = calcularDistribuicaoSabores(saboresAtivos, cliente.quantidadePadrao);
-        
-        const novoId = Math.max(0, ...get().pedidos.map(p => Number(p.id))) + 1;
-        const pedidoCompleto = {
-          ...novoPedido,
-          id: novoId,
-          itensPedido: itensPedido.map((item, idx) => ({
-            ...item,
-            id: idx + 1,
-            idPedido: novoId
-          }))
-        };
-        
-        set(state => ({
-          pedidos: [...state.pedidos, pedidoCompleto],
-          pedidoAtual: pedidoCompleto
-        }));
-        
-        toast({
-          title: "Pedido criado",
-          description: `Pedido padrão criado para ${cliente.nome}`
-        });
-        
-        useClienteStore.getState().atualizarCliente(cliente.id, {
-          statusAgendamento: "Agendado",
-          proximaDataReposicao: dataPrevistaEntrega
-        });
-        
-        return pedidoCompleto;
-      },
-      
-      adicionarPedido: (pedido) => {
-        const novoId = Math.max(0, ...get().pedidos.map(p => Number(p.id))) + 1;
-        
-        let cliente = undefined;
-        if (pedido.idCliente && pedido.idCliente !== '') { // Changed condition to check for non-empty string
-          const idClienteString = String(pedido.idCliente); // Convert to string for cliente store
-          cliente = useClienteStore.getState().getClientePorId(idClienteString);
-        }
-        
-        const novoPedido = {
-          ...pedido,
-          id: novoId,
-          dataPedido: new Date(),
-          cliente,
-          itensPedido: []
-        };
-        
-        set(state => ({
-          pedidos: [...state.pedidos, novoPedido]
-        }));
-        
-        toast({
-          title: cliente ? "Pedido criado" : "Pedido único criado",
-          description: cliente 
-            ? `Pedido criado para ${cliente.nome}` 
-            : "Pedido único criado com sucesso"
-        });
-        
-        return novoPedido;
-      },
-      
-      atualizarPedido: (id, dadosPedido) => {
-        set(state => ({
-          pedidos: state.pedidos.map(pedido => 
-            Number(pedido.id) === id ? { ...pedido, ...dadosPedido } : pedido
-          ),
-          pedidoAtual: state.pedidoAtual && Number(state.pedidoAtual.id) === id 
-            ? { ...state.pedidoAtual, ...dadosPedido } 
-            : state.pedidoAtual
-        }));
-      },
-      
-      atualizarItensPedido: (idPedido, itens) => {
-        const pedido = get().pedidos.find(p => Number(p.id) === idPedido);
-        
-        if (!pedido) return;
-        
-        const totalUnidades = itens.reduce((sum, item) => sum + item.quantidadeSabor, 0);
-        
-        const tipoPedido = pedido.tipoPedido === "Padrão" && itens.length > 0 
-          ? "Alterado" 
-          : pedido.tipoPedido;
-        
-        const novosItens = itens.map((item, idx) => ({
-          ...item,
-          id: pedido.itensPedido[idx]?.id || (idx + 1),
-          idPedido
-        }));
-        
-        set(state => ({
-          pedidos: state.pedidos.map(p => {
-            if (Number(p.id) === idPedido) {
-              return {
-                ...p,
-                totalPedidoUnidades: totalUnidades,
-                tipoPedido,
-                itensPedido: novosItens
-              };
-            }
-            return p;
-          }),
-          pedidoAtual: state.pedidoAtual && Number(state.pedidoAtual.id) === idPedido 
-            ? {
-                ...state.pedidoAtual,
-                totalPedidoUnidades: totalUnidades,
-                tipoPedido,
-                itensPedido: novosItens
-              } 
-            : state.pedidoAtual
-        }));
-      },
-      
-      removerPedido: (id) => {
-        set(state => ({
-          pedidos: state.pedidos.filter(pedido => Number(pedido.id) !== id),
-          pedidoAtual: state.pedidoAtual && Number(state.pedidoAtual.id) === id ? null : state.pedidoAtual
-        }));
-      },
-      
-      selecionarPedido: (id) => {
-        if (id === null) {
-          set({ pedidoAtual: null });
-          return;
-        }
-        
-        const pedido = get().pedidos.find(p => Number(p.id) === id);
-        set({ pedidoAtual: pedido || null });
-      },
-      
-      confirmarEntrega: (idPedido, dataEfetiva, itensEntregues) => {
-        const pedido = get().pedidos.find(p => Number(p.id) === idPedido);
-        if (!pedido) return;
-        
-        set(state => ({
-          pedidos: state.pedidos.map(p => {
-            if (Number(p.id) === idPedido) {
-              const itensAtualizados = p.itensPedido.map(item => {
-                const itemEntregue = itensEntregues.find(i => i.idSabor === item.idSabor);
-                return itemEntregue 
-                  ? { ...item, quantidadeEntregue: itemEntregue.quantidadeEntregue }
-                  : item;
-              });
-              
-              return {
-                ...p,
-                statusPedido: "Entregue",
-                dataEfetivaEntrega: dataEfetiva,
-                itensPedido: itensAtualizados
-              };
-            }
-            return p;
-          })
-        }));
-        
-        const totalEntregue = itensEntregues.reduce((sum, item) => sum + item.quantidadeEntregue, 0);
-        
-        if (pedido.cliente) {
-          const clienteState = useClienteStore.getState();
-          const ultimaDataReposicao = pedido.cliente.ultimaDataReposicaoEfetiva;
-          
-          clienteState.atualizarCliente(pedido.cliente.id, {
-            ultimaDataReposicaoEfetiva: dataEfetiva
-          });
-          
-          if (ultimaDataReposicao) {
-            const deltaEfetivo = calcularDeltaEfetivo(dataEfetiva, ultimaDataReposicao);
-            
-            if (deltaForaTolerancia(deltaEfetivo, pedido.cliente.periodicidadePadrao)) {
-              const giroSemanal = calcularGiroSemanalPDV(totalEntregue, deltaEfetivo);
-              const novoQp = calcularNovoQp(giroSemanal, pedido.cliente.periodicidadePadrao);
-              
-              clienteState.atualizarCliente(pedido.cliente.id, {
-                quantidadePadrao: novoQp
-              });
-              
-              toast({
-                title: "Qp recalculado",
-                description: `Qp de ${pedido.cliente.nome} atualizado de ${pedido.cliente.quantidadePadrao} para ${novoQp} (Δ=${deltaEfetivo})`,
-                variant: "default"
-              });
-            }
+  carregarPedidos: async () => {
+    try {
+      set({ loading: true, error: null });
+
+      const { data, error } = await supabase
+        .from('pedidos')
+        .select('*')
+        .order('data_pedido', { ascending: false });
+
+      if (error) throw error;
+
+      const pedidosFormatados: Pedido[] = (data || []).map(pedido => ({
+        id: pedido.id,
+        clienteId: pedido.cliente_id || '',
+        dataPedido: new Date(pedido.data_pedido),
+        status: (pedido.status as StatusPedido) || 'Pendente',
+        valorTotal: pedido.valor_total || 0,
+        observacoes: pedido.observacoes || '',
+        itens: pedido.itens || [],
+        dataEntrega: pedido.data_entrega ? new Date(pedido.data_entrega) : undefined,
+        enderecoEntrega: pedido.endereco_entrega || '',
+        contatoEntrega: pedido.contato_entrega || '',
+        numeroPedidoCliente: pedido.numero_pedido_cliente || '',
+        createdAt: new Date(pedido.created_at),
+        updatedAt: pedido.updated_at ? new Date(pedido.updated_at) : undefined
+      }));
+
+      set({ pedidos: pedidosFormatados, loading: false });
+    } catch (error: any) {
+      console.error('❌ Erro ao carregar pedidos:', error);
+      set({ error: error.message, loading: false });
+    }
+  },
+
+  adicionarPedido: async (pedidoData) => {
+    try {
+      set({ loading: true, error: null });
+
+      const { data, error } = await supabase
+        .from('pedidos')
+        .insert([
+          {
+            cliente_id: pedidoData.clienteId,
+            data_pedido: pedidoData.dataPedido.toISOString(),
+            status: pedidoData.status,
+            valor_total: pedidoData.valorTotal,
+            observacoes: pedidoData.observacoes,
+            itens: pedidoData.itens,
+            data_entrega: pedidoData.dataEntrega ? pedidoData.dataEntrega.toISOString() : null,
+            endereco_entrega: pedidoData.enderecoEntrega,
+            contato_entrega: pedidoData.contatoEntrega,
+            numero_pedido_cliente: pedidoData.numeroPedidoCliente
           }
-        }
-        
-        const saborState = useSaborStore.getState();
-        
-        itensEntregues.forEach(item => {
-          saborState.atualizarSaldoEstoque(item.idSabor, item.quantidadeEntregue, false);
-        });
-        
-        const clienteNome = pedido.cliente?.nome || 
-          (pedido.observacoes?.includes("PEDIDO ÚNICO") 
-            ? pedido.observacoes?.match(/Nome: (.*?)(?:\n|$)/)?.[1] 
-            : `Pedido #${pedido.id}`);
-        
-        toast({
-          title: "Entrega confirmada",
-          description: `Pedido para ${clienteNome} entregue com sucesso.`
-        });
-      },
-      
-      despacharPedido: (idPedido) => {
-        const pedido = get().pedidos.find(p => Number(p.id) === idPedido);
-        if (!pedido) return;
-        
-        const saborState = useSaborStore.getState();
-        const sabores = saborState.sabores;
-        
-        const itensComSaldoInsuficiente = pedido.itensPedido.filter(item => {
-          const sabor = sabores.find(s => s.id === item.idSabor);
-          return sabor && sabor.saldoAtual < item.quantidadeSabor;
-        });
-        
-        if (itensComSaldoInsuficiente.length > 0) {
-          const mensagens = itensComSaldoInsuficiente.map(item => {
-            const sabor = sabores.find(s => s.id === item.idSabor);
-            return `${sabor?.nome}: ${sabor?.saldoAtual}/${item.quantidadeSabor}`;
-          });
-          
-          toast({
-            title: "Estoque insuficiente",
-            description: `Não há estoque suficiente para: ${mensagens.join(', ')}`,
-            variant: "destructive"
-          });
-          return;
-        }
-        
-        set(state => ({
-          pedidos: state.pedidos.map(p => 
-            Number(p.id) === idPedido ? { ...p, statusPedido: "Despachado" } : p
-          ),
-          pedidoAtual: state.pedidoAtual && Number(state.pedidoAtual.id) === idPedido 
-            ? { ...state.pedidoAtual, statusPedido: "Despachado" } 
-            : state.pedidoAtual
-        }));
-        
-        pedido.itensPedido.forEach(item => {
-          saborState.atualizarSaldoEstoque(item.idSabor, item.quantidadeSabor, false);
-        });
-        
-        toast({
-          title: "Pedido despachado",
-          description: `Pedido #${idPedido} despachado com sucesso.`
-        });
-      },
-      
-      cancelarPedido: (idPedido) => {
-        set(state => ({
-          pedidos: state.pedidos.map(p => 
-            Number(p.id) === idPedido ? { ...p, statusPedido: "Cancelado" } : p
-          ),
-          pedidoAtual: state.pedidoAtual && Number(state.pedidoAtual.id) === idPedido 
-            ? { ...state.pedidoAtual, statusPedido: "Cancelado" } 
-            : state.pedidoAtual
-        }));
-        
-        toast({
-          title: "Pedido cancelado",
-          description: `Pedido #${idPedido} cancelado com sucesso.`
-        });
-      },
-      
-      atualizarSubstatusPedido: (idPedido, novoSubstatus, observacao) => {
-        const pedido = get().pedidos.find(p => Number(p.id) === idPedido);
-        if (!pedido) return;
-    
-        const alteracaoStatus: AlteracaoStatusPedido = {
-          dataAlteracao: new Date(),
-          statusAnterior: pedido.statusPedido,
-          statusNovo: pedido.statusPedido,
-          substatusAnterior: pedido.substatusPedido,
-          substatusNovo: novoSubstatus,
-          observacao: observacao || `Substatus alterado para ${novoSubstatus}`
-        };
-    
-        set(state => ({
-          pedidos: state.pedidos.map(p =>
-            Number(p.id) === idPedido ? {
-              ...p,
-              substatusPedido: novoSubstatus,
-              historicoAlteracoesStatus: [
-                ...(p.historicoAlteracoesStatus || []),
-                alteracaoStatus
-              ]
-            } : p
-          ),
-          pedidoAtual: state.pedidoAtual && Number(state.pedidoAtual.id) === idPedido
-            ? {
-              ...state.pedidoAtual,
-              substatusPedido: novoSubstatus,
-              historicoAlteracoesStatus: [
-                ...(state.pedidoAtual.historicoAlteracoesStatus || []),
-                alteracaoStatus
-              ]
-            }
-            : state.pedidoAtual
-        }));
-    
-        toast({
-          title: "Substatus atualizado",
-          description: `Substatus do pedido #${idPedido} alterado para ${novoSubstatus}.`
-        });
-      },
-      
-      setFiltroSubstatus: (substatus) => {
-        set(state => ({
-          filtros: {
-            ...state.filtros,
-            substatus
-          }
-        }));
-      },
-      
-      setFiltroDataInicio: (dataInicio) => {
-        set(state => ({
-          filtros: {
-            ...state.filtros,
-            dataInicio
-          }
-        }));
-      },
-      
-      setFiltroDataFim: (dataFim) => {
-        set(state => ({
-          filtros: {
-            ...state.filtros,
-            dataFim
-          }
-        }));
-      },
-      
-      setFiltroCliente: (idCliente) => {
-        set(state => ({
-          filtros: {
-            ...state.filtros,
-            idCliente
-          }
-        }));
-      },
-      
-      setFiltroStatus: (status) => {
-        set(state => ({
-          filtros: {
-            ...state.filtros,
-            status
-          }
-        }));
-      },
-      
-      limparFiltros: () => {
-        set({
-          filtros: {
-            status: 'Todos',
-            substatus: 'Todos'
-          }
-        });
-      },
-      
-      getPedidosFiltrados: () => {
-        const { pedidos, filtros } = get();
-        
-        return pedidos.filter(pedido => {
-          const dataMatch = 
-            (!filtros.dataInicio || new Date(pedido.dataPrevistaEntrega) >= new Date(filtros.dataInicio)) &&
-            (!filtros.dataFim || new Date(pedido.dataPrevistaEntrega) <= new Date(filtros.dataFim));
-          
-          const clienteMatch = !filtros.idCliente || String(pedido.idCliente) === filtros.idCliente;
-          
-          const statusMatch = !filtros.status || filtros.status === 'Todos' || pedido.statusPedido === filtros.status;
-          
-          const substatusMatch = !filtros.substatus || filtros.substatus === 'Todos' || pedido.substatusPedido === filtros.substatus;
-          
-          return dataMatch && clienteMatch && statusMatch && substatusMatch;
-        });
-      },
-      
-      getPedidoPorId: (id) => {
-        return get().pedidos.find(p => Number(p.id) === id);
-      },
-      
-      getPedidosPorCliente: (idCliente) => {
-        return get().pedidos.filter(p => String(p.idCliente) === idCliente);
-      },
-      
-      getPedidosPorStatus: (status) => {
-        return get().pedidos.filter(p => p.statusPedido === status);
-      },
-      
-      getPedidosPorSubstatus: (substatus) => {
-        return get().pedidos.filter(p => p.substatusPedido === substatus);
-      },
-      
-      getPedidosFuturos: () => {
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        
-        return get().pedidos.filter(p => 
-          (p.statusPedido === "Agendado" || p.statusPedido === "Em Separação") && 
-          new Date(p.dataPrevistaEntrega) >= hoje
-        ).sort((a, b) => 
-          new Date(a.dataPrevistaEntrega).getTime() - new Date(b.dataPrevistaEntrega).getTime()
-        );
-      },
-      
-      getPedidosUnicos: () => {
-        return get().pedidos.filter(p => 
-          !p.idCliente || // Changed condition - if idCliente is empty/null
-          !p.cliente
-        );
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const novoPedido: Pedido = {
+        id: data.id,
+        clienteId: data.cliente_id || '',
+        dataPedido: new Date(data.data_pedido),
+        status: (data.status as StatusPedido) || 'Pendente',
+        valorTotal: data.valor_total || 0,
+        observacoes: data.observacoes || '',
+        itens: data.itens || [],
+        dataEntrega: data.data_entrega ? new Date(data.data_entrega) : undefined,
+        enderecoEntrega: data.endereco_entrega || '',
+        contatoEntrega: data.contato_entrega || '',
+        numeroPedidoCliente: data.numero_pedido_cliente || '',
+        createdAt: new Date(data.created_at),
+        updatedAt: data.updated_at ? new Date(data.updated_at) : undefined
+      };
+
+      set(state => ({
+        pedidos: [...state.pedidos, novoPedido],
+        loading: false
+      }));
+
+    } catch (error: any) {
+      console.error('❌ Erro ao adicionar pedido:', error);
+      set({ error: error.message, loading: false });
+      throw error;
+    }
+  },
+
+  editarPedido: async (id: string, pedidoData: Partial<Pedido>) => {
+    try {
+      set({ loading: true, error: null });
+
+      const updateData: any = {};
+
+      if (pedidoData.clienteId !== undefined) updateData.cliente_id = pedidoData.clienteId;
+      if (pedidoData.dataPedido !== undefined) updateData.data_pedido = pedidoData.dataPedido.toISOString();
+      if (pedidoData.status !== undefined) updateData.status = pedidoData.status;
+      if (pedidoData.valorTotal !== undefined) updateData.valor_total = pedidoData.valorTotal;
+      if (pedidoData.observacoes !== undefined) updateData.observacoes = pedidoData.observacoes;
+      if (pedidoData.itens !== undefined) updateData.itens = pedidoData.itens;
+      if (pedidoData.dataEntrega !== undefined) updateData.data_entrega = pedidoData.dataEntrega.toISOString();
+      if (pedidoData.enderecoEntrega !== undefined) updateData.endereco_entrega = pedidoData.enderecoEntrega;
+      if (pedidoData.contatoEntrega !== undefined) updateData.contato_entrega = pedidoData.contatoEntrega;
+      if (pedidoData.numeroPedidoCliente !== undefined) updateData.numero_pedido_cliente = pedidoData.numeroPedidoCliente;
+
+      const { data, error } = await supabase
+        .from('pedidos')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const pedidoAtualizado: Pedido = {
+        id: data.id,
+        clienteId: data.cliente_id || '',
+        dataPedido: new Date(data.data_pedido),
+        status: (data.status as StatusPedido) || 'Pendente',
+        valorTotal: data.valor_total || 0,
+        observacoes: data.observacoes || '',
+        itens: data.itens || [],
+        dataEntrega: data.data_entrega ? new Date(data.data_entrega) : undefined,
+        enderecoEntrega: data.endereco_entrega || '',
+        contatoEntrega: data.contato_entrega || '',
+        numeroPedidoCliente: data.numero_pedido_cliente || '',
+        createdAt: new Date(data.created_at),
+        updatedAt: data.updated_at ? new Date(data.updated_at) : undefined
+      };
+
+      set(state => ({
+        pedidos: state.pedidos.map(pedido =>
+          pedido.id === id ? pedidoAtualizado : pedido
+        ),
+        loading: false
+      }));
+
+    } catch (error: any) {
+      console.error('❌ Erro ao editar pedido:', error);
+      set({ error: error.message, loading: false });
+      throw error;
+    }
+  },
+
+  excluirPedido: async (id: string) => {
+    try {
+      set({ loading: true, error: null });
+
+      const { error } = await supabase
+        .from('pedidos')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      set(state => ({
+        pedidos: state.pedidos.filter(pedido => pedido.id !== id),
+        loading: false
+      }));
+
+    } catch (error: any) {
+      console.error('❌ Erro ao excluir pedido:', error);
+      set({ error: error.message, loading: false });
+      throw error;
+    }
+  },
+
+  buscarPedidoPorId: async (id: string) => {
+    try {
+      set({ loading: true, error: null });
+
+      const { data, error } = await supabase
+        .from('pedidos')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      if (!data) {
+        return null;
       }
-    }),
-    { name: 'pedido-store' }
-  )
-);
+
+      const pedido: Pedido = {
+        id: data.id,
+        clienteId: data.cliente_id || '',
+        dataPedido: new Date(data.data_pedido),
+        status: (data.status as StatusPedido) || 'Pendente',
+        valorTotal: data.valor_total || 0,
+        observacoes: data.observacoes || '',
+        itens: data.itens || [],
+        dataEntrega: data.data_entrega ? new Date(data.data_entrega) : undefined,
+        enderecoEntrega: data.endereco_entrega || '',
+        contatoEntrega: data.contato_entrega || '',
+        numeroPedidoCliente: data.numero_pedido_cliente || '',
+        createdAt: new Date(data.created_at),
+        updatedAt: data.updated_at ? new Date(data.updated_at) : undefined
+      };
+
+      set({ loading: false });
+      return pedido;
+
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar pedido:', error);
+      set({ error: error.message, loading: false });
+      return null;
+    }
+  },
+
+  finalizarPedido: async (pedidoId: string) => {
+    try {
+      const { clientes, getClientePorId } = useClienteStore.getState();
+      
+      const { data: pedidoData, error: pedidoError } = await supabase
+        .from('pedidos')
+        .select('*')
+        .eq('id', pedidoId)
+        .single();
+
+      if (pedidoError) throw pedidoError;
+
+      const pedido = {
+        id: pedidoData.id,
+        clienteId: pedidoData.cliente_id || '',
+        dataPedido: new Date(pedidoData.data_pedido),
+        status: (pedidoData.status as StatusPedido) || 'Pendente',
+        valorTotal: pedidoData.valor_total || 0,
+        observacoes: pedidoData.observacoes || '',
+        itens: pedidoData.itens || [],
+        dataEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : undefined,
+        enderecoEntrega: pedidoData.endereco_entrega || '',
+        contatoEntrega: pedidoData.contato_entrega || '',
+        numeroPedidoCliente: pedidoData.numero_pedido_cliente || '',
+        createdAt: new Date(pedidoData.created_at),
+        updatedAt: pedidoData.updated_at ? new Date(pedidoData.updated_at) : undefined
+      };
+
+      // Update client's last delivery date
+      if (pedido.clienteId) {
+        const cliente = getClientePorId(pedido.clienteId);
+        if (cliente) {
+          await useClienteStore.getState().editarCliente(pedido.clienteId, {
+            ultimaDataReposicaoEfetiva: new Date()
+          });
+        }
+      }
+
+      // Update order status to 'Finalizado'
+      await supabase
+        .from('pedidos')
+        .update({ status: 'Finalizado' })
+        .eq('id', pedidoId);
+
+      // Update state
+      set(state => ({
+        pedidos: state.pedidos.map(p =>
+          p.id === pedidoId ? { ...p, status: 'Finalizado' } : p
+        )
+      }));
+    } catch (error: any) {
+      console.error('❌ Erro ao finalizar pedido:', error);
+      throw error;
+    }
+  },
+
+  atualizarStatusPedido: async (pedidoId: string, novoStatus: StatusPedido) => {
+    try {
+      const { data: pedidoData, error: pedidoError } = await supabase
+        .from('pedidos')
+        .select('*')
+        .eq('id', pedidoId)
+        .single();
+    
+      if (pedidoError) throw pedidoError;
+    
+      const pedido = {
+        id: pedidoData.id,
+        clienteId: pedidoData.cliente_id || '',
+        dataPedido: new Date(pedidoData.data_pedido),
+        status: (pedidoData.status as StatusPedido) || 'Pendente',
+        valorTotal: pedidoData.valor_total || 0,
+        observacoes: pedidoData.observacoes || '',
+        itens: pedidoData.itens || [],
+        dataEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : undefined,
+        enderecoEntrega: pedidoData.endereco_entrega || '',
+        contatoEntrega: pedidoData.contato_entrega || '',
+        numeroPedidoCliente: pedidoData.numero_pedido_cliente || '',
+        createdAt: new Date(pedidoData.created_at),
+        updatedAt: pedidoData.updated_at ? new Date(pedidoData.updated_at) : undefined
+      };
+
+      // Update client's next delivery date if status is 'Entregue'
+      if (novoStatus === 'Entregue' && pedido.clienteId) {
+        const cliente = useClienteStore.getState().getClientePorId(pedido.clienteId);
+        if (cliente) {
+          const proximaData = new Date();
+          proximaData.setDate(proximaData.getDate() + cliente.periodicidadePadrao);
+          
+          await useClienteStore.getState().editarCliente(pedido.clienteId, {
+            proximaDataReposicao: proximaData
+          });
+        }
+      }
+
+      // Update order status in Supabase
+      await supabase
+        .from('pedidos')
+        .update({ status: novoStatus })
+        .eq('id', pedidoId);
+
+      // Update state
+      set(state => ({
+        pedidos: state.pedidos.map(p =>
+          p.id === pedidoId ? { ...p, status: novoStatus } : p
+        )
+      }));
+    } catch (error: any) {
+      console.error('❌ Erro ao atualizar status do pedido:', error);
+      throw error;
+    }
+  },
+
+  reagendarPedido: async (pedidoId: string, novaData: Date) => {
+    try {
+      const { data: pedidoData, error: pedidoError } = await supabase
+        .from('pedidos')
+        .select('*')
+        .eq('id', pedidoId)
+        .single();
+    
+      if (pedidoError) throw pedidoError;
+    
+      const pedido = {
+        id: pedidoData.id,
+        clienteId: pedidoData.cliente_id || '',
+        dataPedido: new Date(pedidoData.data_pedido),
+        status: (pedidoData.status as StatusPedido) || 'Pendente',
+        valorTotal: pedidoData.valor_total || 0,
+        observacoes: pedidoData.observacoes || '',
+        itens: pedidoData.itens || [],
+        dataEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : undefined,
+        enderecoEntrega: pedidoData.endereco_entrega || '',
+        contatoEntrega: pedidoData.contato_entrega || '',
+        numeroPedidoCliente: pedidoData.numero_pedido_cliente || '',
+        createdAt: new Date(pedidoData.created_at),
+        updatedAt: pedidoData.updated_at ? new Date(pedidoData.updated_at) : undefined
+      };
+
+      // Update client's next delivery date
+      if (pedido.clienteId) {
+        await useClienteStore.getState().editarCliente(pedido.clienteId, {
+          proximaDataReposicao: novaData
+        });
+      }
+
+      // Update order's delivery date in Supabase
+      await supabase
+        .from('pedidos')
+        .update({ data_entrega: novaData.toISOString() })
+        .eq('id', pedidoId);
+
+      // Update state
+      set(state => ({
+        pedidos: state.pedidos.map(p =>
+          p.id === pedidoId ? { ...p, dataEntrega: novaData } : p
+        )
+      }));
+    } catch (error: any) {
+      console.error('❌ Erro ao reagendar pedido:', error);
+      throw error;
+    }
+  },
+}));
