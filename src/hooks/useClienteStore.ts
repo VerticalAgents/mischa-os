@@ -185,7 +185,7 @@ export const useClienteStore = create<ClienteStore>()(
               `)
               .order('created_at', { ascending: false });
 
-            const { data: clientesData, error: clientesError } = await withTimeout(queryPromise, REQUEST_TIMEOUT);
+            const { data: clientesData, error: clientesError } = await withTimeout(queryPromise.then(result => result), REQUEST_TIMEOUT);
 
             if (clientesError) {
               throw new Error(`Erro ao carregar clientes: ${clientesError.message}`);
