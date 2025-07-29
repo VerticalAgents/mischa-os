@@ -86,6 +86,7 @@ function App() {
                       <Route path="/agendamento" element={<Agendamento />} />
                       <Route path="/expedicao" element={<Expedicao />} />
                       <Route path="/estoque" element={<Estoque />} />
+                      <Route path="/estoque/insumos" element={<EstoqueInsumos />} />
                       <Route path="/estoque-insumos" element={<EstoqueInsumos />} />
                       <Route path="/pcp" element={<PCP />} />
                       <Route path="/precificacao" element={<Precificacao />} />
