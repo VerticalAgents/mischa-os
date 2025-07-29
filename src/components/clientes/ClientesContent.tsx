@@ -4,6 +4,7 @@ import { useClienteStore } from "@/hooks/useClienteStore";
 import ClientesFilters from "./ClientesFilters";
 import ClientesTable from "./ClientesTable";
 import ClientesBulkActions from "./ClientesBulkActions";
+import ClienteFormDialog from "./ClienteFormDialog";
 import { StatusCliente } from "@/types";
 
 interface FiltrosCliente {
@@ -11,13 +12,35 @@ interface FiltrosCliente {
   status: StatusCliente | "Todos";
 }
 
-export default function ClientesContent() {
+interface ClientesContentProps {
+  onRefresh?: () => void;
+  isFormOpen?: boolean;
+  setIsFormOpen?: (open: boolean) => void;
+}
+
+const defaultColumnOptions = [
+  { id: 'nome', label: 'Nome', canToggle: false },
+  { id: 'cnpjCpf', label: 'CNPJ/CPF', canToggle: true },
+  { id: 'statusCliente', label: 'Status', canToggle: true },
+  { id: 'contatoTelefone', label: 'Telefone', canToggle: true },
+  { id: 'enderecoEntrega', label: 'Endereço', canToggle: true },
+  { id: 'acoes', label: 'Ações', canToggle: false }
+];
+
+export default function ClientesContent({ 
+  onRefresh, 
+  isFormOpen = false, 
+  setIsFormOpen 
+}: ClientesContentProps) {
   const { carregarClientes, buscarClientes, loading } = useClienteStore();
   const [clientesSelecionados, setClientesSelecionados] = useState<string[]>([]);
   const [filtros, setFiltros] = useState<FiltrosCliente>({
     termo: "",
     status: "Todos"
   });
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([
+    'nome', 'cnpjCpf', 'statusCliente', 'contatoTelefone', 'acoes'
+  ]);
 
   const clientesFiltrados = buscarClientes(filtros);
 
@@ -60,23 +83,38 @@ export default function ClientesContent() {
     <div className="space-y-6">
       <ClientesFilters 
         filtros={filtros}
-        onFiltroChange={(novosFiltros) => setFiltros(novosFiltros)}
-        totalClientes={clientesFiltrados.length}
+        setFiltroTermo={(termo) => setFiltros(prev => ({ ...prev, termo }))}
+        setFiltroStatus={(status) => setFiltros(prev => ({ ...prev, status }))}
+        visibleColumns={visibleColumns}
+        setVisibleColumns={setVisibleColumns}
+        columnOptions={defaultColumnOptions}
       />
       
       {clientesSelecionados.length > 0 && (
         <ClientesBulkActions 
-          clientesSelecionados={clientesSelecionados}
+          selectedClients={clientesSelecionados}
           onClearSelection={handleClearSelection}
         />
       )}
       
       <ClientesTable
         clientes={clientesFiltrados}
-        clientesSelecionados={clientesSelecionados}
+        selectedClients={clientesSelecionados}
         onToggleSelection={handleToggleSelection}
         onSelectAll={handleSelectAll}
+        visibleColumns={visibleColumns}
       />
+
+      {isFormOpen && setIsFormOpen && (
+        <ClienteFormDialog
+          open={isFormOpen}
+          onOpenChange={setIsFormOpen}
+          onSuccess={() => {
+            onRefresh?.();
+            setIsFormOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

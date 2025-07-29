@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { Pedido, StatusPedido } from '../types';
 import { supabase } from '../integrations/supabase/client';
@@ -41,12 +42,12 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
         clienteId: pedido.cliente_id,
         dataPedido: new Date(pedido.data_pedido),
         dataPrevistaEntrega: pedido.data_entrega ? new Date(pedido.data_entrega) : new Date(pedido.data_pedido),
-        status: (pedido.status as StatusPedido) || 'Pendente',
-        statusPedido: (pedido.status as StatusPedido) || 'Pendente',
+        status: (pedido.status as StatusPedido),
+        statusPedido: (pedido.status as StatusPedido),
         valorTotal: pedido.valor_total || 0,
         observacoes: pedido.observacoes || '',
-        itensPedido: pedido.itens || [],
-        itens: pedido.itens || [],
+        itensPedido: Array.isArray(pedido.itens) ? pedido.itens as any[] : [],
+        itens: Array.isArray(pedido.itens) ? pedido.itens as any[] : [],
         dataEntrega: pedido.data_entrega ? new Date(pedido.data_entrega) : undefined,
         enderecoEntrega: pedido.endereco_entrega || '',
         contatoEntrega: pedido.contato_entrega || '',
@@ -73,9 +74,9 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
         .from('pedidos')
         .insert([
           {
-            cliente_id: pedidoData.clienteId,
+            cliente_id: pedidoData.idCliente,
             data_pedido: pedidoData.dataPedido.toISOString(),
-            status: pedidoData.status,
+            status: pedidoData.statusPedido,
             valor_total: pedidoData.valorTotal,
             observacoes: pedidoData.observacoes,
             itens: pedidoData.itens,
@@ -96,12 +97,12 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
         clienteId: data.cliente_id || '',
         dataPedido: new Date(data.data_pedido),
         dataPrevistaEntrega: data.data_entrega ? new Date(data.data_entrega) : new Date(data.data_pedido),
-        status: (data.status as StatusPedido) || 'Pendente',
-        statusPedido: (data.status as StatusPedido) || 'Pendente',
+        status: (data.status as StatusPedido),
+        statusPedido: (data.status as StatusPedido),
         valorTotal: data.valor_total || 0,
         observacoes: data.observacoes || '',
-        itensPedido: data.itens || [],
-        itens: data.itens || [],
+        itensPedido: Array.isArray(data.itens) ? data.itens as any[] : [],
+        itens: Array.isArray(data.itens) ? data.itens as any[] : [],
         dataEntrega: data.data_entrega ? new Date(data.data_entrega) : undefined,
         enderecoEntrega: data.endereco_entrega || '',
         contatoEntrega: data.contato_entrega || '',
@@ -131,13 +132,13 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
 
       const updateData: any = {};
 
-      if (pedidoData.clienteId !== undefined) updateData.cliente_id = pedidoData.clienteId;
+      if (pedidoData.idCliente !== undefined) updateData.cliente_id = pedidoData.idCliente;
       if (pedidoData.dataPedido !== undefined) updateData.data_pedido = pedidoData.dataPedido.toISOString();
-      if (pedidoData.status !== undefined) updateData.status = pedidoData.status;
+      if (pedidoData.statusPedido !== undefined) updateData.status = pedidoData.statusPedido;
       if (pedidoData.valorTotal !== undefined) updateData.valor_total = pedidoData.valorTotal;
       if (pedidoData.observacoes !== undefined) updateData.observacoes = pedidoData.observacoes;
       if (pedidoData.itens !== undefined) updateData.itens = pedidoData.itens;
-      if (pedidoData.dataEntrega !== undefined) updateData.data_entrega = pedidoData.dataEntrega.toISOString();
+      if (pedidoData.dataEntrega !== undefined) updateData.data_entrega = pedidoData.dataEntrega?.toISOString();
       if (pedidoData.enderecoEntrega !== undefined) updateData.endereco_entrega = pedidoData.enderecoEntrega;
       if (pedidoData.contatoEntrega !== undefined) updateData.contato_entrega = pedidoData.contatoEntrega;
       if (pedidoData.numeroPedidoCliente !== undefined) updateData.numero_pedido_cliente = pedidoData.numeroPedidoCliente;
@@ -157,12 +158,12 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
         clienteId: data.cliente_id || '',
         dataPedido: new Date(data.data_pedido),
         dataPrevistaEntrega: data.data_entrega ? new Date(data.data_entrega) : new Date(data.data_pedido),
-        status: (data.status as StatusPedido) || 'Pendente',
-        statusPedido: (data.status as StatusPedido) || 'Pendente',
+        status: (data.status as StatusPedido),
+        statusPedido: (data.status as StatusPedido),
         valorTotal: data.valor_total || 0,
         observacoes: data.observacoes || '',
-        itensPedido: data.itens || [],
-        itens: data.itens || [],
+        itensPedido: Array.isArray(data.itens) ? data.itens as any[] : [],
+        itens: Array.isArray(data.itens) ? data.itens as any[] : [],
         dataEntrega: data.data_entrega ? new Date(data.data_entrega) : undefined,
         enderecoEntrega: data.endereco_entrega || '',
         contatoEntrega: data.contato_entrega || '',
@@ -233,12 +234,12 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
         clienteId: data.cliente_id || '',
         dataPedido: new Date(data.data_pedido),
         dataPrevistaEntrega: data.data_entrega ? new Date(data.data_entrega) : new Date(data.data_pedido),
-        status: (data.status as StatusPedido) || 'Pendente',
-        statusPedido: (data.status as StatusPedido) || 'Pendente',
+        status: (data.status as StatusPedido),
+        statusPedido: (data.status as StatusPedido),
         valorTotal: data.valor_total || 0,
         observacoes: data.observacoes || '',
-        itensPedido: data.itens || [],
-        itens: data.itens || [],
+        itensPedido: Array.isArray(data.itens) ? data.itens as any[] : [],
+        itens: Array.isArray(data.itens) ? data.itens as any[] : [],
         dataEntrega: data.data_entrega ? new Date(data.data_entrega) : undefined,
         enderecoEntrega: data.endereco_entrega || '',
         contatoEntrega: data.contato_entrega || '',
@@ -262,8 +263,6 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
 
   finalizarPedido: async (pedidoId: string) => {
     try {
-      const { clientes, getClientePorId } = useClienteStore.getState();
-      
       const { data: pedidoData, error: pedidoError } = await supabase
         .from('pedidos')
         .select('*')
@@ -272,37 +271,11 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
 
       if (pedidoError) throw pedidoError;
 
-      const pedido: Pedido = {
-        id: pedidoData.id,
-        idCliente: pedidoData.cliente_id,
-        clienteId: pedidoData.cliente_id || '',
-        dataPedido: new Date(pedidoData.data_pedido),
-        dataPrevistaEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : new Date(pedidoData.data_pedido),
-        status: (pedidoData.status as StatusPedido) || 'Pendente',
-        statusPedido: (pedidoData.status as StatusPedido) || 'Pendente',
-        valorTotal: pedidoData.valor_total || 0,
-        observacoes: pedidoData.observacoes || '',
-        itensPedido: pedidoData.itens || [],
-        itens: pedidoData.itens || [],
-        dataEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : undefined,
-        enderecoEntrega: pedidoData.endereco_entrega || '',
-        contatoEntrega: pedidoData.contato_entrega || '',
-        numeroPedidoCliente: pedidoData.numero_pedido_cliente || '',
-        totalPedidoUnidades: Array.isArray(pedidoData.itens) 
-          ? pedidoData.itens.reduce((total: number, item: any) => total + (item.quantidade || 0), 0)
-          : 0,
-        createdAt: new Date(pedidoData.created_at),
-        updatedAt: pedidoData.updated_at ? new Date(pedidoData.updated_at) : undefined
-      };
-
       // Update client's last delivery date
-      if (pedido.clienteId) {
-        const cliente = getClientePorId(pedido.clienteId);
-        if (cliente) {
-          await useClienteStore.getState().editarCliente(pedido.clienteId, {
-            ultimaDataReposicaoEfetiva: new Date()
-          });
-        }
+      if (pedidoData.cliente_id) {
+        await useClienteStore.getState().editarCliente(pedidoData.cliente_id, {
+          ultimaDataReposicaoEfetiva: new Date()
+        });
       }
 
       // Update order status to 'Finalizado'
@@ -332,38 +305,15 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
         .single();
     
       if (pedidoError) throw pedidoError;
-    
-      const pedido: Pedido = {
-        id: pedidoData.id,
-        idCliente: pedidoData.cliente_id,
-        clienteId: pedidoData.cliente_id || '',
-        dataPedido: new Date(pedidoData.data_pedido),
-        dataPrevistaEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : new Date(pedidoData.data_pedido),
-        status: (pedidoData.status as StatusPedido) || 'Pendente',
-        statusPedido: (pedidoData.status as StatusPedido) || 'Pendente',
-        valorTotal: pedidoData.valor_total || 0,
-        observacoes: pedidoData.observacoes || '',
-        itensPedido: pedidoData.itens || [],
-        itens: pedidoData.itens || [],
-        dataEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : undefined,
-        enderecoEntrega: pedidoData.endereco_entrega || '',
-        contatoEntrega: pedidoData.contato_entrega || '',
-        numeroPedidoCliente: pedidoData.numero_pedido_cliente || '',
-        totalPedidoUnidades: Array.isArray(pedidoData.itens) 
-          ? pedidoData.itens.reduce((total: number, item: any) => total + (item.quantidade || 0), 0)
-          : 0,
-        createdAt: new Date(pedidoData.created_at),
-        updatedAt: pedidoData.updated_at ? new Date(pedidoData.updated_at) : undefined
-      };
 
       // Update client's next delivery date if status is 'Entregue'
-      if (novoStatus === 'Entregue' && pedido.clienteId) {
-        const cliente = useClienteStore.getState().getClientePorId(pedido.clienteId);
+      if (novoStatus === 'Entregue' && pedidoData.cliente_id) {
+        const cliente = useClienteStore.getState().getClientePorId(pedidoData.cliente_id);
         if (cliente) {
           const proximaData = new Date();
           proximaData.setDate(proximaData.getDate() + cliente.periodicidadePadrao);
           
-          await useClienteStore.getState().editarCliente(pedido.clienteId, {
+          await useClienteStore.getState().editarCliente(pedidoData.cliente_id, {
             proximaDataReposicao: proximaData
           });
         }
@@ -396,33 +346,10 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
         .single();
     
       if (pedidoError) throw pedidoError;
-    
-      const pedido: Pedido = {
-        id: pedidoData.id,
-        idCliente: pedidoData.cliente_id,
-        clienteId: pedidoData.cliente_id || '',
-        dataPedido: new Date(pedidoData.data_pedido),
-        dataPrevistaEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : new Date(pedidoData.data_pedido),
-        status: (pedidoData.status as StatusPedido) || 'Pendente',
-        statusPedido: (pedidoData.status as StatusPedido) || 'Pendente',
-        valorTotal: pedidoData.valor_total || 0,
-        observacoes: pedidoData.observacoes || '',
-        itensPedido: pedidoData.itens || [],
-        itens: pedidoData.itens || [],
-        dataEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : undefined,
-        enderecoEntrega: pedidoData.endereco_entrega || '',
-        contatoEntrega: pedidoData.contato_entrega || '',
-        numeroPedidoCliente: pedidoData.numero_pedido_cliente || '',
-        totalPedidoUnidades: Array.isArray(pedidoData.itens) 
-          ? pedidoData.itens.reduce((total: number, item: any) => total + (item.quantidade || 0), 0)
-          : 0,
-        createdAt: new Date(pedidoData.created_at),
-        updatedAt: pedidoData.updated_at ? new Date(pedidoData.updated_at) : undefined
-      };
 
       // Update client's next delivery date
-      if (pedido.clienteId) {
-        await useClienteStore.getState().editarCliente(pedido.clienteId, {
+      if (pedidoData.cliente_id) {
+        await useClienteStore.getState().editarCliente(pedidoData.cliente_id, {
           proximaDataReposicao: novaData
         });
       }

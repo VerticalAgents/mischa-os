@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { Cliente } from '../types';
 import { supabase } from '../integrations/supabase/client';
@@ -47,7 +48,7 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
         statusCliente: cliente.status_cliente as any || 'Ativo',
         metaGiroSemanal: cliente.meta_giro_semanal || 0,
         categoriaEstabelecimentoId: cliente.categoria_estabelecimento_id,
-        janelasEntrega: cliente.janelas_entrega || [],
+        janelasEntrega: Array.isArray(cliente.janelas_entrega) ? cliente.janelas_entrega as any[] : [],
         instrucoesEntrega: cliente.instrucoes_entrega || '',
         tipoLogistica: cliente.tipo_logistica as any || 'Própria',
         contabilizarGiroMedio: cliente.contabilizar_giro_medio ?? true,
@@ -55,7 +56,7 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
         tipoCobranca: cliente.tipo_cobranca as any || 'À vista',
         formaPagamento: cliente.forma_pagamento as any || 'Boleto',
         observacoes: cliente.observacoes || '',
-        categoriasHabilitadas: cliente.categorias_habilitadas || [],
+        categoriasHabilitadas: Array.isArray(cliente.categorias_habilitadas) ? cliente.categorias_habilitadas as number[] : [],
         ativo: cliente.ativo ?? true,
         giroMedioSemanal: cliente.giro_medio_semanal || 0,
         ultimaDataReposicaoEfetiva: cliente.ultima_data_reposicao_efetiva ? new Date(cliente.ultima_data_reposicao_efetiva) : undefined,
@@ -126,7 +127,7 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
         statusCliente: data.status_cliente as any || 'Ativo',
         metaGiroSemanal: data.meta_giro_semanal || 0,
         categoriaEstabelecimentoId: data.categoria_estabelecimento_id,
-        janelasEntrega: data.janelas_entrega || [],
+        janelasEntrega: Array.isArray(data.janelas_entrega) ? data.janelas_entrega as any[] : [],
         instrucoesEntrega: data.instrucoes_entrega || '',
         tipoLogistica: data.tipo_logistica as any || 'Própria',
         contabilizarGiroMedio: data.contabilizar_giro_medio ?? true,
@@ -134,7 +135,7 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
         tipoCobranca: data.tipo_cobranca as any || 'À vista',
         formaPagamento: data.forma_pagamento as any || 'Boleto',
         observacoes: data.observacoes || '',
-        categoriasHabilitadas: data.categorias_habilitadas || [],
+        categoriasHabilitadas: Array.isArray(data.categorias_habilitadas) ? data.categorias_habilitadas as number[] : [],
         ativo: data.ativo ?? true,
         giroMedioSemanal: data.giro_medio_semanal || 0,
         ultimaDataReposicaoEfetiva: data.ultima_data_reposicao_efetiva ? new Date(data.ultima_data_reposicao_efetiva) : undefined,
@@ -214,7 +215,7 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
         statusCliente: data.status_cliente as any || 'Ativo',
         metaGiroSemanal: data.meta_giro_semanal || 0,
         categoriaEstabelecimentoId: data.categoria_estabelecimento_id,
-        janelasEntrega: data.janelas_entrega || [],
+        janelasEntrega: Array.isArray(data.janelas_entrega) ? data.janelas_entrega as any[] : [],
         instrucoesEntrega: data.instrucoes_entrega || '',
         tipoLogistica: data.tipo_logistica as any || 'Própria',
         contabilizarGiroMedio: data.contabilizar_giro_medio ?? true,
@@ -222,7 +223,7 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
         tipoCobranca: data.tipo_cobranca as any || 'À vista',
         formaPagamento: data.forma_pagamento as any || 'Boleto',
         observacoes: data.observacoes || '',
-        categoriasHabilitadas: data.categorias_habilitadas || [],
+        categoriasHabilitadas: Array.isArray(data.categorias_habilitadas) ? data.categorias_habilitadas as number[] : [],
         ativo: data.ativo ?? true,
         giroMedioSemanal: data.giro_medio_semanal || 0,
         ultimaDataReposicaoEfetiva: data.ultima_data_reposicao_efetiva ? new Date(data.ultima_data_reposicao_efetiva) : undefined,
