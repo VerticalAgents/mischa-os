@@ -26,7 +26,7 @@ export default function ClientesContent({ onRefresh, isFormOpen, setIsFormOpen }
     setFiltroStatus,
     getClientesFiltrados,
     selecionarCliente,
-    removerCliente,
+    excluirCliente,
     getClientePorId
   } = useClienteStore();
 
@@ -71,8 +71,8 @@ export default function ClientesContent({ onRefresh, isFormOpen, setIsFormOpen }
     onRefresh();
   };
   
-  const handleSelectCliente = (id: string) => {
-    selecionarCliente(id);
+  const handleSelectCliente = (cliente: any) => {
+    selecionarCliente(cliente);
   };
 
   const handleDeleteCliente = (id: string) => {
@@ -82,7 +82,7 @@ export default function ClientesContent({ onRefresh, isFormOpen, setIsFormOpen }
 
   const confirmDeleteCliente = async () => {
     if (clienteToDelete) {
-      await removerCliente(clienteToDelete);
+      await excluirCliente(clienteToDelete);
       setDeleteDialogOpen(false);
       setClienteToDelete(null);
       onRefresh();

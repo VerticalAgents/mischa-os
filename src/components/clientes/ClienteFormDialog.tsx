@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -46,16 +47,16 @@ export default function ClienteFormDialog({
     contatoEmail: '',
     quantidadePadrao: 0,
     periodicidadePadrao: 7,
-    statusCliente: 'Ativo' as const,
+    statusCliente: 'Ativo' as string,
     metaGiroSemanal: 0,
     categoriaEstabelecimentoId: undefined as number | undefined,
     janelasEntrega: [] as DiaSemana[],
     instrucoesEntrega: '',
-    tipoLogistica: 'Própria' as const,
+    tipoLogistica: 'Própria' as string,
     contabilizarGiroMedio: true,
     emiteNotaFiscal: true,
-    tipoCobranca: 'À vista' as const,
-    formaPagamento: 'Boleto' as const,
+    tipoCobranca: 'À vista' as string,
+    formaPagamento: 'Boleto' as string,
     observacoes: '',
     categoriasHabilitadas: [] as number[]
   });
@@ -374,6 +375,7 @@ export default function ClienteFormDialog({
                 <SelectContent>
                   <SelectItem value="Própria">Própria</SelectItem>
                   <SelectItem value="Terceirizada">Terceirizada</SelectItem>
+                  <SelectItem value="Distribuição">Distribuição</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -390,6 +392,44 @@ export default function ClienteFormDialog({
                   <SelectItem value="Ativo">Ativo</SelectItem>
                   <SelectItem value="Inativo">Inativo</SelectItem>
                   <SelectItem value="Suspenso">Suspenso</SelectItem>
+                  <SelectItem value="Em análise">Em análise</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Configurações Financeiras */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="tipoCobranca">Tipo de Cobrança</Label>
+              <Select
+                value={formData.tipoCobranca}
+                onValueChange={(value) => handleInputChange('tipoCobranca', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="À vista">À vista</SelectItem>
+                  <SelectItem value="Consignado">Consignado</SelectItem>
+                  <SelectItem value="Faturado">Faturado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="formaPagamento">Forma de Pagamento</Label>
+              <Select
+                value={formData.formaPagamento}
+                onValueChange={(value) => handleInputChange('formaPagamento', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Boleto">Boleto</SelectItem>
+                  <SelectItem value="PIX">PIX</SelectItem>
+                  <SelectItem value="Cartão">Cartão</SelectItem>
+                  <SelectItem value="Dinheiro">Dinheiro</SelectItem>
                 </SelectContent>
               </Select>
             </div>

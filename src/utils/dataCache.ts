@@ -8,11 +8,11 @@ interface CacheItem<T> {
 class DataCache {
   private cache = new Map<string, CacheItem<any>>();
   
-  set<T>(key: string, data: T, ttlMinutes: number = 5): void {
+  set<T>(key: string, data: T, ttlMs: number = 5 * 60 * 1000): void {
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
-      ttl: ttlMinutes * 60 * 1000
+      ttl: ttlMs
     });
   }
   
@@ -26,6 +26,10 @@ class DataCache {
     }
     
     return item.data;
+  }
+  
+  remove(key: string): void {
+    this.cache.delete(key);
   }
   
   clear(key?: string): void {
