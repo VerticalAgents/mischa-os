@@ -38,12 +38,14 @@ const RETRY_ATTEMPTS = 2;
 
 // Helper para timeout
 const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
-    )
-  ]);
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => reject(new Error('Request timeout')), timeoutMs);
+    
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => clearTimeout(timeoutId));
+  });
 };
 
 // Helper para retry
@@ -165,37 +167,39 @@ export const useClienteStore = create<ClienteStore>()(
         try {
           console.log('🔄 Iniciando carregamento otimizado de clientes...');
           
+          // Funções para carregar dados com timeout e retry
+          const carregarClientesData = async () => {
+            const { data, error } = await supabase
+              .from('clientes')
+              .select('*')
+              .order('created_at', { ascending: false });
+            
+            if (error) throw error;
+            return data || [];
+          };
+
+          const carregarAgendamentosData = async () => {
+            const { data, error } = await supabase
+              .from('agendamentos_clientes')
+              .select('*');
+            
+            if (error) {
+              console.warn('⚠️ Falha ao carregar agendamentos:', error);
+              return [];
+            }
+            return data || [];
+          };
+          
           // Carregar clientes e agendamentos em paralelo com timeout
           const [clientesData, agendamentosData] = await Promise.all([
-            retryWithBackoff(() => withTimeout(
-              supabase
-                .from('clientes')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .then(({ data, error }) => {
-                  if (error) throw error;
-                  return data || [];
-                }),
-              REQUEST_TIMEOUT
-            )),
+            retryWithBackoff(() => withTimeout(carregarClientesData(), REQUEST_TIMEOUT)),
             
             // Agendamentos são opcionais - se falhar, continua sem eles
-            retryWithBackoff(() => withTimeout(
-              supabase
-                .from('agendamentos_clientes')
-                .select('*')
-                .then(({ data, error }) => {
-                  if (error) {
-                    console.warn('⚠️ Falha ao carregar agendamentos:', error);
-                    return [];
-                  }
-                  return data || [];
-                }),
-              REQUEST_TIMEOUT
-            )).catch(error => {
-              console.warn('⚠️ Agendamentos não puderam ser carregados:', error);
-              return [];
-            })
+            retryWithBackoff(() => withTimeout(carregarAgendamentosData(), REQUEST_TIMEOUT))
+              .catch(error => {
+                console.warn('⚠️ Agendamentos não puderam ser carregados:', error);
+                return [];
+              })
           ]);
 
           // Mapear agendamentos por cliente_id
@@ -311,7 +315,6 @@ export const useClienteStore = create<ClienteStore>()(
           set({ loading: false });
         }
       },
-      
       
       atualizarCliente: async (id, dadosCliente) => {
         set({ loading: true, error: null });
