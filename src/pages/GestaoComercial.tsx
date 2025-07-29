@@ -14,7 +14,7 @@ export default function GestaoComercial() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Determinar a aba ativa baseada na rota atual
+  // Determine active tab based on current route
   const getActiveTab = () => {
     const path = location.pathname;
     if (path.includes('funil-leads')) return 'funil-leads';
@@ -39,14 +39,14 @@ export default function GestaoComercial() {
         description="Gerencie representantes, leads, distribuidores e parcerias comerciais"
       />
 
-      {/* Abas sempre visíveis no topo */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b mb-6">
-        <div className="container mx-auto py-4">
-          <Tabs
-            value={activeTab}
-            onValueChange={handleTabChange}
-            className="w-full"
-          >
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="w-full"
+      >
+        {/* Always visible tabs at the top */}
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b mb-6">
+          <div className="container mx-auto py-4">
             <TabsList className="grid w-full grid-cols-4 max-w-2xl">
               <TabsTrigger value="representantes" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
@@ -65,13 +65,11 @@ export default function GestaoComercial() {
                 <span className="hidden sm:inline">Parceiros</span>
               </TabsTrigger>
             </TabsList>
-          </Tabs>
+          </div>
         </div>
-      </div>
 
-      {/* Conteúdo das abas */}
-      <div className="mt-6">
-        <Tabs value={activeTab} className="w-full">
+        {/* Tab content */}
+        <div className="mt-6">
           <TabsContent value="representantes">
             <Representantes />
           </TabsContent>
@@ -87,8 +85,8 @@ export default function GestaoComercial() {
           <TabsContent value="parceiros">
             <Parceiros />
           </TabsContent>
-        </Tabs>
-      </div>
+        </div>
+      </Tabs>
     </div>
   );
 }
