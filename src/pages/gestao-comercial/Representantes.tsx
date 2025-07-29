@@ -39,6 +39,7 @@ interface SortConfig {
 export default function Representantes() {
   const { clientes, loading: clientesLoading, carregarClientes } = useClienteStore();
   const { representantes, loading: representantesLoading, carregarRepresentantes } = useSupabaseRepresentantes();
+  const { registros, carregarHistorico } = useHistoricoEntregasStore();
   const [representanteSelecionado, setRepresentanteSelecionado] = useState<string>("todos");
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   
@@ -48,20 +49,29 @@ export default function Representantes() {
     isLoading: giroLoading 
   } = useGiroAnalysisConsolidated({});
 
-  // Initial data loading - only once
+  // Initial data loading
   useEffect(() => {
+    const loadInitialData = async () => {
+      console.log('🔄 Iniciando carregamento de dados...');
+      try {
+        // Load all data in parallel
+        await Promise.all([
+          clientes.length === 0 ? carregarClientes() : Promise.resolve(),
+          representantes.length === 0 ? carregarRepresentantes() : Promise.resolve(),
+          registros.length === 0 ? carregarHistorico() : Promise.resolve()
+        ]);
+        console.log('✅ Dados carregados com sucesso');
+      } catch (error) {
+        console.error('❌ Erro no carregamento inicial:', error);
+      } finally {
+        setIsInitialLoad(false);
+      }
+    };
+
     if (isInitialLoad) {
-      const loadInitialData = async () => {
-        try {
-          if (clientes.length === 0) await carregarClientes();
-          if (representantes.length === 0) await carregarRepresentantes();
-        } finally {
-          setIsInitialLoad(false);
-        }
-      };
       loadInitialData();
     }
-  }, [isInitialLoad, clientes.length, representantes.length, carregarClientes, carregarRepresentantes]);
+  }, [isInitialLoad, clientes.length, representantes.length, registros.length, carregarClientes, carregarRepresentantes, carregarHistorico]);
 
   // Optimize data calculations with useMemo
   const calculatedData = useMemo(() => {
@@ -107,7 +117,7 @@ export default function Representantes() {
       ? (clientesAtivos.length / clientesDoRepresentante.length) * 100 
       : 0;
 
-    // Simplified chart data - no animations needed
+    // Chart data without animations
     const dadosStatusPie = [
       { name: 'Ativos', value: clientesAtivos.length, color: '#22c55e' },
       { name: 'Em análise', value: clientesEmAnalise.length, color: '#3b82f6' },
@@ -169,7 +179,10 @@ export default function Representantes() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Select value={representanteSelecionado} onValueChange={setRepresentanteSelecionado}>
+          <Select 
+            value={representanteSelecionado} 
+            onValueChange={setRepresentanteSelecionado}
+          >
             <SelectTrigger className="w-full max-w-md">
               <SelectValue placeholder="Selecione um representante" />
             </SelectTrigger>
@@ -253,7 +266,7 @@ export default function Representantes() {
         </Card>
       </div>
 
-      {/* Optimized Charts - Load only when data is ready */}
+      {/* Optimized Charts */}
       {calculatedData.dadosStatusPie.length > 0 && (
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
@@ -407,7 +420,7 @@ function SortableClientesTable({
   const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'nome', direction: 'asc' });
 
   const getDeliveryStats = useCallback((clienteId: string) => {
-    const entregas = registros.filter(h => h.cliente_id === clienteId);
+    const entregas = registros.filter(h => h.cliente_id === clienteId && h.tipo === 'entrega');
     const totalEntregas = entregas.length;
     
     if (totalEntregas === 0) return { count: 0, daysSinceFirst: 0, canActivate: false };

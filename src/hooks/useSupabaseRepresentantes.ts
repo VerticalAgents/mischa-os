@@ -15,11 +15,13 @@ interface Representante {
 
 export const useSupabaseRepresentantes = () => {
   const [representantes, setRepresentantes] = useState<Representante[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const carregarRepresentantes = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Carregando representantes...');
+      
       const { data, error } = await supabase
         .from('representantes')
         .select('*')
@@ -28,12 +30,23 @@ export const useSupabaseRepresentantes = () => {
 
       if (error) {
         console.error('Erro ao carregar representantes:', error);
+        toast({
+          title: "Erro ao carregar representantes",
+          description: error.message,
+          variant: "destructive"
+        });
         return;
       }
 
+      console.log('✅ Representantes carregados:', data?.length || 0);
       setRepresentantes(data || []);
     } catch (error) {
       console.error('Erro ao carregar representantes:', error);
+      toast({
+        title: "Erro ao carregar representantes",
+        description: "Erro inesperado ao carregar representantes",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
