@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -16,6 +17,7 @@ interface AuthContextType {
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -137,13 +139,63 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Function to refresh session
+  const refreshSession = async () => {
+    try {
+      console.log('Attempting to refresh session...');
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.error('Session refresh failed:', error);
+        // If refresh fails, redirect to login
+        navigate('/login');
+        toast.error("Sessão expirada. Faça login novamente.");
+        return;
+      }
+      
+      if (data.session) {
+        console.log('Session refreshed successfully');
+        setSession(data.session);
+        setUser(data.session.user);
+      }
+    } catch (error) {
+      console.error('Error refreshing session:', error);
+      navigate('/login');
+      toast.error("Erro ao renovar sessão. Faça login novamente.");
+    }
+  };
+
+  // Check if token is about to expire and refresh if needed
+  const checkTokenExpiry = async (currentSession: Session | null) => {
+    if (!currentSession) return;
+
+    const now = Math.floor(Date.now() / 1000);
+    const expiresAt = currentSession.expires_at || 0;
+    const timeUntilExpiry = expiresAt - now;
+
+    // If token expires in less than 5 minutes, refresh it
+    if (timeUntilExpiry < 300) {
+      console.log('Token expiring soon, refreshing...');
+      await refreshSession();
+    }
+  };
+
   useEffect(() => {
+    let refreshInterval: NodeJS.Timeout;
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session ? 'Session exists' : 'No session');
+        
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Clear any existing refresh interval
+        if (refreshInterval) {
+          clearInterval(refreshInterval);
+        }
 
         // Only process events after initialization
         if (!isInitialized) {
@@ -166,6 +218,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             }
           );
 
+          // Set up token refresh interval (check every 5 minutes)
+          refreshInterval = setInterval(() => {
+            checkTokenExpiry(session);
+          }, 5 * 60 * 1000);
+
           // Redirect to /home after successful login
           navigate('/home', { replace: true });
           toast.success("Login realizado com sucesso");
@@ -187,21 +244,45 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             );
           }
 
+          // Clear refresh interval
+          if (refreshInterval) {
+            clearInterval(refreshInterval);
+          }
+
           navigate('/login');
           toast.info("Você foi desconectado");
+        }
+
+        if (event === 'TOKEN_REFRESHED' && session) {
+          console.log('Token refreshed successfully');
+          setSession(session);
+          setUser(session.user);
         }
       }
     );
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session ? 'Session found' : 'No session');
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
       setIsInitialized(true);
+
+      // If there's a valid session, set up token refresh monitoring
+      if (session) {
+        refreshInterval = setInterval(() => {
+          checkTokenExpiry(session);
+        }, 5 * 60 * 1000);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
   }, [navigate, isInitialized, user]);
 
   const signInWithEmail = async (email: string, password: string): Promise<void> => {
@@ -378,7 +459,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       signInWithEmail,
       signUpWithEmail,
       logout, 
-      loading 
+      loading,
+      refreshSession
     }}>
       {children}
     </AuthContext.Provider>
