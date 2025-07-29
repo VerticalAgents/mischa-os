@@ -11,10 +11,11 @@ import DeleteClienteDialog from "./DeleteClienteDialog";
 
 interface ClientesContentProps {
   onRefresh: () => void;
+  isFormOpen: boolean;
+  setIsFormOpen: (open: boolean) => void;
 }
 
-export default function ClientesContent({ onRefresh }: ClientesContentProps) {
-  const [isFormOpen, setIsFormOpen] = useState(false);
+export default function ClientesContent({ onRefresh, isFormOpen, setIsFormOpen }: ClientesContentProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clienteToDelete, setClienteToDelete] = useState<string | null>(null);
   
@@ -127,7 +128,7 @@ export default function ClientesContent({ onRefresh }: ClientesContentProps) {
       <ClienteFormDialog 
         open={isFormOpen} 
         onOpenChange={setIsFormOpen}
-        onClienteUpdate={onRefresh}
+        onClienteUpdate={handleFormClose}
       />
 
       <DeleteClienteDialog
