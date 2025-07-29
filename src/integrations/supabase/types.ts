@@ -885,6 +885,76 @@ export type Database = {
         }
         Relationships: []
       }
+      pedidos: {
+        Row: {
+          cliente_id: string
+          contato_entrega: string | null
+          created_at: string
+          data_entrega: string | null
+          data_pedido: string
+          endereco_entrega: string | null
+          id: string
+          itens: Json
+          numero_pedido_cliente: string | null
+          observacoes: string | null
+          status: string
+          updated_at: string
+          valor_total: number
+        }
+        Insert: {
+          cliente_id: string
+          contato_entrega?: string | null
+          created_at?: string
+          data_entrega?: string | null
+          data_pedido?: string
+          endereco_entrega?: string | null
+          id?: string
+          itens?: Json
+          numero_pedido_cliente?: string | null
+          observacoes?: string | null
+          status?: string
+          updated_at?: string
+          valor_total?: number
+        }
+        Update: {
+          cliente_id?: string
+          contato_entrega?: string | null
+          created_at?: string
+          data_entrega?: string | null
+          data_pedido?: string
+          endereco_entrega?: string | null
+          id?: string
+          itens?: Json
+          numero_pedido_cliente?: string | null
+          observacoes?: string | null
+          status?: string
+          updated_at?: string
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_consolidados"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "pedidos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       precos_categoria_cliente: {
         Row: {
           categoria_id: number
@@ -1464,6 +1534,16 @@ export type Database = {
       }
     }
     Functions: {
+      check_cliente_status_consistency: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          nome: string
+          ativo: boolean
+          status_cliente: string
+          inconsistencia: string
+        }[]
+      }
       check_rate_limit: {
         Args: {
           p_ip_address: unknown
