@@ -173,8 +173,8 @@ export const useClienteStore = create<ClienteStore>()(
           try {
             console.log(`useClienteStore: Tentativa ${attemptNumber} de carregamento`);
             
-            // Query otimizada com LEFT JOIN - executando corretamente
-            const clientesQuery = supabase
+            // Query otimizada com LEFT JOIN - executando com timeout
+            const queryPromise = supabase
               .from('clientes')
               .select(`
                 *,
@@ -185,10 +185,8 @@ export const useClienteStore = create<ClienteStore>()(
               `)
               .order('created_at', { ascending: false });
 
-            const { data: clientesData, error: clientesError } = await withTimeout(
-              clientesQuery,
-              REQUEST_TIMEOUT
-            );
+            const result = await withTimeout(queryPromise, REQUEST_TIMEOUT);
+            const { data: clientesData, error: clientesError } = result;
 
             if (clientesError) {
               throw new Error(`Erro ao carregar clientes: ${clientesError.message}`);
