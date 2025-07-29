@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { Cliente, StatusCliente } from '../types';
@@ -174,20 +173,18 @@ export const useClienteStore = create<ClienteStore>()(
           try {
             console.log(`useClienteStore: Tentativa ${attemptNumber} de carregamento`);
             
-            // Query otimizada com LEFT JOIN
-            const clientesPromise = supabase
-              .from('clientes')
-              .select(`
-                *,
-                agendamentos:agendamentos_clientes(
-                  status_agendamento,
-                  data_proxima_reposicao
-                )
-              `)
-              .order('created_at', { ascending: false });
-
+            // Query otimizada com LEFT JOIN - corrigindo a execução da query
             const { data: clientesData, error: clientesError } = await withTimeout(
-              clientesPromise,
+              supabase
+                .from('clientes')
+                .select(`
+                  *,
+                  agendamentos:agendamentos_clientes(
+                    status_agendamento,
+                    data_proxima_reposicao
+                  )
+                `)
+                .order('created_at', { ascending: false }),
               REQUEST_TIMEOUT
             );
 
