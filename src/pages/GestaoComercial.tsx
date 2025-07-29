@@ -4,10 +4,11 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Building, HelpingHand, UserCircle } from "lucide-react";
+import { Building, HelpingHand, UserCircle, Users } from "lucide-react";
 import FunilLeads from "./gestao-comercial/FunilLeads";
 import Distribuidores from "./gestao-comercial/Distribuidores";
 import Parceiros from "./gestao-comercial/Parceiros";
+import ClientesPorRepresentante from "./gestao-comercial/ClientesPorRepresentante";
 
 export default function GestaoComercial() {
   const [activeTab, setActiveTab] = useState("funil-leads");
@@ -24,7 +25,7 @@ export default function GestaoComercial() {
       
       <PageHeader
         title="Gestão Comercial"
-        description="Gerencie leads, distribuidores e parcerias comerciais"
+        description="Gerencie leads, distribuidores, parcerias comerciais e representantes"
       />
 
       <div className="mt-6">
@@ -47,6 +48,10 @@ export default function GestaoComercial() {
                 <HelpingHand className="h-4 w-4" />
                 <span>Parceiros</span>
               </TabsTrigger>
+              <TabsTrigger value="clientes-representante" className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                <span>Clientes por Representante</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -60,6 +65,10 @@ export default function GestaoComercial() {
 
           <TabsContent value="parceiros">
             <Parceiros />
+          </TabsContent>
+
+          <TabsContent value="clientes-representante">
+            <ClientesPorRepresentante />
           </TabsContent>
         </Tabs>
       </div>
