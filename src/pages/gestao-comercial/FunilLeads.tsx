@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,9 +90,9 @@ export default function FunilLeads() {
   });
   const [novaObjecao, setNovaObjecao] = useState<Partial<Objecao>>({});
 
-  useState(() => {
+  useEffect(() => {
     carregarRepresentantes();
-  }, []);
+  }, [carregarRepresentantes]);
 
   const adicionarLead = () => {
     if (!novoLead.nome) return;

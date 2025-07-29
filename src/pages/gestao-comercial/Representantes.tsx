@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -359,10 +360,10 @@ function ClientesTableEmAnalise({
   dadosGiro: any[];
   calcularPerformanceCategoria: (clienteId: string) => number;
 }) {
-  const { historico } = useHistoricoEntregasStore();
+  const { registros } = useHistoricoEntregasStore();
 
   const getDeliveryStats = (clienteId: string) => {
-    const entregas = historico.filter(h => h.cliente_id === clienteId);
+    const entregas = registros.filter(h => h.cliente_id === clienteId);
     const totalEntregas = entregas.length;
     
     if (totalEntregas === 0) return { count: 0, daysSinceFirst: 0, canActivate: false };
