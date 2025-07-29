@@ -49,7 +49,7 @@ export default function AgendamentoRepresentantes() {
     if (representanteSelecionado !== "todos") {
       const repId = parseInt(representanteSelecionado);
       filtrados = filtrados.filter(agendamento => 
-        agendamento.cliente.representante_id === repId
+        agendamento.cliente.representanteId === repId
       );
     }
 
