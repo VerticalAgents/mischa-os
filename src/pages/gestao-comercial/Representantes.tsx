@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,7 +26,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
 export default function Representantes() {
   const { clientes, loading: clientesLoading, carregarClientes } = useClienteStore();
   const { representantes, loading: representantesLoading, carregarRepresentantes } = useSupabaseRepresentantes();
-  const { dados: dadosGiro } = useGiroAnalysisConsolidated();
+  const { dadosConsolidados: dadosGiro } = useGiroAnalysisConsolidated();
   
   const [representanteSelecionado, setRepresentanteSelecionado] = useState<string>("todos");
 
