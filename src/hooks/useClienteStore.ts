@@ -31,21 +31,20 @@ interface ClienteStore {
   getClientePorId: (id: string) => Cliente | undefined;
 }
 
-const CLIENTES_CACHE_KEY = 'clientes_data';
-const AGENDAMENTOS_CACHE_KEY = 'agendamentos_data';
+const CLIENTES_CACHE_KEY = 'clientes_data_v2';
+const AGENDAMENTOS_CACHE_KEY = 'agendamentos_data_v2';
 const REQUEST_TIMEOUT = 10000; // 10 segundos para clientes
 const RETRY_ATTEMPTS = 2;
+const CACHE_TTL = 5; // 5 minutos para clientes
 
 // Helper para timeout
 const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => reject(new Error('Request timeout')), timeoutMs);
-    
-    promise
-      .then(resolve)
-      .catch(reject)
-      .finally(() => clearTimeout(timeoutId));
-  });
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+    )
+  ]);
 };
 
 // Helper para retry
@@ -162,6 +161,20 @@ export const useClienteStore = create<ClienteStore>()(
       clearError: () => set({ error: null }),
       
       carregarClientes: async () => {
+        // Verificar se já está carregando para evitar duplicação
+        if (get().loading) {
+          console.log('⏳ Carregamento de clientes já em andamento...');
+          return;
+        }
+
+        // Verificar cache primeiro
+        const cachedClientes = dataCache.get<Cliente[]>(CLIENTES_CACHE_KEY);
+        if (cachedClientes && cachedClientes.length > 0) {
+          console.log('📦 Clientes carregados do cache:', cachedClientes.length);
+          set({ clientes: cachedClientes, loading: false, error: null });
+          return;
+        }
+
         set({ loading: true, error: null });
         
         try {
@@ -216,15 +229,15 @@ export const useClienteStore = create<ClienteStore>()(
 
           console.log(`✅ Clientes carregados com sucesso: ${clientesConvertidos.length} itens`);
           
-          // Cachear os dados por 5 minutos
-          dataCache.set(CLIENTES_CACHE_KEY, clientesConvertidos, 5);
+          // Cachear os dados
+          dataCache.set(CLIENTES_CACHE_KEY, clientesConvertidos, CACHE_TTL);
           
           set({ clientes: clientesConvertidos });
           
         } catch (error: any) {
           console.error('❌ Erro ao carregar clientes:', error);
           
-          // Tentar usar cache como fallback
+          // Tentar usar cache como fallback mesmo que expirado
           const cachedClientes = dataCache.get<Cliente[]>(CLIENTES_CACHE_KEY);
           if (cachedClientes) {
             console.log('📦 Usando clientes do cache como fallback');
@@ -288,7 +301,7 @@ export const useClienteStore = create<ClienteStore>()(
 
           const clienteConvertido = convertSupabaseToCliente(data);
           
-          // Limpar cache e atualizar estado
+          // Invalidar cache e atualizar estado
           dataCache.clear(CLIENTES_CACHE_KEY);
           set(state => ({
             clientes: [clienteConvertido, ...state.clientes]
@@ -382,7 +395,7 @@ export const useClienteStore = create<ClienteStore>()(
             }
           }
 
-          // Limpar cache e atualizar estado
+          // Invalidar cache e atualizar estado
           dataCache.clear(CLIENTES_CACHE_KEY);
           set(state => ({
             clientes: state.clientes.map(cliente => 
@@ -423,7 +436,7 @@ export const useClienteStore = create<ClienteStore>()(
 
           if (error) throw error;
 
-          // Limpar cache e atualizar estado
+          // Invalidar cache e atualizar estado
           dataCache.clear(CLIENTES_CACHE_KEY);
           set(state => ({
             clientes: state.clientes.filter(cliente => cliente.id !== id),
@@ -496,7 +509,7 @@ export const useClienteStore = create<ClienteStore>()(
         return get().clientes.find(c => c.id === id);
       }
     }),
-    { name: 'cliente-store-optimized' }
+    { name: 'cliente-store-optimized-v2' }
   )
 );
 

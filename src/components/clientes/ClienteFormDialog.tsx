@@ -1,64 +1,41 @@
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Save } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Cliente, StatusCliente, DiaSemana } from "@/types";
-import { useClienteStore } from "@/hooks/useClienteStore";
-import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
-import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
-import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
-import { useSupabaseCategoriasEstabelecimento } from "@/hooks/useSupabaseCategoriasEstabelecimento";
-import { useSupabaseTiposLogistica } from "@/hooks/useSupabaseTiposLogistica";
-import { useSupabaseTiposCobranca } from "@/hooks/useSupabaseTiposCobranca";
-import { useSupabaseFormasPagamento } from "@/hooks/useSupabaseFormasPagamento";
-import { useSupabasePrecosCategoriaCliente } from "@/hooks/useSupabasePrecosCategoriaCliente";
-import { useClientesCategorias } from "@/hooks/useClientesCategorias";
-import { toast } from "@/hooks/use-toast";
-import DiasSemanaPicker from "./DiasSemanaPicker";
-import CategoriasProdutoSelector from "./CategoriasProdutoSelector";
-import PrecificacaoPorCategoria from "./PrecificacaoPorCategoria";
+import { useState, useEffect, useCallback } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { useClienteStore } from '@/hooks/useClienteStore';
+import { useCategoriasEstabelecimentoUnified } from '@/hooks/useCategoriasEstabelecimentoUnified';
+import { toast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+import CategoriasProdutoSelector from './CategoriasProdutoSelector';
+import DiasSemanaPicker from './DiasSemanaPicker';
 
 interface ClienteFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  cliente?: Cliente | null;
   onClienteUpdate?: () => void;
 }
 
 export default function ClienteFormDialog({ 
   open, 
   onOpenChange, 
-  cliente = null,
   onClienteUpdate 
 }: ClienteFormDialogProps) {
-  const { adicionarCliente, atualizarCliente, loading } = useClienteStore();
-  const { categorias } = useSupabaseCategoriasProduto();
-  const { representantes } = useSupabaseRepresentantes();
-  const { rotasEntrega } = useSupabaseRotasEntrega();
-  const { categorias: categoriasEstabelecimento } = useSupabaseCategoriasEstabelecimento();
-  const { tiposLogistica } = useSupabaseTiposLogistica();
-  const { tiposCobranca } = useSupabaseTiposCobranca();
-  const { formasPagamento } = useSupabaseFormasPagamento();
-  const { salvarPrecos } = useSupabasePrecosCategoriaCliente();
-  const { salvarCategoriasCliente } = useClientesCategorias();
+  const { adicionarCliente, loading: clienteLoading } = useClienteStore();
+  
+  // Hook unificado para categorias - carregamento condicional
+  const { 
+    categorias, 
+    loading: categoriasLoading, 
+    carregarSeNecessario 
+  } = useCategoriasEstabelecimentoUnified();
 
-  // Estado do formulário
-  const [formData, setFormData] = useState<Partial<Cliente>>({
+  // Estados do formulário
+  const [formData, setFormData] = useState({
     nome: '',
     cnpjCpf: '',
     enderecoEntrega: '',
@@ -67,516 +44,376 @@ export default function ClienteFormDialog({
     contatoEmail: '',
     quantidadePadrao: 0,
     periodicidadePadrao: 7,
-    statusCliente: 'Ativo',
-    tipoLogistica: 'Própria',
-    tipoCobranca: 'À vista',
-    formaPagamento: 'Boleto',
-    emiteNotaFiscal: true,
+    statusCliente: 'Ativo' as const,
+    metaGiroSemanal: 0,
+    categoriaEstabelecimentoId: undefined as number | undefined,
+    janelasEntrega: [] as string[],
+    instrucoesEntrega: '',
+    tipoLogistica: 'Própria' as const,
     contabilizarGiroMedio: true,
+    emiteNotaFiscal: true,
+    tipoCobranca: 'À vista' as const,
+    formaPagamento: 'Boleto' as const,
     observacoes: '',
-    categoriasHabilitadas: [],
-    janelasEntrega: [],
-    representanteId: undefined,
-    rotaEntregaId: undefined,
-    categoriaEstabelecimentoId: undefined,
-    instrucoesEntrega: ''
+    categoriasHabilitadas: [] as number[]
   });
 
-  // Estado para preços por categoria - removido pois não é mais necessário
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Carregar dados do cliente quando abrir para edição
+  // Carregar categorias apenas quando o dialog abrir (lazy loading)
   useEffect(() => {
-    if (cliente && open) {
-      console.log('ClienteFormDialog: Carregando dados do cliente para edição:', cliente);
-      setFormData({
-        ...cliente,
-        categoriasHabilitadas: cliente.categoriasHabilitadas || []
-      });
-    } else if (!cliente && open) {
-      console.log('ClienteFormDialog: Inicializando formulário para novo cliente');
-      setFormData({
-        nome: '',
-        cnpjCpf: '',
-        enderecoEntrega: '',
-        contatoNome: '',
-        contatoTelefone: '',
-        contatoEmail: '',
-        quantidadePadrao: 0,
-        periodicidadePadrao: 7,
-        statusCliente: 'Ativo',
-        tipoLogistica: 'Própria',
-        tipoCobranca: 'À vista',
-        formaPagamento: 'Boleto',
-        emiteNotaFiscal: true,
-        contabilizarGiroMedio: true,
-        observacoes: '',
-        categoriasHabilitadas: [],
-        janelasEntrega: [],
-        representanteId: undefined,
-        rotaEntregaId: undefined,
-        categoriaEstabelecimentoId: undefined,
-        instrucoesEntrega: ''
-      });
+    if (open) {
+      console.log('📋 Dialog aberto - carregando categorias sob demanda...');
+      carregarSeNecessario();
     }
-  }, [cliente, open]);
+  }, [open, carregarSeNecessario]);
 
-  const handleInputChange = (field: keyof Cliente, value: any) => {
-    console.log(`ClienteFormDialog: Atualizando campo ${field}:`, value);
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  const handleInputChange = useCallback((field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
 
-  const handleCategoriasChange = (categorias: number[]) => {
-    console.log('ClienteFormDialog: Atualizando categorias habilitadas:', categorias);
-    setFormData(prev => ({
-      ...prev,
-      categoriasHabilitadas: categorias
-    }));
-  };
-
-  const handleDiasEntregaChange = (dias: DiaSemana[]) => {
-    console.log('ClienteFormDialog: Atualizando janelas de entrega:', dias);
-    setFormData(prev => ({
-      ...prev,
-      janelasEntrega: dias
-    }));
-  };
+  const resetForm = useCallback(() => {
+    setFormData({
+      nome: '',
+      cnpjCpf: '',
+      enderecoEntrega: '',
+      contatoNome: '',
+      contatoTelefone: '',
+      contatoEmail: '',
+      quantidadePadrao: 0,
+      periodicidadePadrao: 7,
+      statusCliente: 'Ativo',
+      metaGiroSemanal: 0,
+      categoriaEstabelecimentoId: undefined,
+      janelasEntrega: [],
+      instrucoesEntrega: '',
+      tipoLogistica: 'Própria',
+      contabilizarGiroMedio: true,
+      emiteNotaFiscal: true,
+      tipoCobranca: 'À vista',
+      formaPagamento: 'Boleto',
+      observacoes: '',
+      categoriasHabilitadas: []
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome?.trim()) {
+    if (!formData.nome.trim()) {
       toast({
         title: "Erro",
-        description: "Nome do cliente é obrigatório",
+        description: "Nome é obrigatório",
         variant: "destructive"
       });
       return;
     }
 
-    setIsSaving(true);
-
+    setIsSubmitting(true);
+    
     try {
-      console.log('ClienteFormDialog: Iniciando salvamento do cliente:', formData);
+      await adicionarCliente({
+        nome: formData.nome.trim(),
+        cnpjCpf: formData.cnpjCpf || undefined,
+        enderecoEntrega: formData.enderecoEntrega || undefined,
+        contatoNome: formData.contatoNome || undefined,
+        contatoTelefone: formData.contatoTelefone || undefined,
+        contatoEmail: formData.contatoEmail || undefined,
+        quantidadePadrao: formData.quantidadePadrao,
+        periodicidadePadrao: formData.periodicidadePadrao,
+        statusCliente: formData.statusCliente,
+        metaGiroSemanal: formData.metaGiroSemanal,
+        categoriaEstabelecimentoId: formData.categoriaEstabelecimentoId,
+        janelasEntrega: formData.janelasEntrega,
+        instrucoesEntrega: formData.instrucoesEntrega || undefined,
+        tipoLogistica: formData.tipoLogistica,
+        contabilizarGiroMedio: formData.contabilizarGiroMedio,
+        emiteNotaFiscal: formData.emiteNotaFiscal,
+        tipoCobranca: formData.tipoCobranca,
+        formaPagamento: formData.formaPagamento,
+        observacoes: formData.observacoes || undefined,
+        categoriasHabilitadas: formData.categoriasHabilitadas,
+        ativo: true,
+        giroMedioSemanal: 0,
+        ultimaDataReposicaoEfetiva: undefined,
+        statusAgendamento: 'Não Agendado',
+        proximaDataReposicao: undefined,
+        dataCadastro: new Date(),
+        categoriaId: 1,
+        subcategoriaId: 1
+      });
 
-      let clienteId: string;
-
-      if (cliente) {
-        // Atualização de cliente existente
-        await atualizarCliente(cliente.id, formData);
-        clienteId = cliente.id;
-        
-        toast({
-          title: "Cliente atualizado",
-          description: "Dados do cliente foram salvos com sucesso"
-        });
-      } else {
-        // Criação de novo cliente
-        const novoCliente = await adicionarCliente(formData as Omit<Cliente, 'id' | 'dataCadastro'>);
-        clienteId = novoCliente.id;
-        
-        toast({
-          title: "Cliente cadastrado",
-          description: "Novo cliente foi criado com sucesso"
-        });
-      }
-
-      // Salvar categorias habilitadas
-      if (formData.categoriasHabilitadas && formData.categoriasHabilitadas.length > 0) {
-        console.log('ClienteFormDialog: Salvando categorias do cliente:', formData.categoriasHabilitadas);
-        await salvarCategoriasCliente(clienteId, formData.categoriasHabilitadas);
-      }
-
-      // Chamar callback de atualização
-      onClienteUpdate?.();
+      resetForm();
       onOpenChange(false);
-
-    } catch (error) {
-      console.error('ClienteFormDialog: Erro ao salvar cliente:', error);
+      onClienteUpdate?.();
+      
       toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível salvar os dados do cliente",
+        title: "Sucesso",
+        description: "Cliente cadastrado com sucesso"
+      });
+    } catch (error: any) {
+      console.error('❌ Erro ao criar cliente:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao cadastrar cliente",
         variant: "destructive"
       });
     } finally {
-      setIsSaving(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Criar um objeto cliente temporário para passar para o componente PrecificacaoPorCategoria
-  const clienteTemp: Cliente = {
-    id: cliente?.id || '',
-    nome: formData.nome || '',
-    cnpjCpf: formData.cnpjCpf || '',
-    enderecoEntrega: formData.enderecoEntrega || '',
-    contatoNome: formData.contatoNome || '',
-    contatoTelefone: formData.contatoTelefone || '',
-    contatoEmail: formData.contatoEmail || '',
-    quantidadePadrao: formData.quantidadePadrao || 0,
-    periodicidadePadrao: formData.periodicidadePadrao || 7,
-    statusCliente: formData.statusCliente || 'Ativo',
-    tipoLogistica: formData.tipoLogistica || 'Própria',
-    tipoCobranca: formData.tipoCobranca || 'À vista',
-    formaPagamento: formData.formaPagamento || 'Boleto',
-    emiteNotaFiscal: formData.emiteNotaFiscal || true,
-    contabilizarGiroMedio: formData.contabilizarGiroMedio || true,
-    observacoes: formData.observacoes || '',
-    categoriasHabilitadas: formData.categoriasHabilitadas || [],
-    janelasEntrega: formData.janelasEntrega || [],
-    representanteId: formData.representanteId,
-    rotaEntregaId: formData.rotaEntregaId,
-    categoriaEstabelecimentoId: formData.categoriaEstabelecimentoId,
-    instrucoesEntrega: formData.instrucoesEntrega || '',
-    dataCadastro: cliente?.dataCadastro ? 
-      (typeof cliente.dataCadastro === 'string' ? new Date(cliente.dataCadastro) : cliente.dataCadastro) : 
-      new Date(),
-    // Add missing required fields from Cliente interface
-    ativo: cliente?.ativo ?? true,
-    categoriaId: cliente?.categoriaId || 0,
-    subcategoriaId: cliente?.subcategoriaId || 0
-  };
+  const handleClose = useCallback(() => {
+    resetForm();
+    onOpenChange(false);
+  }, [resetForm, onOpenChange]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {cliente ? 'Editar Cliente' : 'Novo Cliente'}
-          </DialogTitle>
+          <DialogTitle>Novo Cliente</DialogTitle>
           <DialogDescription>
-            {cliente ? 'Atualize os dados do cliente' : 'Preencha os dados do novo cliente'}
+            Cadastre um novo cliente no sistema
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Dados Básicos */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Dados Básicos</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nome">Nome *</Label>
-                  <Input
-                    id="nome"
-                    value={formData.nome || ''}
-                    onChange={(e) => handleInputChange('nome', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cnpjCpf">CNPJ/CPF</Label>
-                  <Input
-                    id="cnpjCpf"
-                    value={formData.cnpjCpf || ''}
-                    onChange={(e) => handleInputChange('cnpjCpf', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="enderecoEntrega">Endereço de Entrega</Label>
-                <Input
-                  id="enderecoEntrega"
-                  value={formData.enderecoEntrega || ''}
-                  onChange={(e) => handleInputChange('enderecoEntrega', e.target.value)}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="contatoNome">Nome do Contato</Label>
-                  <Input
-                    id="contatoNome"
-                    value={formData.contatoNome || ''}
-                    onChange={(e) => handleInputChange('contatoNome', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contatoTelefone">Telefone</Label>
-                  <Input
-                    id="contatoTelefone"
-                    value={formData.contatoTelefone || ''}
-                    onChange={(e) => handleInputChange('contatoTelefone', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contatoEmail">Email</Label>
-                  <Input
-                    id="contatoEmail"
-                    type="email"
-                    value={formData.contatoEmail || ''}
-                    onChange={(e) => handleInputChange('contatoEmail', e.target.value)}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Configurações Comerciais */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Configurações Comerciais</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="quantidadePadrao">Quantidade Padrão</Label>
-                  <Input
-                    id="quantidadePadrao"
-                    type="number"
-                    min="0"
-                    value={formData.quantidadePadrao || 0}
-                    onChange={(e) => handleInputChange('quantidadePadrao', parseInt(e.target.value) || 0)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="periodicidadePadrao">Periodicidade (dias)</Label>
-                  <Input
-                    id="periodicidadePadrao"
-                    type="number"
-                    min="1"
-                    value={formData.periodicidadePadrao || 7}
-                    onChange={(e) => handleInputChange('periodicidadePadrao', parseInt(e.target.value) || 7)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="statusCliente">Status</Label>
-                  <Select value={formData.statusCliente || 'Ativo'} onValueChange={(value: StatusCliente) => handleInputChange('statusCliente', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Ativo">Ativo</SelectItem>
-                      <SelectItem value="Inativo">Inativo</SelectItem>
-                      <SelectItem value="Em análise">Em análise</SelectItem>
-                      <SelectItem value="A ativar">A ativar</SelectItem>
-                      <SelectItem value="Standby">Standby</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Configurações de Entrega e Logística */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Configurações de Entrega e Logística</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="representante">Representante</Label>
-                  <Select 
-                    value={formData.representanteId?.toString() || undefined} 
-                    onValueChange={(value) => handleInputChange('representanteId', value ? parseInt(value) : undefined)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um representante" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {representantes.map((rep) => (
-                        <SelectItem key={rep.id} value={rep.id.toString()}>
-                          {rep.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="rotaEntrega">Rota de Entrega</Label>
-                  <Select 
-                    value={formData.rotaEntregaId?.toString() || undefined} 
-                    onValueChange={(value) => handleInputChange('rotaEntregaId', value ? parseInt(value) : undefined)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma rota" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {rotasEntrega.map((rota) => (
-                        <SelectItem key={rota.id} value={rota.id.toString()}>
-                          {rota.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="categoriaEstabelecimento">Categoria do Estabelecimento</Label>
-                  <Select 
-                    value={formData.categoriaEstabelecimentoId?.toString() || undefined} 
-                    onValueChange={(value) => handleInputChange('categoriaEstabelecimentoId', value ? parseInt(value) : undefined)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categoriasEstabelecimento.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id.toString()}>
-                          {cat.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
-                  <Select 
-                    value={formData.tipoLogistica || 'Própria'} 
-                    onValueChange={(value) => handleInputChange('tipoLogistica', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tiposLogistica.map((tipo) => (
-                        <SelectItem key={tipo.id} value={tipo.nome}>
-                          {tipo.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Janelas de Entrega</Label>
-                <DiasSemanaPicker 
-                  value={formData.janelasEntrega || []}
-                  onChange={handleDiasEntregaChange}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="instrucoesEntrega">Instruções de Entrega</Label>
-                <Textarea
-                  id="instrucoesEntrega"
-                  value={formData.instrucoesEntrega || ''}
-                  onChange={(e) => handleInputChange('instrucoesEntrega', e.target.value)}
-                  placeholder="Instruções especiais para entrega..."
-                  rows={2}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Configurações Financeiras */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Configurações Financeiras</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="tipoCobranca">Tipo de Cobrança</Label>
-                  <Select 
-                    value={formData.tipoCobranca || 'À vista'} 
-                    onValueChange={(value) => handleInputChange('tipoCobranca', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tiposCobranca.map((tipo) => (
-                        <SelectItem key={tipo.id} value={tipo.nome}>
-                          {tipo.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="formaPagamento">Forma de Pagamento</Label>
-                  <Select 
-                    value={formData.formaPagamento || 'Boleto'} 
-                    onValueChange={(value) => handleInputChange('formaPagamento', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {formasPagamento.map((forma) => (
-                        <SelectItem key={forma.id} value={forma.nome}>
-                          {forma.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="emiteNotaFiscal">Emite Nota Fiscal</Label>
-                  <Select 
-                    value={formData.emiteNotaFiscal ? 'true' : 'false'} 
-                    onValueChange={(value) => handleInputChange('emiteNotaFiscal', value === 'true')}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="true">Sim</SelectItem>
-                      <SelectItem value="false">Não</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="contabilizarGiroMedio"
-                  checked={formData.contabilizarGiroMedio || false}
-                  onCheckedChange={(checked) => handleInputChange('contabilizarGiroMedio', checked)}
-                />
-                <Label htmlFor="contabilizarGiroMedio">
-                  Contabilizar no giro médio
-                </Label>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Categorias de Produtos */}
-          <CategoriasProdutoSelector 
-            value={formData.categoriasHabilitadas || []}
-            onChange={handleCategoriasChange}
-            clienteId={cliente?.id}
-          />
-
-          {/* Precificação por Categoria - Passa o cliente temporário */}
-          <PrecificacaoPorCategoria
-            cliente={clienteTemp}
-          />
-
-          {/* Observações */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Observações</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={formData.observacoes || ''}
-                onChange={(e) => handleInputChange('observacoes', e.target.value)}
-                placeholder="Observações adicionais sobre o cliente..."
-                rows={3}
+          {/* Informações Básicas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="nome">Nome *</Label>
+              <Input
+                id="nome"
+                value={formData.nome}
+                onChange={(e) => handleInputChange('nome', e.target.value)}
+                required
               />
-            </CardContent>
-          </Card>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cnpjCpf">CNPJ/CPF</Label>
+              <Input
+                id="cnpjCpf"
+                value={formData.cnpjCpf}
+                onChange={(e) => handleInputChange('cnpjCpf', e.target.value)}
+              />
+            </div>
+          </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="space-y-2">
+            <Label htmlFor="enderecoEntrega">Endereço de Entrega</Label>
+            <Textarea
+              id="enderecoEntrega"
+              value={formData.enderecoEntrega}
+              onChange={(e) => handleInputChange('enderecoEntrega', e.target.value)}
+              rows={2}
+            />
+          </div>
+
+          {/* Contato */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="contatoNome">Nome do Contato</Label>
+              <Input
+                id="contatoNome"
+                value={formData.contatoNome}
+                onChange={(e) => handleInputChange('contatoNome', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contatoTelefone">Telefone</Label>
+              <Input
+                id="contatoTelefone"
+                value={formData.contatoTelefone}
+                onChange={(e) => handleInputChange('contatoTelefone', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contatoEmail">E-mail</Label>
+              <Input
+                id="contatoEmail"
+                type="email"
+                value={formData.contatoEmail}
+                onChange={(e) => handleInputChange('contatoEmail', e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Configurações de Entrega */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="quantidadePadrao">Quantidade Padrão</Label>
+              <Input
+                id="quantidadePadrao"
+                type="number"
+                min="0"
+                value={formData.quantidadePadrao}
+                onChange={(e) => handleInputChange('quantidadePadrao', parseInt(e.target.value) || 0)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="periodicidadePadrao">Periodicidade (dias)</Label>
+              <Input
+                id="periodicidadePadrao"
+                type="number"
+                min="1"
+                value={formData.periodicidadePadrao}
+                onChange={(e) => handleInputChange('periodicidadePadrao', parseInt(e.target.value) || 7)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="metaGiroSemanal">Meta Giro Semanal</Label>
+              <Input
+                id="metaGiroSemanal"
+                type="number"
+                min="0"
+                value={formData.metaGiroSemanal}
+                onChange={(e) => handleInputChange('metaGiroSemanal', parseInt(e.target.value) || 0)}
+              />
+            </div>
+          </div>
+
+          {/* Categoria de Estabelecimento - com carregamento condicional */}
+          <div className="space-y-2">
+            <Label htmlFor="categoriaEstabelecimento">Categoria de Estabelecimento</Label>
+            {categoriasLoading ? (
+              <div className="flex items-center gap-2 p-2 border rounded">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm text-muted-foreground">Carregando categorias...</span>
+              </div>
+            ) : (
+              <Select
+                value={formData.categoriaEstabelecimentoId?.toString() || ""}
+                onValueChange={(value) => handleInputChange('categoriaEstabelecimentoId', value ? parseInt(value) : undefined)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categorias.map(categoria => (
+                    <SelectItem key={categoria.id} value={categoria.id.toString()}>
+                      {categoria.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Janelas de Entrega */}
+          <div className="space-y-2">
+            <Label>Janelas de Entrega</Label>
+            <DiasSemanaPicker
+              value={formData.janelasEntrega}
+              onChange={(dias) => handleInputChange('janelasEntrega', dias)}
+            />
+          </div>
+
+          {/* Categorias de Produto */}
+          <div className="space-y-2">
+            <Label>Categorias de Produto Habilitadas</Label>
+            <CategoriasProdutoSelector
+              value={formData.categoriasHabilitadas}
+              onChange={(categorias) => handleInputChange('categoriasHabilitadas', categorias)}
+            />
+          </div>
+
+          {/* Configurações Adicionais */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
+              <Select
+                value={formData.tipoLogistica}
+                onValueChange={(value) => handleInputChange('tipoLogistica', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Própria">Própria</SelectItem>
+                  <SelectItem value="Terceirizada">Terceirizada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="statusCliente">Status</Label>
+              <Select
+                value={formData.statusCliente}
+                onValueChange={(value) => handleInputChange('statusCliente', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Ativo">Ativo</SelectItem>
+                  <SelectItem value="Inativo">Inativo</SelectItem>
+                  <SelectItem value="Suspenso">Suspenso</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Switches */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="contabilizarGiroMedio"
+                checked={formData.contabilizarGiroMedio}
+                onCheckedChange={(checked) => handleInputChange('contabilizarGiroMedio', checked)}
+              />
+              <Label htmlFor="contabilizarGiroMedio">Contabilizar Giro Médio</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="emiteNotaFiscal"
+                checked={formData.emiteNotaFiscal}
+                onCheckedChange={(checked) => handleInputChange('emiteNotaFiscal', checked)}
+              />
+              <Label htmlFor="emiteNotaFiscal">Emite Nota Fiscal</Label>
+            </div>
+          </div>
+
+          {/* Instruções e Observações */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="instrucoesEntrega">Instruções de Entrega</Label>
+              <Textarea
+                id="instrucoesEntrega"
+                value={formData.instrucoesEntrega}
+                onChange={(e) => handleInputChange('instrucoesEntrega', e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="observacoes">Observações</Label>
+              <Textarea
+                id="observacoes"
+                value={formData.observacoes}
+                onChange={(e) => handleInputChange('observacoes', e.target.value)}
+                rows={2}
+              />
+            </div>
+          </div>
+
+          {/* Botões */}
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={handleClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || isSaving}>
-              <Save className="h-4 w-4 mr-2" />
-              {cliente ? 'Atualizar' : 'Cadastrar'}
+            <Button 
+              type="submit" 
+              disabled={isSubmitting || clienteLoading}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cadastrando...
+                </>
+              ) : (
+                'Cadastrar Cliente'
+              )}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
