@@ -19,6 +19,15 @@ export const useSupabaseCategoriasEstabelecimento = () => {
   const carregarCategorias = async () => {
     try {
       setLoading(true);
+      
+      // Verificar se há sessão ativa antes de fazer a requisição
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('Sessão não encontrada, não carregando categorias de estabelecimento');
+        setCategorias([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('categorias_estabelecimento')
         .select('*')
@@ -27,22 +36,36 @@ export const useSupabaseCategoriasEstabelecimento = () => {
 
       if (error) {
         console.error('Erro ao carregar categorias de estabelecimento:', error);
-        toast({
-          title: "Erro",
-          description: "Erro ao carregar categorias de estabelecimento",
-          variant: "destructive"
-        });
+        
+        // Se for erro de autenticação, não mostrar toast para evitar spam
+        if (error.code !== 'PGRST301' && !error.message?.includes('JWT expired')) {
+          toast({
+            title: "Erro",
+            description: "Erro ao carregar categorias de estabelecimento",
+            variant: "destructive"
+          });
+        }
+        
+        // Definir array vazio em caso de erro para não travar outras funcionalidades
+        setCategorias([]);
         return;
       }
 
       setCategorias(data || []);
     } catch (error) {
       console.error('Erro ao carregar categorias de estabelecimento:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar categorias de estabelecimento",
-        variant: "destructive"
-      });
+      
+      // Em caso de erro, definir array vazio para não travar a aplicação
+      setCategorias([]);
+      
+      // Não mostrar toast para erros de rede/autenticação
+      if (!(error instanceof Error) || !error.message?.includes('JWT expired')) {
+        toast({
+          title: "Erro",
+          description: "Erro ao carregar categorias de estabelecimento",
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -54,6 +77,17 @@ export const useSupabaseCategoriasEstabelecimento = () => {
   }) => {
     try {
       console.log('Tentando adicionar categoria:', categoria);
+      
+      // Verificar sessão antes de adicionar
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Erro",
+          description: "Sessão expirada. Faça login novamente.",
+          variant: "destructive"
+        });
+        return false;
+      }
       
       const { data, error } = await supabase
         .from('categorias_estabelecimento')
@@ -101,6 +135,17 @@ export const useSupabaseCategoriasEstabelecimento = () => {
     try {
       console.log('Atualizando categoria:', id, updates);
       
+      // Verificar sessão antes de atualizar
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Erro",
+          description: "Sessão expirada. Faça login novamente.",
+          variant: "destructive"
+        });
+        return false;
+      }
+      
       const updateData: any = {};
       if (updates.nome) updateData.nome = updates.nome.trim();
       if (updates.descricao !== undefined) updateData.descricao = updates.descricao?.trim() || null;
@@ -141,6 +186,17 @@ export const useSupabaseCategoriasEstabelecimento = () => {
   const removerCategoria = async (id: number) => {
     try {
       console.log('Removendo categoria:', id);
+      
+      // Verificar sessão antes de remover
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Erro",
+          description: "Sessão expirada. Faça login novamente.",
+          variant: "destructive"
+        });
+        return false;
+      }
       
       const { error } = await supabase
         .from('categorias_estabelecimento')
