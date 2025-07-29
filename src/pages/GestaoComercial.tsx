@@ -8,10 +8,10 @@ import { Building, HelpingHand, UserCircle, Users } from "lucide-react";
 import FunilLeads from "./gestao-comercial/FunilLeads";
 import Distribuidores from "./gestao-comercial/Distribuidores";
 import Parceiros from "./gestao-comercial/Parceiros";
-import ClientesPorRepresentante from "./gestao-comercial/ClientesPorRepresentante";
+import Representantes from "./gestao-comercial/Representantes";
 
 export default function GestaoComercial() {
-  const [activeTab, setActiveTab] = useState("funil-leads");
+  const [activeTab, setActiveTab] = useState("representantes");
   const navigate = useNavigate();
 
   const handleTabChange = (value: string) => {
@@ -25,7 +25,7 @@ export default function GestaoComercial() {
       
       <PageHeader
         title="Gestão Comercial"
-        description="Gerencie leads, distribuidores, parcerias comerciais e representantes"
+        description="Gerencie representantes, leads, distribuidores e parcerias comerciais"
       />
 
       <div className="mt-6">
@@ -36,6 +36,10 @@ export default function GestaoComercial() {
         >
           <div className="flex mb-8 overflow-x-auto">
             <TabsList className="grid grid-flow-col auto-cols-max gap-2">
+              <TabsTrigger value="representantes" className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                <span>Representantes</span>
+              </TabsTrigger>
               <TabsTrigger value="funil-leads" className="flex items-center gap-1">
                 <UserCircle className="h-4 w-4" />
                 <span>Funil de Leads</span>
@@ -48,12 +52,12 @@ export default function GestaoComercial() {
                 <HelpingHand className="h-4 w-4" />
                 <span>Parceiros</span>
               </TabsTrigger>
-              <TabsTrigger value="clientes-representante" className="flex items-center gap-1">
-                <Users className="h-4 w-4" />
-                <span>Clientes por Representante</span>
-              </TabsTrigger>
             </TabsList>
           </div>
+
+          <TabsContent value="representantes">
+            <Representantes />
+          </TabsContent>
 
           <TabsContent value="funil-leads">
             <FunilLeads />
@@ -65,10 +69,6 @@ export default function GestaoComercial() {
 
           <TabsContent value="parceiros">
             <Parceiros />
-          </TabsContent>
-
-          <TabsContent value="clientes-representante">
-            <ClientesPorRepresentante />
           </TabsContent>
         </Tabs>
       </div>
