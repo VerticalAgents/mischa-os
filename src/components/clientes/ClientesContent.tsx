@@ -68,6 +68,13 @@ export default function ClientesContent({
     setClientesSelecionados([]);
   };
 
+  const handleFormSuccess = () => {
+    onRefresh?.();
+    if (setIsFormOpen) {
+      setIsFormOpen(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -92,14 +99,14 @@ export default function ClientesContent({
       
       {clientesSelecionados.length > 0 && (
         <ClientesBulkActions 
-          selectedClients={clientesSelecionados}
+          selectedClienteIds={clientesSelecionados}
           onClearSelection={handleClearSelection}
         />
       )}
       
       <ClientesTable
         clientes={clientesFiltrados}
-        selectedClients={clientesSelecionados}
+        selectedClientes={clientesSelecionados}
         onToggleSelection={handleToggleSelection}
         onSelectAll={handleSelectAll}
         visibleColumns={visibleColumns}
@@ -109,10 +116,7 @@ export default function ClientesContent({
         <ClienteFormDialog
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
-          onSuccess={() => {
-            onRefresh?.();
-            setIsFormOpen(false);
-          }}
+          onClienteAdded={handleFormSuccess}
         />
       )}
     </div>

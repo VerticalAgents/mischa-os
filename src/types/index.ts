@@ -1,4 +1,32 @@
+
 export type StatusCliente = 'Ativo' | 'Inativo' | 'Em análise' | 'A ativar' | 'Standby';
+
+export type StatusAgendamentoCliente = 'Agendado' | 'Não Agendado' | 'Confirmado' | 'Agendar' | 'Previsto';
+
+export type TipoPedidoAgendamento = 'Padrão' | 'Alterado' | 'Único';
+
+export type TipoLogisticaNome = 'Própria' | 'Terceirizada';
+
+export type TipoCobranca = 'À vista' | 'Faturado';
+
+export type FormaPagamentoNome = 'Boleto' | 'Cartão' | 'Dinheiro' | 'PIX';
+
+export type SubstatusPedidoAgendado = 'Agendado' | 'Confirmado' | 'Produzindo' | 'Pronto';
+
+export type ProdutoCategoria = {
+  id: number;
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
+};
+
+export type ProdutoSubcategoria = {
+  id: number;
+  nome: string;
+  descricao?: string;
+  categoria_id: number;
+  ativo: boolean;
+};
 
 export interface Cliente {
   id: string;
@@ -15,24 +43,25 @@ export interface Cliente {
   categoriaEstabelecimentoId: number | null;
   janelasEntrega: string[];
   instrucoesEntrega: string;
-  tipoLogistica: 'Própria' | 'Terceirizada';
+  tipoLogistica: TipoLogisticaNome;
   contabilizarGiroMedio: boolean;
   emiteNotaFiscal: boolean;
-  tipoCobranca: 'À vista' | 'Faturado';
-  formaPagamento: 'Boleto' | 'Cartão' | 'Dinheiro' | 'PIX';
+  tipoCobranca: TipoCobranca;
+  formaPagamento: FormaPagamentoNome;
   observacoes: string;
   categoriasHabilitadas: number[];
   ativo: boolean;
   giroMedioSemanal: number;
   ultimaDataReposicaoEfetiva?: Date;
-  statusAgendamento: 'Agendado' | 'Não Agendado' | 'Confirmado';
+  statusAgendamento: StatusAgendamentoCliente;
   proximaDataReposicao?: Date;
   dataCadastro: Date;
   categoriaId: number;
   subcategoriaId: number;
+  representanteId?: number;
 }
 
-export type StatusPedido = 'Pendente' | 'Confirmado' | 'Em Produção' | 'Pronto' | 'Em Trânsito' | 'Entregue' | 'Cancelado' | 'Finalizado';
+export type StatusPedido = 'Pendente' | 'Confirmado' | 'Em Produção' | 'Pronto' | 'Em Trânsito' | 'Entregue' | 'Cancelado' | 'Finalizado' | 'Agendado';
 
 export interface ItemPedido {
   id: string;
@@ -41,6 +70,13 @@ export interface ItemPedido {
   quantidade: number;
   preco: number;
   subtotal: number;
+  // Legacy properties for backward compatibility
+  nomeSabor?: string;
+  idSabor?: string;
+  quantidadeSabor?: number;
+  sabor?: {
+    nome: string;
+  };
 }
 
 export interface Pedido {
@@ -63,9 +99,10 @@ export interface Pedido {
   totalPedidoUnidades: number;
   createdAt: Date;
   updatedAt?: Date;
+  tipoPedido?: TipoPedidoAgendamento;
 }
 
-export type DiaSemana = 'Segunda' | 'Terça' | 'Quarta' | 'Quinta' | 'Sexta' | 'Sábado' | 'Domingo';
+export type DiaSemana = 'Domingo' | 'Segunda' | 'Terça' | 'Quarta' | 'Quinta' | 'Sexta' | 'Sábado';
 
 export interface JanelaEntrega {
   diaSemana: DiaSemana;

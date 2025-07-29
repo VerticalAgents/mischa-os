@@ -80,8 +80,8 @@ export default function AgendamentoEditModal({
           } else if (agendamento.pedido?.itensPedido && agendamento.pedido.itensPedido.length > 0) {
             // Fallback para dados do agendamento passado como prop
             const itens = agendamento.pedido.itensPedido.map(item => ({
-              produto: item.nomeSabor || `Sabor ${item.idSabor}`,
-              quantidade: item.quantidadeSabor
+              produto: item.nomeSabor || item.produtoNome || `Produto ${item.produtoId}`,
+              quantidade: item.quantidadeSabor || item.quantidade
             }));
             setItensPersonalizados(itens);
           } else {
@@ -93,8 +93,8 @@ export default function AgendamentoEditModal({
           // Fallback para dados do agendamento passado como prop
           if (agendamento.pedido?.itensPedido && agendamento.pedido.itensPedido.length > 0) {
             const itens = agendamento.pedido.itensPedido.map(item => ({
-              produto: item.nomeSabor || `Sabor ${item.idSabor}`,
-              quantidade: item.quantidadeSabor
+              produto: item.nomeSabor || item.produtoNome || `Produto ${item.produtoId}`,
+              quantidade: item.quantidadeSabor || item.quantidade
             }));
             setItensPersonalizados(itens);
           } else {
@@ -150,24 +150,46 @@ export default function AgendamentoEditModal({
         dataReposicao,
         statusAgendamento,
         pedido: tipoPedido === "Alterado" ? {
-          id: 0,
+          ...agendamento.pedido,
+          id: agendamento.pedido?.id || '',
           idCliente: agendamento.cliente.id,
+          clienteId: agendamento.cliente.id,
           dataPedido: new Date(),
           dataPrevistaEntrega: dataReposicao,
+          status: 'Agendado',
           statusPedido: 'Agendado',
+          valorTotal: 0,
+          observacoes: '',
+          dataEntrega: dataReposicao,
+          enderecoEntrega: agendamento.cliente.enderecoEntrega,
+          contatoEntrega: agendamento.cliente.contatoNome,
+          numeroPedidoCliente: '',
+          createdAt: new Date(),
           itensPedido: itensPersonalizados.map((item, index) => ({
-            id: index,
-            idPedido: 0,
-            idSabor: index,
+            id: `${index}`,
+            produtoId: `${index}`,
+            produtoNome: item.produto,
+            quantidade: item.quantidade,
+            preco: 0,
+            subtotal: 0,
             nomeSabor: item.produto,
+            idSabor: `${index}`,
             quantidadeSabor: item.quantidade,
             sabor: {
               nome: item.produto
             }
           })),
+          itens: itensPersonalizados.map((item, index) => ({
+            id: `${index}`,
+            produtoId: `${index}`,
+            produtoNome: item.produto,
+            quantidade: item.quantidade,
+            preco: 0,
+            subtotal: 0
+          })),
           totalPedidoUnidades: quantidadeTotal,
           tipoPedido
-        } : undefined
+        } : agendamento.pedido
       };
 
       onSalvar(agendamentoAtualizado);
