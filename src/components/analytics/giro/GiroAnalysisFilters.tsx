@@ -1,15 +1,18 @@
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Filter, X } from 'lucide-react';
+import { Filter, X, RefreshCw } from 'lucide-react';
 import { GiroAnalysisFilters } from '@/types/giroAnalysis';
 
-interface GiroAnalysisFiltersComponentProps {
+interface GiroAnalysisFiltersProps {
   filtros: GiroAnalysisFilters;
   onFiltrosChange: (filtros: GiroAnalysisFilters) => void;
-  onRefresh: () => Promise<void>;
+  onRefresh: () => void;
   isRefreshing: boolean;
   representantes: string[];
   rotas: string[];
@@ -24,186 +27,271 @@ export function GiroAnalysisFiltersComponent({
   representantes,
   rotas,
   categorias
-}: GiroAnalysisFiltersComponentProps) {
-  const limparFiltros = () => {
+}: GiroAnalysisFiltersProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleFilterChange = (key: keyof GiroAnalysisFilters, value: any) => {
+    const defaultValues = {
+      representante: 'todos',
+      rota: 'todas',
+      categoria_estabelecimento: 'todas',
+      semaforo: 'todas'
+    };
+    
+    const defaultValue = defaultValues[key as keyof typeof defaultValues];
+    
+    onFiltrosChange({
+      ...filtros,
+      [key]: value === defaultValue ? undefined : value
+    });
+  };
+
+  const clearFilters = () => {
     onFiltrosChange({});
   };
 
-  const temFiltrosAtivos = Object.keys(filtros).length > 0;
-  const contadorFiltros = Object.values(filtros).filter(Boolean).length;
+  const activeFiltersCount = Object.values(filtros).filter(Boolean).length;
 
-  const handleRefresh = async () => {
-    try {
-      console.log('🔄 Iniciando atualização manual dos dados...');
-      await onRefresh();
-      console.log('✅ Atualização concluída com sucesso!');
-    } catch (error) {
-      console.error('❌ Erro durante a atualização:', error);
+  // Ultra-safe helper function to filter out invalid values
+  const filterValidValues = (arr: string[]): string[] => {
+    if (!Array.isArray(arr)) {
+      console.warn('filterValidValues received non-array:', arr);
+      return [];
     }
+    
+    const filtered = arr.filter(item => {
+      // Check if item exists and is a valid string
+      if (!item || typeof item !== 'string') {
+        console.warn('Invalid item type:', typeof item, item);
+        return false;
+      }
+      
+      // Check if item is not just whitespace
+      const trimmed = item.trim();
+      if (trimmed === '') {
+        console.warn('Empty string item:', item);
+        return false;
+      }
+      
+      // Check for string representations of null/undefined
+      if (trimmed === 'null' || trimmed === 'undefined' || trimmed === 'NULL' || trimmed === 'UNDEFINED') {
+        console.warn('Invalid string representation:', trimmed);
+        return false;
+      }
+      
+      // Additional length check
+      if (trimmed.length === 0) {
+        console.warn('Zero length string:', item);
+        return false;
+      }
+      
+      return true;
+    });
+    
+    console.log('Filtered values:', { 
+      original: arr.length, 
+      filtered: filtered.length,
+      originalItems: arr.slice(0, 5),
+      filteredItems: filtered.slice(0, 5)
+    });
+    return filtered;
   };
 
+  const validRepresentantes = filterValidValues(representantes || []);
+  const validRotas = filterValidValues(rotas || []);
+  const validCategorias = filterValidValues(categorias || []);
+
+  // Additional safety check - log any issues
+  console.log('Filter data:', {
+    representantes: { total: representantes?.length, valid: validRepresentantes.length },
+    rotas: { total: rotas?.length, valid: validRotas.length },
+    categorias: { total: categorias?.length, valid: validCategorias.length }
+  });
+
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
-          {/* Filtros */}
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <Card className="mb-6">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filtros
+            {activeFiltersCount > 0 && (
+              <Badge variant="secondary">{activeFiltersCount}</Badge>
+            )}
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              {isOpen ? 'Ocultar' : 'Mostrar'} Filtros
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      
+      {isOpen && (
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {/* Representante */}
-            <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                Representante
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="representante">Representante</Label>
               <Select
-                value={filtros.representante || "all"}
-                onValueChange={(value) => 
-                  onFiltrosChange({ ...filtros, representante: value === "all" ? undefined : value })
-                }
+                value={filtros.representante || 'todos'}
+                onValueChange={(value) => handleFilterChange('representante', value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Todos os representantes" />
+                  <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os representantes</SelectItem>
-                  {representantes.map((rep) => (
-                    <SelectItem key={rep} value={rep}>
-                      {rep}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="todos">Todos</SelectItem>
+                  {validRepresentantes.map((rep) => {
+                    // Final safety check with guaranteed non-empty value
+                    const safeValue = rep && rep.trim() ? rep.trim() : null;
+                    if (!safeValue) {
+                      console.warn('Skipping invalid representante:', rep);
+                      return null;
+                    }
+                    return (
+                      <SelectItem key={safeValue} value={safeValue}>
+                        {safeValue}
+                      </SelectItem>
+                    );
+                  }).filter(Boolean)}
                 </SelectContent>
               </Select>
             </div>
 
             {/* Rota */}
-            <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                Rota de Entrega
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="rota">Rota</Label>
               <Select
-                value={filtros.rota || "all"}
-                onValueChange={(value) => 
-                  onFiltrosChange({ ...filtros, rota: value === "all" ? undefined : value })
-                }
+                value={filtros.rota || 'todas'}
+                onValueChange={(value) => handleFilterChange('rota', value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Todas as rotas" />
+                  <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas as rotas</SelectItem>
-                  {rotas.map((rota) => (
-                    <SelectItem key={rota} value={rota}>
-                      {rota}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="todas">Todas</SelectItem>
+                  {validRotas.map((rota) => {
+                    // Final safety check with guaranteed non-empty value
+                    const safeValue = rota && rota.trim() ? rota.trim() : null;
+                    if (!safeValue) {
+                      console.warn('Skipping invalid rota:', rota);
+                      return null;
+                    }
+                    return (
+                      <SelectItem key={safeValue} value={safeValue}>
+                        {safeValue}
+                      </SelectItem>
+                    );
+                  }).filter(Boolean)}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Categoria */}
-            <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                Categoria
-              </label>
+            {/* Categoria Estabelecimento */}
+            <div className="space-y-2">
+              <Label htmlFor="categoria">Categoria</Label>
               <Select
-                value={filtros.categoria_estabelecimento || "all"}
-                onValueChange={(value) => 
-                  onFiltrosChange({ ...filtros, categoria_estabelecimento: value === "all" ? undefined : value })
-                }
+                value={filtros.categoria_estabelecimento || 'todas'}
+                onValueChange={(value) => handleFilterChange('categoria_estabelecimento', value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Todas as categorias" />
+                  <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas as categorias</SelectItem>
-                  {categorias.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="todas">Todas</SelectItem>
+                  {validCategorias.map((cat) => {
+                    // Final safety check with guaranteed non-empty value
+                    const safeValue = cat && cat.trim() ? cat.trim() : null;
+                    if (!safeValue) {
+                      console.warn('Skipping invalid categoria:', cat);
+                      return null;
+                    }
+                    return (
+                      <SelectItem key={safeValue} value={safeValue}>
+                        {safeValue}
+                      </SelectItem>
+                    );
+                  }).filter(Boolean)}
                 </SelectContent>
               </Select>
             </div>
 
             {/* Semáforo */}
-            <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                Performance
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="semaforo">Performance</Label>
               <Select
-                value={filtros.semaforo || "all"}
-                onValueChange={(value) => 
-                  onFiltrosChange({ ...filtros, semaforo: value === "all" ? undefined : value as any })
-                }
+                value={filtros.semaforo || 'todas'}
+                onValueChange={(value) => handleFilterChange('semaforo', value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Todas as performances" />
+                  <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas as performances</SelectItem>
-                  <SelectItem value="verde">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      Verde
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="amarelo">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                      Amarelo
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="vermelho">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                      Vermelho
-                    </div>
-                  </SelectItem>
+                  <SelectItem value="todas">Todas</SelectItem>
+                  <SelectItem value="verde">🟢 Verde</SelectItem>
+                  <SelectItem value="amarelo">🟡 Amarelo</SelectItem>
+                  <SelectItem value="vermelho">🔴 Vermelho</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Achievement Mínimo */}
+            <div className="space-y-2">
+              <Label htmlFor="achievement-min">Achievement Min (%)</Label>
+              <Input
+                id="achievement-min"
+                type="number"
+                min="0"
+                max="100"
+                placeholder="0"
+                value={filtros.achievement_min || ''}
+                onChange={(e) => handleFilterChange('achievement_min', Number(e.target.value) || undefined)}
+              />
+            </div>
+
+            {/* Achievement Máximo */}
+            <div className="space-y-2">
+              <Label htmlFor="achievement-max">Achievement Max (%)</Label>
+              <Input
+                id="achievement-max"
+                type="number"
+                min="0"
+                max="100"
+                placeholder="100"
+                value={filtros.achievement_max || ''}
+                onChange={(e) => handleFilterChange('achievement_max', Number(e.target.value) || undefined)}
+              />
+            </div>
           </div>
-
-          {/* Ações */}
-          <div className="flex gap-2 items-center">
-            {/* Contador de filtros ativos */}
-            {temFiltrosAtivos && (
-              <Badge variant="secondary" className="text-xs">
-                <Filter className="h-3 w-3 mr-1" />
-                {contadorFiltros} filtro{contadorFiltros > 1 ? 's' : ''}
-              </Badge>
-            )}
-
-            {/* Botão limpar filtros */}
-            {temFiltrosAtivos && (
+          
+          {activeFiltersCount > 0 && (
+            <div className="flex justify-end mt-4">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={limparFiltros}
-                className="flex items-center gap-2"
+                onClick={clearFilters}
               >
-                <X className="h-4 w-4" />
-                Limpar
+                <X className="h-4 w-4 mr-2" />
+                Limpar Filtros
               </Button>
-            )}
-
-            {/* Botão atualizar */}
-            <Button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              variant="default"
-              size="sm"
-              className="flex items-center gap-2 min-w-[120px]"
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Atualizando...' : 'Atualizar Dados'}
-            </Button>
-          </div>
-        </div>
-
-        {/* Indicador de última atualização */}
-        <div className="mt-4 text-xs text-muted-foreground">
-          <span>💡 Clique em "Atualizar Dados" para buscar as informações mais recentes do banco de dados</span>
-        </div>
-      </CardContent>
+            </div>
+          )}
+        </CardContent>
+      )}
     </Card>
   );
 }

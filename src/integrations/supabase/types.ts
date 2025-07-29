@@ -1464,16 +1464,6 @@ export type Database = {
       }
     }
     Functions: {
-      check_cliente_status_consistency: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          nome: string
-          ativo: boolean
-          status_cliente: string
-          inconsistencia: string
-        }[]
-      }
       check_rate_limit: {
         Args: {
           p_ip_address: unknown

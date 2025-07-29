@@ -1,11 +1,9 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
-import { securityMonitoring } from '@/services/securityMonitoring';
-import { CSRFProtection } from '@/utils/csrfProtection';
-import { EnhancedInputValidator } from '@/utils/enhancedInputValidation';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -102,7 +100,7 @@ const logAuditEvent = async (
   }
 };
 
-// Enhanced helper function to check rate limits
+// Helper function to check rate limits
 const checkRateLimit = async (email: string, ipAddress: string): Promise<boolean> => {
   try {
     const { data, error } = await supabase
@@ -115,11 +113,6 @@ const checkRateLimit = async (email: string, ipAddress: string): Promise<boolean
     if (error) {
       console.warn('Rate limit check failed:', error);
       return true; // Allow on error to prevent lockout
-    }
-
-    // Monitor rate limit violations
-    if (data === false) {
-      await securityMonitoring.monitorRateLimitViolation('login', ipAddress);
     }
 
     return data === true;
@@ -208,37 +201,37 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setLoading(true);
       
-      // Enhanced input validation
-      const emailValidation = EnhancedInputValidator.validateEmail(email);
-      if (!emailValidation.isValid) {
-        toast.error(emailValidation.errors[0]);
+      // Input validation
+      if (!email || !password) {
+        toast.error("Email e senha são obrigatórios");
         return;
       }
 
-      const passwordValidation = EnhancedInputValidator.validatePassword(password);
-      if (!passwordValidation.isValid) {
-        toast.error("Senha não atende aos requisitos de segurança");
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        toast.error("Por favor, insira um email válido");
         return;
       }
 
       const clientIP = await getClientIP();
 
       // Check rate limits
-      const isAllowed = await checkRateLimit(emailValidation.sanitizedValue!, clientIP);
+      const isAllowed = await checkRateLimit(email, clientIP);
       if (!isAllowed) {
         toast.error("Muitas tentativas de login. Tente novamente em 15 minutos.");
-        await securityMonitoring.monitorAuthAttempt(emailValidation.sanitizedValue!, false, 'login');
+        await logAuthAttempt(email, 'login', false, clientIP);
         return;
       }
 
       const { error } = await supabase.auth.signInWithPassword({
-        email: emailValidation.sanitizedValue!,
+        email,
         password
       });
 
       if (error) {
-        // Monitor failed attempt
-        await securityMonitoring.monitorAuthAttempt(emailValidation.sanitizedValue!, false, 'login');
+        // Log failed attempt
+        await logAuthAttempt(email, 'login', false, clientIP);
         
         if (error.message.includes('Invalid login credentials')) {
           toast.error("Email ou senha incorretos");
@@ -248,9 +241,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         throw error;
       }
       
-      // Monitor successful attempt
-      await securityMonitoring.monitorAuthAttempt(emailValidation.sanitizedValue!, true, 'login');
+      // Log successful attempt
+      await logAuthAttempt(email, 'login', true, clientIP);
       
+      // Redirection will be handled by onAuthStateChange
     } catch (error) {
       if (error instanceof Error && !error.message.includes('Invalid login credentials')) {
         toast.error("Erro inesperado ao fazer login");
@@ -265,32 +259,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setLoading(true);
       
-      // Enhanced input validation
-      const emailValidation = EnhancedInputValidator.validateEmail(email);
-      if (!emailValidation.isValid) {
-        toast.error(emailValidation.errors[0]);
+      // Input validation
+      if (!email || !password || !fullName) {
+        toast.error("Todos os campos são obrigatórios");
         return;
       }
 
-      const passwordValidation = EnhancedInputValidator.validatePassword(password);
-      if (!passwordValidation.isValid) {
-        toast.error(passwordValidation.errors[0]);
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        toast.error("Por favor, insira um email válido");
         return;
       }
 
-      const nameValidation = EnhancedInputValidator.sanitizeText(fullName, 100);
-      if (!nameValidation.isValid) {
-        toast.error(nameValidation.errors[0]);
+      // Password strength validation
+      if (password.length < 6) {
+        toast.error("A senha deve ter pelo menos 6 caracteres");
         return;
       }
 
       const clientIP = await getClientIP();
 
       // Check rate limits for signup
-      const isAllowed = await checkRateLimit(emailValidation.sanitizedValue!, clientIP);
+      const isAllowed = await checkRateLimit(email, clientIP);
       if (!isAllowed) {
         toast.error("Muitas tentativas de cadastro. Tente novamente em 15 minutos.");
-        await securityMonitoring.monitorAuthAttempt(emailValidation.sanitizedValue!, false, 'signup');
+        await logAuthAttempt(email, 'signup', false, clientIP);
         return;
       }
       
@@ -298,19 +292,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const redirectTo = `${window.location.origin}/home`;
       
       const { error } = await supabase.auth.signUp({
-        email: emailValidation.sanitizedValue!,
+        email,
         password,
         options: {
           data: {
-            full_name: nameValidation.sanitizedValue!
+            full_name: fullName
           },
           emailRedirectTo: redirectTo
         }
       });
 
       if (error) {
-        // Monitor failed attempt
-        await securityMonitoring.monitorAuthAttempt(emailValidation.sanitizedValue!, false, 'signup');
+        // Log failed attempt
+        await logAuthAttempt(email, 'signup', false, clientIP);
         
         if (error.message.includes('User already registered')) {
           toast.error("Este email já está cadastrado. Tente fazer login.");
@@ -319,8 +313,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
         throw error;
       } else {
-        // Monitor successful attempt
-        await securityMonitoring.monitorAuthAttempt(emailValidation.sanitizedValue!, true, 'signup');
+        // Log successful attempt
+        await logAuthAttempt(email, 'signup', true, clientIP);
         toast.success("Conta criada com sucesso! Verifique seu email para confirmar.");
       }
     } catch (error) {

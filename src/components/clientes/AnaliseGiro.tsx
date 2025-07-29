@@ -7,6 +7,7 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   ResponsiveContainer, 
@@ -18,7 +19,7 @@ import {
   Tooltip, 
   Legend
 } from "recharts";
-import { ArrowUp, ArrowDown, AlertCircle } from "lucide-react";
+import { ArrowUp, ArrowDown, Filter, AlertCircle } from "lucide-react";
 import { Cliente } from "@/types";
 import GiroMetricCard from "./GiroMetricCard";
 import GiroComparativoBlock from "./GiroComparativoBlock";
@@ -29,7 +30,11 @@ interface AnaliseGiroProps {
 }
 
 export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
-  const { dadosGiro, giroGeralSemanal, isLoading, error } = useGiroAnalise(cliente);
+  const { dadosGiro, isLoading, error } = useGiroAnalise(cliente);
+  
+  // Giro semanal médio geral (valor simulado - deve vir do dashboard/analytics)
+  // TODO: buscar valor real do dashboard "Análise de PDV e Giro"
+  const giroSemanalMedioGeral = 150; // Valor placeholder
   
   if (isLoading) {
     return (
@@ -101,40 +106,32 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
   }
   
   // Calcular comparativo com giro geral
-  const comparativoGiroGeral = giroGeralSemanal > 0 
-    ? Math.round((dadosGiro.mediaHistorica / giroGeralSemanal) * 100)
+  const comparativoGiroGeral = giroSemanalMedioGeral > 0 
+    ? Math.round((dadosGiro.mediaHistorica / giroSemanalMedioGeral) * 100)
     : 0;
   
-  // Determinar cor da linha da média histórica baseada na comparação com o giro geral
-  const corMediaHistorica = dadosGiro.mediaHistorica >= giroGeralSemanal ? "#22c55e" : "#ef4444"; // verde ou vermelho
-  
-  // Preparar dados para o gráfico - incluir giro geral
+  // Preparar dados para o gráfico - agora com média histórica ao invés de meta
   const dadosGrafico = dadosGiro.historico.map(item => ({
     semana: item.semana,
     giro: item.valor,
-    mediaHistorica: dadosGiro.mediaHistorica,
-    giroGeral: giroGeralSemanal,
-    entregas: item.entregas || [],
-    periodo: item.periodo || '',
-    dataInicial: item.dataInicial || '',
-    dataFinal: item.dataFinal || ''
+    mediaHistorica: dadosGiro.mediaHistorica // Linha azul da média histórica
   }));
   
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex gap-4 items-center">
-          <div className="flex gap-2 items-center">
-            <span className="text-sm text-muted-foreground">Média histórica (4 semanas):</span>
-            <Badge variant="outline" className="font-medium">{dadosGiro.mediaHistorica} unidades/semana</Badge>
-          </div>
-          <div className="flex gap-2 items-center">
-            <span className="text-sm text-muted-foreground">Giro geral:</span>
-            <Badge variant="secondary" className="font-medium">{giroGeralSemanal} unidades/semana</Badge>
-          </div>
+      <div className="flex flex-col md:flex-row justify-between gap-4">
+        <Button variant="outline" className="self-start flex gap-2 items-center">
+          <Filter className="h-4 w-4" />
+          Filtrar dados
+        </Button>
+        
+        <div className="flex gap-2 items-center">
+          <span className="text-sm text-muted-foreground">Média histórica:</span>
+          <Badge variant="outline" className="font-medium">{dadosGiro.mediaHistorica} unidades/semana</Badge>
         </div>
       </div>
 
+      {/* Novo bloco comparativo */}
       <GiroComparativoBlock cliente={cliente} mediaHistorica={dadosGiro.mediaHistorica} />
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -169,7 +166,7 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
         <CardHeader>
           <CardTitle>Giro Semanal - Últimas 12 semanas</CardTitle>
           <CardDescription>
-            Evolução do giro semanal com comparativo da média histórica e giro geral
+            Evolução do giro semanal baseado no histórico real de entregas com média histórica
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -190,63 +187,23 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
                 <Tooltip 
                   content={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      const entregas = data.entregas || [];
-                      
                       return (
-                        <div className="bg-background border border-border rounded-md shadow-lg p-4 max-w-sm">
-                          <div className="font-semibold text-base mb-2">{label}</div>
-                          <div className="text-sm text-muted-foreground mb-3">
-                            Período: {data.periodo}
-                          </div>
-                          
-                          <div className="space-y-2 mb-3">
+                        <div className="bg-background border border-border rounded-md shadow-lg p-3">
+                          <div className="font-medium">{label}</div>
+                          <div className="mt-2 space-y-1">
                             <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 bg-primary rounded-full" />
+                              <div className="w-2 h-2 bg-primary rounded-full" />
                               <span className="text-muted-foreground">Giro:</span>
-                              <span className="font-semibold">{payload[0].value} unidades</span>
+                              <span className="font-medium">{payload[0].value} unidades</span>
                             </div>
                             {payload[1] && (
                               <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: corMediaHistorica }} />
+                                <div className="w-2 h-2 bg-blue-500 rounded-full" />
                                 <span className="text-muted-foreground">Média Histórica:</span>
-                                <span className="font-semibold">{payload[1].value} unidades</span>
-                              </div>
-                            )}
-                            {payload[2] && (
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-blue-500 rounded-full" />
-                                <span className="text-muted-foreground">Giro Geral:</span>
-                                <span className="font-semibold">{payload[2].value} unidades</span>
+                                <span className="font-medium">{payload[1].value} unidades</span>
                               </div>
                             )}
                           </div>
-
-                          {entregas.length > 0 && (
-                            <div className="border-t pt-2">
-                              <div className="text-sm font-medium mb-2">
-                                Entregas realizadas ({entregas.length}):
-                              </div>
-                              <div className="max-h-24 overflow-y-auto space-y-1">
-                                {entregas.map((entrega: any, index: number) => (
-                                  <div key={index} className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">
-                                      {new Date(entrega.data).toLocaleDateString('pt-BR')}
-                                    </span>
-                                    <span className="font-medium">
-                                      {entrega.quantidade} un
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {entregas.length === 0 && (
-                            <div className="border-t pt-2 text-xs text-muted-foreground">
-                              Nenhuma entrega realizada nesta semana
-                            </div>
-                          )}
                         </div>
                       );
                     }
@@ -266,18 +223,9 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
                 <Line
                   type="monotone"
                   dataKey="mediaHistorica"
-                  name="Média Histórica (4 semanas)"
-                  stroke={corMediaHistorica}
-                  strokeDasharray="5 5"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="giroGeral"
-                  name="Giro Geral"
+                  name="Média Histórica"
                   stroke="#3b82f6"
-                  strokeDasharray="8 4"
+                  strokeDasharray="5 5"
                   strokeWidth={2}
                   dot={false}
                 />

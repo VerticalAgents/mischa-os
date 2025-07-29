@@ -27,22 +27,12 @@ export const useSupabaseCategoriasEstabelecimento = () => {
 
       if (error) {
         console.error('Erro ao carregar categorias de estabelecimento:', error);
-        toast({
-          title: "Erro",
-          description: "Erro ao carregar categorias de estabelecimento",
-          variant: "destructive"
-        });
         return;
       }
 
       setCategorias(data || []);
     } catch (error) {
       console.error('Erro ao carregar categorias de estabelecimento:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar categorias de estabelecimento",
-        variant: "destructive"
-      });
     } finally {
       setLoading(false);
     }
@@ -53,75 +43,52 @@ export const useSupabaseCategoriasEstabelecimento = () => {
     descricao?: string;
   }) => {
     try {
-      console.log('Tentando adicionar categoria:', categoria);
-      
       const { data, error } = await supabase
         .from('categorias_estabelecimento')
-        .insert({
-          nome: categoria.nome.trim(),
-          descricao: categoria.descricao?.trim() || null,
-          ativo: true
-        })
+        .insert(categoria)
         .select()
         .single();
 
       if (error) {
-        console.error('Erro ao criar categoria:', error);
         toast({
           title: "Erro ao criar categoria",
-          description: error.message || "Erro desconhecido",
+          description: error.message,
           variant: "destructive"
         });
-        return false;
+        return null;
       }
 
-      console.log('Categoria criada com sucesso:', data);
       toast({
-        title: "Sucesso",
+        title: "Categoria criada",
         description: "Categoria criada com sucesso"
       });
 
       await carregarCategorias();
-      return true;
+      return data;
     } catch (error) {
       console.error('Erro ao adicionar categoria:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao adicionar categoria",
-        variant: "destructive"
-      });
-      return false;
+      return null;
     }
   };
 
-  const atualizarCategoria = async (id: number, updates: {
-    nome?: string;
-    descricao?: string;
-  }) => {
+  const atualizarCategoria = async (id: number, updates: Partial<CategoriaEstabelecimento>) => {
     try {
-      console.log('Atualizando categoria:', id, updates);
-      
-      const updateData: any = {};
-      if (updates.nome) updateData.nome = updates.nome.trim();
-      if (updates.descricao !== undefined) updateData.descricao = updates.descricao?.trim() || null;
-      
       const { error } = await supabase
         .from('categorias_estabelecimento')
-        .update(updateData)
+        .update(updates)
         .eq('id', id);
 
       if (error) {
-        console.error('Erro ao atualizar categoria:', error);
         toast({
           title: "Erro ao atualizar categoria",
-          description: error.message || "Erro desconhecido",
+          description: error.message,
           variant: "destructive"
         });
         return false;
       }
 
       toast({
-        title: "Sucesso",
+        title: "Categoria atualizada",
         description: "Categoria atualizada com sucesso"
       });
 
@@ -129,36 +96,28 @@ export const useSupabaseCategoriasEstabelecimento = () => {
       return true;
     } catch (error) {
       console.error('Erro ao atualizar categoria:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar categoria",
-        variant: "destructive"
-      });
       return false;
     }
   };
 
   const removerCategoria = async (id: number) => {
     try {
-      console.log('Removendo categoria:', id);
-      
       const { error } = await supabase
         .from('categorias_estabelecimento')
         .update({ ativo: false })
         .eq('id', id);
 
       if (error) {
-        console.error('Erro ao remover categoria:', error);
         toast({
           title: "Erro ao remover categoria",
-          description: error.message || "Erro desconhecido",
+          description: error.message,
           variant: "destructive"
         });
         return false;
       }
 
       toast({
-        title: "Sucesso",
+        title: "Categoria removida",
         description: "Categoria removida com sucesso"
       });
 
@@ -166,11 +125,6 @@ export const useSupabaseCategoriasEstabelecimento = () => {
       return true;
     } catch (error) {
       console.error('Erro ao remover categoria:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao remover categoria",
-        variant: "destructive"
-      });
       return false;
     }
   };

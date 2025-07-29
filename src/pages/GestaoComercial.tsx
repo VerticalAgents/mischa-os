@@ -1,50 +1,21 @@
 
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { UserCircle, BarChart3, Target } from "lucide-react";
+import { Building, HelpingHand, UserCircle } from "lucide-react";
 import FunilLeads from "./gestao-comercial/FunilLeads";
-import DashboardComercial from "./gestao-comercial/DashboardComercial";
-import MetasProspeccao from "./gestao-comercial/MetasProspeccao";
+import Distribuidores from "./gestao-comercial/Distribuidores";
+import Parceiros from "./gestao-comercial/Parceiros";
 
 export default function GestaoComercial() {
+  const [activeTab, setActiveTab] = useState("funil-leads");
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  // Determinar aba ativa baseada na URL atual
-  const getActiveTabFromPath = () => {
-    const path = location.pathname;
-    if (path.includes('/dashboard')) return 'dashboard';
-    if (path.includes('/metas')) return 'metas';
-    return 'funil-leads';
-  };
-
-  const [activeTab, setActiveTab] = useState(getActiveTabFromPath());
-
-  // Atualizar aba quando a rota mudar
-  useEffect(() => {
-    setActiveTab(getActiveTabFromPath());
-  }, [location.pathname]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    
-    // Navegar para a rota correta
-    switch (value) {
-      case 'funil-leads':
-        navigate('/gestao-comercial');
-        break;
-      case 'dashboard':
-        navigate('/gestao-comercial/dashboard');
-        break;
-      case 'metas':
-        navigate('/gestao-comercial/metas');
-        break;
-      default:
-        navigate('/gestao-comercial');
-    }
+    navigate(`/gestao-comercial/${value}`);
   };
 
   return (
@@ -53,7 +24,7 @@ export default function GestaoComercial() {
       
       <PageHeader
         title="Gestão Comercial"
-        description="Gerencie leads, acompanhe dashboards e defina metas de prospecção"
+        description="Gerencie leads, distribuidores e parcerias comerciais"
       />
 
       <div className="mt-6">
@@ -68,13 +39,13 @@ export default function GestaoComercial() {
                 <UserCircle className="h-4 w-4" />
                 <span>Funil de Leads</span>
               </TabsTrigger>
-              <TabsTrigger value="dashboard" className="flex items-center gap-1">
-                <BarChart3 className="h-4 w-4" />
-                <span>Dashboard</span>
+              <TabsTrigger value="distribuidores" className="flex items-center gap-1">
+                <Building className="h-4 w-4" />
+                <span>Distribuidores</span>
               </TabsTrigger>
-              <TabsTrigger value="metas" className="flex items-center gap-1">
-                <Target className="h-4 w-4" />
-                <span>Metas de Prospecção</span>
+              <TabsTrigger value="parceiros" className="flex items-center gap-1">
+                <HelpingHand className="h-4 w-4" />
+                <span>Parceiros</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -83,12 +54,12 @@ export default function GestaoComercial() {
             <FunilLeads />
           </TabsContent>
 
-          <TabsContent value="dashboard">
-            <DashboardComercial />
+          <TabsContent value="distribuidores">
+            <Distribuidores />
           </TabsContent>
 
-          <TabsContent value="metas">
-            <MetasProspeccao />
+          <TabsContent value="parceiros">
+            <Parceiros />
           </TabsContent>
         </Tabs>
       </div>

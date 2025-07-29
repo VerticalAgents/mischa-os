@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
@@ -10,12 +11,10 @@ import {
   GiroPredicao
 } from '@/services/giroAnalysisService';
 import { useAuditLog } from '@/hooks/useAuditLog';
-import { useToast } from '@/hooks/use-toast';
 
 export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { logAction } = useAuditLog();
-  const { toast } = useToast();
 
   const {
     data: dadosConsolidados,
@@ -25,8 +24,7 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
   } = useQuery({
     queryKey: ['giro-analysis-consolidated', filtros],
     queryFn: () => GiroAnalysisService.getDadosConsolidados(filtros),
-    staleTime: 0, // Sempre considerar dados como obsoletos
-    gcTime: 0, // Não fazer cache - usar gcTime ao invés de cacheTime
+    staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
   });
 
@@ -38,8 +36,7 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
   } = useQuery({
     queryKey: ['giro-analysis-overview', filtros],
     queryFn: () => GiroAnalysisService.getGiroOverview(filtros),
-    staleTime: 0,
-    gcTime: 0, // Não fazer cache - usar gcTime ao invés de cacheTime
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
@@ -51,8 +48,7 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
   } = useQuery({
     queryKey: ['giro-analysis-ranking', filtros],
     queryFn: () => GiroAnalysisService.getGiroRanking(filtros),
-    staleTime: 0,
-    gcTime: 0, // Não fazer cache - usar gcTime ao invés de cacheTime
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
@@ -64,16 +60,13 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
   } = useQuery({
     queryKey: ['giro-analysis-regional', filtros],
     queryFn: () => GiroAnalysisService.getGiroRegional(filtros),
-    staleTime: 0,
-    gcTime: 0, // Não fazer cache - usar gcTime ao invés de cacheTime
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
   const refreshAll = async () => {
     setIsRefreshing(true);
     try {
-      console.log('🔄 Iniciando refresh completo dos dados de giro...');
-      
       // Log the refresh action
       await logAction({
         action: 'GIRO_ANALYSIS_REFRESH',
@@ -83,11 +76,6 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
           filters: filtros,
           timestamp: new Date().toISOString()
         }
-      });
-
-      toast({
-        title: "Atualizando dados",
-        description: "Buscando as informações mais recentes...",
       });
 
       console.log('🔄 Refreshing materialized view...');
@@ -109,11 +97,6 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
       
       console.log('✅ Data refresh completed');
 
-      toast({
-        title: "Dados atualizados",
-        description: "As informações foram atualizadas com sucesso!",
-      });
-
       // Log successful refresh
       await logAction({
         action: 'GIRO_ANALYSIS_REFRESH_SUCCESS',
@@ -126,12 +109,6 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
       });
     } catch (error) {
       console.error('❌ Error refreshing data:', error);
-      
-      toast({
-        title: "Erro na atualização",
-        description: "Não foi possível atualizar os dados. Tente novamente.",
-        variant: "destructive"
-      });
       
       // Log failed refresh
       await logAction({

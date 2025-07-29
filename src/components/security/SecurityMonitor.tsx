@@ -1,286 +1,265 @@
 
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, Shield, Eye, Activity, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AdminGuard } from '@/components/auth/AdminGuard';
+import { Shield, AlertTriangle, Eye, Activity } from 'lucide-react';
 import { format } from 'date-fns';
+import { AuthenticationMonitor } from './AuthenticationMonitor';
 
-type AuditLog = {
+interface AuditLogEntry {
   id: string;
   user_id: string;
   action: string;
-  table_name: string;
-  record_id: string;
-  old_values: any;
-  new_values: any;
+  table_name: string | null;
+  record_id: string | null;
+  user_agent: string | null;
+  ip_address: string | null;
   created_at: string;
-  user_agent: string;
-  ip_address: unknown;
-};
-
-type AuthAttempt = {
-  id: string;
-  ip_address: string;
-  email: string;
-  attempt_type: string;
-  success: boolean;
-  created_at: string;
-};
+  profiles?: {
+    full_name: string | null;
+    email: string | null;
+  } | null;
+}
 
 export function SecurityMonitor() {
-  const [severityFilter, setSeverityFilter] = useState<string>('all');
-  const [timeRange, setTimeRange] = useState<string>('24h');
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const { data: auditLogs, isLoading: auditLoading, refetch: refetchAudit } = useQuery({
-    queryKey: ['audit-logs', timeRange],
-    queryFn: async () => {
-      const hoursAgo = timeRange === '24h' ? 24 : timeRange === '7d' ? 168 : 720;
+  useEffect(() => {
+    fetchAuditLogs();
+    const interval = setInterval(fetchAuditLogs, 60000); // Refresh every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchAuditLogs = async () => {
+    try {
       const { data, error } = await supabase
         .from('audit_logs')
-        .select('*')
-        .gte('created_at', new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString())
+        .select(`
+          *,
+          profiles:user_id (
+            full_name,
+            email
+          )
+        `)
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (error) throw error;
-      return data as AuditLog[];
-    },
-  });
+      if (error) {
+        console.error('Error fetching audit logs:', error);
+        return;
+      }
 
-  const { data: authAttempts, isLoading: authLoading, refetch: refetchAuth } = useQuery({
-    queryKey: ['auth-attempts', timeRange],
-    queryFn: async () => {
-      const hoursAgo = timeRange === '24h' ? 24 : timeRange === '7d' ? 168 : 720;
-      const { data, error } = await supabase
-        .from('auth_attempts')
-        .select('*')
-        .gte('created_at', new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString())
-        .order('created_at', { ascending: false })
-        .limit(100);
+      // Transform the data to match our interface
+      const transformedData: AuditLogEntry[] = (data || []).map(log => ({
+        id: log.id,
+        user_id: log.user_id,
+        action: log.action,
+        table_name: log.table_name,
+        record_id: log.record_id,
+        user_agent: log.user_agent,
+        ip_address: log.ip_address as string | null,
+        created_at: log.created_at,
+        profiles: Array.isArray(log.profiles) 
+          ? log.profiles[0] || null 
+          : log.profiles || null
+      }));
 
-      if (error) throw error;
-      return data as AuthAttempt[];
-    },
-  });
-
-  const handleRefresh = () => {
-    refetchAudit();
-    refetchAuth();
-  };
-
-  // Filter security events from audit logs
-  const securityEvents = auditLogs?.filter((log: AuditLog) => {
-    // Check if it's a security event
-    if (log.action !== 'SECURITY_EVENT') return false;
-    
-    // Apply severity filter
-    if (severityFilter !== 'all') {
-      const newValues = log.new_values as any;
-      const severity = newValues?.severity;
-      if (severity !== severityFilter) return false;
-    }
-    
-    return true;
-  }) || [];
-
-  const failedAttempts = authAttempts?.filter(attempt => !attempt.success) || [];
-  const suspiciousIPs = [...new Set(failedAttempts.map(attempt => attempt.ip_address))];
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity?.toLowerCase()) {
-      case 'critical': return 'bg-red-100 text-red-800 border-red-200';
-      case 'error': return 'bg-red-50 text-red-700 border-red-100';
-      case 'warning': return 'bg-yellow-50 text-yellow-700 border-yellow-100';
-      default: return 'bg-blue-50 text-blue-700 border-blue-100';
+      setAuditLogs(transformedData);
+    } catch (err) {
+      console.error('Error fetching audit logs:', err);
+    } finally {
+      setLoading(false);
     }
   };
+
+  const getActionBadge = (action: string) => {
+    const colors = {
+      'LOGIN': 'bg-green-100 text-green-800',
+      'LOGOUT': 'bg-gray-100 text-gray-800',
+      'INSERT': 'bg-blue-100 text-blue-800',
+      'UPDATE': 'bg-yellow-100 text-yellow-800',
+      'DELETE': 'bg-red-100 text-red-800',
+      'ROLE_ASSIGNED': 'bg-purple-100 text-purple-800',
+      'ROLE_UPDATED': 'bg-purple-100 text-purple-800',
+      'ROLE_REMOVED': 'bg-red-100 text-red-800'
+    };
+    
+    return (
+      <Badge className={colors[action as keyof typeof colors] || 'bg-gray-100 text-gray-800'}>
+        {action}
+      </Badge>
+    );
+  };
+
+  const getActionPriority = (action: string): 'high' | 'medium' | 'low' => {
+    const highPriority = ['DELETE', 'ROLE_ASSIGNED', 'ROLE_UPDATED', 'ROLE_REMOVED'];
+    const mediumPriority = ['INSERT', 'UPDATE'];
+    
+    if (highPriority.includes(action)) return 'high';
+    if (mediumPriority.includes(action)) return 'medium';
+    return 'low';
+  };
+
+  const stats = {
+    totalEvents: auditLogs.length,
+    criticalEvents: auditLogs.filter(log => 
+      ['DELETE', 'ROLE_ASSIGNED', 'ROLE_UPDATED', 'ROLE_REMOVED'].includes(log.action)
+    ).length,
+    uniqueUsers: new Set(auditLogs.map(log => log.user_id)).size,
+    recentActivity: auditLogs.filter(log => 
+      new Date(log.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+    ).length
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="flex items-center gap-2">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <span>Carregando dados de segurança...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Monitor de Segurança</h1>
-        <Button onClick={handleRefresh} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Atualizar
-        </Button>
+    <AdminGuard>
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Shield className="h-5 w-5" />
+          <h1 className="text-2xl font-bold">Monitor de Segurança</h1>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Eventos Recentes</CardTitle>
+              <Eye className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalEvents}</div>
+              <p className="text-xs text-muted-foreground">
+                Últimas 100 atividades
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Eventos Críticos</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">{stats.criticalEvents}</div>
+              <p className="text-xs text-muted-foreground">
+                Ações sensíveis
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Usuários Ativos</CardTitle>
+              <Shield className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.uniqueUsers}</div>
+              <p className="text-xs text-muted-foreground">
+                Usuários únicos
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Atividade 24h</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.recentActivity}</div>
+              <p className="text-xs text-muted-foreground">
+                Eventos recentes
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Tabs defaultValue="audit" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="audit">Log de Auditoria</TabsTrigger>
+            <TabsTrigger value="auth">Autenticação</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="audit" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Log de Auditoria</CardTitle>
+                <CardDescription>
+                  Registro completo de todas as atividades do sistema
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data/Hora</TableHead>
+                      <TableHead>Usuário</TableHead>
+                      <TableHead>Ação</TableHead>
+                      <TableHead>Tabela</TableHead>
+                      <TableHead>Registro</TableHead>
+                      <TableHead>IP</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {auditLogs.map((log) => (
+                      <TableRow key={log.id} className={
+                        getActionPriority(log.action) === 'high' ? 'bg-red-50' :
+                        getActionPriority(log.action) === 'medium' ? 'bg-yellow-50' : ''
+                      }>
+                        <TableCell>
+                          {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss')}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {log.profiles?.full_name || 'Usuário não encontrado'}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {log.profiles?.email || 'Email não disponível'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {getActionBadge(log.action)}
+                        </TableCell>
+                        <TableCell>{log.table_name || '-'}</TableCell>
+                        <TableCell className="font-mono text-sm">{log.record_id || '-'}</TableCell>
+                        <TableCell className="font-mono text-sm">{log.ip_address || '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                    {auditLogs.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground">
+                          Nenhum log de auditoria encontrado
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="auth" className="mt-6">
+            <AuthenticationMonitor />
+          </TabsContent>
+        </Tabs>
       </div>
-
-      {/* Security Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Shield className="h-4 w-4 text-green-500" />
-              Eventos Totais
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{securityEvents.length}</div>
-            <p className="text-xs text-muted-foreground">Últimas {timeRange}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              Tentativas Falhas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{failedAttempts.length}</div>
-            <p className="text-xs text-muted-foreground">Falhas de login</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Eye className="h-4 w-4 text-blue-500" />
-              IPs Suspeitos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{suspiciousIPs.length}</div>
-            <p className="text-xs text-muted-foreground">IPs únicos com falhas</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Activity className="h-4 w-4 text-purple-500" />
-              Atividade Total
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{(auditLogs?.length || 0) + (authAttempts?.length || 0)}</div>
-            <p className="text-xs text-muted-foreground">Logs de auditoria</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-4">
-        <Select value={severityFilter} onValueChange={setSeverityFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filtrar por severidade" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as severidades</SelectItem>
-            <SelectItem value="INFO">Info</SelectItem>
-            <SelectItem value="WARNING">Aviso</SelectItem>
-            <SelectItem value="ERROR">Erro</SelectItem>
-            <SelectItem value="CRITICAL">Crítico</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Período" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="24h">Últimas 24h</SelectItem>
-            <SelectItem value="7d">Últimos 7 dias</SelectItem>
-            <SelectItem value="30d">Últimos 30 dias</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Security Events */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Eventos de Segurança</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {auditLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : securityEvents.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              Nenhum evento de segurança encontrado
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {securityEvents.map((event) => {
-                const newValues = event.new_values as any;
-                const severity = newValues?.severity || 'INFO';
-                const eventType = newValues?.event_type || 'UNKNOWN';
-                const details = newValues?.details || {};
-
-                return (
-                  <div
-                    key={event.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Badge className={getSeverityColor(severity)}>
-                        {severity}
-                      </Badge>
-                      <div>
-                        <p className="font-medium">{eventType}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(event.created_at), 'dd/MM/yyyy HH:mm:ss')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">Usuário: {event.user_id}</p>
-                      {details.email && (
-                        <p className="text-sm text-muted-foreground">
-                          {details.email}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Failed Login Attempts */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Tentativas de Login Falhadas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {authLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : failedAttempts.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              Nenhuma tentativa de login falhada encontrada
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {failedAttempts.map((attempt) => (
-                <div
-                  key={attempt.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium">{attempt.email}</p>
-                    <p className="text-sm text-muted-foreground">
-                      IP: {attempt.ip_address} • {format(new Date(attempt.created_at), 'dd/MM/yyyy HH:mm:ss')}
-                    </p>
-                  </div>
-                  <Badge variant="destructive">
-                    {attempt.attempt_type}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    </AdminGuard>
   );
 }

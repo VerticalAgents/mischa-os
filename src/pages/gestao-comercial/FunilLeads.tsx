@@ -2,15 +2,34 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useToast } from "@/hooks/use-toast";
-import LeadModal from "@/components/gestao-comercial/LeadModal";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   AlertCircle, 
   CheckCircle2, 
   Clock, 
   Phone, 
   Mail, 
+  MapPin, 
   User,
   Calendar,
   Star,
@@ -35,19 +54,6 @@ interface Lead {
   probabilidade: number;
   proximaAcao?: string;
   dataProximaAcao?: Date;
-  objecoes?: string;
-  responsavel?: string;
-  amostrasEntregues?: boolean;
-  representanteId?: number;
-  rotaEntregaId?: number;
-  cidadeRegiao?: string;
-  segmentoMercado?: string;
-  numeroFuncionarios?: number;
-  faturamentoAnual?: number;
-  concorrenciaAtual?: string;
-  dataPrimeiroContato?: Date;
-  ultimaInteracao?: Date;
-  proximoFollowUp?: Date;
 }
 
 export default function FunilLeads() {
@@ -134,6 +140,19 @@ export default function FunilLeads() {
     }
   ]);
 
+  const [novoLead, setNovoLead] = useState<Partial<Lead>>({
+    nome: "",
+    empresa: "",
+    telefone: "",
+    email: "",
+    endereco: "",
+    status: "Novo",
+    fonte: "",
+    observacoes: "",
+    valorEstimado: 0,
+    probabilidade: 20
+  });
+
   const [leadSelecionado, setLeadSelecionado] = useState<Lead | null>(null);
   const [dialogAberto, setDialogAberto] = useState(false);
   const [dialogNovoAberto, setDialogNovoAberto] = useState(false);
@@ -148,7 +167,49 @@ export default function FunilLeads() {
   };
 
   const handleAdicionarLead = () => {
-    
+    if (!novoLead.nome || !novoLead.empresa) {
+      toast({
+        title: "Erro",
+        description: "Nome e empresa são obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const lead: Lead = {
+      id: Math.max(...leads.map(l => l.id)) + 1,
+      nome: novoLead.nome!,
+      empresa: novoLead.empresa!,
+      telefone: novoLead.telefone || "",
+      email: novoLead.email || "",
+      endereco: novoLead.endereco || "",
+      status: novoLead.status || "Novo",
+      fonte: novoLead.fonte || "",
+      dataContato: new Date(),
+      observacoes: novoLead.observacoes || "",
+      valorEstimado: novoLead.valorEstimado || 0,
+      probabilidade: novoLead.probabilidade || 20
+    };
+
+    setLeads(prev => [...prev, lead]);
+    setNovoLead({
+      nome: "",
+      empresa: "",
+      telefone: "",
+      email: "",
+      endereco: "",
+      status: "Novo",
+      fonte: "",
+      observacoes: "",
+      valorEstimado: 0,
+      probabilidade: 20
+    });
+    setDialogNovoAberto(false);
+
+    toast({
+      title: "Lead adicionado",
+      description: `${lead.nome} foi adicionado ao funil.`
+    });
   };
 
   const handleAtualizarStatus = (leadId: number, novoStatus: StatusLead) => {
@@ -221,23 +282,6 @@ export default function FunilLeads() {
     return totalLeads > 0 ? (leadsFechados / totalLeads * 100).toFixed(1) : "0";
   };
 
-  const handleSalvarLead = (leadAtualizado: Lead) => {
-    if (leadAtualizado.id) {
-      // Atualizar lead existente
-      setLeads(prev => prev.map(lead => 
-        lead.id === leadAtualizado.id ? leadAtualizado : lead
-      ));
-    } else {
-      // Adicionar novo lead
-      const novoLead = {
-        ...leadAtualizado,
-        id: Math.max(...leads.map(l => l.id)) + 1,
-        dataContato: new Date()
-      };
-      setLeads(prev => [...prev, novoLead]);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Header com Métricas */}
@@ -292,13 +336,123 @@ export default function FunilLeads() {
       {/* Ações */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Funil de Vendas</h2>
-        <Button onClick={() => {
-          setLeadSelecionado(null);
-          setDialogNovoAberto(true);
-        }}>
-          <User className="h-4 w-4 mr-2" />
-          Novo Lead
-        </Button>
+        <Dialog open={dialogNovoAberto} onOpenChange={setDialogNovoAberto}>
+          <DialogTrigger asChild>
+            <Button>
+              <User className="h-4 w-4 mr-2" />
+              Novo Lead
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Adicionar Novo Lead</DialogTitle>
+              <DialogDescription>
+                Cadastre um novo prospect no funil de vendas.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-1 gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="nome">Nome do Contato*</Label>
+                  <Input
+                    id="nome"
+                    value={novoLead.nome || ""}
+                    onChange={(e) => setNovoLead(prev => ({ ...prev, nome: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="empresa">Empresa*</Label>
+                  <Input
+                    id="empresa"
+                    value={novoLead.empresa || ""}
+                    onChange={(e) => setNovoLead(prev => ({ ...prev, empresa: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="telefone">Telefone</Label>
+                  <Input
+                    id="telefone"
+                    value={novoLead.telefone || ""}
+                    onChange={(e) => setNovoLead(prev => ({ ...prev, telefone: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={novoLead.email || ""}
+                    onChange={(e) => setNovoLead(prev => ({ ...prev, email: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="endereco">Endereço</Label>
+                <Input
+                  id="endereco"
+                  value={novoLead.endereco || ""}
+                  onChange={(e) => setNovoLead(prev => ({ ...prev, endereco: e.target.value }))}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="fonte">Fonte</Label>
+                  <Select
+                    value={novoLead.fonte || ""}
+                    onValueChange={(value) => setNovoLead(prev => ({ ...prev, fonte: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a fonte" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Indicação">Indicação</SelectItem>
+                      <SelectItem value="Google Ads">Google Ads</SelectItem>
+                      <SelectItem value="LinkedIn">LinkedIn</SelectItem>
+                      <SelectItem value="Instagram">Instagram</SelectItem>
+                      <SelectItem value="Visita presencial">Visita presencial</SelectItem>
+                      <SelectItem value="Site">Site</SelectItem>
+                      <SelectItem value="Outros">Outros</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="valorEstimado">Valor Estimado (R$)</Label>
+                  <Input
+                    id="valorEstimado"
+                    type="number"
+                    value={novoLead.valorEstimado || ""}
+                    onChange={(e) => setNovoLead(prev => ({ ...prev, valorEstimado: Number(e.target.value) }))}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="observacoes">Observações</Label>
+                <Textarea
+                  id="observacoes"
+                  value={novoLead.observacoes || ""}
+                  onChange={(e) => setNovoLead(prev => ({ ...prev, observacoes: e.target.value }))}
+                  className="min-h-[80px]"
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogNovoAberto(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleAdicionarLead}>
+                Adicionar Lead
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Funil de Vendas */}
@@ -348,17 +502,105 @@ export default function FunilLeads() {
         })}
       </div>
 
-      {/* Enhanced Lead Modal */}
-      <LeadModal
-        lead={leadSelecionado}
-        open={dialogAberto || dialogNovoAberto}
-        onClose={() => {
-          setDialogAberto(false);
-          setDialogNovoAberto(false);
-          setLeadSelecionado(null);
-        }}
-        onSave={handleSalvarLead}
-      />
+      {/* Dialog de Detalhes do Lead */}
+      <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
+        <DialogContent className="sm:max-w-[600px]">
+          {leadSelecionado && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{leadSelecionado.empresa}</DialogTitle>
+                <DialogDescription>
+                  {leadSelecionado.nome} • {leadSelecionado.status}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-1">
+                    <div className="font-medium flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Telefone
+                    </div>
+                    <div className="text-muted-foreground">{leadSelecionado.telefone}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="font-medium flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Email
+                    </div>
+                    <div className="text-muted-foreground">{leadSelecionado.email}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-sm">
+                  <div className="font-medium flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Endereço
+                  </div>
+                  <div className="text-muted-foreground">{leadSelecionado.endereco}</div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-1">
+                    <div className="font-medium">Fonte</div>
+                    <div className="text-muted-foreground">{leadSelecionado.fonte}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="font-medium">Valor Estimado</div>
+                    <div className="text-muted-foreground">
+                      R$ {leadSelecionado.valorEstimado?.toLocaleString('pt-BR') || '0'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-sm">
+                  <div className="font-medium">Observações</div>
+                  <div className="text-muted-foreground">{leadSelecionado.observacoes}</div>
+                </div>
+
+                {leadSelecionado.proximaAcao && (
+                  <div className="space-y-1 text-sm">
+                    <div className="font-medium">Próxima Ação</div>
+                    <div className="text-muted-foreground">{leadSelecionado.proximaAcao}</div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label>Mover para Status:</Label>
+                  <Select
+                    value={leadSelecionado.status}
+                    onValueChange={(value) => handleAtualizarStatus(leadSelecionado.id, value as StatusLead)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Novo">Novo</SelectItem>
+                      <SelectItem value="Contato Inicial">Contato Inicial</SelectItem>
+                      <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
+                      <SelectItem value="Negociação">Negociação</SelectItem>
+                      <SelectItem value="Fechado">Fechado</SelectItem>
+                      <SelectItem value="Perdido">Perdido</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDialogAberto(false)}>
+                  Fechar
+                </Button>
+                {leadSelecionado.status === 'Negociação' && (
+                  <Button onClick={() => handleConverterParaCliente(leadSelecionado)}>
+                    <UserCheck className="h-4 w-4 mr-2" />
+                    Converter para Cliente
+                  </Button>
+                )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
