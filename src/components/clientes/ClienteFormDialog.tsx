@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,21 +10,24 @@ import { useClienteStore } from '@/hooks/useClienteStore';
 import { useCategoriasEstabelecimentoUnified } from '@/hooks/useCategoriasEstabelecimentoUnified';
 import { toast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { Cliente, DiaSemana } from '@/types';
 import CategoriasProdutoSelector from './CategoriasProdutoSelector';
 import DiasSemanaPicker from './DiasSemanaPicker';
 
 interface ClienteFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  cliente?: Cliente; // Optional cliente for editing
   onClienteUpdate?: () => void;
 }
 
 export default function ClienteFormDialog({ 
   open, 
   onOpenChange, 
+  cliente,
   onClienteUpdate 
 }: ClienteFormDialogProps) {
-  const { adicionarCliente, loading: clienteLoading } = useClienteStore();
+  const { adicionarCliente, editarCliente, loading: clienteLoading } = useClienteStore();
   
   // Hook unificado para categorias - carregamento condicional
   const { 
@@ -47,7 +49,7 @@ export default function ClienteFormDialog({
     statusCliente: 'Ativo' as const,
     metaGiroSemanal: 0,
     categoriaEstabelecimentoId: undefined as number | undefined,
-    janelasEntrega: [] as string[],
+    janelasEntrega: [] as DiaSemana[],
     instrucoesEntrega: '',
     tipoLogistica: 'Própria' as const,
     contabilizarGiroMedio: true,
@@ -59,6 +61,7 @@ export default function ClienteFormDialog({
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEditing = Boolean(cliente);
 
   // Carregar categorias apenas quando o dialog abrir (lazy loading)
   useEffect(() => {
@@ -67,6 +70,34 @@ export default function ClienteFormDialog({
       carregarSeNecessario();
     }
   }, [open, carregarSeNecessario]);
+
+  // Populate form with cliente data when editing
+  useEffect(() => {
+    if (cliente && open) {
+      setFormData({
+        nome: cliente.nome || '',
+        cnpjCpf: cliente.cnpjCpf || '',
+        enderecoEntrega: cliente.enderecoEntrega || '',
+        contatoNome: cliente.contatoNome || '',
+        contatoTelefone: cliente.contatoTelefone || '',
+        contatoEmail: cliente.contatoEmail || '',
+        quantidadePadrao: cliente.quantidadePadrao || 0,
+        periodicidadePadrao: cliente.periodicidadePadrao || 7,
+        statusCliente: cliente.statusCliente || 'Ativo',
+        metaGiroSemanal: cliente.metaGiroSemanal || 0,
+        categoriaEstabelecimentoId: cliente.categoriaEstabelecimentoId,
+        janelasEntrega: (cliente.janelasEntrega || []) as DiaSemana[],
+        instrucoesEntrega: cliente.instrucoesEntrega || '',
+        tipoLogistica: cliente.tipoLogistica || 'Própria',
+        contabilizarGiroMedio: cliente.contabilizarGiroMedio ?? true,
+        emiteNotaFiscal: cliente.emiteNotaFiscal ?? true,
+        tipoCobranca: cliente.tipoCobranca || 'À vista',
+        formaPagamento: cliente.formaPagamento || 'Boleto',
+        observacoes: cliente.observacoes || '',
+        categoriasHabilitadas: cliente.categoriasHabilitadas || []
+      });
+    }
+  }, [cliente, open]);
 
   const handleInputChange = useCallback((field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -85,7 +116,7 @@ export default function ClienteFormDialog({
       statusCliente: 'Ativo',
       metaGiroSemanal: 0,
       categoriaEstabelecimentoId: undefined,
-      janelasEntrega: [],
+      janelasEntrega: [] as DiaSemana[],
       instrucoesEntrega: '',
       tipoLogistica: 'Própria',
       contabilizarGiroMedio: true,
@@ -112,7 +143,7 @@ export default function ClienteFormDialog({
     setIsSubmitting(true);
     
     try {
-      await adicionarCliente({
+      const clienteData = {
         nome: formData.nome.trim(),
         cnpjCpf: formData.cnpjCpf || undefined,
         enderecoEntrega: formData.enderecoEntrega || undefined,
@@ -134,28 +165,37 @@ export default function ClienteFormDialog({
         observacoes: formData.observacoes || undefined,
         categoriasHabilitadas: formData.categoriasHabilitadas,
         ativo: true,
-        giroMedioSemanal: 0,
-        ultimaDataReposicaoEfetiva: undefined,
-        statusAgendamento: 'Não Agendado',
-        proximaDataReposicao: undefined,
-        dataCadastro: new Date(),
-        categoriaId: 1,
-        subcategoriaId: 1
-      });
+        giroMedioSemanal: cliente?.giroMedioSemanal || 0,
+        ultimaDataReposicaoEfetiva: cliente?.ultimaDataReposicaoEfetiva,
+        statusAgendamento: cliente?.statusAgendamento || 'Não Agendado',
+        proximaDataReposicao: cliente?.proximaDataReposicao,
+        dataCadastro: cliente?.dataCadastro || new Date(),
+        categoriaId: cliente?.categoriaId || 1,
+        subcategoriaId: cliente?.subcategoriaId || 1
+      };
+
+      if (isEditing && cliente) {
+        await editarCliente(cliente.id, clienteData);
+        toast({
+          title: "Sucesso",
+          description: "Cliente atualizado com sucesso"
+        });
+      } else {
+        await adicionarCliente(clienteData);
+        toast({
+          title: "Sucesso",
+          description: "Cliente cadastrado com sucesso"
+        });
+      }
 
       resetForm();
       onOpenChange(false);
       onClienteUpdate?.();
-      
-      toast({
-        title: "Sucesso",
-        description: "Cliente cadastrado com sucesso"
-      });
     } catch (error: any) {
-      console.error('❌ Erro ao criar cliente:', error);
+      console.error('❌ Erro ao salvar cliente:', error);
       toast({
         title: "Erro",
-        description: error.message || "Erro ao cadastrar cliente",
+        description: error.message || `Erro ao ${isEditing ? 'atualizar' : 'cadastrar'} cliente`,
         variant: "destructive"
       });
     } finally {
@@ -164,17 +204,19 @@ export default function ClienteFormDialog({
   };
 
   const handleClose = useCallback(() => {
-    resetForm();
+    if (!isEditing) {
+      resetForm();
+    }
     onOpenChange(false);
-  }, [resetForm, onOpenChange]);
+  }, [resetForm, onOpenChange, isEditing]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Novo Cliente</DialogTitle>
+          <DialogTitle>{isEditing ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
           <DialogDescription>
-            Cadastre um novo cliente no sistema
+            {isEditing ? 'Atualize as informações do cliente' : 'Cadastre um novo cliente no sistema'}
           </DialogDescription>
         </DialogHeader>
 
@@ -407,10 +449,10 @@ export default function ClienteFormDialog({
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Cadastrando...
+                  {isEditing ? 'Atualizando...' : 'Cadastrando...'}
                 </>
               ) : (
-                'Cadastrar Cliente'
+                isEditing ? 'Atualizar Cliente' : 'Cadastrar Cliente'
               )}
             </Button>
           </div>
