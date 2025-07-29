@@ -14,6 +14,7 @@ interface AuthContextType {
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -66,7 +67,7 @@ const logAuthAttempt = async (
   }
 };
 
-// Helper function to log audit events without circular dependency
+// Helper function to log audit events
 const logAuditEvent = async (
   userId: string,
   action: string,
@@ -112,13 +113,13 @@ const checkRateLimit = async (email: string, ipAddress: string): Promise<boolean
 
     if (error) {
       console.warn('Rate limit check failed:', error);
-      return true; // Allow on error to prevent lockout
+      return true;
     }
 
     return data === true;
   } catch (err) {
     console.warn('Rate limit check failed:', err);
-    return true; // Allow on error
+    return true;
   }
 };
 
@@ -128,15 +129,80 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const navigate = useNavigate();
-  const location = useLocation();
+
+  // Função para renovar sessão
+  const refreshSession = async () => {
+    try {
+      console.log('AuthContext: Tentando renovar sessão...');
+      const { data: { session }, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.error('AuthContext: Erro ao renovar sessão:', error);
+        // Se não conseguir renovar, fazer logout
+        await logout();
+        return;
+      }
+
+      if (session) {
+        console.log('AuthContext: Sessão renovada com sucesso');
+        setSession(session);
+        setUser(session.user);
+      }
+    } catch (error) {
+      console.error('AuthContext: Erro inesperado ao renovar sessão:', error);
+      await logout();
+    }
+  };
+
+  // Função para verificar se a sessão está prestes a expirar
+  const checkSessionExpiry = (session: Session) => {
+    if (!session) return;
+
+    const now = Math.floor(Date.now() / 1000);
+    const expiresAt = session.expires_at || 0;
+    const timeUntilExpiry = expiresAt - now;
+
+    console.log(`AuthContext: Sessão expira em ${timeUntilExpiry} segundos`);
+
+    // Se faltam menos de 5 minutos (300 segundos) para expirar, renovar
+    if (timeUntilExpiry < 300 && timeUntilExpiry > 0) {
+      console.log('AuthContext: Renovando sessão preventivamente...');
+      refreshSession();
+    }
+    // Se já expirou, fazer logout
+    else if (timeUntilExpiry <= 0) {
+      console.log('AuthContext: Sessão expirada, fazendo logout...');
+      logout();
+    }
+  };
+
+  // Interceptar erros de JWT
+  const handleSupabaseError = (error: any) => {
+    if (error?.message?.includes('JWT expired') || error?.code === 'PGRST301') {
+      console.log('AuthContext: JWT expirado detectado, renovando sessão...');
+      toast.error('Sessão expirada. Renovando automaticamente...');
+      refreshSession();
+      return true;
+    }
+    return false;
+  };
 
   useEffect(() => {
+    console.log('AuthContext: Inicializando autenticação...');
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('AuthContext: Auth state change:', event, session?.user?.email);
+        
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        if (session) {
+          // Verificar se a sessão está prestes a expirar
+          checkSessionExpiry(session);
+        }
 
         // Only process events after initialization
         if (!isInitialized) {
@@ -146,20 +212,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         if (event === 'SIGNED_IN' && session) {
           // Log successful login
-          await logAuditEvent(
-            session.user.id,
-            'LOGIN',
-            'auth',
-            session.user.id,
-            undefined,
-            {
-              user_id: session.user.id,
-              email: session.user.email,
-              timestamp: new Date().toISOString()
-            }
-          );
+          setTimeout(() => {
+            logAuditEvent(
+              session.user.id,
+              'LOGIN',
+              'auth',
+              session.user.id,
+              undefined,
+              {
+                user_id: session.user.id,
+                email: session.user.email,
+                timestamp: new Date().toISOString()
+              }
+            );
+          }, 0);
 
-          // Redirect to /home after successful login
           navigate('/home', { replace: true });
           toast.success("Login realizado com sucesso");
         }
@@ -167,47 +234,72 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (event === 'SIGNED_OUT') {
           // Log logout
           if (user) {
-            await logAuditEvent(
-              user.id,
-              'LOGOUT',
-              'auth',
-              user.id,
-              {
-                user_id: user.id,
-                email: user.email,
-                timestamp: new Date().toISOString()
-              }
-            );
+            setTimeout(() => {
+              logAuditEvent(
+                user.id,
+                'LOGOUT',
+                'auth',
+                user.id,
+                {
+                  user_id: user.id,
+                  email: user.email,
+                  timestamp: new Date().toISOString()
+                }
+              );
+            }, 0);
           }
 
           navigate('/login');
           toast.info("Você foi desconectado");
         }
+
+        if (event === 'TOKEN_REFRESHED' && session) {
+          console.log('AuthContext: Token renovado automaticamente');
+          toast.success("Sessão renovada automaticamente");
+        }
       }
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('AuthContext: Erro ao obter sessão:', error);
+        handleSupabaseError(error);
+      }
+      
+      console.log('AuthContext: Sessão inicial:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
       setIsInitialized(true);
+
+      if (session) {
+        checkSessionExpiry(session);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    // Set up periodic session check (every 2 minutes)
+    const sessionCheckInterval = setInterval(() => {
+      if (session) {
+        checkSessionExpiry(session);
+      }
+    }, 2 * 60 * 1000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(sessionCheckInterval);
+    };
   }, [navigate, isInitialized, user]);
 
   const signInWithEmail = async (email: string, password: string): Promise<void> => {
     try {
       setLoading(true);
       
-      // Input validation
       if (!email || !password) {
         toast.error("Email e senha são obrigatórios");
         return;
       }
 
-      // Basic email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         toast.error("Por favor, insira um email válido");
@@ -216,7 +308,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       const clientIP = await getClientIP();
 
-      // Check rate limits
       const isAllowed = await checkRateLimit(email, clientIP);
       if (!isAllowed) {
         toast.error("Muitas tentativas de login. Tente novamente em 15 minutos.");
@@ -230,7 +321,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (error) {
-        // Log failed attempt
         await logAuthAttempt(email, 'login', false, clientIP);
         
         if (error.message.includes('Invalid login credentials')) {
@@ -241,10 +331,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         throw error;
       }
       
-      // Log successful attempt
       await logAuthAttempt(email, 'login', true, clientIP);
       
-      // Redirection will be handled by onAuthStateChange
     } catch (error) {
       if (error instanceof Error && !error.message.includes('Invalid login credentials')) {
         toast.error("Erro inesperado ao fazer login");
@@ -259,20 +347,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setLoading(true);
       
-      // Input validation
       if (!email || !password || !fullName) {
         toast.error("Todos os campos são obrigatórios");
         return;
       }
 
-      // Basic email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         toast.error("Por favor, insira um email válido");
         return;
       }
 
-      // Password strength validation
       if (password.length < 6) {
         toast.error("A senha deve ter pelo menos 6 caracteres");
         return;
@@ -280,7 +365,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       const clientIP = await getClientIP();
 
-      // Check rate limits for signup
       const isAllowed = await checkRateLimit(email, clientIP);
       if (!isAllowed) {
         toast.error("Muitas tentativas de cadastro. Tente novamente em 15 minutos.");
@@ -288,7 +372,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return;
       }
       
-      // Get current origin for redirect
       const redirectTo = `${window.location.origin}/home`;
       
       const { error } = await supabase.auth.signUp({
@@ -303,7 +386,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (error) {
-        // Log failed attempt
         await logAuthAttempt(email, 'signup', false, clientIP);
         
         if (error.message.includes('User already registered')) {
@@ -313,7 +395,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
         throw error;
       } else {
-        // Log successful attempt
         await logAuthAttempt(email, 'signup', true, clientIP);
         toast.success("Conta criada com sucesso! Verifique seu email para confirmar.");
       }
@@ -350,11 +431,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const logout = async () => {
     try {
       setLoading(true);
+      console.log('AuthContext: Fazendo logout...');
       const { error } = await supabase.auth.signOut();
       if (error) {
+        console.error('AuthContext: Erro ao fazer logout:', error);
         toast.error("Erro ao fazer logout: " + error.message);
       }
     } catch (error) {
+      console.error('AuthContext: Erro inesperado ao fazer logout:', error);
       toast.error("Erro inesperado ao fazer logout");
     } finally {
       setLoading(false);
@@ -362,6 +446,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const isAuthenticated = !!session;
+
+  // Expose handleSupabaseError globally for use in other components
+  useEffect(() => {
+    (window as any).handleSupabaseError = handleSupabaseError;
+    return () => {
+      delete (window as any).handleSupabaseError;
+    };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ 
@@ -372,7 +464,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       signInWithEmail,
       signUpWithEmail,
       logout, 
-      loading 
+      loading,
+      refreshSession
     }}>
       {children}
     </AuthContext.Provider>
