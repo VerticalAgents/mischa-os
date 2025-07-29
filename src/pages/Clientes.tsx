@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import PageHeader from "@/components/common/PageHeader";
 import ClienteDetailsView from "@/components/clientes/ClienteDetailsView";
@@ -7,66 +7,26 @@ import ClientesContent from "@/components/clientes/ClientesContent";
 
 export default function Clientes() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const loadingRef = useRef<boolean>(false);
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const {
     carregarClientes,
     clienteAtual,
-    selecionarCliente,
-    error,
-    clearError
+    selecionarCliente
   } = useClienteStore();
 
-  // Clear selected client when component mounts
+  // Clear selected client when component mounts to always show list view
   useEffect(() => {
     selecionarCliente(null);
   }, [selecionarCliente]);
 
-  // Carregar clientes ao montar o componente com debounce
+  // Carregar clientes ao montar o componente
   useEffect(() => {
-    const loadClientes = async () => {
-      if (loadingRef.current) {
-        console.log('Clientes.tsx: Carregamento já em andamento, cancelando');
-        return;
-      }
-      
-      loadingRef.current = true;
-      
-      try {
-        await carregarClientes();
-      } catch (error) {
-        console.error('Clientes.tsx: Erro ao carregar clientes:', error);
-      } finally {
-        loadingRef.current = false;
-      }
-    };
-
-    loadClientes();
+    carregarClientes();
   }, [carregarClientes, refreshTrigger]);
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-      }
-    };
-  }, []);
-
   const handleRefresh = useCallback(() => {
-    // Debounce refresh calls
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
-    }
-    
-    refreshTimeoutRef.current = setTimeout(() => {
-      if (error) {
-        clearError();
-      }
-      setRefreshTrigger(prev => prev + 1);
-    }, 300);
-  }, [error, clearError]);
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
   
   const handleBackToList = useCallback(() => {
     selecionarCliente(null);
