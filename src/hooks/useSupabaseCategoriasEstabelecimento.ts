@@ -1,7 +1,8 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { dataCache } from '@/utils/dataCache';
 
 interface CategoriaEstabelecimento {
   id: number;
@@ -12,82 +13,113 @@ interface CategoriaEstabelecimento {
   updated_at: string;
 }
 
+const CACHE_KEY = 'categorias_estabelecimento';
+const REQUEST_TIMEOUT = 8000; // 8 segundos
+const RETRY_ATTEMPTS = 2;
+const RETRY_DELAY = 1000; // 1 segundo
+
+// Helper para timeout de requisições
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+    )
+  ]);
+};
+
+// Helper para retry com backoff
+const retryWithBackoff = async <T>(
+  fn: () => Promise<T>,
+  attempts: number = RETRY_ATTEMPTS,
+  delay: number = RETRY_DELAY
+): Promise<T> => {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === attempts - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+    }
+  }
+  throw new Error('All retry attempts failed');
+};
+
 export const useSupabaseCategoriasEstabelecimento = () => {
   const [categorias, setCategorias] = useState<CategoriaEstabelecimento[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const carregarCategorias = async () => {
+  const carregarCategorias = useCallback(async (forceRefresh: boolean = false) => {
+    // Verificar cache primeiro (se não for refresh forçado)
+    if (!forceRefresh && dataCache.has(CACHE_KEY)) {
+      const cachedData = dataCache.get<CategoriaEstabelecimento[]>(CACHE_KEY);
+      if (cachedData) {
+        setCategorias(cachedData);
+        return;
+      }
+    }
+
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
+      const fetchData = async () => {
+        const { data, error } = await supabase
+          .from('categorias_estabelecimento')
+          .select('*')
+          .eq('ativo', true)
+          .order('nome');
+
+        if (error) throw error;
+        return data || [];
+      };
+
+      const data = await retryWithBackoff(
+        () => withTimeout(fetchData(), REQUEST_TIMEOUT)
+      );
+
+      console.log(`✅ Categorias estabelecimento carregadas: ${data.length} itens`);
       
-      // Verificar se há sessão ativa antes de fazer a requisição
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.warn('Sessão não encontrada, não carregando categorias de estabelecimento');
-        setCategorias([]);
-        return;
+      setCategorias(data);
+      dataCache.set(CACHE_KEY, data, 10); // Cache por 10 minutos
+      
+    } catch (error: any) {
+      console.error('❌ Erro ao carregar categorias estabelecimento:', error);
+      
+      const errorMessage = error.message || 'Erro ao carregar categorias';
+      setError(errorMessage);
+      
+      // Tentar usar dados do cache mesmo que expirado como fallback
+      const cachedData = dataCache.get<CategoriaEstabelecimento[]>(CACHE_KEY);
+      if (cachedData) {
+        console.log('📦 Usando dados do cache como fallback');
+        setCategorias(cachedData);
+      } else {
+        setCategorias([]); // Array vazio para não travar outras funcionalidades
       }
 
-      const { data, error } = await supabase
-        .from('categorias_estabelecimento')
-        .select('*')
-        .eq('ativo', true)
-        .order('nome');
-
-      if (error) {
-        console.error('Erro ao carregar categorias de estabelecimento:', error);
-        
-        // Se for erro de autenticação, não mostrar toast para evitar spam
-        if (error.code !== 'PGRST301' && !error.message?.includes('JWT expired')) {
-          toast({
-            title: "Erro",
-            description: "Erro ao carregar categorias de estabelecimento",
-            variant: "destructive"
-          });
-        }
-        
-        // Definir array vazio em caso de erro para não travar outras funcionalidades
-        setCategorias([]);
-        return;
-      }
-
-      setCategorias(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar categorias de estabelecimento:', error);
-      
-      // Em caso de erro, definir array vazio para não travar a aplicação
-      setCategorias([]);
-      
-      // Não mostrar toast para erros de rede/autenticação
-      if (!(error instanceof Error) || !error.message?.includes('JWT expired')) {
+      // Não mostrar toast para erros de timeout ou autenticação
+      if (!error.message?.includes('timeout') && 
+          !error.message?.includes('JWT expired') &&
+          !error.message?.includes('Authentication failed')) {
         toast({
-          title: "Erro",
-          description: "Erro ao carregar categorias de estabelecimento",
-          variant: "destructive"
+          title: "Aviso",
+          description: "Erro ao carregar categorias. Usando dados em cache.",
+          variant: "default"
         });
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const adicionarCategoria = async (categoria: {
+  const adicionarCategoria = useCallback(async (categoria: {
     nome: string;
     descricao?: string;
   }) => {
     try {
-      console.log('Tentando adicionar categoria:', categoria);
-      
-      // Verificar sessão antes de adicionar
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast({
-          title: "Erro",
-          description: "Sessão expirada. Faça login novamente.",
-          variant: "destructive"
-        });
-        return false;
-      }
+      console.log('➕ Adicionando categoria:', categoria);
       
       const { data, error } = await supabase
         .from('categorias_estabelecimento')
@@ -99,52 +131,35 @@ export const useSupabaseCategoriasEstabelecimento = () => {
         .select()
         .single();
 
-      if (error) {
-        console.error('Erro ao criar categoria:', error);
-        toast({
-          title: "Erro ao criar categoria",
-          description: error.message || "Erro desconhecido",
-          variant: "destructive"
-        });
-        return false;
-      }
+      if (error) throw error;
 
-      console.log('Categoria criada com sucesso:', data);
+      console.log('✅ Categoria criada:', data);
       toast({
         title: "Sucesso",
         description: "Categoria criada com sucesso"
       });
 
-      await carregarCategorias();
+      // Limpar cache e recarregar
+      dataCache.clear(CACHE_KEY);
+      await carregarCategorias(true);
       return true;
-    } catch (error) {
-      console.error('Erro ao adicionar categoria:', error);
+    } catch (error: any) {
+      console.error('❌ Erro ao adicionar categoria:', error);
       toast({
-        title: "Erro",
-        description: "Erro ao adicionar categoria",
+        title: "Erro ao criar categoria",
+        description: error.message || "Erro desconhecido",
         variant: "destructive"
       });
       return false;
     }
-  };
+  }, [carregarCategorias]);
 
-  const atualizarCategoria = async (id: number, updates: {
+  const atualizarCategoria = useCallback(async (id: number, updates: {
     nome?: string;
     descricao?: string;
   }) => {
     try {
-      console.log('Atualizando categoria:', id, updates);
-      
-      // Verificar sessão antes de atualizar
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast({
-          title: "Erro",
-          description: "Sessão expirada. Faça login novamente.",
-          variant: "destructive"
-        });
-        return false;
-      }
+      console.log('✏️ Atualizando categoria:', id, updates);
       
       const updateData: any = {};
       if (updates.nome) updateData.nome = updates.nome.trim();
@@ -155,89 +170,67 @@ export const useSupabaseCategoriasEstabelecimento = () => {
         .update(updateData)
         .eq('id', id);
 
-      if (error) {
-        console.error('Erro ao atualizar categoria:', error);
-        toast({
-          title: "Erro ao atualizar categoria",
-          description: error.message || "Erro desconhecido",
-          variant: "destructive"
-        });
-        return false;
-      }
+      if (error) throw error;
 
       toast({
         title: "Sucesso",
         description: "Categoria atualizada com sucesso"
       });
 
-      await carregarCategorias();
+      // Limpar cache e recarregar
+      dataCache.clear(CACHE_KEY);
+      await carregarCategorias(true);
       return true;
-    } catch (error) {
-      console.error('Erro ao atualizar categoria:', error);
+    } catch (error: any) {
+      console.error('❌ Erro ao atualizar categoria:', error);
       toast({
-        title: "Erro",
-        description: "Erro ao atualizar categoria",
+        title: "Erro ao atualizar categoria",
+        description: error.message || "Erro desconhecido",
         variant: "destructive"
       });
       return false;
     }
-  };
+  }, [carregarCategorias]);
 
-  const removerCategoria = async (id: number) => {
+  const removerCategoria = useCallback(async (id: number) => {
     try {
-      console.log('Removendo categoria:', id);
-      
-      // Verificar sessão antes de remover
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast({
-          title: "Erro",
-          description: "Sessão expirada. Faça login novamente.",
-          variant: "destructive"
-        });
-        return false;
-      }
+      console.log('🗑️ Removendo categoria:', id);
       
       const { error } = await supabase
         .from('categorias_estabelecimento')
         .update({ ativo: false })
         .eq('id', id);
 
-      if (error) {
-        console.error('Erro ao remover categoria:', error);
-        toast({
-          title: "Erro ao remover categoria",
-          description: error.message || "Erro desconhecido",
-          variant: "destructive"
-        });
-        return false;
-      }
+      if (error) throw error;
 
       toast({
         title: "Sucesso",
         description: "Categoria removida com sucesso"
       });
 
-      await carregarCategorias();
+      // Limpar cache e recarregar
+      dataCache.clear(CACHE_KEY);
+      await carregarCategorias(true);
       return true;
-    } catch (error) {
-      console.error('Erro ao remover categoria:', error);
+    } catch (error: any) {
+      console.error('❌ Erro ao remover categoria:', error);
       toast({
-        title: "Erro",
-        description: "Erro ao remover categoria",
+        title: "Erro ao remover categoria",
+        description: error.message || "Erro desconhecido",
         variant: "destructive"
       });
       return false;
     }
-  };
+  }, [carregarCategorias]);
 
   useEffect(() => {
     carregarCategorias();
-  }, []);
+  }, [carregarCategorias]);
 
   return {
     categorias,
     loading,
+    error,
     carregarCategorias,
     adicionarCategoria,
     atualizarCategoria,
