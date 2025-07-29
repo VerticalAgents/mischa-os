@@ -11,7 +11,7 @@ import { useClienteStore } from '@/hooks/useClienteStore';
 import { useCategoriasEstabelecimentoUnified } from '@/hooks/useCategoriasEstabelecimentoUnified';
 import { toast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { Cliente, DiaSemana } from '@/types';
+import { Cliente, DiaSemana, StatusCliente, TipoLogisticaNome, TipoCobranca, FormaPagamentoNome } from '@/types';
 import CategoriasProdutoSelector from './CategoriasProdutoSelector';
 import DiasSemanaPicker from './DiasSemanaPicker';
 
@@ -47,16 +47,16 @@ export default function ClienteFormDialog({
     contatoEmail: '',
     quantidadePadrao: 0,
     periodicidadePadrao: 7,
-    statusCliente: 'Ativo' as string,
+    statusCliente: 'Ativo' as StatusCliente,
     metaGiroSemanal: 0,
     categoriaEstabelecimentoId: undefined as number | undefined,
     janelasEntrega: [] as DiaSemana[],
     instrucoesEntrega: '',
-    tipoLogistica: 'Própria' as string,
+    tipoLogistica: 'Própria' as TipoLogisticaNome,
     contabilizarGiroMedio: true,
     emiteNotaFiscal: true,
-    tipoCobranca: 'À vista' as string,
-    formaPagamento: 'Boleto' as string,
+    tipoCobranca: 'À vista' as TipoCobranca,
+    formaPagamento: 'Boleto' as FormaPagamentoNome,
     observacoes: '',
     categoriasHabilitadas: [] as number[]
   });

@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { Cliente, DiaSemana } from '../types';
+import { Cliente, DiaSemana, StatusCliente, TipoLogisticaNome, TipoCobranca, FormaPagamentoNome } from '../types';
 import { supabase } from '../integrations/supabase/client';
 import { dataCache } from '../utils/dataCache';
 
@@ -19,7 +19,6 @@ interface ClienteStore {
   adicionarCliente: (clienteData: Omit<Cliente, 'id'>) => Promise<void>;
   editarCliente: (id: string, clienteData: Partial<Cliente>) => Promise<void>;
   excluirCliente: (id: string) => Promise<void>;
-  removerCliente: (id: string) => Promise<void>;
   selecionarCliente: (cliente: Cliente | null) => void;
   atualizarCliente: (clienteAtualizado: Cliente) => void;
   buscarClientePorId: (id: string) => Promise<Cliente | null>;
@@ -73,18 +72,18 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
         contatoEmail: cliente.contato_email || '',
         quantidadePadrao: cliente.quantidade_padrao || 0,
         periodicidadePadrao: cliente.periodicidade_padrao || 7,
-        statusCliente: cliente.status_cliente || 'Ativo',
+        statusCliente: (cliente.status_cliente as StatusCliente) || 'Ativo',
         metaGiroSemanal: cliente.meta_giro_semanal || 0,
         categoriaEstabelecimentoId: cliente.categoria_estabelecimento_id,
         janelasEntrega: Array.isArray(cliente.janelas_entrega) 
           ? cliente.janelas_entrega as DiaSemana[] 
           : [],
         instrucoesEntrega: cliente.instrucoes_entrega || '',
-        tipoLogistica: cliente.tipo_logistica || 'Própria',
+        tipoLogistica: (cliente.tipo_logistica as TipoLogisticaNome) || 'Própria',
         contabilizarGiroMedio: cliente.contabilizar_giro_medio ?? true,
         emiteNotaFiscal: cliente.emite_nota_fiscal ?? true,
-        tipoCobranca: cliente.tipo_cobranca || 'À vista',
-        formaPagamento: cliente.forma_pagamento || 'Boleto',
+        tipoCobranca: (cliente.tipo_cobranca as TipoCobranca) || 'À vista',
+        formaPagamento: (cliente.forma_pagamento as FormaPagamentoNome) || 'Boleto',
         observacoes: cliente.observacoes || '',
         categoriasHabilitadas: Array.isArray(cliente.categorias_habilitadas) 
           ? cliente.categorias_habilitadas as number[] 
@@ -99,8 +98,8 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
           ? new Date(cliente.proxima_data_reposicao) 
           : undefined,
         dataCadastro: new Date(cliente.created_at),
-        categoriaId: cliente.categoria_id || 1,
-        subcategoriaId: cliente.subcategoria_id || 1
+        categoriaId: 1, // Default fallback since this field doesn't exist in DB
+        subcategoriaId: 1 // Default fallback since this field doesn't exist in DB
       }));
 
       // Salvar no cache com TTL de 5 minutos
@@ -164,18 +163,18 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
         contatoEmail: data.contato_email || '',
         quantidadePadrao: data.quantidade_padrao || 0,
         periodicidadePadrao: data.periodicidade_padrao || 7,
-        statusCliente: data.status_cliente || 'Ativo',
+        statusCliente: (data.status_cliente as StatusCliente) || 'Ativo',
         metaGiroSemanal: data.meta_giro_semanal || 0,
         categoriaEstabelecimentoId: data.categoria_estabelecimento_id,
         janelasEntrega: Array.isArray(data.janelas_entrega) 
           ? data.janelas_entrega as DiaSemana[] 
           : [],
         instrucoesEntrega: data.instrucoes_entrega || '',
-        tipoLogistica: data.tipo_logistica || 'Própria',
+        tipoLogistica: (data.tipo_logistica as TipoLogisticaNome) || 'Própria',
         contabilizarGiroMedio: data.contabilizar_giro_medio ?? true,
         emiteNotaFiscal: data.emite_nota_fiscal ?? true,
-        tipoCobranca: data.tipo_cobranca || 'À vista',
-        formaPagamento: data.forma_pagamento || 'Boleto',
+        tipoCobranca: (data.tipo_cobranca as TipoCobranca) || 'À vista',
+        formaPagamento: (data.forma_pagamento as FormaPagamentoNome) || 'Boleto',
         observacoes: data.observacoes || '',
         categoriasHabilitadas: Array.isArray(data.categorias_habilitadas) 
           ? data.categorias_habilitadas as number[] 
@@ -190,8 +189,8 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
           ? new Date(data.proxima_data_reposicao) 
           : undefined,
         dataCadastro: new Date(data.created_at),
-        categoriaId: data.categoria_id || 1,
-        subcategoriaId: data.subcategoria_id || 1
+        categoriaId: 1,
+        subcategoriaId: 1
       };
 
       set(state => ({
@@ -257,18 +256,18 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
         contatoEmail: data.contato_email || '',
         quantidadePadrao: data.quantidade_padrao || 0,
         periodicidadePadrao: data.periodicidade_padrao || 7,
-        statusCliente: data.status_cliente || 'Ativo',
+        statusCliente: (data.status_cliente as StatusCliente) || 'Ativo',
         metaGiroSemanal: data.meta_giro_semanal || 0,
         categoriaEstabelecimentoId: data.categoria_estabelecimento_id,
         janelasEntrega: Array.isArray(data.janelas_entrega) 
           ? data.janelas_entrega as DiaSemana[] 
           : [],
         instrucoesEntrega: data.instrucoes_entrega || '',
-        tipoLogistica: data.tipo_logistica || 'Própria',
+        tipoLogistica: (data.tipo_logistica as TipoLogisticaNome) || 'Própria',
         contabilizarGiroMedio: data.contabilizar_giro_medio ?? true,
         emiteNotaFiscal: data.emite_nota_fiscal ?? true,
-        tipoCobranca: data.tipo_cobranca || 'À vista',
-        formaPagamento: data.forma_pagamento || 'Boleto',
+        tipoCobranca: (data.tipo_cobranca as TipoCobranca) || 'À vista',
+        formaPagamento: (data.forma_pagamento as FormaPagamentoNome) || 'Boleto',
         observacoes: data.observacoes || '',
         categoriasHabilitadas: Array.isArray(data.categorias_habilitadas) 
           ? data.categorias_habilitadas as number[] 
@@ -283,8 +282,8 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
           ? new Date(data.proxima_data_reposicao) 
           : undefined,
         dataCadastro: new Date(data.created_at),
-        categoriaId: data.categoria_id || 1,
-        subcategoriaId: data.subcategoria_id || 1
+        categoriaId: 1,
+        subcategoriaId: 1
       };
 
       set(state => ({
@@ -329,10 +328,6 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
     }
   },
 
-  removerCliente: async (id: string) => {
-    return get().excluirCliente(id);
-  },
-
   selecionarCliente: (cliente: Cliente | null) => {
     set({ clienteAtual: cliente });
   },
@@ -368,18 +363,18 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
         contatoEmail: data.contato_email || '',
         quantidadePadrao: data.quantidade_padrao || 0,
         periodicidadePadrao: data.periodicidade_padrao || 7,
-        statusCliente: data.status_cliente || 'Ativo',
+        statusCliente: (data.status_cliente as StatusCliente) || 'Ativo',
         metaGiroSemanal: data.meta_giro_semanal || 0,
         categoriaEstabelecimentoId: data.categoria_estabelecimento_id,
         janelasEntrega: Array.isArray(data.janelas_entrega) 
           ? data.janelas_entrega as DiaSemana[] 
           : [],
         instrucoesEntrega: data.instrucoes_entrega || '',
-        tipoLogistica: data.tipo_logistica || 'Própria',
+        tipoLogistica: (data.tipo_logistica as TipoLogisticaNome) || 'Própria',
         contabilizarGiroMedio: data.contabilizar_giro_medio ?? true,
         emiteNotaFiscal: data.emite_nota_fiscal ?? true,
-        tipoCobranca: data.tipo_cobranca || 'À vista',
-        formaPagamento: data.forma_pagamento || 'Boleto',
+        tipoCobranca: (data.tipo_cobranca as TipoCobranca) || 'À vista',
+        formaPagamento: (data.forma_pagamento as FormaPagamentoNome) || 'Boleto',
         observacoes: data.observacoes || '',
         categoriasHabilitadas: Array.isArray(data.categorias_habilitadas) 
           ? data.categorias_habilitadas as number[] 
@@ -394,8 +389,8 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
           ? new Date(data.proxima_data_reposicao) 
           : undefined,
         dataCadastro: new Date(data.created_at),
-        categoriaId: data.categoria_id || 1,
-        subcategoriaId: data.subcategoria_id || 1
+        categoriaId: 1,
+        subcategoriaId: 1
       };
 
       return cliente;
