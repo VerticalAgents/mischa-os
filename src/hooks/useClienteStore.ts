@@ -49,7 +49,7 @@ export const useClienteStore = create<ClienteStore>((set, get) => ({
       
       if (cachedData) {
         console.log('📦 Cache hit - carregando clientes do cache');
-        set({ clientes: cachedData, loading: false });
+        set({ clientes: cachedData as Cliente[], loading: false });
         return;
       }
 

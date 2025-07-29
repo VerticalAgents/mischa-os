@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useColumnVisibility } from "@/hooks/useColumnVisibility";
 import { useClienteSelection } from "@/hooks/useClienteSelection";
+import { StatusCliente } from "@/types";
 import ClienteFormDialog from "./ClienteFormDialog";
 import ClientesFilters, { ColumnOption } from "./ClientesFilters";
 import ClientesTable from "./ClientesTable";
@@ -89,6 +90,12 @@ export default function ClientesContent({ onRefresh, isFormOpen, setIsFormOpen }
     }
   };
 
+  // Create properly typed filters for the component
+  const typedFiltros = {
+    termo: filtros.termo,
+    status: (filtros.status === 'todos' ? 'Todos' : filtros.status) as StatusCliente | "Todos"
+  };
+
   return (
     <>
       <ClientesBulkActions 
@@ -99,7 +106,7 @@ export default function ClientesContent({ onRefresh, isFormOpen, setIsFormOpen }
       />
 
       <ClientesFilters 
-        filtros={filtros}
+        filtros={typedFiltros}
         setFiltroTermo={setFiltroTermo}
         setFiltroStatus={setFiltroStatus}
         visibleColumns={visibleColumns}

@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 interface ClientesBulkActionsProps {
-  selectedClienteIds: string[]; // Changed from number[] to string[]
+  selectedClienteIds: string[];
   onClearSelection: () => void;
   onToggleSelectionMode: () => void;
   isSelectionMode: boolean;
@@ -52,62 +52,70 @@ export default function ClientesBulkActions({
   const [bulkEditField, setBulkEditField] = useState<string>("");
   const [bulkEditValue, setBulkEditValue] = useState<string>("");
   
-  const { removerCliente, clientes, atualizarCliente } = useClienteStore();
+  const { excluirCliente, clientes, editarCliente } = useClienteStore();
   
   const handleDelete = () => {
     setIsDeleteDialogOpen(false);
     setIsConfirmDeleteDialogOpen(true);
   };
   
-  const handleConfirmDelete = () => {
-    selectedClienteIds.forEach(id => {
-      removerCliente(id);
-    });
-    
-    toast.success(`${selectedClienteIds.length} clientes excluídos com sucesso.`);
-    setIsConfirmDeleteDialogOpen(false);
-    onClearSelection();
-    onToggleSelectionMode();
+  const handleConfirmDelete = async () => {
+    try {
+      for (const id of selectedClienteIds) {
+        await excluirCliente(id);
+      }
+      
+      toast.success(`${selectedClienteIds.length} clientes excluídos com sucesso.`);
+      setIsConfirmDeleteDialogOpen(false);
+      onClearSelection();
+      onToggleSelectionMode();
+    } catch (error) {
+      toast.error("Erro ao excluir clientes.");
+    }
   };
   
-  const handleBulkEdit = () => {
+  const handleBulkEdit = async () => {
     if (!bulkEditField || !bulkEditValue) {
       toast.error("Selecione um campo e valor para editar.");
       return;
     }
     
-    selectedClienteIds.forEach(id => {
-      let updateData: Partial<Cliente> = {};
-      
-      switch (bulkEditField) {
-        case "statusCliente":
-          updateData = { statusCliente: bulkEditValue as any };
-          break;
-        case "tipoLogistica":
-          updateData = { tipoLogistica: bulkEditValue as any };
-          break;
-        case "tipoCobranca":
-          updateData = { tipoCobranca: bulkEditValue as any };
-          break;
-        case "formaPagamento":
-          updateData = { formaPagamento: bulkEditValue as any };
-          break;
-        case "quantidadePadrao":
-          updateData = { quantidadePadrao: parseInt(bulkEditValue) };
-          break;
-        case "periodicidadePadrao":
-          updateData = { periodicidadePadrao: parseInt(bulkEditValue) };
-          break;
+    try {
+      for (const id of selectedClienteIds) {
+        let updateData: Partial<Cliente> = {};
+        
+        switch (bulkEditField) {
+          case "statusCliente":
+            updateData = { statusCliente: bulkEditValue as any };
+            break;
+          case "tipoLogistica":
+            updateData = { tipoLogistica: bulkEditValue as any };
+            break;
+          case "tipoCobranca":
+            updateData = { tipoCobranca: bulkEditValue as any };
+            break;
+          case "formaPagamento":
+            updateData = { formaPagamento: bulkEditValue as any };
+            break;
+          case "quantidadePadrao":
+            updateData = { quantidadePadrao: parseInt(bulkEditValue) };
+            break;
+          case "periodicidadePadrao":
+            updateData = { periodicidadePadrao: parseInt(bulkEditValue) };
+            break;
+        }
+        
+        await editarCliente(id, updateData);
       }
       
-      atualizarCliente(id, updateData);
-    });
-    
-    toast.success(`${selectedClienteIds.length} clientes atualizados com sucesso.`);
-    setIsBulkEditDialogOpen(false);
-    setBulkEditField("");
-    setBulkEditValue("");
-    onClearSelection();
+      toast.success(`${selectedClienteIds.length} clientes atualizados com sucesso.`);
+      setIsBulkEditDialogOpen(false);
+      setBulkEditField("");
+      setBulkEditValue("");
+      onClearSelection();
+    } catch (error) {
+      toast.error("Erro ao atualizar clientes.");
+    }
   };
   
   return (
