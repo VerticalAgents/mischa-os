@@ -32,7 +32,6 @@ export type ProdutoSubcategoria = {
   ativo: boolean;
 };
 
-// Missing types that are referenced in the build errors
 export type Representante = {
   id: number;
   nome: string;
@@ -69,6 +68,9 @@ export type ConfiguracoesProducao = {
   tempoProducaoPadrao: number;
   capacidadeMaximaDiaria: number;
   margemSegurancaEstoque: number;
+  unidadesPorForma: number;
+  formasPorLote: number;
+  formasPorFornada: number;
 };
 
 export type Sabor = {
@@ -76,6 +78,8 @@ export type Sabor = {
   nome: string;
   ativo: boolean;
   categoria?: string;
+  saldoAtual?: number;
+  percentualPadraoDist?: number;
 };
 
 export type Alerta = {
@@ -85,6 +89,7 @@ export type Alerta = {
   mensagem: string;
   timestamp: Date;
   resolvido: boolean;
+  lida?: boolean;
 };
 
 export type CategoriaInsumo = {
@@ -105,11 +110,14 @@ export type Insumo = {
   id: string;
   nome: string;
   categoriaId: number;
+  categoria?: string;
   unidadeMedida: string;
   custoUnitario: number;
   estoqueAtual: number;
   estoqueMinimo: number;
   ativo: boolean;
+  volumeBruto?: number;
+  custoMedio?: number;
 };
 
 export type DashboardData = {
@@ -163,7 +171,6 @@ export interface ItemPedido {
   preco: number;
   subtotal: number;
   idPedido?: string;
-  // Legacy properties for backward compatibility
   nomeSabor?: string;
   idSabor?: string;
   quantidadeSabor?: number;
@@ -200,4 +207,22 @@ export interface JanelaEntrega {
   diaSemana: DiaSemana;
   horarioInicio: string;
   horarioFim: string;
+}
+
+export interface ProducaoSimuladaItem {
+  idSabor: string;
+  nomeSabor: string;
+  formasPrevistas: number;
+  unidadesPrevistas: number;
+  sobraEstimada: number;
+}
+
+export interface FlavorPlan {
+  idSabor: string;
+  nomeSabor: string;
+  totalUnidadesAgendadas: number;
+  formasNecessarias: number;
+  estoqueAtual: number;
+  saldo: number;
+  status: string;
 }

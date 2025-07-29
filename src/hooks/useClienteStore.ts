@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { Cliente } from '../types';
 import { supabase } from '../integrations/supabase/client';
@@ -6,6 +5,7 @@ import { toast } from 'sonner';
 
 interface ClienteStore {
   clientes: Cliente[];
+  clienteAtual: Cliente | null;
   cache: Cliente[] | null;
   loading: boolean;
   error: string | null;
@@ -15,14 +15,20 @@ interface ClienteStore {
   excluirCliente: (id: string) => Promise<void>;
   buscarClientes: (filtros: { termo: string; status: string }) => Cliente[];
   getClientePorId: (id: string) => Cliente | undefined;
+  selecionarCliente: (cliente: Cliente | null) => void;
   clearCache: () => void;
 }
 
 export const useClienteStore = create<ClienteStore>((set, get) => ({
   clientes: [],
+  clienteAtual: null,
   cache: null,
   loading: false,
   error: null,
+
+  selecionarCliente: (cliente: Cliente | null) => {
+    set({ clienteAtual: cliente });
+  },
 
   carregarClientes: async () => {
     try {

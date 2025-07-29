@@ -46,7 +46,7 @@ export default function AgendamentoEditModal({
 }: AgendamentoEditModalProps) {
   const [dataReposicao, setDataReposicao] = useState<Date>();
   const [statusAgendamento, setStatusAgendamento] = useState<"Agendar" | "Previsto" | "Agendado">("Previsto");
-  const [tipoPedido, setTipoPedido] = useState<TipoPedidoAgendamento>("Padrão");
+  const [tipoPedido, setTipoPedido] = useState<"Padrão" | "Alterado">("Padrão");
   const [quantidadeTotal, setQuantidadeTotal] = useState<number>(0);
   const [observacoes, setObservacoes] = useState<string>("");
   const [itensPersonalizados, setItensPersonalizados] = useState<ItemPedidoCustomizado[]>([]);
@@ -63,8 +63,8 @@ export default function AgendamentoEditModal({
         
         setDataReposicao(agendamento.dataReposicao);
         setStatusAgendamento(agendamento.statusAgendamento);
-        const validTipoPedido = agendamento.pedido?.tipoPedido === "Único" ? "Padrão" : (agendamento.pedido?.tipoPedido || "Padrão");
-        setTipoPedido(validTipoPedido as TipoPedidoAgendamento);
+        const validTipoPedido = agendamento.pedido?.tipoPedido === "Único" ? "Padrão" : (agendamento.pedido?.tipoPedido === "Alterado" ? "Alterado" : "Padrão");
+        setTipoPedido(validTipoPedido);
         setQuantidadeTotal(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao);
         setObservacoes("");
         
@@ -188,7 +188,7 @@ export default function AgendamentoEditModal({
             subtotal: 0
           })),
           totalPedidoUnidades: quantidadeTotal,
-          tipoPedido
+          tipoPedido: tipoPedido as TipoPedidoAgendamento
         } : agendamento.pedido
       };
 
@@ -239,7 +239,7 @@ export default function AgendamentoEditModal({
 
             <div className="space-y-2">
               <Label htmlFor="tipoPedido">Tipo do Pedido</Label>
-              <Select value={tipoPedido} onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}>
+              <Select value={tipoPedido} onValueChange={(value: "Padrão" | "Alterado") => setTipoPedido(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

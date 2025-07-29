@@ -130,7 +130,7 @@ export default function ClientesContent({
         <ClienteFormDialog
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
-          onClienteAdded={handleFormSuccess}
+          onSuccess={handleFormSuccess}
         />
       )}
     </div>
