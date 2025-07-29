@@ -17,19 +17,37 @@ interface ConfirmacaoReposicaoProps {
 export default function ConfirmacaoReposicao({ cliente, onClose }: ConfirmacaoReposicaoProps) {
   const [quantidade, setQuantidade] = useState(cliente?.quantidadePadrao?.toString() || "0");
   const [observacoes, setObservacoes] = useState("");
-  const { criarNovoPedido } = usePedidoStore();
+  const { adicionarPedido } = usePedidoStore();
 
-  const handleConfirmar = () => {
+  const handleConfirmar = async () => {
     if (!cliente) {
       toast.error("Nenhum cliente selecionado");
       return;
     }
 
-    const pedido = criarNovoPedido(cliente.id);
-    
-    if (pedido) {
+    try {
+      await adicionarPedido({
+        clienteId: cliente.id,
+        idCliente: cliente.id,
+        dataPedido: new Date(),
+        dataPrevistaEntrega: new Date(),
+        status: 'Pendente',
+        statusPedido: 'Pendente',
+        valorTotal: 0,
+        observacoes,
+        itensPedido: [],
+        itens: [],
+        enderecoEntrega: cliente.enderecoEntrega || '',
+        contatoEntrega: cliente.contatoNome || '',
+        numeroPedidoCliente: '',
+        totalPedidoUnidades: parseInt(quantidade) || 0,
+        createdAt: new Date()
+      });
+      
       toast.success("Reposição confirmada com sucesso!");
       onClose?.();
+    } catch (error) {
+      toast.error("Erro ao confirmar reposição");
     }
   };
 

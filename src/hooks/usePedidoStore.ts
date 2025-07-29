@@ -15,6 +15,8 @@ interface PedidoStore {
   finalizarPedido: (pedidoId: string) => Promise<void>;
   atualizarStatusPedido: (pedidoId: string, novoStatus: StatusPedido) => Promise<void>;
   reagendarPedido: (pedidoId: string, novaData: Date) => Promise<void>;
+  criarNovoPedido: (clienteId: string) => Pedido | null;
+  getPedidosFuturos: () => Pedido[];
 }
 
 export const usePedidoStore = create<PedidoStore>((set, get) => ({
@@ -35,16 +37,23 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
 
       const pedidosFormatados: Pedido[] = (data || []).map(pedido => ({
         id: pedido.id,
-        clienteId: pedido.cliente_id || '',
+        idCliente: pedido.cliente_id,
+        clienteId: pedido.cliente_id,
         dataPedido: new Date(pedido.data_pedido),
+        dataPrevistaEntrega: pedido.data_entrega ? new Date(pedido.data_entrega) : new Date(pedido.data_pedido),
         status: (pedido.status as StatusPedido) || 'Pendente',
+        statusPedido: (pedido.status as StatusPedido) || 'Pendente',
         valorTotal: pedido.valor_total || 0,
         observacoes: pedido.observacoes || '',
+        itensPedido: pedido.itens || [],
         itens: pedido.itens || [],
         dataEntrega: pedido.data_entrega ? new Date(pedido.data_entrega) : undefined,
         enderecoEntrega: pedido.endereco_entrega || '',
         contatoEntrega: pedido.contato_entrega || '',
         numeroPedidoCliente: pedido.numero_pedido_cliente || '',
+        totalPedidoUnidades: Array.isArray(pedido.itens) 
+          ? pedido.itens.reduce((total: number, item: any) => total + (item.quantidade || 0), 0)
+          : 0,
         createdAt: new Date(pedido.created_at),
         updatedAt: pedido.updated_at ? new Date(pedido.updated_at) : undefined
       }));
@@ -83,16 +92,23 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
 
       const novoPedido: Pedido = {
         id: data.id,
+        idCliente: data.cliente_id,
         clienteId: data.cliente_id || '',
         dataPedido: new Date(data.data_pedido),
+        dataPrevistaEntrega: data.data_entrega ? new Date(data.data_entrega) : new Date(data.data_pedido),
         status: (data.status as StatusPedido) || 'Pendente',
+        statusPedido: (data.status as StatusPedido) || 'Pendente',
         valorTotal: data.valor_total || 0,
         observacoes: data.observacoes || '',
+        itensPedido: data.itens || [],
         itens: data.itens || [],
         dataEntrega: data.data_entrega ? new Date(data.data_entrega) : undefined,
         enderecoEntrega: data.endereco_entrega || '',
         contatoEntrega: data.contato_entrega || '',
         numeroPedidoCliente: data.numero_pedido_cliente || '',
+        totalPedidoUnidades: Array.isArray(data.itens) 
+          ? data.itens.reduce((total: number, item: any) => total + (item.quantidade || 0), 0)
+          : 0,
         createdAt: new Date(data.created_at),
         updatedAt: data.updated_at ? new Date(data.updated_at) : undefined
       };
@@ -137,16 +153,23 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
 
       const pedidoAtualizado: Pedido = {
         id: data.id,
+        idCliente: data.cliente_id,
         clienteId: data.cliente_id || '',
         dataPedido: new Date(data.data_pedido),
+        dataPrevistaEntrega: data.data_entrega ? new Date(data.data_entrega) : new Date(data.data_pedido),
         status: (data.status as StatusPedido) || 'Pendente',
+        statusPedido: (data.status as StatusPedido) || 'Pendente',
         valorTotal: data.valor_total || 0,
         observacoes: data.observacoes || '',
+        itensPedido: data.itens || [],
         itens: data.itens || [],
         dataEntrega: data.data_entrega ? new Date(data.data_entrega) : undefined,
         enderecoEntrega: data.endereco_entrega || '',
         contatoEntrega: data.contato_entrega || '',
         numeroPedidoCliente: data.numero_pedido_cliente || '',
+        totalPedidoUnidades: Array.isArray(data.itens) 
+          ? data.itens.reduce((total: number, item: any) => total + (item.quantidade || 0), 0)
+          : 0,
         createdAt: new Date(data.created_at),
         updatedAt: data.updated_at ? new Date(data.updated_at) : undefined
       };
@@ -206,16 +229,23 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
 
       const pedido: Pedido = {
         id: data.id,
+        idCliente: data.cliente_id,
         clienteId: data.cliente_id || '',
         dataPedido: new Date(data.data_pedido),
+        dataPrevistaEntrega: data.data_entrega ? new Date(data.data_entrega) : new Date(data.data_pedido),
         status: (data.status as StatusPedido) || 'Pendente',
+        statusPedido: (data.status as StatusPedido) || 'Pendente',
         valorTotal: data.valor_total || 0,
         observacoes: data.observacoes || '',
+        itensPedido: data.itens || [],
         itens: data.itens || [],
         dataEntrega: data.data_entrega ? new Date(data.data_entrega) : undefined,
         enderecoEntrega: data.endereco_entrega || '',
         contatoEntrega: data.contato_entrega || '',
         numeroPedidoCliente: data.numero_pedido_cliente || '',
+        totalPedidoUnidades: Array.isArray(data.itens) 
+          ? data.itens.reduce((total: number, item: any) => total + (item.quantidade || 0), 0)
+          : 0,
         createdAt: new Date(data.created_at),
         updatedAt: data.updated_at ? new Date(data.updated_at) : undefined
       };
@@ -242,18 +272,25 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
 
       if (pedidoError) throw pedidoError;
 
-      const pedido = {
+      const pedido: Pedido = {
         id: pedidoData.id,
+        idCliente: pedidoData.cliente_id,
         clienteId: pedidoData.cliente_id || '',
         dataPedido: new Date(pedidoData.data_pedido),
+        dataPrevistaEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : new Date(pedidoData.data_pedido),
         status: (pedidoData.status as StatusPedido) || 'Pendente',
+        statusPedido: (pedidoData.status as StatusPedido) || 'Pendente',
         valorTotal: pedidoData.valor_total || 0,
         observacoes: pedidoData.observacoes || '',
+        itensPedido: pedidoData.itens || [],
         itens: pedidoData.itens || [],
         dataEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : undefined,
         enderecoEntrega: pedidoData.endereco_entrega || '',
         contatoEntrega: pedidoData.contato_entrega || '',
         numeroPedidoCliente: pedidoData.numero_pedido_cliente || '',
+        totalPedidoUnidades: Array.isArray(pedidoData.itens) 
+          ? pedidoData.itens.reduce((total: number, item: any) => total + (item.quantidade || 0), 0)
+          : 0,
         createdAt: new Date(pedidoData.created_at),
         updatedAt: pedidoData.updated_at ? new Date(pedidoData.updated_at) : undefined
       };
@@ -277,7 +314,7 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
       // Update state
       set(state => ({
         pedidos: state.pedidos.map(p =>
-          p.id === pedidoId ? { ...p, status: 'Finalizado' } : p
+          p.id === pedidoId ? { ...p, status: 'Finalizado', statusPedido: 'Finalizado' } : p
         )
       }));
     } catch (error: any) {
@@ -296,18 +333,25 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
     
       if (pedidoError) throw pedidoError;
     
-      const pedido = {
+      const pedido: Pedido = {
         id: pedidoData.id,
+        idCliente: pedidoData.cliente_id,
         clienteId: pedidoData.cliente_id || '',
         dataPedido: new Date(pedidoData.data_pedido),
+        dataPrevistaEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : new Date(pedidoData.data_pedido),
         status: (pedidoData.status as StatusPedido) || 'Pendente',
+        statusPedido: (pedidoData.status as StatusPedido) || 'Pendente',
         valorTotal: pedidoData.valor_total || 0,
         observacoes: pedidoData.observacoes || '',
+        itensPedido: pedidoData.itens || [],
         itens: pedidoData.itens || [],
         dataEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : undefined,
         enderecoEntrega: pedidoData.endereco_entrega || '',
         contatoEntrega: pedidoData.contato_entrega || '',
         numeroPedidoCliente: pedidoData.numero_pedido_cliente || '',
+        totalPedidoUnidades: Array.isArray(pedidoData.itens) 
+          ? pedidoData.itens.reduce((total: number, item: any) => total + (item.quantidade || 0), 0)
+          : 0,
         createdAt: new Date(pedidoData.created_at),
         updatedAt: pedidoData.updated_at ? new Date(pedidoData.updated_at) : undefined
       };
@@ -334,7 +378,7 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
       // Update state
       set(state => ({
         pedidos: state.pedidos.map(p =>
-          p.id === pedidoId ? { ...p, status: novoStatus } : p
+          p.id === pedidoId ? { ...p, status: novoStatus, statusPedido: novoStatus } : p
         )
       }));
     } catch (error: any) {
@@ -353,18 +397,25 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
     
       if (pedidoError) throw pedidoError;
     
-      const pedido = {
+      const pedido: Pedido = {
         id: pedidoData.id,
+        idCliente: pedidoData.cliente_id,
         clienteId: pedidoData.cliente_id || '',
         dataPedido: new Date(pedidoData.data_pedido),
+        dataPrevistaEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : new Date(pedidoData.data_pedido),
         status: (pedidoData.status as StatusPedido) || 'Pendente',
+        statusPedido: (pedidoData.status as StatusPedido) || 'Pendente',
         valorTotal: pedidoData.valor_total || 0,
         observacoes: pedidoData.observacoes || '',
+        itensPedido: pedidoData.itens || [],
         itens: pedidoData.itens || [],
         dataEntrega: pedidoData.data_entrega ? new Date(pedidoData.data_entrega) : undefined,
         enderecoEntrega: pedidoData.endereco_entrega || '',
         contatoEntrega: pedidoData.contato_entrega || '',
         numeroPedidoCliente: pedidoData.numero_pedido_cliente || '',
+        totalPedidoUnidades: Array.isArray(pedidoData.itens) 
+          ? pedidoData.itens.reduce((total: number, item: any) => total + (item.quantidade || 0), 0)
+          : 0,
         createdAt: new Date(pedidoData.created_at),
         updatedAt: pedidoData.updated_at ? new Date(pedidoData.updated_at) : undefined
       };
@@ -385,12 +436,46 @@ export const usePedidoStore = create<PedidoStore>((set, get) => ({
       // Update state
       set(state => ({
         pedidos: state.pedidos.map(p =>
-          p.id === pedidoId ? { ...p, dataEntrega: novaData } : p
+          p.id === pedidoId ? { ...p, dataEntrega: novaData, dataPrevistaEntrega: novaData } : p
         )
       }));
     } catch (error: any) {
       console.error('❌ Erro ao reagendar pedido:', error);
       throw error;
     }
+  },
+
+  criarNovoPedido: (clienteId: string) => {
+    const cliente = useClienteStore.getState().getClientePorId(clienteId);
+    if (!cliente) return null;
+
+    const novoPedido: Pedido = {
+      id: crypto.randomUUID(),
+      idCliente: clienteId,
+      clienteId,
+      dataPedido: new Date(),
+      dataPrevistaEntrega: new Date(),
+      status: 'Pendente',
+      statusPedido: 'Pendente',
+      valorTotal: 0,
+      observacoes: '',
+      itensPedido: [],
+      itens: [],
+      enderecoEntrega: cliente.enderecoEntrega || '',
+      contatoEntrega: cliente.contatoNome || '',
+      numeroPedidoCliente: '',
+      totalPedidoUnidades: cliente.quantidadePadrao || 0,
+      createdAt: new Date(),
+      cliente: cliente
+    };
+
+    return novoPedido;
+  },
+
+  getPedidosFuturos: () => {
+    const hoje = new Date();
+    return get().pedidos.filter(pedido => 
+      pedido.dataPrevistaEntrega > hoje
+    );
   },
 }));
