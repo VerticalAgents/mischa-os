@@ -248,13 +248,20 @@ export class SecurityMonitoringService {
     this.eventQueue = [];
 
     try {
-      // Use the database function to log security events
+      // Log security events using the audit_logs table directly
       for (const event of events) {
-        await supabase.rpc('log_security_event', {
-          event_type: event.eventType,
-          severity: event.severity,
-          details: event.details
-        });
+        await supabase
+          .from('audit_logs')
+          .insert({
+            action: 'SECURITY_EVENT',
+            table_name: 'security_events',
+            new_values: {
+              event_type: event.eventType,
+              severity: event.severity,
+              details: event.details,
+              user_id: event.userId
+            }
+          });
       }
     } catch (error) {
       logger.error('Failed to flush security events:', error);
