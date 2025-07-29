@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { Cliente, StatusCliente } from '../types';
@@ -8,6 +9,10 @@ interface ClienteStore {
   clientes: Cliente[];
   clienteAtual: Cliente | null;
   loading: boolean;
+  error: string | null;
+  isLoadingClientes: boolean;
+  lastLoadTime: number | null;
+  retryCount: number;
   filtros: {
     termo: string;
     status: StatusCliente | 'Todos';
@@ -22,11 +27,18 @@ interface ClienteStore {
   setFiltroTermo: (termo: string) => void;
   setFiltroStatus: (status: StatusCliente | 'Todos') => void;
   setMetaGiro: (idCliente: string, metaSemanal: number) => Promise<void>;
+  clearError: () => void;
   
   // Getters
   getClientesFiltrados: () => Cliente[];
   getClientePorId: (id: string) => Cliente | undefined;
 }
+
+// Cache configuration
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+const REQUEST_TIMEOUT = 30000; // 30 segundos
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000; // 2 segundos
 
 // Helper para converter string de data do banco para Date local
 const parseDateFromDatabase = (dateString: string): Date => {
@@ -50,14 +62,12 @@ function convertSupabaseToCliente(data: any, agendamento?: any): Cliente {
     dataCadastro: new Date(data.created_at),
     metaGiroSemanal: data.meta_giro_semanal || 0,
     ultimaDataReposicaoEfetiva: data.ultima_data_reposicao_efetiva ? new Date(data.ultima_data_reposicao_efetiva) : undefined,
-    // Usar dados do agendamento se disponível, senão usar dados do cliente (fallback)
     statusAgendamento: agendamento?.status_agendamento || data.status_agendamento || 'Não Agendado',
     proximaDataReposicao: agendamento?.data_proxima_reposicao 
       ? parseDateFromDatabase(agendamento.data_proxima_reposicao) 
       : (data.proxima_data_reposicao ? new Date(data.proxima_data_reposicao) : undefined),
     ativo: data.ativo || true,
     giroMedioSemanal: data.giro_medio_semanal || calcularGiroSemanal(data.quantidade_padrao || 0, data.periodicidade_padrao || 7),
-    // Garantir que os campos sejam carregados corretamente
     janelasEntrega: data.janelas_entrega || [],
     representanteId: data.representante_id,
     rotaEntregaId: data.rota_entrega_id,
@@ -69,9 +79,9 @@ function convertSupabaseToCliente(data: any, agendamento?: any): Cliente {
     tipoCobranca: data.tipo_cobranca || 'À vista',
     formaPagamento: data.forma_pagamento || 'Boleto',
     observacoes: data.observacoes,
-    categoriaId: 1, // Default value
-    subcategoriaId: 1, // Default value
-    categoriasHabilitadas: data.categorias_habilitadas || [] // Carregar do banco corretamente
+    categoriaId: 1,
+    subcategoriaId: 1,
+    categoriasHabilitadas: data.categorias_habilitadas || []
   };
 }
 
@@ -92,23 +102,32 @@ function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>)
     ativo: cliente.ativo !== undefined ? cliente.ativo : true,
     giro_medio_semanal: giroCalculado,
     meta_giro_semanal: Math.round(giroCalculado * 1.2),
-    // Campos de entrega e logística
     janelas_entrega: cliente.janelasEntrega || null,
     representante_id: cliente.representanteId || null,
     rota_entrega_id: cliente.rotaEntregaId || null,
     categoria_estabelecimento_id: cliente.categoriaEstabelecimentoId || null,
     instrucoes_entrega: cliente.instrucoesEntrega || null,
-    // Campos financeiros e fiscais
     contabilizar_giro_medio: cliente.contabilizarGiroMedio !== undefined ? cliente.contabilizarGiroMedio : true,
     tipo_logistica: cliente.tipoLogistica || 'Própria',
     emite_nota_fiscal: cliente.emiteNotaFiscal !== undefined ? cliente.emiteNotaFiscal : true,
     tipo_cobranca: cliente.tipoCobranca || 'À vista',
     forma_pagamento: cliente.formaPagamento || 'Boleto',
     observacoes: cliente.observacoes || null,
-    // Categorias de produto habilitadas - salvar no JSONB para compatibilidade
     categorias_habilitadas: cliente.categoriasHabilitadas || []
   };
 }
+
+// Função para delay com promise
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Função para timeout de promessa
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('Timeout: Operação demorou mais que o esperado')), timeoutMs);
+  });
+  
+  return Promise.race([promise, timeoutPromise]);
+};
 
 export const useClienteStore = create<ClienteStore>()(
   devtools(
@@ -116,78 +135,127 @@ export const useClienteStore = create<ClienteStore>()(
       clientes: [],
       clienteAtual: null,
       loading: false,
+      error: null,
+      isLoadingClientes: false,
+      lastLoadTime: null,
+      retryCount: 0,
       filtros: {
         termo: '',
         status: 'Todos'
       },
       
       carregarClientes: async () => {
-        set({ loading: true });
-        try {
-          console.log('useClienteStore: Carregando clientes com dados de agendamento...');
-          
-          // Carregar clientes junto com seus agendamentos
-          const { data: clientesData, error: clientesError } = await supabase
-            .from('clientes')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-          if (clientesError) {
-            console.error('Erro ao carregar clientes:', clientesError);
-            toast({
-              title: "Erro",
-              description: "Não foi possível carregar os clientes",
-              variant: "destructive"
-            });
-            return;
-          }
-
-          // Carregar todos os agendamentos
-          const { data: agendamentosData, error: agendamentosError } = await supabase
-            .from('agendamentos_clientes')
-            .select('*');
-
-          if (agendamentosError) {
-            console.error('Erro ao carregar agendamentos:', agendamentosError);
-            // Continuar mesmo se houver erro nos agendamentos
-          }
-
-          // Mapear agendamentos por cliente_id para fácil acesso
-          const agendamentosPorCliente = new Map();
-          if (agendamentosData) {
-            agendamentosData.forEach(agendamento => {
-              agendamentosPorCliente.set(agendamento.cliente_id, agendamento);
-            });
-          }
-
-          // Converter clientes incluindo dados de agendamento
-          const clientesConvertidos = clientesData?.map(cliente => {
-            const agendamento = agendamentosPorCliente.get(cliente.id);
-            console.log(`useClienteStore: Cliente ${cliente.nome} - Agendamento:`, agendamento);
-            return convertSupabaseToCliente(cliente, agendamento);
-          }) || [];
-
-          console.log('useClienteStore: Total de clientes carregados:', clientesConvertidos.length);
-          set({ clientes: clientesConvertidos });
-        } catch (error) {
-          console.error('Erro ao carregar clientes:', error);
-          toast({
-            title: "Erro",
-            description: "Erro inesperado ao carregar clientes",
-            variant: "destructive"
-          });
-        } finally {
-          set({ loading: false });
+        const state = get();
+        
+        // Prevenir múltiplas chamadas simultâneas
+        if (state.isLoadingClientes) {
+          console.log('useClienteStore: Carregamento já em andamento, ignorando nova chamada');
+          return;
         }
+
+        // Verificar cache válido
+        const now = Date.now();
+        if (state.lastLoadTime && (now - state.lastLoadTime) < CACHE_TTL && state.clientes.length > 0) {
+          console.log('useClienteStore: Usando dados do cache');
+          return;
+        }
+
+        const startTime = Date.now();
+        console.log('useClienteStore: Iniciando carregamento de clientes...');
+        
+        set({ 
+          isLoadingClientes: true, 
+          loading: true, 
+          error: null,
+          retryCount: 0
+        });
+
+        const executeLoad = async (attemptNumber: number = 1): Promise<void> => {
+          try {
+            console.log(`useClienteStore: Tentativa ${attemptNumber} de carregamento`);
+            
+            // Query otimizada com LEFT JOIN
+            const clientesPromise = supabase
+              .from('clientes')
+              .select(`
+                *,
+                agendamentos:agendamentos_clientes(
+                  status_agendamento,
+                  data_proxima_reposicao
+                )
+              `)
+              .order('created_at', { ascending: false });
+
+            const { data: clientesData, error: clientesError } = await withTimeout(
+              clientesPromise,
+              REQUEST_TIMEOUT
+            );
+
+            if (clientesError) {
+              throw new Error(`Erro ao carregar clientes: ${clientesError.message}`);
+            }
+
+            if (!clientesData) {
+              throw new Error('Nenhum dado retornado do servidor');
+            }
+
+            // Converter dados incluindo agendamentos
+            const clientesConvertidos = clientesData.map(cliente => {
+              const agendamento = cliente.agendamentos?.[0];
+              return convertSupabaseToCliente(cliente, agendamento);
+            });
+
+            const loadTime = Date.now() - startTime;
+            console.log(`useClienteStore: Carregamento concluído em ${loadTime}ms - ${clientesConvertidos.length} clientes`);
+
+            set({ 
+              clientes: clientesConvertidos,
+              lastLoadTime: Date.now(),
+              loading: false,
+              isLoadingClientes: false,
+              error: null,
+              retryCount: 0
+            });
+
+          } catch (error) {
+            console.error(`useClienteStore: Erro na tentativa ${attemptNumber}:`, error);
+            
+            if (attemptNumber < MAX_RETRIES) {
+              set({ retryCount: attemptNumber });
+              
+              console.log(`useClienteStore: Aguardando ${RETRY_DELAY}ms antes da próxima tentativa...`);
+              await delay(RETRY_DELAY);
+              
+              return executeLoad(attemptNumber + 1);
+            } else {
+              // Falha definitiva após todas as tentativas
+              const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+              
+              set({ 
+                loading: false,
+                isLoadingClientes: false,
+                error: errorMessage,
+                retryCount: attemptNumber
+              });
+
+              toast({
+                title: "Erro ao carregar clientes",
+                description: `Falha após ${MAX_RETRIES} tentativas: ${errorMessage}`,
+                variant: "destructive"
+              });
+            }
+          }
+        };
+
+        await executeLoad();
       },
       
       adicionarCliente: async (cliente) => {
         set({ loading: true });
         try {
-          console.log('useClienteStore: Dados do cliente a serem enviados:', cliente);
+          console.log('useClienteStore: Adicionando cliente:', cliente.nome);
           
           const dadosSupabase = convertClienteToSupabase(cliente);
-          console.log('useClienteStore: Dados convertidos para Supabase:', dadosSupabase);
           
           const { data, error } = await supabase
             .from('clientes')
@@ -196,16 +264,9 @@ export const useClienteStore = create<ClienteStore>()(
             .single();
 
           if (error) {
-            console.error('Erro ao adicionar cliente:', error);
-            toast({
-              title: "Erro ao cadastrar cliente",
-              description: `Erro: ${error.message}`,
-              variant: "destructive"
-            });
-            throw error;
+            throw new Error(`Erro ao adicionar cliente: ${error.message}`);
           }
 
-          // Salvar as categorias na tabela de relacionamento
           if (cliente.categoriasHabilitadas && cliente.categoriasHabilitadas.length > 0) {
             const categoriasRelacao = cliente.categoriasHabilitadas.map(categoriaId => ({
               cliente_id: data.id,
@@ -218,7 +279,6 @@ export const useClienteStore = create<ClienteStore>()(
 
             if (categoriaError) {
               console.error('Erro ao salvar categorias do cliente:', categoriaError);
-              // Não impedir o cadastro por conta das categorias
             }
           }
 
@@ -251,52 +311,35 @@ export const useClienteStore = create<ClienteStore>()(
         try {
           const clienteExistente = get().clientes.find(c => c.id === id);
           if (!clienteExistente) {
-            toast({
-              title: "Erro",
-              description: "Cliente não encontrado",
-              variant: "destructive"
-            });
-            return;
+            throw new Error("Cliente não encontrado");
           }
 
-          console.log('useClienteStore: Atualizando cliente com dados:', dadosCliente);
+          console.log('useClienteStore: Atualizando cliente:', id);
 
-          // Converter dadosCliente para formato Supabase, incluindo todos os campos
           const dadosSupabase: any = {};
           
-          // Dados básicos
           if (dadosCliente.nome !== undefined) dadosSupabase.nome = dadosCliente.nome;
           if (dadosCliente.cnpjCpf !== undefined) dadosSupabase.cnpj_cpf = dadosCliente.cnpjCpf;
           if (dadosCliente.enderecoEntrega !== undefined) dadosSupabase.endereco_entrega = dadosCliente.enderecoEntrega;
           if (dadosCliente.contatoNome !== undefined) dadosSupabase.contato_nome = dadosCliente.contatoNome;
           if (dadosCliente.contatoTelefone !== undefined) dadosSupabase.contato_telefone = dadosCliente.contatoTelefone;
           if (dadosCliente.contatoEmail !== undefined) dadosSupabase.contato_email = dadosCliente.contatoEmail;
-          
-          // Configurações comerciais
           if (dadosCliente.quantidadePadrao !== undefined) dadosSupabase.quantidade_padrao = dadosCliente.quantidadePadrao;
           if (dadosCliente.periodicidadePadrao !== undefined) dadosSupabase.periodicidade_padrao = dadosCliente.periodicidadePadrao;
           if (dadosCliente.statusCliente !== undefined) dadosSupabase.status_cliente = dadosCliente.statusCliente;
           if (dadosCliente.metaGiroSemanal !== undefined) dadosSupabase.meta_giro_semanal = dadosCliente.metaGiroSemanal;
-          
-          // Entrega e logística
           if (dadosCliente.janelasEntrega !== undefined) dadosSupabase.janelas_entrega = dadosCliente.janelasEntrega;
           if (dadosCliente.representanteId !== undefined) dadosSupabase.representante_id = dadosCliente.representanteId;
           if (dadosCliente.rotaEntregaId !== undefined) dadosSupabase.rota_entrega_id = dadosCliente.rotaEntregaId;
           if (dadosCliente.categoriaEstabelecimentoId !== undefined) dadosSupabase.categoria_estabelecimento_id = dadosCliente.categoriaEstabelecimentoId;
           if (dadosCliente.instrucoesEntrega !== undefined) dadosSupabase.instrucoes_entrega = dadosCliente.instrucoesEntrega;
           if (dadosCliente.tipoLogistica !== undefined) dadosSupabase.tipo_logistica = dadosCliente.tipoLogistica;
-          
-          // Configurações financeiras e fiscais
           if (dadosCliente.contabilizarGiroMedio !== undefined) dadosSupabase.contabilizar_giro_medio = dadosCliente.contabilizarGiroMedio;
           if (dadosCliente.emiteNotaFiscal !== undefined) dadosSupabase.emite_nota_fiscal = dadosCliente.emiteNotaFiscal;
           if (dadosCliente.tipoCobranca !== undefined) dadosSupabase.tipo_cobranca = dadosCliente.tipoCobranca;
           if (dadosCliente.formaPagamento !== undefined) dadosSupabase.forma_pagamento = dadosCliente.formaPagamento;
-          
-          // Observações e categorias
           if (dadosCliente.observacoes !== undefined) dadosSupabase.observacoes = dadosCliente.observacoes;
           if (dadosCliente.categoriasHabilitadas !== undefined) dadosSupabase.categorias_habilitadas = dadosCliente.categoriasHabilitadas;
-
-          console.log('useClienteStore: Dados convertidos para Supabase:', dadosSupabase);
 
           const { error } = await supabase
             .from('clientes')
@@ -304,20 +347,10 @@ export const useClienteStore = create<ClienteStore>()(
             .eq('id', id);
 
           if (error) {
-            console.error('Erro ao atualizar cliente:', error);
-            toast({
-              title: "Erro",
-              description: "Não foi possível atualizar o cliente",
-              variant: "destructive"
-            });
-            return;
+            throw new Error(`Erro ao atualizar cliente: ${error.message}`);
           }
 
-          // Se as categorias foram atualizadas, salvar na tabela de relacionamento
           if (dadosCliente.categoriasHabilitadas !== undefined) {
-            console.log('useClienteStore: Atualizando categorias na tabela de relacionamento:', dadosCliente.categoriasHabilitadas);
-            
-            // Remover categorias existentes
             const { error: deleteError } = await supabase
               .from('clientes_categorias')
               .delete()
@@ -327,7 +360,6 @@ export const useClienteStore = create<ClienteStore>()(
               console.error('Erro ao remover categorias existentes:', deleteError);
             }
 
-            // Inserir novas categorias
             if (dadosCliente.categoriasHabilitadas.length > 0) {
               const novasRelacoes = dadosCliente.categoriasHabilitadas.map(categoriaId => ({
                 cliente_id: id,
@@ -362,6 +394,7 @@ export const useClienteStore = create<ClienteStore>()(
             description: "Erro inesperado ao atualizar cliente",
             variant: "destructive"
           });
+          throw error;
         } finally {
           set({ loading: false });
         }
@@ -379,13 +412,7 @@ export const useClienteStore = create<ClienteStore>()(
             .eq('id', id);
 
           if (error) {
-            console.error('Erro ao remover cliente:', error);
-            toast({
-              title: "Erro",
-              description: "Não foi possível remover o cliente",
-              variant: "destructive"
-            });
-            return;
+            throw new Error(`Erro ao remover cliente: ${error.message}`);
           }
 
           set(state => ({
@@ -404,6 +431,7 @@ export const useClienteStore = create<ClienteStore>()(
             description: "Erro inesperado ao remover cliente",
             variant: "destructive"
           });
+          throw error;
         } finally {
           set({ loading: false });
         }
@@ -417,7 +445,7 @@ export const useClienteStore = create<ClienteStore>()(
         
         const cliente = get().clientes.find(c => c.id === id);
         if (cliente) {
-          console.log('useClienteStore: Cliente selecionado:', cliente.nome, 'Status agendamento:', cliente.statusAgendamento, 'Próxima data:', cliente.proximaDataReposicao);
+          console.log('useClienteStore: Cliente selecionado:', cliente.nome);
         }
         set({ clienteAtual: cliente || null });
       },
@@ -443,17 +471,19 @@ export const useClienteStore = create<ClienteStore>()(
       setMetaGiro: async (idCliente, metaSemanal) => {
         await get().atualizarCliente(idCliente, { metaGiroSemanal: metaSemanal });
       },
+
+      clearError: () => {
+        set({ error: null });
+      },
       
       getClientesFiltrados: () => {
         const { clientes, filtros } = get();
         
         return clientes.filter(cliente => {
-          // Filtro por termo
           const termoMatch = filtros.termo === '' || 
             cliente.nome.toLowerCase().includes(filtros.termo.toLowerCase()) ||
             (cliente.cnpjCpf && cliente.cnpjCpf.includes(filtros.termo));
           
-          // Filtro por status
           const statusMatch = filtros.status === 'Todos' || cliente.statusCliente === filtros.status;
           
           return termoMatch && statusMatch;
@@ -468,7 +498,6 @@ export const useClienteStore = create<ClienteStore>()(
   )
 );
 
-// Helper para calcular giro semanal
 function calcularGiroSemanal(qtdPadrao: number, periodicidadeDias: number): number {
   if (periodicidadeDias === 3) {
     return qtdPadrao * 3;

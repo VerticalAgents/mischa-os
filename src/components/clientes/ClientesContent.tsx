@@ -8,6 +8,8 @@ import ClientesFilters, { ColumnOption } from "./ClientesFilters";
 import ClientesTable from "./ClientesTable";
 import ClientesBulkActions from "./ClientesBulkActions";
 import DeleteClienteDialog from "./DeleteClienteDialog";
+import ClientesLoadingSkeleton from "./ClientesLoadingSkeleton";
+import ClientesErrorFallback from "./ClientesErrorFallback";
 
 interface ClientesContentProps {
   onRefresh: () => void;
@@ -21,12 +23,17 @@ export default function ClientesContent({ onRefresh }: ClientesContentProps) {
   const {
     filtros,
     loading,
+    error,
+    isLoadingClientes,
+    retryCount,
     setFiltroTermo,
     setFiltroStatus,
     getClientesFiltrados,
     selecionarCliente,
     removerCliente,
-    getClientePorId
+    getClientePorId,
+    carregarClientes,
+    clearError
   } = useClienteStore();
 
   const {
@@ -38,7 +45,6 @@ export default function ClientesContent({ onRefresh }: ClientesContentProps) {
     clearSelection
   } = useClienteSelection();
 
-  // Available columns for the table
   const columnOptions: ColumnOption[] = [
     { id: "nome", label: "Nome", canToggle: false },
     { id: "giroSemanal", label: "Giro Semanal", canToggle: false },
@@ -88,6 +94,28 @@ export default function ClientesContent({ onRefresh }: ClientesContentProps) {
     }
   };
 
+  const handleRetry = () => {
+    clearError();
+    carregarClientes();
+  };
+
+  // Renderizar estados de erro
+  if (error) {
+    return (
+      <ClientesErrorFallback 
+        error={error}
+        retryCount={retryCount}
+        onRetry={handleRetry}
+        onClearError={clearError}
+      />
+    );
+  }
+
+  // Renderizar loading skeleton
+  if (loading || isLoadingClientes) {
+    return <ClientesLoadingSkeleton />;
+  }
+
   return (
     <>
       <ClientesBulkActions 
@@ -106,23 +134,17 @@ export default function ClientesContent({ onRefresh }: ClientesContentProps) {
         columnOptions={columnOptions}
       />
 
-      {loading ? (
-        <div className="flex justify-center items-center py-8">
-          <div className="text-muted-foreground">Carregando clientes...</div>
-        </div>
-      ) : (
-        <ClientesTable 
-          clientes={clientes}
-          visibleColumns={visibleColumns}
-          columnOptions={columnOptions}
-          onSelectCliente={handleSelectCliente}
-          onDeleteCliente={handleDeleteCliente}
-          selectedClientes={selectedClienteIds}
-          onToggleClienteSelection={toggleClienteSelection}
-          onSelectAllClientes={() => handleSelectAllClientes(clientes)}
-          showSelectionControls={isSelectionMode}
-        />
-      )}
+      <ClientesTable 
+        clientes={clientes}
+        visibleColumns={visibleColumns}
+        columnOptions={columnOptions}
+        onSelectCliente={handleSelectCliente}
+        onDeleteCliente={handleDeleteCliente}
+        selectedClientes={selectedClienteIds}
+        onToggleClienteSelection={toggleClienteSelection}
+        onSelectAllClientes={() => handleSelectAllClientes(clientes)}
+        showSelectionControls={isSelectionMode}
+      />
 
       <ClienteFormDialog 
         open={isFormOpen} 
