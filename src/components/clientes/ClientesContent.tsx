@@ -32,8 +32,9 @@ export default function ClientesContent({
   isFormOpen = false, 
   setIsFormOpen 
 }: ClientesContentProps) {
-  const { carregarClientes, buscarClientes, loading } = useClienteStore();
+  const { carregarClientes, buscarClientes, loading, selecionarCliente } = useClienteStore();
   const [clientesSelecionados, setClientesSelecionados] = useState<string[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [filtros, setFiltros] = useState<FiltrosCliente>({
     termo: "",
     status: "Todos"
@@ -48,7 +49,7 @@ export default function ClientesContent({
     carregarClientes();
   }, [carregarClientes]);
 
-  const handleToggleSelection = (clienteId: string) => {
+  const handleToggleClienteSelection = (clienteId: string) => {
     setClientesSelecionados(prev =>
       prev.includes(clienteId)
         ? prev.filter(id => id !== clienteId)
@@ -56,7 +57,7 @@ export default function ClientesContent({
     );
   };
 
-  const handleSelectAll = () => {
+  const handleSelectAllClientes = () => {
     if (clientesSelecionados.length === clientesFiltrados.length) {
       setClientesSelecionados([]);
     } else {
@@ -66,6 +67,14 @@ export default function ClientesContent({
 
   const handleClearSelection = () => {
     setClientesSelecionados([]);
+    setIsSelectionMode(false);
+  };
+
+  const handleToggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    if (isSelectionMode) {
+      setClientesSelecionados([]);
+    }
   };
 
   const handleFormSuccess = () => {
@@ -101,15 +110,20 @@ export default function ClientesContent({
         <ClientesBulkActions 
           selectedClienteIds={clientesSelecionados}
           onClearSelection={handleClearSelection}
+          onToggleSelectionMode={handleToggleSelectionMode}
+          isSelectionMode={isSelectionMode}
         />
       )}
       
       <ClientesTable
         clientes={clientesFiltrados}
-        selectedClientes={clientesSelecionados}
-        onToggleSelection={handleToggleSelection}
-        onSelectAll={handleSelectAll}
         visibleColumns={visibleColumns}
+        columnOptions={defaultColumnOptions}
+        onSelectCliente={selecionarCliente}
+        selectedClientes={clientesSelecionados}
+        onToggleClienteSelection={handleToggleClienteSelection}
+        onSelectAllClientes={handleSelectAllClientes}
+        showSelectionControls={isSelectionMode}
       />
 
       {isFormOpen && setIsFormOpen && (

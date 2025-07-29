@@ -11,13 +11,17 @@ export type TipoCobranca = 'À vista' | 'Faturado';
 
 export type FormaPagamentoNome = 'Boleto' | 'Cartão' | 'Dinheiro' | 'PIX';
 
-export type SubstatusPedidoAgendado = 'Agendado' | 'Confirmado' | 'Produzindo' | 'Pronto';
+export type SubstatusPedidoAgendado = 'Agendado' | 'Confirmado' | 'Produzindo' | 'Pronto' | 'Separado' | 'Despachado' | 'Entregue' | 'Retorno';
+
+export type DiaSemana = 'Domingo' | 'Segunda' | 'Terça' | 'Quarta' | 'Quinta' | 'Sexta' | 'Sábado';
 
 export type ProdutoCategoria = {
   id: number;
   nome: string;
   descricao?: string;
   ativo: boolean;
+  subcategorias?: ProdutoSubcategoria[];
+  quantidadeProdutos?: number;
 };
 
 export type ProdutoSubcategoria = {
@@ -26,6 +30,93 @@ export type ProdutoSubcategoria = {
   descricao?: string;
   categoria_id: number;
   ativo: boolean;
+};
+
+// Missing types that are referenced in the build errors
+export type Representante = {
+  id: number;
+  nome: string;
+  ativo: boolean;
+};
+
+export type RotaEntrega = {
+  id: number;
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
+};
+
+export type CategoriaEstabelecimento = {
+  id: number;
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
+};
+
+export type TipoLogistica = {
+  id: number;
+  nome: TipoLogisticaNome;
+  ativo: boolean;
+};
+
+export type FormaPagamento = {
+  id: number;
+  nome: FormaPagamentoNome;
+  ativo: boolean;
+};
+
+export type ConfiguracoesProducao = {
+  tempoProducaoPadrao: number;
+  capacidadeMaximaDiaria: number;
+  margemSegurancaEstoque: number;
+};
+
+export type Sabor = {
+  id: string;
+  nome: string;
+  ativo: boolean;
+  categoria?: string;
+};
+
+export type Alerta = {
+  id: string;
+  tipo: 'erro' | 'aviso' | 'info';
+  titulo: string;
+  mensagem: string;
+  timestamp: Date;
+  resolvido: boolean;
+};
+
+export type CategoriaInsumo = {
+  id: number;
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
+};
+
+export type UnidadeMedida = {
+  id: number;
+  nome: string;
+  abreviacao: string;
+  ativo: boolean;
+};
+
+export type Insumo = {
+  id: string;
+  nome: string;
+  categoriaId: number;
+  unidadeMedida: string;
+  custoUnitario: number;
+  estoqueAtual: number;
+  estoqueMinimo: number;
+  ativo: boolean;
+};
+
+export type DashboardData = {
+  vendas: number;
+  pedidos: number;
+  clientes: number;
+  producao: number;
 };
 
 export interface Cliente {
@@ -59,9 +150,10 @@ export interface Cliente {
   categoriaId: number;
   subcategoriaId: number;
   representanteId?: number;
+  rotaEntregaId?: number;
 }
 
-export type StatusPedido = 'Pendente' | 'Confirmado' | 'Em Produção' | 'Pronto' | 'Em Trânsito' | 'Entregue' | 'Cancelado' | 'Finalizado' | 'Agendado';
+export type StatusPedido = 'Pendente' | 'Confirmado' | 'Em Produção' | 'Pronto' | 'Em Trânsito' | 'Entregue' | 'Cancelado' | 'Finalizado' | 'Agendado' | 'Em Separação' | 'Despachado';
 
 export interface ItemPedido {
   id: string;
@@ -70,6 +162,7 @@ export interface ItemPedido {
   quantidade: number;
   preco: number;
   subtotal: number;
+  idPedido?: string;
   // Legacy properties for backward compatibility
   nomeSabor?: string;
   idSabor?: string;
@@ -93,6 +186,7 @@ export interface Pedido {
   itensPedido: ItemPedido[];
   itens: ItemPedido[];
   dataEntrega?: Date;
+  dataEfetivaEntrega?: Date;
   enderecoEntrega: string;
   contatoEntrega: string;
   numeroPedidoCliente: string;
@@ -101,8 +195,6 @@ export interface Pedido {
   updatedAt?: Date;
   tipoPedido?: TipoPedidoAgendamento;
 }
-
-export type DiaSemana = 'Domingo' | 'Segunda' | 'Terça' | 'Quarta' | 'Quinta' | 'Sexta' | 'Sábado';
 
 export interface JanelaEntrega {
   diaSemana: DiaSemana;
