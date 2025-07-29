@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const getTabStorageKey = (pathname: string) => `tab_${pathname.replace(/\//g, '_')}`;
@@ -22,38 +22,27 @@ export const useTabPersistence = (defaultTab: string, defaultSubtab?: string) =>
     return savedSubtab || defaultSubtab || '';
   });
 
-  // Salvar aba ativa no localStorage sempre que mudar, mas evitar loops
-  useEffect(() => {
-    if (activeTab && activeTab !== defaultTab) {
-      localStorage.setItem(tabKey, activeTab);
-      console.log('🔄 Salvando aba ativa para', location.pathname, ':', activeTab);
-    }
-  }, [activeTab, tabKey, location.pathname, defaultTab]);
-
-  // Salvar subaba ativa no localStorage sempre que mudar
-  useEffect(() => {
-    if (activeSubtab && activeSubtab !== defaultSubtab) {
-      localStorage.setItem(subtabKey, activeSubtab);
-      console.log('🔄 Salvando subaba ativa para', location.pathname, ':', activeSubtab);
-    }
-  }, [activeSubtab, subtabKey, location.pathname, defaultSubtab]);
-
-  const changeTab = (newTab: string) => {
+  // Use useCallback to prevent function recreation on every render
+  const changeTab = useCallback((newTab: string) => {
     console.log('📋 Mudando para aba:', newTab, 'em', location.pathname);
     setActiveTab(newTab);
-  };
+    localStorage.setItem(tabKey, newTab);
+  }, [tabKey, location.pathname]);
 
-  const changeSubtab = (newSubtab: string) => {
+  const changeSubtab = useCallback((newSubtab: string) => {
     console.log('📋 Mudando para subaba:', newSubtab, 'em', location.pathname);
     setActiveSubtab(newSubtab);
-  };
+    localStorage.setItem(subtabKey, newSubtab);
+  }, [subtabKey, location.pathname]);
 
-  const clearTabPersistence = () => {
+  const clearTabPersistence = useCallback(() => {
     localStorage.removeItem(tabKey);
     localStorage.removeItem(subtabKey);
     setActiveTab(defaultTab);
     setActiveSubtab(defaultSubtab || '');
-  };
+  }, [tabKey, subtabKey, defaultTab, defaultSubtab]);
+
+  // Remove the useEffect that was causing potential loops
 
   return {
     activeTab,

@@ -1,8 +1,7 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, CheckCircle, AlertCircle, TrendingUp, Users } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
@@ -12,11 +11,21 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 export default function AgendamentoDashboard() {
   const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
   const { clientes } = useClienteStore();
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    carregarTodosAgendamentos();
-  }, [carregarTodosAgendamentos]);
+    const loadData = async () => {
+      if (agendamentos.length === 0 && !isLoading) {
+        setIsLoading(true);
+        try {
+          await carregarTodosAgendamentos();
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    loadData();
+  }, []); // Empty dependency array to run only once
 
   // Calcular indicadores da semana
   const indicadoresSemana = useMemo(() => {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -34,12 +33,30 @@ export default function AgendamentoRepresentantes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    carregarTodosAgendamentos();
-    carregarClientes();
-    carregarRepresentantes();
-  }, [carregarTodosAgendamentos, carregarClientes, carregarRepresentantes]);
+    const loadData = async () => {
+      if (!isLoading) {
+        setIsLoading(true);
+        try {
+          // Only load if data is empty or stale
+          if (agendamentos.length === 0) {
+            await carregarTodosAgendamentos();
+          }
+          if (clientes.length === 0) {
+            await carregarClientes();
+          }
+          if (representantes.length === 0) {
+            await carregarRepresentantes();
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    loadData();
+  }, []); // Empty dependency array to run only once
 
   // Filtrar agendamentos por representante
   const agendamentosFiltrados = useMemo(() => {
