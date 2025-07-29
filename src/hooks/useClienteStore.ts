@@ -1,308 +1,479 @@
 import { create } from 'zustand';
-import { Cliente } from '../types';
-import { supabase } from '../integrations/supabase/client';
-import { toast } from 'sonner';
+import { devtools } from 'zustand/middleware';
+import { Cliente, StatusCliente } from '../types';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface ClienteStore {
   clientes: Cliente[];
   clienteAtual: Cliente | null;
-  cache: Cliente[] | null;
   loading: boolean;
-  error: string | null;
+  filtros: {
+    termo: string;
+    status: StatusCliente | 'Todos';
+  };
+  
+  // Ações
   carregarClientes: () => Promise<void>;
-  adicionarCliente: (cliente: Omit<Cliente, 'id'>) => Promise<void>;
-  editarCliente: (id: string, cliente: Partial<Cliente>) => Promise<void>;
-  excluirCliente: (id: string) => Promise<void>;
-  buscarClientes: (filtros: { termo: string; status: string }) => Cliente[];
+  adicionarCliente: (cliente: Omit<Cliente, 'id' | 'dataCadastro'>) => Promise<Cliente>;
+  atualizarCliente: (id: string, dadosCliente: Partial<Cliente>) => Promise<void>;
+  removerCliente: (id: string) => Promise<void>;
+  selecionarCliente: (id: string | null) => void;
+  setFiltroTermo: (termo: string) => void;
+  setFiltroStatus: (status: StatusCliente | 'Todos') => void;
+  setMetaGiro: (idCliente: string, metaSemanal: number) => Promise<void>;
+  
+  // Getters
+  getClientesFiltrados: () => Cliente[];
   getClientePorId: (id: string) => Cliente | undefined;
-  selecionarCliente: (cliente: Cliente | null) => void;
-  clearCache: () => void;
 }
 
-export const useClienteStore = create<ClienteStore>((set, get) => ({
-  clientes: [],
-  clienteAtual: null,
-  cache: null,
-  loading: false,
-  error: null,
+// Helper para converter string de data do banco para Date local
+const parseDateFromDatabase = (dateString: string): Date => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
 
-  selecionarCliente: (cliente: Cliente | null) => {
-    set({ clienteAtual: cliente });
-  },
+// Helper para converter dados do Supabase para o tipo Cliente
+function convertSupabaseToCliente(data: any, agendamento?: any): Cliente {
+  return {
+    id: data.id,
+    nome: data.nome,
+    cnpjCpf: data.cnpj_cpf,
+    enderecoEntrega: data.endereco_entrega,
+    contatoNome: data.contato_nome,
+    contatoTelefone: data.contato_telefone,
+    contatoEmail: data.contato_email,
+    quantidadePadrao: data.quantidade_padrao || 0,
+    periodicidadePadrao: data.periodicidade_padrao || 7,
+    statusCliente: data.status_cliente || 'Ativo',
+    dataCadastro: new Date(data.created_at),
+    metaGiroSemanal: data.meta_giro_semanal || 0,
+    ultimaDataReposicaoEfetiva: data.ultima_data_reposicao_efetiva ? new Date(data.ultima_data_reposicao_efetiva) : undefined,
+    // Usar dados do agendamento se disponível, senão usar dados do cliente (fallback)
+    statusAgendamento: agendamento?.status_agendamento || data.status_agendamento || 'Não Agendado',
+    proximaDataReposicao: agendamento?.data_proxima_reposicao 
+      ? parseDateFromDatabase(agendamento.data_proxima_reposicao) 
+      : (data.proxima_data_reposicao ? new Date(data.proxima_data_reposicao) : undefined),
+    ativo: data.ativo || true,
+    giroMedioSemanal: data.giro_medio_semanal || calcularGiroSemanal(data.quantidade_padrao || 0, data.periodicidade_padrao || 7),
+    // Garantir que os campos sejam carregados corretamente
+    janelasEntrega: data.janelas_entrega || [],
+    representanteId: data.representante_id,
+    rotaEntregaId: data.rota_entrega_id,
+    categoriaEstabelecimentoId: data.categoria_estabelecimento_id,
+    instrucoesEntrega: data.instrucoes_entrega,
+    contabilizarGiroMedio: data.contabilizar_giro_medio !== undefined ? data.contabilizar_giro_medio : true,
+    tipoLogistica: data.tipo_logistica || 'Própria',
+    emiteNotaFiscal: data.emite_nota_fiscal !== undefined ? data.emite_nota_fiscal : true,
+    tipoCobranca: data.tipo_cobranca || 'À vista',
+    formaPagamento: data.forma_pagamento || 'Boleto',
+    observacoes: data.observacoes,
+    categoriaId: 1, // Default value
+    subcategoriaId: 1, // Default value
+    categoriasHabilitadas: data.categorias_habilitadas || [] // Carregar do banco corretamente
+  };
+}
 
-  carregarClientes: async () => {
-    try {
-      set({ loading: true, error: null });
+// Helper para converter Cliente para dados do Supabase
+function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>) {
+  const giroCalculado = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
+  
+  return {
+    nome: cliente.nome,
+    cnpj_cpf: cliente.cnpjCpf || null,
+    endereco_entrega: cliente.enderecoEntrega || null,
+    contato_nome: cliente.contatoNome || null,
+    contato_telefone: cliente.contatoTelefone || null,
+    contato_email: cliente.contatoEmail || null,
+    quantidade_padrao: cliente.quantidadePadrao || 0,
+    periodicidade_padrao: cliente.periodicidadePadrao || 7,
+    status_cliente: cliente.statusCliente || 'Ativo',
+    ativo: cliente.ativo !== undefined ? cliente.ativo : true,
+    giro_medio_semanal: giroCalculado,
+    meta_giro_semanal: Math.round(giroCalculado * 1.2),
+    // Campos de entrega e logística
+    janelas_entrega: cliente.janelasEntrega || null,
+    representante_id: cliente.representanteId || null,
+    rota_entrega_id: cliente.rotaEntregaId || null,
+    categoria_estabelecimento_id: cliente.categoriaEstabelecimentoId || null,
+    instrucoes_entrega: cliente.instrucoesEntrega || null,
+    // Campos financeiros e fiscais
+    contabilizar_giro_medio: cliente.contabilizarGiroMedio !== undefined ? cliente.contabilizarGiroMedio : true,
+    tipo_logistica: cliente.tipoLogistica || 'Própria',
+    emite_nota_fiscal: cliente.emiteNotaFiscal !== undefined ? cliente.emiteNotaFiscal : true,
+    tipo_cobranca: cliente.tipoCobranca || 'À vista',
+    forma_pagamento: cliente.formaPagamento || 'Boleto',
+    observacoes: cliente.observacoes || null,
+    // Categorias de produto habilitadas - salvar no JSONB para compatibilidade
+    categorias_habilitadas: cliente.categoriasHabilitadas || []
+  };
+}
 
-      const { data, error } = await supabase
-        .from('clientes')
-        .select('*')
-        .order('nome');
+export const useClienteStore = create<ClienteStore>()(
+  devtools(
+    (set, get) => ({
+      clientes: [],
+      clienteAtual: null,
+      loading: false,
+      filtros: {
+        termo: '',
+        status: 'Todos'
+      },
+      
+      carregarClientes: async () => {
+        set({ loading: true });
+        try {
+          console.log('useClienteStore: Carregando clientes com dados de agendamento...');
+          
+          // Carregar clientes junto com seus agendamentos
+          const { data: clientesData, error: clientesError } = await supabase
+            .from('clientes')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-      if (error) throw error;
-
-      const clientesFormatados: Cliente[] = (data || []).map(cliente => ({
-        id: cliente.id,
-        nome: cliente.nome || '',
-        cnpjCpf: cliente.cnpj_cpf || '',
-        enderecoEntrega: cliente.endereco_entrega || '',
-        contatoNome: cliente.contato_nome || '',
-        contatoTelefone: cliente.contato_telefone || '',
-        contatoEmail: cliente.contato_email || '',
-        quantidadePadrao: cliente.quantidade_padrao || 0,
-        periodicidadePadrao: cliente.periodicidade_padrao || 7,
-        statusCliente: cliente.status_cliente as any || 'Ativo',
-        metaGiroSemanal: cliente.meta_giro_semanal || 0,
-        categoriaEstabelecimentoId: cliente.categoria_estabelecimento_id,
-        janelasEntrega: Array.isArray(cliente.janelas_entrega) ? cliente.janelas_entrega as any[] : [],
-        instrucoesEntrega: cliente.instrucoes_entrega || '',
-        tipoLogistica: cliente.tipo_logistica as any || 'Própria',
-        contabilizarGiroMedio: cliente.contabilizar_giro_medio ?? true,
-        emiteNotaFiscal: cliente.emite_nota_fiscal ?? true,
-        tipoCobranca: cliente.tipo_cobranca as any || 'À vista',
-        formaPagamento: cliente.forma_pagamento as any || 'Boleto',
-        observacoes: cliente.observacoes || '',
-        categoriasHabilitadas: Array.isArray(cliente.categorias_habilitadas) ? cliente.categorias_habilitadas as number[] : [],
-        ativo: cliente.ativo ?? true,
-        giroMedioSemanal: cliente.giro_medio_semanal || 0,
-        ultimaDataReposicaoEfetiva: cliente.ultima_data_reposicao_efetiva ? new Date(cliente.ultima_data_reposicao_efetiva) : undefined,
-        statusAgendamento: cliente.status_agendamento || 'Não Agendado',
-        proximaDataReposicao: cliente.proxima_data_reposicao ? new Date(cliente.proxima_data_reposicao) : undefined,
-        dataCadastro: new Date(cliente.created_at),
-        categoriaId: 1,
-        subcategoriaId: 1
-      }));
-
-      set({ clientes: clientesFormatados, cache: clientesFormatados, loading: false });
-    } catch (error: any) {
-      console.error('❌ Erro ao carregar clientes:', error);
-      set({ error: error.message, loading: false });
-    }
-  },
-
-  adicionarCliente: async (clienteData) => {
-    try {
-      set({ loading: true, error: null });
-
-      const { data, error } = await supabase
-        .from('clientes')
-        .insert([
-          {
-            nome: clienteData.nome,
-            cnpj_cpf: clienteData.cnpjCpf,
-            endereco_entrega: clienteData.enderecoEntrega,
-            contato_nome: clienteData.contatoNome,
-            contato_telefone: clienteData.contatoTelefone,
-            contato_email: clienteData.contatoEmail,
-            quantidade_padrao: clienteData.quantidadePadrao,
-            periodicidade_padrao: clienteData.periodicidadePadrao,
-            status_cliente: clienteData.statusCliente,
-            meta_giro_semanal: clienteData.metaGiroSemanal,
-            categoria_estabelecimento_id: clienteData.categoriaEstabelecimentoId,
-            janelas_entrega: clienteData.janelasEntrega,
-            instrucoes_entrega: clienteData.instrucoesEntrega,
-            tipo_logistica: clienteData.tipoLogistica,
-            contabilizar_giro_medio: clienteData.contabilizarGiroMedio,
-            emite_nota_fiscal: clienteData.emiteNotaFiscal,
-            tipo_cobranca: clienteData.tipoCobranca,
-            forma_pagamento: clienteData.formaPagamento,
-            observacoes: clienteData.observacoes,
-            categorias_habilitadas: clienteData.categoriasHabilitadas,
-            ativo: clienteData.ativo,
-            giro_medio_semanal: clienteData.giroMedioSemanal,
-            ultima_data_reposicao_efetiva: clienteData.ultimaDataReposicaoEfetiva?.toISOString(),
-            status_agendamento: clienteData.statusAgendamento,
-            proxima_data_reposicao: clienteData.proximaDataReposicao?.toISOString(),
+          if (clientesError) {
+            console.error('Erro ao carregar clientes:', clientesError);
+            toast({
+              title: "Erro",
+              description: "Não foi possível carregar os clientes",
+              variant: "destructive"
+            });
+            return;
           }
-        ])
-        .select()
-        .single();
 
-      if (error) throw error;
+          // Carregar todos os agendamentos
+          const { data: agendamentosData, error: agendamentosError } = await supabase
+            .from('agendamentos_clientes')
+            .select('*');
 
-      const novoCliente: Cliente = {
-        id: data.id,
-        nome: data.nome || '',
-        cnpjCpf: data.cnpj_cpf || '',
-        enderecoEntrega: data.endereco_entrega || '',
-        contatoNome: data.contato_nome || '',
-        contatoTelefone: data.contato_telefone || '',
-        contatoEmail: data.contato_email || '',
-        quantidadePadrao: data.quantidade_padrao || 0,
-        periodicidadePadrao: data.periodicidade_padrao || 7,
-        statusCliente: data.status_cliente as any || 'Ativo',
-        metaGiroSemanal: data.meta_giro_semanal || 0,
-        categoriaEstabelecimentoId: data.categoria_estabelecimento_id,
-        janelasEntrega: Array.isArray(data.janelas_entrega) ? data.janelas_entrega as any[] : [],
-        instrucoesEntrega: data.instrucoes_entrega || '',
-        tipoLogistica: data.tipo_logistica as any || 'Própria',
-        contabilizarGiroMedio: data.contabilizar_giro_medio ?? true,
-        emiteNotaFiscal: data.emite_nota_fiscal ?? true,
-        tipoCobranca: data.tipo_cobranca as any || 'À vista',
-        formaPagamento: data.forma_pagamento as any || 'Boleto',
-        observacoes: data.observacoes || '',
-        categoriasHabilitadas: Array.isArray(data.categorias_habilitadas) ? data.categorias_habilitadas as number[] : [],
-        ativo: data.ativo ?? true,
-        giroMedioSemanal: data.giro_medio_semanal || 0,
-        ultimaDataReposicaoEfetiva: data.ultima_data_reposicao_efetiva ? new Date(data.ultima_data_reposicao_efetiva) : undefined,
-        statusAgendamento: data.status_agendamento || 'Não Agendado',
-        proximaDataReposicao: data.proxima_data_reposicao ? new Date(data.proxima_data_reposicao) : undefined,
-        dataCadastro: new Date(data.created_at),
-        categoriaId: 1,
-        subcategoriaId: 1
-      };
+          if (agendamentosError) {
+            console.error('Erro ao carregar agendamentos:', agendamentosError);
+            // Continuar mesmo se houver erro nos agendamentos
+          }
 
-      set(state => ({
-        clientes: [...state.clientes, novoCliente],
-        cache: null,
-        loading: false
-      }));
+          // Mapear agendamentos por cliente_id para fácil acesso
+          const agendamentosPorCliente = new Map();
+          if (agendamentosData) {
+            agendamentosData.forEach(agendamento => {
+              agendamentosPorCliente.set(agendamento.cliente_id, agendamento);
+            });
+          }
 
-      toast.success('Cliente adicionado com sucesso!');
-    } catch (error: any) {
-      console.error('❌ Erro ao adicionar cliente:', error);
-      set({ error: error.message, loading: false });
-      toast.error('Erro ao adicionar cliente');
-      throw error;
-    }
-  },
+          // Converter clientes incluindo dados de agendamento
+          const clientesConvertidos = clientesData?.map(cliente => {
+            const agendamento = agendamentosPorCliente.get(cliente.id);
+            console.log(`useClienteStore: Cliente ${cliente.nome} - Agendamento:`, agendamento);
+            return convertSupabaseToCliente(cliente, agendamento);
+          }) || [];
 
-  editarCliente: async (id: string, clienteData: Partial<Cliente>) => {
-    try {
-      set({ loading: true, error: null });
-
-      const updateData: any = {};
+          console.log('useClienteStore: Total de clientes carregados:', clientesConvertidos.length);
+          set({ clientes: clientesConvertidos });
+        } catch (error) {
+          console.error('Erro ao carregar clientes:', error);
+          toast({
+            title: "Erro",
+            description: "Erro inesperado ao carregar clientes",
+            variant: "destructive"
+          });
+        } finally {
+          set({ loading: false });
+        }
+      },
       
-      if (clienteData.nome !== undefined) updateData.nome = clienteData.nome;
-      if (clienteData.cnpjCpf !== undefined) updateData.cnpj_cpf = clienteData.cnpjCpf;
-      if (clienteData.enderecoEntrega !== undefined) updateData.endereco_entrega = clienteData.enderecoEntrega;
-      if (clienteData.contatoNome !== undefined) updateData.contato_nome = clienteData.contatoNome;
-      if (clienteData.contatoTelefone !== undefined) updateData.contato_telefone = clienteData.contatoTelefone;
-      if (clienteData.contatoEmail !== undefined) updateData.contato_email = clienteData.contatoEmail;
-      if (clienteData.quantidadePadrao !== undefined) updateData.quantidade_padrao = clienteData.quantidadePadrao;
-      if (clienteData.periodicidadePadrao !== undefined) updateData.periodicidade_padrao = clienteData.periodicidadePadrao;
-      if (clienteData.statusCliente !== undefined) updateData.status_cliente = clienteData.statusCliente;
-      if (clienteData.metaGiroSemanal !== undefined) updateData.meta_giro_semanal = clienteData.metaGiroSemanal;
-      if (clienteData.categoriaEstabelecimentoId !== undefined) updateData.categoria_estabelecimento_id = clienteData.categoriaEstabelecimentoId;
-      if (clienteData.janelasEntrega !== undefined) updateData.janelas_entrega = clienteData.janelasEntrega;
-      if (clienteData.instrucoesEntrega !== undefined) updateData.instrucoes_entrega = clienteData.instrucoesEntrega;
-      if (clienteData.tipoLogistica !== undefined) updateData.tipo_logistica = clienteData.tipoLogistica;
-      if (clienteData.contabilizarGiroMedio !== undefined) updateData.contabilizar_giro_medio = clienteData.contabilizarGiroMedio;
-      if (clienteData.emiteNotaFiscal !== undefined) updateData.emite_nota_fiscal = clienteData.emiteNotaFiscal;
-      if (clienteData.tipoCobranca !== undefined) updateData.tipo_cobranca = clienteData.tipoCobranca;
-      if (clienteData.formaPagamento !== undefined) updateData.forma_pagamento = clienteData.formaPagamento;
-      if (clienteData.observacoes !== undefined) updateData.observacoes = clienteData.observacoes;
-      if (clienteData.categoriasHabilitadas !== undefined) updateData.categorias_habilitadas = clienteData.categoriasHabilitadas;
-      if (clienteData.ativo !== undefined) updateData.ativo = clienteData.ativo;
-      if (clienteData.giroMedioSemanal !== undefined) updateData.giro_medio_semanal = clienteData.giroMedioSemanal;
-      if (clienteData.ultimaDataReposicaoEfetiva !== undefined) updateData.ultima_data_reposicao_efetiva = clienteData.ultimaDataReposicaoEfetiva?.toISOString();
-      if (clienteData.statusAgendamento !== undefined) updateData.status_agendamento = clienteData.statusAgendamento;
-      if (clienteData.proximaDataReposicao !== undefined) updateData.proxima_data_reposicao = clienteData.proximaDataReposicao?.toISOString();
+      adicionarCliente: async (cliente) => {
+        set({ loading: true });
+        try {
+          console.log('useClienteStore: Dados do cliente a serem enviados:', cliente);
+          
+          const dadosSupabase = convertClienteToSupabase(cliente);
+          console.log('useClienteStore: Dados convertidos para Supabase:', dadosSupabase);
+          
+          const { data, error } = await supabase
+            .from('clientes')
+            .insert([dadosSupabase])
+            .select()
+            .single();
 
-      const { data, error } = await supabase
-        .from('clientes')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
+          if (error) {
+            console.error('Erro ao adicionar cliente:', error);
+            toast({
+              title: "Erro ao cadastrar cliente",
+              description: `Erro: ${error.message}`,
+              variant: "destructive"
+            });
+            throw error;
+          }
 
-      if (error) throw error;
+          // Salvar as categorias na tabela de relacionamento
+          if (cliente.categoriasHabilitadas && cliente.categoriasHabilitadas.length > 0) {
+            const categoriasRelacao = cliente.categoriasHabilitadas.map(categoriaId => ({
+              cliente_id: data.id,
+              categoria_id: categoriaId
+            }));
 
-      const clienteAtualizado: Cliente = {
-        id: data.id,
-        nome: data.nome || '',
-        cnpjCpf: data.cnpj_cpf || '',
-        enderecoEntrega: data.endereco_entrega || '',
-        contatoNome: data.contato_nome || '',
-        contatoTelefone: data.contato_telefone || '',
-        contatoEmail: data.contato_email || '',
-        quantidadePadrao: data.quantidade_padrao || 0,
-        periodicidadePadrao: data.periodicidade_padrao || 7,
-        statusCliente: data.status_cliente as any || 'Ativo',
-        metaGiroSemanal: data.meta_giro_semanal || 0,
-        categoriaEstabelecimentoId: data.categoria_estabelecimento_id,
-        janelasEntrega: Array.isArray(data.janelas_entrega) ? data.janelas_entrega as any[] : [],
-        instrucoesEntrega: data.instrucoes_entrega || '',
-        tipoLogistica: data.tipo_logistica as any || 'Própria',
-        contabilizarGiroMedio: data.contabilizar_giro_medio ?? true,
-        emiteNotaFiscal: data.emite_nota_fiscal ?? true,
-        tipoCobranca: data.tipo_cobranca as any || 'À vista',
-        formaPagamento: data.forma_pagamento as any || 'Boleto',
-        observacoes: data.observacoes || '',
-        categoriasHabilitadas: Array.isArray(data.categorias_habilitadas) ? data.categorias_habilitadas as number[] : [],
-        ativo: data.ativo ?? true,
-        giroMedioSemanal: data.giro_medio_semanal || 0,
-        ultimaDataReposicaoEfetiva: data.ultima_data_reposicao_efetiva ? new Date(data.ultima_data_reposicao_efetiva) : undefined,
-        statusAgendamento: data.status_agendamento || 'Não Agendado',
-        proximaDataReposicao: data.proxima_data_reposicao ? new Date(data.proxima_data_reposicao) : undefined,
-        dataCadastro: new Date(data.created_at),
-        categoriaId: 1,
-        subcategoriaId: 1
-      };
+            const { error: categoriaError } = await supabase
+              .from('clientes_categorias')
+              .insert(categoriasRelacao);
 
-      set(state => ({
-        clientes: state.clientes.map(cliente =>
-          cliente.id === id ? clienteAtualizado : cliente
-        ),
-        cache: null,
-        loading: false
-      }));
+            if (categoriaError) {
+              console.error('Erro ao salvar categorias do cliente:', categoriaError);
+              // Não impedir o cadastro por conta das categorias
+            }
+          }
 
-      toast.success('Cliente atualizado com sucesso!');
-    } catch (error: any) {
-      console.error('❌ Erro ao editar cliente:', error);
-      set({ error: error.message, loading: false });
-      toast.error('Erro ao editar cliente');
-      throw error;
-    }
-  },
+          const novoCliente = convertSupabaseToCliente(data);
+          set(state => ({
+            clientes: [novoCliente, ...state.clientes]
+          }));
 
-  excluirCliente: async (id: string) => {
-    try {
-      set({ loading: true, error: null });
+          toast({
+            title: "Cliente cadastrado",
+            description: `${cliente.nome} foi cadastrado com sucesso`
+          });
 
-      const { error } = await supabase
-        .from('clientes')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      set(state => ({
-        clientes: state.clientes.filter(cliente => cliente.id !== id),
-        cache: null,
-        loading: false
-      }));
-
-      toast.success('Cliente excluído com sucesso!');
-    } catch (error: any) {
-      console.error('❌ Erro ao excluir cliente:', error);
-      set({ error: error.message, loading: false });
-      toast.error('Erro ao excluir cliente');
-      throw error;
-    }
-  },
-
-  buscarClientes: (filtros: { termo: string; status: string }) => {
-    const { clientes } = get();
-    
-    return clientes.filter(cliente => {
-      const matchTermo = !filtros.termo || 
-        cliente.nome.toLowerCase().includes(filtros.termo.toLowerCase()) ||
-        cliente.cnpjCpf.includes(filtros.termo) ||
-        cliente.contatoTelefone.includes(filtros.termo);
+          return novoCliente;
+        } catch (error) {
+          console.error('Erro ao adicionar cliente:', error);
+          toast({
+            title: "Erro",
+            description: "Erro inesperado ao cadastrar cliente",
+            variant: "destructive"
+          });
+          throw error;
+        } finally {
+          set({ loading: false });
+        }
+      },
       
-      const matchStatus = filtros.status === 'Todos' || cliente.statusCliente === filtros.status;
+      atualizarCliente: async (id, dadosCliente) => {
+        set({ loading: true });
+        try {
+          const clienteExistente = get().clientes.find(c => c.id === id);
+          if (!clienteExistente) {
+            toast({
+              title: "Erro",
+              description: "Cliente não encontrado",
+              variant: "destructive"
+            });
+            return;
+          }
+
+          console.log('useClienteStore: Atualizando cliente com dados:', dadosCliente);
+
+          // Converter dadosCliente para formato Supabase, incluindo todos os campos
+          const dadosSupabase: any = {};
+          
+          // Dados básicos
+          if (dadosCliente.nome !== undefined) dadosSupabase.nome = dadosCliente.nome;
+          if (dadosCliente.cnpjCpf !== undefined) dadosSupabase.cnpj_cpf = dadosCliente.cnpjCpf;
+          if (dadosCliente.enderecoEntrega !== undefined) dadosSupabase.endereco_entrega = dadosCliente.enderecoEntrega;
+          if (dadosCliente.contatoNome !== undefined) dadosSupabase.contato_nome = dadosCliente.contatoNome;
+          if (dadosCliente.contatoTelefone !== undefined) dadosSupabase.contato_telefone = dadosCliente.contatoTelefone;
+          if (dadosCliente.contatoEmail !== undefined) dadosSupabase.contato_email = dadosCliente.contatoEmail;
+          
+          // Configurações comerciais
+          if (dadosCliente.quantidadePadrao !== undefined) dadosSupabase.quantidade_padrao = dadosCliente.quantidadePadrao;
+          if (dadosCliente.periodicidadePadrao !== undefined) dadosSupabase.periodicidade_padrao = dadosCliente.periodicidadePadrao;
+          if (dadosCliente.statusCliente !== undefined) dadosSupabase.status_cliente = dadosCliente.statusCliente;
+          if (dadosCliente.metaGiroSemanal !== undefined) dadosSupabase.meta_giro_semanal = dadosCliente.metaGiroSemanal;
+          
+          // Entrega e logística
+          if (dadosCliente.janelasEntrega !== undefined) dadosSupabase.janelas_entrega = dadosCliente.janelasEntrega;
+          if (dadosCliente.representanteId !== undefined) dadosSupabase.representante_id = dadosCliente.representanteId;
+          if (dadosCliente.rotaEntregaId !== undefined) dadosSupabase.rota_entrega_id = dadosCliente.rotaEntregaId;
+          if (dadosCliente.categoriaEstabelecimentoId !== undefined) dadosSupabase.categoria_estabelecimento_id = dadosCliente.categoriaEstabelecimentoId;
+          if (dadosCliente.instrucoesEntrega !== undefined) dadosSupabase.instrucoes_entrega = dadosCliente.instrucoesEntrega;
+          if (dadosCliente.tipoLogistica !== undefined) dadosSupabase.tipo_logistica = dadosCliente.tipoLogistica;
+          
+          // Configurações financeiras e fiscais
+          if (dadosCliente.contabilizarGiroMedio !== undefined) dadosSupabase.contabilizar_giro_medio = dadosCliente.contabilizarGiroMedio;
+          if (dadosCliente.emiteNotaFiscal !== undefined) dadosSupabase.emite_nota_fiscal = dadosCliente.emiteNotaFiscal;
+          if (dadosCliente.tipoCobranca !== undefined) dadosSupabase.tipo_cobranca = dadosCliente.tipoCobranca;
+          if (dadosCliente.formaPagamento !== undefined) dadosSupabase.forma_pagamento = dadosCliente.formaPagamento;
+          
+          // Observações e categorias
+          if (dadosCliente.observacoes !== undefined) dadosSupabase.observacoes = dadosCliente.observacoes;
+          if (dadosCliente.categoriasHabilitadas !== undefined) dadosSupabase.categorias_habilitadas = dadosCliente.categoriasHabilitadas;
+
+          console.log('useClienteStore: Dados convertidos para Supabase:', dadosSupabase);
+
+          const { error } = await supabase
+            .from('clientes')
+            .update(dadosSupabase)
+            .eq('id', id);
+
+          if (error) {
+            console.error('Erro ao atualizar cliente:', error);
+            toast({
+              title: "Erro",
+              description: "Não foi possível atualizar o cliente",
+              variant: "destructive"
+            });
+            return;
+          }
+
+          // Se as categorias foram atualizadas, salvar na tabela de relacionamento
+          if (dadosCliente.categoriasHabilitadas !== undefined) {
+            console.log('useClienteStore: Atualizando categorias na tabela de relacionamento:', dadosCliente.categoriasHabilitadas);
+            
+            // Remover categorias existentes
+            const { error: deleteError } = await supabase
+              .from('clientes_categorias')
+              .delete()
+              .eq('cliente_id', id);
+
+            if (deleteError) {
+              console.error('Erro ao remover categorias existentes:', deleteError);
+            }
+
+            // Inserir novas categorias
+            if (dadosCliente.categoriasHabilitadas.length > 0) {
+              const novasRelacoes = dadosCliente.categoriasHabilitadas.map(categoriaId => ({
+                cliente_id: id,
+                categoria_id: categoriaId
+              }));
+
+              const { error: insertError } = await supabase
+                .from('clientes_categorias')
+                .insert(novasRelacoes);
+
+              if (insertError) {
+                console.error('Erro ao inserir novas categorias:', insertError);
+              }
+            }
+          }
+
+          set(state => ({
+            clientes: state.clientes.map(cliente => 
+              cliente.id === id ? { ...cliente, ...dadosCliente } : cliente
+            ),
+            clienteAtual: state.clienteAtual?.id === id ? { ...state.clienteAtual, ...dadosCliente } : state.clienteAtual
+          }));
+
+          toast({
+            title: "Cliente atualizado",
+            description: "Dados do cliente foram atualizados com sucesso"
+          });
+        } catch (error) {
+          console.error('Erro ao atualizar cliente:', error);
+          toast({
+            title: "Erro",
+            description: "Erro inesperado ao atualizar cliente",
+            variant: "destructive"
+          });
+        } finally {
+          set({ loading: false });
+        }
+      },
       
-      return matchTermo && matchStatus;
-    });
-  },
+      removerCliente: async (id) => {
+        const cliente = get().clientes.find(c => c.id === id);
+        if (!cliente) return;
 
-  getClientePorId: (id: string) => {
-    return get().clientes.find(cliente => cliente.id === id);
-  },
+        set({ loading: true });
+        try {
+          const { error } = await supabase
+            .from('clientes')
+            .delete()
+            .eq('id', id);
 
-  clearCache: () => {
-    set({ cache: null });
-  },
-}));
+          if (error) {
+            console.error('Erro ao remover cliente:', error);
+            toast({
+              title: "Erro",
+              description: "Não foi possível remover o cliente",
+              variant: "destructive"
+            });
+            return;
+          }
+
+          set(state => ({
+            clientes: state.clientes.filter(cliente => cliente.id !== id),
+            clienteAtual: state.clienteAtual?.id === id ? null : state.clienteAtual
+          }));
+
+          toast({
+            title: "Cliente removido",
+            description: `${cliente.nome} foi removido com sucesso`
+          });
+        } catch (error) {
+          console.error('Erro ao remover cliente:', error);
+          toast({
+            title: "Erro",
+            description: "Erro inesperado ao remover cliente",
+            variant: "destructive"
+          });
+        } finally {
+          set({ loading: false });
+        }
+      },
+      
+      selecionarCliente: (id) => {
+        if (id === null) {
+          set({ clienteAtual: null });
+          return;
+        }
+        
+        const cliente = get().clientes.find(c => c.id === id);
+        if (cliente) {
+          console.log('useClienteStore: Cliente selecionado:', cliente.nome, 'Status agendamento:', cliente.statusAgendamento, 'Próxima data:', cliente.proximaDataReposicao);
+        }
+        set({ clienteAtual: cliente || null });
+      },
+      
+      setFiltroTermo: (termo) => {
+        set(state => ({
+          filtros: {
+            ...state.filtros,
+            termo
+          }
+        }));
+      },
+      
+      setFiltroStatus: (status) => {
+        set(state => ({
+          filtros: {
+            ...state.filtros,
+            status
+          }
+        }));
+      },
+      
+      setMetaGiro: async (idCliente, metaSemanal) => {
+        await get().atualizarCliente(idCliente, { metaGiroSemanal: metaSemanal });
+      },
+      
+      getClientesFiltrados: () => {
+        const { clientes, filtros } = get();
+        
+        return clientes.filter(cliente => {
+          // Filtro por termo
+          const termoMatch = filtros.termo === '' || 
+            cliente.nome.toLowerCase().includes(filtros.termo.toLowerCase()) ||
+            (cliente.cnpjCpf && cliente.cnpjCpf.includes(filtros.termo));
+          
+          // Filtro por status
+          const statusMatch = filtros.status === 'Todos' || cliente.statusCliente === filtros.status;
+          
+          return termoMatch && statusMatch;
+        });
+      },
+      
+      getClientePorId: (id) => {
+        return get().clientes.find(c => c.id === id);
+      }
+    }),
+    { name: 'cliente-store' }
+  )
+);
+
+// Helper para calcular giro semanal
+function calcularGiroSemanal(qtdPadrao: number, periodicidadeDias: number): number {
+  if (periodicidadeDias === 3) {
+    return qtdPadrao * 3;
+  }
+  
+  const periodicidadeSemanas = periodicidadeDias / 7;
+  return Math.round(qtdPadrao / periodicidadeSemanas);
+}

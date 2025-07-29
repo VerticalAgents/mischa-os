@@ -16,7 +16,7 @@ interface ClienteExportacao extends Cliente {
   statusConfirmacao: string;
   dataReposicao: Date;
   tipoPedido?: string;
-  observacoes: string;
+  observacoes?: string;
 }
 
 interface ExportacaoButtonsProps {

@@ -1,138 +1,141 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useClienteStore } from "@/hooks/useClienteStore";
-import ClientesFilters from "./ClientesFilters";
+import { useColumnVisibility } from "@/hooks/useColumnVisibility";
+import { useClienteSelection } from "@/hooks/useClienteSelection";
+import ClienteFormDialog from "./ClienteFormDialog";
+import ClientesFilters, { ColumnOption } from "./ClientesFilters";
 import ClientesTable from "./ClientesTable";
 import ClientesBulkActions from "./ClientesBulkActions";
-import ClienteFormDialog from "./ClienteFormDialog";
-import { StatusCliente } from "@/types";
-
-interface FiltrosCliente {
-  termo: string;
-  status: StatusCliente | "Todos";
-}
+import DeleteClienteDialog from "./DeleteClienteDialog";
 
 interface ClientesContentProps {
-  onRefresh?: () => void;
-  isFormOpen?: boolean;
-  setIsFormOpen?: (open: boolean) => void;
+  onRefresh: () => void;
 }
 
-const defaultColumnOptions = [
-  { id: 'nome', label: 'Nome', canToggle: false },
-  { id: 'cnpjCpf', label: 'CNPJ/CPF', canToggle: true },
-  { id: 'statusCliente', label: 'Status', canToggle: true },
-  { id: 'contatoTelefone', label: 'Telefone', canToggle: true },
-  { id: 'enderecoEntrega', label: 'Endereço', canToggle: true },
-  { id: 'acoes', label: 'Ações', canToggle: false }
-];
+export default function ClientesContent({ onRefresh }: ClientesContentProps) {
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [clienteToDelete, setClienteToDelete] = useState<string | null>(null);
+  
+  const {
+    filtros,
+    loading,
+    setFiltroTermo,
+    setFiltroStatus,
+    getClientesFiltrados,
+    selecionarCliente,
+    removerCliente,
+    getClientePorId
+  } = useClienteStore();
 
-export default function ClientesContent({ 
-  onRefresh, 
-  isFormOpen = false, 
-  setIsFormOpen 
-}: ClientesContentProps) {
-  const { carregarClientes, buscarClientes, loading, selecionarCliente } = useClienteStore();
-  const [clientesSelecionados, setClientesSelecionados] = useState<string[]>([]);
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [filtros, setFiltros] = useState<FiltrosCliente>({
-    termo: "",
-    status: "Todos"
-  });
-  const [visibleColumns, setVisibleColumns] = useState<string[]>([
-    'nome', 'cnpjCpf', 'statusCliente', 'contatoTelefone', 'acoes'
-  ]);
+  const {
+    isSelectionMode,
+    selectedClienteIds,
+    toggleSelectionMode,
+    toggleClienteSelection,
+    handleSelectAllClientes,
+    clearSelection
+  } = useClienteSelection();
 
-  const clientesFiltrados = buscarClientes(filtros);
+  // Available columns for the table
+  const columnOptions: ColumnOption[] = [
+    { id: "nome", label: "Nome", canToggle: false },
+    { id: "giroSemanal", label: "Giro Semanal", canToggle: false },
+    { id: "cnpjCpf", label: "CNPJ/CPF", canToggle: true },
+    { id: "enderecoEntrega", label: "Endereço", canToggle: true },
+    { id: "contato", label: "Contato", canToggle: true },
+    { id: "quantidadePadrao", label: "Qtde. Padrão", canToggle: true },
+    { id: "periodicidade", label: "Period.", canToggle: true },
+    { id: "status", label: "Status", canToggle: true },
+    { id: "statusAgendamento", label: "Status Agendamento", canToggle: true },
+    { id: "proximaDataReposicao", label: "Próx. Reposição", canToggle: true },
+    { id: "acoes", label: "Ações", canToggle: false }
+  ];
 
-  useEffect(() => {
-    carregarClientes();
-  }, [carregarClientes]);
+  const defaultColumns = [
+    "nome", "giroSemanal", "cnpjCpf", "enderecoEntrega", "contato", "quantidadePadrao", 
+    "periodicidade", "status", "statusAgendamento", "proximaDataReposicao", "acoes"
+  ];
+  
+  const { visibleColumns, setVisibleColumns } = useColumnVisibility(
+    'clientes-visible-columns',
+    defaultColumns
+  );
 
-  const handleToggleClienteSelection = (clienteId: string) => {
-    setClientesSelecionados(prev =>
-      prev.includes(clienteId)
-        ? prev.filter(id => id !== clienteId)
-        : [...prev, clienteId]
-    );
+  const clientes = getClientesFiltrados();
+  
+  const handleFormClose = () => {
+    setIsFormOpen(false);
+    onRefresh();
+  };
+  
+  const handleSelectCliente = (id: string) => {
+    selecionarCliente(id);
   };
 
-  const handleSelectAllClientes = () => {
-    if (clientesSelecionados.length === clientesFiltrados.length) {
-      setClientesSelecionados([]);
-    } else {
-      setClientesSelecionados(clientesFiltrados.map(cliente => cliente.id));
+  const handleDeleteCliente = (id: string) => {
+    setClienteToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteCliente = async () => {
+    if (clienteToDelete) {
+      await removerCliente(clienteToDelete);
+      setDeleteDialogOpen(false);
+      setClienteToDelete(null);
+      onRefresh();
     }
   };
-
-  const handleClearSelection = () => {
-    setClientesSelecionados([]);
-    setIsSelectionMode(false);
-  };
-
-  const handleToggleSelectionMode = () => {
-    setIsSelectionMode(!isSelectionMode);
-    if (isSelectionMode) {
-      setClientesSelecionados([]);
-    }
-  };
-
-  const handleFormSuccess = () => {
-    onRefresh?.();
-    if (setIsFormOpen) {
-      setIsFormOpen(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p className="text-muted-foreground">Carregando clientes...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="space-y-6">
-      <ClientesFilters 
-        filtros={filtros}
-        setFiltroTermo={(termo) => setFiltros(prev => ({ ...prev, termo }))}
-        setFiltroStatus={(status) => setFiltros(prev => ({ ...prev, status }))}
-        visibleColumns={visibleColumns}
-        setVisibleColumns={setVisibleColumns}
-        columnOptions={defaultColumnOptions}
-      />
-      
-      {clientesSelecionados.length > 0 && (
-        <ClientesBulkActions 
-          selectedClienteIds={clientesSelecionados}
-          onClearSelection={handleClearSelection}
-          onToggleSelectionMode={handleToggleSelectionMode}
-          isSelectionMode={isSelectionMode}
-        />
-      )}
-      
-      <ClientesTable
-        clientes={clientesFiltrados}
-        visibleColumns={visibleColumns}
-        columnOptions={defaultColumnOptions}
-        onSelectCliente={selecionarCliente}
-        selectedClientes={clientesSelecionados}
-        onToggleClienteSelection={handleToggleClienteSelection}
-        onSelectAllClientes={handleSelectAllClientes}
-        showSelectionControls={isSelectionMode}
+    <>
+      <ClientesBulkActions 
+        selectedClienteIds={selectedClienteIds}
+        onClearSelection={clearSelection}
+        onToggleSelectionMode={toggleSelectionMode}
+        isSelectionMode={isSelectionMode}
       />
 
-      {isFormOpen && setIsFormOpen && (
-        <ClienteFormDialog
-          open={isFormOpen}
-          onOpenChange={setIsFormOpen}
-          onSuccess={handleFormSuccess}
+      <ClientesFilters 
+        filtros={filtros}
+        setFiltroTermo={setFiltroTermo}
+        setFiltroStatus={setFiltroStatus}
+        visibleColumns={visibleColumns}
+        setVisibleColumns={setVisibleColumns}
+        columnOptions={columnOptions}
+      />
+
+      {loading ? (
+        <div className="flex justify-center items-center py-8">
+          <div className="text-muted-foreground">Carregando clientes...</div>
+        </div>
+      ) : (
+        <ClientesTable 
+          clientes={clientes}
+          visibleColumns={visibleColumns}
+          columnOptions={columnOptions}
+          onSelectCliente={handleSelectCliente}
+          onDeleteCliente={handleDeleteCliente}
+          selectedClientes={selectedClienteIds}
+          onToggleClienteSelection={toggleClienteSelection}
+          onSelectAllClientes={() => handleSelectAllClientes(clientes)}
+          showSelectionControls={isSelectionMode}
         />
       )}
-    </div>
+
+      <ClienteFormDialog 
+        open={isFormOpen} 
+        onOpenChange={setIsFormOpen}
+        onClienteUpdate={onRefresh}
+      />
+
+      <DeleteClienteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        cliente={clienteToDelete ? getClientePorId(clienteToDelete) : null}
+        onConfirm={confirmDeleteCliente}
+      />
+    </>
   );
 }

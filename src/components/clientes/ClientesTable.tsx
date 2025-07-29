@@ -1,3 +1,4 @@
+
 import { ExternalLink, Calendar, ArrowUp, ArrowDown, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -33,7 +34,7 @@ type SortConfig = {
 export default function ClientesTable({
   clientes,
   visibleColumns,
-  columnOptions = [],
+  columnOptions,
   onSelectCliente,
   onDeleteCliente,
   selectedClientes = [],
@@ -189,8 +190,7 @@ export default function ClientesTable({
                 </TableHead>
               )}
               {columnOrder.map(columnId => {
-                // Safe find with fallback
-                const column = columnOptions ? columnOptions.find(col => col.id === columnId) : null;
+                const column = columnOptions.find(col => col.id === columnId);
                 if (!column || !visibleColumns.includes(columnId)) return null;
                 
                 return (
@@ -282,12 +282,6 @@ export default function ClientesTable({
                               )}
                             </TableCell>
                           );
-                        case "contatoTelefone":
-                          return (
-                            <TableCell key={`${cliente.id}-${columnId}`}>
-                              {cliente.contatoTelefone || "-"}
-                            </TableCell>
-                          );
                         case "quantidadePadrao":
                           return (
                             <TableCell key={`${cliente.id}-${columnId}`}>
@@ -314,7 +308,6 @@ export default function ClientesTable({
                               </Badge>
                             </TableCell>
                           );
-                        case "statusCliente":
                         case "status":
                           return (
                             <TableCell key={`${cliente.id}-${columnId}`}>
@@ -326,8 +319,8 @@ export default function ClientesTable({
                             <TableCell key={`${cliente.id}-${columnId}`}>
                               <Badge variant={
                                 cliente.statusAgendamento === "Agendado" ? "default" : 
-                                cliente.statusAgendamento === "Confirmado" ? "default" : 
-                                cliente.statusAgendamento === "Não Agendado" ? "outline" : "outline"
+                                cliente.statusAgendamento === "Previsto" ? "secondary" : 
+                                cliente.statusAgendamento === "Agendar" ? "outline" : "outline"
                               }>
                                 {cliente.statusAgendamento || "Não Agendado"}
                               </Badge>

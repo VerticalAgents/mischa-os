@@ -7,7 +7,6 @@ import ClientesContent from "@/components/clientes/ClientesContent";
 
 export default function Clientes() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [isFormOpen, setIsFormOpen] = useState(false);
   
   const {
     carregarClientes,
@@ -35,7 +34,7 @@ export default function Clientes() {
   }, [selecionarCliente, handleRefresh]);
 
   const handleOpenForm = useCallback(() => {
-    setIsFormOpen(true);
+    // This will be handled by the ClientesContent component
   }, []);
 
   // Render client details view when a client is selected
@@ -59,11 +58,7 @@ export default function Clientes() {
         }} 
       />
 
-      <ClientesContent 
-        onRefresh={handleRefresh} 
-        isFormOpen={isFormOpen}
-        setIsFormOpen={setIsFormOpen}
-      />
+      <ClientesContent onRefresh={handleRefresh} />
     </>
   );
 }

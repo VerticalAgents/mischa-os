@@ -16,8 +16,6 @@ interface AuthContextType {
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
-  refreshSession: () => Promise<boolean>;
-  isSessionValid: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -136,94 +134,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
-  const [refreshTimer, setRefreshTimer] = useState<NodeJS.Timeout | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Check if session is valid (not expired)
-  const isSessionValid = (): boolean => {
-    if (!session) return false;
-    
-    const now = Math.floor(Date.now() / 1000);
-    const expiresAt = session.expires_at || 0;
-    
-    // Consider session invalid if it expires in less than 5 minutes
-    return expiresAt > (now + 300);
-  };
-
-  // Refresh session function
-  const refreshSession = async (): Promise<boolean> => {
-    try {
-      console.log('Refreshing session...');
-      const { data, error } = await supabase.auth.refreshSession();
-      
-      if (error) {
-        console.error('Session refresh failed:', error);
-        return false;
-      }
-      
-      if (data.session) {
-        setSession(data.session);
-        setUser(data.session.user);
-        console.log('Session refreshed successfully');
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Session refresh error:', error);
-      return false;
-    }
-  };
-
-  // Setup automatic token refresh
-  const setupTokenRefresh = (session: Session) => {
-    if (refreshTimer) {
-      clearTimeout(refreshTimer);
-    }
-
-    if (!session.expires_at) return;
-
-    const now = Math.floor(Date.now() / 1000);
-    const expiresAt = session.expires_at;
-    
-    // Refresh 5 minutes before expiration
-    const refreshTime = (expiresAt - now - 300) * 1000;
-    
-    if (refreshTime > 0) {
-      const timer = setTimeout(async () => {
-        const refreshed = await refreshSession();
-        if (!refreshed) {
-          // If refresh fails, redirect to login
-          navigate('/login');
-          toast.error('Sessão expirada. Faça login novamente.');
-        }
-      }, refreshTime);
-      
-      setRefreshTimer(timer);
-    }
-  };
 
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
-        
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-
-        // Setup automatic token refresh for new sessions
-        if (session && event === 'SIGNED_IN') {
-          setupTokenRefresh(session);
-        }
-
-        // Clear refresh timer on sign out
-        if (event === 'SIGNED_OUT' && refreshTimer) {
-          clearTimeout(refreshTimer);
-          setRefreshTimer(null);
-        }
 
         // Only process events after initialization
         if (!isInitialized) {
@@ -270,11 +190,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           navigate('/login');
           toast.info("Você foi desconectado");
         }
-
-        if (event === 'TOKEN_REFRESHED' && session) {
-          console.log('Token refreshed automatically');
-          setupTokenRefresh(session);
-        }
       }
     );
 
@@ -284,37 +199,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(session?.user ?? null);
       setLoading(false);
       setIsInitialized(true);
-      
-      // Setup token refresh for existing session
-      if (session) {
-        setupTokenRefresh(session);
-      }
     });
 
-    return () => {
-      subscription.unsubscribe();
-      if (refreshTimer) {
-        clearTimeout(refreshTimer);
-      }
-    };
-  }, [navigate, isInitialized, user, refreshTimer]);
-
-  // Retry wrapper for auth operations
-  const retryOperation = async <T,>(
-    operation: () => Promise<T>,
-    maxRetries: number = 3,
-    delay: number = 1000
-  ): Promise<T> => {
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        return await operation();
-      } catch (error) {
-        if (i === maxRetries - 1) throw error;
-        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
-      }
-    }
-    throw new Error('Max retries exceeded');
-  };
+    return () => subscription.unsubscribe();
+  }, [navigate, isInitialized, user]);
 
   const signInWithEmail = async (email: string, password: string): Promise<void> => {
     try {
@@ -343,28 +231,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return;
       }
 
-      // Retry login operation
-      await retryOperation(async () => {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: emailValidation.sanitizedValue!,
-          password
-        });
-
-        if (error) {
-          // Monitor failed attempt
-          await securityMonitoring.monitorAuthAttempt(emailValidation.sanitizedValue!, false, 'login');
-          
-          if (error.message.includes('Invalid login credentials')) {
-            toast.error("Email ou senha incorretos");
-          } else {
-            toast.error("Erro ao fazer login: " + error.message);
-          }
-          throw error;
-        }
-        
-        // Monitor successful attempt
-        await securityMonitoring.monitorAuthAttempt(emailValidation.sanitizedValue!, true, 'login');
+      const { error } = await supabase.auth.signInWithPassword({
+        email: emailValidation.sanitizedValue!,
+        password
       });
+
+      if (error) {
+        // Monitor failed attempt
+        await securityMonitoring.monitorAuthAttempt(emailValidation.sanitizedValue!, false, 'login');
+        
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error("Email ou senha incorretos");
+        } else {
+          toast.error("Erro ao fazer login: " + error.message);
+        }
+        throw error;
+      }
+      
+      // Monitor successful attempt
+      await securityMonitoring.monitorAuthAttempt(emailValidation.sanitizedValue!, true, 'login');
       
     } catch (error) {
       if (error instanceof Error && !error.message.includes('Invalid login credentials')) {
@@ -471,13 +356,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const logout = async () => {
     try {
       setLoading(true);
-      
-      // Clear refresh timer
-      if (refreshTimer) {
-        clearTimeout(refreshTimer);
-        setRefreshTimer(null);
-      }
-      
       const { error } = await supabase.auth.signOut();
       if (error) {
         toast.error("Erro ao fazer logout: " + error.message);
@@ -500,9 +378,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       signInWithEmail,
       signUpWithEmail,
       logout, 
-      loading,
-      refreshSession,
-      isSessionValid
+      loading 
     }}>
       {children}
     </AuthContext.Provider>

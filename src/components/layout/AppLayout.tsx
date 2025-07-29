@@ -1,7 +1,6 @@
 
 import { ReactNode, useState, useEffect } from "react";
 import { useThemeStore } from "@/lib/theme";
-import { useSupabaseInterceptor } from "@/hooks/useSupabaseInterceptor";
 import MobileHeader from "@/components/layout/MobileHeader";
 import MobileMenuOverlay from "@/components/layout/MobileMenuOverlay";
 import { SessionNavBar } from "@/components/ui/sidebar-next";
@@ -14,9 +13,6 @@ type AppLayoutProps = {
 export default function AppLayout({ children }: AppLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isDark } = useThemeStore();
-  
-  // Initialize Supabase interceptor
-  useSupabaseInterceptor();
 
   // Apply theme when the isDark state changes
   useEffect(() => {

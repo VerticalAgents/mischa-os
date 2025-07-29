@@ -1,159 +1,203 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight, Users, TrendingUp, ShoppingBag, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useClienteStore } from "@/hooks/useClienteStore";
+import StatusCard from "@/components/dashboard/StatusCard";
+import StatsPieChart from "@/components/dashboard/StatsPieChart";
+import StatsBarChart from "@/components/dashboard/StatsBarChart";
+import StatsTable from "@/components/dashboard/StatsTable";
+import ConfirmacaoReposicaoWidget from "@/components/dashboard/ConfirmacaoReposicaoWidget";
+import { Cliente, DashboardData } from "@/types";
+import { DREData } from "@/types/projections";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
-import { useEffect } from "react";
-import { Calendar, Package, AlertTriangle, TrendingUp } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
-export default function OperationalSummary() {
-  const { clientes, carregarClientes, getClientePorId } = useClienteStore();
-  const { pedidos, carregarPedidos, getPedidosFuturos } = usePedidoStore();
+interface OperationalSummaryProps {
+  dashboardData: DashboardData;
+  baseDRE: DREData | null;
+  clientes: Cliente[];
+}
 
-  useEffect(() => {
-    carregarClientes();
-    carregarPedidos();
-  }, [carregarClientes, carregarPedidos]);
-
-  // Calcular estatísticas
-  const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo').length;
-  const clientesInAtivos = clientes.filter(c => c.statusCliente === 'Inativo').length;
-  const pedidosPendentes = pedidos.filter(p => p.statusPedido === 'Pendente').length;
-  const pedidosFuturos = getPedidosFuturos();
-
-  // Próximas entregas (próximos 7 dias)
-  const hoje = new Date();
-  const proximasSemana = new Date();
-  proximasSemana.setDate(hoje.getDate() + 7);
+export default function OperationalSummary({ 
+  dashboardData, 
+  baseDRE,
+  clientes 
+}: OperationalSummaryProps) {
+  const [faturamentoMensal, setFaturamentoMensal] = useState(0);
+  const [ticketMedio, setTicketMedio] = useState(0);
   
-  const proximasEntregas = pedidosFuturos
-    .filter(p => p.dataPrevistaEntrega <= proximasSemana)
+  // Calcular ticket médio e faturamento
+  useEffect(() => {
+    if (baseDRE && dashboardData.contadoresStatus.ativos > 0) {
+      const faturamento = baseDRE.totalRevenue;
+      setFaturamentoMensal(faturamento);
+      setTicketMedio(faturamento / dashboardData.contadoresStatus.ativos);
+    }
+  }, [baseDRE, dashboardData]);
+  
+  // Calcular % produção realizada (dummy data para exemplo - deve ser integrado com PCP)
+  const producaoPlanejada = 1000;
+  const producaoRealizada = 850;
+  const percentualProducao = (producaoRealizada / producaoPlanejada) * 100;
+  
+  const pedidosFuturos = usePedidoStore.getState().getPedidosFuturos().slice(0, 5);
+  
+  const giroSemanalPorPDV = dashboardData.giroMedioSemanalPorPDV
+    .sort((a, b) => b.giroSemanal - a.giroSemanal)
     .slice(0, 5);
-
-  // Alertas críticos
-  const alertasCriticos = [
-    ...pedidos.filter(p => p.statusPedido === 'Pendente' && p.dataPrevistaEntrega < hoje),
-    ...clientes.filter(c => c.statusCliente === 'Ativo' && c.proximaDataReposicao && c.proximaDataReposicao < hoje)
+    
+  // Prepare data for pie chart
+  const dadosGraficoPDVsPorStatus = [
+    { name: 'Ativos', value: dashboardData.contadoresStatus.ativos },
+    { name: 'Em análise', value: dashboardData.contadoresStatus.emAnalise },
+    { name: 'A ativar', value: dashboardData.contadoresStatus.aAtivar },
+    { name: 'Standby', value: dashboardData.contadoresStatus.standby },
+    { name: 'Inativos', value: dashboardData.contadoresStatus.inativos }
   ];
-
+    
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {/* Estatísticas Gerais */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{clientesAtivos}</div>
-          <p className="text-xs text-muted-foreground">
-            {clientesInAtivos} inativos
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Pedidos Pendentes</CardTitle>
-          <Package className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{pedidosPendentes}</div>
-          <p className="text-xs text-muted-foreground">
-            Total: {pedidos.length} pedidos
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Próximas Entregas</CardTitle>
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{proximasEntregas.length}</div>
-          <p className="text-xs text-muted-foreground">
-            Próximos 7 dias
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Alertas Críticos</CardTitle>
-          <AlertTriangle className="h-4 w-4 text-red-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-red-500">{alertasCriticos.length}</div>
-          <p className="text-xs text-muted-foreground">
-            Requer atenção
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Próximas Entregas Detalhadas */}
-      <Card className="md:col-span-2">
-        <CardHeader>
-          <CardTitle>Próximas Entregas</CardTitle>
-          <CardDescription>Entregas programadas para os próximos 7 dias</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {proximasEntregas.length > 0 ? (
-              proximasEntregas.map((pedido) => {
-                const cliente = getClientePorId(pedido.clienteId);
-                return (
-                  <div key={pedido.id} className="flex items-center justify-between p-2 border rounded">
-                    <div>
-                      <p className="font-medium">{cliente?.nome || 'Cliente não encontrado'}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {format(pedido.dataPrevistaEntrega, 'dd/MM/yyyy', { locale: ptBR })}
-                      </p>
-                    </div>
-                    <Badge variant={pedido.statusPedido === 'Pendente' ? 'default' : 'secondary'}>
-                      {pedido.statusPedido}
-                    </Badge>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-muted-foreground">Nenhuma entrega programada</p>
-            )}
+    <div className="space-y-6">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <StatusCard
+          title="Faturamento Mensal"
+          value={`R$ ${faturamentoMensal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`}
+          icon={<ShoppingBag className="h-5 w-5" />}
+          description="Faturamento previsto (DRE)"
+          trend={{ value: 3.2, isPositive: true }}
+        />
+        
+        <StatusCard
+          title="PDVs Ativos"
+          value={dashboardData.contadoresStatus.ativos}
+          icon={<Users className="h-5 w-5" />}
+          description="Total de pontos de venda ativos"
+        />
+        
+        <StatusCard
+          title="Produção Realizada"
+          value={`${percentualProducao.toFixed(1)}%`}
+          icon={<TrendingUp className="h-5 w-5" />}
+          description="Vs planejamento mensal"
+          trend={{ value: percentualProducao - 95, isPositive: percentualProducao >= 95 }}
+        />
+        
+        <StatusCard
+          title="Ticket Médio"
+          value={`R$ ${ticketMedio.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`}
+          icon={<Calendar className="h-5 w-5" />}
+          description="Por PDV ativo"
+        />
+      </div>
+      
+      <div className="grid gap-6 md:grid-cols-5">
+        <div className="md:col-span-2">
+          <div className="flex flex-col">
+            <StatsPieChart 
+              title="Distribuição de PDVs por Status"
+              description="Visão geral dos pontos de venda por status"
+              data={dadosGraficoPDVsPorStatus}
+              colors={['#4ade80', '#60a5fa', '#facc15', '#c084fc', '#f87171']}
+            />
+            <div className="flex justify-end mt-2">
+              <Button variant="ghost" asChild className="text-xs">
+                <Link to="/clientes" className="flex items-center">
+                  Ver detalhes <ArrowRight className="ml-1 h-3 w-3" />
+                </Link>
+              </Button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Alertas Críticos Detalhados */}
-      <Card className="md:col-span-2">
-        <CardHeader>
-          <CardTitle>Alertas Críticos</CardTitle>
-          <CardDescription>Itens que requerem atenção imediata</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {alertasCriticos.length > 0 ? (
-              alertasCriticos.slice(0, 5).map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-2 border rounded border-red-200">
-                  <div>
-                    <p className="font-medium">
-                      {'nome' in item ? item.nome : `Pedido ${item.id?.substring(0, 8)}`}
-                    </p>
-                    <p className="text-sm text-red-600">
-                      {'statusPedido' in item ? 'Pedido em atraso' : 'Reposição em atraso'}
-                    </p>
-                  </div>
-                  <Badge variant="destructive">Crítico</Badge>
-                </div>
-              ))
-            ) : (
-              <p className="text-muted-foreground">Nenhum alerta crítico</p>
-            )}
+        </div>
+        
+        <div className="md:col-span-3">
+          <div className="flex flex-col">
+            <StatsBarChart 
+              title="Top 5 PDVs por Giro Semanal"
+              description="Maiores volumes de venda por semana"
+              data={giroSemanalPorPDV.map(pdv => ({
+                name: pdv.nomeCliente,
+                value: Math.round(pdv.giroSemanal)
+              }))}
+              bars={[
+                { dataKey: 'value', name: 'Brownies/Semana', color: '#8b5cf6' }
+              ]}
+            />
+            <div className="flex justify-end mt-2">
+              <Button variant="ghost" asChild className="text-xs">
+                <Link to="/projecoes" className="flex items-center">
+                  Ver projeções <ArrowRight className="ml-1 h-3 w-3" />
+                </Link>
+              </Button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+      
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Insert the new ConfirmacaoReposicaoWidget here */}
+        <ConfirmacaoReposicaoWidget />
+        
+        <div className="flex flex-col">
+          <StatsTable 
+            title="Próximas Entregas"
+            description="Pedidos agendados para os próximos dias"
+            data={pedidosFuturos}
+            columns={[
+              {
+                header: "Cliente",
+                accessorKey: (item) => item.cliente?.nome
+              },
+              {
+                header: "Data Prevista",
+                accessorKey: (item) => new Date(item.dataPrevistaEntrega).toLocaleDateString()
+              },
+              {
+                header: "Qtde.",
+                accessorKey: "totalPedidoUnidades"
+              }
+            ]}
+          />
+          <div className="flex justify-end mt-2">
+            <Button variant="ghost" asChild className="text-xs">
+              <Link to="/agendamento" className="flex items-center">
+                Ver agendamentos <ArrowRight className="ml-1 h-3 w-3" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      <div className="grid gap-6 md:grid-cols-1">
+        <div className="flex flex-col">
+          <StatsTable 
+            title="Top PDVs por Volume"
+            description="Pontos de venda com maior giro semanal"
+            data={giroSemanalPorPDV}
+            columns={[
+              {
+                header: "Cliente",
+                accessorKey: "nomeCliente"
+              },
+              {
+                header: "Giro Semanal",
+                accessorKey: (item) => Math.round(item.giroSemanal).toLocaleString(),
+                cell: (item) => (
+                  <div className="flex items-center">
+                    <span>{Math.round(item.giroSemanal).toLocaleString()}</span>
+                    <ArrowRight className="h-4 w-4 text-green-500 ml-2" />
+                  </div>
+                )
+              }
+            ]}
+          />
+          <div className="flex justify-end mt-2">
+            <Button variant="ghost" asChild className="text-xs">
+              <Link to="/clientes" className="flex items-center">
+                Ver todos clientes <ArrowRight className="ml-1 h-3 w-3" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

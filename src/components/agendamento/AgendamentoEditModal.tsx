@@ -46,7 +46,7 @@ export default function AgendamentoEditModal({
 }: AgendamentoEditModalProps) {
   const [dataReposicao, setDataReposicao] = useState<Date>();
   const [statusAgendamento, setStatusAgendamento] = useState<"Agendar" | "Previsto" | "Agendado">("Previsto");
-  const [tipoPedido, setTipoPedido] = useState<"Padrão" | "Alterado">("Padrão");
+  const [tipoPedido, setTipoPedido] = useState<TipoPedidoAgendamento>("Padrão");
   const [quantidadeTotal, setQuantidadeTotal] = useState<number>(0);
   const [observacoes, setObservacoes] = useState<string>("");
   const [itensPersonalizados, setItensPersonalizados] = useState<ItemPedidoCustomizado[]>([]);
@@ -63,8 +63,8 @@ export default function AgendamentoEditModal({
         
         setDataReposicao(agendamento.dataReposicao);
         setStatusAgendamento(agendamento.statusAgendamento);
-        const validTipoPedido = agendamento.pedido?.tipoPedido === "Único" ? "Padrão" : (agendamento.pedido?.tipoPedido === "Alterado" ? "Alterado" : "Padrão");
-        setTipoPedido(validTipoPedido);
+        const validTipoPedido = agendamento.pedido?.tipoPedido === "Único" ? "Padrão" : (agendamento.pedido?.tipoPedido || "Padrão");
+        setTipoPedido(validTipoPedido as TipoPedidoAgendamento);
         setQuantidadeTotal(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao);
         setObservacoes("");
         
@@ -80,8 +80,8 @@ export default function AgendamentoEditModal({
           } else if (agendamento.pedido?.itensPedido && agendamento.pedido.itensPedido.length > 0) {
             // Fallback para dados do agendamento passado como prop
             const itens = agendamento.pedido.itensPedido.map(item => ({
-              produto: item.nomeSabor || item.produtoNome || `Produto ${item.produtoId}`,
-              quantidade: item.quantidadeSabor || item.quantidade
+              produto: item.nomeSabor || `Sabor ${item.idSabor}`,
+              quantidade: item.quantidadeSabor
             }));
             setItensPersonalizados(itens);
           } else {
@@ -93,8 +93,8 @@ export default function AgendamentoEditModal({
           // Fallback para dados do agendamento passado como prop
           if (agendamento.pedido?.itensPedido && agendamento.pedido.itensPedido.length > 0) {
             const itens = agendamento.pedido.itensPedido.map(item => ({
-              produto: item.nomeSabor || item.produtoNome || `Produto ${item.produtoId}`,
-              quantidade: item.quantidadeSabor || item.quantidade
+              produto: item.nomeSabor || `Sabor ${item.idSabor}`,
+              quantidade: item.quantidadeSabor
             }));
             setItensPersonalizados(itens);
           } else {
@@ -150,46 +150,24 @@ export default function AgendamentoEditModal({
         dataReposicao,
         statusAgendamento,
         pedido: tipoPedido === "Alterado" ? {
-          ...agendamento.pedido,
-          id: agendamento.pedido?.id || '',
+          id: 0,
           idCliente: agendamento.cliente.id,
-          clienteId: agendamento.cliente.id,
           dataPedido: new Date(),
           dataPrevistaEntrega: dataReposicao,
-          status: 'Agendado',
           statusPedido: 'Agendado',
-          valorTotal: 0,
-          observacoes: '',
-          dataEntrega: dataReposicao,
-          enderecoEntrega: agendamento.cliente.enderecoEntrega,
-          contatoEntrega: agendamento.cliente.contatoNome,
-          numeroPedidoCliente: '',
-          createdAt: new Date(),
           itensPedido: itensPersonalizados.map((item, index) => ({
-            id: `${index}`,
-            produtoId: `${index}`,
-            produtoNome: item.produto,
-            quantidade: item.quantidade,
-            preco: 0,
-            subtotal: 0,
+            id: index,
+            idPedido: 0,
+            idSabor: index,
             nomeSabor: item.produto,
-            idSabor: `${index}`,
             quantidadeSabor: item.quantidade,
             sabor: {
               nome: item.produto
             }
           })),
-          itens: itensPersonalizados.map((item, index) => ({
-            id: `${index}`,
-            produtoId: `${index}`,
-            produtoNome: item.produto,
-            quantidade: item.quantidade,
-            preco: 0,
-            subtotal: 0
-          })),
           totalPedidoUnidades: quantidadeTotal,
-          tipoPedido: tipoPedido as TipoPedidoAgendamento
-        } : agendamento.pedido
+          tipoPedido
+        } : undefined
       };
 
       onSalvar(agendamentoAtualizado);
@@ -239,7 +217,7 @@ export default function AgendamentoEditModal({
 
             <div className="space-y-2">
               <Label htmlFor="tipoPedido">Tipo do Pedido</Label>
-              <Select value={tipoPedido} onValueChange={(value: "Padrão" | "Alterado") => setTipoPedido(value)}>
+              <Select value={tipoPedido} onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

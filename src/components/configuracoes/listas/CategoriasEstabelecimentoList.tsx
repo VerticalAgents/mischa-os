@@ -22,16 +22,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, Plus, AlertCircle, RefreshCw } from "lucide-react";
+import { Edit, Trash2, Plus } from "lucide-react";
 import { useSupabaseCategoriasEstabelecimento } from "@/hooks/useSupabaseCategoriasEstabelecimento";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function CategoriasEstabelecimentoList() {
   const { 
     categorias, 
     loading, 
-    error,
-    carregarCategorias,
     adicionarCategoria, 
     atualizarCategoria, 
     removerCategoria 
@@ -52,7 +49,9 @@ export default function CategoriasEstabelecimentoList() {
   };
 
   const handleAdd = async () => {
-    if (!formData.nome.trim()) return;
+    if (!formData.nome.trim()) {
+      return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -73,7 +72,9 @@ export default function CategoriasEstabelecimentoList() {
   };
 
   const handleEdit = async () => {
-    if (!formData.nome.trim() || !editingItem) return;
+    if (!formData.nome.trim() || !editingItem) {
+      return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -99,10 +100,6 @@ export default function CategoriasEstabelecimentoList() {
     }
   };
 
-  const handleRefresh = () => {
-    carregarCategorias(true); // Força refresh
-  };
-
   const openEditModal = (item: any) => {
     setEditingItem(item);
     setFormData({
@@ -122,12 +119,11 @@ export default function CategoriasEstabelecimentoList() {
     setIsEditModalOpen(false);
   };
 
-  // Estado de loading
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="ml-2">Carregando categorias...</span>
+        <span className="ml-2">Carregando categorias de estabelecimento...</span>
       </div>
     );
   }
@@ -135,17 +131,7 @@ export default function CategoriasEstabelecimentoList() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <h3 className="text-lg font-medium">Categorias de Estabelecimento</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
+        <h3 className="text-lg font-medium">Categorias de Estabelecimento</h3>
         <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -194,18 +180,6 @@ export default function CategoriasEstabelecimentoList() {
         </Dialog>
       </div>
 
-      {/* Mostrar erro se houver */}
-      {error && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {error}. <Button variant="link" onClick={handleRefresh} className="p-0 h-auto">
-              Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
       <Table>
         <TableHeader>
           <TableRow>
@@ -219,10 +193,7 @@ export default function CategoriasEstabelecimentoList() {
           {categorias.length === 0 ? (
             <TableRow>
               <TableCell colSpan={4} className="text-center py-8">
-                {error ? 
-                  "Erro ao carregar categorias. Clique em atualizar para tentar novamente." :
-                  "Nenhuma categoria encontrada"
-                }
+                Nenhuma categoria encontrada
               </TableCell>
             </TableRow>
           ) : (

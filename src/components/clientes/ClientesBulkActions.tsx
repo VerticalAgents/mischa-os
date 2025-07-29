@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 interface ClientesBulkActionsProps {
-  selectedClienteIds: string[];
+  selectedClienteIds: string[]; // Changed from number[] to string[]
   onClearSelection: () => void;
   onToggleSelectionMode: () => void;
   isSelectionMode: boolean;
@@ -52,70 +52,62 @@ export default function ClientesBulkActions({
   const [bulkEditField, setBulkEditField] = useState<string>("");
   const [bulkEditValue, setBulkEditValue] = useState<string>("");
   
-  const { excluirCliente, clientes, editarCliente } = useClienteStore();
+  const { removerCliente, clientes, atualizarCliente } = useClienteStore();
   
   const handleDelete = () => {
     setIsDeleteDialogOpen(false);
     setIsConfirmDeleteDialogOpen(true);
   };
   
-  const handleConfirmDelete = async () => {
-    try {
-      for (const id of selectedClienteIds) {
-        await excluirCliente(id);
-      }
-      
-      toast.success(`${selectedClienteIds.length} clientes excluídos com sucesso.`);
-      setIsConfirmDeleteDialogOpen(false);
-      onClearSelection();
-      onToggleSelectionMode();
-    } catch (error) {
-      toast.error("Erro ao excluir clientes.");
-    }
+  const handleConfirmDelete = () => {
+    selectedClienteIds.forEach(id => {
+      removerCliente(id);
+    });
+    
+    toast.success(`${selectedClienteIds.length} clientes excluídos com sucesso.`);
+    setIsConfirmDeleteDialogOpen(false);
+    onClearSelection();
+    onToggleSelectionMode();
   };
   
-  const handleBulkEdit = async () => {
+  const handleBulkEdit = () => {
     if (!bulkEditField || !bulkEditValue) {
       toast.error("Selecione um campo e valor para editar.");
       return;
     }
     
-    try {
-      for (const id of selectedClienteIds) {
-        let updateData: Partial<Cliente> = {};
-        
-        switch (bulkEditField) {
-          case "statusCliente":
-            updateData = { statusCliente: bulkEditValue as any };
-            break;
-          case "tipoLogistica":
-            updateData = { tipoLogistica: bulkEditValue as any };
-            break;
-          case "tipoCobranca":
-            updateData = { tipoCobranca: bulkEditValue as any };
-            break;
-          case "formaPagamento":
-            updateData = { formaPagamento: bulkEditValue as any };
-            break;
-          case "quantidadePadrao":
-            updateData = { quantidadePadrao: parseInt(bulkEditValue) };
-            break;
-          case "periodicidadePadrao":
-            updateData = { periodicidadePadrao: parseInt(bulkEditValue) };
-            break;
-        }
-        
-        await editarCliente(id, updateData);
+    selectedClienteIds.forEach(id => {
+      let updateData: Partial<Cliente> = {};
+      
+      switch (bulkEditField) {
+        case "statusCliente":
+          updateData = { statusCliente: bulkEditValue as any };
+          break;
+        case "tipoLogistica":
+          updateData = { tipoLogistica: bulkEditValue as any };
+          break;
+        case "tipoCobranca":
+          updateData = { tipoCobranca: bulkEditValue as any };
+          break;
+        case "formaPagamento":
+          updateData = { formaPagamento: bulkEditValue as any };
+          break;
+        case "quantidadePadrao":
+          updateData = { quantidadePadrao: parseInt(bulkEditValue) };
+          break;
+        case "periodicidadePadrao":
+          updateData = { periodicidadePadrao: parseInt(bulkEditValue) };
+          break;
       }
       
-      toast.success(`${selectedClienteIds.length} clientes atualizados com sucesso.`);
-      setIsBulkEditDialogOpen(false);
-      setBulkEditField("");
-      setBulkEditValue("");
-      onClearSelection();
-    } catch (error) {
-      toast.error("Erro ao atualizar clientes.");
-    }
+      atualizarCliente(id, updateData);
+    });
+    
+    toast.success(`${selectedClienteIds.length} clientes atualizados com sucesso.`);
+    setIsBulkEditDialogOpen(false);
+    setBulkEditField("");
+    setBulkEditValue("");
+    onClearSelection();
   };
   
   return (

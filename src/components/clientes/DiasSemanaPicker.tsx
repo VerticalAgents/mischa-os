@@ -3,8 +3,7 @@ import React from 'react';
 import { DiaSemana } from '@/types';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-const diasSemana: DiaSemana[] = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-const diasAbrev = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const diasSemana: DiaSemana[] = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 interface DiaSemanaPickerProps {
   value: DiaSemana[];
@@ -24,7 +23,7 @@ export default function DiasSemanaPicker({ value, onChange, className }: DiaSema
   return (
     <div className={className}>
       <div className="flex flex-wrap gap-2">
-        {diasSemana.map((dia, index) => (
+        {diasSemana.map((dia) => (
           <button
             key={dia}
             type="button"
@@ -35,7 +34,7 @@ export default function DiasSemanaPicker({ value, onChange, className }: DiaSema
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
           >
-            {diasAbrev[index]}
+            {dia}
           </button>
         ))}
       </div>
