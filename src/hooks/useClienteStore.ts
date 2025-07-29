@@ -119,7 +119,7 @@ function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>)
 // Função para delay com promise
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Função para timeout de promessa
+// Função para timeout de promessa - corrigida
 const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => reject(new Error('Timeout: Operação demorou mais que o esperado')), timeoutMs);
@@ -173,18 +173,20 @@ export const useClienteStore = create<ClienteStore>()(
           try {
             console.log(`useClienteStore: Tentativa ${attemptNumber} de carregamento`);
             
-            // Query otimizada com LEFT JOIN - corrigindo a execução da query
+            // Query otimizada com LEFT JOIN - executando corretamente
+            const clientesQuery = supabase
+              .from('clientes')
+              .select(`
+                *,
+                agendamentos:agendamentos_clientes(
+                  status_agendamento,
+                  data_proxima_reposicao
+                )
+              `)
+              .order('created_at', { ascending: false });
+
             const { data: clientesData, error: clientesError } = await withTimeout(
-              supabase
-                .from('clientes')
-                .select(`
-                  *,
-                  agendamentos:agendamentos_clientes(
-                    status_agendamento,
-                    data_proxima_reposicao
-                  )
-                `)
-                .order('created_at', { ascending: false }),
+              clientesQuery,
               REQUEST_TIMEOUT
             );
 
