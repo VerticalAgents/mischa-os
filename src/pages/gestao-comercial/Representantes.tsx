@@ -57,7 +57,6 @@ export default function Representantes() {
         // Load all data in parallel
         await Promise.all([
           clientes.length === 0 ? carregarClientes() : Promise.resolve(),
-          representantes.length === 0 ? carregarRepresentantes() : Promise.resolve(),
           registros.length === 0 ? carregarHistorico() : Promise.resolve()
         ]);
         console.log('✅ Dados carregados com sucesso');
@@ -71,7 +70,7 @@ export default function Representantes() {
     if (isInitialLoad) {
       loadInitialData();
     }
-  }, [isInitialLoad, clientes.length, representantes.length, registros.length, carregarClientes, carregarRepresentantes, carregarHistorico]);
+  }, [isInitialLoad, clientes.length, registros.length, carregarClientes, carregarHistorico]);
 
   // Optimize data calculations with useMemo
   const calculatedData = useMemo(() => {
