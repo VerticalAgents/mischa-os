@@ -119,13 +119,13 @@ function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>)
 // Função para delay com promise
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Função para timeout de promessa - corrigida
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+// Função para timeout de promessa - corrigida para aceitar PromiseLike
+const withTimeout = <T>(promise: PromiseLike<T>, timeoutMs: number): Promise<T> => {
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => reject(new Error('Timeout: Operação demorou mais que o esperado')), timeoutMs);
   });
   
-  return Promise.race([promise, timeoutPromise]);
+  return Promise.race([Promise.resolve(promise), timeoutPromise]);
 };
 
 export const useClienteStore = create<ClienteStore>()(
@@ -185,7 +185,7 @@ export const useClienteStore = create<ClienteStore>()(
               `)
               .order('created_at', { ascending: false });
 
-            const { data: clientesData, error: clientesError } = await withTimeout(queryPromise.then(result => result), REQUEST_TIMEOUT);
+            const { data: clientesData, error: clientesError } = await withTimeout(queryPromise, REQUEST_TIMEOUT);
 
             if (clientesError) {
               throw new Error(`Erro ao carregar clientes: ${clientesError.message}`);
