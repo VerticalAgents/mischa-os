@@ -1,12 +1,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface Representante {
   id: number;
   nome: string;
   email?: string;
   telefone?: string;
+  ativo: boolean;
 }
 
 interface UseSupabaseRepresentantesReturn {
@@ -14,6 +16,9 @@ interface UseSupabaseRepresentantesReturn {
   loading: boolean;
   error: string | null;
   carregarRepresentantes: () => Promise<void>;
+  adicionarRepresentante: (data: Omit<Representante, 'id' | 'ativo'>) => Promise<boolean>;
+  atualizarRepresentante: (id: number, data: Partial<Omit<Representante, 'id'>>) => Promise<boolean>;
+  removerRepresentante: (id: number) => Promise<boolean>;
 }
 
 export function useSupabaseRepresentantes(): UseSupabaseRepresentantesReturn {
@@ -22,7 +27,7 @@ export function useSupabaseRepresentantes(): UseSupabaseRepresentantesReturn {
   const [error, setError] = useState<string | null>(null);
 
   const carregarRepresentantes = useCallback(async () => {
-    if (loading) return; // Evita múltiplas chamadas simultâneas
+    if (loading) return;
     
     try {
       setLoading(true);
@@ -48,15 +53,88 @@ export function useSupabaseRepresentantes(): UseSupabaseRepresentantesReturn {
     }
   }, [loading]);
 
-  // Carrega automaticamente na primeira renderização
+  const adicionarRepresentante = useCallback(async (data: Omit<Representante, 'id' | 'ativo'>) => {
+    try {
+      const { error: supabaseError } = await supabase
+        .from('representantes')
+        .insert([{
+          ...data,
+          ativo: true
+        }]);
+
+      if (supabaseError) {
+        console.error('Erro ao adicionar representante:', supabaseError);
+        toast.error('Erro ao adicionar representante');
+        return false;
+      }
+
+      toast.success('Representante adicionado com sucesso!');
+      await carregarRepresentantes();
+      return true;
+    } catch (err) {
+      console.error('Erro ao adicionar representante:', err);
+      toast.error('Erro inesperado ao adicionar representante');
+      return false;
+    }
+  }, [carregarRepresentantes]);
+
+  const atualizarRepresentante = useCallback(async (id: number, data: Partial<Omit<Representante, 'id'>>) => {
+    try {
+      const { error: supabaseError } = await supabase
+        .from('representantes')
+        .update(data)
+        .eq('id', id);
+
+      if (supabaseError) {
+        console.error('Erro ao atualizar representante:', supabaseError);
+        toast.error('Erro ao atualizar representante');
+        return false;
+      }
+
+      toast.success('Representante atualizado com sucesso!');
+      await carregarRepresentantes();
+      return true;
+    } catch (err) {
+      console.error('Erro ao atualizar representante:', err);
+      toast.error('Erro inesperado ao atualizar representante');
+      return false;
+    }
+  }, [carregarRepresentantes]);
+
+  const removerRepresentante = useCallback(async (id: number) => {
+    try {
+      const { error: supabaseError } = await supabase
+        .from('representantes')
+        .delete()
+        .eq('id', id);
+
+      if (supabaseError) {
+        console.error('Erro ao remover representante:', supabaseError);
+        toast.error('Erro ao remover representante');
+        return false;
+      }
+
+      toast.success('Representante removido com sucesso!');
+      await carregarRepresentantes();
+      return true;
+    } catch (err) {
+      console.error('Erro ao remover representante:', err);
+      toast.error('Erro inesperado ao remover representante');
+      return false;
+    }
+  }, [carregarRepresentantes]);
+
   useEffect(() => {
     carregarRepresentantes();
-  }, []); // Remove carregarRepresentantes das dependências para evitar loops
+  }, []);
 
   return {
     representantes,
     loading,
     error,
-    carregarRepresentantes
+    carregarRepresentantes,
+    adicionarRepresentante,
+    atualizarRepresentante,
+    removerRepresentante
   };
 }

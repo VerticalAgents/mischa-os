@@ -24,6 +24,14 @@ import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2, Plus } from "lucide-react";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 
+interface Representante {
+  id: number;
+  nome: string;
+  email?: string;
+  telefone?: string;
+  ativo: boolean;
+}
+
 export default function RepresentantesList() {
   const { 
     representantes, 
@@ -35,7 +43,7 @@ export default function RepresentantesList() {
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editingItem, setEditingItem] = useState<Representante | null>(null);
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
@@ -69,7 +77,7 @@ export default function RepresentantesList() {
     }
   };
 
-  const openEditModal = (item: any) => {
+  const openEditModal = (item: Representante) => {
     setEditingItem(item);
     setFormData({
       nome: item.nome,
