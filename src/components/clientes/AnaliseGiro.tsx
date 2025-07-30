@@ -109,6 +109,11 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
     mediaHistorica: dadosGiro.mediaHistorica,
     mediaGeral: dadosGiro.giroMedioGeral || 150
   }));
+
+  // Determinar cor da linha do giro baseado na comparação com giro médio geral
+  const giroLineColor = dadosGiro.giroMedioGeral && dadosGiro.mediaHistorica >= dadosGiro.giroMedioGeral 
+    ? "#22c55e" // Verde se acima
+    : "#ef4444"; // Vermelho se abaixo
   
   return (
     <div className="space-y-6">
@@ -211,12 +216,7 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
                   type="monotone"
                   dataKey="giro"
                   name="Giro Semanal"
-                  stroke={(data: any) => {
-                    // Verificar se está acima ou abaixo da média geral
-                    return data && dadosGiro.giroMedioGeral && dadosGiro.mediaHistorica >= dadosGiro.giroMedioGeral 
-                      ? "#22c55e" // Verde se acima
-                      : "#ef4444"; // Vermelho se abaixo
-                  }}
+                  stroke={giroLineColor}
                   strokeWidth={3}
                   dot={{ r: 4 }}
                   activeDot={{ r: 6 }}
