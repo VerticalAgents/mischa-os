@@ -1,20 +1,20 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AnaliseGiroData } from '@/types/giro';
 import { Cliente } from '@/types';
+import { useFaturamentoMedioPDV } from './useFaturamentoMedioPDV';
 
-interface EntregaHistorico {
+interface EntregaDetalhada {
   data: string;
   quantidade: number;
-  tipo: 'entrega' | 'retorno';
 }
 
-interface GiroSemanal {
+interface GiroSemanalDetalhado {
   semana: string;
   ano: number;
   numeroSemana: number;
   totalEntregues: number;
+  entregas: EntregaDetalhada[];
 }
 
 // Função para obter o número da semana ISO
@@ -63,6 +63,10 @@ export function useGiroAnalise(cliente: Cliente) {
   const [dadosGiro, setDadosGiro] = useState<AnaliseGiroData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { faturamentoMedioRevenda } = useFaturamentoMedioPDV();
+
+  // Calcular giro médio geral baseado no faturamento médio
+  const giroMedioGeral = faturamentoMedioRevenda > 0 ? Math.round(faturamentoMedioRevenda / 150) : 150;
 
   useEffect(() => {
     async function carregarDadosGiro() {
@@ -76,12 +80,12 @@ export function useGiroAnalise(cliente: Cliente) {
         const dataLimite = new Date();
         dataLimite.setDate(dataLimite.getDate() - 84);
 
-        // Buscar histórico de entregas dos últimos 84 dias
+        // Buscar histórico de entregas dos últimos 84 dias com detalhes
         const { data: historico, error: historicoError } = await supabase
           .from('historico_entregas')
-          .select('data, quantidade, tipo')
+          .select('data, quantidade, tipo, created_at')
           .eq('cliente_id', cliente.id)
-          .eq('tipo', 'entrega') // Apenas entregas, não retornos
+          .eq('tipo', 'entrega')
           .gte('created_at', dataLimite.toISOString())
           .order('data', { ascending: true });
 
@@ -92,13 +96,19 @@ export function useGiroAnalise(cliente: Cliente) {
 
         console.log('📊 Histórico carregado:', historico?.length || 0, 'entregas');
 
-        // Processar dados por semana
-        const giroSemanal = new Map<string, number>();
+        // Processar dados por semana com detalhes das entregas
+        const giroSemanal = new Map<string, GiroSemanalDetalhado>();
         
-        // Inicializar todas as 12 semanas com 0
+        // Inicializar todas as 12 semanas
         const ultimas12Semanas = gerarUltimas12Semanas();
         ultimas12Semanas.forEach(semana => {
-          giroSemanal.set(semana.chave, 0);
+          giroSemanal.set(semana.chave, {
+            semana: semana.display,
+            ano: semana.ano,
+            numeroSemana: semana.semana,
+            totalEntregues: 0,
+            entregas: []
+          });
         });
 
         // Agrupar entregas por semana
@@ -108,21 +118,30 @@ export function useGiroAnalise(cliente: Cliente) {
           const chave = `${year}-${week.toString().padStart(2, '0')}`;
           
           if (giroSemanal.has(chave)) {
-            const valorAtual = giroSemanal.get(chave) || 0;
-            giroSemanal.set(chave, valorAtual + entrega.quantidade);
+            const semanaData = giroSemanal.get(chave)!;
+            semanaData.totalEntregues += entrega.quantidade;
+            semanaData.entregas.push({
+              data: entrega.data,
+              quantidade: entrega.quantidade
+            });
           }
         });
 
         // Preparar dados do gráfico
-        const dadosGrafico = ultimas12Semanas.map(semana => ({
-          semana: semana.display,
-          valor: giroSemanal.get(semana.chave) || 0
-        }));
+        const dadosGrafico = ultimas12Semanas.map(semana => {
+          const dadosSemana = giroSemanal.get(semana.chave)!;
+          return {
+            semana: semana.display,
+            valor: dadosSemana.totalEntregues,
+            entregas: dadosSemana.entregas,
+            mediaGeral: giroMedioGeral
+          };
+        });
 
         console.log('📈 Dados do gráfico preparados:', dadosGrafico);
 
         // Calcular métricas
-        const valoresSemanas = Array.from(giroSemanal.values());
+        const valoresSemanas = Array.from(giroSemanal.values()).map(s => s.totalEntregues);
         const ultimasSemanas = valoresSemanas.slice(-4); // Últimas 4 semanas
         const ultimaSemana = valoresSemanas[valoresSemanas.length - 1] || 0;
         
@@ -159,7 +178,8 @@ export function useGiroAnalise(cliente: Cliente) {
           meta,
           achievement,
           historico: dadosGrafico,
-          semaforo
+          semaforo,
+          giroMedioGeral
         };
 
         console.log('✅ Análise de giro calculada:', resultado);
@@ -174,7 +194,7 @@ export function useGiroAnalise(cliente: Cliente) {
     }
 
     carregarDadosGiro();
-  }, [cliente.id, cliente.metaGiroSemanal]);
+  }, [cliente.id, cliente.metaGiroSemanal, giroMedioGeral]);
 
   const atualizarMeta = (novaMeta: number) => {
     if (dadosGiro) {

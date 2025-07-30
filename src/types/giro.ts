@@ -2,6 +2,11 @@
 export interface GiroHistorico {
   semana: string; // Formato: "YYYY-WW" (ano-número da semana)
   valor: number;
+  entregas?: Array<{
+    data: string;
+    quantidade: number;
+  }>;
+  mediaGeral?: number;
 }
 
 export interface MetaGiro {
@@ -19,4 +24,5 @@ export interface AnaliseGiroData {
   achievement: number; // porcentagem de atingimento da meta
   historico: GiroHistorico[];
   semaforo: 'vermelho' | 'amarelo' | 'verde';
+  giroMedioGeral?: number;
 }
