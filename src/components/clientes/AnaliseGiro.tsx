@@ -23,7 +23,6 @@ import { ArrowUp, ArrowDown, Filter, AlertCircle } from "lucide-react";
 import { Cliente } from "@/types";
 import GiroMetricCard from "./GiroMetricCard";
 import GiroComparativoBlock from "./GiroComparativoBlock";
-import GiroTooltip from "./GiroTooltip";
 import { useGiroAnalise } from "@/hooks/useGiroAnalise";
 
 interface AnaliseGiroProps {
@@ -32,6 +31,10 @@ interface AnaliseGiroProps {
 
 export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
   const { dadosGiro, isLoading, error } = useGiroAnalise(cliente);
+  
+  // Giro semanal médio geral (valor simulado - deve vir do dashboard/analytics)
+  // TODO: buscar valor real do dashboard "Análise de PDV e Giro"
+  const giroSemanalMedioGeral = 150; // Valor placeholder
   
   if (isLoading) {
     return (
@@ -81,7 +84,7 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
     );
   }
 
-  // Verificar se há dados suficientes
+  // Verificar se há dados suficientes (pelo menos uma entrega)
   const temDados = dadosGiro.historico.some(item => item.valor > 0);
   
   if (!temDados) {
@@ -102,18 +105,17 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
     );
   }
   
-  // Preparar dados para o gráfico com cores condicionais
+  // Calcular comparativo com giro geral
+  const comparativoGiroGeral = giroSemanalMedioGeral > 0 
+    ? Math.round((dadosGiro.mediaHistorica / giroSemanalMedioGeral) * 100)
+    : 0;
+  
+  // Preparar dados para o gráfico - agora com média histórica ao invés de meta
   const dadosGrafico = dadosGiro.historico.map(item => ({
-    ...item,
+    semana: item.semana,
     giro: item.valor,
-    mediaHistorica: dadosGiro.mediaHistorica,
-    mediaGeral: dadosGiro.giroMedioGeral || 150
+    mediaHistorica: dadosGiro.mediaHistorica // Linha azul da média histórica
   }));
-
-  // Determinar cor da linha do giro baseado na comparação com giro médio geral
-  const giroLineColor = dadosGiro.giroMedioGeral && dadosGiro.mediaHistorica >= dadosGiro.giroMedioGeral 
-    ? "#22c55e" // Verde se acima
-    : "#ef4444"; // Vermelho se abaixo
   
   return (
     <div className="space-y-6">
@@ -129,12 +131,8 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
         </div>
       </div>
 
-      {/* Bloco comparativo atualizado */}
-      <GiroComparativoBlock 
-        cliente={cliente} 
-        mediaHistorica={dadosGiro.mediaHistorica}
-        giroMedioGeral={dadosGiro.giroMedioGeral}
-      />
+      {/* Novo bloco comparativo */}
+      <GiroComparativoBlock cliente={cliente} mediaHistorica={dadosGiro.mediaHistorica} />
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <GiroMetricCard
@@ -157,10 +155,10 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
         />
         
         <GiroMetricCard
-          title="vs Giro Geral"
-          value={dadosGiro.giroMedioGeral ? `${Math.round((dadosGiro.mediaHistorica / dadosGiro.giroMedioGeral) * 100)}%` : 'N/A'}
-          description="comparativo geral"
-          status={dadosGiro.giroMedioGeral && dadosGiro.mediaHistorica >= dadosGiro.giroMedioGeral ? 'verde' : 'vermelho'}
+          title="Comparativo com Giro Geral"
+          value={`${comparativoGiroGeral}%`}
+          description="vs giro médio geral"
+          status={comparativoGiroGeral >= 100 ? 'verde' : 'vermelho'}
         />
       </div>
       
@@ -168,7 +166,7 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
         <CardHeader>
           <CardTitle>Giro Semanal - Últimas 12 semanas</CardTitle>
           <CardDescription>
-            Evolução do giro semanal com comparativo à média geral
+            Evolução do giro semanal baseado no histórico real de entregas com média histórica
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -186,40 +184,50 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="semana" />
                 <YAxis />
-                <Tooltip content={<GiroTooltip />} />
+                <Tooltip 
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-background border border-border rounded-md shadow-lg p-3">
+                          <div className="font-medium">{label}</div>
+                          <div className="mt-2 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-primary rounded-full" />
+                              <span className="text-muted-foreground">Giro:</span>
+                              <span className="font-medium">{payload[0].value} unidades</span>
+                            </div>
+                            {payload[1] && (
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                                <span className="text-muted-foreground">Média Histórica:</span>
+                                <span className="font-medium">{payload[1].value} unidades</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
                 <Legend />
-                
-                {/* Linha da média geral em azul */}
                 <Line
                   type="monotone"
-                  dataKey="mediaGeral"
-                  name="Média Geral"
+                  dataKey="giro"
+                  name="Giro Semanal (Real)"
+                  stroke="#2563eb"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="mediaHistorica"
+                  name="Média Histórica"
                   stroke="#3b82f6"
                   strokeDasharray="5 5"
                   strokeWidth={2}
                   dot={false}
-                />
-                
-                {/* Linha da média histórica do cliente */}
-                <Line
-                  type="monotone"
-                  dataKey="mediaHistorica"
-                  name="Média Cliente"
-                  stroke="#6b7280"
-                  strokeDasharray="3 3"
-                  strokeWidth={1}
-                  dot={false}
-                />
-                
-                {/* Linha do giro real com cor condicional */}
-                <Line
-                  type="monotone"
-                  dataKey="giro"
-                  name="Giro Semanal"
-                  stroke={giroLineColor}
-                  strokeWidth={3}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
                 />
               </LineChart>
             </ResponsiveContainer>
