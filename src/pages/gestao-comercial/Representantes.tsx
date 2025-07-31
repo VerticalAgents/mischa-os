@@ -49,6 +49,21 @@ export default function Representantes() {
     isLoading: giroLoading 
   } = useGiroAnalysisConsolidated({});
 
+  // Function to calculate real weekly turnover based on last 28 days deliveries
+  const calcularGiroRealSemanal = useCallback((clienteId: string): number => {
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - 28); // Últimos 28 dias
+
+    const entregas = registros.filter(registro => 
+      registro.cliente_id === clienteId && 
+      registro.tipo === 'entrega' &&
+      new Date(registro.data) >= dataLimite
+    );
+
+    const totalEntregue = entregas.reduce((total, entrega) => total + entrega.quantidade, 0);
+    return Math.round(totalEntregue / 4); // Dividir por 4 semanas
+  }, [registros]);
+
   // Initial data loading
   useEffect(() => {
     const loadInitialData = async () => {
@@ -101,10 +116,9 @@ export default function Representantes() {
     const clientesInativos = clientesDoRepresentante.filter(c => c.statusCliente === 'Inativo');
     const clientesStandby = clientesDoRepresentante.filter(c => c.statusCliente === 'Standby');
 
-    // Calculate real giro using consolidated data
+    // Calculate real giro using real deliveries from last 28 days
     const giroTotalReal = clientesAtivos.reduce((sum, c) => {
-      const dadoGiro = dadosGiro.find(d => d.cliente_id === c.id);
-      return sum + (dadoGiro?.giro_semanal_calculado || 0);
+      return sum + calcularGiroRealSemanal(c.id);
     }, 0);
 
     // Calculate average giro per active PDV
@@ -128,10 +142,10 @@ export default function Representantes() {
     const dadosGiroBar = clientesAtivos
       .slice(0, 10)
       .map(cliente => {
-        const dadoGiro = dadosGiro.find(d => d.cliente_id === cliente.id);
+        const giroReal = calcularGiroRealSemanal(cliente.id);
         return {
           nome: cliente.nome.substring(0, 15) + (cliente.nome.length > 15 ? '...' : ''),
-          giro: dadoGiro?.giro_semanal_calculado || 0
+          giro: giroReal
         };
       })
       .sort((a, b) => b.giro - a.giro);
@@ -149,7 +163,7 @@ export default function Representantes() {
       dadosStatusPie,
       dadosGiroBar
     };
-  }, [clientes, dadosGiro, representanteSelecionado]);
+  }, [clientes, dadosGiro, representanteSelecionado, calcularGiroRealSemanal]);
 
   const representanteNome = useMemo(() => {
     if (representanteSelecionado === "todos") return "Todos os Representantes";
@@ -172,7 +186,7 @@ export default function Representantes() {
       {/* Representative Selector */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-left">
             <User className="h-5 w-5" />
             Selecionar Representante
           </CardTitle>
@@ -201,12 +215,12 @@ export default function Representantes() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
+            <CardTitle className="text-sm font-medium text-left">Total de Clientes</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{calculatedData.clientesDoRepresentante.length}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-left">{calculatedData.clientesDoRepresentante.length}</div>
+            <p className="text-xs text-muted-foreground text-left">
               {calculatedData.clientesAtivos.length} ativos
             </p>
           </CardContent>
@@ -214,12 +228,12 @@ export default function Representantes() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Giro Semanal Total</CardTitle>
+            <CardTitle className="text-sm font-medium text-left">Giro Semanal Total</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{calculatedData.giroTotalReal.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-left">{calculatedData.giroTotalReal.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground text-left">
               Soma dos ativos
             </p>
           </CardContent>
@@ -227,12 +241,12 @@ export default function Representantes() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Giro Médio por PDV</CardTitle>
+            <CardTitle className="text-sm font-medium text-left">Giro Médio por PDV</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{calculatedData.giroMedioPorPDV.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-left">{calculatedData.giroMedioPorPDV.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground text-left">
               Apenas PDVs ativos
             </p>
           </CardContent>
@@ -240,12 +254,12 @@ export default function Representantes() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
+            <CardTitle className="text-sm font-medium text-left">Taxa de Conversão</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{calculatedData.taxaConversao.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-left">{calculatedData.taxaConversao.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground text-left">
               Clientes ativos / Total
             </p>
           </CardContent>
@@ -253,12 +267,12 @@ export default function Representantes() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Em Análise</CardTitle>
+            <CardTitle className="text-sm font-medium text-left">Em Análise</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{calculatedData.clientesEmAnalise.length}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-left">{calculatedData.clientesEmAnalise.length}</div>
+            <p className="text-xs text-muted-foreground text-left">
               Aguardando ativação
             </p>
           </CardContent>
@@ -270,8 +284,8 @@ export default function Representantes() {
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Distribuição por Status</CardTitle>
-              <CardDescription>Clientes por status atual</CardDescription>
+              <CardTitle className="text-left">Distribuição por Status</CardTitle>
+              <CardDescription className="text-left">Clientes por status atual</CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
@@ -298,8 +312,8 @@ export default function Representantes() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Top 10 Clientes - Giro Semanal</CardTitle>
-              <CardDescription>Maiores giros por cliente ativo</CardDescription>
+              <CardTitle className="text-left">Top 10 Clientes - Giro Semanal</CardTitle>
+              <CardDescription className="text-left">Maiores giros por cliente ativo</CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
@@ -330,7 +344,7 @@ export default function Representantes() {
       {/* Status Tables with Sorting */}
       <Card>
         <CardHeader>
-          <CardTitle>Detalhamento por Status</CardTitle>
+          <CardTitle className="text-left">Detalhamento por Status</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="ativos" className="w-full">
@@ -348,6 +362,7 @@ export default function Representantes() {
                 clientes={calculatedData.clientesAtivos} 
                 titulo="Clientes Ativos" 
                 dadosGiro={dadosGiro} 
+                calcularGiroRealSemanal={calcularGiroRealSemanal}
                 showDeliveryStats={false}
               />
             </TabsContent>
@@ -357,6 +372,7 @@ export default function Representantes() {
                 clientes={calculatedData.clientesEmAnalise} 
                 titulo="Clientes em Análise" 
                 dadosGiro={dadosGiro} 
+                calcularGiroRealSemanal={calcularGiroRealSemanal}
                 showDeliveryStats={true}
               />
             </TabsContent>
@@ -366,6 +382,7 @@ export default function Representantes() {
                 clientes={calculatedData.clientesAtivar} 
                 titulo="Pipeline de Leads" 
                 dadosGiro={dadosGiro} 
+                calcularGiroRealSemanal={calcularGiroRealSemanal}
                 showDeliveryStats={false}
               />
             </TabsContent>
@@ -375,6 +392,7 @@ export default function Representantes() {
                 clientes={calculatedData.clientesStandby} 
                 titulo="Clientes em Standby" 
                 dadosGiro={dadosGiro} 
+                calcularGiroRealSemanal={calcularGiroRealSemanal}
                 showDeliveryStats={false}
               />
             </TabsContent>
@@ -384,6 +402,7 @@ export default function Representantes() {
                 clientes={calculatedData.clientesInativos} 
                 titulo="Clientes Inativos" 
                 dadosGiro={dadosGiro} 
+                calcularGiroRealSemanal={calcularGiroRealSemanal}
                 showDeliveryStats={false}
               />
             </TabsContent>
@@ -393,6 +412,7 @@ export default function Representantes() {
                 clientes={calculatedData.clientesDoRepresentante} 
                 titulo="Todos os Clientes" 
                 dadosGiro={dadosGiro} 
+                calcularGiroRealSemanal={calcularGiroRealSemanal}
                 showDeliveryStats={false}
               />
             </TabsContent>
@@ -408,11 +428,13 @@ function SortableClientesTable({
   clientes, 
   titulo, 
   dadosGiro, 
+  calcularGiroRealSemanal,
   showDeliveryStats = false
 }: { 
   clientes: Cliente[]; 
   titulo: string; 
   dadosGiro: any[];
+  calcularGiroRealSemanal: (clienteId: string) => number;
   showDeliveryStats?: boolean;
 }) {
   const { registros } = useHistoricoEntregasStore();
@@ -450,10 +472,9 @@ function SortableClientesTable({
           bValue = b.statusCliente;
           break;
         case 'giro':
-          const dadoGiroA = dadosGiro.find(d => d.cliente_id === a.id);
-          const dadoGiroB = dadosGiro.find(d => d.cliente_id === b.id);
-          aValue = dadoGiroA?.giro_semanal_calculado || 0;
-          bValue = dadoGiroB?.giro_semanal_calculado || 0;
+          // Usar o giro real calculado com base nas entregas dos últimos 28 dias
+          aValue = calcularGiroRealSemanal(a.id);
+          bValue = calcularGiroRealSemanal(b.id);
           break;
         case 'achievement':
           const dadoGiroAchA = dadosGiro.find(d => d.cliente_id === a.id);
@@ -482,7 +503,7 @@ function SortableClientesTable({
 
       return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
     });
-  }, [clientes, sortConfig, dadosGiro, getDeliveryStats]);
+  }, [clientes, sortConfig, dadosGiro, getDeliveryStats, calcularGiroRealSemanal]);
 
   const handleSort = (field: SortField) => {
     setSortConfig(prev => ({
@@ -517,40 +538,40 @@ function SortableClientesTable({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">{titulo}</h3>
+      <h3 className="text-lg font-semibold text-left">{titulo}</h3>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>
-              <Button variant="ghost" onClick={() => handleSort('nome')} className="h-auto p-0 font-medium">
+            <TableHead className="text-left">
+              <Button variant="ghost" onClick={() => handleSort('nome')} className="h-auto p-0 font-medium justify-start">
                 Cliente {getSortIcon('nome')}
               </Button>
             </TableHead>
-            <TableHead>Contato</TableHead>
-            <TableHead>
-              <Button variant="ghost" onClick={() => handleSort('status')} className="h-auto p-0 font-medium">
+            <TableHead className="text-left">Contato</TableHead>
+            <TableHead className="text-left">
+              <Button variant="ghost" onClick={() => handleSort('status')} className="h-auto p-0 font-medium justify-start">
                 Status {getSortIcon('status')}
               </Button>
             </TableHead>
-            <TableHead className="text-right">
-              <Button variant="ghost" onClick={() => handleSort('giro')} className="h-auto p-0 font-medium">
+            <TableHead className="text-left">
+              <Button variant="ghost" onClick={() => handleSort('giro')} className="h-auto p-0 font-medium justify-start">
                 Giro Semanal {getSortIcon('giro')}
               </Button>
             </TableHead>
-            <TableHead className="text-right">
-              <Button variant="ghost" onClick={() => handleSort('achievement')} className="h-auto p-0 font-medium">
+            <TableHead className="text-left">
+              <Button variant="ghost" onClick={() => handleSort('achievement')} className="h-auto p-0 font-medium justify-start">
                 Achievement {getSortIcon('achievement')}
               </Button>
             </TableHead>
             {showDeliveryStats && (
               <>
-                <TableHead className="text-center">
-                  <Button variant="ghost" onClick={() => handleSort('entregas')} className="h-auto p-0 font-medium">
+                <TableHead className="text-left">
+                  <Button variant="ghost" onClick={() => handleSort('entregas')} className="h-auto p-0 font-medium justify-start">
                     Entregas {getSortIcon('entregas')}
                   </Button>
                 </TableHead>
-                <TableHead className="text-center">
-                  <Button variant="ghost" onClick={() => handleSort('dias')} className="h-auto p-0 font-medium">
+                <TableHead className="text-left">
+                  <Button variant="ghost" onClick={() => handleSort('dias')} className="h-auto p-0 font-medium justify-start">
                     Dias desde 1ª {getSortIcon('dias')}
                   </Button>
                 </TableHead>
@@ -561,7 +582,8 @@ function SortableClientesTable({
         <TableBody>
           {sortedClientes.map((cliente) => {
             const dadoGiro = dadosGiro.find(d => d.cliente_id === cliente.id);
-            const giroReal = dadoGiro?.giro_semanal_calculado || 0;
+            // Usar o giro real calculado com base nas entregas dos últimos 28 dias
+            const giroReal = calcularGiroRealSemanal(cliente.id);
             const achievement = dadoGiro?.achievement_meta || 0;
             const deliveryStats = showDeliveryStats ? getDeliveryStats(cliente.id) : null;
 
@@ -570,7 +592,7 @@ function SortableClientesTable({
                 key={cliente.id}
                 className={deliveryStats?.canActivate ? "bg-green-50 border-green-200" : ""}
               >
-                <TableCell className="font-medium">
+                <TableCell className="font-medium text-left">
                   <div>
                     <div className="font-medium flex items-center gap-2">
                       {cliente.nome}
@@ -585,7 +607,7 @@ function SortableClientesTable({
                     )}
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-left">
                   <div className="space-y-1">
                     {cliente.contatoNome && (
                       <div className="text-sm">{cliente.contatoNome}</div>
@@ -598,21 +620,21 @@ function SortableClientesTable({
                     )}
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-left">
                   <Badge className={getStatusColor(cliente.statusCliente)}>
                     {cliente.statusCliente}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right font-mono">
+                <TableCell className="text-left font-mono">
                   {giroReal.toLocaleString()}
                 </TableCell>
-                <TableCell className="text-right font-mono">
+                <TableCell className="text-left font-mono">
                   {achievement.toFixed(1)}%
                 </TableCell>
                 {showDeliveryStats && deliveryStats && (
                   <>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-1">
+                    <TableCell className="text-left">
+                      <div className="flex items-center gap-1">
                         <span className={deliveryStats.canActivate ? "font-bold text-green-600" : ""}>
                           {deliveryStats.count}
                         </span>
@@ -621,7 +643,7 @@ function SortableClientesTable({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-left">
                       {deliveryStats.count > 0 ? (
                         <span className="text-sm">{deliveryStats.daysSinceFirst} dias</span>
                       ) : (
@@ -650,7 +672,7 @@ function SortableClientesTable({
               Clientes prontos para ativação: {clientesProntosParaAtivar}
             </span>
           </div>
-          <p className="text-sm text-green-600 mt-1">
+          <p className="text-sm text-green-600 mt-1 text-left">
             Estes clientes já possuem 4 ou mais entregas e podem ter seu status alterado para "Ativo".
           </p>
         </div>
