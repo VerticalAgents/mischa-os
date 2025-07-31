@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
+import { calcularGiroSemanalHistorico } from '@/utils/giroCalculations';
 
 export interface DadosAnaliseGiroConsolidados {
   cliente_id: string;
@@ -113,35 +114,8 @@ function parseJsonArray(jsonValue: Json): number[] | null {
 
 // Helper function to calculate historical giro from deliveries
 async function calcularGiroHistoricoPorEntregas(clienteId: string): Promise<number> {
-  const dataLimite = new Date();
-  dataLimite.setDate(dataLimite.getDate() - 28); // Últimas 4 semanas (28 dias)
-
-  const { data: entregas, error } = await supabase
-    .from('historico_entregas')
-    .select('quantidade, data')
-    .eq('cliente_id', clienteId)
-    .eq('tipo', 'entrega')
-    .gte('data', dataLimite.toISOString())
-    .order('data', { ascending: false });
-
-  if (error) {
-    console.error('Erro ao buscar entregas para cliente', clienteId, error);
-    return 0;
-  }
-
-  if (!entregas || entregas.length === 0) {
-    return 0;
-  }
-
-  // Somar todas as entregas das últimas 4 semanas
-  const totalEntregas = entregas.reduce((total, entrega) => total + entrega.quantidade, 0);
-  
-  // Calcular média semanal (total dividido por 4 semanas)
-  const giroHistorico = Math.round(totalEntregas / 4);
-  
-  console.log(`Cliente ${clienteId}: ${entregas.length} entregas nas últimas 4 semanas, total: ${totalEntregas}, média semanal: ${giroHistorico}`);
-  
-  return giroHistorico;
+  // **MUDANÇA: Usar função centralizada unificada**
+  return await calcularGiroSemanalHistorico(clienteId);
 }
 
 // Helper function to transform database row to our interface

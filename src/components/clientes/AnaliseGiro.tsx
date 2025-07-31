@@ -32,7 +32,8 @@ interface AnaliseGiroProps {
 export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
   const { dadosGiro, isLoading, error } = useGiroAnalise(cliente);
   
-  // Giro semanal médio geral (valor simulado - deve vir do dashboard/analytics)
+  // **MUDANÇA: Usar valor consistente para comparativo**
+  // Giro semanal médio geral (valor simulado - deve vir do dashboard "Análise de PDV e Giro")
   // TODO: buscar valor real do dashboard "Análise de PDV e Giro"
   const giroSemanalMedioGeral = 150; // Valor placeholder
   
@@ -105,16 +106,16 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
     );
   }
   
-  // Calcular comparativo com giro geral
+  // **MUDANÇA: Usar mediaHistorica unificada para comparativo**
   const comparativoGiroGeral = giroSemanalMedioGeral > 0 
     ? Math.round((dadosGiro.mediaHistorica / giroSemanalMedioGeral) * 100)
     : 0;
   
-  // Preparar dados para o gráfico - agora com média histórica ao invés de meta
+  // **MUDANÇA: Preparar dados para o gráfico usando mediaHistorica unificada**
   const dadosGrafico = dadosGiro.historico.map(item => ({
     semana: item.semana,
     giro: item.valor,
-    mediaHistorica: dadosGiro.mediaHistorica // Linha azul da média histórica
+    mediaHistorica: dadosGiro.mediaHistorica // Usar valor unificado
   }));
   
   return (
@@ -131,13 +132,13 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
         </div>
       </div>
 
-      {/* Novo bloco comparativo */}
+      {/* **MUDANÇA: Usar mediaHistorica unificada** */}
       <GiroComparativoBlock cliente={cliente} mediaHistorica={dadosGiro.mediaHistorica} />
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <GiroMetricCard
           title="Média Histórica"
-          value={dadosGiro.mediaHistorica}
+          value={dadosGiro.mediaHistorica} // Usar valor unificado
           suffix="un/sem"
           description="Últimas 4 semanas"
         />

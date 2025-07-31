@@ -3,6 +3,12 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AnaliseGiroData } from '@/types/giro';
 import { Cliente } from '@/types';
+import { 
+  calcularGiroSemanalHistorico,
+  getISOWeekNumber,
+  formatarSemanaDisplay,
+  gerarUltimas12Semanas
+} from '@/utils/giroCalculations';
 
 interface EntregaHistorico {
   data: string;
@@ -15,48 +21,6 @@ interface GiroSemanal {
   ano: number;
   numeroSemana: number;
   totalEntregues: number;
-}
-
-// Função para obter o número da semana ISO
-function getISOWeekNumber(date: Date): { year: number; week: number } {
-  const target = new Date(date.valueOf());
-  const dayNr = (date.getDay() + 6) % 7;
-  target.setDate(target.getDate() - dayNr + 3);
-  const firstThursday = target.valueOf();
-  target.setMonth(0, 1);
-  if (target.getDay() !== 4) {
-    target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
-  }
-  const weekNumber = 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
-  return { year: target.getFullYear(), week: weekNumber };
-}
-
-// Função para formatar semana para exibição
-function formatarSemanaDisplay(ano: number, semana: number): string {
-  return `Sem ${semana.toString().padStart(2, '0')}`;
-}
-
-// Função para gerar array de 12 semanas
-function gerarUltimas12Semanas(): Array<{ ano: number; semana: number; chave: string; display: string }> {
-  const semanas: Array<{ ano: number; semana: number; chave: string; display: string }> = [];
-  const hoje = new Date();
-  
-  for (let i = 11; i >= 0; i--) {
-    const data = new Date();
-    data.setDate(hoje.getDate() - (i * 7));
-    const { year, week } = getISOWeekNumber(data);
-    const chave = `${year}-${week.toString().padStart(2, '0')}`;
-    const display = formatarSemanaDisplay(year, week);
-    
-    semanas.push({
-      ano: year,
-      semana: week,
-      chave,
-      display
-    });
-  }
-  
-  return semanas;
 }
 
 export function useGiroAnalise(cliente: Cliente) {
@@ -72,27 +36,30 @@ export function useGiroAnalise(cliente: Cliente) {
 
         console.log('🔄 Carregando dados de giro para cliente:', cliente.id);
 
-        // Calcular data de 84 dias atrás (12 semanas)
-        const dataLimite = new Date();
-        dataLimite.setDate(dataLimite.getDate() - 84);
+        // **MUDANÇA PRINCIPAL: Usar função centralizada para calcular média histórica**
+        const mediaHistorica = await calcularGiroSemanalHistorico(cliente.id);
+        console.log('📊 Média histórica calculada (função centralizada):', mediaHistorica);
 
-        // Buscar histórico de entregas dos últimos 84 dias
-        const { data: historico, error: historicoError } = await supabase
+        // Buscar histórico de entregas dos últimos 84 dias para o gráfico (12 semanas)
+        const dataLimiteGrafico = new Date();
+        dataLimiteGrafico.setDate(dataLimiteGrafico.getDate() - 84);
+
+        const { data: historicoGrafico, error: historicoError } = await supabase
           .from('historico_entregas')
           .select('data, quantidade, tipo')
           .eq('cliente_id', cliente.id)
-          .eq('tipo', 'entrega') // Apenas entregas, não retornos
-          .gte('created_at', dataLimite.toISOString())
+          .eq('tipo', 'entrega')
+          .gte('data', dataLimiteGrafico.toISOString()) // Usar 'data' em vez de 'created_at'
           .order('data', { ascending: true });
 
         if (historicoError) {
-          console.error('Erro ao carregar histórico:', historicoError);
+          console.error('Erro ao carregar histórico para gráfico:', historicoError);
           throw historicoError;
         }
 
-        console.log('📊 Histórico carregado:', historico?.length || 0, 'entregas');
+        console.log('📈 Histórico para gráfico carregado:', historicoGrafico?.length || 0, 'entregas');
 
-        // Processar dados por semana
+        // Processar dados por semana para o gráfico
         const giroSemanal = new Map<string, number>();
         
         // Inicializar todas as 12 semanas com 0
@@ -101,8 +68,8 @@ export function useGiroAnalise(cliente: Cliente) {
           giroSemanal.set(semana.chave, 0);
         });
 
-        // Agrupar entregas por semana
-        historico?.forEach(entrega => {
+        // Agrupar entregas por semana para o gráfico
+        historicoGrafico?.forEach(entrega => {
           const dataEntrega = new Date(entrega.data);
           const { year, week } = getISOWeekNumber(dataEntrega);
           const chave = `${year}-${week.toString().padStart(2, '0')}`;
@@ -121,17 +88,11 @@ export function useGiroAnalise(cliente: Cliente) {
 
         console.log('📈 Dados do gráfico preparados:', dadosGrafico);
 
-        // Calcular métricas
+        // Calcular última semana (usar os dados do gráfico)
         const valoresSemanas = Array.from(giroSemanal.values());
-        const ultimasSemanas = valoresSemanas.slice(-4); // Últimas 4 semanas
         const ultimaSemana = valoresSemanas[valoresSemanas.length - 1] || 0;
-        
-        // Média histórica das últimas 4 semanas
-        const mediaHistorica = ultimasSemanas.length > 0 
-          ? Math.round(ultimasSemanas.reduce((acc, val) => acc + val, 0) / ultimasSemanas.length)
-          : 0;
 
-        // Variação percentual
+        // Variação percentual (comparar última semana com média histórica)
         const variacaoPercentual = mediaHistorica > 0 
           ? Math.round(((ultimaSemana - mediaHistorica) / mediaHistorica) * 100)
           : 0;
@@ -142,9 +103,9 @@ export function useGiroAnalise(cliente: Cliente) {
           : Math.round(mediaHistorica * 1.1);
 
         // Achievement
-        const achievement = meta > 0 ? Math.round((ultimaSemana / meta) * 100) : 0;
+        const achievement = meta > 0 ? Math.round((mediaHistorica / meta) * 100) : 0;
 
-        // Semáforo
+        // Semáforo baseado no achievement
         let semaforo: 'vermelho' | 'amarelo' | 'verde' = 'vermelho';
         if (achievement >= 95) {
           semaforo = 'verde';
@@ -153,7 +114,7 @@ export function useGiroAnalise(cliente: Cliente) {
         }
 
         const resultado: AnaliseGiroData = {
-          mediaHistorica,
+          mediaHistorica, // Usar o valor calculado pela função centralizada
           ultimaSemana,
           variacaoPercentual,
           meta,
@@ -162,7 +123,7 @@ export function useGiroAnalise(cliente: Cliente) {
           semaforo
         };
 
-        console.log('✅ Análise de giro calculada:', resultado);
+        console.log('✅ Análise de giro calculada (unificada):', resultado);
         setDadosGiro(resultado);
 
       } catch (err) {
@@ -178,7 +139,7 @@ export function useGiroAnalise(cliente: Cliente) {
 
   const atualizarMeta = (novaMeta: number) => {
     if (dadosGiro) {
-      const novoAchievement = Math.round((dadosGiro.ultimaSemana / novaMeta) * 100);
+      const novoAchievement = Math.round((dadosGiro.mediaHistorica / novaMeta) * 100);
       let novoSemaforo: 'vermelho' | 'amarelo' | 'verde' = 'vermelho';
       
       if (novoAchievement >= 95) {

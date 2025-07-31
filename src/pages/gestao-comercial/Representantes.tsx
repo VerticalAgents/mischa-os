@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,6 +26,7 @@ import { useGiroAnalysisConsolidated } from "@/hooks/useGiroAnalysisConsolidated
 import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
 import { Cliente } from "@/types";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { calcularGiroSemanalHistoricoSync } from "@/utils/giroCalculations";
 
 type SortField = 'nome' | 'giro' | 'status' | 'achievement' | 'entregas' | 'dias';
 type SortDirection = 'asc' | 'desc';
@@ -51,17 +51,8 @@ export default function Representantes() {
 
   // Function to calculate real weekly turnover based on last 28 days deliveries
   const calcularGiroRealSemanal = useCallback((clienteId: string): number => {
-    const dataLimite = new Date();
-    dataLimite.setDate(dataLimite.getDate() - 28); // Últimos 28 dias
-
-    const entregas = registros.filter(registro => 
-      registro.cliente_id === clienteId && 
-      registro.tipo === 'entrega' &&
-      new Date(registro.data) >= dataLimite
-    );
-
-    const totalEntregue = entregas.reduce((total, entrega) => total + entrega.quantidade, 0);
-    return Math.round(totalEntregue / 4); // Dividir por 4 semanas
+    // **MUDANÇA: Usar função centralizada unificada**
+    return calcularGiroSemanalHistoricoSync(clienteId, registros);
   }, [registros]);
 
   // Initial data loading
