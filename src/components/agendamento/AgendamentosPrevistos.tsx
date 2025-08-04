@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -31,19 +32,10 @@ export default function AgendamentosPrevistos() {
   const { agendamentos, carregarTodosAgendamentos, obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
   const { carregarClientes } = useClienteStore();
 
-  // Ordenação padrão por data (mais próxima primeiro)
-  const [sortField, setSortField] = useState<SortField>('data');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-
   // Filtrar apenas agendamentos previstos
   const agendamentosPrevistos = agendamentos.filter(
     agendamento => agendamento.statusAgendamento === "Previsto"
   );
-
-  const handleSortChange = (field: SortField, direction: SortDirection) => {
-    setSortField(field);
-    setSortDirection(direction);
-  };
 
   // Filtrar agendamentos com base no termo de pesquisa
   const filteredAgendamentos = useMemo(() => {
@@ -56,7 +48,7 @@ export default function AgendamentosPrevistos() {
     );
   }, [agendamentosPrevistos, searchTerm]);
 
-  // Use the new table sort hook instead of the old sorting logic
+  // Use the new table sort hook
   const { sortedData: sortedAgendamentos, sortConfig, requestSort } = useTableSort(
     filteredAgendamentos, 
     'dataReposicao'
@@ -134,7 +126,6 @@ export default function AgendamentosPrevistos() {
         </div>
       </div>
 
-      {/* Remove the old sort controls and update the stats */}
       <div className="flex items-center justify-end">
         <div className="text-sm text-muted-foreground">
           {sortedAgendamentos.length} agendamento(s) previstos
