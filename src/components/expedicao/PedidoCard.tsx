@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,6 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import TipoPedidoBadge from './TipoPedidoBadge';
 import ProdutoNomeDisplay from './ProdutoNomeDisplay';
-
 export interface PedidoCardData {
   id: string;
   cliente_nome: string;
@@ -26,7 +24,6 @@ export interface PedidoCardData {
     quantidade: number;
   }>;
 }
-
 interface PedidoCardProps {
   pedido: PedidoCardData;
   onMarcarSeparado?: () => void;
@@ -38,7 +35,6 @@ interface PedidoCardProps {
   onConfirmarRetorno?: (observacao?: string) => void;
   onRetornarParaSeparacao?: () => void;
 }
-
 export default function PedidoCard({
   pedido,
   onMarcarSeparado,
@@ -54,19 +50,16 @@ export default function PedidoCard({
   const [observacaoRetorno, setObservacaoRetorno] = useState('');
   const [dialogEntregaAberto, setDialogEntregaAberto] = useState(false);
   const [dialogRetornoAberto, setDialogRetornoAberto] = useState(false);
-
   const handleConfirmarEntrega = () => {
     onConfirmarEntrega?.(observacaoEntrega);
     setObservacaoEntrega('');
     setDialogEntregaAberto(false);
   };
-
   const handleConfirmarRetorno = () => {
     onConfirmarRetorno?.(observacaoRetorno);
     setObservacaoRetorno('');
     setDialogRetornoAberto(false);
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Agendado':
@@ -79,23 +72,16 @@ export default function PedidoCard({
         return 'bg-gray-100 text-gray-800';
     }
   };
-
   const isPedidoDespachado = pedido.substatus_pedido === 'Despachado';
-
-  return (
-    <Card className="w-full">
+  return <Card className="w-full">
       <CardContent className="p-4">
         <div className="space-y-4">
           {/* Cabeçalho com informações do cliente */}
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-lg truncate">{pedido.cliente_nome}</h3>
-              {pedido.cliente_endereco && (
-                <p className="text-sm text-muted-foreground mt-1">{pedido.cliente_endereco}</p>
-              )}
-              {pedido.cliente_telefone && (
-                <p className="text-sm text-muted-foreground">{pedido.cliente_telefone}</p>
-              )}
+              {pedido.cliente_endereco && <p className="text-sm text-muted-foreground mt-1 text-left">{pedido.cliente_endereco}</p>}
+              {pedido.cliente_telefone && <p className="text-sm text-muted-foreground">{pedido.cliente_telefone}</p>}
             </div>
             <div className="flex flex-col items-end gap-2">
               <Badge className={getStatusColor(pedido.substatus_pedido)}>
@@ -112,7 +98,9 @@ export default function PedidoCard({
               <div>
                 <p className="text-sm font-medium">Data de Entrega</p>
                 <p className="text-sm text-muted-foreground">
-                  {format(pedido.data_prevista_entrega, "dd/MM/yyyy", { locale: ptBR })}
+                  {format(pedido.data_prevista_entrega, "dd/MM/yyyy", {
+                  locale: ptBR
+                })}
                 </p>
               </div>
             </div>
@@ -133,65 +121,41 @@ export default function PedidoCard({
           </div>
 
           {/* Lista de produtos */}
-          {pedido.itens && pedido.itens.length > 0 && (
-            <div className="space-y-2">
+          {pedido.itens && pedido.itens.length > 0 && <div className="space-y-2">
               <h4 className="font-medium text-sm">Produtos:</h4>
               <div className="space-y-1">
-                {pedido.itens.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center text-sm p-2 bg-background rounded">
+                {pedido.itens.map((item, index) => <div key={index} className="flex justify-between items-center text-sm p-2 bg-background rounded">
                     <ProdutoNomeDisplay produtoId={item.produto_id} nomeFallback={item.produto_nome} />
                     <span className="font-medium">{item.quantidade}x</span>
-                  </div>
-                ))}
+                  </div>)}
               </div>
-            </div>
-          )}
+            </div>}
 
           {/* Ações */}
           <div className="flex flex-wrap gap-2 pt-2 border-t">
-            {!showDespachoActions ? (
-              // Ações da separação
-              <>
-                <Button
-                  size="sm"
-                  onClick={onMarcarSeparado}
-                  className="flex items-center gap-1"
-                >
+            {!showDespachoActions ?
+          // Ações da separação
+          <>
+                <Button size="sm" onClick={onMarcarSeparado} className="flex items-center gap-1">
                   <Check className="h-4 w-4" />
                   Marcar como Separado
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={onEditarAgendamento}
-                  className="flex items-center gap-1"
-                >
+                <Button size="sm" variant="outline" onClick={onEditarAgendamento} className="flex items-center gap-1">
                   <Edit className="h-4 w-4" />
                   Editar Agendamento
                 </Button>
-              </>
-            ) : (
-              // Ações do despacho
-              <>
-                {pedido.substatus_pedido === 'Separado' && (
-                  <Button
-                    size="sm"
-                    onClick={onConfirmarDespacho}
-                    className="flex items-center gap-1"
-                  >
+              </> :
+          // Ações do despacho
+          <>
+                {pedido.substatus_pedido === 'Separado' && <Button size="sm" onClick={onConfirmarDespacho} className="flex items-center gap-1">
                     <Truck className="h-4 w-4" />
                     Despachar Pedido
-                  </Button>
-                )}
+                  </Button>}
 
-                {pedido.substatus_pedido === 'Despachado' && (
-                  <>
+                {pedido.substatus_pedido === 'Despachado' && <>
                     <Dialog open={dialogEntregaAberto} onOpenChange={setDialogEntregaAberto}>
                       <DialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700 flex items-center gap-1"
-                        >
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700 flex items-center gap-1">
                           <Check className="h-4 w-4" />
                           Confirmar Entrega
                         </Button>
@@ -202,11 +166,7 @@ export default function PedidoCard({
                         </DialogHeader>
                         <div className="space-y-4">
                           <p>Confirmar entrega para <strong>{pedido.cliente_nome}</strong>?</p>
-                          <Textarea
-                            placeholder="Observações (opcional)"
-                            value={observacaoEntrega}
-                            onChange={(e) => setObservacaoEntrega(e.target.value)}
-                          />
+                          <Textarea placeholder="Observações (opcional)" value={observacaoEntrega} onChange={e => setObservacaoEntrega(e.target.value)} />
                         </div>
                         <DialogFooter>
                           <Button variant="outline" onClick={() => setDialogEntregaAberto(false)}>
@@ -221,11 +181,7 @@ export default function PedidoCard({
 
                     <Dialog open={dialogRetornoAberto} onOpenChange={setDialogRetornoAberto}>
                       <DialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="flex items-center gap-1"
-                        >
+                        <Button size="sm" variant="destructive" className="flex items-center gap-1">
                           <X className="h-4 w-4" />
                           Confirmar Retorno
                         </Button>
@@ -236,11 +192,7 @@ export default function PedidoCard({
                         </DialogHeader>
                         <div className="space-y-4">
                           <p>Confirmar retorno para <strong>{pedido.cliente_nome}</strong>?</p>
-                          <Textarea
-                            placeholder="Motivo do retorno (opcional)"
-                            value={observacaoRetorno}
-                            onChange={(e) => setObservacaoRetorno(e.target.value)}
-                          />
+                          <Textarea placeholder="Motivo do retorno (opcional)" value={observacaoRetorno} onChange={e => setObservacaoRetorno(e.target.value)} />
                         </div>
                         <DialogFooter>
                           <Button variant="outline" onClick={() => setDialogRetornoAberto(false)}>
@@ -252,36 +204,21 @@ export default function PedidoCard({
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
-                  </>
-                )}
+                  </>}
 
                 {/* Botão de reagendar para pedidos atrasados */}
-                {showReagendarButton && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={onEditarAgendamento}
-                    className="flex items-center gap-1"
-                  >
+                {showReagendarButton && <Button size="sm" variant="outline" onClick={onEditarAgendamento} className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
                     Reagendar
-                  </Button>
-                )}
+                  </Button>}
 
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={onRetornarParaSeparacao}
-                  className="flex items-center gap-1"
-                >
+                <Button size="sm" variant="outline" onClick={onRetornarParaSeparacao} className="flex items-center gap-1">
                   <ArrowLeft className="h-4 w-4" />
                   Retornar p/ Separação
                 </Button>
-              </>
-            )}
+              </>}
           </div>
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 }
