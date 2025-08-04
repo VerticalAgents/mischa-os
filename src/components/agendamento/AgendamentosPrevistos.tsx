@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -21,7 +20,8 @@ import AgendamentoEditModal from "./AgendamentoEditModal";
 import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
-import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
+import SortableTableHeader from "@/components/common/SortableTableHeader";
+import { useTableSort } from "@/hooks/useTableSort";
 
 export default function AgendamentosPrevistos() {
   const [open, setOpen] = useState(false);
@@ -56,41 +56,11 @@ export default function AgendamentosPrevistos() {
     );
   }, [agendamentosPrevistos, searchTerm]);
 
-  const sortedAgendamentos = useMemo(() => {
-    return [...filteredAgendamentos].sort((a, b) => {
-      let valueA: any;
-      let valueB: any;
-
-      switch (sortField) {
-        case 'nome':
-          valueA = a.cliente.nome.toLowerCase();
-          valueB = b.cliente.nome.toLowerCase();
-          break;
-        case 'data':
-          valueA = new Date(a.dataReposicao).getTime();
-          valueB = new Date(b.dataReposicao).getTime();
-          break;
-        case 'status':
-          valueA = a.statusAgendamento.toLowerCase();
-          valueB = b.statusAgendamento.toLowerCase();
-          break;
-        case 'tipo':
-          valueA = a.isPedidoUnico ? 'único' : 'pdv';
-          valueB = b.isPedidoUnico ? 'único' : 'pdv';
-          break;
-        default:
-          return 0;
-      }
-
-      if (valueA < valueB) {
-        return sortDirection === 'asc' ? -1 : 1;
-      }
-      if (valueA > valueB) {
-        return sortDirection === 'asc' ? 1 : -1;
-      }
-      return 0;
-    });
-  }, [filteredAgendamentos, sortField, sortDirection]);
+  // Use the new table sort hook instead of the old sorting logic
+  const { sortedData: sortedAgendamentos, sortConfig, requestSort } = useTableSort(
+    filteredAgendamentos, 
+    'dataReposicao'
+  );
 
   useEffect(() => {
     carregarTodosAgendamentos();
@@ -164,16 +134,8 @@ export default function AgendamentosPrevistos() {
         </div>
       </div>
 
-      {/* Controles de Ordenação */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground">Ordenar por:</span>
-          <SortDropdown
-            sortField={sortField}
-            sortDirection={sortDirection}
-            onSortChange={handleSortChange}
-          />
-        </div>
+      {/* Remove the old sort controls and update the stats */}
+      <div className="flex items-center justify-end">
         <div className="text-sm text-muted-foreground">
           {sortedAgendamentos.length} agendamento(s) previstos
         </div>
@@ -183,10 +145,34 @@ export default function AgendamentosPrevistos() {
         <TableCaption>Lista de agendamentos previstos.</TableCaption>
         <TableHeader>
           <TableRow>
-            <TableHead>PDV</TableHead>
-            <TableHead>Data Reposição</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Tipo</TableHead>
+            <SortableTableHeader
+              sortKey="cliente.nome"
+              sortConfig={sortConfig}
+              onSort={requestSort}
+            >
+              PDV
+            </SortableTableHeader>
+            <SortableTableHeader
+              sortKey="dataReposicao"
+              sortConfig={sortConfig}
+              onSort={requestSort}
+            >
+              Data Reposição
+            </SortableTableHeader>
+            <SortableTableHeader
+              sortKey="statusAgendamento"
+              sortConfig={sortConfig}
+              onSort={requestSort}
+            >
+              Status
+            </SortableTableHeader>
+            <SortableTableHeader
+              sortKey="pedido.tipoPedido"
+              sortConfig={sortConfig}
+              onSort={requestSort}
+            >
+              Tipo
+            </SortableTableHeader>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>

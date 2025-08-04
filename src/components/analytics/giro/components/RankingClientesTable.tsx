@@ -1,14 +1,17 @@
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { DadosAnaliseGiroConsolidados } from '@/types/giroAnalysis';
+import SortableTableHeader from '@/components/common/SortableTableHeader';
+import { useTableSort } from '@/hooks/useTableSort';
 
 interface RankingClientesTableProps {
   dados: DadosAnaliseGiroConsolidados[];
 }
 
 export function RankingClientesTable({ dados }: RankingClientesTableProps) {
+  const { sortedData, sortConfig, requestSort } = useTableSort(dados, 'giro_medio_historico');
+
   const getTrendIcon = (variacao: number) => {
     if (variacao > 0) return <TrendingUp className="h-4 w-4 text-green-600" />;
     if (variacao < 0) return <TrendingDown className="h-4 w-4 text-red-600" />;
@@ -34,16 +37,56 @@ export function RankingClientesTable({ dados }: RankingClientesTableProps) {
       <TableHeader>
         <TableRow>
           <TableHead className="w-16">Pos.</TableHead>
-          <TableHead>Cliente</TableHead>
-          <TableHead>Representante</TableHead>
-          <TableHead className="text-right">Giro Histórico</TableHead>
-          <TableHead className="text-right">Achievement</TableHead>
-          <TableHead className="text-right">Variação</TableHead>
-          <TableHead className="text-center">Performance</TableHead>
+          <SortableTableHeader
+            sortKey="cliente_nome"
+            sortConfig={sortConfig}
+            onSort={requestSort}
+          >
+            Cliente
+          </SortableTableHeader>
+          <SortableTableHeader
+            sortKey="representante_nome"
+            sortConfig={sortConfig}
+            onSort={requestSort}
+          >
+            Representante
+          </SortableTableHeader>
+          <SortableTableHeader
+            sortKey="giro_medio_historico"
+            sortConfig={sortConfig}
+            onSort={requestSort}
+            className="text-right"
+          >
+            Giro Histórico
+          </SortableTableHeader>
+          <SortableTableHeader
+            sortKey="achievement_meta"
+            sortConfig={sortConfig}
+            onSort={requestSort}
+            className="text-right"
+          >
+            Achievement
+          </SortableTableHeader>
+          <SortableTableHeader
+            sortKey="variacao_percentual"
+            sortConfig={sortConfig}
+            onSort={requestSort}
+            className="text-right"
+          >
+            Variação
+          </SortableTableHeader>
+          <SortableTableHeader
+            sortKey="semaforo_performance"
+            sortConfig={sortConfig}
+            onSort={requestSort}
+            className="text-center"
+          >
+            Performance
+          </SortableTableHeader>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {dados.map((item, index) => (
+        {sortedData.map((item, index) => (
           <TableRow key={item.cliente_id}>
             <TableCell className="font-medium">#{index + 1}</TableCell>
             <TableCell className="font-medium">{item.cliente_nome}</TableCell>
