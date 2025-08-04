@@ -24,17 +24,37 @@ import { Cliente } from "@/types";
 import GiroMetricCard from "./GiroMetricCard";
 import GiroComparativoBlock from "./GiroComparativoBlock";
 import { useGiroAnalise } from "@/hooks/useGiroAnalise";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AnaliseGiroProps {
   cliente: Cliente;
 }
 
+// Função para converter número da semana ISO para data de início e fim
+function getWeekDates(year: number, week: number) {
+  const firstDayOfYear = new Date(year, 0, 1);
+  const firstMonday = new Date(firstDayOfYear);
+  
+  // Encontrar a primeira segunda-feira do ano
+  const dayOfWeek = firstDayOfYear.getDay();
+  const daysToAdd = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+  firstMonday.setDate(firstDayOfYear.getDate() + daysToAdd);
+  
+  // Calcular a data de início da semana especificada
+  const startDate = new Date(firstMonday);
+  startDate.setDate(firstMonday.getDate() + (week - 2) * 7);
+  
+  // Data de fim (domingo da mesma semana)
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 6);
+  
+  return { startDate, endDate };
+}
+
 export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
   const { dadosGiro, isLoading, error } = useGiroAnalise(cliente);
   
-  // **MUDANÇA: Usar valor consistente para comparativo**
   // Giro semanal médio geral (valor simulado - deve vir do dashboard "Análise de PDV e Giro")
-  // TODO: buscar valor real do dashboard "Análise de PDV e Giro"
   const giroSemanalMedioGeral = 150; // Valor placeholder
   
   if (isLoading) {
@@ -106,17 +126,116 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
     );
   }
   
-  // **MUDANÇA: Usar mediaHistorica unificada para comparativo**
   const comparativoGiroGeral = giroSemanalMedioGeral > 0 
     ? Math.round((dadosGiro.mediaHistorica / giroSemanalMedioGeral) * 100)
     : 0;
   
-  // **MUDANÇA: Preparar dados para o gráfico usando mediaHistorica unificada**
+  // Preparar dados para o gráfico usando mediaHistorica unificada
   const dadosGrafico = dadosGiro.historico.map(item => ({
     semana: item.semana,
     giro: item.valor,
-    mediaHistorica: dadosGiro.mediaHistorica // Usar valor unificado
+    mediaHistorica: dadosGiro.mediaHistorica
   }));
+
+  // Tooltip customizado para o gráfico
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    const [entregasDetalhes, setEntregasDetalhes] = useState<any[]>([]);
+    const [carregandoEntregas, setCarregandoEntregas] = useState(false);
+
+    React.useEffect(() => {
+      if (active && payload && payload.length && label) {
+        const buscarEntregas = async () => {
+          setCarregandoEntregas(true);
+          try {
+            // Extrair ano e semana do label (formato: "Sem 01/24")
+            const match = label.match(/Sem (\d{2})\/(\d{2})/);
+            if (match) {
+              const [, semanaStr, anoStr] = match;
+              const ano = 2000 + parseInt(anoStr);
+              const semana = parseInt(semanaStr);
+              
+              const { startDate, endDate } = getWeekDates(ano, semana);
+              
+              const { data: entregas } = await supabase
+                .from('historico_entregas')
+                .select('data, quantidade')
+                .eq('cliente_id', cliente.id)
+                .eq('tipo', 'entrega')
+                .gte('data', startDate.toISOString())
+                .lte('data', endDate.toISOString())
+                .order('data');
+              
+              setEntregasDetalhes(entregas || []);
+            }
+          } catch (err) {
+            console.error('Erro ao buscar entregas:', err);
+          } finally {
+            setCarregandoEntregas(false);
+          }
+        };
+
+        buscarEntregas();
+      }
+    }, [active, label]);
+
+    if (active && payload && payload.length) {
+      // Extrair ano e semana do label
+      const match = label.match(/Sem (\d{2})\/(\d{2})/);
+      let periodoTexto = '';
+      
+      if (match) {
+        const [, semanaStr, anoStr] = match;
+        const ano = 2000 + parseInt(anoStr);
+        const semana = parseInt(semanaStr);
+        const { startDate, endDate } = getWeekDates(ano, semana);
+        
+        periodoTexto = `${startDate.toLocaleDateString('pt-BR')} até ${endDate.toLocaleDateString('pt-BR')}`;
+      }
+
+      return (
+        <div className="bg-background border border-border rounded-md shadow-lg p-3 max-w-xs">
+          <div className="font-medium">{label}</div>
+          {periodoTexto && (
+            <div className="text-xs text-muted-foreground mb-2">{periodoTexto}</div>
+          )}
+          
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-primary rounded-full" />
+              <span className="text-muted-foreground">Giro:</span>
+              <span className="font-medium">{payload[0].value} unidades</span>
+            </div>
+            {payload[1] && (
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                <span className="text-muted-foreground">Média Histórica:</span>
+                <span className="font-medium">{payload[1].value} unidades</span>
+              </div>
+            )}
+          </div>
+          
+          {carregandoEntregas ? (
+            <div className="mt-2 text-xs text-muted-foreground">Carregando entregas...</div>
+          ) : entregasDetalhes.length > 0 ? (
+            <div className="mt-3 pt-2 border-t border-border">
+              <div className="text-xs font-medium mb-1">Entregas no período:</div>
+              <div className="space-y-1 max-h-24 overflow-y-auto">
+                {entregasDetalhes.map((entrega, idx) => (
+                  <div key={idx} className="text-xs flex justify-between">
+                    <span>{new Date(entrega.data).toLocaleDateString('pt-BR')}</span>
+                    <span className="font-medium">{entrega.quantidade} un</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 text-xs text-muted-foreground">Nenhuma entrega neste período</div>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
   
   return (
     <div className="space-y-6">
@@ -132,13 +251,12 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
         </div>
       </div>
 
-      {/* **MUDANÇA: Usar mediaHistorica unificada** */}
       <GiroComparativoBlock cliente={cliente} mediaHistorica={dadosGiro.mediaHistorica} />
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <GiroMetricCard
           title="Média Histórica"
-          value={dadosGiro.mediaHistorica} // Usar valor unificado
+          value={dadosGiro.mediaHistorica}
           suffix="un/sem"
           description="Últimas 4 semanas"
         />
@@ -185,32 +303,7 @@ export default function AnaliseGiro({ cliente }: AnaliseGiroProps) {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="semana" />
                 <YAxis />
-                <Tooltip 
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-background border border-border rounded-md shadow-lg p-3">
-                          <div className="font-medium">{label}</div>
-                          <div className="mt-2 space-y-1">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 bg-primary rounded-full" />
-                              <span className="text-muted-foreground">Giro:</span>
-                              <span className="font-medium">{payload[0].value} unidades</span>
-                            </div>
-                            {payload[1] && (
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                                <span className="text-muted-foreground">Média Histórica:</span>
-                                <span className="font-medium">{payload[1].value} unidades</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend />
                 <Line
                   type="monotone"
