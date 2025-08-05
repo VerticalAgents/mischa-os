@@ -96,8 +96,8 @@ export default function PedidoCard({
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium">Data de Entrega</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm font-medium text-left">Data de Entrega</p>
+                <p className="text-sm text-muted-foreground text-left">
                   {format(pedido.data_prevista_entrega, "dd/MM/yyyy", {
                   locale: ptBR
                 })}
@@ -107,15 +107,15 @@ export default function PedidoCard({
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium">Quantidade</p>
+                <p className="text-sm font-medium text-left">Quantidade</p>
                 <p className="text-sm text-muted-foreground">{pedido.quantidade_total} unidades</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium">Status</p>
-                <p className="text-sm text-muted-foreground">{pedido.substatus_pedido}</p>
+                <p className="text-sm font-medium text-left">Status</p>
+                <p className="text-sm text-muted-foreground text-left">{pedido.substatus_pedido}</p>
               </div>
             </div>
           </div>
