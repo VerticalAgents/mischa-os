@@ -68,11 +68,14 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
   useEffect(() => {
     if (open && entregas.length > 0) {
       const carregarDadosCompletos = async () => {
+        console.log('🔍 Carregando dados completos das entregas:', entregas.length);
         const entregasComDados: EntregaOrganizada[] = [];
         
         for (const entrega of entregas) {
-          // Buscar dados completos do cliente
-          const { data: cliente } = await supabase
+          console.log(`📋 Processando entrega ID: ${entrega.id} - Cliente: ${entrega.cliente_nome}`);
+          
+          // CORREÇÃO: Usar o ID diretamente, sem replace
+          const { data: cliente, error } = await supabase
             .from('clientes')
             .select(`
               representante_id,
@@ -82,8 +85,20 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
               categorias_habilitadas,
               representantes(nome)
             `)
-            .eq('id', entrega.id.replace('agendamento_', ''))
-            .single();
+            .eq('id', entrega.id)
+            .maybeSingle();
+
+          if (error) {
+            console.error(`❌ Erro ao buscar cliente ${entrega.cliente_nome}:`, error);
+          }
+
+          console.log(`📊 Dados do cliente ${entrega.cliente_nome}:`, {
+            representante: (cliente as any)?.representantes?.nome || 'Sem representante',
+            tipo_cobranca: cliente?.tipo_cobranca || 'À vista',
+            forma_pagamento: cliente?.forma_pagamento || 'Boleto',
+            emite_nota_fiscal: cliente?.emite_nota_fiscal ?? true,
+            categorias_habilitadas: cliente?.categorias_habilitadas
+          });
 
           // Buscar preços por categoria se existirem categorias habilitadas
           let precosCategorias: Array<{categoria: string, preco: number}> = [];
@@ -93,22 +108,29 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
               .map(cat => typeof cat === 'number' ? cat : parseInt(String(cat)))
               .filter(id => !isNaN(id));
 
+            console.log(`💰 Buscando preços para categorias [${categoriasIds.join(', ')}] do cliente ${entrega.cliente_nome}`);
+
             if (categoriasIds.length > 0) {
-              const { data: precos } = await supabase
+              const { data: precos, error: precosError } = await supabase
                 .from('precos_categoria_cliente')
                 .select(`
                   categoria_id,
                   preco_unitario,
                   categorias_produto(nome)
                 `)
-                .eq('cliente_id', entrega.id.replace('agendamento_', ''))
+                .eq('cliente_id', entrega.id)
                 .in('categoria_id', categoriasIds);
+
+              if (precosError) {
+                console.error(`❌ Erro ao buscar preços do cliente ${entrega.cliente_nome}:`, precosError);
+              }
 
               if (precos) {
                 precosCategorias = precos.map(p => ({
                   categoria: (p as any).categorias_produto?.nome || `Categoria ${p.categoria_id}`,
                   preco: p.preco_unitario
                 }));
+                console.log(`💲 Preços encontrados para ${entrega.cliente_nome}:`, precosCategorias);
               }
             }
           }
@@ -127,6 +149,7 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
           });
         }
         
+        console.log('✅ Entregas processadas:', entregasComDados.length);
         setEntregasOrganizadas(entregasComDados);
       };
 
