@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "sonner";
@@ -13,6 +12,7 @@ interface PedidoExpedicao {
   cliente_nome: string;
   cliente_endereco?: string;
   cliente_telefone?: string;
+  link_google_maps?: string;
   data_prevista_entrega: Date;
   quantidade_total: number;
   tipo_pedido: string;
@@ -102,10 +102,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
           console.log('📥 Agendamentos carregados:', agendamentos?.length || 0);
 
-          // Carregar dados dos clientes
+          // Carregar dados dos clientes incluindo o link_google_maps
           const { data: clientes, error: clientesError } = await supabase
             .from('clientes')
-            .select('id, nome, endereco_entrega, contato_telefone');
+            .select('id, nome, endereco_entrega, contato_telefone, link_google_maps');
 
           if (clientesError) {
             console.error('Erro ao carregar clientes:', clientesError);
@@ -128,6 +128,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               cliente_nome: cliente?.nome || 'Cliente não encontrado',
               cliente_endereco: cliente?.endereco_entrega,
               cliente_telefone: cliente?.contato_telefone,
+              link_google_maps: cliente?.link_google_maps,
               data_prevista_entrega: dataPrevisao,
               quantidade_total: agendamento.quantidade_total || 0,
               tipo_pedido: agendamento.tipo_pedido || 'Padrão',

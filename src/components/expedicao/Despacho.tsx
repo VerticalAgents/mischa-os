@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,8 +8,9 @@ import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
 import { DebugInfo } from "./components/DebugInfo";
 import PedidoCard from "./PedidoCard";
 import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
+import { OrganizadorEntregas } from "./OrganizadorEntregas";
 import { toast } from "sonner";
-import { Truck, Package, ArrowLeft } from "lucide-react";
+import { Truck, Package, ArrowLeft, ClipboardList } from "lucide-react";
 
 interface DespachoProps {
   tipoFiltro: "hoje" | "atrasadas";
@@ -40,6 +40,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     handleEditarAgendamento,
     handleSalvarAgendamento
   } = useAgendamentoActions();
+
+  const [organizadorAberto, setOrganizadorAberto] = useState(false);
 
   // Usar hook de sincronização
   useExpedicaoSync();
@@ -88,6 +90,14 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     await retornarParaSeparacao(pedidoId);
   };
 
+  const handleOrganizarEntregas = () => {
+    if (pedidosFiltrados.length === 0) {
+      toast.error("Não há entregas para organizar.");
+      return;
+    }
+    setOrganizadorAberto(true);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -112,6 +122,15 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
             {titulo}
           </h2>
           <div className="flex flex-wrap gap-2">
+            <Button 
+              onClick={handleOrganizarEntregas}
+              size="sm" 
+              variant="outline"
+              className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Organizar Entregas
+            </Button>
             <Button 
               onClick={handleDespachoEmMassa} 
               size="sm" 
@@ -180,6 +199,18 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
           onSalvar={handleSalvarAgendamento}
         />
       )}
+
+      {/* Modal do Organizador de Entregas */}
+      <OrganizadorEntregas
+        open={organizadorAberto}
+        onOpenChange={setOrganizadorAberto}
+        entregas={pedidosFiltrados.map(p => ({
+          id: p.id,
+          cliente_nome: p.cliente_nome,
+          cliente_endereco: p.cliente_endereco,
+          link_google_maps: (p as any).link_google_maps // Casting temporário, pois o tipo não inclui este campo ainda
+        }))}
+      />
     </div>
   );
 };
