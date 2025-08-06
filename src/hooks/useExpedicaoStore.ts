@@ -115,7 +115,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               .select('id, nome, endereco_entrega, contato_telefone');
             
             if (clientesSemLink) {
-              const clientesMap = new Map(clientesSemLink.map(c => [c.id, { ...c, link_google_maps: null }]));
+              const clientesMap = new Map(clientesSemLink.map(c => [c.id, { ...c, link_google_maps: undefined }]));
               
               const pedidosFormatados = (agendamentos || []).map(agendamento => {
                 const cliente = clientesMap.get(agendamento.cliente_id);
