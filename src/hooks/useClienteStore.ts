@@ -81,7 +81,6 @@ function convertSupabaseToCliente(data: any, agendamento?: any): Cliente {
     nome: data.nome,
     cnpjCpf: data.cnpj_cpf,
     enderecoEntrega: data.endereco_entrega,
-    linkGoogleMaps: data.link_google_maps,
     contatoNome: data.contato_nome,
     contatoTelefone: data.contato_telefone,
     contatoEmail: data.contato_email,
@@ -124,7 +123,6 @@ function convertClienteToSupabase(cliente: Omit<Cliente, 'id' | 'dataCadastro'>)
     nome: cliente.nome,
     cnpj_cpf: cliente.cnpjCpf || null,
     endereco_entrega: cliente.enderecoEntrega || null,
-    link_google_maps: cliente.linkGoogleMaps || null,
     contato_nome: cliente.contatoNome || null,
     contato_telefone: cliente.contatoTelefone || null,
     contato_email: cliente.contatoEmail || null,
@@ -295,7 +293,6 @@ export const useClienteStore = create<ClienteStore>()(
           if (dadosCliente.nome !== undefined) dadosSupabase.nome = dadosCliente.nome;
           if (dadosCliente.cnpjCpf !== undefined) dadosSupabase.cnpj_cpf = dadosCliente.cnpjCpf;
           if (dadosCliente.enderecoEntrega !== undefined) dadosSupabase.endereco_entrega = dadosCliente.enderecoEntrega;
-          if (dadosCliente.linkGoogleMaps !== undefined) dadosSupabase.link_google_maps = dadosCliente.linkGoogleMaps;
           if (dadosCliente.contatoNome !== undefined) dadosSupabase.contato_nome = dadosCliente.contatoNome;
           if (dadosCliente.contatoTelefone !== undefined) dadosSupabase.contato_telefone = dadosCliente.contatoTelefone;
           if (dadosCliente.contatoEmail !== undefined) dadosSupabase.contato_email = dadosCliente.contatoEmail;

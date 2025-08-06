@@ -1,91 +1,193 @@
-
-import { useEffect } from "react";
-import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { CheckCircle } from "lucide-react";
-import { ResumoQuantidadesSeparacao } from "./ResumoQuantidadesSeparacao";
+import { Card } from "@/components/ui/card";
+import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
+import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
+import { usePedidoConverter } from "./hooks/usePedidoConverter";
+import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
+import { PrintingActions } from "./components/PrintingActions";
+import { SeparacaoTabs } from "./components/SeparacaoTabs";
+import { DebugInfo } from "./components/DebugInfo";
+import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
+import { toast } from "sonner";
+import { Check, RefreshCw } from "lucide-react";
+import { format } from "date-fns";
 
-export function SeparacaoPedidos() {
-  const { 
-    pedidos, 
-    isLoading, 
-    carregarPedidos, 
-    confirmarSeparacao, 
-    desfazerSeparacao, 
-    marcarTodosSeparados,
-    getPedidosParaSeparacao 
-  } = useExpedicaoStore();
+export const SeparacaoPedidos = () => {
+  const [activeSubTab, setActiveSubTab] = useState<string>("todos");
+  const mountedRef = useRef(false);
   
-  useEffect(() => {
-    if (pedidos.length === 0 && !isLoading) {
-      carregarPedidos();
-    }
-  }, [pedidos, isLoading, carregarPedidos]);
+  const {
+    pedidos,
+    isLoading,
+    ultimaAtualizacao,
+    confirmarSeparacao,
+    marcarTodosSeparados,
+    atualizarDataReferencia,
+    getPedidosParaSeparacao,
+    getPedidosProximoDia,
+    carregarPedidos
+  } = useExpedicaoStore();
 
+  const { converterPedidoParaCard } = usePedidoConverter();
+  const {
+    modalEditarAberto,
+    setModalEditarAberto,
+    agendamentoParaEditar,
+    handleEditarAgendamento,
+    handleSalvarAgendamento
+  } = useAgendamentoActions();
+
+  // Usar hook de sincronização aprimorado
+  const { recarregarDados } = useExpedicaoSync();
+
+  // Carregar pedidos apenas uma vez ao montar
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      console.log('🔄 Carregamento inicial da SeparacaoPedidos');
+      recarregarDados(); // Usar o método aprimorado
+    }
+  }, [recarregarDados]);
+
+  // Obter pedidos filtrados
   const pedidosParaSeparacao = getPedidosParaSeparacao();
+  const pedidosProximoDia = getPedidosProximoDia();
+  
+  // Separar por tipo
+  const pedidosPadrao = pedidosParaSeparacao.filter(p => p.tipo_pedido === "Padrão");
+  const pedidosAlterados = pedidosParaSeparacao.filter(p => p.tipo_pedido === "Alterado");
+  
+  // Lista combinada para "todos"
+  const todosPedidos = [...pedidosPadrao, ...pedidosAlterados];
+
+  const marcarTodosComoSeparados = async () => {
+    let listaAtual: any[] = [];
+    
+    if (activeSubTab === "padrao") {
+      listaAtual = pedidosPadrao;
+    } else if (activeSubTab === "alterados") {
+      listaAtual = pedidosAlterados;
+    } else if (activeSubTab === "proximos") {
+      listaAtual = pedidosProximoDia;
+    } else {
+      listaAtual = todosPedidos;
+    }
+    
+    if (listaAtual.length === 0) {
+      toast.error("Não há pedidos para separar nesta categoria.");
+      return;
+    }
+    
+    console.log('✅ Marcando todos como separados:', listaAtual.map(p => p.id));
+    await marcarTodosSeparados(listaAtual);
+    // Recarregar dados após a operação em massa
+    await recarregarDados();
+  };
+
+  const handleConfirmarSeparacao = async (pedidoId: string) => {
+    try {
+      console.log('✅ Iniciando confirmação de separação para pedido ID:', pedidoId, 'Tipo:', typeof pedidoId);
+      
+      // Debug adicional para verificar se o ID está correto
+      const pedidoEncontrado = pedidos.find(p => String(p.id) === String(pedidoId));
+      console.log('🔍 Pedido encontrado na lista:', pedidoEncontrado ? 'SIM' : 'NÃO');
+      console.log('🔍 ID original do pedido:', pedidoId);
+      console.log('🔍 Todos os IDs disponíveis:', pedidos.map(p => ({ id: p.id, tipo: typeof p.id })));
+      
+      await confirmarSeparacao(pedidoId);
+      // Recarregar dados após a confirmação individual
+      await recarregarDados();
+      console.log('✅ Separação confirmada com sucesso para pedido:', pedidoId);
+    } catch (error) {
+      console.error('❌ Erro ao confirmar separação:', error);
+      toast.error("Erro ao confirmar separação");
+    }
+  };
+
+  const handleAtualizarData = async () => {
+    await atualizarDataReferencia();
+    // Recarregar dados após atualização da data
+    await recarregarDados();
+  };
 
   if (isLoading) {
-    return <div>Carregando...</div>;
+    return (
+      <div className="space-y-4">
+        <Card className="p-4">
+          <div className="flex justify-center items-center h-32">
+            <div className="text-muted-foreground">Carregando pedidos...</div>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Separação de Pedidos</h2>
-          <p className="text-muted-foreground">
-            Pedidos que precisam ser separados para entrega hoje
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {pedidosParaSeparacao.length > 0 && (
-            <Button
-              onClick={() => marcarTodosSeparados(pedidosParaSeparacao)}
-              className="bg-green-600 hover:bg-green-700"
+    <div className="space-y-4">
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div className="flex flex-col">
+            <h2 className="text-lg font-semibold">Separação de Pedidos</h2>
+            {ultimaAtualizacao && (
+              <p className="text-sm text-muted-foreground">
+                Última atualização: {format(ultimaAtualizacao, 'dd/MM/yyyy HH:mm:ss')}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              onClick={handleAtualizarData}
+              size="sm" 
+              variant="outline"
+              className="flex items-center gap-1"
               disabled={isLoading}
             >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Marcar Todos Separados
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Atualizar Data
             </Button>
-          )}
-        </div>
-      </div>
-
-      <ResumoQuantidadesSeparacao pedidos={pedidosParaSeparacao} />
-
-      <div className="space-y-4">
-        {pedidosParaSeparacao.map((pedido) => (
-          <div key={pedido.id} className="border rounded-lg p-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-medium">{pedido.cliente_nome}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Quantidade: {pedido.quantidade_total}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => confirmarSeparacao(pedido.id)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Confirmar Separação
-                </Button>
-                {pedido.substatus_pedido === 'Separado' && (
-                  <Button
-                    onClick={() => desfazerSeparacao(pedido.id)}
-                    size="sm"
-                    variant="ghost"
-                  >
-                    Desfazer
-                  </Button>
-                )}
-              </div>
-            </div>
+            <Button 
+              onClick={marcarTodosComoSeparados} 
+              size="sm" 
+              className="flex items-center gap-1"
+            >
+              <Check className="h-4 w-4" /> Marcar todos como separados
+            </Button>
+            <PrintingActions
+              activeSubTab={activeSubTab}
+              pedidosPadrao={pedidosPadrao}
+              pedidosAlterados={pedidosAlterados}
+              pedidosProximoDia={pedidosProximoDia}
+              todosPedidos={todosPedidos}
+            />
           </div>
-        ))}
-      </div>
+        </div>
+        
+        {/* Debug Info Component */}
+        <DebugInfo tipo="separacao" dadosAtivos={todosPedidos} />
+        
+        <SeparacaoTabs
+          activeSubTab={activeSubTab}
+          setActiveSubTab={setActiveSubTab}
+          todosPedidos={todosPedidos}
+          pedidosPadrao={pedidosPadrao}
+          pedidosAlterados={pedidosAlterados}
+          pedidosProximoDia={pedidosProximoDia}
+          converterPedidoParaCard={converterPedidoParaCard}
+          confirmarSeparacao={handleConfirmarSeparacao}
+          handleEditarAgendamento={handleEditarAgendamento}
+        />
+      </Card>
+
+      {/* Modal de edição de agendamento completo */}
+      {agendamentoParaEditar && (
+        <AgendamentoEditModal
+          agendamento={agendamentoParaEditar}
+          open={modalEditarAberto}
+          onOpenChange={setModalEditarAberto}
+          onSalvar={handleSalvarAgendamento}
+        />
+      )}
     </div>
   );
-}
+};

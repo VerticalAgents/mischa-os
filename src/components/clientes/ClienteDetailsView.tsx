@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Cliente } from '@/types';
 import { Button } from "@/components/ui/button";
-import { Edit } from "lucide-react";
+import { ArrowLeft, Edit } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
 import ClienteDetalhesTabs from "./ClienteDetalhesTabs";
 import ClienteFormDialog from "./ClienteFormDialog";
@@ -57,7 +57,7 @@ export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsVi
       <ClienteFormDialog 
         open={isEditDialogOpen} 
         onOpenChange={setIsEditDialogOpen}
-        clienteId={cliente.id}
+        cliente={cliente}
         onClienteUpdate={handleClienteUpdate}
       />
     </div>

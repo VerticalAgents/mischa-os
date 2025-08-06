@@ -1,169 +1,314 @@
 
-export type StatusCliente = 'Ativo' | 'Inativo' | 'Prospecto' | 'Em análise' | 'A ativar' | 'Standby';
+export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby';
 
-export interface CategoriaProduto {
+// Adding new types for client configuration
+export type DiaSemana = 'Dom' | 'Seg' | 'Ter' | 'Qua' | 'Qui' | 'Sex' | 'Sáb';
+
+// Updated interfaces for configuration
+export interface TipoLogistica {
   id: number;
   nome: string;
-  descricao?: string;
+  percentualLogistico: number; // em porcentagem
+  ativo: boolean;
 }
 
-export interface SubcategoriaProduto {
+export interface FormaPagamento {
   id: number;
-  nome: string;
-  categoria_id: number;
-}
-
-export interface ProdutoCategoria {
-  id: number;
-  nome: string;
-  descricao?: string;
-}
-
-export interface ProdutoSubcategoria {
-  id: number;
-  nome: string;
-  categoria_id: number;
-}
-
-export interface AgendamentoCliente {
-  id: string;
-  cliente_id: string;
-  data_proxima_reposicao: Date;
-  status_agendamento: string;
-  tipo_pedido: string;
-  itens_personalizados?: any;
-}
-
-export type StatusAgendamentoCliente = 'Agendar' | 'Previsto' | 'Agendado';
-
-export type TipoPedidoAgendamento = 'Padrão' | 'Alterado';
-
-export type SubstatusPedidoAgendado = 'Agendado' | 'Separado' | 'Despachado' | 'Entregue' | 'Retorno';
-
-export interface HistoricoEntrega {
-  id?: string;
-  cliente_id: string;
-  cliente_nome: string;
-  data: Date;
-  tipo: 'entrega' | 'retorno';
-  quantidade: number;
-  itens: any[];
-  status_anterior: string;
-  observacao?: string;
-}
-
-export interface Pedido {
-  id: string;
-  cliente_id: string;
-  data_pedido: Date;
-  quantidade_total: number;
-  status: string;
-  itens?: any[];
-}
-
-export type StatusPedido = 'Pendente' | 'Separado' | 'Despachado' | 'Entregue' | 'Cancelado';
-
-export interface Alerta {
-  id: string;
-  tipo: 'warning' | 'error' | 'info';
-  mensagem: string;
-  data: Date;
-}
-
-export interface DashboardData {
-  pedidos: Pedido[];
-  clientes: Cliente[];
-  alertas: Alerta[];
-}
-
-export interface Sabor {
-  id: string;
   nome: string;
   ativo: boolean;
 }
 
-export interface Insumo {
-  id: string;
+export type TipoLogisticaNome = 'Própria' | 'Distribuição';
+export type TipoCobranca = 'À vista' | 'Consignado';
+export type FormaPagamentoNome = 'Boleto' | 'PIX' | 'Dinheiro';
+
+// Status de agendamento do cliente - updated to include Separado
+export type StatusAgendamentoCliente = 'Agendar' | 'Previsto' | 'Agendado' | 'Separado' | 'Reagendar' | string;
+
+export interface Cliente {
+  id: string; // UUID from Supabase
   nome: string;
-  categoria_id?: number;
-  unidade_medida: string;
-  preco_unitario?: number;
+  cnpjCpf?: string;
+  enderecoEntrega?: string;
+  contatoNome?: string;
+  contatoTelefone?: string;
+  contatoEmail?: string;
+  quantidadePadrao: number;
+  periodicidadePadrao: number; // em dias
+  statusCliente: StatusCliente;
+  dataCadastro: Date;
+  metaGiroSemanal?: number; // Meta de giro semanal
+  ultimaDataReposicaoEfetiva?: Date; // Data da última reposição efetiva
+  statusAgendamento?: StatusAgendamentoCliente; // Status do agendamento
+  proximaDataReposicao?: Date; // Próxima data de reposição agendada
+  ativo: boolean;
+  giroMedioSemanal?: number;
+  
+  // Novos campos para configuração avançada
+  janelasEntrega?: DiaSemana[];
+  representanteId?: number;
+  rotaEntregaId?: number;
+  categoriaEstabelecimentoId?: number;
+  instrucoesEntrega?: string;
+  contabilizarGiroMedio: boolean;
+  tipoLogistica: TipoLogisticaNome;
+  emiteNotaFiscal: boolean;
+  tipoCobranca: TipoCobranca;
+  formaPagamento: FormaPagamentoNome;
+  observacoes?: string;
+  
+  // Added missing category fields
+  categoriaId: number;
+  subcategoriaId: number;
+  
+  // New field for category selection
+  categoriasHabilitadas?: number[]; // Array of category IDs that client can purchase
 }
 
-export interface CategoriaInsumo {
-  id: number;
-  nome: string;
-  descricao?: string;
-}
-
-export interface UnidadeMedida {
-  id: string;
-  nome: string;
-  simbolo: string;
-}
-
-export type DiaSemana = 'Segunda' | 'Terça' | 'Quarta' | 'Quinta' | 'Sexta' | 'Sábado' | 'Domingo';
-
-export type TipoLogisticaNome = 'Própria' | 'Terceirizada' | 'Mista';
-
-export type TipoCobranca = 'À vista' | 'Parcelado' | 'Boleto';
-
+// Representantes, Rotas e Categorias para configuração
 export interface Representante {
   id: number;
   nome: string;
   email?: string;
   telefone?: string;
+  ativo: boolean;
 }
 
 export interface RotaEntrega {
   id: number;
   nome: string;
   descricao?: string;
+  ativo: boolean;
+}
+
+export interface CategoriaEstabelecimento {
+  id: number;
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
 }
 
 export interface ConfiguracoesProducao {
-  capacidade_maxima: number;
-  tempo_preparacao: number;
-  margem_seguranca: number;
+  unidadesPorForma: number;
+  formasPorLote: number;
+  incluirPedidosPrevistos: boolean;
+  percentualPedidosPrevistos: number;
+  tempoMedioPorFornada: number; // em minutos
+  unidadesBrowniePorForma: number;
+  formasPorFornada: number;
 }
 
-export interface Cliente {
-  id: string;
-  nome: string;
-  cnpjCpf?: string;
-  enderecoEntrega?: string;
-  linkGoogleMaps?: string;
-  contatoNome?: string;
-  contatoTelefone?: string;
-  contatoEmail?: string;
-  quantidadePadrao: number;
-  periodicidadePadrao: number;
-  statusCliente: StatusCliente;
-  dataCadastro: Date;
-  metaGiroSemanal: number;
-  ultimaDataReposicaoEfetiva?: Date;
-  statusAgendamento?: string;
-  proximaDataReposicao?: Date;
-  ativo: boolean;
-  giroMedioSemanal: number;
-  
-  // Campos de entrega e logística
-  janelasEntrega?: string[];
-  representanteId?: number;
-  rotaEntregaId?: number;
-  categoriaEstabelecimentoId?: number;
-  instrucoesEntrega?: string;
-  contabilizarGiroMedio: boolean;
-  tipoLogistica: string;
-  
-  // Campos financeiros e fiscais
-  emiteNotaFiscal: boolean;
-  tipoCobranca: string;
-  formaPagamento: string;
-  
-  // Observações e categorias
+export type StatusPedido = 'Agendado' | 'Em Separação' | 'Despachado' | 'Entregue' | 'Cancelado';
+export type TipoPedido = 'Padrão' | 'Alterado' | 'Único';
+export type TipoPedidoAgendamento = 'Padrão' | 'Alterado'; // Specific type for agendamento context
+export type SubstatusPedidoAgendado = 'Agendado' | 'Separado' | 'Despachado' | 'Entregue' | 'Retorno';
+
+export interface AlteracaoStatusPedido {
+  dataAlteracao: Date;
+  usuarioId?: number;
+  nomeUsuario?: string;
+  statusAnterior: StatusPedido;
+  statusNovo: StatusPedido;
+  substatusAnterior?: SubstatusPedidoAgendado;
+  substatusNovo?: SubstatusPedidoAgendado;
+  observacao?: string;
+}
+
+export interface ItemPedido {
+  id: number;
+  idPedido: string | number; // Aceita tanto string (UUID) quanto number para compatibilidade
+  idSabor: number;
+  nomeSabor?: string; // Make nomeSabor optional to match mockData
+  quantidadeSabor: number;
+  quantidadeSeparada?: number;
+  quantidadeEntregue?: number;
+  sabor?: {
+    nome: string;
+  };
+}
+
+export interface Pedido {
+  id: string | number; // Aceita tanto string (UUID) quanto number para compatibilidade
+  idCliente: string; // Changed to string to match Cliente.id (UUID)
+  cliente?: Cliente;
+  dataPedido: Date;
+  dataPrevistaEntrega: Date;
+  dataEfetivaEntrega?: Date;
+  statusPedido: StatusPedido;
+  substatusPedido?: SubstatusPedidoAgendado;
+  itensPedido: ItemPedido[];
   observacoes?: string;
+  totalPedidoUnidades: number;
+  valorTotal?: number;
+  separado?: boolean;
+  tipoPedido?: TipoPedido;
+  historicoAlteracoesStatus?: AlteracaoStatusPedido[];
+}
+
+export type CategoriaInsumo = 'Matéria Prima' | 'Embalagem' | 'Outros';
+export type UnidadeMedida = 'g' | 'kg' | 'ml' | 'l' | 'un' | 'pct';
+
+export interface Insumo {
+  id: number;
+  nome: string;
+  categoria: CategoriaInsumo;
+  volumeBruto: number;
+  unidadeMedida: UnidadeMedida;
+  custoMedio: number;
+  custoUnitario: number;
+}
+
+export interface ItemReceita {
+  id: number;
+  idReceita: number;
+  idInsumo: number;
+  nomeInsumo: string;
+  quantidade: number;
+  unidadeMedida: UnidadeMedida;
+  custoParcial: number;
+  custo?: number;
+  insumo?: Insumo;
+}
+
+export interface ReceitaBase {
+  id: number;
+  nome: string;
+  descricao?: string;
+  rendimento: number;
+  unidadeRendimento: string;
+  itensReceita: ItemReceita[];
+  custoTotal: number;
+  custoUnitario: number;
+  pesoTotal?: number;
+}
+
+export type TipoComponente = 'Receita' | 'Insumo';
+
+export interface ComponenteProduto {
+  id: number;
+  idProduto: number;
+  idReceita: number;
+  nomeReceita: string;
+  quantidade: number;
+  custoParcial: number;
+  tipo?: TipoComponente;
+  idItem?: number;
+  nome?: string;
+  custo?: number;
+}
+
+// Product category types
+export interface ProdutoSubcategoria {
+  id: number;
+  nome: string;
+  categoriaId: number;
+  quantidadeProdutos: number;
+}
+
+export interface ProdutoCategoria {
+  id: number;
+  nome: string;
+  descricao?: string;
+  subcategorias: ProdutoSubcategoria[];
+  quantidadeProdutos: number;
+}
+
+// Update Produto interface to include category and subcategory
+export interface Produto {
+  id: number;
+  nome: string;
+  descricao?: string;
+  precoVenda: number;
+  custoTotal: number;
+  margemLucro: number; // em porcentagem
+  componentes: ComponenteProduto[];
+  ativo: boolean;
+  pesoUnitario?: number;
+  custoUnitario?: number;
+  unidadesProducao?: number;
+  categoria?: string; // Added category field
+  estoqueMinimo?: number; // Added estoqueMinimo field
   categoriaId: number;
   subcategoriaId: number;
-  categoriasHabilitadas: number[];
+}
+
+export interface Sabor {
+  id: number;
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
+  custoUnitario: number;
+  precoVenda: number;
+  estoqueMinimo: number;
+  estoqueIdeal: number;
+  saldoAtual: number;
+  emProducao: number;
+  idReceitaBase?: number;
+  nomeReceitaBase?: string;
+  percentualPadraoDist?: number;
+}
+
+export interface PlanejamentoProducao {
+  id: number;
+  dataPlanejamento: Date;
+  dataProducao: Date;
+  status: 'Pendente' | 'Em Produção' | 'Concluído' | 'Cancelado';
+  itensPlanejamento: {
+    idSabor: number;
+    nomeSabor: string;
+    quantidadePlanejada: number;
+    quantidadeProduzida?: number;
+  }[];
+  observacoes?: string;
+  totalUnidades: number;
+  // Additional properties needed for usePlanejamentoProducaoStore
+  totalUnidadesAgendadas?: number;
+  formasNecessarias?: number;
+}
+
+// Add new type for production history
+export interface HistoricoProducao {
+  id: number;
+  dataProducao: Date;
+  produtoId: number;
+  produtoNome: string;
+  formasProducidas: number;
+  unidadesCalculadas: number;
+  turno: string;
+  observacoes?: string;
+  origem: 'Agendada' | 'Manual'; // Track where the production came from
+}
+
+export type TipoAlerta = 
+  | 'EstoqueAbaixoMinimo' 
+  | 'ProximasEntregas' 
+  | 'DeltaForaTolerancia' 
+  | 'PedidoAgendado' 
+  | 'PedidoPronto';
+
+export interface Alerta {
+  id: number;
+  tipo: TipoAlerta;
+  mensagem: string;
+  dataAlerta: Date;
+  lida: boolean;
+  dados: Record<string, any>;
+}
+
+export interface DashboardData {
+  contadoresStatus: {
+    ativos: number;
+    emAnalise: number;
+    inativos: number;
+    aAtivar: number;
+    standby: number;
+  };
+  giroMedioSemanalPorPDV: {
+    idCliente: string; // Changed from number to string
+    nomeCliente: string;
+    giroSemanal: number;
+  }[];
+  giroMedioSemanalGeral: number;
+  previsaoGiroTotalSemanal: number;
+  previsaoGiroTotalMensal: number;
 }
