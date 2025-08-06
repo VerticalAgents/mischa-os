@@ -1,306 +1,189 @@
+import React from "react";
 import { Cliente } from "@/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { MapPin, Phone, Mail, Package, Calendar, Target, DollarSign, Building, User, Clock, FileText, Truck, CreditCard, Shield, Settings } from "lucide-react";
+
 interface ClienteDetalhesInfoProps {
   cliente: Cliente;
 }
-export default function ClienteDetalhesInfo({
-  cliente
-}: ClienteDetalhesInfoProps) {
-  return <div className="space-y-6">
-      {/* Informações Básicas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building className="h-5 w-5 text-blue-600" />
-            Informações Básicas
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <User className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Nome do Cliente</p>
-                  <p className="text-sm font-semibold text-foreground text-left">{cliente.nome}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <FileText className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">CNPJ/CPF</p>
-                  <p className="text-sm text-foreground text-left">{cliente.cnpjCpf || "Não informado"}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Shield className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Status</p>
-                  <Badge variant={cliente.statusCliente === 'Ativo' ? 'default' : 'secondary'} className="text-xs">
-                    {cliente.statusCliente}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Package className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Categoria do Estabelecimento</p>
-                  <p className="text-sm text-foreground text-left">Não informado</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <User className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Representante</p>
-                  <p className="text-sm text-foreground text-left">Não informado</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Truck className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Rota de Entrega</p>
-                  <p className="text-sm text-foreground text-left">Não informado</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Informações de Contato e Endereço */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Phone className="h-5 w-5 text-green-600" />
-            Contato e Endereço
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <User className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Nome do Contato</p>
-                  <p className="text-sm text-foreground text-left">{cliente.contatoNome || "Não informado"}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Phone className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Telefone</p>
-                  <p className="text-sm text-foreground text-left">{cliente.contatoTelefone || "Não informado"}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Mail className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">E-mail</p>
-                  <p className="text-sm text-foreground text-left">{cliente.contatoEmail || "Não informado"}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <MapPin className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Endereço de Entrega</p>
-                  <p className="text-sm text-foreground text-left">{cliente.enderecoEntrega || "Não informado"}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <FileText className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Instruções de Entrega</p>
-                  <p className="text-sm text-foreground text-left">{cliente.instrucoesEntrega || "Nenhuma instrução especial"}</p>
-                </div>
-              </div>
-            </div>
+export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProps) {
+  return (
+    <div className="space-y-6">
+      {/* Dados Básicos */}
+      <div className="bg-card p-6 rounded-lg border">
+        <h3 className="text-lg font-semibold mb-4 text-foreground">Dados Básicos</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Nome:</span>
+            <p className="text-foreground">{cliente.nome}</p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Configurações Operacionais */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-orange-600" />
-            Configurações Operacionais
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Package className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Quantidade Padrão por Reposição</p>
-                  <p className="text-sm font-semibold text-foreground text-left">{cliente.quantidadePadrao} unidades</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Clock className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Periodicidade de Entrega</p>
-                  <p className="text-sm font-semibold text-foreground text-left">A cada {cliente.periodicidadePadrao} dias</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Truck className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Tipo de Logística</p>
-                  <p className="text-sm text-foreground text-left">{cliente.tipoLogistica}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Calendar className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Janelas de Entrega</p>
-                  <div className="flex gap-1 flex-wrap">
-                    {cliente.janelasEntrega?.map(dia => <Badge key={dia} variant="outline" className="text-xs">
-                        {dia}
-                      </Badge>) || <span className="text-sm text-muted-foreground">Não definidas</span>}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <FileText className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Emite Nota Fiscal</p>
-                  <Badge variant={cliente.emiteNotaFiscal ? 'default' : 'secondary'} className="text-xs">
-                    {cliente.emiteNotaFiscal ? 'Sim' : 'Não'}
-                  </Badge>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Calendar className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Última Reposição</p>
-                  <p className="text-sm text-foreground text-left">
-                    {cliente.ultimaDataReposicaoEfetiva ? new Date(cliente.ultimaDataReposicaoEfetiva).toLocaleDateString('pt-BR') : "Nenhuma reposição registrada"}
-                  </p>
-                </div>
-              </div>
-            </div>
+          
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">CNPJ/CPF:</span>
+            <p className="text-foreground">{cliente.cnpjCpf || "Não informado"}</p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Performance e Metas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-purple-600" />
-            Performance e Metas
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Target className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Giro Médio Semanal Atual</p>
-                  <p className="text-lg font-bold text-blue-600 text-left">{cliente.giroMedioSemanal || 0} unidades/semana</p>
-                  <p className="text-xs text-muted-foreground text-left">Baseado no histórico de entregas</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Target className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Meta de Giro Semanal</p>
-                  <p className="text-lg font-bold text-primary text-left">{cliente.metaGiroSemanal || 0} unidades/semana</p>
-                  <p className="text-xs text-muted-foreground text-left">Meta definida para o cliente</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <DollarSign className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Giro Calculado (Teórico)</p>
-                  <p className="text-lg font-bold text-gray-600 text-left">
-                    {cliente.periodicidadePadrao > 0 ? Math.round(cliente.quantidadePadrao / cliente.periodicidadePadrao * 7) : 0} unidades/semana
-                  </p>
-                  <p className="text-xs text-muted-foreground text-left">
-                    Baseado na quantidade padrão ({cliente.quantidadePadrao}) e periodicidade ({cliente.periodicidadePadrao} dias)
-                  </p>
-                </div>
-              </div>
-            </div>
+          
+          <div className="md:col-span-2">
+            <span className="text-sm font-medium text-muted-foreground">Endereço de Entrega:</span>
+            <p className="text-foreground">{cliente.enderecoEntrega || "Não informado"}</p>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Informações Financeiras */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-emerald-600" />
-            Informações Financeiras
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <DollarSign className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Tipo de Cobrança</p>
-                  <p className="text-sm font-medium text-foreground text-left">{cliente.tipoCobranca}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <CreditCard className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Forma de Pagamento</p>
-                  <p className="text-sm font-medium text-foreground text-left">{cliente.formaPagamento}</p>
-                </div>
+          {cliente.linkGoogleMaps && (
+            <div className="md:col-span-2">
+              <span className="text-sm font-medium text-muted-foreground">Link Google Maps:</span>
+              <div className="mt-1">
+                <a 
+                  href={cliente.linkGoogleMaps} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-blue-600 hover:text-blue-800 underline"
+                >
+                  Ver no Google Maps
+                  <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
               </div>
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* Informações de Contato */}
+      <div className="bg-card p-6 rounded-lg border">
+        <h3 className="text-lg font-semibold mb-4 text-foreground">Informações de Contato</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Nome do Contato:</span>
+            <p className="text-foreground">{cliente.contatoNome || "Não informado"}</p>
           </div>
-        </CardContent>
-      </Card>
+          
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Telefone:</span>
+            <p className="text-foreground">{cliente.contatoTelefone || "Não informado"}</p>
+          </div>
+          
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Email:</span>
+            <p className="text-foreground">{cliente.contatoEmail || "Não informado"}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Configurações Comerciais */}
+      <div className="bg-card p-6 rounded-lg border">
+        <h3 className="text-lg font-semibold mb-4 text-foreground">Configurações Comerciais</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Quantidade Padrão:</span>
+            <p className="text-foreground">{cliente.quantidadePadrao}</p>
+          </div>
+          
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Periodicidade (dias):</span>
+            <p className="text-foreground">{cliente.periodicidadePadrao}</p>
+          </div>
+          
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Status:</span>
+            <p className="text-foreground">{cliente.statusCliente}</p>
+          </div>
+          
+           <div>
+            <span className="text-sm font-medium text-muted-foreground">Giro Semanal:</span>
+            <p className="text-foreground">{cliente.giroMedioSemanal}</p>
+          </div>
+          
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Meta de Giro Semanal:</span>
+            <p className="text-foreground">{cliente.metaGiroSemanal}</p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Agendamento */}
+      <div className="bg-card p-6 rounded-lg border">
+        <h3 className="text-lg font-semibold mb-4 text-foreground">Agendamento</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Status Agendamento:</span>
+            <p className="text-foreground">{cliente.statusAgendamento || "Não agendado"}</p>
+          </div>
+          
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Próxima Reposição:</span>
+            <p className="text-foreground">
+              {cliente.proximaDataReposicao
+                ? cliente.proximaDataReposicao.toLocaleDateString()
+                : "Não agendada"}
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Entrega e Logística */}
+      <div className="bg-card p-6 rounded-lg border">
+        <h3 className="text-lg font-semibold mb-4 text-foreground">Entrega e Logística</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Tipo de Logística:</span>
+            <p className="text-foreground">{cliente.tipoLogistica || "Não especificado"}</p>
+          </div>
+          
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Rota de Entrega:</span>
+            <p className="text-foreground">{cliente.rotaEntregaId || "Não especificado"}</p>
+          </div>
+          
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Representante:</span>
+            <p className="text-foreground">{cliente.representanteId || "Não especificado"}</p>
+          </div>
+          
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Categoria Estabelecimento:</span>
+            <p className="text-foreground">{cliente.categoriaEstabelecimentoId || "Não especificado"}</p>
+          </div>
+          
+          <div className="md:col-span-2">
+            <span className="text-sm font-medium text-muted-foreground">Instruções de Entrega:</span>
+            <p className="text-foreground">{cliente.instrucoesEntrega || "Nenhuma"}</p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Financeiro e Fiscal */}
+      <div className="bg-card p-6 rounded-lg border">
+        <h3 className="text-lg font-semibold mb-4 text-foreground">Financeiro e Fiscal</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Tipo de Cobrança:</span>
+            <p className="text-foreground">{cliente.tipoCobranca || "Não especificado"}</p>
+          </div>
+          
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Forma de Pagamento:</span>
+            <p className="text-foreground">{cliente.formaPagamento || "Não especificado"}</p>
+          </div>
+          
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Emite Nota Fiscal:</span>
+            <p className="text-foreground">{cliente.emiteNotaFiscal ? "Sim" : "Não"}</p>
+          </div>
+          
+          <div>
+            <span className="text-sm font-medium text-muted-foreground">Contabilizar Giro Médio:</span>
+            <p className="text-foreground">{cliente.contabilizarGiroMedio ? "Sim" : "Não"}</p>
+          </div>
+        </div>
+      </div>
 
       {/* Observações */}
-      {cliente.observacoes && <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-amber-600" />
-              Observações Gerais
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-start gap-3">
-              <FileText className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm leading-relaxed text-foreground">{cliente.observacoes}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>}
-    </div>;
+      {cliente.observacoes && (
+        <div className="bg-card p-6 rounded-lg border">
+          <h3 className="text-lg font-semibold mb-4 text-foreground">Observações</h3>
+          <p className="text-foreground">{cliente.observacoes}</p>
+        </div>
+      )}
+    </div>
+  );
 }

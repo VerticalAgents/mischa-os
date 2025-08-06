@@ -243,6 +243,7 @@ export type Database = {
           id: string
           instrucoes_entrega: string | null
           janelas_entrega: Json | null
+          link_google_maps: string | null
           meta_giro_semanal: number | null
           nome: string
           observacoes: string | null
@@ -275,6 +276,7 @@ export type Database = {
           id?: string
           instrucoes_entrega?: string | null
           janelas_entrega?: Json | null
+          link_google_maps?: string | null
           meta_giro_semanal?: number | null
           nome: string
           observacoes?: string | null
@@ -307,6 +309,7 @@ export type Database = {
           id?: string
           instrucoes_entrega?: string | null
           janelas_entrega?: Json | null
+          link_google_maps?: string | null
           meta_giro_semanal?: number | null
           nome?: string
           observacoes?: string | null
