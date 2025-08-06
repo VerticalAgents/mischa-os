@@ -102,57 +102,36 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
           console.log('📥 Agendamentos carregados:', agendamentos?.length || 0);
 
-          // Primeiro, tenta carregar dados dos clientes incluindo o link_google_maps
-          const { data: clientes, error: clientesError } = await supabase
-            .from('clientes')
-            .select('id, nome, endereco_entrega, contato_telefone, link_google_maps');
-
-          if (clientesError) {
-            console.error('Erro ao carregar clientes com link_google_maps:', clientesError);
-            // Se houver erro (coluna não existe), continuar sem o link_google_maps
-            const { data: clientesSemLink } = await supabase
+          // Tentar carregar dados dos clientes com link_google_maps
+          let clientesData: any[] = [];
+          
+          try {
+            const { data: clientesComLink, error: clientesError } = await supabase
               .from('clientes')
-              .select('id, nome, endereco_entrega, contato_telefone');
-            
-            if (clientesSemLink) {
-              const clientesMap = new Map(clientesSemLink.map(c => [c.id, { ...c, link_google_maps: undefined }]));
-              
-              const pedidosFormatados = (agendamentos || []).map(agendamento => {
-                const cliente = clientesMap.get(agendamento.cliente_id);
-                
-                let dataPrevisao = new Date();
-                if (agendamento.data_proxima_reposicao) {
-                  dataPrevisao = parseDataSegura(agendamento.data_proxima_reposicao);
-                }
-                
-                return {
-                  id: agendamento.id,
-                  cliente_id: agendamento.cliente_id,
-                  cliente_nome: cliente?.nome || 'Cliente não encontrado',
-                  cliente_endereco: cliente?.endereco_entrega,
-                  cliente_telefone: cliente?.contato_telefone,
-                  link_google_maps: undefined, // Sem link quando há erro
-                  data_prevista_entrega: dataPrevisao,
-                  quantidade_total: agendamento.quantidade_total || 0,
-                  tipo_pedido: agendamento.tipo_pedido || 'Padrão',
-                  status_agendamento: agendamento.status_agendamento,
-                  substatus_pedido: (agendamento.substatus_pedido || 'Agendado') as SubstatusPedidoAgendado,
-                  itens_personalizados: agendamento.itens_personalizados,
-                  created_at: agendamento.created_at ? new Date(agendamento.created_at) : new Date()
-                };
-              });
+              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps');
 
-              console.log('✅ Pedidos formatados para expedição (sem link):', pedidosFormatados.length);
-              set({ 
-                pedidos: pedidosFormatados,
-                ultimaAtualizacao: new Date()
-              });
+            if (clientesError) {
+              console.warn('Coluna link_google_maps não encontrada, carregando sem ela:', clientesError);
+              
+              // Fallback: carregar sem a coluna link_google_maps
+              const { data: clientesSemLink, error: fallbackError } = await supabase
+                .from('clientes')
+                .select('id, nome, endereco_entrega, contato_telefone');
+
+              if (fallbackError) {
+                throw fallbackError;
+              }
+
+              clientesData = clientesSemLink || [];
+            } else {
+              clientesData = clientesComLink || [];
             }
-            return;
+          } catch (fallbackError) {
+            console.error('Erro ao carregar dados dos clientes:', fallbackError);
+            clientesData = [];
           }
 
-          // Se não houve erro, usar os dados completos
-          const clientesMap = new Map((clientes || []).map(c => [c.id, c]));
+          const clientesMap = new Map(clientesData.map(c => [c.id, c]));
 
           const pedidosFormatados = (agendamentos || []).map(agendamento => {
             const cliente = clientesMap.get(agendamento.cliente_id);

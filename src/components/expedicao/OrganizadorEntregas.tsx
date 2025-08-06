@@ -1,11 +1,11 @@
 
 import { useState, useEffect } from "react";
-import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Copy, GripVertical, MapPin, User, AlertTriangle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Copy, MapPin, User, AlertTriangle, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 
 interface EntregaOrganizada {
@@ -48,16 +48,16 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
   // Gerar texto automaticamente quando entregas mudarem
   useEffect(() => {
     const texto = entregasOrganizadas.map((entrega, index) => {
-      let textoEntrega = `[Entrega ${String(index + 1).padStart(2, '0')}: ${entrega.clienteNome}`;
+      let textoEntrega = `Entrega ${String(index + 1).padStart(2, '0')}: ${entrega.clienteNome}`;
       
       if (entrega.observacao.trim()) {
         textoEntrega += `\n\nObs: ${entrega.observacao}`;
       }
       
       if (entrega.googleMapsLink) {
-        textoEntrega += `\n\nGoogle Maps: ${entrega.googleMapsLink}]`;
+        textoEntrega += `\n\nGoogle Maps: ${entrega.googleMapsLink}`;
       } else {
-        textoEntrega += `\n\nGoogle Maps: [ENDEREÇO NÃO CADASTRADO]]`;
+        textoEntrega += `\n\nGoogle Maps: ENDEREÇO NÃO CADASTRADO`;
       }
       
       return textoEntrega;
@@ -65,22 +65,6 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
     
     setTextoGerado(texto);
   }, [entregasOrganizadas]);
-
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
-
-    const items = Array.from(entregasOrganizadas);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
-    // Atualizar as ordens após reordenação
-    const itemsComNovaOrdem = items.map((item, index) => ({
-      ...item,
-      ordem: index + 1
-    }));
-
-    setEntregasOrganizadas(itemsComNovaOrdem);
-  };
 
   const handleObservacaoChange = (id: string, observacao: string) => {
     if (observacao.length > 200) return; // Limitar a 200 caracteres
@@ -92,11 +76,37 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
     );
   };
 
+  const handleReordenarEntrega = (entregaId: string, novaOrdem: number) => {
+    const entregaAtual = entregasOrganizadas.find(e => e.id === entregaId);
+    if (!entregaAtual) return;
+
+    const ordemAtual = entregaAtual.ordem;
+    if (ordemAtual === novaOrdem) return;
+
+    const novasEntregas = [...entregasOrganizadas];
+    
+    // Remove a entrega da posição atual
+    const entregaMovida = novasEntregas.splice(ordemAtual - 1, 1)[0];
+    
+    // Insere na nova posição
+    novasEntregas.splice(novaOrdem - 1, 0, entregaMovida);
+    
+    // Atualiza as ordens de todas as entregas
+    const entregasAtualizadas = novasEntregas.map((entrega, index) => ({
+      ...entrega,
+      ordem: index + 1
+    }));
+
+    setEntregasOrganizadas(entregasAtualizadas);
+    toast.success(`${entregaAtual.clienteNome} movido para posição ${novaOrdem}`);
+  };
+
   const copiarTexto = async () => {
     try {
       await navigator.clipboard.writeText(textoGerado);
       toast.success("Texto copiado para a área de transferência!");
     } catch (error) {
+      console.error('Erro ao copiar:', error);
       toast.error("Erro ao copiar texto");
     }
   };
@@ -120,73 +130,62 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
             </h3>
             
             <div className="flex-1 overflow-y-auto">
-              <DragDropContext onDragEnd={handleDragEnd}>
-                <Droppable droppableId="entregas">
-                  {(provided) => (
-                    <div
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      className="space-y-3"
-                    >
-                      {entregasOrganizadas.map((entrega, index) => (
-                        <Draggable
-                          key={entrega.id}
-                          draggableId={entrega.id}
-                          index={index}
-                        >
-                          {(provided, snapshot) => (
-                            <Card
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              className={`p-4 transition-all duration-200 ${
-                                snapshot.isDragging 
-                                  ? 'shadow-lg ring-2 ring-blue-500 bg-blue-50 transform rotate-2' 
-                                  : 'hover:shadow-md'
-                              }`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <div
-                                  {...provided.dragHandleProps}
-                                  className="mt-1 text-gray-400 hover:text-blue-600 cursor-grab active:cursor-grabbing transition-colors"
-                                >
-                                  <GripVertical className="h-5 w-5" />
-                                </div>
-                                
-                                <div className="flex-1 space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-medium text-lg text-gray-900">
-                                      {String(index + 1).padStart(2, '0')}. {entrega.clienteNome}
-                                    </span>
-                                    {!entrega.googleMapsLink && (
-                                      <div className="flex items-center gap-1 text-red-600 text-sm">
-                                        <AlertTriangle className="h-4 w-4" />
-                                        Sem endereço
-                                      </div>
-                                    )}
-                                  </div>
-                                  
-                                  <Textarea
-                                    placeholder="Observação (opcional, máx. 200 caracteres)"
-                                    value={entrega.observacao}
-                                    onChange={(e) => handleObservacaoChange(entrega.id, e.target.value)}
-                                    className="min-h-[60px] resize-none"
-                                    maxLength={200}
-                                  />
-                                  
-                                  <div className="text-sm text-gray-500">
-                                    {entrega.observacao.length}/200 caracteres
-                                  </div>
-                                </div>
+              <div className="space-y-3">
+                {entregasOrganizadas.map((entrega) => (
+                  <Card key={entrega.id} className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="font-medium text-lg text-gray-900">
+                            {String(entrega.ordem).padStart(2, '0')}. {entrega.clienteNome}
+                          </span>
+                          
+                          <div className="flex items-center gap-2">
+                            {!entrega.googleMapsLink && (
+                              <div className="flex items-center gap-1 text-red-600 text-sm">
+                                <AlertTriangle className="h-4 w-4" />
+                                Sem endereço
                               </div>
-                            </Card>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
+                            )}
+                            
+                            {/* Dropdown para reordenar */}
+                            <Select 
+                              value={entrega.ordem.toString()} 
+                              onValueChange={(value) => handleReordenarEntrega(entrega.id, parseInt(value))}
+                            >
+                              <SelectTrigger className="w-24 h-8">
+                                <div className="flex items-center gap-1">
+                                  <ArrowUpDown className="h-3 w-3" />
+                                  <SelectValue />
+                                </div>
+                              </SelectTrigger>
+                              <SelectContent className="bg-white border shadow-lg z-50">
+                                {Array.from({ length: entregasOrganizadas.length }, (_, i) => i + 1).map((num) => (
+                                  <SelectItem key={num} value={num.toString()}>
+                                    {num}º
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        
+                        <Textarea
+                          placeholder="Observação (opcional, máx. 200 caracteres)"
+                          value={entrega.observacao}
+                          onChange={(e) => handleObservacaoChange(entrega.id, e.target.value)}
+                          className="min-h-[60px] resize-none"
+                          maxLength={200}
+                        />
+                        
+                        <div className="text-sm text-gray-500">
+                          {entrega.observacao.length}/200 caracteres
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
+                  </Card>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -203,9 +202,9 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
               </Button>
             </div>
             
-            <Card className="flex-1 p-4 bg-gray-50">
-              <div className="h-full overflow-y-auto">
-                <pre className="whitespace-pre-wrap text-sm font-mono bg-white p-4 rounded-md border shadow-sm">
+            <Card className="flex-1 p-4 bg-gray-50 flex flex-col">
+              <div className="flex-1 overflow-y-auto">
+                <pre className="whitespace-pre-wrap text-sm font-mono bg-white p-4 rounded-md border shadow-sm h-full">
                   {textoGerado || "Configure as entregas à esquerda para gerar o texto..."}
                 </pre>
               </div>
@@ -214,7 +213,7 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
             <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
               <p className="text-sm text-blue-700">
                 💡 <strong>Dica:</strong> O texto está formatado para ser colado diretamente no WhatsApp da entregadora.
-                Arraste os itens para reorganizar a ordem das entregas.
+                Use o dropdown ao lado de cada entrega para alterar a ordem.
               </p>
             </div>
           </div>
