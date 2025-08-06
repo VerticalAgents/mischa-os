@@ -5,9 +5,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, MapPin, User, AlertTriangle, ArrowUpDown, Filter, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Copy, MapPin, User, AlertTriangle, ArrowUpDown, Check, Bug } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { DebugEntregasModal } from "./DebugEntregasModal";
 
 interface EntregaOrganizada {
   id: string;
@@ -20,6 +22,7 @@ interface EntregaOrganizada {
   formaPagamento?: string;
   emiteNotaFiscal?: boolean;
   precosCategorias?: Array<{categoria: string, preco: number}>;
+  selecionada: boolean;
 }
 
 interface Representante {
@@ -40,11 +43,11 @@ interface OrganizadorEntregasProps {
 
 export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: OrganizadorEntregasProps) => {
   const [entregasOrganizadas, setEntregasOrganizadas] = useState<EntregaOrganizada[]>([]);
-  const [entregasFiltradas, setEntregasFiltradas] = useState<EntregaOrganizada[]>([]);
+  const [entregasSelecionadas, setEntregasSelecionadas] = useState<EntregaOrganizada[]>([]);
   const [textoGerado, setTextoGerado] = useState("");
   const [representantes, setRepresentantes] = useState<Representante[]>([]);
-  const [representanteSelecionado, setRepresentanteSelecionado] = useState<string>("todos");
   const [copiado, setCopiado] = useState(false);
+  const [debugModalOpen, setDebugModalOpen] = useState(false);
 
   // Carregar representantes
   useEffect(() => {
@@ -167,7 +170,8 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
             tipoCobranca: cliente?.tipo_cobranca || 'À vista',
             formaPagamento: cliente?.forma_pagamento || 'Boleto',
             emiteNotaFiscal: cliente?.emite_nota_fiscal ?? true,
-            precosCategorias
+            precosCategorias,
+            selecionada: true // Todas as entregas começam selecionadas
           });
         }
         
@@ -179,30 +183,21 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
     }
   }, [open, entregas]);
 
-  // Filtrar entregas por representante
+  // Filtrar entregas selecionadas
   useEffect(() => {
-    if (representanteSelecionado === "todos") {
-      setEntregasFiltradas(entregasOrganizadas);
-    } else {
-      const filtradas = entregasOrganizadas.filter(entrega => 
-        entrega.representante === representanteSelecionado
-      );
-      setEntregasFiltradas(filtradas);
-    }
-  }, [entregasOrganizadas, representanteSelecionado]);
+    const selecionadas = entregasOrganizadas.filter(entrega => entrega.selecionada);
+    setEntregasSelecionadas(selecionadas);
+  }, [entregasOrganizadas]);
 
   // Gerar texto automaticamente quando entregas mudarem
   useEffect(() => {
     const emojis = ['🍫', '✨', '😸'];
-    const totalEntregas = entregasFiltradas.length;
+    const totalEntregas = entregasSelecionadas.length;
     
     let titulo = `📦 ENTREGAS DO DIA - ${totalEntregas} ${totalEntregas === 1 ? 'ENTREGA' : 'ENTREGAS'}`;
-    if (representanteSelecionado !== "todos") {
-      titulo += ` - ${representanteSelecionado.toUpperCase()}`;
-    }
     titulo += '\n' + '='.repeat(40) + '\n\n';
 
-    const texto = entregasFiltradas.map((entrega, index) => {
+    const texto = entregasSelecionadas.map((entrega, index) => {
       const emojiIndex = index % emojis.length;
       const emoji = emojis[emojiIndex];
       
@@ -235,7 +230,7 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
     }).join('\n\n' + '-'.repeat(40) + '\n\n');
     
     setTextoGerado(titulo + texto);
-  }, [entregasFiltradas, representanteSelecionado]);
+  }, [entregasSelecionadas]);
 
   const handleObservacaoChange = (id: string, observacao: string) => {
     if (observacao.length > 200) return;
@@ -247,20 +242,28 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
     );
   };
 
+  const handleSelecionarEntrega = (id: string, selecionada: boolean) => {
+    setEntregasOrganizadas(prev => 
+      prev.map(entrega => 
+        entrega.id === id ? { ...entrega, selecionada } : entrega
+      )
+    );
+  };
+
   const handleReordenarEntrega = (entregaId: string, novaOrdem: number) => {
-    const entregaAtual = entregasFiltradas.find(e => e.id === entregaId);
+    const entregaAtual = entregasSelecionadas.find(e => e.id === entregaId);
     if (!entregaAtual) return;
 
     const ordemAtual = entregaAtual.ordem;
     if (ordemAtual === novaOrdem) return;
 
-    // Reordenar apenas dentro das entregas filtradas
-    const novasEntregasFiltradas = [...entregasFiltradas];
-    const entregaMovida = novasEntregasFiltradas.find(e => e.id === entregaId);
+    // Reordenar apenas dentro das entregas selecionadas
+    const novasEntregasSelecionadas = [...entregasSelecionadas];
+    const entregaMovida = novasEntregasSelecionadas.find(e => e.id === entregaId);
     if (!entregaMovida) return;
 
     // Remove a entrega da posição atual e insere na nova posição
-    const entregasReordenadas = novasEntregasFiltradas.filter(e => e.id !== entregaId);
+    const entregasReordenadas = novasEntregasSelecionadas.filter(e => e.id !== entregaId);
     entregasReordenadas.splice(novaOrdem - 1, 0, entregaMovida);
 
     // Atualiza as ordens
@@ -269,7 +272,7 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
       ordem: index + 1
     }));
 
-    // Atualiza o estado principal mantendo as não filtradas
+    // Atualiza o estado principal mantendo as não selecionadas
     setEntregasOrganizadas(prev => {
       const novoEstado = [...prev];
       entregasAtualizadas.forEach(entregaAtualizada => {
@@ -300,167 +303,184 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            Organizar Entregas do Dia
-          </DialogTitle>
-        </DialogHeader>
+  const debugData = entregasOrganizadas.map(entrega => ({
+    id: entrega.id,
+    clienteNome: entrega.clienteNome,
+    representante: entrega.representante || 'Sem representante',
+    tipoCobranca: entrega.tipoCobranca || 'À vista',
+    formaPagamento: entrega.formaPagamento || 'Boleto',
+    emiteNotaFiscal: entrega.emiteNotaFiscal ?? true
+  }));
 
-        <div className="flex-1 flex gap-6 overflow-hidden">
-          {/* Painel Esquerdo - Lista de Entregas */}
-          <div className="flex-1 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Lista de Entregas ({entregasFiltradas.length})
-              </h3>
-              
-              {/* Filtro por Representante */}
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                <Select value={representanteSelecionado} onValueChange={setRepresentanteSelecionado}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Filtrar por representante" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border shadow-lg z-50">
-                    <SelectItem value="todos">Todos os representantes</SelectItem>
-                    {representantes.map((rep) => (
-                      <SelectItem key={rep.id} value={rep.nome}>
-                        {rep.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Organizar Entregas do Dia
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setDebugModalOpen(true)}
+                className="ml-auto"
+              >
+                <Bug className="h-4 w-4 mr-2" />
+                Debug
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 flex gap-6 overflow-hidden">
+            {/* Painel Esquerdo - Lista de Entregas */}
+            <div className="flex-1 flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Lista de Entregas ({entregasOrganizadas.length} total | {entregasSelecionadas.length} selecionadas)
+                </h3>
               </div>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto">
-              <div className="space-y-3">
-                {entregasFiltradas.map((entrega) => (
-                  <Card key={entrega.id} className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex-1">
-                            <span className="font-medium text-lg text-gray-900">
-                              {String(entrega.ordem).padStart(2, '0')}. {entrega.clienteNome}
-                            </span>
-                            <div className="text-sm text-gray-600 mt-1">
-                              <span className="font-medium">Rep:</span> {entrega.representante}
+              
+              <div className="flex-1 overflow-y-auto">
+                <div className="space-y-3">
+                  {entregasOrganizadas.map((entrega) => (
+                    <Card key={entrega.id} className={`p-4 ${!entrega.selecionada ? 'opacity-50 bg-gray-50' : ''}`}>
+                      <div className="flex items-start gap-3">
+                        <div className="flex items-center mt-1">
+                          <Checkbox
+                            checked={entrega.selecionada}
+                            onCheckedChange={(checked) => handleSelecionarEntrega(entrega.id, !!checked)}
+                          />
+                        </div>
+                        
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1">
+                              <span className="font-medium text-lg text-gray-900">
+                                {entrega.selecionada ? String(entregasSelecionadas.findIndex(e => e.id === entrega.id) + 1).padStart(2, '0') : '--'}. {entrega.clienteNome}
+                              </span>
+                              <div className="text-sm text-gray-600 mt-1">
+                                <span className="font-medium">Rep:</span> {entrega.representante}
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              {!entrega.googleMapsLink && (
+                                <div className="flex items-center gap-1 text-red-600 text-sm">
+                                  <AlertTriangle className="h-4 w-4" />
+                                  Sem endereço
+                                </div>
+                              )}
+                              
+                              {/* Dropdown para reordenar - só habilitado se selecionada */}
+                              <Select 
+                                value={entrega.selecionada ? (entregasSelecionadas.findIndex(e => e.id === entrega.id) + 1).toString() : ''}
+                                onValueChange={(value) => handleReordenarEntrega(entrega.id, parseInt(value))}
+                                disabled={!entrega.selecionada}
+                              >
+                                <SelectTrigger className="w-24 h-8">
+                                  <div className="flex items-center gap-1">
+                                    <ArrowUpDown className="h-3 w-3" />
+                                    <SelectValue />
+                                  </div>
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border shadow-lg z-50">
+                                  {Array.from({ length: entregasSelecionadas.length }, (_, i) => i + 1).map((num) => (
+                                    <SelectItem key={num} value={num.toString()}>
+                                      {num}º
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                           </div>
-                          
-                          <div className="flex items-center gap-2">
-                            {!entrega.googleMapsLink && (
-                              <div className="flex items-center gap-1 text-red-600 text-sm">
-                                <AlertTriangle className="h-4 w-4" />
-                                Sem endereço
+
+                          {/* Informações adicionais */}
+                          <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                            <div><span className="font-medium">Cobrança:</span> {entrega.tipoCobranca}</div>
+                            <div><span className="font-medium">Pagamento:</span> {entrega.formaPagamento}</div>
+                            <div><span className="font-medium">Nota Fiscal:</span> {entrega.emiteNotaFiscal ? 'Sim' : 'Não'}</div>
+                            {entrega.precosCategorias && entrega.precosCategorias.length > 0 && (
+                              <div className="col-span-2">
+                                <span className="font-medium">Preços:</span> {entrega.precosCategorias.map(p => `${p.categoria}: R$ ${p.preco.toFixed(2)}`).join(', ')}
                               </div>
                             )}
-                            
-                            {/* Dropdown para reordenar */}
-                            <Select 
-                              value={entrega.ordem.toString()} 
-                              onValueChange={(value) => handleReordenarEntrega(entrega.id, parseInt(value))}
-                            >
-                              <SelectTrigger className="w-24 h-8">
-                                <div className="flex items-center gap-1">
-                                  <ArrowUpDown className="h-3 w-3" />
-                                  <SelectValue />
-                                </div>
-                              </SelectTrigger>
-                              <SelectContent className="bg-white border shadow-lg z-50">
-                                {Array.from({ length: entregasFiltradas.length }, (_, i) => i + 1).map((num) => (
-                                  <SelectItem key={num} value={num.toString()}>
-                                    {num}º
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                          </div>
+                          
+                          <Textarea
+                            placeholder="Observação (opcional, máx. 200 caracteres)"
+                            value={entrega.observacao}
+                            onChange={(e) => handleObservacaoChange(entrega.id, e.target.value)}
+                            className="min-h-[60px] resize-none"
+                            maxLength={200}
+                            disabled={!entrega.selecionada}
+                          />
+                          
+                          <div className="text-sm text-gray-500">
+                            {entrega.observacao.length}/200 caracteres
                           </div>
                         </div>
-
-                        {/* Informações adicionais */}
-                        <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                          <div><span className="font-medium">Cobrança:</span> {entrega.tipoCobranca}</div>
-                          <div><span className="font-medium">Pagamento:</span> {entrega.formaPagamento}</div>
-                          <div><span className="font-medium">Nota Fiscal:</span> {entrega.emiteNotaFiscal ? 'Sim' : 'Não'}</div>
-                          {entrega.precosCategorias && entrega.precosCategorias.length > 0 && (
-                            <div className="col-span-2">
-                              <span className="font-medium">Preços:</span> {entrega.precosCategorias.map(p => `${p.categoria}: R$ ${p.preco.toFixed(2)}`).join(', ')}
-                            </div>
-                          )}
-                        </div>
-                        
-                        <Textarea
-                          placeholder="Observação (opcional, máx. 200 caracteres)"
-                          value={entrega.observacao}
-                          onChange={(e) => handleObservacaoChange(entrega.id, e.target.value)}
-                          className="min-h-[60px] resize-none"
-                          maxLength={200}
-                        />
-                        
-                        <div className="text-sm text-gray-500">
-                          {entrega.observacao.length}/200 caracteres
-                        </div>
                       </div>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Painel Direito - Texto Gerado */}
-          <div className="flex-1 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Copy className="h-5 w-5" />
-                Texto para WhatsApp
-              </h3>
-              <Button 
-                onClick={copiarTexto} 
-                className={`flex items-center gap-2 transition-colors ${
-                  copiado 
-                    ? 'bg-green-600 hover:bg-green-700' 
-                    : 'bg-green-600 hover:bg-green-700'
-                }`}
-              >
-                {copiado ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    Copiado!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Copiar Texto
-                  </>
-                )}
-              </Button>
-            </div>
-            
-            <Card className="flex-1 p-4 bg-gray-50 flex flex-col">
-              <div className="flex-1 overflow-y-auto">
-                <pre className="whitespace-pre-wrap text-sm font-mono bg-white p-4 rounded-md border shadow-sm h-full min-h-[400px] overflow-y-auto">
-                  {textoGerado || "Configure as entregas à esquerda para gerar o texto..."}
-                </pre>
+            {/* Painel Direito - Texto Gerado */}
+            <div className="flex-1 flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Copy className="h-5 w-5" />
+                  Texto para WhatsApp
+                </h3>
+                <Button 
+                  onClick={copiarTexto} 
+                  className={`flex items-center gap-2 transition-colors ${
+                    copiado 
+                      ? 'bg-green-600 hover:bg-green-700' 
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
+                >
+                  {copiado ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Copiado!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      Copiar Texto
+                    </>
+                  )}
+                </Button>
               </div>
-            </Card>
-            
-            <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
-              <p className="text-sm text-blue-700">
-                💡 <strong>Dica:</strong> O texto está formatado para ser colado diretamente no WhatsApp da entregadora.
-                Use o dropdown ao lado de cada entrega para alterar a ordem e o filtro de representante para visualizar entregas específicas.
-              </p>
+              
+              <Card className="flex-1 p-4 bg-gray-50 flex flex-col">
+                <div className="flex-1 overflow-y-auto">
+                  <pre className="whitespace-pre-wrap text-sm font-mono bg-white p-4 rounded-md border shadow-sm h-full min-h-[400px] overflow-y-auto">
+                    {textoGerado || "Selecione as entregas à esquerda para gerar o texto..."}
+                  </pre>
+                </div>
+              </Card>
+              
+              <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
+                <p className="text-sm text-blue-700">
+                  💡 <strong>Dica:</strong> Use os checkboxes para selecionar quais entregas incluir no texto.
+                  Apenas entregas selecionadas aparecerão no texto do WhatsApp e poderão ter sua ordem alterada.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <DebugEntregasModal
+        open={debugModalOpen}
+        onOpenChange={setDebugModalOpen}
+        debugData={debugData}
+      />
+    </>
   );
 };
