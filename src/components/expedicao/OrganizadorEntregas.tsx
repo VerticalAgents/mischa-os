@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -74,26 +75,47 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
         for (const entrega of entregas) {
           console.log(`📋 Processando entrega ID: ${entrega.id} - Cliente: ${entrega.cliente_nome}`);
           
-          // CORREÇÃO: Usar o ID diretamente, sem replace
-          const { data: cliente, error } = await supabase
+          // CORREÇÃO: Buscar dados do cliente separadamente
+          const { data: cliente, error: clienteError } = await supabase
             .from('clientes')
             .select(`
               representante_id,
               tipo_cobranca,
               forma_pagamento,
               emite_nota_fiscal,
-              categorias_habilitadas,
-              representantes(nome)
+              categorias_habilitadas
             `)
             .eq('id', entrega.id)
             .maybeSingle();
 
-          if (error) {
-            console.error(`❌ Erro ao buscar cliente ${entrega.cliente_nome}:`, error);
+          if (clienteError) {
+            console.error(`❌ Erro ao buscar cliente ${entrega.cliente_nome}:`, clienteError);
           }
 
-          console.log(`📊 Dados do cliente ${entrega.cliente_nome}:`, {
-            representante: (cliente as any)?.representantes?.nome || 'Sem representante',
+          // Buscar nome do representante separadamente se existir representante_id
+          let nomeRepresentante = 'Sem representante';
+          if (cliente?.representante_id) {
+            console.log(`🔍 Buscando representante ID: ${cliente.representante_id} para cliente ${entrega.cliente_nome}`);
+            
+            const { data: representante, error: repError } = await supabase
+              .from('representantes')
+              .select('nome')
+              .eq('id', cliente.representante_id)
+              .maybeSingle();
+
+            if (repError) {
+              console.error(`❌ Erro ao buscar representante:`, repError);
+            } else if (representante) {
+              nomeRepresentante = representante.nome;
+              console.log(`✅ Representante encontrado: ${nomeRepresentante}`);
+            } else {
+              console.warn(`⚠️ Representante não encontrado para ID: ${cliente.representante_id}`);
+            }
+          }
+
+          console.log(`📊 Dados completos do cliente ${entrega.cliente_nome}:`, {
+            representante_id: cliente?.representante_id,
+            representante: nomeRepresentante,
             tipo_cobranca: cliente?.tipo_cobranca || 'À vista',
             forma_pagamento: cliente?.forma_pagamento || 'Boleto',
             emite_nota_fiscal: cliente?.emite_nota_fiscal ?? true,
@@ -141,7 +163,7 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
             googleMapsLink: entrega.link_google_maps,
             observacao: "",
             ordem: entregasComDados.length + 1,
-            representante: (cliente as any)?.representantes?.nome || 'Sem representante',
+            representante: nomeRepresentante,
             tipoCobranca: cliente?.tipo_cobranca || 'À vista',
             formaPagamento: cliente?.forma_pagamento || 'Boleto',
             emiteNotaFiscal: cliente?.emite_nota_fiscal ?? true,
