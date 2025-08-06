@@ -1,13 +1,8 @@
+
 import { useEffect } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
-import { DataTableViewOptions } from "./data-table/data-table-view-options";
-import { DataTable } from "@/components/ui/data-table";
-import { ColumnDef } from "@tanstack/react-table";
-import { SeparacaoPedidoActions } from "./SeparacaoPedidoActions";
-import { PrintingActions } from "./PrintingActions";
-import { DebugInfo } from "./DebugInfo";
 import { ResumoQuantidadesSeparacao } from "./ResumoQuantidadesSeparacao";
 
 export function SeparacaoPedidos() {
@@ -29,34 +24,9 @@ export function SeparacaoPedidos() {
 
   const pedidosParaSeparacao = getPedidosParaSeparacao();
 
-  const columns: ColumnDef<typeof pedidos[0]>[] = [
-    {
-      accessorKey: "cliente_nome",
-      header: "Cliente",
-    },
-    {
-      accessorKey: "quantidade_total",
-      header: "Quantidade",
-    },
-    {
-      accessorKey: "data_prevista_entrega",
-      header: "Data Entrega",
-      cell: ({ row }) => {
-        const date = new Date(row.getValue("data_prevista_entrega"));
-        return date.toLocaleDateString();
-      },
-    },
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <SeparacaoPedidoActions 
-          pedido={row.original} 
-          onConfirmarSeparacao={confirmarSeparacao}
-          onDesfazerSeparacao={desfazerSeparacao}
-        />
-      )
-    },
-  ];
+  if (isLoading) {
+    return <div>Carregando...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -69,7 +39,6 @@ export function SeparacaoPedidos() {
         </div>
         
         <div className="flex items-center gap-2">
-          <PrintingActions />
           {pedidosParaSeparacao.length > 0 && (
             <Button
               onClick={() => marcarTodosSeparados(pedidosParaSeparacao)}
@@ -85,14 +54,38 @@ export function SeparacaoPedidos() {
 
       <ResumoQuantidadesSeparacao pedidos={pedidosParaSeparacao} />
 
-      <DebugInfo pedidos={pedidosParaSeparacao} />
-
-      <DataTableViewOptions tableName="separacao-pedidos-colunas" />
-      <DataTable 
-        columns={columns} 
-        data={pedidosParaSeparacao} 
-        isLoading={isLoading} 
-      />
+      <div className="space-y-4">
+        {pedidosParaSeparacao.map((pedido) => (
+          <div key={pedido.id} className="border rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-medium">{pedido.cliente_nome}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Quantidade: {pedido.quantidade_total}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => confirmarSeparacao(pedido.id)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Confirmar Separação
+                </Button>
+                {pedido.substatus_pedido === 'Separado' && (
+                  <Button
+                    onClick={() => desfazerSeparacao(pedido.id)}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    Desfazer
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
