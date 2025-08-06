@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,14 +66,20 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
     setTextoGerado(texto);
   }, [entregasOrganizadas]);
 
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
 
     const items = Array.from(entregasOrganizadas);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
 
-    setEntregasOrganizadas(items);
+    // Atualizar as ordens após reordenação
+    const itemsComNovaOrdem = items.map((item, index) => ({
+      ...item,
+      ordem: index + 1
+    }));
+
+    setEntregasOrganizadas(itemsComNovaOrdem);
   };
 
   const handleObservacaoChange = (id: string, observacao: string) => {
@@ -132,21 +138,23 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
                             <Card
                               ref={provided.innerRef}
                               {...provided.draggableProps}
-                              className={`p-4 ${
-                                snapshot.isDragging ? 'shadow-lg ring-2 ring-primary' : ''
+                              className={`p-4 transition-all duration-200 ${
+                                snapshot.isDragging 
+                                  ? 'shadow-lg ring-2 ring-blue-500 bg-blue-50 transform rotate-2' 
+                                  : 'hover:shadow-md'
                               }`}
                             >
                               <div className="flex items-start gap-3">
                                 <div
                                   {...provided.dragHandleProps}
-                                  className="mt-1 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
+                                  className="mt-1 text-gray-400 hover:text-blue-600 cursor-grab active:cursor-grabbing transition-colors"
                                 >
                                   <GripVertical className="h-5 w-5" />
                                 </div>
                                 
                                 <div className="flex-1 space-y-3">
                                   <div className="flex items-center justify-between">
-                                    <span className="font-medium text-lg">
+                                    <span className="font-medium text-lg text-gray-900">
                                       {String(index + 1).padStart(2, '0')}. {entrega.clienteNome}
                                     </span>
                                     {!entrega.googleMapsLink && (
@@ -161,11 +169,11 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
                                     placeholder="Observação (opcional, máx. 200 caracteres)"
                                     value={entrega.observacao}
                                     onChange={(e) => handleObservacaoChange(entrega.id, e.target.value)}
-                                    className="min-h-[60px]"
+                                    className="min-h-[60px] resize-none"
                                     maxLength={200}
                                   />
                                   
-                                  <div className="text-sm text-muted-foreground">
+                                  <div className="text-sm text-gray-500">
                                     {entrega.observacao.length}/200 caracteres
                                   </div>
                                 </div>
@@ -189,15 +197,15 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
                 <Copy className="h-5 w-5" />
                 Texto para WhatsApp
               </h3>
-              <Button onClick={copiarTexto} className="flex items-center gap-2">
+              <Button onClick={copiarTexto} className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
                 <Copy className="h-4 w-4" />
                 Copiar Texto
               </Button>
             </div>
             
-            <Card className="flex-1 p-4">
+            <Card className="flex-1 p-4 bg-gray-50">
               <div className="h-full overflow-y-auto">
-                <pre className="whitespace-pre-wrap text-sm font-mono bg-muted/30 p-4 rounded-md">
+                <pre className="whitespace-pre-wrap text-sm font-mono bg-white p-4 rounded-md border shadow-sm">
                   {textoGerado || "Configure as entregas à esquerda para gerar o texto..."}
                 </pre>
               </div>
@@ -206,6 +214,7 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
             <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
               <p className="text-sm text-blue-700">
                 💡 <strong>Dica:</strong> O texto está formatado para ser colado diretamente no WhatsApp da entregadora.
+                Arraste os itens para reorganizar a ordem das entregas.
               </p>
             </div>
           </div>

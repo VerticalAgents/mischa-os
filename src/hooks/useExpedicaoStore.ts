@@ -109,10 +109,47 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
           if (clientesError) {
             console.error('Erro ao carregar clientes:', clientesError);
-            throw clientesError;
+            // Se houver erro, continuar sem o link_google_maps
+            const { data: clientesSemLink } = await supabase
+              .from('clientes')
+              .select('id, nome, endereco_entrega, contato_telefone');
+            
+            const clientesMap = new Map((clientesSemLink || []).map(c => [c.id, { ...c, link_google_maps: null }]));
+            
+            const pedidosFormatados = (agendamentos || []).map(agendamento => {
+              const cliente = clientesMap.get(agendamento.cliente_id);
+              
+              let dataPrevisao = new Date();
+              if (agendamento.data_proxima_reposicao) {
+                dataPrevisao = parseDataSegura(agendamento.data_proxima_reposicao);
+              }
+              
+              return {
+                id: agendamento.id,
+                cliente_id: agendamento.cliente_id,
+                cliente_nome: cliente?.nome || 'Cliente não encontrado',
+                cliente_endereco: cliente?.endereco_entrega,
+                cliente_telefone: cliente?.contato_telefone,
+                link_google_maps: cliente?.link_google_maps,
+                data_prevista_entrega: dataPrevisao,
+                quantidade_total: agendamento.quantidade_total || 0,
+                tipo_pedido: agendamento.tipo_pedido || 'Padrão',
+                status_agendamento: agendamento.status_agendamento,
+                substatus_pedido: (agendamento.substatus_pedido || 'Agendado') as SubstatusPedidoAgendado,
+                itens_personalizados: agendamento.itens_personalizados,
+                created_at: agendamento.created_at ? new Date(agendamento.created_at) : new Date()
+              };
+            });
+
+            console.log('✅ Pedidos formatados para expedição (sem link):', pedidosFormatados.length);
+            set({ 
+              pedidos: pedidosFormatados,
+              ultimaAtualizacao: new Date()
+            });
+            return;
           }
 
-          const clientesMap = new Map(clientes?.map(c => [c.id, c]) || []);
+          const clientesMap = new Map((clientes || []).map(c => [c.id, c]));
 
           const pedidosFormatados = (agendamentos || []).map(agendamento => {
             const cliente = clientesMap.get(agendamento.cliente_id);
