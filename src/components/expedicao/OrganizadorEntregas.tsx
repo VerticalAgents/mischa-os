@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -89,21 +88,28 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
           // Buscar preços por categoria se existirem categorias habilitadas
           let precosCategorias: Array<{categoria: string, preco: number}> = [];
           if (cliente?.categorias_habilitadas && Array.isArray(cliente.categorias_habilitadas)) {
-            const { data: precos } = await supabase
-              .from('precos_categoria_cliente')
-              .select(`
-                categoria_id,
-                preco_unitario,
-                categorias_produto(nome)
-              `)
-              .eq('cliente_id', entrega.id.replace('agendamento_', ''))
-              .in('categoria_id', cliente.categorias_habilitadas);
+            // Convert Json[] to number[] safely
+            const categoriasIds = cliente.categorias_habilitadas
+              .map(cat => typeof cat === 'number' ? cat : parseInt(String(cat)))
+              .filter(id => !isNaN(id));
 
-            if (precos) {
-              precosCategorias = precos.map(p => ({
-                categoria: (p as any).categorias_produto?.nome || `Categoria ${p.categoria_id}`,
-                preco: p.preco_unitario
-              }));
+            if (categoriasIds.length > 0) {
+              const { data: precos } = await supabase
+                .from('precos_categoria_cliente')
+                .select(`
+                  categoria_id,
+                  preco_unitario,
+                  categorias_produto(nome)
+                `)
+                .eq('cliente_id', entrega.id.replace('agendamento_', ''))
+                .in('categoria_id', categoriasIds);
+
+              if (precos) {
+                precosCategorias = precos.map(p => ({
+                  categoria: (p as any).categorias_produto?.nome || `Categoria ${p.categoria_id}`,
+                  preco: p.preco_unitario
+                }));
+              }
             }
           }
 
