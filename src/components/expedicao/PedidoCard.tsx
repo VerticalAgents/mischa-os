@@ -81,7 +81,7 @@ export default function PedidoCard({
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-lg truncate">{pedido.cliente_nome}</h3>
               {pedido.cliente_endereco && <p className="text-sm text-muted-foreground mt-1 text-left">{pedido.cliente_endereco}</p>}
-              {pedido.cliente_telefone && <p className="text-sm text-muted-foreground">{pedido.cliente_telefone}</p>}
+              {pedido.cliente_telefone && <p className="text-sm text-muted-foreground text-left">{pedido.cliente_telefone}</p>}
             </div>
             <div className="flex flex-col items-end gap-2">
               <Badge className={getStatusColor(pedido.substatus_pedido)}>
