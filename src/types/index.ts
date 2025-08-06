@@ -30,6 +30,7 @@ export interface Cliente {
   nome: string;
   cnpjCpf?: string;
   enderecoEntrega?: string;
+  linkGoogleMaps?: string; // New field for Google Maps link
   contatoNome?: string;
   contatoTelefone?: string;
   contatoEmail?: string;

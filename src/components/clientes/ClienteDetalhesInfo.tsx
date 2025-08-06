@@ -1,306 +1,228 @@
-import { Cliente } from "@/types";
+import React from 'react';
+import { Cliente } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Phone, Mail, Package, Calendar, Target, DollarSign, Building, User, Clock, FileText, Truck, CreditCard, Shield, Settings } from "lucide-react";
+import { ExternalLink, MapPin, User, Phone, Mail, Building, Truck, CreditCard, FileText } from "lucide-react";
+
 interface ClienteDetalhesInfoProps {
   cliente: Cliente;
 }
-export default function ClienteDetalhesInfo({
-  cliente
-}: ClienteDetalhesInfoProps) {
-  return <div className="space-y-6">
+
+export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProps) {
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Ativo':
+        return 'bg-green-100 text-green-800';
+      case 'Inativo':
+        return 'bg-red-100 text-red-800';
+      case 'Em análise':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'A ativar':
+        return 'bg-blue-100 text-blue-800';
+      case 'Standby':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Status */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            Status do Cliente
+            <Badge className={getStatusColor(cliente.statusCliente)}>
+              {cliente.statusCliente}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+      </Card>
+
       {/* Informações Básicas */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building className="h-5 w-5 text-blue-600" />
+          <CardTitle className="flex items-center">
+            <User className="h-5 w-5 mr-2" />
             Informações Básicas
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <User className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Nome do Cliente</p>
-                  <p className="text-sm font-semibold text-foreground text-left">{cliente.nome}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <FileText className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">CNPJ/CPF</p>
-                  <p className="text-sm text-foreground text-left">{cliente.cnpjCpf || "Não informado"}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Shield className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Status</p>
-                  <Badge variant={cliente.statusCliente === 'Ativo' ? 'default' : 'secondary'} className="text-xs">
-                    {cliente.statusCliente}
-                  </Badge>
-                </div>
-              </div>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-500">Nome</label>
+              <p className="text-sm">{cliente.nome}</p>
             </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Package className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Categoria do Estabelecimento</p>
-                  <p className="text-sm text-foreground text-left">Não informado</p>
-                </div>
+            {cliente.cnpjCpf && (
+              <div>
+                <label className="text-sm font-medium text-gray-500">CNPJ/CPF</label>
+                <p className="text-sm">{cliente.cnpjCpf}</p>
               </div>
-              
-              <div className="flex items-start gap-3">
-                <User className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Representante</p>
-                  <p className="text-sm text-foreground text-left">Não informado</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Truck className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Rota de Entrega</p>
-                  <p className="text-sm text-foreground text-left">Não informado</p>
-                </div>
-              </div>
+            )}
+          </div>
+
+          {cliente.enderecoEntrega && (
+            <div>
+              <label className="text-sm font-medium text-gray-500 flex items-center">
+                <MapPin className="h-4 w-4 mr-1" />
+                Endereço de Entrega
+              </label>
+              <p className="text-sm">{cliente.enderecoEntrega}</p>
             </div>
+          )}
+
+          {cliente.linkGoogleMaps && (
+            <div>
+              <label className="text-sm font-medium text-gray-500 flex items-center">
+                <ExternalLink className="h-4 w-4 mr-1" />
+                Link Google Maps
+              </label>
+              <a 
+                href={cliente.linkGoogleMaps} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 hover:text-blue-800 underline inline-flex items-center"
+              >
+                Abrir no Google Maps
+                <ExternalLink className="h-3 w-3 ml-1" />
+              </a>
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-4">
+            {cliente.contatoNome && (
+              <div>
+                <label className="text-sm font-medium text-gray-500">Contato</label>
+                <p className="text-sm">{cliente.contatoNome}</p>
+              </div>
+            )}
+            {cliente.contatoTelefone && (
+              <div>
+                <label className="text-sm font-medium text-gray-500 flex items-center">
+                  <Phone className="h-4 w-4 mr-1" />
+                  Telefone
+                </label>
+                <p className="text-sm">{cliente.contatoTelefone}</p>
+              </div>
+            )}
+            {cliente.contatoEmail && (
+              <div>
+                <label className="text-sm font-medium text-gray-500 flex items-center">
+                  <Mail className="h-4 w-4 mr-1" />
+                  Email
+                </label>
+                <p className="text-sm">{cliente.contatoEmail}</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Informações de Contato e Endereço */}
+      {/* Configurações Comerciais */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Phone className="h-5 w-5 text-green-600" />
-            Contato e Endereço
+          <CardTitle className="flex items-center">
+            <Building className="h-5 w-5 mr-2" />
+            Configurações Comerciais
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <User className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Nome do Contato</p>
-                  <p className="text-sm text-foreground text-left">{cliente.contatoNome || "Não informado"}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Phone className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Telefone</p>
-                  <p className="text-sm text-foreground text-left">{cliente.contatoTelefone || "Não informado"}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Mail className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">E-mail</p>
-                  <p className="text-sm text-foreground text-left">{cliente.contatoEmail || "Não informado"}</p>
-                </div>
-              </div>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-500">Quantidade Padrão</label>
+              <p className="text-sm">{cliente.quantidadePadrao} unidades</p>
             </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <MapPin className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Endereço de Entrega</p>
-                  <p className="text-sm text-foreground text-left">{cliente.enderecoEntrega || "Não informado"}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <FileText className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Instruções de Entrega</p>
-                  <p className="text-sm text-foreground text-left">{cliente.instrucoesEntrega || "Nenhuma instrução especial"}</p>
-                </div>
-              </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Periodicidade</label>
+              <p className="text-sm">{cliente.periodicidadePadrao} dias</p>
             </div>
+            {cliente.metaGiroSemanal && (
+              <div>
+                <label className="text-sm font-medium text-gray-500">Meta Semanal</label>
+                <p className="text-sm">{cliente.metaGiroSemanal} unidades</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Configurações Operacionais */}
+      {/* Configurações de Entrega */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-orange-600" />
-            Configurações Operacionais
+          <CardTitle className="flex items-center">
+            <Truck className="h-5 w-5 mr-2" />
+            Entrega e Logística
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Package className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Quantidade Padrão por Reposição</p>
-                  <p className="text-sm font-semibold text-foreground text-left">{cliente.quantidadePadrao} unidades</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Clock className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Periodicidade de Entrega</p>
-                  <p className="text-sm font-semibold text-foreground text-left">A cada {cliente.periodicidadePadrao} dias</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Truck className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Tipo de Logística</p>
-                  <p className="text-sm text-foreground text-left">{cliente.tipoLogistica}</p>
-                </div>
-              </div>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-500">Tipo de Logística</label>
+              <p className="text-sm">{cliente.tipoLogistica}</p>
             </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Calendar className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Janelas de Entrega</p>
-                  <div className="flex gap-1 flex-wrap">
-                    {cliente.janelasEntrega?.map(dia => <Badge key={dia} variant="outline" className="text-xs">
-                        {dia}
-                      </Badge>) || <span className="text-sm text-muted-foreground">Não definidas</span>}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <FileText className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Emite Nota Fiscal</p>
-                  <Badge variant={cliente.emiteNotaFiscal ? 'default' : 'secondary'} className="text-xs">
-                    {cliente.emiteNotaFiscal ? 'Sim' : 'Não'}
-                  </Badge>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Calendar className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Última Reposição</p>
-                  <p className="text-sm text-foreground text-left">
-                    {cliente.ultimaDataReposicaoEfetiva ? new Date(cliente.ultimaDataReposicaoEfetiva).toLocaleDateString('pt-BR') : "Nenhuma reposição registrada"}
-                  </p>
-                </div>
-              </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Contabilizar no Giro</label>
+              <p className="text-sm">{cliente.contabilizarGiroMedio ? 'Sim' : 'Não'}</p>
             </div>
           </div>
+          
+          {cliente.janelasEntrega && cliente.janelasEntrega.length > 0 && (
+            <div>
+              <label className="text-sm font-medium text-gray-500">Janelas de Entrega</label>
+              <p className="text-sm">{cliente.janelasEntrega.join(', ')}</p>
+            </div>
+          )}
+
+          {cliente.instrucoesEntrega && (
+            <div>
+              <label className="text-sm font-medium text-gray-500">Instruções de Entrega</label>
+              <p className="text-sm">{cliente.instrucoesEntrega}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Performance e Metas */}
+      {/* Configurações Financeiras */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-purple-600" />
-            Performance e Metas
+          <CardTitle className="flex items-center">
+            <CreditCard className="h-5 w-5 mr-2" />
+            Configurações Financeiras
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Target className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Giro Médio Semanal Atual</p>
-                  <p className="text-lg font-bold text-blue-600 text-left">{cliente.giroMedioSemanal || 0} unidades/semana</p>
-                  <p className="text-xs text-muted-foreground text-left">Baseado no histórico de entregas</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <Target className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Meta de Giro Semanal</p>
-                  <p className="text-lg font-bold text-primary text-left">{cliente.metaGiroSemanal || 0} unidades/semana</p>
-                  <p className="text-xs text-muted-foreground text-left">Meta definida para o cliente</p>
-                </div>
-              </div>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-500">Tipo de Cobrança</label>
+              <p className="text-sm">{cliente.tipoCobranca}</p>
             </div>
-
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <DollarSign className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Giro Calculado (Teórico)</p>
-                  <p className="text-lg font-bold text-gray-600 text-left">
-                    {cliente.periodicidadePadrao > 0 ? Math.round(cliente.quantidadePadrao / cliente.periodicidadePadrao * 7) : 0} unidades/semana
-                  </p>
-                  <p className="text-xs text-muted-foreground text-left">
-                    Baseado na quantidade padrão ({cliente.quantidadePadrao}) e periodicidade ({cliente.periodicidadePadrao} dias)
-                  </p>
-                </div>
-              </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Forma de Pagamento</label>
+              <p className="text-sm">{cliente.formaPagamento}</p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Informações Financeiras */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-emerald-600" />
-            Informações Financeiras
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <DollarSign className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Tipo de Cobrança</p>
-                  <p className="text-sm font-medium text-foreground text-left">{cliente.tipoCobranca}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <CreditCard className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 text-left">Forma de Pagamento</p>
-                  <p className="text-sm font-medium text-foreground text-left">{cliente.formaPagamento}</p>
-                </div>
-              </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500 flex items-center">
+                <FileText className="h-4 w-4 mr-1" />
+                Emite NF
+              </label>
+              <p className="text-sm">{cliente.emiteNotaFiscal ? 'Sim' : 'Não'}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Observações */}
-      {cliente.observacoes && <Card>
+      {cliente.observacoes && (
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-amber-600" />
-              Observações Gerais
-            </CardTitle>
+            <CardTitle>Observações</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-start gap-3">
-              <FileText className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm leading-relaxed text-foreground">{cliente.observacoes}</p>
-              </div>
-            </div>
+            <p className="text-sm whitespace-pre-wrap">{cliente.observacoes}</p>
           </CardContent>
-        </Card>}
-    </div>;
+        </Card>
+      )}
+    </div>
+  );
 }

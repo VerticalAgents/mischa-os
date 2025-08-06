@@ -62,6 +62,7 @@ export default function ClienteFormDialog({
     nome: '',
     cnpjCpf: '',
     enderecoEntrega: '',
+    linkGoogleMaps: '',
     contatoNome: '',
     contatoTelefone: '',
     contatoEmail: '',
@@ -99,6 +100,7 @@ export default function ClienteFormDialog({
         nome: '',
         cnpjCpf: '',
         enderecoEntrega: '',
+        linkGoogleMaps: '',
         contatoNome: '',
         contatoTelefone: '',
         contatoEmail: '',
@@ -212,6 +214,7 @@ export default function ClienteFormDialog({
     nome: formData.nome || '',
     cnpjCpf: formData.cnpjCpf || '',
     enderecoEntrega: formData.enderecoEntrega || '',
+    linkGoogleMaps: formData.linkGoogleMaps || '',
     contatoNome: formData.contatoNome || '',
     contatoTelefone: formData.contatoTelefone || '',
     contatoEmail: formData.contatoEmail || '',
@@ -284,6 +287,17 @@ export default function ClienteFormDialog({
                   id="enderecoEntrega"
                   value={formData.enderecoEntrega || ''}
                   onChange={(e) => handleInputChange('enderecoEntrega', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="linkGoogleMaps">Link do Google Maps</Label>
+                <Input
+                  id="linkGoogleMaps"
+                  type="url"
+                  placeholder="https://maps.app.goo.gl/wTpwoh5LT8hDRPke6"
+                  value={formData.linkGoogleMaps || ''}
+                  onChange={(e) => handleInputChange('linkGoogleMaps', e.target.value)}
                 />
               </div>
 
