@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Cliente } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
