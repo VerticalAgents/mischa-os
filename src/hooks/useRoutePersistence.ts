@@ -10,19 +10,22 @@ export const useRoutePersistence = () => {
 
   // Salva a rota atual sempre que ela muda (exceto rotas de auth)
   useEffect(() => {
-    const currentPath = location.pathname + location.search;
+    const currentPath = location.pathname + location.search + location.hash;
     
     // Não salvar rotas de autenticação ou root vazia
-    if (currentPath !== '/auth' && currentPath !== '/login' && currentPath !== '/') {
+    if (currentPath !== '/auth' && 
+        currentPath !== '/login' && 
+        currentPath !== '/' && 
+        !currentPath.startsWith('/auth')) {
       console.log('🔄 Salvando rota atual:', currentPath);
       localStorage.setItem(ROUTE_STORAGE_KEY, currentPath);
     }
-  }, [location.pathname, location.search]);
+  }, [location.pathname, location.search, location.hash]);
 
   // Restaura a rota salva apenas na inicialização
   const restoreRoute = () => {
     const savedRoute = localStorage.getItem(ROUTE_STORAGE_KEY);
-    const currentPath = location.pathname + location.search;
+    const currentPath = location.pathname + location.search + location.hash;
     
     console.log('🔍 Verificando rota salva:', { savedRoute, currentPath });
     
@@ -33,6 +36,7 @@ export const useRoutePersistence = () => {
         savedRoute !== '/auth' && 
         savedRoute !== '/login' && 
         savedRoute !== '/' &&
+        !savedRoute.startsWith('/auth') &&
         currentPath === '/') {
       
       console.log('🚀 Restaurando rota para:', savedRoute);
