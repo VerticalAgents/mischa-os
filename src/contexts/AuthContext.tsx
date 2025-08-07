@@ -1,9 +1,10 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
+import { secureLogger } from '@/utils/secureLogger';
+import { getClientIP, logSecurityEvent } from '@/utils/secureIpDetection';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -31,17 +32,6 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Helper function to get client IP (simplified)
-const getClientIP = async (): Promise<string> => {
-  try {
-    const response = await fetch('https://api.ipify.org?format=json');
-    const data = await response.json();
-    return data.ip || '127.0.0.1';
-  } catch {
-    return '127.0.0.1';
-  }
-};
-
 // Helper function to log authentication attempts
 const logAuthAttempt = async (
   email: string, 
@@ -60,10 +50,10 @@ const logAuthAttempt = async (
       });
     
     if (error) {
-      console.warn('Failed to log auth attempt:', error);
+      secureLogger.warn('Failed to log auth attempt', { error });
     }
   } catch (err) {
-    console.warn('Failed to log auth attempt:', err);
+    secureLogger.warn('Failed to log auth attempt', { error: err });
   }
 };
 
@@ -94,10 +84,10 @@ const logAuditEvent = async (
       });
 
     if (error) {
-      console.error('Error logging audit entry:', error);
+      secureLogger.error('Error logging audit entry', { error });
     }
   } catch (err) {
-    console.error('Error logging audit entry:', err);
+    secureLogger.error('Error logging audit entry', { error: err });
   }
 };
 
@@ -112,13 +102,13 @@ const checkRateLimit = async (email: string, ipAddress: string): Promise<boolean
       });
 
     if (error) {
-      console.warn('Rate limit check failed:', error);
+      secureLogger.warn('Rate limit check failed', { error });
       return true;
     }
 
     return data === true;
   } catch (err) {
-    console.warn('Rate limit check failed:', err);
+    secureLogger.warn('Rate limit check failed', { error: err });
     return true;
   }
 };
@@ -133,23 +123,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Função para renovar sessão
   const refreshSession = async () => {
     try {
-      console.log('AuthContext: Tentando renovar sessão...');
+      secureLogger.debug('Attempting to refresh session');
       const { data: { session }, error } = await supabase.auth.refreshSession();
       
       if (error) {
-        console.error('AuthContext: Erro ao renovar sessão:', error);
+        secureLogger.error('Error refreshing session', { error });
         // Se não conseguir renovar, fazer logout
         await logout();
         return;
       }
 
       if (session) {
-        console.log('AuthContext: Sessão renovada com sucesso');
+        secureLogger.info('Session refreshed successfully');
         setSession(session);
         setUser(session.user);
       }
     } catch (error) {
-      console.error('AuthContext: Erro inesperado ao renovar sessão:', error);
+      secureLogger.error('Unexpected error refreshing session', { error });
       await logout();
     }
   };
@@ -162,16 +152,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const expiresAt = session.expires_at || 0;
     const timeUntilExpiry = expiresAt - now;
 
-    console.log(`AuthContext: Sessão expira em ${timeUntilExpiry} segundos`);
+    secureLogger.debug('Session expiry check', { timeUntilExpiry });
 
     // Se faltam menos de 5 minutos (300 segundos) para expirar, renovar
     if (timeUntilExpiry < 300 && timeUntilExpiry > 0) {
-      console.log('AuthContext: Renovando sessão preventivamente...');
+      secureLogger.info('Refreshing session preventively');
       refreshSession();
     }
     // Se já expirou, fazer logout
     else if (timeUntilExpiry <= 0) {
-      console.log('AuthContext: Sessão expirada, fazendo logout...');
+      secureLogger.warn('Session expired, logging out');
       logout();
     }
   };
@@ -179,7 +169,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Interceptar erros de JWT
   const handleSupabaseError = (error: any) => {
     if (error?.message?.includes('JWT expired') || error?.code === 'PGRST301') {
-      console.log('AuthContext: JWT expirado detectado, renovando sessão...');
+      secureLogger.warn('JWT expired detected, refreshing session');
       toast.error('Sessão expirada. Renovando automaticamente...');
       refreshSession();
       return true;
@@ -188,12 +178,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   useEffect(() => {
-    console.log('AuthContext: Inicializando autenticação...');
+    secureLogger.info('Initializing authentication context');
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('AuthContext: Auth state change:', event, session?.user?.email);
+        secureLogger.info('Auth state change', { event, userEmail: session?.user?.email });
         
         setSession(session);
         setUser(session?.user ?? null);
@@ -225,6 +215,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 timestamp: new Date().toISOString()
               }
             );
+            
+            logSecurityEvent('USER_LOGIN', {
+              user_id: session.user.id,
+              email: session.user.email
+            }, session.user.id);
           }, 0);
 
           navigate('/home', { replace: true });
@@ -246,6 +241,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                   timestamp: new Date().toISOString()
                 }
               );
+              
+              logSecurityEvent('USER_LOGOUT', {
+                user_id: user.id,
+                email: user.email
+              }, user.id);
             }, 0);
           }
 
@@ -254,7 +254,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         if (event === 'TOKEN_REFRESHED' && session) {
-          console.log('AuthContext: Token renovado automaticamente');
+          secureLogger.info('Token refreshed automatically');
           toast.success("Sessão renovada automaticamente");
         }
       }
@@ -263,11 +263,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
-        console.error('AuthContext: Erro ao obter sessão:', error);
+        secureLogger.error('Error getting initial session', { error });
         handleSupabaseError(error);
       }
       
-      console.log('AuthContext: Sessão inicial:', session?.user?.email);
+      secureLogger.debug('Initial session loaded', { userEmail: session?.user?.email });
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -312,6 +312,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (!isAllowed) {
         toast.error("Muitas tentativas de login. Tente novamente em 15 minutos.");
         await logAuthAttempt(email, 'login', false, clientIP);
+        await logSecurityEvent('RATE_LIMIT_EXCEEDED', { email, ip: clientIP });
         return;
       }
 
@@ -322,6 +323,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (error) {
         await logAuthAttempt(email, 'login', false, clientIP);
+        await logSecurityEvent('LOGIN_FAILED', { email, error: error.message });
         
         if (error.message.includes('Invalid login credentials')) {
           toast.error("Email ou senha incorretos");
@@ -387,6 +389,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (error) {
         await logAuthAttempt(email, 'signup', false, clientIP);
+        await logSecurityEvent('SIGNUP_FAILED', { email, error: error.message });
         
         if (error.message.includes('User already registered')) {
           toast.error("Este email já está cadastrado. Tente fazer login.");
@@ -396,6 +399,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         throw error;
       } else {
         await logAuthAttempt(email, 'signup', true, clientIP);
+        await logSecurityEvent('USER_SIGNUP', { email });
         toast.success("Conta criada com sucesso! Verifique seu email para confirmar.");
       }
     } catch (error) {
@@ -419,6 +423,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (error) {
+        await logSecurityEvent('OAUTH_LOGIN_FAILED', { provider: 'google', error: error.message });
         toast.error("Erro ao fazer login com Google: " + error.message);
       }
     } catch (error) {
@@ -431,14 +436,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const logout = async () => {
     try {
       setLoading(true);
-      console.log('AuthContext: Fazendo logout...');
+      secureLogger.info('Logging out user');
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('AuthContext: Erro ao fazer logout:', error);
+        secureLogger.error('Error during logout', { error });
         toast.error("Erro ao fazer logout: " + error.message);
       }
     } catch (error) {
-      console.error('AuthContext: Erro inesperado ao fazer logout:', error);
+      secureLogger.error('Unexpected error during logout', { error });
       toast.error("Erro inesperado ao fazer logout");
     } finally {
       setLoading(false);

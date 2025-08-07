@@ -1328,6 +1328,36 @@ export type Database = {
         }
         Relationships: []
       }
+      security_events: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       subcategorias_custos: {
         Row: {
           ativo: boolean
@@ -1556,6 +1586,10 @@ export type Database = {
           p_max_attempts?: number
         }
         Returns: boolean
+      }
+      get_request_ip: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown
       }
       get_user_role: {
         Args: { user_id: string }
