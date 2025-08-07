@@ -26,6 +26,7 @@ interface HistoricoModalProps {
 
 interface FormData {
   dataProducao: Date;
+  produtoId: string;
   produtoNome: string;
   formasProducidas: number;
   turno?: string;
@@ -47,6 +48,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
   } = useForm<FormData>({
     defaultValues: {
       dataProducao: registro?.dataProducao || new Date(),
+      produtoId: registro?.produtoId?.toString() || "",
       produtoNome: registro?.produtoNome || "",
       formasProducidas: registro?.formasProducidas || 1,
       turno: registro?.turno || "",
@@ -62,9 +64,21 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
     try {
       setIsSubmitting(true);
 
+      // Buscar o produto selecionado para obter o ID correto
+      const produtoSelecionado = produtos.find(p => p.nome === data.produtoNome);
+      
+      if (!produtoSelecionado) {
+        toast({
+          title: "Erro",
+          description: "Produto não encontrado. Selecione um produto válido.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const registroData = {
         dataProducao: selectedDate,
-        produtoId: 1, // Temporário - seria obtido do produto selecionado
+        produtoId: produtoSelecionado.id, // Usar o ID real do produto
         produtoNome: data.produtoNome,
         formasProducidas: data.formasProducidas,
         unidadesCalculadas: unidadesCalculadas,
@@ -91,6 +105,15 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Atualizar produtoId quando produtoNome mudar
+  const handleProdutoChange = (produtoNome: string) => {
+    setValue('produtoNome', produtoNome);
+    const produto = produtos.find(p => p.nome === produtoNome);
+    if (produto) {
+      setValue('produtoId', produto.id);
     }
   };
 
@@ -143,7 +166,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
               <Label htmlFor="produtoNome">Produto</Label>
               <Select 
                 value={watch('produtoNome')} 
-                onValueChange={(value) => setValue('produtoNome', value)}
+                onValueChange={handleProdutoChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o produto" />

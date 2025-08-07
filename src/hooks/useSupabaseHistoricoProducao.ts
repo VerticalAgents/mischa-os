@@ -54,16 +54,18 @@ export const useSupabaseHistoricoProducao = () => {
 
   const adicionarRegistro = async (registro: Omit<HistoricoProducaoSupabase, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      console.log('Dados para inserção:', registro);
+
       const { data, error } = await supabase
         .from('historico_producao')
         .insert({
           data_producao: registro.data_producao,
-          produto_id: registro.produto_id,
+          produto_id: registro.produto_id || null, // Garantir que seja null se undefined
           produto_nome: registro.produto_nome,
           formas_producidas: registro.formas_producidas,
           unidades_calculadas: registro.unidades_calculadas,
-          turno: registro.turno,
-          observacoes: registro.observacoes,
+          turno: registro.turno || null,
+          observacoes: registro.observacoes || null,
           origem: registro.origem || 'Manual'
         })
         .select()
@@ -99,9 +101,14 @@ export const useSupabaseHistoricoProducao = () => {
 
   const editarRegistro = async (id: string, dadosAtualizados: Partial<HistoricoProducaoSupabase>) => {
     try {
+      console.log('Dados para atualização:', dadosAtualizados);
+
       const { error } = await supabase
         .from('historico_producao')
-        .update(dadosAtualizados)
+        .update({
+          ...dadosAtualizados,
+          produto_id: dadosAtualizados.produto_id || null, // Garantir que seja null se undefined
+        })
         .eq('id', id);
 
       if (error) {

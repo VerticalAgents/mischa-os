@@ -30,9 +30,12 @@ export default function HistoricoProducao() {
   const handleSave = async (dadosProducao: any) => {
     let sucesso = false;
     
+    console.log('Dados recebidos do modal:', dadosProducao);
+    
     if (editingItem) {
       sucesso = await editarRegistro(editingItem.id, {
         data_producao: format(dadosProducao.dataProducao, 'yyyy-MM-dd'),
+        produto_id: dadosProducao.produtoId, // Usar o ID real do produto
         produto_nome: dadosProducao.produtoNome,
         formas_producidas: dadosProducao.formasProducidas,
         unidades_calculadas: dadosProducao.unidadesCalculadas,
@@ -43,7 +46,7 @@ export default function HistoricoProducao() {
     } else {
       sucesso = await adicionarRegistro({
         data_producao: format(dadosProducao.dataProducao, 'yyyy-MM-dd'),
-        produto_id: dadosProducao.produtoId,
+        produto_id: dadosProducao.produtoId, // Usar o ID real do produto
         produto_nome: dadosProducao.produtoNome,
         formas_producidas: dadosProducao.formasProducidas,
         unidades_calculadas: dadosProducao.unidadesCalculadas,
@@ -63,6 +66,7 @@ export default function HistoricoProducao() {
     setEditingItem({
       id: item.id,
       dataProducao: new Date(item.data_producao),
+      produtoId: item.produto_id,
       produtoNome: item.produto_nome,
       formasProducidas: item.formas_producidas,
       turno: item.turno,
