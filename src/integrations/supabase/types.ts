@@ -1226,6 +1226,48 @@ export type Database = {
         }
         Relationships: []
       }
+      rendimentos_receita_produto: {
+        Row: {
+          created_at: string | null
+          id: string
+          produto_id: string
+          receita_id: string
+          rendimento: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          produto_id: string
+          receita_id: string
+          rendimento?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          produto_id?: string
+          receita_id?: string
+          rendimento?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rendimentos_receita_produto_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos_finais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rendimentos_receita_produto_receita_id_fkey"
+            columns: ["receita_id"]
+            isOneToOne: false
+            referencedRelation: "receitas_base"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       representantes: {
         Row: {
           ativo: boolean

@@ -6,6 +6,7 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import InsumosSupabaseTab from "@/components/precificacao/InsumosSupabaseTab";
 import ReceitasTab from "@/components/precificacao/ReceitasTab";
 import ProdutosTab from "@/components/precificacao/ProdutosTab";
+import RendimentoReceitasProdutos from "@/components/precificacao/RendimentoReceitasProdutos";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
 
 export default function Precificacao() {
@@ -20,10 +21,11 @@ export default function Precificacao() {
       
       <div className="mt-8">
         <Tabs value={activeTab} onValueChange={changeTab}>
-          <TabsList className="grid grid-cols-3 mb-8">
+          <TabsList className="grid grid-cols-4 mb-8">
             <TabsTrigger value="insumos">Insumos</TabsTrigger>
             <TabsTrigger value="receitas">Receitas Base</TabsTrigger>
             <TabsTrigger value="produtos">Produtos</TabsTrigger>
+            <TabsTrigger value="rendimentos">Rendimentos</TabsTrigger>
           </TabsList>
           
           <TabsContent value="insumos">
@@ -39,6 +41,12 @@ export default function Precificacao() {
           <TabsContent value="produtos">
             <CollapsibleSection title="Produtos" defaultOpen={true}>
               <ProdutosTab />
+            </CollapsibleSection>
+          </TabsContent>
+          
+          <TabsContent value="rendimentos">
+            <CollapsibleSection title="Rendimento de Receitas por Produto" defaultOpen={true}>
+              <RendimentoReceitasProdutos />
             </CollapsibleSection>
           </TabsContent>
         </Tabs>

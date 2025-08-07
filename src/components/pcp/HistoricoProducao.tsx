@@ -1,137 +1,119 @@
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, Plus } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Settings, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-import { HistoricoProducaoModal } from "./HistoricoProducaoModal";
-
-interface HistoricoProducaoItem {
-  id: string;
-  data_producao: string;
-  produto_id?: string;
-  produto_nome: string;
-  formas_producidas: number;
-  unidades_calculadas: number;
-  turno?: string;
-  observacoes?: string;
-  origem: string;
-  created_at: string;
-  updated_at: string;
-}
+import HistoricoProducaoModal from "./HistoricoProducaoModal";
+import { useHistoricoProducaoStore } from "@/hooks/useHistoricoProducaoStore";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useNavigate } from "react-router-dom";
 
 export default function HistoricoProducao() {
-  const [historico, setHistorico] = useState<HistoricoProducaoItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<HistoricoProducaoItem | null>(null);
-
-  const carregarHistorico = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('historico_producao')
-        .select('*')
-        .order('data_producao', { ascending: false })
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Erro ao carregar histórico:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar o histórico de produção",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setHistorico(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar histórico:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCriarRegistro = () => {
-    setSelectedItem(null);
-    setShowModal(true);
-  };
-
-  const handleEditarRegistro = (item: HistoricoProducaoItem) => {
-    setSelectedItem(item);
-    setShowModal(true);
-  };
-
-  const handleExcluirRegistro = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este registro?')) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('historico_producao')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Erro ao excluir registro:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível excluir o registro",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Registro excluído",
-        description: "Registro de produção excluído com sucesso",
-      });
-
-      carregarHistorico();
-    } catch (error) {
-      console.error('Erro ao excluir registro:', error);
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro inesperado",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleModalSuccess = () => {
-    carregarHistorico();
-  };
+  const navigate = useNavigate();
+  const { 
+    historico, 
+    loading, 
+    carregarHistorico, 
+    adicionarRegistro, 
+    atualizarRegistro, 
+    removerRegistro 
+  } = useHistoricoProducaoStore();
+  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
 
   useEffect(() => {
     carregarHistorico();
-  }, []);
+  }, [carregarHistorico]);
+
+  const handleSave = async (dadosProducao: any) => {
+    if (editingItem) {
+      await atualizarRegistro(editingItem.id, dadosProducao);
+    } else {
+      await adicionarRegistro(dadosProducao);
+    }
+    setIsModalOpen(false);
+    setEditingItem(null);
+  };
+
+  const handleEdit = (item: any) => {
+    setEditingItem(item);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja remover este registro de produção?')) {
+      await removerRegistro(id);
+    }
+  };
+
+  const handleNovoRegistro = () => {
+    setEditingItem(null);
+    setIsModalOpen(true);
+  };
+
+  const filteredHistorico = historico.filter(item => 
+    item.produto_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.turno?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Histórico de Produção</CardTitle>
-              <CardDescription>
-                Registro de todas as produções realizadas
-              </CardDescription>
+          <CardTitle className="flex items-center justify-between">
+            <span>Histórico de Produção</span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/precificacao?tab=rendimentos")}
+                className="flex items-center gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                Gerenciar Rendimentos
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+              <Button onClick={handleNovoRegistro} className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Novo Registro
+              </Button>
             </div>
-            <Button onClick={handleCriarRegistro}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Registro
-            </Button>
-          </div>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div className="flex gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Buscar por produto ou turno..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-muted-foreground">Carregando histórico...</div>
+            </div>
+          ) : filteredHistorico.length === 0 ? (
+            <Alert>
+              <AlertDescription>
+                {searchTerm 
+                  ? "Nenhum registro encontrado com os filtros aplicados"
+                  : "Nenhum registro de produção encontrado. Clique em 'Novo Registro' para começar."
+                }
+              </AlertDescription>
+            </Alert>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -142,84 +124,67 @@ export default function HistoricoProducao() {
                   <TableHead>Turno</TableHead>
                   <TableHead>Origem</TableHead>
                   <TableHead>Observações</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="w-20">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center">
-                      Carregando histórico...
+                {filteredHistorico.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      {format(new Date(item.data_producao), "dd/MM/yyyy", { locale: ptBR })}
+                    </TableCell>
+                    <TableCell className="font-medium">{item.produto_nome}</TableCell>
+                    <TableCell>{item.formas_producidas}</TableCell>
+                    <TableCell>{item.unidades_calculadas}</TableCell>
+                    <TableCell>
+                      {item.turno && (
+                        <Badge variant="secondary">{item.turno}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={item.origem === 'Manual' ? 'default' : 'outline'}>
+                        {item.origem}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">
+                      {item.observacoes}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(item)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(item.id)}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ) : historico.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center">
-                      Nenhum registro encontrado
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  historico.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        {format(new Date(item.data_producao), "dd/MM/yyyy")}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {item.produto_nome}
-                      </TableCell>
-                      <TableCell>{item.formas_producidas}</TableCell>
-                      <TableCell>{item.unidades_calculadas}</TableCell>
-                      <TableCell>
-                        {item.turno && (
-                          <Badge variant="outline">{item.turno}</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={item.origem === 'Manual' ? 'secondary' : 'default'}>
-                          {item.origem}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {item.observacoes && (
-                          <span className="text-sm text-muted-foreground">
-                            {item.observacoes.length > 30 
-                              ? `${item.observacoes.substring(0, 30)}...` 
-                              : item.observacoes}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditarRegistro(item)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleExcluirRegistro(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
-          </div>
+          )}
         </CardContent>
       </Card>
 
       <HistoricoProducaoModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onSuccess={handleModalSuccess}
-        registro={selectedItem}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingItem(null);
+        }}
+        onSave={handleSave}
+        editingItem={editingItem}
       />
     </div>
   );
