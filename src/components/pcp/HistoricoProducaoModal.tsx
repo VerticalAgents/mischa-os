@@ -13,21 +13,21 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
+import { HistoricoProducao } from "@/types";
 
 interface HistoricoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
-  registro?: any;
+  onSuccess: (data: Omit<HistoricoProducao, 'id'>) => void;
+  registro?: HistoricoProducao | null;
 }
 
 interface FormData {
-  data_producao: Date;
-  produto_nome: string;
-  formas_producidas: number;
+  dataProducao: Date;
+  produtoNome: string;
+  formasProducidas: number;
   turno?: string;
   observacoes?: string;
 }
@@ -35,7 +35,7 @@ interface FormData {
 export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }: HistoricoModalProps) {
   const { produtos } = useSupabaseProdutos();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>(registro?.data_producao ? new Date(registro.data_producao) : new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(registro?.dataProducao || new Date());
 
   const {
     register,
@@ -46,15 +46,15 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
     formState: { errors }
   } = useForm<FormData>({
     defaultValues: {
-      data_producao: registro?.data_producao ? new Date(registro.data_producao) : new Date(),
-      produto_nome: registro?.produto_nome || "",
-      formas_producidas: registro?.formas_producidas || 1,
+      dataProducao: registro?.dataProducao || new Date(),
+      produtoNome: registro?.produtoNome || "",
+      formasProducidas: registro?.formasProducidas || 1,
       turno: registro?.turno || "",
       observacoes: registro?.observacoes || ""
     }
   });
 
-  const formas = watch('formas_producidas') || 0;
+  const formas = watch('formasProducidas') || 0;
   const unidadesPorForma = 30; // Configuração padrão
   const unidadesCalculadas = formas * unidadesPorForma;
 
@@ -63,49 +63,24 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
       setIsSubmitting(true);
 
       const registroData = {
-        data_producao: format(selectedDate, 'yyyy-MM-dd'),
-        produto_nome: data.produto_nome,
-        formas_producidas: data.formas_producidas,
-        unidades_calculadas: unidadesCalculadas,
-        turno: data.turno || null,
-        observacoes: data.observacoes || null,
-        origem: 'Manual'
+        dataProducao: selectedDate,
+        produtoId: 1, // Temporário - seria obtido do produto selecionado
+        produtoNome: data.produtoNome,
+        formasProducidas: data.formasProducidas,
+        unidadesCalculadas: unidadesCalculadas,
+        turno: data.turno || 'Matutino',
+        observacoes: data.observacoes || '',
+        origem: 'Manual' as const
       };
 
-      let error;
-
-      if (registro?.id) {
-        // Editando registro existente
-        const { error: updateError } = await supabase
-          .from('historico_producao')
-          .update(registroData)
-          .eq('id', registro.id);
-        error = updateError;
-      } else {
-        // Criando novo registro
-        const { error: insertError } = await supabase
-          .from('historico_producao')
-          .insert([registroData]);
-        error = insertError;
-      }
-
-      if (error) {
-        console.error('Erro ao salvar registro:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível salvar o registro de produção",
-          variant: "destructive",
-        });
-        return;
-      }
+      onSuccess(registroData);
 
       toast({
-        title: registro?.id ? "Registro atualizado" : "Registro criado",
-        description: `Produção de ${data.formas_producidas} formas de ${data.produto_nome} registrada com sucesso`,
+        title: registro ? "Registro atualizado" : "Registro criado",
+        description: `Produção de ${data.formasProducidas} formas de ${data.produtoNome} registrada com sucesso`,
       });
 
       reset();
-      onSuccess();
       onClose();
     } catch (error) {
       console.error('Erro inesperado:', error);
@@ -124,7 +99,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>
-            {registro?.id ? "Editar Registro de Produção" : "Novo Registro de Produção"}
+            {registro ? "Editar Registro de Produção" : "Novo Registro de Produção"}
           </DialogTitle>
           <DialogDescription>
             Registre a produção realizada com as informações detalhadas
@@ -134,7 +109,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="data_producao">Data da Produção</Label>
+              <Label htmlFor="dataProducao">Data da Produção</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -155,7 +130,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
                     onSelect={(date) => {
                       if (date) {
                         setSelectedDate(date);
-                        setValue('data_producao', date);
+                        setValue('dataProducao', date);
                       }
                     }}
                     initialFocus
@@ -165,10 +140,10 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="produto_nome">Produto</Label>
+              <Label htmlFor="produtoNome">Produto</Label>
               <Select 
-                value={watch('produto_nome')} 
-                onValueChange={(value) => setValue('produto_nome', value)}
+                value={watch('produtoNome')} 
+                onValueChange={(value) => setValue('produtoNome', value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o produto" />
@@ -181,17 +156,17 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
                   ))}
                 </SelectContent>
               </Select>
-              {errors.produto_nome && (
+              {errors.produtoNome && (
                 <p className="text-sm text-red-500">Selecione um produto</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="formas_producidas">Formas Produzidas</Label>
+              <Label htmlFor="formasProducidas">Formas Produzidas</Label>
               <Input
                 type="number"
                 min="1"
-                {...register('formas_producidas', { 
+                {...register('formasProducidas', { 
                   required: 'Campo obrigatório',
                   min: { value: 1, message: 'Mínimo de 1 forma' },
                   valueAsNumber: true
@@ -200,8 +175,8 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
               <p className="text-sm text-muted-foreground">
                 Equivale a {unidadesCalculadas} unidades ({unidadesPorForma} por forma)
               </p>
-              {errors.formas_producidas && (
-                <p className="text-sm text-red-500">{errors.formas_producidas.message}</p>
+              {errors.formasProducidas && (
+                <p className="text-sm text-red-500">{errors.formasProducidas.message}</p>
               )}
             </div>
 
@@ -237,7 +212,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
               Cancelar
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Salvando..." : (registro?.id ? "Atualizar" : "Registrar")}
+              {isSubmitting ? "Salvando..." : (registro ? "Atualizar" : "Registrar")}
             </Button>
           </div>
         </form>

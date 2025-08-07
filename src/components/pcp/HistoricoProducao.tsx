@@ -8,48 +8,43 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Edit, Trash2, Settings, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import HistoricoProducaoModal from "./HistoricoProducaoModal";
+import { HistoricoProducaoModal } from "./HistoricoProducaoModal";
 import { useHistoricoProducaoStore } from "@/hooks/useHistoricoProducaoStore";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
+import { HistoricoProducao as HistoricoProducaoType } from "@/types";
 
 export default function HistoricoProducao() {
   const navigate = useNavigate();
   const { 
-    historico, 
-    loading, 
-    carregarHistorico, 
-    adicionarRegistro, 
-    atualizarRegistro, 
-    removerRegistro 
+    historico,
+    adicionarRegistroHistorico,
+    editarRegistroHistorico,
+    removerRegistroHistorico
   } = useHistoricoProducaoStore();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editingItem, setEditingItem] = useState<HistoricoProducaoType | null>(null);
 
-  useEffect(() => {
-    carregarHistorico();
-  }, [carregarHistorico]);
-
-  const handleSave = async (dadosProducao: any) => {
+  const handleSave = (dadosProducao: any) => {
     if (editingItem) {
-      await atualizarRegistro(editingItem.id, dadosProducao);
+      editarRegistroHistorico(editingItem.id, dadosProducao);
     } else {
-      await adicionarRegistro(dadosProducao);
+      adicionarRegistroHistorico(dadosProducao);
     }
     setIsModalOpen(false);
     setEditingItem(null);
   };
 
-  const handleEdit = (item: any) => {
+  const handleEdit = (item: HistoricoProducaoType) => {
     setEditingItem(item);
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: number) => {
     if (window.confirm('Tem certeza que deseja remover este registro de produção?')) {
-      await removerRegistro(id);
+      removerRegistroHistorico(id);
     }
   };
 
@@ -59,8 +54,8 @@ export default function HistoricoProducao() {
   };
 
   const filteredHistorico = historico.filter(item => 
-    item.produto_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.turno?.toLowerCase().includes(searchTerm.toLowerCase())
+    item.produtoNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.turno && item.turno.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -100,11 +95,7 @@ export default function HistoricoProducao() {
             </div>
           </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-muted-foreground">Carregando histórico...</div>
-            </div>
-          ) : filteredHistorico.length === 0 ? (
+          {filteredHistorico.length === 0 ? (
             <Alert>
               <AlertDescription>
                 {searchTerm 
@@ -131,11 +122,11 @@ export default function HistoricoProducao() {
                 {filteredHistorico.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      {format(new Date(item.data_producao), "dd/MM/yyyy", { locale: ptBR })}
+                      {format(item.dataProducao, "dd/MM/yyyy", { locale: ptBR })}
                     </TableCell>
-                    <TableCell className="font-medium">{item.produto_nome}</TableCell>
-                    <TableCell>{item.formas_producidas}</TableCell>
-                    <TableCell>{item.unidades_calculadas}</TableCell>
+                    <TableCell className="font-medium">{item.produtoNome}</TableCell>
+                    <TableCell>{item.formasProducidas}</TableCell>
+                    <TableCell>{item.unidadesCalculadas}</TableCell>
                     <TableCell>
                       {item.turno && (
                         <Badge variant="secondary">{item.turno}</Badge>
@@ -183,8 +174,8 @@ export default function HistoricoProducao() {
           setIsModalOpen(false);
           setEditingItem(null);
         }}
-        onSave={handleSave}
-        editingItem={editingItem}
+        onSuccess={handleSave}
+        registro={editingItem}
       />
     </div>
   );
