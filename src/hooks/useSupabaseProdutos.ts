@@ -1,52 +1,30 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
-interface Produto {
+export interface ProdutoSupabase {
   id: string;
   nome: string;
-  categoria_id?: number;
   descricao?: string;
+  categoria_id?: number;
+  subcategoria_id?: number;
   unidades_producao: number;
-  custo_unitario: number;
+  peso_unitario?: number;
   preco_venda?: number;
-  margem_lucro: number;
   ativo: boolean;
+  created_at: string;
+  updated_at: string;
   estoque_atual?: number;
   estoque_minimo?: number;
-  peso_unitario?: number;
+  estoque_ideal?: number;
   custo_total?: number;
-  subcategoria_id?: number;
-}
-
-export interface ProdutoCompleto extends Produto {
-  componentes: {
-    id: string;
-    tipo: 'receita' | 'insumo';
-    nome_item: string;
-    quantidade: number;
-    custo_item: number;
-  }[];
-}
-
-type ProdutoInput = {
-  nome: string;
-  categoria_id?: number;
-  descricao?: string;
-  unidades_producao?: number;
   custo_unitario?: number;
-  preco_venda?: number;
   margem_lucro?: number;
-  ativo?: boolean;
-  estoque_atual?: number;
-  estoque_minimo?: number;
-  peso_unitario?: number;
-  custo_total?: number;
-  subcategoria_id?: number;
-};
+}
 
 export const useSupabaseProdutos = () => {
-  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [produtos, setProdutos] = useState<ProdutoSupabase[]>([]);
   const [loading, setLoading] = useState(true);
 
   const carregarProdutos = async () => {
@@ -59,373 +37,24 @@ export const useSupabaseProdutos = () => {
 
       if (error) {
         console.error('Erro ao carregar produtos:', error);
+        toast({
+          title: "Erro ao carregar produtos",
+          description: error.message,
+          variant: "destructive"
+        });
         return;
       }
 
-      const produtosFormatados = data?.map(produto => ({
-        ...produto,
-        custo_unitario: Number(produto.custo_unitario || 0),
-        preco_venda: produto.preco_venda ? Number(produto.preco_venda) : undefined,
-        margem_lucro: Number(produto.margem_lucro || 0),
-        unidades_producao: produto.unidades_producao || 1,
-        peso_unitario: produto.peso_unitario ? Number(produto.peso_unitario) : undefined,
-        custo_total: produto.custo_total ? Number(produto.custo_total) : undefined,
-        subcategoria_id: produto.subcategoria_id || undefined,
-        estoque_atual: produto.estoque_atual || 0,
-        estoque_minimo: produto.estoque_minimo || 0,
-      })) || [];
-
-      setProdutos(produtosFormatados);
+      setProdutos(data || []);
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
+      toast({
+        title: "Erro ao carregar produtos",
+        description: "Ocorreu um erro inesperado",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const carregarProdutoCompleto = async (produtoId: string): Promise<ProdutoCompleto | null> => {
-    try {
-      // Buscar o produto
-      const { data: produto, error: produtoError } = await supabase
-        .from('produtos_finais')
-        .select('*')
-        .eq('id', produtoId)
-        .single();
-
-      if (produtoError) {
-        console.error('Erro ao carregar produto:', produtoError);
-        return null;
-      }
-
-      // Buscar os componentes do produto de forma separada
-      const { data: componentes, error: componentesError } = await supabase
-        .from('componentes_produto')
-        .select('*')
-        .eq('produto_id', produtoId);
-
-      if (componentesError) {
-        console.error('Erro ao carregar componentes:', componentesError);
-      }
-
-      // Formatar os componentes buscando informações dos insumos e receitas separadamente
-      const componentesFormatados = [];
-      
-      if (componentes && componentes.length > 0) {
-        for (const comp of componentes) {
-          let nomeItem = '';
-          let custoItem = 0;
-
-          if (comp.tipo === 'insumo') {
-            // Buscar dados do insumo
-            const { data: insumo } = await supabase
-              .from('insumos')
-              .select('nome, custo_medio')
-              .eq('id', comp.item_id)
-              .single();
-
-            if (insumo) {
-              nomeItem = insumo.nome;
-              custoItem = Number(insumo.custo_medio || 0) * Number(comp.quantidade);
-            }
-          } else if (comp.tipo === 'receita') {
-            // Buscar dados da receita
-            const { data: receita } = await supabase
-              .from('receitas_base')
-              .select('nome')
-              .eq('id', comp.item_id)
-              .single();
-
-            if (receita) {
-              nomeItem = receita.nome;
-              
-              // Calcular o custo da receita baseado nos seus insumos
-              const { data: itensReceita } = await supabase
-                .from('itens_receita')
-                .select(`
-                  quantidade,
-                  insumos(custo_medio)
-                `)
-                .eq('receita_id', comp.item_id);
-
-              if (itensReceita) {
-                const custoReceita = itensReceita.reduce((total, item) => {
-                  const custoInsumo = (item.insumos as any)?.custo_medio || 0;
-                  return total + (Number(item.quantidade) * Number(custoInsumo));
-                }, 0);
-                custoItem = custoReceita * Number(comp.quantidade);
-              }
-            }
-          }
-
-          componentesFormatados.push({
-            id: comp.id,
-            tipo: comp.tipo as 'receita' | 'insumo',
-            nome_item: nomeItem,
-            quantidade: Number(comp.quantidade),
-            custo_item: custoItem
-          });
-        }
-      }
-
-      // Calcular custo unitário automático baseado nos componentes
-      const custoTotalComponentes = componentesFormatados.reduce((total, comp) => total + comp.custo_item, 0);
-      const custoUnitarioCalculado = produto.unidades_producao > 0 ? custoTotalComponentes / produto.unidades_producao : 0;
-
-      return {
-        ...produto,
-        custo_unitario: Number(custoUnitarioCalculado.toFixed(4)),
-        preco_venda: produto.preco_venda ? Number(produto.preco_venda) : undefined,
-        margem_lucro: Number(produto.margem_lucro || 0),
-        unidades_producao: produto.unidades_producao || 1,
-        peso_unitario: produto.peso_unitario ? Number(produto.peso_unitario) : undefined,
-        custo_total: Number(custoTotalComponentes.toFixed(4)),
-        subcategoria_id: produto.subcategoria_id || undefined,
-        estoque_atual: produto.estoque_atual || 0,
-        estoque_minimo: produto.estoque_minimo || 0,
-        componentes: componentesFormatados
-      };
-    } catch (error) {
-      console.error('Erro ao carregar produto completo:', error);
-      return null;
-    }
-  };
-
-  const adicionarProduto = async (dadosProduto: ProdutoInput) => {
-    try {
-      const { data, error } = await supabase
-        .from('produtos_finais')
-        .insert(dadosProduto)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Erro ao adicionar produto:', error);
-        toast({
-          title: "Erro ao criar produto",
-          description: error.message,
-          variant: "destructive"
-        });
-        return null;
-      }
-
-      toast({
-        title: "Produto criado",
-        description: "Produto criado com sucesso"
-      });
-
-      await carregarProdutos();
-      return data;
-    } catch (error) {
-      console.error('Erro ao adicionar produto:', error);
-      toast({
-        title: "Erro ao criar produto",
-        description: "Ocorreu um erro inesperado",
-        variant: "destructive"
-      });
-      return null;
-    }
-  };
-
-  const atualizarProduto = async (id: string, dadosAtualizados: Partial<ProdutoInput>) => {
-    try {
-      const { error } = await supabase
-        .from('produtos_finais')
-        .update(dadosAtualizados)
-        .eq('id', id);
-
-      if (error) {
-        console.error('Erro ao atualizar produto:', error);
-        toast({
-          title: "Erro ao atualizar produto",
-          description: error.message,
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      toast({
-        title: "Produto atualizado",
-        description: "Produto atualizado com sucesso"
-      });
-
-      await carregarProdutos();
-      return true;
-    } catch (error) {
-      console.error('Erro ao atualizar produto:', error);
-      toast({
-        title: "Erro ao atualizar produto",
-        description: "Ocorreu um erro inesperado",
-        variant: "destructive"
-      });
-      return false;
-    }
-  };
-
-  const adicionarComponenteProduto = async (
-    produtoId: string,
-    itemId: string,
-    tipo: 'receita' | 'insumo',
-    quantidade: number
-  ) => {
-    try {
-      const { error } = await supabase
-        .from('componentes_produto')
-        .insert([{
-          produto_id: produtoId,
-          item_id: itemId,
-          tipo,
-          quantidade
-        }]);
-
-      if (error) {
-        console.error('Erro ao adicionar componente:', error);
-        toast({
-          title: "Erro ao adicionar componente",
-          description: error.message,
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      toast({
-        title: "Componente adicionado",
-        description: "Componente adicionado com sucesso"
-      });
-
-      return true;
-    } catch (error) {
-      console.error('Erro ao adicionar componente:', error);
-      toast({
-        title: "Erro ao adicionar componente",
-        description: "Ocorreu um erro inesperado",
-        variant: "destructive"
-      });
-      return false;
-    }
-  };
-
-  const removerComponenteProduto = async (componenteId: string) => {
-    try {
-      const { error } = await supabase
-        .from('componentes_produto')
-        .delete()
-        .eq('id', componenteId);
-
-      if (error) {
-        console.error('Erro ao remover componente:', error);
-        toast({
-          title: "Erro ao remover componente",
-          description: error.message,
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      toast({
-        title: "Componente removido",
-        description: "Componente removido com sucesso"
-      });
-
-      return true;
-    } catch (error) {
-      console.error('Erro ao remover componente:', error);
-      toast({
-        title: "Erro ao remover componente",
-        description: "Ocorreu um erro inesperado",
-        variant: "destructive"
-      });
-      return false;
-    }
-  };
-
-  const removerProduto = async (produtoId: string) => {
-    try {
-      const { error } = await supabase
-        .from('produtos_finais')
-        .delete()
-        .eq('id', produtoId);
-
-      if (error) {
-        console.error('Erro ao remover produto:', error);
-        throw error;
-      }
-
-      await carregarProdutos();
-    } catch (error) {
-      console.error('Erro ao remover produto:', error);
-      throw error;
-    }
-  };
-
-  const duplicarProduto = async (produto: Produto) => {
-    try {
-      // Primeiro, vamos buscar os componentes do produto original se existirem
-      const { data: componentes, error: componentesError } = await supabase
-        .from('componentes_produto')
-        .select('*')
-        .eq('produto_id', produto.id);
-
-      if (componentesError) {
-        console.error('Erro ao buscar componentes:', componentesError);
-        // Não falhar por causa dos componentes
-      }
-
-      // Criar o produto duplicado com um novo ID único
-      const produtoDuplicado: ProdutoInput = {
-        nome: `${produto.nome} (Cópia)`,
-        categoria_id: produto.categoria_id,
-        descricao: produto.descricao,
-        unidades_producao: produto.unidades_producao,
-        custo_unitario: produto.custo_unitario,
-        preco_venda: produto.preco_venda,
-        margem_lucro: produto.margem_lucro,
-        ativo: true, // Sempre ativo por padrão
-        estoque_minimo: produto.estoque_minimo || 0,
-        peso_unitario: produto.peso_unitario,
-        custo_total: produto.custo_total,
-        subcategoria_id: produto.subcategoria_id,
-      };
-
-      const { data: novoProduto, error: produtoError } = await supabase
-        .from('produtos_finais')
-        .insert(produtoDuplicado)
-        .select()
-        .single();
-
-      if (produtoError) {
-        console.error('Erro ao duplicar produto:', produtoError);
-        throw produtoError;
-      }
-
-      // Duplicar os componentes se existirem, gerando novos IDs únicos
-      if (componentes && componentes.length > 0) {
-        const componentesDuplicados = componentes.map(componente => ({
-          produto_id: novoProduto.id, // Usar o ID do novo produto
-          item_id: componente.item_id, // Manter referência ao mesmo insumo/receita
-          quantidade: componente.quantidade,
-          tipo: componente.tipo,
-        }));
-
-        const { error: componentesInsertError } = await supabase
-          .from('componentes_produto')
-          .insert(componentesDuplicados);
-
-        if (componentesInsertError) {
-          console.error('Erro ao duplicar componentes:', componentesInsertError);
-          // Não falhar a operação por causa dos componentes
-        }
-      }
-
-      console.log('✅ Produto duplicado com sucesso:', {
-        produtoOriginal: produto.id,
-        novoProduto: novoProduto.id,
-        componentesDuplicados: componentes?.length || 0
-      });
-
-      return novoProduto;
-    } catch (error) {
-      console.error('Erro ao duplicar produto:', error);
-      throw error;
     }
   };
 
@@ -436,13 +65,6 @@ export const useSupabaseProdutos = () => {
   return {
     produtos,
     loading,
-    carregarProdutos,
-    carregarProdutoCompleto,
-    adicionarProduto,
-    atualizarProduto,
-    removerProduto,
-    duplicarProduto,
-    adicionarComponenteProduto,
-    removerComponenteProduto,
+    carregarProdutos
   };
 };

@@ -56,8 +56,13 @@ export const useSupabaseHistoricoProducao = () => {
       console.log('Tentando inserir registro:', registro);
 
       // Validar se o produto_id é um UUID válido e existe
-      if (!registro.produto_id) {
-        throw new Error('ID do produto é obrigatório');
+      if (!registro.produto_id || registro.produto_id.trim() === '') {
+        toast({
+          title: "Erro de validação",
+          description: "ID do produto é obrigatório",
+          variant: "destructive"
+        });
+        return false;
       }
 
       // Verificar se o produto existe na tabela produtos_finais
@@ -68,16 +73,16 @@ export const useSupabaseHistoricoProducao = () => {
         .single();
 
       if (produtoError || !produtoExiste) {
-        console.error('Produto não encontrado:', produtoError);
+        console.error('Produto não encontrado na tabela produtos_finais:', produtoError);
         toast({
           title: "Erro",
-          description: `Produto não encontrado no sistema. Verifique se o produto existe.`,
+          description: `Produto não encontrado no sistema. Verifique se o produto existe na tabela produtos_finais.`,
           variant: "destructive"
         });
         return false;
       }
 
-      console.log('Produto encontrado:', produtoExiste);
+      console.log('Produto encontrado na produtos_finais:', produtoExiste);
 
       const { data, error } = await supabase
         .from('historico_producao')
@@ -129,7 +134,7 @@ export const useSupabaseHistoricoProducao = () => {
       console.log('Dados para atualização:', dadosAtualizados);
 
       // Se estamos atualizando o produto_id, verificar se ele existe
-      if (dadosAtualizados.produto_id) {
+      if (dadosAtualizados.produto_id && dadosAtualizados.produto_id.trim() !== '') {
         const { data: produtoExiste, error: produtoError } = await supabase
           .from('produtos_finais')
           .select('id, nome')
@@ -137,7 +142,7 @@ export const useSupabaseHistoricoProducao = () => {
           .single();
 
         if (produtoError || !produtoExiste) {
-          console.error('Produto não encontrado:', produtoError);
+          console.error('Produto não encontrado na produtos_finais:', produtoError);
           toast({
             title: "Erro",
             description: `Produto não encontrado no sistema.`,

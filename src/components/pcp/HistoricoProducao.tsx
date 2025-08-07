@@ -35,7 +35,7 @@ export default function HistoricoProducao() {
     if (editingItem) {
       sucesso = await editarRegistro(editingItem.id, {
         data_producao: format(dadosProducao.dataProducao, 'yyyy-MM-dd'),
-        produto_id: dadosProducao.produtoId, // Usar o ID real do produto
+        produto_id: dadosProducao.produtoId,
         produto_nome: dadosProducao.produtoNome,
         formas_producidas: dadosProducao.formasProducidas,
         unidades_calculadas: dadosProducao.unidadesCalculadas,
@@ -46,7 +46,7 @@ export default function HistoricoProducao() {
     } else {
       sucesso = await adicionarRegistro({
         data_producao: format(dadosProducao.dataProducao, 'yyyy-MM-dd'),
-        produto_id: dadosProducao.produtoId, // Usar o ID real do produto
+        produto_id: dadosProducao.produtoId,
         produto_nome: dadosProducao.produtoNome,
         formas_producidas: dadosProducao.formasProducidas,
         unidades_calculadas: dadosProducao.unidadesCalculadas,

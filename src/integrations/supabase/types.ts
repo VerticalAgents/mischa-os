@@ -731,7 +731,7 @@ export type Database = {
             foreignKeyName: "historico_producao_produto_id_fkey"
             columns: ["produto_id"]
             isOneToOne: false
-            referencedRelation: "produtos"
+            referencedRelation: "produtos_finais"
             referencedColumns: ["id"]
           },
         ]
