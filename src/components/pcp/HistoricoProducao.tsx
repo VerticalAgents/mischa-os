@@ -9,7 +9,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { PinDialog } from "@/components/ui/pin-dialog";
+import { HistoricoProducaoModal } from "./HistoricoProducaoModal";
 
 interface HistoricoProducaoItem {
   id: string;
@@ -28,8 +28,7 @@ interface HistoricoProducaoItem {
 export default function HistoricoProducao() {
   const [historico, setHistorico] = useState<HistoricoProducaoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showPinDialog, setShowPinDialog] = useState(false);
-  const [pendingAction, setPendingAction] = useState<'create' | 'edit' | 'delete' | null>(null);
+  const [showModal, setShowModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<HistoricoProducaoItem | null>(null);
 
   const carregarHistorico = async () => {
@@ -59,41 +58,21 @@ export default function HistoricoProducao() {
     }
   };
 
-  const solicitarPin = (action: 'create' | 'edit' | 'delete', item?: HistoricoProducaoItem) => {
-    setPendingAction(action);
-    setSelectedItem(item || null);
-    setShowPinDialog(true);
-  };
-
-  const handlePinConfirmed = () => {
-    if (pendingAction === 'create') {
-      handleCriarRegistro();
-    } else if (pendingAction === 'edit' && selectedItem) {
-      handleEditarRegistro(selectedItem);
-    } else if (pendingAction === 'delete' && selectedItem) {
-      handleExcluirRegistro(selectedItem.id);
-    }
-    
-    // Limpar estado
-    setPendingAction(null);
-    setSelectedItem(null);
-  };
-
   const handleCriarRegistro = () => {
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "Modal de criação será implementado em breve",
-    });
+    setSelectedItem(null);
+    setShowModal(true);
   };
 
   const handleEditarRegistro = (item: HistoricoProducaoItem) => {
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "Modal de edição será implementado em breve",
-    });
+    setSelectedItem(item);
+    setShowModal(true);
   };
 
   const handleExcluirRegistro = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este registro?')) {
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('historico_producao')
@@ -126,6 +105,10 @@ export default function HistoricoProducao() {
     }
   };
 
+  const handleModalSuccess = () => {
+    carregarHistorico();
+  };
+
   useEffect(() => {
     carregarHistorico();
   }, []);
@@ -141,7 +124,7 @@ export default function HistoricoProducao() {
                 Registro de todas as produções realizadas
               </CardDescription>
             </div>
-            <Button onClick={() => solicitarPin('create')}>
+            <Button onClick={handleCriarRegistro}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Registro
             </Button>
@@ -210,14 +193,14 @@ export default function HistoricoProducao() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => solicitarPin('edit', item)}
+                            onClick={() => handleEditarRegistro(item)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => solicitarPin('delete', item)}
+                            onClick={() => handleExcluirRegistro(item.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -232,17 +215,11 @@ export default function HistoricoProducao() {
         </CardContent>
       </Card>
 
-      {/* PIN Dialog */}
-      <PinDialog
-        isOpen={showPinDialog}
-        onClose={() => {
-          setShowPinDialog(false);
-          setPendingAction(null);
-          setSelectedItem(null);
-        }}
-        onConfirm={handlePinConfirmed}
-        title="Confirmação Administrativa"
-        description="Digite o PIN de administrador para realizar esta ação:"
+      <HistoricoProducaoModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSuccess={handleModalSuccess}
+        registro={selectedItem}
       />
     </div>
   );
