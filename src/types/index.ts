@@ -267,11 +267,11 @@ export interface PlanejamentoProducao {
   formasNecessarias?: number;
 }
 
-// Add new type for production history
+// Updated HistoricoProducao interface to use string for produtoId (UUID)
 export interface HistoricoProducao {
   id: number;
   dataProducao: Date;
-  produtoId: number;
+  produtoId: string; // Changed from number to string to match Supabase UUID
   produtoNome: string;
   formasProducidas: number;
   unidadesCalculadas: number;
