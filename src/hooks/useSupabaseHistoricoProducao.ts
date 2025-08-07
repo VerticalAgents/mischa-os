@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -54,13 +53,37 @@ export const useSupabaseHistoricoProducao = () => {
 
   const adicionarRegistro = async (registro: Omit<HistoricoProducaoSupabase, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      console.log('Dados para inserção:', registro);
+      console.log('Tentando inserir registro:', registro);
+
+      // Validar se o produto_id é um UUID válido e existe
+      if (!registro.produto_id) {
+        throw new Error('ID do produto é obrigatório');
+      }
+
+      // Verificar se o produto existe na tabela produtos_finais
+      const { data: produtoExiste, error: produtoError } = await supabase
+        .from('produtos_finais')
+        .select('id, nome')
+        .eq('id', registro.produto_id)
+        .single();
+
+      if (produtoError || !produtoExiste) {
+        console.error('Produto não encontrado:', produtoError);
+        toast({
+          title: "Erro",
+          description: `Produto não encontrado no sistema. Verifique se o produto existe.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      console.log('Produto encontrado:', produtoExiste);
 
       const { data, error } = await supabase
         .from('historico_producao')
         .insert({
           data_producao: registro.data_producao,
-          produto_id: registro.produto_id || null, // Garantir que seja null se undefined
+          produto_id: registro.produto_id,
           produto_nome: registro.produto_nome,
           formas_producidas: registro.formas_producidas,
           unidades_calculadas: registro.unidades_calculadas,
@@ -81,6 +104,8 @@ export const useSupabaseHistoricoProducao = () => {
         return false;
       }
 
+      console.log('Registro salvo com sucesso:', data);
+
       toast({
         title: "Registro salvo",
         description: "Histórico de produção registrado com sucesso"
@@ -92,7 +117,7 @@ export const useSupabaseHistoricoProducao = () => {
       console.error('Erro ao adicionar registro:', error);
       toast({
         title: "Erro ao salvar registro",
-        description: "Ocorreu um erro inesperado",
+        description: error instanceof Error ? error.message : "Ocorreu um erro inesperado",
         variant: "destructive"
       });
       return false;
@@ -103,11 +128,30 @@ export const useSupabaseHistoricoProducao = () => {
     try {
       console.log('Dados para atualização:', dadosAtualizados);
 
+      // Se estamos atualizando o produto_id, verificar se ele existe
+      if (dadosAtualizados.produto_id) {
+        const { data: produtoExiste, error: produtoError } = await supabase
+          .from('produtos_finais')
+          .select('id, nome')
+          .eq('id', dadosAtualizados.produto_id)
+          .single();
+
+        if (produtoError || !produtoExiste) {
+          console.error('Produto não encontrado:', produtoError);
+          toast({
+            title: "Erro",
+            description: `Produto não encontrado no sistema.`,
+            variant: "destructive"
+          });
+          return false;
+        }
+      }
+
       const { error } = await supabase
         .from('historico_producao')
         .update({
           ...dadosAtualizados,
-          produto_id: dadosAtualizados.produto_id || null, // Garantir que seja null se undefined
+          produto_id: dadosAtualizados.produto_id || null,
         })
         .eq('id', id);
 

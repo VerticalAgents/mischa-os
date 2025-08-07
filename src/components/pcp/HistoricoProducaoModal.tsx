@@ -48,7 +48,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
   } = useForm<FormData>({
     defaultValues: {
       dataProducao: registro?.dataProducao || new Date(),
-      produtoId: registro?.produtoId?.toString() || "",
+      produtoId: registro?.produtoId || "",
       produtoNome: registro?.produtoNome || "",
       formasProducidas: registro?.formasProducidas || 1,
       turno: registro?.turno || "",
@@ -64,22 +64,25 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
     try {
       setIsSubmitting(true);
 
-      // Buscar o produto selecionado para obter o ID correto
-      const produtoSelecionado = produtos.find(p => p.nome === data.produtoNome);
+      // Buscar o produto selecionado pelo ID para garantir que existe
+      const produtoSelecionado = produtos.find(p => p.id === data.produtoId);
       
       if (!produtoSelecionado) {
         toast({
           title: "Erro",
-          description: "Produto não encontrado. Selecione um produto válido.",
+          description: "Produto não encontrado. Selecione um produto válido da lista.",
           variant: "destructive",
         });
         return;
       }
 
+      console.log('Produto selecionado:', produtoSelecionado);
+      console.log('Dados do formulário:', data);
+
       const registroData = {
         dataProducao: selectedDate,
-        produtoId: produtoSelecionado.id, // Usar o ID real do produto
-        produtoNome: data.produtoNome,
+        produtoId: produtoSelecionado.id, // Usar o ID real do produto do Supabase
+        produtoNome: produtoSelecionado.nome, // Usar o nome real do produto
         formasProducidas: data.formasProducidas,
         unidadesCalculadas: unidadesCalculadas,
         turno: data.turno || 'Matutino',
@@ -87,11 +90,13 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
         origem: 'Manual' as const
       };
 
+      console.log('Dados a serem salvos:', registroData);
+
       onSuccess(registroData);
 
       toast({
         title: registro ? "Registro atualizado" : "Registro criado",
-        description: `Produção de ${data.formasProducidas} formas de ${data.produtoNome} registrada com sucesso`,
+        description: `Produção de ${data.formasProducidas} formas de ${produtoSelecionado.nome} registrada com sucesso`,
       });
 
       reset();
@@ -108,12 +113,12 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
     }
   };
 
-  // Atualizar produtoId quando produtoNome mudar
-  const handleProdutoChange = (produtoNome: string) => {
-    setValue('produtoNome', produtoNome);
-    const produto = produtos.find(p => p.nome === produtoNome);
+  // Atualizar produtoId e produtoNome quando o produto for selecionado
+  const handleProdutoChange = (produtoId: string) => {
+    const produto = produtos.find(p => p.id === produtoId);
     if (produto) {
       setValue('produtoId', produto.id);
+      setValue('produtoNome', produto.nome);
     }
   };
 
@@ -163,9 +168,9 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="produtoNome">Produto</Label>
+              <Label htmlFor="produtoId">Produto</Label>
               <Select 
-                value={watch('produtoNome')} 
+                value={watch('produtoId')} 
                 onValueChange={handleProdutoChange}
               >
                 <SelectTrigger>
@@ -173,13 +178,13 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
                 </SelectTrigger>
                 <SelectContent>
                   {produtos.map((produto) => (
-                    <SelectItem key={produto.id} value={produto.nome}>
+                    <SelectItem key={produto.id} value={produto.id}>
                       {produto.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {errors.produtoNome && (
+              {errors.produtoId && (
                 <p className="text-sm text-red-500">Selecione um produto</p>
               )}
             </div>
