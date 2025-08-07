@@ -1,4 +1,3 @@
-
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { HistoricoProducao } from "@/types";
@@ -20,7 +19,7 @@ export const useHistoricoProducaoStore = create<HistoricoProducaoStore>()(
       {
         id: 1,
         dataProducao: new Date(2023, 4, 15),
-        produtoId: 1,
+        produtoId: '550e8400-e29b-41d4-a716-446655440001', // Changed to UUID string
         produtoNome: 'Tradicional',
         formasProducidas: 10,
         unidadesCalculadas: 300,
@@ -31,7 +30,7 @@ export const useHistoricoProducaoStore = create<HistoricoProducaoStore>()(
       {
         id: 2,
         dataProducao: new Date(2023, 4, 16),
-        produtoId: 2,
+        produtoId: '550e8400-e29b-41d4-a716-446655440002', // Changed to UUID string
         produtoNome: 'Choco Duo',
         formasProducidas: 8,
         unidadesCalculadas: 240,
