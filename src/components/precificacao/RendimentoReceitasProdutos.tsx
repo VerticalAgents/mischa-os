@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,10 +11,15 @@ import { useSupabaseReceitas } from "@/hooks/useSupabaseReceitas";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useRendimentosReceitaProduto } from "@/hooks/useRendimentosReceitaProduto";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
 export default function RendimentoReceitasProdutos() {
-  const { receitas, loading: loadingReceitas } = useSupabaseReceitas();
-  const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
+  const {
+    receitas,
+    loading: loadingReceitas
+  } = useSupabaseReceitas();
+  const {
+    produtos,
+    loading: loadingProdutos
+  } = useSupabaseProdutos();
   const {
     rendimentos,
     loading: loadingRendimentos,
@@ -24,7 +28,6 @@ export default function RendimentoReceitasProdutos() {
     obterRendimentoPorReceita,
     obterRendimento
   } = useRendimentosReceitaProduto();
-
   const [produtoSelecionado, setProdutoSelecionado] = useState<Record<string, string>>({});
   const [rendimentoTemp, setRendimentoTemp] = useState<Record<string, number>>({});
 
@@ -45,10 +48,12 @@ export default function RendimentoReceitasProdutos() {
   const adicionarProdutoReceita = async (receitaId: string) => {
     const produtoId = produtoSelecionado[receitaId];
     if (!produtoId) return;
-
     const sucesso = await salvarRendimento(receitaId, produtoId, 1.0);
     if (sucesso) {
-      setProdutoSelecionado(prev => ({ ...prev, [receitaId]: '' }));
+      setProdutoSelecionado(prev => ({
+        ...prev,
+        [receitaId]: ''
+      }));
     }
   };
 
@@ -67,43 +72,41 @@ export default function RendimentoReceitasProdutos() {
       await removerRendimento(rendimento.id);
     }
   };
-
   const handleRendimentoChange = (receitaId: string, produtoId: string, valor: string) => {
     const chave = `${receitaId}-${produtoId}`;
     const numero = parseFloat(valor);
     if (!isNaN(numero) && numero > 0) {
-      setRendimentoTemp(prev => ({ ...prev, [chave]: numero }));
+      setRendimentoTemp(prev => ({
+        ...prev,
+        [chave]: numero
+      }));
     }
   };
-
   const handleRendimentoBlur = async (receitaId: string, produtoId: string) => {
     const chave = `${receitaId}-${produtoId}`;
     const novoRendimento = rendimentoTemp[chave];
     if (novoRendimento && novoRendimento > 0) {
       await atualizarRendimento(receitaId, produtoId, novoRendimento);
       setRendimentoTemp(prev => {
-        const novo = { ...prev };
+        const novo = {
+          ...prev
+        };
         delete novo[chave];
         return novo;
       });
     }
   };
-
   if (loadingReceitas || loadingProdutos || loadingRendimentos) {
-    return (
-      <Card>
+    return <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-center">
             <div className="text-muted-foreground">Carregando dados...</div>
           </div>
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-
   if (!receitas.length) {
-    return (
-      <Card>
+    return <Card>
         <CardContent className="p-6">
           <Alert>
             <AlertDescription>
@@ -111,18 +114,15 @@ export default function RendimentoReceitasProdutos() {
             </AlertDescription>
           </Alert>
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             Rendimento de Receitas por Produto
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground text-left">
             Configure quantas unidades de cada produto são geradas por receita. 
             Essa informação será usada no cálculo de produção.
           </p>
@@ -130,26 +130,19 @@ export default function RendimentoReceitasProdutos() {
       </Card>
 
       <Accordion type="single" collapsible className="space-y-4">
-        {receitas.map((receita) => {
-          const rendimentosReceita = obterRendimentoPorReceita(receita.id);
-          const produtosDisponiveis = getProdutosDisponiveis(receita.id);
-
-          return (
-            <AccordionItem key={receita.id} value={receita.id}>
+        {receitas.map(receita => {
+        const rendimentosReceita = obterRendimentoPorReceita(receita.id);
+        const produtosDisponiveis = getProdutosDisponiveis(receita.id);
+        return <AccordionItem key={receita.id} value={receita.id}>
               <Card>
                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
                   <div className="flex items-center justify-between w-full mr-4">
                     <div className="flex items-center gap-4">
                       <span className="font-medium">{receita.nome}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Aqui poderia abrir modal de edição da receita
-                        }}
-                      >
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={e => {
+                    e.stopPropagation();
+                    // Aqui poderia abrir modal de edição da receita
+                  }}>
                         <ExternalLink className="h-4 w-4" />
                       </Button>
                     </div>
@@ -162,43 +155,33 @@ export default function RendimentoReceitasProdutos() {
                 <AccordionContent>
                   <CardContent className="pt-0">
                     {/* Adicionar novo produto */}
-                    {produtosDisponiveis.length > 0 && (
-                      <div className="mb-6 p-4 bg-muted/50 rounded-lg">
+                    {produtosDisponiveis.length > 0 && <div className="mb-6 p-4 bg-muted/50 rounded-lg">
                         <Label className="text-sm font-medium mb-2 block">
                           Adicionar Produto à Receita
                         </Label>
                         <div className="flex gap-2">
-                          <Select
-                            value={produtoSelecionado[receita.id] || ''}
-                            onValueChange={(value) => 
-                              setProdutoSelecionado(prev => ({ ...prev, [receita.id]: value }))
-                            }
-                          >
+                          <Select value={produtoSelecionado[receita.id] || ''} onValueChange={value => setProdutoSelecionado(prev => ({
+                      ...prev,
+                      [receita.id]: value
+                    }))}>
                             <SelectTrigger className="flex-1">
                               <SelectValue placeholder="Selecione um produto..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {produtosDisponiveis.map((produto) => (
-                                <SelectItem key={produto.id} value={produto.id}>
+                              {produtosDisponiveis.map(produto => <SelectItem key={produto.id} value={produto.id}>
                                   {produto.nome}
-                                </SelectItem>
-                              ))}
+                                </SelectItem>)}
                             </SelectContent>
                           </Select>
-                          <Button
-                            onClick={() => adicionarProdutoReceita(receita.id)}
-                            disabled={!produtoSelecionado[receita.id]}
-                          >
+                          <Button onClick={() => adicionarProdutoReceita(receita.id)} disabled={!produtoSelecionado[receita.id]}>
                             <Plus className="h-4 w-4 mr-2" />
                             Adicionar
                           </Button>
                         </div>
-                      </div>
-                    )}
+                      </div>}
 
                     {/* Tabela de produtos vinculados */}
-                    {rendimentosReceita.length > 0 ? (
-                      <Table>
+                    {rendimentosReceita.length > 0 ? <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Produto</TableHead>
@@ -208,13 +191,11 @@ export default function RendimentoReceitasProdutos() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {rendimentosReceita.map((rendimento) => {
-                            const produto = produtos.find(p => p.id === rendimento.produto_id);
-                            const chave = `${receita.id}-${rendimento.produto_id}`;
-                            const valorTemp = rendimentoTemp[chave];
-                            
-                            return (
-                              <TableRow key={rendimento.id}>
+                          {rendimentosReceita.map(rendimento => {
+                      const produto = produtos.find(p => p.id === rendimento.produto_id);
+                      const chave = `${receita.id}-${rendimento.produto_id}`;
+                      const valorTemp = rendimentoTemp[chave];
+                      return <TableRow key={rendimento.id}>
                                 <TableCell className="font-medium">
                                   {produto?.nome || 'Produto não encontrado'}
                                 </TableCell>
@@ -222,47 +203,25 @@ export default function RendimentoReceitasProdutos() {
                                   {getCategoriaProduto(rendimento.produto_id)}
                                 </TableCell>
                                 <TableCell>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    min="0.01"
-                                    value={valorTemp !== undefined ? valorTemp : rendimento.rendimento}
-                                    onChange={(e) => 
-                                      handleRendimentoChange(receita.id, rendimento.produto_id, e.target.value)
-                                    }
-                                    onBlur={() => handleRendimentoBlur(receita.id, rendimento.produto_id)}
-                                    className="w-full"
-                                    placeholder="Ex: 1.5"
-                                  />
+                                  <Input type="number" step="0.01" min="0.01" value={valorTemp !== undefined ? valorTemp : rendimento.rendimento} onChange={e => handleRendimentoChange(receita.id, rendimento.produto_id, e.target.value)} onBlur={() => handleRendimentoBlur(receita.id, rendimento.produto_id)} className="w-full" placeholder="Ex: 1.5" />
                                 </TableCell>
                                 <TableCell>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removerProdutoReceita(receita.id, rendimento.produto_id)}
-                                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                  >
+                                  <Button variant="ghost" size="sm" onClick={() => removerProdutoReceita(receita.id, rendimento.produto_id)} className="h-8 w-8 p-0 text-destructive hover:text-destructive">
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </TableCell>
-                              </TableRow>
-                            );
-                          })}
+                              </TableRow>;
+                    })}
                         </TableBody>
-                      </Table>
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
+                      </Table> : <div className="text-center py-8 text-muted-foreground">
                         <p>Nenhum produto vinculado a esta receita</p>
                         <p className="text-sm">Use o formulário acima para adicionar produtos</p>
-                      </div>
-                    )}
+                      </div>}
                   </CardContent>
                 </AccordionContent>
               </Card>
-            </AccordionItem>
-          );
-        })}
+            </AccordionItem>;
+      })}
       </Accordion>
-    </div>
-  );
+    </div>;
 }
