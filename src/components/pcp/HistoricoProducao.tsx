@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,42 +9,71 @@ import { Search, Plus, Edit, Trash2, Settings, ExternalLink } from "lucide-react
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { HistoricoProducaoModal } from "./HistoricoProducaoModal";
-import { useHistoricoProducaoStore } from "@/hooks/useHistoricoProducaoStore";
+import { useSupabaseHistoricoProducao } from "@/hooks/useSupabaseHistoricoProducao";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
-import { HistoricoProducao as HistoricoProducaoType } from "@/types";
 
 export default function HistoricoProducao() {
   const navigate = useNavigate();
   const { 
     historico,
-    adicionarRegistroHistorico,
-    editarRegistroHistorico,
-    removerRegistroHistorico
-  } = useHistoricoProducaoStore();
+    loading,
+    adicionarRegistro,
+    editarRegistro,
+    removerRegistro
+  } = useSupabaseHistoricoProducao();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<HistoricoProducaoType | null>(null);
+  const [editingItem, setEditingItem] = useState<any>(null);
 
-  const handleSave = (dadosProducao: any) => {
+  const handleSave = async (dadosProducao: any) => {
+    let sucesso = false;
+    
     if (editingItem) {
-      editarRegistroHistorico(editingItem.id, dadosProducao);
+      sucesso = await editarRegistro(editingItem.id, {
+        data_producao: format(dadosProducao.dataProducao, 'yyyy-MM-dd'),
+        produto_nome: dadosProducao.produtoNome,
+        formas_producidas: dadosProducao.formasProducidas,
+        unidades_calculadas: dadosProducao.unidadesCalculadas,
+        turno: dadosProducao.turno,
+        observacoes: dadosProducao.observacoes,
+        origem: dadosProducao.origem
+      });
     } else {
-      adicionarRegistroHistorico(dadosProducao);
+      sucesso = await adicionarRegistro({
+        data_producao: format(dadosProducao.dataProducao, 'yyyy-MM-dd'),
+        produto_id: dadosProducao.produtoId,
+        produto_nome: dadosProducao.produtoNome,
+        formas_producidas: dadosProducao.formasProducidas,
+        unidades_calculadas: dadosProducao.unidadesCalculadas,
+        turno: dadosProducao.turno,
+        observacoes: dadosProducao.observacoes,
+        origem: dadosProducao.origem
+      });
     }
-    setIsModalOpen(false);
-    setEditingItem(null);
+
+    if (sucesso) {
+      setIsModalOpen(false);
+      setEditingItem(null);
+    }
   };
 
-  const handleEdit = (item: HistoricoProducaoType) => {
-    setEditingItem(item);
+  const handleEdit = (item: any) => {
+    setEditingItem({
+      id: item.id,
+      dataProducao: new Date(item.data_producao),
+      produtoNome: item.produto_nome,
+      formasProducidas: item.formas_producidas,
+      turno: item.turno,
+      observacoes: item.observacoes
+    });
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Tem certeza que deseja remover este registro de produção?')) {
-      removerRegistroHistorico(id);
+      await removerRegistro(id);
     }
   };
 
@@ -54,9 +83,21 @@ export default function HistoricoProducao() {
   };
 
   const filteredHistorico = historico.filter(item => 
-    item.produtoNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.produto_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.turno && item.turno.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <div className="text-muted-foreground">Carregando histórico...</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -122,11 +163,11 @@ export default function HistoricoProducao() {
                 {filteredHistorico.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      {format(item.dataProducao, "dd/MM/yyyy", { locale: ptBR })}
+                      {format(new Date(item.data_producao), "dd/MM/yyyy", { locale: ptBR })}
                     </TableCell>
-                    <TableCell className="font-medium">{item.produtoNome}</TableCell>
-                    <TableCell>{item.formasProducidas}</TableCell>
-                    <TableCell>{item.unidadesCalculadas}</TableCell>
+                    <TableCell className="font-medium">{item.produto_nome}</TableCell>
+                    <TableCell>{item.formas_producidas}</TableCell>
+                    <TableCell>{item.unidades_calculadas}</TableCell>
                     <TableCell>
                       {item.turno && (
                         <Badge variant="secondary">{item.turno}</Badge>
