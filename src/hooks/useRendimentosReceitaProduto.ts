@@ -39,14 +39,40 @@ export const useRendimentosReceitaProduto = () => {
 
   const salvarRendimento = async (receitaId: string, produtoId: string, rendimento: number) => {
     try {
-      const { error } = await supabase
+      // Primeiro, verificar se já existe um registro
+      const { data: existingData } = await supabase
         .from('rendimentos_receita_produto')
-        .upsert({
-          receita_id: receitaId,
-          produto_id: produtoId,
-          rendimento: rendimento,
-          updated_at: new Date().toISOString()
-        });
+        .select('id')
+        .eq('receita_id', receitaId)
+        .eq('produto_id', produtoId)
+        .single();
+
+      let error;
+
+      if (existingData) {
+        // Se existe, fazer UPDATE
+        const result = await supabase
+          .from('rendimentos_receita_produto')
+          .update({
+            rendimento: rendimento,
+            updated_at: new Date().toISOString()
+          })
+          .eq('receita_id', receitaId)
+          .eq('produto_id', produtoId);
+        
+        error = result.error;
+      } else {
+        // Se não existe, fazer INSERT
+        const result = await supabase
+          .from('rendimentos_receita_produto')
+          .insert({
+            receita_id: receitaId,
+            produto_id: produtoId,
+            rendimento: rendimento
+          });
+        
+        error = result.error;
+      }
 
       if (error) {
         console.error('Erro ao salvar rendimento:', error);
