@@ -2,11 +2,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { MovTipo, asMovTipo } from '@/types/estoque';
 
 export interface MovimentacaoEstoqueProduto {
   id: string;
   produto_id: string;
-  tipo: 'entrada' | 'saida' | 'ajuste';
+  tipo: MovTipo;
   quantidade: number;
   data_movimentacao: string;
   observacao?: string;
@@ -41,8 +42,9 @@ export const useMovimentacoesEstoqueProdutos = () => {
         return;
       }
 
-      // Type cast the data to match our interface
-      setMovimentacoes((data || []) as MovimentacaoEstoqueProduto[]);
+      // Normalizar tipo antes do setState
+      const rows = (data ?? []).map(r => ({ ...r, tipo: asMovTipo(r.tipo as any) }));
+      setMovimentacoes(rows);
     } catch (error) {
       console.error('Erro ao carregar movimentações:', error);
       toast({

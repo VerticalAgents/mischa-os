@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useMovimentacoesEstoqueProdutos } from "@/hooks/useMovimentacoesEstoqueProdutos";
 import { useMovimentacoesEstoqueInsumos } from "@/hooks/useMovimentacoesEstoqueInsumos";
+import { MovTipo } from "@/types/estoque";
 
 interface MovimentacaoEstoqueModalProps {
   isOpen: boolean;
@@ -26,13 +27,13 @@ export default function MovimentacaoEstoqueModal({
   tipoItem,
   onSuccess
 }: MovimentacaoEstoqueModalProps) {
-  const [tipo, setTipo] = useState<'entrada' | 'saida' | 'ajuste'>('entrada');
+  const [tipo, setTipo] = useState<MovTipo>('entrada');
   const [quantidade, setQuantidade] = useState('');
   const [observacao, setObservacao] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { adicionarMovimentacao: adicionarMovimentacaoProduto } = useMovimentacoesEstoqueProdutos();
-  const { adicionarMovimentacao: adicionarMovimentacaoInsumo } = useMovimentacoesEstoqueInsumos();
+  const { adicionarMovimentacao: adicionarMovimentacaoProduto, obterSaldoProduto } = useMovimentacoesEstoqueProdutos();
+  const { adicionarMovimentacao: adicionarMovimentacaoInsumo, obterSaldoInsumo } = useMovimentacoesEstoqueInsumos();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,7 +80,7 @@ export default function MovimentacaoEstoqueModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="tipo">Tipo de Movimentação</Label>
-            <Select value={tipo} onValueChange={(value: 'entrada' | 'saida' | 'ajuste') => setTipo(value)}>
+            <Select value={tipo} onValueChange={(value: MovTipo) => setTipo(value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o tipo" />
               </SelectTrigger>

@@ -1,7 +1,8 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
+import { useMovimentacoesEstoqueProdutos } from "@/hooks/useMovimentacoesEstoqueProdutos";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -21,34 +22,76 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Boxes, PackageCheck, AlertTriangle, ExternalLink } from "lucide-react";
+import { Boxes, PackageCheck, AlertTriangle, ExternalLink, Plus, Minus } from "lucide-react";
+import MovimentacaoEstoqueModal from "@/components/estoque/MovimentacaoEstoqueModal";
 
 export default function EstoqueTab() {
   const { produtos } = useProdutoStore();
+  const { adicionarMovimentacao, obterSaldoProduto } = useMovimentacoesEstoqueProdutos();
+  
   const [searchTerm, setSearchTerm] = useState("");
-  const [unidadesPorForma, setUnidadesPorForma] = useState(6); // Valor padrão de unidades por forma
-  const [estoque, setEstoque] = useState<Record<number, number>>(() => {
-    // Initialize with mock data or load from localStorage
-    const savedEstoque = localStorage.getItem("produtosEstoque");
-    return savedEstoque ? JSON.parse(savedEstoque) : 
-      produtos.reduce((acc, produto) => {
-        acc[produto.id] = Math.floor(Math.random() * 50); // Random initial stock for demo
-        return acc;
-      }, {} as Record<number, number>);
-  });
+  const [unidadesPorForma, setUnidadesPorForma] = useState(6);
+  const [saldos, setSaldos] = useState<Record<number, number>>({});
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<{id: string, nome: string} | null>(null);
+
+  // Carregar saldos dos produtos
+  const carregarSaldos = async () => {
+    const novosSkaldos: Record<number, number> = {};
+    for (const produto of produtos) {
+      const saldo = await obterSaldoProduto(produto.id.toString());
+      novosSkaldos[produto.id] = saldo;
+    }
+    setSaldos(novosSkaldos);
+  };
+
+  useEffect(() => {
+    if (produtos.length > 0) {
+      carregarSaldos();
+    }
+  }, [produtos]);
 
   // Filter products based on search term
   const filteredProdutos = produtos.filter(produto =>
     produto.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Update stock quantity
-  const updateEstoque = (produtoId: number, quantidade: number) => {
-    setEstoque(prev => {
-      const updated = { ...prev, [produtoId]: quantidade };
-      localStorage.setItem("produtosEstoque", JSON.stringify(updated));
-      return updated;
+  // Adicionar movimentação via extrato
+  const adicionarMovimentacaoExtrato = async (produtoId: number, quantidade: number, tipo: 'entrada' | 'saida') => {
+    const sucesso = await adicionarMovimentacao({
+      produto_id: produtoId.toString(),
+      tipo,
+      quantidade: Math.abs(quantidade),
+      data_movimentacao: new Date().toISOString(),
+      observacao: `${tipo} manual de ${Math.abs(quantidade)} unidades`
     });
+
+    if (sucesso) {
+      await carregarSaldos(); // Recarregar saldos após movimentação
+    }
+  };
+
+  // Fazer ajuste via extrato (calculando diferença)
+  const fazerAjuste = async (produtoId: number, novoSaldo: number) => {
+    const saldoAtual = saldos[produtoId] || 0;
+    const delta = novoSaldo - saldoAtual;
+    
+    if (delta === 0) return; // Nenhuma mudança necessária
+
+    const tipo = delta > 0 ? 'ajuste' : 'saida';
+    const quantidade = Math.abs(delta);
+    
+    const sucesso = await adicionarMovimentacao({
+      produto_id: produtoId.toString(),
+      tipo,
+      quantidade,
+      data_movimentacao: new Date().toISOString(),
+      observacao: `Ajuste manual de ${saldoAtual} para ${novoSaldo}`
+    });
+
+    if (sucesso) {
+      await carregarSaldos(); // Recarregar saldos após ajuste
+    }
   };
 
   // Get stock status for styling
@@ -56,6 +99,17 @@ export default function EstoqueTab() {
     if (quantidade <= 5) return "low";
     if (quantidade <= 15) return "medium";
     return "good";
+  };
+
+  const handleOpenModal = (produto: any) => {
+    setSelectedProduct({ id: produto.id.toString(), nome: produto.nome });
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setSelectedProduct(null);
+    carregarSaldos(); // Recarregar após fechar modal
   };
 
   return (
@@ -110,7 +164,7 @@ export default function EstoqueTab() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {Object.values(estoque).filter(qty => qty > 0).length}
+              {Object.values(saldos).filter(qty => qty > 0).length}
             </div>
             <p className="text-xs text-muted-foreground">produtos com unidades disponíveis</p>
           </CardContent>
@@ -123,7 +177,7 @@ export default function EstoqueTab() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {Object.values(estoque).filter(qty => qty <= 5 && qty > 0).length}
+              {Object.values(saldos).filter(qty => qty <= 5 && qty > 0).length}
             </div>
             <p className="text-xs text-muted-foreground">produtos com 5 unidades ou menos</p>
           </CardContent>
@@ -148,7 +202,7 @@ export default function EstoqueTab() {
             <TableBody>
               {filteredProdutos.length > 0 ? (
                 filteredProdutos.map(produto => {
-                  const quantidade = estoque[produto.id] || 0;
+                  const quantidade = saldos[produto.id] || 0;
                   const status = getEstoqueStatus(quantidade);
                   
                   return (
@@ -183,16 +237,16 @@ export default function EstoqueTab() {
                             variant="outline" 
                             size="sm"
                             title={`Remover ${unidadesPorForma} unidades`}
-                            onClick={() => updateEstoque(produto.id, Math.max(0, quantidade - unidadesPorForma))}
+                            onClick={() => adicionarMovimentacaoExtrato(produto.id, -unidadesPorForma, 'saida')}
                           >
                             --
                           </Button>
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => updateEstoque(produto.id, Math.max(0, quantidade - 1))}
+                            onClick={() => adicionarMovimentacaoExtrato(produto.id, -1, 'saida')}
                           >
-                            -
+                            <Minus className="h-3 w-3" />
                           </Button>
                           <Input
                             type="number"
@@ -200,7 +254,7 @@ export default function EstoqueTab() {
                             onChange={(e) => {
                               const value = parseInt(e.target.value);
                               if (!isNaN(value) && value >= 0) {
-                                updateEstoque(produto.id, value);
+                                fazerAjuste(produto.id, value);
                               }
                             }}
                             className="w-20 text-center"
@@ -209,17 +263,24 @@ export default function EstoqueTab() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => updateEstoque(produto.id, quantidade + 1)}
+                            onClick={() => adicionarMovimentacaoExtrato(produto.id, 1, 'entrada')}
                           >
-                            +
+                            <Plus className="h-3 w-3" />
                           </Button>
                           <Button 
                             variant="outline" 
                             size="sm"
                             title={`Adicionar ${unidadesPorForma} unidades`}
-                            onClick={() => updateEstoque(produto.id, quantidade + unidadesPorForma)}
+                            onClick={() => adicionarMovimentacaoExtrato(produto.id, unidadesPorForma, 'entrada')}
                           >
                             ++
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleOpenModal(produto)}
+                          >
+                            Movimentar
                           </Button>
                         </div>
                       </TableCell>
@@ -239,6 +300,17 @@ export default function EstoqueTab() {
           </Table>
         </CardContent>
       </Card>
+
+      {selectedProduct && (
+        <MovimentacaoEstoqueModal
+          isOpen={modalOpen}
+          onClose={handleCloseModal}
+          itemId={selectedProduct.id}
+          itemNome={selectedProduct.nome}
+          tipoItem="produto"
+          onSuccess={handleCloseModal}
+        />
+      )}
     </div>
   );
 }
