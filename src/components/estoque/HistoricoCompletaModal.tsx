@@ -61,7 +61,7 @@ export function HistoricoCompletaModal({
   const [filtros, setFiltros] = useState({
     dataInicial: '',
     dataFinal: '',
-    tipo: ''
+    tipo: 'todos'
   });
 
   const carregarMovimentacoes = async () => {
@@ -88,7 +88,7 @@ export function HistoricoCompletaModal({
         query = query.lte('data_movimentacao', filtros.dataFinal + 'T23:59:59');
       }
       
-      if (filtros.tipo) {
+      if (filtros.tipo && filtros.tipo !== 'todos') {
         query = query.eq('tipo', filtros.tipo);
       }
 
@@ -205,7 +205,7 @@ export function HistoricoCompletaModal({
                   <SelectValue placeholder="Todos os tipos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os tipos</SelectItem>
+                  <SelectItem value="todos">Todos os tipos</SelectItem>
                   <SelectItem value="entrada">Entrada</SelectItem>
                   <SelectItem value="saida">Saída</SelectItem>
                   <SelectItem value="ajuste">Ajuste</SelectItem>
@@ -216,7 +216,7 @@ export function HistoricoCompletaModal({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setFiltros({ dataInicial: '', dataFinal: '', tipo: '' })}
+                onClick={() => setFiltros({ dataInicial: '', dataFinal: '', tipo: 'todos' })}
                 className="flex items-center gap-2"
               >
                 <Filter className="h-4 w-4" />
