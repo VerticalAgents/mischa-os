@@ -145,6 +145,28 @@ export const useRendimentosReceitaProduto = () => {
     return rendimentos.find(r => r.receita_id === receitaId && r.produto_id === produtoId);
   };
 
+  // Nova função para obter rendimento apenas por produto (mais recente)
+  const obterRendimentoPorProduto = (produtoId: string) => {
+    console.log('Buscando rendimento para produto:', produtoId);
+    console.log('Rendimentos disponíveis:', rendimentos);
+    
+    const rendimentosProduto = rendimentos.filter(r => r.produto_id === produtoId);
+    console.log('Rendimentos encontrados para o produto:', rendimentosProduto);
+    
+    if (rendimentosProduto.length === 0) {
+      console.log('Nenhum rendimento encontrado para o produto');
+      return null;
+    }
+
+    // Ordenar por data de criação mais recente
+    const rendimentoMaisRecente = rendimentosProduto.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0];
+
+    console.log('Rendimento mais recente encontrado:', rendimentoMaisRecente);
+    return rendimentoMaisRecente;
+  };
+
   useEffect(() => {
     carregarRendimentos();
   }, []);
@@ -156,6 +178,7 @@ export const useRendimentosReceitaProduto = () => {
     salvarRendimento,
     removerRendimento,
     obterRendimentoPorReceita,
-    obterRendimento
+    obterRendimento,
+    obterRendimentoPorProduto // Nova função exportada
   };
 };

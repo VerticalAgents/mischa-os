@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -27,10 +27,11 @@ interface HistoricoModalProps {
 
 export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }: HistoricoModalProps) {
   const { produtos } = useSupabaseProdutos();
-  const { obterRendimento } = useRendimentosReceitaProduto();
+  const { obterRendimentoPorProduto } = useRendimentosReceitaProduto();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(registro?.dataProducao || new Date());
-  const [rendimentoAtual, setRendimentoAtual] = useState<number>(30);
+  const [rendimentoAtual, setRendimentoAtual] = useState<number | null>(null);
+  const [semRendimento, setSemRendimento] = useState(false);
 
   const {
     register,
@@ -51,35 +52,43 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
 
   const formas = watch('formasProducidas') || 0;
   const produtoId = watch('produtoId');
-  const unidadesPrevistas = formas * rendimentoAtual;
+  const unidadesPrevistas = rendimentoAtual ? formas * rendimentoAtual : 0;
 
   // Buscar rendimento quando produto for selecionado
   useEffect(() => {
+    console.log('useEffect executado - produtoId:', produtoId);
+    
     if (!produtoId) {
-      setRendimentoAtual(30);
+      console.log('Nenhum produto selecionado - limpando rendimento');
+      setRendimentoAtual(null);
+      setSemRendimento(false);
       return;
     }
 
     const produto = produtos.find(p => p.id === produtoId);
     if (!produto) {
-      setRendimentoAtual(30);
+      console.log('Produto não encontrado na lista');
+      setRendimentoAtual(null);
+      setSemRendimento(false);
       return;
     }
 
+    console.log('Produto encontrado:', produto.nome);
+
     // Buscar rendimento na tabela rendimentos_receita_produto
-    const rendimento = obterRendimento(produtoId, produtoId);
+    const rendimentoInfo = obterRendimentoPorProduto(produtoId);
+    console.log('Rendimento obtido:', rendimentoInfo);
     
-    if (rendimento && rendimento.rendimento > 0) {
-      setRendimentoAtual(rendimento.rendimento);
-      console.log(`Usando rendimento cadastrado para ${produto.nome}: ${rendimento.rendimento} unidades por forma`);
-    } else if (produto.unidades_producao && produto.unidades_producao > 0) {
-      setRendimentoAtual(produto.unidades_producao);
-      console.log(`Usando unidades_producao do produto ${produto.nome}: ${produto.unidades_producao} unidades por forma`);
+    if (rendimentoInfo && rendimentoInfo.rendimento > 0) {
+      setRendimentoAtual(rendimentoInfo.rendimento);
+      setSemRendimento(false);
+      console.log(`Rendimento definido para ${produto.nome}: ${rendimentoInfo.rendimento} unidades por forma`);
     } else {
-      setRendimentoAtual(30);
-      console.log(`Usando padrão para produto ${produto.nome}: 30 unidades por forma`);
+      setRendimentoAtual(null);
+      setSemRendimento(true);
+      console.log(`Nenhum rendimento encontrado para ${produto.nome}`);
     }
-  }, [produtoId, produtos, obterRendimento]);
+  }, [produtoId, produtos, obterRendimentoPorProduto]);
 
   const onSubmit = async (data: RegistroProducaoForm) => {
     try {
@@ -87,6 +96,15 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
         toast({
           title: "Erro de validação",
           description: "Selecione um produto para registrar a produção",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!rendimentoAtual) {
+        toast({
+          title: "Rendimento não definido",
+          description: "Defina o rendimento deste produto em Precificação > Rendimentos antes de registrar a produção",
           variant: "destructive",
         });
         return;
@@ -152,7 +170,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
     }
   };
 
-  const isFormValid = produtoId && produtoId.trim() !== "" && formas > 0;
+  const isFormValid = produtoId && produtoId.trim() !== "" && formas > 0 && !semRendimento;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -235,9 +253,22 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
                   valueAsNumber: true
                 })}
               />
-              <p className="text-sm text-muted-foreground">
-                Equivale a <strong>{unidadesPrevistas} unidades</strong> ({rendimentoAtual} por forma)
-              </p>
+              {semRendimento ? (
+                <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <p className="text-sm text-amber-700">
+                    <strong>Rendimento não definido.</strong> Defina em Precificação > Rendimentos.
+                  </p>
+                </div>
+              ) : rendimentoAtual ? (
+                <p className="text-sm text-muted-foreground">
+                  Equivale a <strong>{unidadesPrevistas} unidades</strong> ({rendimentoAtual} por forma)
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Selecione um produto para ver o rendimento
+                </p>
+              )}
               {errors.formasProducidas && (
                 <p className="text-sm text-destructive">{errors.formasProducidas.message}</p>
               )}
