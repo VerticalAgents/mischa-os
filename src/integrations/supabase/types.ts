@@ -1652,6 +1652,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      saldo_insumo: {
+        Args: { i_id: string }
+        Returns: number
+      }
+      saldo_produto: {
+        Args: { p_id: string }
+        Returns: number
+      }
       validate_cnpj_cpf: {
         Args: { doc: string }
         Returns: boolean
