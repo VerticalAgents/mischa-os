@@ -128,71 +128,58 @@ export const useConfirmacaoProducao = () => {
         return false;
       }
 
-      // 6. Executar transação para criar movimentações
-      const { error: transacaoError } = await supabase.rpc('executar_confirmacao_producao', {
-        p_registro_id: registroId,
-        p_produto_id: registro.produto_id,
-        p_unidades_previstas: registro.unidades_previstas,
-        p_itens_receita: JSON.stringify(itensReceita.map(item => ({
-          insumo_id: item.insumo_id,
-          quantidade_total: item.quantidade * registro.formas_producidas
-        })))
-      });
+      // 6. Executar transação manual para criar movimentações
+      console.log('Executando confirmação manual...');
+      
+      // Criar entrada de produtos
+      const { error: entradaProdutoError } = await supabase
+        .from('movimentacoes_estoque_produtos')
+        .insert({
+          produto_id: registro.produto_id,
+          tipo: 'entrada',
+          quantidade: Math.floor(registro.unidades_previstas || 0),
+          data_movimentacao: new Date().toISOString(),
+          referencia_tipo: 'producao',
+          referencia_id: registroId,
+          observacao: `Produção confirmada - ${registro.formas_producidas} formas`
+        });
 
-      if (transacaoError) {
-        // Se a função RPC não existir, executar manualmente
-        console.log('Executando confirmação manual...');
+      if (entradaProdutoError) {
+        throw new Error(`Erro ao criar entrada de produto: ${entradaProdutoError.message}`);
+      }
+
+      // Criar saídas de insumos
+      for (const item of itensReceita) {
+        const consumoTotal = item.quantidade * registro.formas_producidas;
         
-        // Criar entrada de produtos
-        const { error: entradaProdutoError } = await supabase
-          .from('movimentacoes_estoque_produtos')
+        const { error: saidaInsumoError } = await supabase
+          .from('movimentacoes_estoque_insumos')
           .insert({
-            produto_id: registro.produto_id,
-            tipo: 'entrada',
-            quantidade: Math.floor(registro.unidades_previstas || 0),
+            insumo_id: item.insumo_id,
+            tipo: 'saida',
+            quantidade: consumoTotal,
             data_movimentacao: new Date().toISOString(),
             referencia_tipo: 'producao',
             referencia_id: registroId,
-            observacao: `Produção confirmada - ${registro.formas_producidas} formas`
+            observacao: `Consumo de receita - ${registro.formas_producidas} formas`
           });
 
-        if (entradaProdutoError) {
-          throw new Error(`Erro ao criar entrada de produto: ${entradaProdutoError.message}`);
+        if (saidaInsumoError) {
+          throw new Error(`Erro ao criar saída de insumo: ${saidaInsumoError.message}`);
         }
+      }
 
-        // Criar saídas de insumos
-        for (const item of itensReceita) {
-          const consumoTotal = item.quantidade * registro.formas_producidas;
-          
-          const { error: saidaInsumoError } = await supabase
-            .from('movimentacoes_estoque_insumos')
-            .insert({
-              insumo_id: item.insumo_id,
-              tipo: 'saida',
-              quantidade: consumoTotal,
-              data_movimentacao: new Date().toISOString(),
-              referencia_tipo: 'producao',
-              referencia_id: registroId,
-              observacao: `Consumo de receita - ${registro.formas_producidas} formas`
-            });
+      // Atualizar status do registro
+      const { error: updateError } = await supabase
+        .from('historico_producao')
+        .update({
+          status: 'Confirmado',
+          confirmado_em: new Date().toISOString()
+        })
+        .eq('id', registroId);
 
-          if (saidaInsumoError) {
-            throw new Error(`Erro ao criar saída de insumo: ${saidaInsumoError.message}`);
-          }
-        }
-
-        // Atualizar status do registro
-        const { error: updateError } = await supabase
-          .from('historico_producao')
-          .update({
-            status: 'Confirmado',
-            confirmado_em: new Date().toISOString()
-          })
-          .eq('id', registroId);
-
-        if (updateError) {
-          throw new Error(`Erro ao atualizar status: ${updateError.message}`);
-        }
+      if (updateError) {
+        throw new Error(`Erro ao atualizar status: ${updateError.message}`);
       }
 
       toast({
