@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -14,6 +15,12 @@ export interface HistoricoProducaoSupabase {
   origem?: string;
   created_at: string;
   updated_at: string;
+  
+  // Novos campos
+  rendimento_usado?: number;
+  unidades_previstas?: number;
+  status?: string;
+  confirmado_em?: string;
 }
 
 export const useSupabaseHistoricoProducao = () => {
@@ -26,7 +33,8 @@ export const useSupabaseHistoricoProducao = () => {
       const { data, error } = await supabase
         .from('historico_producao')
         .select('*')
-        .order('data_producao', { ascending: false });
+        .order('data_producao', { ascending: false })
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Erro ao carregar histórico:', error);
@@ -53,9 +61,8 @@ export const useSupabaseHistoricoProducao = () => {
 
   const adicionarRegistro = async (registro: Omit<HistoricoProducaoSupabase, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      console.log('Tentando inserir registro:', registro);
+      console.log('Tentando inserir registro com snapshot:', registro);
 
-      // Validar se o produto_id é um UUID válido e existe
       if (!registro.produto_id || registro.produto_id.trim() === '') {
         toast({
           title: "Erro de validação",
@@ -65,7 +72,7 @@ export const useSupabaseHistoricoProducao = () => {
         return false;
       }
 
-      // Verificar se o produto existe na tabela produtos_finais
+      // Verificar se o produto existe
       const { data: produtoExiste, error: produtoError } = await supabase
         .from('produtos_finais')
         .select('id, nome')
@@ -76,13 +83,11 @@ export const useSupabaseHistoricoProducao = () => {
         console.error('Produto não encontrado na tabela produtos_finais:', produtoError);
         toast({
           title: "Erro",
-          description: `Produto não encontrado no sistema. Verifique se o produto existe na tabela produtos_finais.`,
+          description: `Produto não encontrado no sistema.`,
           variant: "destructive"
         });
         return false;
       }
-
-      console.log('Produto encontrado na produtos_finais:', produtoExiste);
 
       const { data, error } = await supabase
         .from('historico_producao')
@@ -94,7 +99,12 @@ export const useSupabaseHistoricoProducao = () => {
           unidades_calculadas: registro.unidades_calculadas,
           turno: registro.turno || null,
           observacoes: registro.observacoes || null,
-          origem: registro.origem || 'Manual'
+          origem: registro.origem || 'Manual',
+          
+          // Novos campos para snapshot
+          rendimento_usado: registro.rendimento_usado,
+          unidades_previstas: registro.unidades_previstas,
+          status: registro.status || 'Registrado'
         })
         .select()
         .single();
@@ -109,11 +119,11 @@ export const useSupabaseHistoricoProducao = () => {
         return false;
       }
 
-      console.log('Registro salvo com sucesso:', data);
+      console.log('Registro salvo com snapshot:', data);
 
       toast({
         title: "Registro salvo",
-        description: "Histórico de produção registrado com sucesso"
+        description: "Ordem de produção registrada. Confirme a produção quando estiver pronta."
       });
 
       await carregarHistorico();
@@ -133,7 +143,6 @@ export const useSupabaseHistoricoProducao = () => {
     try {
       console.log('Dados para atualização:', dadosAtualizados);
 
-      // Se estamos atualizando o produto_id, verificar se ele existe
       if (dadosAtualizados.produto_id && dadosAtualizados.produto_id.trim() !== '') {
         const { data: produtoExiste, error: produtoError } = await supabase
           .from('produtos_finais')

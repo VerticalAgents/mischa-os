@@ -16,22 +16,13 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useRendimentosReceitaProduto } from "@/hooks/useRendimentosReceitaProduto";
-import { HistoricoProducao } from "@/types";
+import { RegistroProducaoForm } from "@/types/historico-producao";
 
 interface HistoricoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (data: Omit<HistoricoProducao, 'id'>) => void;
-  registro?: HistoricoProducao | null;
-}
-
-interface FormData {
-  dataProducao: Date;
-  produtoId: string;
-  produtoNome: string;
-  formasProducidas: number;
-  turno?: string;
-  observacoes?: string;
+  onSuccess: (data: any) => void;
+  registro?: any | null;
 }
 
 export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }: HistoricoModalProps) {
@@ -39,7 +30,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
   const { obterRendimento } = useRendimentosReceitaProduto();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(registro?.dataProducao || new Date());
-  const [unidadesPorForma, setUnidadesPorForma] = useState<number>(30);
+  const [rendimentoAtual, setRendimentoAtual] = useState<number>(30);
 
   const {
     register,
@@ -48,11 +39,10 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
     watch,
     reset,
     formState: { errors }
-  } = useForm<FormData>({
+  } = useForm<RegistroProducaoForm>({
     defaultValues: {
       dataProducao: registro?.dataProducao || new Date(),
       produtoId: registro?.produtoId || "",
-      produtoNome: registro?.produtoNome || "",
       formasProducidas: registro?.formasProducidas || 1,
       turno: registro?.turno || "",
       observacoes: registro?.observacoes || ""
@@ -61,39 +51,38 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
 
   const formas = watch('formasProducidas') || 0;
   const produtoId = watch('produtoId');
-  const unidadesCalculadas = formas * unidadesPorForma;
+  const unidadesPrevistas = formas * rendimentoAtual;
 
-  // Calcular unidades por forma baseado no rendimento quando produto for selecionado
+  // Buscar rendimento quando produto for selecionado
   useEffect(() => {
     if (!produtoId) {
-      setUnidadesPorForma(30);
+      setRendimentoAtual(30);
       return;
     }
 
     const produto = produtos.find(p => p.id === produtoId);
     if (!produto) {
-      setUnidadesPorForma(30);
+      setRendimentoAtual(30);
       return;
     }
 
-    // Buscar rendimento para este produto
-    const rendimento = obterRendimento(produto.id, produto.id);
+    // Buscar rendimento na tabela rendimentos_receita_produto
+    const rendimento = obterRendimento(produtoId, produtoId);
     
     if (rendimento && rendimento.rendimento > 0) {
-      setUnidadesPorForma(rendimento.rendimento);
-      console.log(`Usando rendimento do produto ${produto.nome}: ${rendimento.rendimento} unidades por forma`);
+      setRendimentoAtual(rendimento.rendimento);
+      console.log(`Usando rendimento cadastrado para ${produto.nome}: ${rendimento.rendimento} unidades por forma`);
     } else if (produto.unidades_producao && produto.unidades_producao > 0) {
-      setUnidadesPorForma(produto.unidades_producao);
+      setRendimentoAtual(produto.unidades_producao);
       console.log(`Usando unidades_producao do produto ${produto.nome}: ${produto.unidades_producao} unidades por forma`);
     } else {
-      setUnidadesPorForma(30);
+      setRendimentoAtual(30);
       console.log(`Usando padrão para produto ${produto.nome}: 30 unidades por forma`);
     }
   }, [produtoId, produtos, obterRendimento]);
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: RegistroProducaoForm) => {
     try {
-      // Validação obrigatória do produto
       if (!data.produtoId || data.produtoId.trim() === "") {
         toast({
           title: "Erro de validação",
@@ -105,7 +94,6 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
 
       setIsSubmitting(true);
 
-      // Buscar o produto selecionado pelo ID para garantir que existe
       const produtoSelecionado = produtos.find(p => p.id === data.produtoId);
       
       if (!produtoSelecionado) {
@@ -117,28 +105,30 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
         return;
       }
 
-      console.log('Produto selecionado:', produtoSelecionado);
-      console.log('Dados do formulário:', data);
-      console.log('Unidades por forma calculadas:', unidadesPorForma);
-
+      // Preparar dados com snapshot do rendimento
       const registroData = {
         dataProducao: selectedDate,
         produtoId: produtoSelecionado.id,
         produtoNome: produtoSelecionado.nome,
         formasProducidas: data.formasProducidas,
-        unidadesCalculadas: unidadesCalculadas,
+        unidadesCalculadas: unidadesPrevistas, // Manter compatibilidade
         turno: data.turno || 'Matutino',
         observacoes: data.observacoes || '',
-        origem: 'Manual' as const
+        origem: 'Manual' as const,
+        
+        // Novos campos para snapshot
+        rendimentoUsado: rendimentoAtual,
+        unidadesPrevistas: unidadesPrevistas,
+        status: 'Registrado'
       };
 
-      console.log('Dados a serem salvos:', registroData);
+      console.log('Dados a serem salvos com snapshot:', registroData);
 
       onSuccess(registroData);
 
       toast({
         title: registro ? "Registro atualizado" : "Registro criado",
-        description: `Produção de ${data.formasProducidas} formas de ${produtoSelecionado.nome} registrada com sucesso (${unidadesCalculadas} unidades)`,
+        description: `Produção de ${data.formasProducidas} formas de ${produtoSelecionado.nome} registrada (${unidadesPrevistas} unidades previstas, ${rendimentoAtual}/forma)`,
       });
 
       reset();
@@ -155,16 +145,13 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
     }
   };
 
-  // Atualizar produtoId e produtoNome quando o produto for selecionado
   const handleProdutoChange = (produtoId: string) => {
     const produto = produtos.find(p => p.id === produtoId);
     if (produto) {
       setValue('produtoId', produto.id);
-      setValue('produtoNome', produto.nome);
     }
   };
 
-  // Verificar se o formulário está válido para habilitar o botão
   const isFormValid = produtoId && produtoId.trim() !== "" && formas > 0;
 
   return (
@@ -175,7 +162,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
             {registro ? "Editar Registro de Produção" : "Novo Registro de Produção"}
           </DialogTitle>
           <DialogDescription>
-            Registre a produção realizada com as informações detalhadas
+            Registre a produção planejada. A confirmação será feita posteriormente com validação de insumos.
           </DialogDescription>
         </DialogHeader>
 
@@ -249,7 +236,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
                 })}
               />
               <p className="text-sm text-muted-foreground">
-                Equivale a {unidadesCalculadas} unidades ({unidadesPorForma} por forma)
+                Equivale a <strong>{unidadesPrevistas} unidades</strong> ({rendimentoAtual} por forma)
               </p>
               {errors.formasProducidas && (
                 <p className="text-sm text-destructive">{errors.formasProducidas.message}</p>

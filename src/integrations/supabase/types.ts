@@ -688,6 +688,7 @@ export type Database = {
       }
       historico_producao: {
         Row: {
+          confirmado_em: string | null
           created_at: string
           data_producao: string
           formas_producidas: number
@@ -696,11 +697,15 @@ export type Database = {
           origem: string | null
           produto_id: string | null
           produto_nome: string
+          rendimento_usado: number | null
+          status: string | null
           turno: string | null
           unidades_calculadas: number
+          unidades_previstas: number | null
           updated_at: string
         }
         Insert: {
+          confirmado_em?: string | null
           created_at?: string
           data_producao: string
           formas_producidas: number
@@ -709,11 +714,15 @@ export type Database = {
           origem?: string | null
           produto_id?: string | null
           produto_nome: string
+          rendimento_usado?: number | null
+          status?: string | null
           turno?: string | null
           unidades_calculadas: number
+          unidades_previstas?: number | null
           updated_at?: string
         }
         Update: {
+          confirmado_em?: string | null
           created_at?: string
           data_producao?: string
           formas_producidas?: number
@@ -722,8 +731,11 @@ export type Database = {
           origem?: string | null
           produto_id?: string | null
           produto_nome?: string
+          rendimento_usado?: number | null
+          status?: string | null
           turno?: string | null
           unidades_calculadas?: number
+          unidades_previstas?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -828,6 +840,8 @@ export type Database = {
           insumo_id: string
           observacao: string | null
           quantidade: number
+          referencia_id: string | null
+          referencia_tipo: string | null
           tipo: string
         }
         Insert: {
@@ -837,6 +851,8 @@ export type Database = {
           insumo_id: string
           observacao?: string | null
           quantidade: number
+          referencia_id?: string | null
+          referencia_tipo?: string | null
           tipo: string
         }
         Update: {
@@ -846,6 +862,8 @@ export type Database = {
           insumo_id?: string
           observacao?: string | null
           quantidade?: number
+          referencia_id?: string | null
+          referencia_tipo?: string | null
           tipo?: string
         }
         Relationships: [
@@ -866,6 +884,8 @@ export type Database = {
           observacao: string | null
           produto_id: string
           quantidade: number
+          referencia_id: string | null
+          referencia_tipo: string | null
           tipo: string
         }
         Insert: {
@@ -875,6 +895,8 @@ export type Database = {
           observacao?: string | null
           produto_id: string
           quantidade: number
+          referencia_id?: string | null
+          referencia_tipo?: string | null
           tipo: string
         }
         Update: {
@@ -884,6 +906,8 @@ export type Database = {
           observacao?: string | null
           produto_id?: string
           quantidade?: number
+          referencia_id?: string | null
+          referencia_tipo?: string | null
           tipo?: string
         }
         Relationships: []
