@@ -67,65 +67,94 @@ export function HistoricoCompletaModal({
   const carregarMovimentacoes = async () => {
     setLoading(true);
     try {
-      const tabela = tipoItem === 'produto' 
-        ? 'movimentacoes_estoque_produtos' 
-        : 'movimentacoes_estoque_insumos';
-      
-      const coluna = tipoItem === 'produto' ? 'produto_id' : 'insumo_id';
-      
-      let query = supabase
-        .from(tabela)
-        .select('*')
-        .eq(coluna, itemId)
-        .order('data_movimentacao', { ascending: false })
-        .order('created_at', { ascending: false });
+      // Build query parameters
+      const params: any = {
+        [tipoItem === 'produto' ? 'produto_id' : 'insumo_id']: itemId
+      };
 
       if (filtros.dataInicial) {
-        query = query.gte('data_movimentacao', filtros.dataInicial);
+        params.data_inicial = filtros.dataInicial;
       }
       
       if (filtros.dataFinal) {
-        query = query.lte('data_movimentacao', filtros.dataFinal + 'T23:59:59');
+        params.data_final = filtros.dataFinal + 'T23:59:59';
       }
       
       if (filtros.tipo && filtros.tipo !== 'todos') {
-        query = query.eq('tipo', filtros.tipo);
+        params.tipo_filtro = filtros.tipo;
       }
 
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Erro ao carregar histórico completo:', error);
-        toast({
-          title: "Erro ao carregar histórico",
-          description: error.message,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Simplify type handling to avoid deep type instantiation
-      const movimentacoesNormalizadas: MovimentacaoBase[] = [];
+      // Use separate queries for each table type to avoid complex union types
+      let result: any[] = [];
       
-      if (data) {
-        for (const item of data) {
-          movimentacoesNormalizadas.push({
-            id: item.id,
-            tipo: asMovTipo(item.tipo),
-            quantidade: item.quantidade,
-            data_movimentacao: item.data_movimentacao,
-            observacao: item.observacao || undefined,
-            created_at: item.created_at
-          });
+      if (tipoItem === 'produto') {
+        let query = supabase
+          .from('movimentacoes_estoque_produtos')
+          .select('*')
+          .eq('produto_id', itemId)
+          .order('data_movimentacao', { ascending: false })
+          .order('created_at', { ascending: false });
+
+        if (filtros.dataInicial) {
+          query = query.gte('data_movimentacao', filtros.dataInicial);
         }
+        
+        if (filtros.dataFinal) {
+          query = query.lte('data_movimentacao', filtros.dataFinal + 'T23:59:59');
+        }
+        
+        if (filtros.tipo && filtros.tipo !== 'todos') {
+          query = query.eq('tipo', filtros.tipo);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        result = data || [];
+      } else {
+        let query = supabase
+          .from('movimentacoes_estoque_insumos')
+          .select('*')
+          .eq('insumo_id', itemId)
+          .order('data_movimentacao', { ascending: false })
+          .order('created_at', { ascending: false });
+
+        if (filtros.dataInicial) {
+          query = query.gte('data_movimentacao', filtros.dataInicial);
+        }
+        
+        if (filtros.dataFinal) {
+          query = query.lte('data_movimentacao', filtros.dataFinal + 'T23:59:59');
+        }
+        
+        if (filtros.tipo && filtros.tipo !== 'todos') {
+          query = query.eq('tipo', filtros.tipo);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        result = data || [];
+      }
+
+      // Transform data to our base interface
+      const movimentacoesProcessadas: MovimentacaoBase[] = [];
+      
+      for (const item of result) {
+        movimentacoesProcessadas.push({
+          id: item.id,
+          tipo: asMovTipo(item.tipo),
+          quantidade: Number(item.quantidade),
+          data_movimentacao: item.data_movimentacao,
+          observacao: item.observacao || undefined,
+          created_at: item.created_at
+        });
       }
       
-      setMovimentacoes(movimentacoesNormalizadas);
+      setMovimentacoes(movimentacoesProcessadas);
     } catch (error) {
       console.error('Erro ao carregar histórico completo:', error);
       toast({
         title: "Erro ao carregar histórico",
-        description: "Ocorreu um erro inesperado",
+        description: error instanceof Error ? error.message : "Ocorreu um erro inesperado",
         variant: "destructive"
       });
     } finally {
