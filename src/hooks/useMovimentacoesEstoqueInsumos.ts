@@ -2,17 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { MovTipo, asMovTipo } from '@/types/estoque';
-
-export interface MovimentacaoEstoqueInsumo {
-  id: string;
-  insumo_id: string;
-  tipo: MovTipo;
-  quantidade: number;
-  data_movimentacao: string;
-  observacao?: string;
-  created_at: string;
-}
+import { MovTipo, asMovTipo, MovimentacaoEstoqueInsumo } from '@/types/estoque';
 
 export const useMovimentacoesEstoqueInsumos = () => {
   const [movimentacoes, setMovimentacoes] = useState<MovimentacaoEstoqueInsumo[]>([]);
@@ -24,7 +14,8 @@ export const useMovimentacoesEstoqueInsumos = () => {
       let query = supabase
         .from('movimentacoes_estoque_insumos')
         .select('*')
-        .order('data_movimentacao', { ascending: false });
+        .order('data_movimentacao', { ascending: false })
+        .order('created_at', { ascending: false });
 
       if (insumoId) {
         query = query.eq('insumo_id', insumoId);
@@ -43,7 +34,7 @@ export const useMovimentacoesEstoqueInsumos = () => {
       }
 
       // Normalizar tipo antes do setState
-      const rows = (data ?? []).map(r => ({ ...r, tipo: asMovTipo(r.tipo as any) }));
+      const rows = (data ?? []).map(r => ({ ...r, tipo: asMovTipo(r.tipo as any) })) as MovimentacaoEstoqueInsumo[];
       setMovimentacoes(rows);
     } catch (error) {
       console.error('Erro ao carregar movimentações:', error);

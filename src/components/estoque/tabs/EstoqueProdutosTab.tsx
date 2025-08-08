@@ -1,328 +1,113 @@
 
 import { useState, useEffect } from "react";
-import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  PackageCheck,
-  AlertTriangle,
-  Boxes,
-  Edit3,
-  Search,
-  Plus,
-  Settings,
-} from "lucide-react";
-
-const ajusteEstoqueSchema = z.object({
-  estoque_atual: z.number().min(0, "Estoque não pode ser negativo"),
-});
-
-const entradaManualSchema = z.object({
-  quantidade: z.number().min(0.01, "Quantidade deve ser maior que zero"),
-  observacao: z.string().optional(),
-});
-
-const configurarEstoqueSchema = z.object({
-  estoque_minimo: z.number().min(0, "Estoque mínimo deve ser maior ou igual a zero"),
-});
-
-type AjusteEstoqueFormValues = z.infer<typeof ajusteEstoqueSchema>;
-type EntradaManualFormValues = z.infer<typeof entradaManualSchema>;
-type ConfigurarEstoqueFormValues = z.infer<typeof configurarEstoqueSchema>;
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Plus, Minus, TrendingDown, BarChart3, Search } from "lucide-react";
+import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
+import { useMovimentacoesEstoqueProdutos } from "@/hooks/useMovimentacoesEstoqueProdutos";
+import MovimentacaoEstoqueModal from "../MovimentacaoEstoqueModal";
+import BaixaEstoqueModal from "../BaixaEstoqueModal";
+import HistoricoMovimentacoes from "../HistoricoMovimentacoes";
 
 export default function EstoqueProdutosTab() {
-  const { produtos, loading, carregarProdutos } = useSupabaseProdutos();
+  const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
+  const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao, obterSaldoProduto } = useMovimentacoesEstoqueProdutos();
+  
   const [searchTerm, setSearchTerm] = useState("");
-  const [isAjusteOpen, setIsAjusteOpen] = useState(false);
-  const [isEntradaManualOpen, setIsEntradaManualOpen] = useState(false);
-  const [isConfigurarEstoqueOpen, setIsConfigurarEstoqueOpen] = useState(false);
-  const [produtoSelecionado, setProdutoSelecionado] = useState<any>(null);
+  const [saldos, setSaldos] = useState<Record<string, number>>({});
+  const [modalMovimentacao, setModalMovimentacao] = useState(false);
+  const [modalBaixa, setModalBaixa] = useState(false);
+  const [produtoSelecionado, setProdutoSelecionado] = useState<{id: string, nome: string} | null>(null);
+  const [showHistorico, setShowHistorico] = useState<string | null>(null);
 
-  const ajusteForm = useForm<AjusteEstoqueFormValues>({
-    resolver: zodResolver(ajusteEstoqueSchema),
-    defaultValues: {
-      estoque_atual: 0,
-    },
-  });
+  // Carregar saldos dos produtos
+  const carregarSaldos = async () => {
+    const novosSaldos: Record<string, number> = {};
+    for (const produto of produtos) {
+      const saldo = await obterSaldoProduto(produto.id);
+      novosSaldos[produto.id] = saldo;
+    }
+    setSaldos(novosSaldos);
+  };
 
-  const entradaForm = useForm<EntradaManualFormValues>({
-    resolver: zodResolver(entradaManualSchema),
-    defaultValues: {
-      quantidade: 0,
-      observacao: "",
-    },
-  });
+  useEffect(() => {
+    if (produtos.length > 0) {
+      carregarSaldos();
+    }
+  }, [produtos]);
 
-  const configurarForm = useForm<ConfigurarEstoqueFormValues>({
-    resolver: zodResolver(configurarEstoqueSchema),
-    defaultValues: {
-      estoque_minimo: 0,
-    },
-  });
-
-  // Filtrar produtos por termo de busca
-  const produtosFiltrados = produtos.filter((produto) =>
+  // Filtrar produtos
+  const produtosFiltrados = produtos.filter(produto =>
     produto.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Cálculos para os cards
-  const totalProdutos = produtos.length;
-  const produtosEmEstoque = produtos.filter(p => (p.estoque_atual || 0) > 0).length;
-  const produtosBaixoEstoque = produtos.filter(p => (p.estoque_atual || 0) <= 5 && (p.estoque_atual || 0) > 0).length;
-
-  const abrirAjusteEstoque = (produto: any) => {
-    setProdutoSelecionado(produto);
-    ajusteForm.reset({
-      estoque_atual: produto.estoque_atual || 0,
+  // Entrada rápida
+  const entradaRapida = async (produtoId: string, quantidade: number) => {
+    const sucesso = await adicionarMovimentacao({
+      produto_id: produtoId,
+      tipo: 'entrada',
+      quantidade: Math.abs(quantidade),
+      data_movimentacao: new Date().toISOString(),
+      observacao: `Entrada rápida de ${Math.abs(quantidade)} unidades`
     });
-    setIsAjusteOpen(true);
-  };
 
-  const abrirEntradaManual = (produto: any) => {
-    setProdutoSelecionado(produto);
-    entradaForm.reset({
-      quantidade: 0,
-      observacao: "",
-    });
-    setIsEntradaManualOpen(true);
-  };
-
-  const abrirConfigurarEstoque = (produto: any) => {
-    setProdutoSelecionado(produto);
-    configurarForm.reset({
-      estoque_minimo: produto.estoque_minimo || 0,
-    });
-    setIsConfigurarEstoqueOpen(true);
-  };
-
-  const onSubmitAjuste = async (values: AjusteEstoqueFormValues) => {
-    if (!produtoSelecionado) return;
-
-    try {
-      const { error } = await supabase
-        .from('produtos_finais')
-        .update({ estoque_atual: values.estoque_atual })
-        .eq('id', produtoSelecionado.id);
-
-      if (error) {
-        toast({
-          title: "Erro ao ajustar estoque",
-          description: error.message,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      toast({
-        title: "Estoque atualizado",
-        description: `Estoque do produto ${produtoSelecionado.nome} atualizado com sucesso`
-      });
-
-      setIsAjusteOpen(false);
-      carregarProdutos();
-    } catch (error) {
-      console.error('Erro ao ajustar estoque:', error);
-      toast({
-        title: "Erro inesperado",
-        description: "Ocorreu um erro ao atualizar o estoque",
-        variant: "destructive"
-      });
+    if (sucesso) {
+      await carregarSaldos();
     }
   };
 
-  const onSubmitEntradaManual = async (values: EntradaManualFormValues) => {
-    if (!produtoSelecionado) return;
-
-    try {
-      // Registrar movimentação de entrada
-      const { error: movError } = await supabase
-        .from('movimentacoes_estoque_produtos')
-        .insert({
-          produto_id: produtoSelecionado.id,
-          tipo: 'entrada',
-          quantidade: values.quantidade,
-          observacao: values.observacao,
-        });
-
-      if (movError) {
-        toast({
-          title: "Erro ao registrar entrada",
-          description: movError.message,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Atualizar estoque atual
-      const novoEstoque = (produtoSelecionado.estoque_atual || 0) + values.quantidade;
-      const { error: updateError } = await supabase
-        .from('produtos_finais')
-        .update({ estoque_atual: novoEstoque })
-        .eq('id', produtoSelecionado.id);
-
-      if (updateError) {
-        toast({
-          title: "Erro ao atualizar estoque",
-          description: updateError.message,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      toast({
-        title: "Entrada registrada",
-        description: `Entrada de ${values.quantidade} unidades registrada com sucesso`
-      });
-
-      setIsEntradaManualOpen(false);
-      carregarProdutos();
-    } catch (error) {
-      console.error('Erro ao registrar entrada:', error);
-      toast({
-        title: "Erro inesperado",
-        description: "Ocorreu um erro ao registrar a entrada",
-        variant: "destructive"
-      });
-    }
+  const handleModalMovimentacao = (produto: any) => {
+    setProdutoSelecionado({ id: produto.id, nome: produto.nome });
+    setModalMovimentacao(true);
   };
 
-  const onSubmitConfigurarEstoque = async (values: ConfigurarEstoqueFormValues) => {
-    if (!produtoSelecionado) return;
-
-    try {
-      const { error } = await supabase
-        .from('produtos_finais')
-        .update({
-          estoque_minimo: values.estoque_minimo,
-        })
-        .eq('id', produtoSelecionado.id);
-
-      if (error) {
-        toast({
-          title: "Erro ao configurar estoque",
-          description: error.message,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      toast({
-        title: "Estoque configurado",
-        description: "Configurações de estoque atualizadas com sucesso"
-      });
-
-      setIsConfigurarEstoqueOpen(false);
-      carregarProdutos();
-    } catch (error) {
-      console.error('Erro ao configurar estoque:', error);
-      toast({
-        title: "Erro inesperado",
-        description: "Ocorreu um erro ao configurar o estoque",
-        variant: "destructive"
-      });
-    }
+  const handleModalBaixa = (produto: any) => {
+    setProdutoSelecionado({ id: produto.id, nome: produto.nome });
+    setModalBaixa(true);
   };
+
+  const handleCloseModal = () => {
+    setModalMovimentacao(false);
+    setModalBaixa(false);
+    setProdutoSelecionado(null);
+    carregarSaldos();
+  };
+
+  const getStatusEstoque = (saldo: number) => {
+    if (saldo <= 0) return { variant: "destructive" as const, label: "Sem estoque" };
+    if (saldo <= 10) return { variant: "secondary" as const, label: "Baixo" };
+    if (saldo <= 50) return { variant: "outline" as const, label: "Médio" };
+    return { variant: "default" as const, label: "Alto" };
+  };
+
+  const movimentacoesProdutoSelecionado = showHistorico 
+    ? movimentacoes.filter(mov => mov.produto_id === showHistorico)
+    : [];
+
+  if (loadingProdutos) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">Carregando produtos...</div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
-        <div>
-          <h2 className="text-2xl font-semibold">Estoque de Produtos Acabados</h2>
-          <p className="text-muted-foreground">
-            Controle do estoque de produtos finais
-          </p>
-        </div>
-      </div>
-
-      {/* Cards informativos */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Boxes className="h-4 w-4" />
-              Total de Produtos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalProdutos}</div>
-            <p className="text-xs text-muted-foreground">produtos cadastrados</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <PackageCheck className="h-4 w-4" />
-              Produtos em Estoque
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{produtosEmEstoque}</div>
-            <p className="text-xs text-muted-foreground">com unidades disponíveis</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              Produtos com Baixo Estoque
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-500">{produtosBaixoEstoque}</div>
-            <p className="text-xs text-muted-foreground">5 unidades ou menos</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Busca */}
-      <div className="flex items-center gap-4">
-        <div className="relative max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      {/* Filtros e busca */}
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
-            placeholder="Buscar produto..."
+            placeholder="Buscar produtos..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8"
+            className="pl-10"
           />
         </div>
       </div>
@@ -330,102 +115,80 @@ export default function EstoqueProdutosTab() {
       {/* Tabela de produtos */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Produtos</CardTitle>
-          <CardDescription>
-            Gerencie o estoque dos seus produtos acabados
-          </CardDescription>
+          <CardTitle>Controle de Estoque - Produtos</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome do Produto</TableHead>
-                <TableHead>Peso Unitário</TableHead>
-                <TableHead className="text-center">Estoque Atual</TableHead>
-                <TableHead className="text-center">Est. Mínimo</TableHead>
+                <TableHead>Produto</TableHead>
+                <TableHead className="text-center">Saldo Atual</TableHead>
+                <TableHead className="text-center">Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {produtosFiltrados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8">
-                    Carregando...
-                  </TableCell>
-                </TableRow>
-              ) : produtosFiltrados.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8">
-                    Nenhum produto encontrado
+                  <TableCell colSpan={4} className="text-center py-4">
+                    {searchTerm ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
                   </TableCell>
                 </TableRow>
               ) : (
                 produtosFiltrados.map((produto) => {
-                  const estoqueAtual = produto.estoque_atual || 0;
-                  const estoqueMinimo = produto.estoque_minimo || 0;
-                  const isBaixoEstoque = estoqueAtual <= estoqueMinimo && estoqueAtual > 0;
-                  const semEstoque = estoqueAtual === 0;
-
+                  const saldo = saldos[produto.id] || 0;
+                  const status = getStatusEstoque(saldo);
+                  
                   return (
                     <TableRow key={produto.id}>
                       <TableCell>
                         <div>
                           <div className="font-medium">{produto.nome}</div>
                           {produto.descricao && (
-                            <div className="text-sm text-muted-foreground">
-                              {produto.descricao}
-                            </div>
+                            <div className="text-sm text-muted-foreground">{produto.descricao}</div>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        {produto.peso_unitario ? `${produto.peso_unitario}g` : "—"}
+                      <TableCell className="text-center">
+                        <span className="font-mono font-semibold">{saldo.toFixed(3)}</span>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge
-                          variant={
-                            semEstoque
-                              ? "destructive"
-                              : isBaixoEstoque
-                              ? "secondary"
-                              : "default"
-                          }
-                          className={
-                            semEstoque
-                              ? "bg-red-100 text-red-800 border-red-200"
-                              : isBaixoEstoque
-                              ? "bg-orange-100 text-orange-800 border-orange-200"
-                              : "bg-green-100 text-green-800 border-green-200"
-                          }
-                        >
-                          {estoqueAtual} unidades
-                        </Badge>
+                        <Badge variant={status.variant}>{status.label}</Badge>
                       </TableCell>
-                      <TableCell className="text-center">
-                        {produto.estoque_minimo || 0}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-2">
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => abrirConfigurarEstoque(produto)}
+                            onClick={() => entradaRapida(produto.id, 1)}
+                            title="Entrada rápida (+1)"
                           >
-                            <Settings className="h-4 w-4" />
+                            <Plus className="h-3 w-3" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => abrirEntradaManual(produto)}
+                            onClick={() => handleModalBaixa(produto)}
+                            disabled={saldo <= 0}
+                            title="Baixa de estoque"
                           >
-                            <Plus className="h-4 w-4" />
+                            <TrendingDown className="h-3 w-3" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => abrirAjusteEstoque(produto)}
+                            onClick={() => handleModalMovimentacao(produto)}
+                            title="Nova movimentação"
                           >
-                            <Edit3 className="h-4 w-4" />
+                            Movimentar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowHistorico(showHistorico === produto.id ? null : produto.id)}
+                            title="Ver histórico"
+                          >
+                            <BarChart3 className="h-3 w-3" />
                           </Button>
                         </div>
                       </TableCell>
@@ -438,157 +201,40 @@ export default function EstoqueProdutosTab() {
         </CardContent>
       </Card>
 
-      {/* Modal de Ajuste de Estoque */}
-      <Dialog open={isAjusteOpen} onOpenChange={setIsAjusteOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Ajustar Estoque</DialogTitle>
-            <DialogDescription>
-              Ajuste o estoque atual do produto "{produtoSelecionado?.nome}"
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...ajusteForm}>
-            <form onSubmit={ajusteForm.handleSubmit(onSubmitAjuste)} className="space-y-4">
-              <FormField
-                control={ajusteForm.control}
-                name="estoque_atual"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estoque Atual</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="Ex: 100"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsAjusteOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">Salvar</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+      {/* Histórico do produto selecionado */}
+      {showHistorico && (
+        <HistoricoMovimentacoes
+          itemId={showHistorico}
+          itemNome={produtos.find(p => p.id === showHistorico)?.nome || "Produto"}
+          tipoItem="produto"
+          movimentacoes={movimentacoesProdutoSelecionado}
+          loading={loadingMovimentacoes}
+        />
+      )}
 
-      {/* Modal de Entrada Manual */}
-      <Dialog open={isEntradaManualOpen} onOpenChange={setIsEntradaManualOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Entrada Manual de Estoque</DialogTitle>
-            <DialogDescription>
-              Registre uma entrada manual para "{produtoSelecionado?.nome}"
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...entradaForm}>
-            <form onSubmit={entradaForm.handleSubmit(onSubmitEntradaManual)} className="space-y-4">
-              <FormField
-                control={entradaForm.control}
-                name="quantidade"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantidade (unidades)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="1"
-                        placeholder="Ex: 50"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={entradaForm.control}
-                name="observacao"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Observação (opcional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Ex: Produção do dia 15/01..."
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsEntradaManualOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">Registrar Entrada</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal de Configurar Estoque */}
-      <Dialog open={isConfigurarEstoqueOpen} onOpenChange={setIsConfigurarEstoqueOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Configurar Estoque</DialogTitle>
-            <DialogDescription>
-              Configure os níveis de estoque para "{produtoSelecionado?.nome}"
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...configurarForm}>
-            <form onSubmit={configurarForm.handleSubmit(onSubmitConfigurarEstoque)} className="space-y-4">
-              <FormField
-                control={configurarForm.control}
-                name="estoque_minimo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estoque Mínimo</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="Ex: 10"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsConfigurarEstoqueOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">Salvar Configurações</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+      {/* Modais */}
+      {produtoSelecionado && (
+        <>
+          <MovimentacaoEstoqueModal
+            isOpen={modalMovimentacao}
+            onClose={handleCloseModal}
+            itemId={produtoSelecionado.id}
+            itemNome={produtoSelecionado.nome}
+            tipoItem="produto"
+            onSuccess={handleCloseModal}
+          />
+          
+          <BaixaEstoqueModal
+            isOpen={modalBaixa}
+            onClose={handleCloseModal}
+            itemId={produtoSelecionado.id}
+            itemNome={produtoSelecionado.nome}
+            tipoItem="produto"
+            saldoAtual={saldos[produtoSelecionado.id] || 0}
+            onSuccess={handleCloseModal}
+          />
+        </>
+      )}
     </div>
   );
 }

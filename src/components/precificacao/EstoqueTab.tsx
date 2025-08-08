@@ -8,7 +8,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -37,12 +36,12 @@ export default function EstoqueTab() {
 
   // Carregar saldos dos produtos
   const carregarSaldos = async () => {
-    const novosSkaldos: Record<number, number> = {};
+    const novosSaldos: Record<number, number> = {};
     for (const produto of produtos) {
       const saldo = await obterSaldoProduto(produto.id.toString());
-      novosSkaldos[produto.id] = saldo;
+      novosSaldos[produto.id] = saldo;
     }
-    setSaldos(novosSkaldos);
+    setSaldos(novosSaldos);
   };
 
   useEffect(() => {
@@ -56,14 +55,14 @@ export default function EstoqueTab() {
     produto.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Adicionar movimentação via extrato
-  const adicionarMovimentacaoExtrato = async (produtoId: number, quantidade: number, tipo: 'entrada' | 'saida') => {
+  // Adicionar movimentação via botões rápidos
+  const adicionarMovimentacaoRapida = async (produtoId: number, quantidade: number, tipo: 'entrada' | 'saida') => {
     const sucesso = await adicionarMovimentacao({
       produto_id: produtoId.toString(),
       tipo,
       quantidade: Math.abs(quantidade),
       data_movimentacao: new Date().toISOString(),
-      observacao: `${tipo} manual de ${Math.abs(quantidade)} unidades`
+      observacao: `${tipo} rápida de ${Math.abs(quantidade)} unidades`
     });
 
     if (sucesso) {
@@ -71,7 +70,7 @@ export default function EstoqueTab() {
     }
   };
 
-  // Fazer ajuste via extrato (calculando diferença)
+  // Fazer ajuste via campo de entrada
   const fazerAjuste = async (produtoId: number, novoSaldo: number) => {
     const saldoAtual = saldos[produtoId] || 0;
     const delta = novoSaldo - saldoAtual;
@@ -237,14 +236,14 @@ export default function EstoqueTab() {
                             variant="outline" 
                             size="sm"
                             title={`Remover ${unidadesPorForma} unidades`}
-                            onClick={() => adicionarMovimentacaoExtrato(produto.id, -unidadesPorForma, 'saida')}
+                            onClick={() => adicionarMovimentacaoRapida(produto.id, -unidadesPorForma, 'saida')}
                           >
                             --
                           </Button>
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => adicionarMovimentacaoExtrato(produto.id, -1, 'saida')}
+                            onClick={() => adicionarMovimentacaoRapida(produto.id, -1, 'saida')}
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
@@ -263,7 +262,7 @@ export default function EstoqueTab() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => adicionarMovimentacaoExtrato(produto.id, 1, 'entrada')}
+                            onClick={() => adicionarMovimentacaoRapida(produto.id, 1, 'entrada')}
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
@@ -271,7 +270,7 @@ export default function EstoqueTab() {
                             variant="outline" 
                             size="sm"
                             title={`Adicionar ${unidadesPorForma} unidades`}
-                            onClick={() => adicionarMovimentacaoExtrato(produto.id, unidadesPorForma, 'entrada')}
+                            onClick={() => adicionarMovimentacaoRapida(produto.id, unidadesPorForma, 'entrada')}
                           >
                             ++
                           </Button>
