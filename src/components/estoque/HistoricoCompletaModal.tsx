@@ -104,14 +104,21 @@ export function HistoricoCompletaModal({
         return;
       }
 
-      const movimentacoesNormalizadas: MovimentacaoBase[] = (data || []).map(item => ({
-        id: item.id,
-        tipo: asMovTipo(item.tipo),
-        quantidade: item.quantidade,
-        data_movimentacao: item.data_movimentacao,
-        observacao: item.observacao,
-        created_at: item.created_at
-      }));
+      // Simplify type handling to avoid deep type instantiation
+      const movimentacoesNormalizadas: MovimentacaoBase[] = [];
+      
+      if (data) {
+        for (const item of data) {
+          movimentacoesNormalizadas.push({
+            id: item.id,
+            tipo: asMovTipo(item.tipo),
+            quantidade: item.quantidade,
+            data_movimentacao: item.data_movimentacao,
+            observacao: item.observacao || undefined,
+            created_at: item.created_at
+          });
+        }
+      }
       
       setMovimentacoes(movimentacoesNormalizadas);
     } catch (error) {
