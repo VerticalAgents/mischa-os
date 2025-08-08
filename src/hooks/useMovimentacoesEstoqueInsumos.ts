@@ -41,7 +41,8 @@ export const useMovimentacoesEstoqueInsumos = () => {
         return;
       }
 
-      setMovimentacoes(data || []);
+      // Type cast the data to match our interface
+      setMovimentacoes((data || []) as MovimentacaoEstoqueInsumo[]);
     } catch (error) {
       console.error('Erro ao carregar movimentações:', error);
       toast({
