@@ -12,7 +12,16 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { MovimentacaoEstoqueProduto, MovimentacaoEstoqueInsumo, MovTipo, asMovTipo } from "@/types/estoque";
+import { MovTipo, asMovTipo } from "@/types/estoque";
+
+interface MovimentacaoBase {
+  id: string;
+  tipo: MovTipo;
+  quantidade: number;
+  data_movimentacao: string;
+  observacao?: string;
+  created_at: string;
+}
 
 interface HistoricoCompletaModalProps {
   isOpen: boolean;
@@ -47,7 +56,7 @@ export function HistoricoCompletaModal({
   itemNome,
   tipoItem
 }: HistoricoCompletaModalProps) {
-  const [movimentacoes, setMovimentacoes] = useState<(MovimentacaoEstoqueProduto | MovimentacaoEstoqueInsumo)[]>([]);
+  const [movimentacoes, setMovimentacoes] = useState<MovimentacaoBase[]>([]);
   const [loading, setLoading] = useState(false);
   const [filtros, setFiltros] = useState({
     dataInicial: '',
@@ -95,9 +104,13 @@ export function HistoricoCompletaModal({
         return;
       }
 
-      const movimentacoesNormalizadas = (data || []).map(item => ({
-        ...item,
-        tipo: asMovTipo(item.tipo)
+      const movimentacoesNormalizadas: MovimentacaoBase[] = (data || []).map(item => ({
+        id: item.id,
+        tipo: asMovTipo(item.tipo),
+        quantidade: item.quantidade,
+        data_movimentacao: item.data_movimentacao,
+        observacao: item.observacao,
+        created_at: item.created_at
       }));
       
       setMovimentacoes(movimentacoesNormalizadas);

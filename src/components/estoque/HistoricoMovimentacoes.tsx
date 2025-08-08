@@ -1,20 +1,29 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Download } from "lucide-react";
+import { Eye } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { MovimentacaoEstoqueProduto, MovimentacaoEstoqueInsumo, MovTipo } from "@/types/estoque";
+import { MovTipo } from "@/types/estoque";
 import { HistoricoCompletaModal } from "./HistoricoCompletaModal";
+
+interface MovimentacaoBase {
+  id: string;
+  tipo: MovTipo;
+  quantidade: number;
+  data_movimentacao: string;
+  observacao?: string;
+  created_at: string;
+}
 
 interface HistoricoMovimentacoesProps {
   itemId: string;
   itemNome: string;
   tipoItem: 'produto' | 'insumo';
-  movimentacoes: (MovimentacaoEstoqueProduto | MovimentacaoEstoqueInsumo)[];
+  movimentacoes: MovimentacaoBase[];
   loading?: boolean;
 }
 
