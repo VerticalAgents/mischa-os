@@ -319,11 +319,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           });
 
           // NOVA VALIDAÇÃO: Usar o hook de confirmação de entrega
-          const confirmacaoEntrega = useConfirmacaoEntrega.getState ? 
-            useConfirmacaoEntrega.getState() : 
-            useConfirmacaoEntrega();
-
-          const entregaConfirmada = await confirmacaoEntrega.confirmarEntrega(pedido, observacao);
+          const { confirmarEntrega } = useConfirmacaoEntrega();
+          const entregaConfirmada = await confirmarEntrega(pedido, observacao);
           
           if (!entregaConfirmada) {
             console.log('❌ Entrega não foi confirmada devido a problemas de estoque');
@@ -571,11 +568,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           console.log('🚚 Processando entregas em massa com validação de estoque - criando registros no histórico...');
           
           // NOVA VALIDAÇÃO: Usar o hook de confirmação de entrega
-          const confirmacaoEntrega = useConfirmacaoEntrega.getState ? 
-            useConfirmacaoEntrega.getState() : 
-            useConfirmacaoEntrega();
-
-          const entregasConfirmadas = await confirmacaoEntrega.confirmarEntregaEmMassa(pedidosParaEntregar);
+          const { confirmarEntregaEmMassa } = useConfirmacaoEntrega();
+          const entregasConfirmadas = await confirmarEntregaEmMassa(pedidosParaEntregar);
           
           if (!entregasConfirmadas) {
             console.log('❌ Entregas em massa não foram confirmadas devido a problemas de estoque');

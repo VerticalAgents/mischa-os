@@ -68,16 +68,17 @@ export const useConfirmacaoEntrega = () => {
     const produtosInsuficientes: ProdutoInsuficiente[] = [];
     
     for (const item of itensEntrega) {
-      if (!item.produto_id || item.quantidade <= 0) continue;
+      if (!item.produto_id || Number(item.quantidade) <= 0) continue;
 
       const saldoAtual = await obterSaldoProduto(item.produto_id);
+      const quantidadeNecessaria = Number(item.quantidade);
       
-      if (saldoAtual < item.quantidade) {
+      if (saldoAtual < quantidadeNecessaria) {
         produtosInsuficientes.push({
           nome: item.produto_nome,
-          necessario: item.quantidade,
+          necessario: quantidadeNecessaria,
           disponivel: saldoAtual,
-          faltante: item.quantidade - saldoAtual
+          faltante: quantidadeNecessaria - saldoAtual
         });
       }
     }
@@ -140,14 +141,14 @@ export const useConfirmacaoEntrega = () => {
       console.log('✅ Estoque suficiente. Executando baixas...');
       
       for (const item of itensEntrega) {
-        if (!item.produto_id || item.quantidade <= 0) continue;
+        if (!item.produto_id || Number(item.quantidade) <= 0) continue;
 
         const { error: movimentacaoError } = await supabase
           .from('movimentacoes_estoque_produtos')
           .insert({
             produto_id: item.produto_id,
             tipo: 'saida',
-            quantidade: item.quantidade,
+            quantidade: Number(item.quantidade),
             data_movimentacao: new Date().toISOString(),
             referencia_tipo: 'entrega',
             referencia_id: pedido.id,
@@ -194,12 +195,12 @@ export const useConfirmacaoEntrega = () => {
         const itensEntrega = calcularItensEntrega(pedido);
         
         for (const item of itensEntrega) {
-          if (!item.produto_id || item.quantidade <= 0) continue;
+          if (!item.produto_id || Number(item.quantidade) <= 0) continue;
           
           if (!todosProdutosNecessarios[item.produto_id]) {
             todosProdutosNecessarios[item.produto_id] = 0;
           }
-          todosProdutosNecessarios[item.produto_id] += item.quantidade;
+          todosProdutosNecessarios[item.produto_id] += Number(item.quantidade);
         }
       }
 
@@ -238,14 +239,14 @@ export const useConfirmacaoEntrega = () => {
         const itensEntrega = calcularItensEntrega(pedido);
 
         for (const item of itensEntrega) {
-          if (!item.produto_id || item.quantidade <= 0) continue;
+          if (!item.produto_id || Number(item.quantidade) <= 0) continue;
 
           const { error: movimentacaoError } = await supabase
             .from('movimentacoes_estoque_produtos')
             .insert({
               produto_id: item.produto_id,
               tipo: 'saida',
-              quantidade: item.quantidade,
+              quantidade: Number(item.quantidade),
               data_movimentacao: new Date().toISOString(),
               referencia_tipo: 'entrega',
               referencia_id: pedido.id,
