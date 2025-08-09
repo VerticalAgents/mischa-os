@@ -204,7 +204,10 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
             {pedidosFiltrados.map((pedido) => (
               <PedidoCard 
                 key={pedido.id}
-                pedido={converterPedidoParaCard(pedido)}
+                pedido={{
+                  ...converterPedidoParaCard(pedido),
+                  cliente_id: String(pedido.cliente_id) // Ensure cliente_id is included
+                }}
                 onMarcarSeparado={() => {}} // Não usado no despacho
                 onEditarAgendamento={() => handleEditarAgendamento(String(pedido.id))} // Agora funciona no despacho também
                 showDespachoActions={true}
