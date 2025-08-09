@@ -317,6 +317,120 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             dataPrevistaEntrega: pedido.data_prevista_entrega
           });
 
+          // NOVO: Montar itens com produto_id real para o histórico
+          let itensParaHistorico: any[] = [];
+          
+          if (pedido.itens_personalizados && pedido.itens_personalizados.length > 0) {
+            console.log('📦 Mapeando itens personalizados para IDs reais...');
+            
+            // Buscar produtos finais para mapear nomes para IDs
+            const { data: produtosFinais, error: produtosError } = await supabase
+              .from('produtos_finais')
+              .select('id, nome')
+              .eq('ativo', true);
+
+            if (produtosError) {
+              console.warn('Erro ao buscar produtos finais, tentando produtos legacy:', produtosError);
+              
+              // Fallback para tabela produtos legacy
+              const { data: produtosLegacy } = await supabase
+                .from('produtos')
+                .select('id, nome')
+                .eq('ativo', true);
+              
+              const produtosMap = new Map((produtosLegacy || []).map(p => [p.nome.toLowerCase().trim(), p.id]));
+              
+              itensParaHistorico = pedido.itens_personalizados
+                .map((item: any) => {
+                  const nomeProduto = (item.produto || item.nome || '').toLowerCase().trim();
+                  const produtoId = produtosMap.get(nomeProduto);
+                  const quantidade = parseInt(item.quantidade) || 0;
+                  
+                  if (!produtoId || quantidade <= 0) {
+                    console.warn(`Produto não encontrado ou quantidade inválida: ${item.produto || item.nome}, quantidade: ${quantidade}`);
+                    return null;
+                  }
+                  
+                  return {
+                    produto_id: produtoId,
+                    produto_nome: item.produto || item.nome,
+                    quantidade: quantidade
+                  };
+                })
+                .filter(Boolean);
+            } else {
+              // Usar produtos_finais
+              const produtosMap = new Map((produtosFinais || []).map(p => [p.nome.toLowerCase().trim(), p.id]));
+              
+              itensParaHistorico = pedido.itens_personalizados
+                .map((item: any) => {
+                  const nomeProduto = (item.produto || item.nome || '').toLowerCase().trim();
+                  const produtoId = produtosMap.get(nomeProduto);
+                  const quantidade = parseInt(item.quantidade) || 0;
+                  
+                  if (!produtoId || quantidade <= 0) {
+                    console.warn(`Produto não encontrado ou quantidade inválida: ${item.produto || item.nome}, quantidade: ${quantidade}`);
+                    return null;
+                  }
+                  
+                  return {
+                    produto_id: produtoId,
+                    produto_nome: item.produto || item.nome,
+                    quantidade: quantidade
+                  };
+                })
+                .filter(Boolean);
+            }
+          } else {
+            console.log('📦 Gerando distribuição padrão baseada em produtos_finais...');
+            
+            // Buscar produtos finais ativos ordenados por nome para distribuição determinística
+            const { data: produtosFinais, error: produtosError } = await supabase
+              .from('produtos_finais')
+              .select('id, nome')
+              .eq('ativo', true)
+              .order('nome')
+              .limit(5);
+
+            if (produtosError || !produtosFinais || produtosFinais.length === 0) {
+              console.warn('Erro ao buscar produtos finais, tentando produtos legacy:', produtosError);
+              
+              // Fallback para produtos legacy
+              const { data: produtosLegacy } = await supabase
+                .from('produtos')
+                .select('id, nome')
+                .eq('ativo', true)
+                .order('nome')
+                .limit(5);
+
+              if (produtosLegacy && produtosLegacy.length > 0) {
+                const quantidadePorProduto = Math.floor(pedido.quantidade_total / produtosLegacy.length);
+                const resto = pedido.quantidade_total % produtosLegacy.length;
+                
+                itensParaHistorico = produtosLegacy.map((produto, index) => ({
+                  produto_id: produto.id,
+                  produto_nome: produto.nome,
+                  quantidade: quantidadePorProduto + (index < resto ? 1 : 0)
+                })).filter(item => item.quantidade > 0);
+              }
+            } else {
+              const quantidadePorProduto = Math.floor(pedido.quantidade_total / produtosFinais.length);
+              const resto = pedido.quantidade_total % produtosFinais.length;
+              
+              itensParaHistorico = produtosFinais.map((produto, index) => ({
+                produto_id: produto.id,
+                produto_nome: produto.nome,
+                quantidade: quantidadePorProduto + (index < resto ? 1 : 0)
+              })).filter(item => item.quantidade > 0);
+            }
+          }
+
+          console.log('✅ Itens mapeados para histórico:', itensParaHistorico);
+
+          if (itensParaHistorico.length === 0) {
+            throw new Error('Não foi possível mapear itens para o histórico. Verifique se há produtos cadastrados.');
+          }
+
           // CRÍTICO: Gravar no histórico ANTES de alterar o agendamento
           const historicoStore = useHistoricoEntregasStore.getState();
           
@@ -330,7 +444,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             data: dataEntrega, // Usar data prevista do pedido, não data atual
             tipo: 'entrega',
             quantidade: pedido.quantidade_total,
-            itens: pedido.itens_personalizados || [],
+            itens: itensParaHistorico, // CORREÇÃO: usar itens com produto_id real
             status_anterior: pedido.substatus_pedido || 'Agendado',
             observacao: observacao || undefined
           });
@@ -569,6 +683,61 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           for (const pedido of pedidosParaEntregar) {
             console.log(`📝 Criando registro de entrega para ${pedido.cliente_nome}...`);
             
+            // NOVO: Montar itens com produto_id real para cada pedido
+            let itensParaHistorico: any[] = [];
+            
+            if (pedido.itens_personalizados && pedido.itens_personalizados.length > 0) {
+              // Buscar produtos finais para mapear nomes para IDs
+              const { data: produtosFinais, error: produtosError } = await supabase
+                .from('produtos_finais')
+                .select('id, nome')
+                .eq('ativo', true);
+
+              if (!produtosError && produtosFinais) {
+                const produtosMap = new Map(produtosFinais.map(p => [p.nome.toLowerCase().trim(), p.id]));
+                
+                itensParaHistorico = pedido.itens_personalizados
+                  .map((item: any) => {
+                    const nomeProduto = (item.produto || item.nome || '').toLowerCase().trim();
+                    const produtoId = produtosMap.get(nomeProduto);
+                    const quantidade = parseInt(item.quantidade) || 0;
+                    
+                    if (!produtoId || quantidade <= 0) return null;
+                    
+                    return {
+                      produto_id: produtoId,
+                      produto_nome: item.produto || item.nome,
+                      quantidade: quantidade
+                    };
+                  })
+                  .filter(Boolean);
+              }
+            } else {
+              // Distribuição padrão usando produtos_finais
+              const { data: produtosFinais } = await supabase
+                .from('produtos_finais')
+                .select('id, nome')
+                .eq('ativo', true)
+                .order('nome')
+                .limit(5);
+
+              if (produtosFinais && produtosFinais.length > 0) {
+                const quantidadePorProduto = Math.floor(pedido.quantidade_total / produtosFinais.length);
+                const resto = pedido.quantidade_total % produtosFinais.length;
+                
+                itensParaHistorico = produtosFinais.map((produto, index) => ({
+                  produto_id: produto.id,
+                  produto_nome: produto.nome,
+                  quantidade: quantidadePorProduto + (index < resto ? 1 : 0)
+                })).filter(item => item.quantidade > 0);
+              }
+            }
+
+            if (itensParaHistorico.length === 0) {
+              console.warn(`Não foi possível mapear itens para ${pedido.cliente_nome}, usando fallback`);
+              itensParaHistorico = [];
+            }
+            
             // CORREÇÃO: Usar a data prevista de entrega do pedido
             const dataEntrega = pedido.data_prevista_entrega;
             
@@ -579,7 +748,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               data: dataEntrega, // Usar data prevista do pedido, não data atual
               tipo: 'entrega',
               quantidade: pedido.quantidade_total,
-              itens: pedido.itens_personalizados || [],
+              itens: itensParaHistorico, // CORREÇÃO: usar itens com produto_id real
               status_anterior: pedido.substatus_pedido || 'Agendado'
             });
 
