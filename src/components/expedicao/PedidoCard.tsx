@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,14 +74,15 @@ export default function PedidoCard({
   const formatSafeDate = (dateValue: Date | string | null | undefined, formatStr: string = "dd/MM/yyyy"): string => {
     const safeDate = getSafeDate(dateValue);
     if (!safeDate) {
-      console.warn('Invalid date value:', dateValue);
+      // Only log the original value as a string to avoid toISOString() errors
+      console.warn('Invalid date value (string representation):', String(dateValue));
       return '--/--/----';
     }
     
     try {
       return format(safeDate, formatStr, { locale: ptBR });
     } catch (error) {
-      console.error('Error formatting date:', error, dateValue);
+      console.error('Error formatting date:', error, 'Original value:', String(dateValue));
       return '--/--/----';
     }
   };
