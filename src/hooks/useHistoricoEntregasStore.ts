@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO, startOfWeek, endOfWeek } from "date-fns";
+import { format, parseISO, startOfWeek, endOfWeek, subMonths } from "date-fns";
 import { toast } from "sonner";
 
 export interface ItemHistoricoEntrega {
@@ -30,7 +30,7 @@ interface FiltrosHistorico {
   dataInicio?: Date;
   dataFim?: Date;
   clienteId?: string;
-  tipo?: 'entrega' | 'retorno' | '';
+  tipo?: 'entrega' | 'retorno';
 }
 
 interface HistoricoEntregasStore {
@@ -38,7 +38,7 @@ interface HistoricoEntregasStore {
   isLoading: boolean;
   filtros: FiltrosHistorico;
   
-  carregarHistorico: (semana?: Date) => Promise<void>;
+  carregarHistorico: (clienteId?: string) => Promise<void>;
   adicionarRegistro: (registro: Omit<HistoricoEntrega, 'id' | 'created_at' | 'updated_at' | 'cliente_nome'>) => Promise<string | null>;
   editarRegistro: (id: string, dados: Partial<HistoricoEntrega>) => Promise<void>;
   excluirRegistro: (id: string) => Promise<void>;
@@ -46,7 +46,7 @@ interface HistoricoEntregasStore {
   // Filtros
   setFiltroDataInicio: (data?: Date) => void;
   setFiltroDataFim: (data?: Date) => void;
-  setFiltroTipo: (tipo?: 'entrega' | 'retorno' | '') => void;
+  setFiltroTipo: (tipo?: 'entrega' | 'retorno') => void;
   resetFiltros: () => void;
   getRegistrosFiltrados: () => HistoricoEntrega[];
   
@@ -64,7 +64,10 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
     (set, get) => ({
       registros: [],
       isLoading: false,
-      filtros: {},
+      filtros: {
+        dataInicio: subMonths(new Date(), 2),
+        dataFim: new Date()
+      },
       
       setFiltroDataInicio: (data?: Date) => {
         set(state => ({
@@ -78,14 +81,19 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
         }));
       },
       
-      setFiltroTipo: (tipo?: 'entrega' | 'retorno' | '') => {
+      setFiltroTipo: (tipo?: 'entrega' | 'retorno') => {
         set(state => ({
-          filtros: { ...state.filtros, tipo: tipo || undefined }
+          filtros: { ...state.filtros, tipo: tipo }
         }));
       },
       
       resetFiltros: () => {
-        set({ filtros: {} });
+        set({ 
+          filtros: {
+            dataInicio: subMonths(new Date(), 2),
+            dataFim: new Date()
+          }
+        });
       },
       
       getRegistrosFiltrados: () => {
@@ -100,22 +108,33 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
         });
       },
       
-      carregarHistorico: async (semana?: Date) => {
+      carregarHistorico: async (clienteId?: string) => {
         set({ isLoading: true });
         try {
-          const dataReferencia = semana || new Date();
-          const inicioSemana = startOfWeek(dataReferencia, { weekStartsOn: 1 });
-          const fimSemana = endOfWeek(dataReferencia, { weekStartsOn: 1 });
-
-          const { data, error } = await supabase
+          let query = supabase
             .from('historico_entregas')
             .select(`
               *,
               clientes!inner(nome)
             `)
-            .gte('data', inicioSemana.toISOString())
-            .lte('data', fimSemana.toISOString())
             .order('data', { ascending: false });
+
+          if (clienteId) {
+            query = query.eq('cliente_id', clienteId);
+            set(state => ({
+              filtros: { ...state.filtros, clienteId }
+            }));
+          } else {
+            const dataReferencia = new Date();
+            const inicioSemana = startOfWeek(dataReferencia, { weekStartsOn: 1 });
+            const fimSemana = endOfWeek(dataReferencia, { weekStartsOn: 1 });
+            
+            query = query
+              .gte('data', inicioSemana.toISOString())
+              .lte('data', fimSemana.toISOString());
+          }
+
+          const { data, error } = await query;
 
           if (error) throw error;
 
@@ -126,13 +145,12 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             data: parseISO(registro.data),
             tipo: registro.tipo as 'entrega' | 'retorno',
             quantidade: registro.quantidade,
-            itens: registro.itens as ItemHistoricoEntrega[] || [],
+            itens: (registro.itens as unknown as ItemHistoricoEntrega[]) || [],
             status_anterior: registro.status_anterior || '',
             observacao: registro.observacao || '',
             editado_manualmente: registro.editado_manualmente || false,
             created_at: parseISO(registro.created_at),
-            updated_at: parseISO(registro.updated_at),
-            clientes: registro.clientes
+            updated_at: parseISO(registro.updated_at)
           })) || [];
 
           set({ registros: registrosConvertidos });
@@ -160,7 +178,7 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
 
           const { data, error } = await supabase
             .from('historico_entregas')
-            .insert([dadosParaInserir])
+            .insert(dadosParaInserir)
             .select()
             .single();
 
@@ -173,7 +191,7 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             data: parseISO(data.data),
             tipo: data.tipo as 'entrega' | 'retorno',
             quantidade: data.quantidade,
-            itens: data.itens as ItemHistoricoEntrega[] || [],
+            itens: (data.itens as unknown as ItemHistoricoEntrega[]) || [],
             status_anterior: data.status_anterior || '',
             observacao: data.observacao || '',
             editado_manualmente: data.editado_manualmente || false,

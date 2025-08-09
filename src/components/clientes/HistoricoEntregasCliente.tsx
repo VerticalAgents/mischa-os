@@ -60,6 +60,16 @@ export const HistoricoEntregasCliente = ({ cliente }: HistoricoEntregasClientePr
     carregarHistorico(cliente.id);
   };
 
+  const handleDataInicioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const dateValue = e.target.value;
+    setFiltroDataInicio(dateValue ? new Date(dateValue) : undefined);
+  };
+
+  const handleDataFimChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const dateValue = e.target.value;
+    setFiltroDataFim(dateValue ? new Date(dateValue) : undefined);
+  };
+
   return (
     <Card className="p-6">
       <div className="space-y-6">
@@ -92,8 +102,8 @@ export const HistoricoEntregasCliente = ({ cliente }: HistoricoEntregasClientePr
               <Input
                 id="dataInicio"
                 type="date"
-                value={format(filtros.dataInicio, 'yyyy-MM-dd')}
-                onChange={(e) => setFiltroDataInicio(new Date(e.target.value))}
+                value={filtros.dataInicio ? format(filtros.dataInicio, 'yyyy-MM-dd') : ''}
+                onChange={handleDataInicioChange}
               />
             </div>
             <div>
@@ -101,8 +111,8 @@ export const HistoricoEntregasCliente = ({ cliente }: HistoricoEntregasClientePr
               <Input
                 id="dataFim"
                 type="date"
-                value={format(filtros.dataFim, 'yyyy-MM-dd')}
-                onChange={(e) => setFiltroDataFim(new Date(e.target.value))}
+                value={filtros.dataFim ? format(filtros.dataFim, 'yyyy-MM-dd') : ''}
+                onChange={handleDataFimChange}
               />
             </div>
           </div>
@@ -126,8 +136,8 @@ export const HistoricoEntregasCliente = ({ cliente }: HistoricoEntregasClientePr
 
         {/* Tabs por tipo */}
         <Tabs 
-          value={filtros.tipo} 
-          onValueChange={(value) => setFiltroTipo(value as any)}
+          value={filtros.tipo || 'todos'} 
+          onValueChange={(value) => setFiltroTipo(value === 'todos' ? undefined : value as any)}
           className="w-full"
         >
           <TabsList className="mb-4">

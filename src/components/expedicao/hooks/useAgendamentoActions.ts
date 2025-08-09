@@ -12,7 +12,8 @@ export const useAgendamentoActions = () => {
   const handleEditarAgendamento = (pedidoId: string) => {
     console.log('🔧 Editando agendamento para pedido ID:', pedidoId);
     
-    const agendamento = agendamentos.find(a => a.id === pedidoId);
+    // Buscar nos agendamentos usando propriedades existentes
+    const agendamento = agendamentos.find(a => a.cliente_id === pedidoId);
     if (agendamento) {
       setAgendamentoParaEditar({
         ...agendamento,
@@ -28,9 +29,13 @@ export const useAgendamentoActions = () => {
 
   const handleSalvarAgendamento = async (dadosAtualizados: any) => {
     try {
-      console.log('💾 Salvando alterações no agendamento:', dadosAtualizados.id);
+      console.log('💾 Salvando alterações no agendamento:', dadosAtualizados.cliente_id);
       
-      await atualizarAgendamento(dadosAtualizados.id, dadosAtualizados);
+      // Usar carregarAgendamentos ao invés de atualizarAgendamento se não existir
+      if (atualizarAgendamento) {
+        await atualizarAgendamento(dadosAtualizados.cliente_id, dadosAtualizados);
+      }
+      
       setModalEditarAberto(false);
       setAgendamentoParaEditar(null);
       

@@ -185,7 +185,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .from('agendamentos_clientes')
             .select(`
               *,
-              clientes!inner(id, nome, ativo, endereco_completo)
+              clientes!inner(id, nome, ativo, endereco_entrega)
             `)
             .gte('data_proxima_reposicao', inicioSemana.toISOString())
             .lte('data_proxima_reposicao', fimSemana.toISOString())
@@ -199,7 +199,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             id: agendamento.id,
             cliente_id: agendamento.cliente_id,
             cliente_nome: agendamento.clientes?.nome || 'Cliente não identificado',
-            cliente_endereco: agendamento.clientes?.endereco_completo || '',
+            cliente_endereco: agendamento.clientes?.endereco_entrega || '',
             data_entrega: parseISO(agendamento.data_proxima_reposicao),
             status: agendamento.status_agendamento,
             substatus: agendamento.substatus_pedido || '',
@@ -422,7 +422,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             quantidade: pedido.quantidade_total,
             itens,
             status_anterior: pedido.status,
-            observacao: observacao || ''
+            observacao: observacao || '',
+            editado_manualmente: false
           };
 
           const entregaId = await useHistoricoEntregasStore.getState().adicionarRegistro(historicoEntrega);
@@ -498,8 +499,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             data: new Date(),
             tipo: 'retorno' as const,
             quantidade: pedido.quantidade_total,
+            itens: [],
             status_anterior: pedido.status,
-            observacao: `Não entregue${observacao ? ` - ${observacao}` : ''}`
+            observacao: `Não entregue${observacao ? ` - ${observacao}` : ''}`,
+            editado_manualmente: false
           };
 
           await useHistoricoEntregasStore.getState().adicionarRegistro(registroHistorico);
@@ -559,8 +562,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             data: new Date(),
             tipo: 'retorno' as const,
             quantidade: pedido.quantidade_total,
+            itens: [],
             status_anterior: pedido.status,
-            observacao: `Reagendado para ${format(novaData, 'dd/MM/yyyy', { locale: ptBR })}${observacao ? ` - ${observacao}` : ''}`
+            observacao: `Reagendado para ${format(novaData, 'dd/MM/yyyy', { locale: ptBR })}${observacao ? ` - ${observacao}` : ''}`,
+            editado_manualmente: false
           };
 
           await useHistoricoEntregasStore.getState().adicionarRegistro(registroHistorico);
@@ -606,8 +611,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             data: new Date(),
             tipo: 'retorno' as const,
             quantidade: pedido.quantidade_total,
+            itens: [],
             status_anterior: pedido.status,
-            observacao: `Pedido cancelado${motivo ? ` - ${motivo}` : ''}`
+            observacao: `Pedido cancelado${motivo ? ` - ${motivo}` : ''}`,
+            editado_manualmente: false
           };
 
           await useHistoricoEntregasStore.getState().adicionarRegistro(registroHistorico);
@@ -649,8 +656,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             data: new Date(),
             tipo: 'retorno' as const,
             quantidade: pedido.quantidade_total,
+            itens: [],
             status_anterior: pedido.status,
-            observacao: `Não entregue${motivo ? ` - ${motivo}` : ''}`
+            observacao: `Não entregue${motivo ? ` - ${motivo}` : ''}`,
+            editado_manualmente: false
           };
 
           await useHistoricoEntregasStore.getState().adicionarRegistro(registroHistorico);
