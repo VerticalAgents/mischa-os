@@ -1,4 +1,5 @@
 
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -252,7 +253,8 @@ export const useConfirmacaoEntrega = () => {
       // Verificar saldos consolidados
       const produtosInsuficientes: ProdutoInsuficiente[] = [];
       
-      for (const [produtoId, quantidadeTotal] of Object.entries(todosProdutosNecessarios)) {
+      for (const produtoId of Object.keys(todosProdutosNecessarios)) {
+        const quantidadeTotal = todosProdutosNecessarios[produtoId];
         const saldoAtual = await obterSaldoProduto(produtoId);
         const produto = produtos.find(p => p.id === produtoId);
         
@@ -281,6 +283,19 @@ export const useConfirmacaoEntrega = () => {
 
       // Processar todas as entregas
       for (const pedido of pedidos) {
+        // Verificar se já existe movimentação para evitar duplicação
+        const { data: movimentacoesExistentes } = await supabase
+          .from('movimentacoes_estoque_produtos')
+          .select('id')
+          .eq('referencia_tipo', 'entrega')
+          .eq('referencia_id', pedido.id)
+          .limit(1);
+
+        if (movimentacoesExistentes && movimentacoesExistentes.length > 0) {
+          console.log(`Entrega ${pedido.id} já processada anteriormente`);
+          continue;
+        }
+
         const itensEntrega = calcularItensEntrega(pedido);
 
         // Baixa no estoque
@@ -368,3 +383,4 @@ export const useConfirmacaoEntrega = () => {
     loading
   };
 };
+
