@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SubstatusPedidoAgendado } from '@/types';
 import { addBusinessDays, isWeekend, format, addDays, isBefore, startOfDay } from 'date-fns';
 import { useHistoricoEntregasStore } from './useHistoricoEntregasStore';
+import { useConfirmacaoEntrega } from './useConfirmacaoEntrega';
 
 interface PedidoExpedicao {
   id: string;
@@ -310,12 +311,24 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
-          console.log('🚚 Processando entrega com preservação de dados:', {
+          console.log('🚚 Processando entrega com validação de estoque:', {
             pedidoId,
             tipoPedido: pedido.tipo_pedido,
             itensPersonalizados: !!pedido.itens_personalizados,
             dataPrevistaEntrega: pedido.data_prevista_entrega
           });
+
+          // NOVA VALIDAÇÃO: Usar o hook de confirmação de entrega
+          const confirmacaoEntrega = useConfirmacaoEntrega.getState ? 
+            useConfirmacaoEntrega.getState() : 
+            useConfirmacaoEntrega();
+
+          const entregaConfirmada = await confirmacaoEntrega.confirmarEntrega(pedido, observacao);
+          
+          if (!entregaConfirmada) {
+            console.log('❌ Entrega não foi confirmada devido a problemas de estoque');
+            return;
+          }
 
           // CRÍTICO: Gravar no histórico ANTES de alterar o agendamento
           const historicoStore = useHistoricoEntregasStore.getState();
@@ -377,8 +390,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .update(dadosAtualizacao)
             .eq('id', pedidoId);
 
-          console.log('✅ Entrega confirmada - NOVO registro criado no histórico com data prevista');
-          toast.success(`Entrega confirmada para ${pedido.cliente_nome} na data ${format(dataEntrega, 'dd/MM/yyyy')}. Reagendado como Previsto preservando configurações.`);
+          console.log('✅ Entrega confirmada com baixa no estoque - NOVO registro criado no histórico com data prevista');
+          toast.success(`Entrega confirmada para ${pedido.cliente_nome} na data ${format(dataEntrega, 'dd/MM/yyyy')} com baixa automática no estoque. Reagendado como Previsto preservando configurações.`);
         } catch (error) {
           console.error('❌ Erro ao confirmar entrega:', error);
           toast.error("Erro ao confirmar entrega");
@@ -555,8 +568,20 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
-          console.log('🚚 Processando entregas em massa - criando registros no histórico...');
+          console.log('🚚 Processando entregas em massa com validação de estoque - criando registros no histórico...');
           
+          // NOVA VALIDAÇÃO: Usar o hook de confirmação de entrega
+          const confirmacaoEntrega = useConfirmacaoEntrega.getState ? 
+            useConfirmacaoEntrega.getState() : 
+            useConfirmacaoEntrega();
+
+          const entregasConfirmadas = await confirmacaoEntrega.confirmarEntregaEmMassa(pedidosParaEntregar);
+          
+          if (!entregasConfirmadas) {
+            console.log('❌ Entregas em massa não foram confirmadas devido a problemas de estoque');
+            return;
+          }
+
           // Gravar histórico para todos os pedidos - CADA UM UM NOVO REGISTRO
           const historicoStore = useHistoricoEntregasStore.getState();
           
@@ -616,8 +641,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               .eq('id', pedido.id);
           }
 
-          console.log(`✅ ${pedidosParaEntregar.length} entregas confirmadas - NOVOS registros criados no histórico com datas previstas`);
-          toast.success(`${pedidosParaEntregar.length} entregas confirmadas nas respectivas datas previstas e reagendadas como Previsto`);
+          console.log(`✅ ${pedidosParaEntregar.length} entregas confirmadas com baixa automática no estoque - NOVOS registros criados no histórico com datas previstas`);
+          toast.success(`${pedidosParaEntregar.length} entregas confirmadas nas respectivas datas previstas com baixa automática no estoque e reagendadas como Previsto`);
         } catch (error) {
           console.error('❌ Erro na entrega em massa:', error);
           toast.error("Erro na entrega em massa");
