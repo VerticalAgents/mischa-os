@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -161,6 +160,50 @@ export const useConfirmacaoEntrega = () => {
         }
       }
 
+      // 5. Registrar no histórico de entregas
+      const { error: historicoError } = await supabase
+        .from('historico_entregas')
+        .insert({
+          cliente_id: pedido.cliente_id,
+          data: new Date().toISOString(),
+          quantidade: Number(pedido.quantidade_total),
+          tipo: 'entrega',
+          observacao: `Entrega confirmada via expedição${observacao ? ` | ${observacao}` : ''}`,
+          itens: itensEntrega.map(item => ({
+            produto_id: item.produto_id,
+            produto_nome: item.produto_nome,
+            quantidade: Number(item.quantidade)
+          }))
+        });
+
+      if (historicoError) {
+        console.error('Erro ao registrar histórico:', historicoError);
+        throw new Error(`Erro ao registrar histórico de entrega: ${historicoError.message}`);
+      }
+
+      // 6. Reagendar para próxima entrega
+      const proximaData = new Date();
+      proximaData.setDate(proximaData.getDate() + 7); // Reagendar para 7 dias
+
+      const { error: reagendamentoError } = await supabase
+        .from('agendamentos')
+        .update({
+          data_prevista_entrega: proximaData.toISOString(),
+          substatus_pedido: 'Agendado',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', pedido.id);
+
+      if (reagendamentoError) {
+        console.error('Erro ao reagendar:', reagendamentoError);
+        // Não falhar por erro de reagendamento, apenas avisar
+        toast({
+          title: "Entrega confirmada com aviso",
+          description: "Entrega confirmada mas houve erro no reagendamento automático",
+          variant: "destructive"
+        });
+      }
+
       console.log('✅ Baixas no estoque executadas com sucesso');
 
       toast({
@@ -238,6 +281,7 @@ export const useConfirmacaoEntrega = () => {
       for (const pedido of pedidos) {
         const itensEntrega = calcularItensEntrega(pedido);
 
+        // Baixa no estoque
         for (const item of itensEntrega) {
           if (!item.produto_id || Number(item.quantidade) <= 0) continue;
 
@@ -256,6 +300,43 @@ export const useConfirmacaoEntrega = () => {
           if (movimentacaoError) {
             throw new Error(`Erro ao processar entrega de ${pedido.cliente_nome}: ${movimentacaoError.message}`);
           }
+        }
+
+        // Registrar no histórico
+        const { error: historicoError } = await supabase
+          .from('historico_entregas')
+          .insert({
+            cliente_id: pedido.cliente_id,
+            data: new Date().toISOString(),
+            quantidade: Number(pedido.quantidade_total),
+            tipo: 'entrega',
+            observacao: 'Entrega confirmada via expedição em massa',
+            itens: itensEntrega.map(item => ({
+              produto_id: item.produto_id,
+              produto_nome: item.produto_nome,
+              quantidade: Number(item.quantidade)
+            }))
+          });
+
+        if (historicoError) {
+          console.error('Erro ao registrar histórico para pedido:', pedido.id, historicoError);
+        }
+
+        // Reagendar
+        const proximaData = new Date();
+        proximaData.setDate(proximaData.getDate() + 7);
+
+        const { error: reagendamentoError } = await supabase
+          .from('agendamentos')
+          .update({
+            data_prevista_entrega: proximaData.toISOString(),
+            substatus_pedido: 'Agendado',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', pedido.id);
+
+        if (reagendamentoError) {
+          console.error('Erro ao reagendar pedido:', pedido.id, reagendamentoError);
         }
       }
 

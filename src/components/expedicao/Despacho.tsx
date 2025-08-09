@@ -78,7 +78,21 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     }
     
     try {
-      const sucesso = await confirmarEntregaEmMassaHook(pedidosDespachados);
+      // Transformar pedidos despachados no formato correto para o hook
+      const pedidosParaEntrega = pedidosDespachados.map(pedido => ({
+        id: String(pedido.id),
+        cliente_id: String(pedido.cliente_id),
+        cliente_nome: pedido.cliente_nome,
+        cliente_endereco: pedido.cliente_endereco,
+        cliente_telefone: pedido.cliente_telefone,
+        data_prevista_entrega: new Date(pedido.data_prevista_entrega),
+        quantidade_total: Number(pedido.quantidade_total),
+        tipo_pedido: pedido.tipo_pedido,
+        substatus_pedido: pedido.substatus_pedido,
+        itens_personalizados: pedido.itens_personalizados
+      }));
+
+      const sucesso = await confirmarEntregaEmMassaHook(pedidosParaEntrega);
       if (sucesso) {
         // Recarregar os dados após confirmação bem-sucedida
         await carregarPedidos();

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,8 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { TipoPedidoBadge } from "./TipoPedidoBadge";
-import { ProdutoNomeDisplay } from "./ProdutoNomeDisplay";
+import TipoPedidoBadge from "./TipoPedidoBadge";
+import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
 
 interface PedidoCardProps {
