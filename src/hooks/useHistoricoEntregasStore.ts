@@ -1,15 +1,8 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO, startOfWeek, endOfWeek, subMonths } from "date-fns";
 import { toast } from "sonner";
-
-export interface ItemHistoricoEntrega {
-  produto_id: string;
-  produto_nome: string;
-  quantidade: number;
-}
+import { subMonths, format } from 'date-fns';
 
 export interface HistoricoEntrega {
   id: string;
@@ -18,46 +11,43 @@ export interface HistoricoEntrega {
   data: Date;
   tipo: 'entrega' | 'retorno';
   quantidade: number;
-  itens: ItemHistoricoEntrega[];
-  status_anterior: string;
-  observacao: string;
+  itens: any[];
+  status_anterior?: string;
+  observacao?: string;
   editado_manualmente: boolean;
   created_at: Date;
   updated_at: Date;
 }
 
-interface FiltrosHistorico {
-  dataInicio?: Date;
-  dataFim?: Date;
-  clienteId?: string;
-  tipo?: 'entrega' | 'retorno';
-}
-
 interface HistoricoEntregasStore {
   registros: HistoricoEntrega[];
   isLoading: boolean;
-  filtros: FiltrosHistorico;
+  filtros: {
+    dataInicio: Date;
+    dataFim: Date;
+    tipo: 'todos' | 'entrega' | 'retorno';
+    clienteId?: string;
+  };
   
+  // Actions
   carregarHistorico: (clienteId?: string) => Promise<void>;
-  adicionarRegistro: (registro: Omit<HistoricoEntrega, 'id' | 'created_at' | 'updated_at' | 'cliente_nome'>) => Promise<string | null>;
+  adicionarRegistro: (registro: Omit<HistoricoEntrega, 'id' | 'created_at' | 'updated_at' | 'editado_manualmente'>) => Promise<void>;
   editarRegistro: (id: string, dados: Partial<HistoricoEntrega>) => Promise<void>;
   excluirRegistro: (id: string) => Promise<void>;
-  
-  // Filtros
-  setFiltroDataInicio: (data?: Date) => void;
-  setFiltroDataFim: (data?: Date) => void;
-  setFiltroTipo: (tipo?: 'entrega' | 'retorno') => void;
+  setFiltroDataInicio: (data: Date) => void;
+  setFiltroDataFim: (data: Date) => void;
+  setFiltroTipo: (tipo: 'todos' | 'entrega' | 'retorno') => void;
   resetFiltros: () => void;
-  getRegistrosFiltrados: () => HistoricoEntrega[];
   
-  // Estatísticas
-  getEstatisticasPeriodo: (inicio: Date, fim: Date) => {
-    totalEntregas: number;
-    totalRetornos: number;
-    quantidadeTotal: number;
-    sucessoPercentual: number;
-  };
+  // Getters
+  getRegistrosFiltrados: () => HistoricoEntrega[];
 }
+
+const getDataPadrao = () => {
+  const hoje = new Date();
+  const doisMesesAtras = subMonths(hoje, 2);
+  return { dataInicio: doisMesesAtras, dataFim: hoje };
+};
 
 export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
   devtools(
@@ -65,33 +55,254 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
       registros: [],
       isLoading: false,
       filtros: {
-        dataInicio: subMonths(new Date(), 2),
-        dataFim: new Date()
+        ...getDataPadrao(),
+        tipo: 'todos'
       },
       
-      setFiltroDataInicio: (data?: Date) => {
+      carregarHistorico: async (clienteId?: string) => {
+        set({ isLoading: true });
+        
+        try {
+          console.log('🔄 Carregando histórico de entregas...', clienteId ? `para cliente ${clienteId}` : 'geral');
+          
+          let query = supabase
+            .from('historico_entregas')
+            .select('*')
+            .order('data', { ascending: false });
+          
+          if (clienteId) {
+            query = query.eq('cliente_id', clienteId);
+            // Atualizar filtro para cliente específico
+            set(state => ({
+              filtros: { ...state.filtros, clienteId }
+            }));
+          }
+          
+          const { data: historico, error } = await query;
+          
+          if (error) {
+            console.error('Erro ao carregar histórico:', error);
+            throw error;
+          }
+          
+          // Carregar nomes dos clientes
+          const clienteIds = [...new Set(historico?.map(h => h.cliente_id) || [])];
+          const { data: clientes } = await supabase
+            .from('clientes')
+            .select('id, nome')
+            .in('id', clienteIds);
+          
+          const clientesMap = new Map(clientes?.map(c => [c.id, c.nome]) || []);
+          
+          const registrosFormatados: HistoricoEntrega[] = (historico || []).map(registro => ({
+            id: registro.id,
+            cliente_id: registro.cliente_id,
+            data: new Date(registro.data),
+            tipo: registro.tipo as 'entrega' | 'retorno',
+            quantidade: registro.quantidade,
+            itens: Array.isArray(registro.itens) ? registro.itens : [],
+            status_anterior: registro.status_anterior || undefined,
+            observacao: registro.observacao || undefined,
+            editado_manualmente: registro.editado_manualmente || false,
+            created_at: new Date(registro.created_at),
+            updated_at: new Date(registro.updated_at),
+            cliente_nome: clientesMap.get(registro.cliente_id) || 'Cliente não encontrado'
+          }));
+          
+          console.log('✅ Histórico carregado:', registrosFormatados.length, 'registros');
+          set({ registros: registrosFormatados });
+          
+        } catch (error) {
+          console.error('Erro ao carregar histórico:', error);
+          toast.error("Erro ao carregar histórico de entregas");
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+      
+      adicionarRegistro: async (registro) => {
+        try {
+          console.log('📝 Adicionando novo registro no histórico:', {
+            cliente_id: registro.cliente_id,
+            tipo: registro.tipo,
+            quantidade: registro.quantidade,
+            data: registro.data
+          });
+
+          // Preparar dados para inserção - sempre criar um NOVO registro
+          const registroParaInserir = {
+            cliente_id: registro.cliente_id,
+            data: registro.data.toISOString(),
+            tipo: registro.tipo,
+            quantidade: registro.quantidade,
+            itens: registro.itens || [],
+            status_anterior: registro.status_anterior || null,
+            observacao: registro.observacao || null,
+            editado_manualmente: registro.status_anterior === 'Manual' // Manual se criado manualmente
+          };
+
+          // INSERT - NUNCA UPDATE - para garantir múltiplos registros por cliente
+          const { data, error } = await supabase
+            .from('historico_entregas')
+            .insert([registroParaInserir])
+            .select()
+            .single();
+          
+          if (error) {
+            console.error('Erro ao inserir no histórico:', error);
+            throw error;
+          }
+          
+          // Carregar nome do cliente para o novo registro
+          const { data: cliente } = await supabase
+            .from('clientes')
+            .select('nome')
+            .eq('id', registro.cliente_id)
+            .single();
+          
+          const novoRegistro: HistoricoEntrega = {
+            id: data.id,
+            cliente_id: data.cliente_id,
+            data: new Date(data.data),
+            tipo: data.tipo as 'entrega' | 'retorno',
+            quantidade: data.quantidade,
+            itens: Array.isArray(data.itens) ? data.itens : [],
+            status_anterior: data.status_anterior || undefined,
+            observacao: data.observacao || undefined,
+            editado_manualmente: data.editado_manualmente || false,
+            created_at: new Date(data.created_at),
+            updated_at: new Date(data.updated_at),
+            cliente_nome: cliente?.nome || 'Cliente não encontrado'
+          };
+          
+          // Adicionar ao início da lista (mais recente primeiro)
+          set(state => ({
+            registros: [novoRegistro, ...state.registros]
+          }));
+          
+          console.log('✅ Novo registro adicionado ao histórico:', {
+            id: data.id,
+            cliente: cliente?.nome,
+            tipo: registro.tipo,
+            quantidade: registro.quantidade
+          });
+          
+        } catch (error) {
+          console.error('❌ Erro ao adicionar registro ao histórico:', error);
+          toast.error("Erro ao adicionar registro ao histórico");
+          throw error; // Re-throw para permitir tratamento upstream
+        }
+      },
+      
+      editarRegistro: async (id, dados) => {
+        try {
+          console.log('✏️ Editando registro do histórico:', { id, dados });
+
+          const dadosParaAtualizar: any = {
+            editado_manualmente: true,
+            updated_at: new Date().toISOString()
+          };
+
+          // Apenas incluir campos que foram fornecidos
+          if (dados.quantidade !== undefined) {
+            dadosParaAtualizar.quantidade = dados.quantidade;
+          }
+          if (dados.observacao !== undefined) {
+            dadosParaAtualizar.observacao = dados.observacao;
+          }
+          if (dados.data !== undefined) {
+            dadosParaAtualizar.data = dados.data.toISOString();
+          }
+          if (dados.tipo !== undefined) {
+            dadosParaAtualizar.tipo = dados.tipo;
+          }
+
+          const { error } = await supabase
+            .from('historico_entregas')
+            .update(dadosParaAtualizar)
+            .eq('id', id);
+          
+          if (error) {
+            console.error('Erro ao editar registro:', error);
+            throw error;
+          }
+          
+          // Atualizar no estado local
+          set(state => ({
+            registros: state.registros.map(registro =>
+              registro.id === id
+                ? { 
+                    ...registro, 
+                    ...dados, 
+                    editado_manualmente: true, 
+                    updated_at: new Date() 
+                  }
+                : registro
+            )
+          }));
+          
+          console.log('✅ Registro editado com sucesso');
+          toast.success("Registro editado com sucesso");
+          
+        } catch (error) {
+          console.error('❌ Erro ao editar registro:', error);
+          toast.error("Erro ao editar registro");
+          throw error;
+        }
+      },
+
+      excluirRegistro: async (id) => {
+        try {
+          console.log('🗑️ Excluindo registro do histórico:', { id });
+
+          const { error } = await supabase
+            .from('historico_entregas')
+            .delete()
+            .eq('id', id);
+          
+          if (error) {
+            console.error('Erro ao excluir registro:', error);
+            throw error;
+          }
+          
+          // Remover do estado local
+          set(state => ({
+            registros: state.registros.filter(registro => registro.id !== id)
+          }));
+          
+          console.log('✅ Registro excluído com sucesso');
+          toast.success("Registro excluído com sucesso");
+          
+        } catch (error) {
+          console.error('❌ Erro ao excluir registro:', error);
+          toast.error("Erro ao excluir registro");
+          throw error;
+        }
+      },
+      
+      setFiltroDataInicio: (dataInicio) => {
         set(state => ({
-          filtros: { ...state.filtros, dataInicio: data }
+          filtros: { ...state.filtros, dataInicio }
         }));
       },
       
-      setFiltroDataFim: (data?: Date) => {
+      setFiltroDataFim: (dataFim) => {
         set(state => ({
-          filtros: { ...state.filtros, dataFim: data }
+          filtros: { ...state.filtros, dataFim }
         }));
       },
       
-      setFiltroTipo: (tipo?: 'entrega' | 'retorno') => {
+      setFiltroTipo: (tipo) => {
         set(state => ({
-          filtros: { ...state.filtros, tipo: tipo }
+          filtros: { ...state.filtros, tipo }
         }));
       },
       
       resetFiltros: () => {
-        set({ 
+        set({
           filtros: {
-            dataInicio: subMonths(new Date(), 2),
-            dataFim: new Date()
+            ...getDataPadrao(),
+            tipo: 'todos'
           }
         });
       },
@@ -100,191 +311,21 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
         const { registros, filtros } = get();
         
         return registros.filter(registro => {
-          if (filtros.dataInicio && registro.data < filtros.dataInicio) return false;
-          if (filtros.dataFim && registro.data > filtros.dataFim) return false;
-          if (filtros.clienteId && registro.cliente_id !== filtros.clienteId) return false;
-          if (filtros.tipo && registro.tipo !== filtros.tipo) return false;
-          return true;
-        });
-      },
-      
-      carregarHistorico: async (clienteId?: string) => {
-        set({ isLoading: true });
-        try {
-          let query = supabase
-            .from('historico_entregas')
-            .select(`
-              *,
-              clientes!inner(nome)
-            `)
-            .order('data', { ascending: false });
-
-          if (clienteId) {
-            query = query.eq('cliente_id', clienteId);
-            set(state => ({
-              filtros: { ...state.filtros, clienteId }
-            }));
-          } else {
-            const dataReferencia = new Date();
-            const inicioSemana = startOfWeek(dataReferencia, { weekStartsOn: 1 });
-            const fimSemana = endOfWeek(dataReferencia, { weekStartsOn: 1 });
-            
-            query = query
-              .gte('data', inicioSemana.toISOString())
-              .lte('data', fimSemana.toISOString());
-          }
-
-          const { data, error } = await query;
-
-          if (error) throw error;
-
-          const registrosConvertidos: HistoricoEntrega[] = data?.map((registro: any) => ({
-            id: registro.id,
-            cliente_id: registro.cliente_id,
-            cliente_nome: registro.clientes?.nome || 'Cliente não identificado',
-            data: parseISO(registro.data),
-            tipo: registro.tipo as 'entrega' | 'retorno',
-            quantidade: registro.quantidade,
-            itens: (registro.itens as unknown as ItemHistoricoEntrega[]) || [],
-            status_anterior: registro.status_anterior || '',
-            observacao: registro.observacao || '',
-            editado_manualmente: registro.editado_manualmente || false,
-            created_at: parseISO(registro.created_at),
-            updated_at: parseISO(registro.updated_at)
-          })) || [];
-
-          set({ registros: registrosConvertidos });
-          console.log(`✅ ${registrosConvertidos.length} registros de histórico carregados`);
-        } catch (error) {
-          console.error('❌ Erro ao carregar histórico:', error);
-          toast.error('Erro ao carregar histórico de entregas');
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      adicionarRegistro: async (registro) => {
-        try {
-          const dadosParaInserir = {
-            cliente_id: registro.cliente_id,
-            data: registro.data.toISOString(),
-            tipo: registro.tipo,
-            quantidade: registro.quantidade,
-            itens: registro.itens as any,
-            status_anterior: registro.status_anterior || '',
-            observacao: registro.observacao || '',
-            editado_manualmente: registro.editado_manualmente || false
-          };
-
-          const { data, error } = await supabase
-            .from('historico_entregas')
-            .insert(dadosParaInserir)
-            .select()
-            .single();
-
-          if (error) throw error;
-
-          // Adicionar ao estado local
-          const novoRegistro: HistoricoEntrega = {
-            id: data.id,
-            cliente_id: data.cliente_id,
-            data: parseISO(data.data),
-            tipo: data.tipo as 'entrega' | 'retorno',
-            quantidade: data.quantidade,
-            itens: (data.itens as unknown as ItemHistoricoEntrega[]) || [],
-            status_anterior: data.status_anterior || '',
-            observacao: data.observacao || '',
-            editado_manualmente: data.editado_manualmente || false,
-            created_at: parseISO(data.created_at),
-            updated_at: parseISO(data.updated_at)
-          };
-
-          set(state => ({
-            registros: [novoRegistro, ...state.registros]
-          }));
-
-          console.log('✅ Registro adicionado ao histórico:', data.id);
-          return data.id;
-        } catch (error) {
-          console.error('❌ Erro ao adicionar registro:', error);
-          toast.error('Erro ao registrar no histórico');
-          return null;
-        }
-      },
-
-      editarRegistro: async (id: string, dados) => {
-        try {
-          const dadosParaAtualizar: any = {};
+          const dataRegistro = new Date(registro.data);
+          dataRegistro.setHours(0, 0, 0, 0); // Resetar horas para comparação de data
           
-          if (dados.data) dadosParaAtualizar.data = dados.data.toISOString();
-          if (dados.tipo) dadosParaAtualizar.tipo = dados.tipo;
-          if (dados.quantidade !== undefined) dadosParaAtualizar.quantidade = dados.quantidade;
-          if (dados.itens) dadosParaAtualizar.itens = dados.itens;
-          if (dados.status_anterior) dadosParaAtualizar.status_anterior = dados.status_anterior;
-          if (dados.observacao !== undefined) dadosParaAtualizar.observacao = dados.observacao;
-          if (dados.editado_manualmente !== undefined) dadosParaAtualizar.editado_manualmente = dados.editado_manualmente;
-
-          const { error } = await supabase
-            .from('historico_entregas')
-            .update(dadosParaAtualizar)
-            .eq('id', id);
-
-          if (error) throw error;
-
-          // Atualizar estado local
-          set(state => ({
-            registros: state.registros.map(r => 
-              r.id === id ? { ...r, ...dados } : r
-            )
-          }));
-
-          toast.success('Registro atualizado com sucesso');
-        } catch (error) {
-          console.error('❌ Erro ao editar registro:', error);
-          toast.error('Erro ao editar registro');
-        }
-      },
-
-      excluirRegistro: async (id: string) => {
-        try {
-          const { error } = await supabase
-            .from('historico_entregas')
-            .delete()
-            .eq('id', id);
-
-          if (error) throw error;
-
-          // Remover do estado local
-          set(state => ({
-            registros: state.registros.filter(r => r.id !== id)
-          }));
-
-          toast.success('Registro excluído com sucesso');
-        } catch (error) {
-          console.error('❌ Erro ao excluir registro:', error);
-          toast.error('Erro ao excluir registro');
-        }
-      },
-      
-      getEstatisticasPeriodo: (inicio: Date, fim: Date) => {
-        const registros = get().registros.filter(r => 
-          r.data >= inicio && r.data <= fim
-        );
-        
-        const entregas = registros.filter(r => r.tipo === 'entrega');
-        const retornos = registros.filter(r => r.tipo === 'retorno');
-        
-        const totalEntregas = entregas.length;
-        const totalRetornos = retornos.length;
-        const quantidadeTotal = entregas.reduce((acc, r) => acc + r.quantidade, 0);
-        const sucessoPercentual = totalEntregas > 0 ? ((totalEntregas - totalRetornos) / totalEntregas) * 100 : 0;
-        
-        return {
-          totalEntregas,
-          totalRetornos,
-          quantidadeTotal,
-          sucessoPercentual
-        };
+          const dataInicio = new Date(filtros.dataInicio);
+          dataInicio.setHours(0, 0, 0, 0);
+          
+          const dataFim = new Date(filtros.dataFim);
+          dataFim.setHours(23, 59, 59, 999);
+          
+          const dataMatch = dataRegistro >= dataInicio && dataRegistro <= dataFim;
+          const tipoMatch = filtros.tipo === 'todos' || registro.tipo === filtros.tipo;
+          const clienteMatch = !filtros.clienteId || registro.cliente_id === filtros.clienteId;
+          
+          return dataMatch && tipoMatch && clienteMatch;
+        });
       }
     }),
     { name: 'historico-entregas-store' }

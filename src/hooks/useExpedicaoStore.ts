@@ -1,683 +1,755 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { supabase } from "@/integrations/supabase/client";
-import { format, startOfWeek, endOfWeek, parseISO, isToday, isBefore, addDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { useHistoricoEntregasStore } from "./useHistoricoEntregasStore";
-import { useExpedicaoStockValidation } from "./useExpedicaoStockValidation";
-
-interface PedidoProduto {
-  produto_id: string;
-  produto_nome: string;
-  quantidade: number;
-}
+import { supabase } from "@/integrations/supabase/client";
+import { SubstatusPedidoAgendado } from '@/types';
+import { addBusinessDays, isWeekend, format, addDays, isBefore, startOfDay } from 'date-fns';
+import { useHistoricoEntregasStore } from './useHistoricoEntregasStore';
 
 interface PedidoExpedicao {
   id: string;
   cliente_id: string;
   cliente_nome: string;
-  data_entrega: Date;
-  status: string;
-  substatus: string;
-  quantidade_total: number;
-  produtos: PedidoProduto[];
-  observacao?: string;
-  tipo_pedido: 'Padrão' | 'Alterado';
-  rota?: string;
-  prioridade: 'baixa' | 'media' | 'alta';
-  confirmado_producao?: boolean;
-  data_expedicao?: Date;
-  editado?: boolean;
-  status_cliente?: string;
-  substatus_pedido?: string;
   cliente_endereco?: string;
+  cliente_telefone?: string;
+  link_google_maps?: string;
+  data_prevista_entrega: Date;
+  quantidade_total: number;
+  tipo_pedido: string;
+  status_agendamento: string;
+  substatus_pedido?: SubstatusPedidoAgendado;
+  itens_personalizados?: any;
+  created_at: Date;
 }
 
 interface ExpedicaoStore {
   pedidos: PedidoExpedicao[];
   isLoading: boolean;
-  semanaAtual: Date;
-  ultimaAtualizacao?: Date;
-  pedidosSelecionados: Set<string>;
+  ultimaAtualizacao: Date | null;
   
-  // Carregamento
+  // Actions
   carregarPedidos: () => Promise<void>;
-  
-  // Separação
-  getPedidosParaSeparacao: () => PedidoExpedicao[];
-  getPedidosProximoDia: () => PedidoExpedicao[];
-  confirmarSeparacao: (pedidoId: string) => Promise<void>;
-  marcarTodosSeparados: (pedidos: PedidoExpedicao[]) => Promise<void>;
   atualizarDataReferencia: () => Promise<void>;
-  
-  // Despacho
-  getPedidosParaDespacho: () => PedidoExpedicao[];
-  getPedidosAtrasados: () => PedidoExpedicao[];
-  confirmarDespacho: (pedidoId: string) => Promise<void>;
-  confirmarDespachoEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
+  confirmarSeparacao: (pedidoId: string) => Promise<void>;
+  desfazerSeparacao: (pedidoId: string) => Promise<void>;
   retornarParaSeparacao: (pedidoId: string) => Promise<void>;
-  
-  // Entrega
-  confirmarEntrega: (pedidoId: string, observacao?: string) => Promise<boolean>;
-  confirmarEntregaEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
+  confirmarDespacho: (pedidoId: string) => Promise<void>;
+  confirmarEntrega: (pedidoId: string, observacao?: string) => Promise<void>;
   confirmarRetorno: (pedidoId: string, observacao?: string) => Promise<void>;
+  marcarTodosSeparados: (pedidos: PedidoExpedicao[]) => Promise<void>;
+  confirmarDespachoEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
+  confirmarEntregaEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
   confirmarRetornoEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
   
-  // Reagendamento
-  reagendarPedido: (pedidoId: string, novaData: Date, observacao?: string) => Promise<void>;
-  cancelarPedido: (pedidoId: string, motivo?: string) => Promise<void>;
-  marcarComoNaoEntregue: (pedidoId: string, motivo?: string) => Promise<void>;
-  
-  // Seleção
-  setSemanaAtual: (semana: Date) => void;
-  togglePedidoSelecionado: (pedidoId: string) => void;
-  selecionarTodosPedidos: () => void;
-  limparSelecao: () => void;
-  
-  // Filtros legados
-  getPedidosParaEntrega: () => PedidoExpedicao[];
-  getPedidosReagendados: () => PedidoExpedicao[];
-  getPedidosNaoEntregues: () => PedidoExpedicao[];
-  getPedidosAgendados: () => PedidoExpedicao[];
-  getPedidosPrevistos: () => PedidoExpedicao[];
+  // Getters
+  getPedidosParaSeparacao: () => PedidoExpedicao[];
+  getPedidosParaDespacho: () => PedidoExpedicao[];
+  getPedidosProximoDia: () => PedidoExpedicao[];
+  getPedidosAtrasados: () => PedidoExpedicao[];
 }
+
+const getProximoDiaUtil = (data: Date): Date => {
+  const proximaData = addBusinessDays(new Date(data), 1);
+  return isWeekend(proximaData) ? getProximoDiaUtil(proximaData) : proximaData;
+};
+
+// Função para parsing de data que preserva o fuso horário local
+const parseDataSegura = (dataString: string | Date): Date => {
+  if (dataString instanceof Date) {
+    return dataString;
+  }
+  
+  if (typeof dataString === 'string' && dataString.includes('-')) {
+    const parts = dataString.split('-');
+    const year = parseInt(parts[0]);
+    const month = parseInt(parts[1]) - 1;
+    const day = parseInt(parts[2]);
+    return new Date(year, month, day);
+  }
+  
+  return new Date(dataString);
+};
 
 export const useExpedicaoStore = create<ExpedicaoStore>()(
   devtools(
     (set, get) => ({
       pedidos: [],
       isLoading: false,
-      semanaAtual: new Date(),
-      ultimaAtualizacao: undefined,
-      pedidosSelecionados: new Set(),
+      ultimaAtualizacao: null,
       
-      setSemanaAtual: (semana: Date) => set({ semanaAtual: semana }),
-      
-      togglePedidoSelecionado: (pedidoId: string) => {
-        set(state => {
-          const nova = new Set(state.pedidosSelecionados);
-          if (nova.has(pedidoId)) {
-            nova.delete(pedidoId);
-          } else {
-            nova.add(pedidoId);
-          }
-          return { pedidosSelecionados: nova };
-        });
-      },
-      
-      selecionarTodosPedidos: () => {
-        const pedidosParaEntrega = get().getPedidosParaEntrega();
-        set({ pedidosSelecionados: new Set(pedidosParaEntrega.map(p => p.id)) });
-      },
-      
-      limparSelecao: () => set({ pedidosSelecionados: new Set() }),
-      
-      // Filtros para separação
-      getPedidosParaSeparacao: () => {
-        const hoje = new Date();
-        return get().pedidos.filter(p => 
-          isToday(p.data_entrega) && 
-          p.status === 'Agendado' && 
-          p.substatus !== 'Separado'
-        );
-      },
-      
-      getPedidosProximoDia: () => {
-        const amanha = addDays(new Date(), 1);
-        return get().pedidos.filter(p => 
-          format(p.data_entrega, 'yyyy-MM-dd') === format(amanha, 'yyyy-MM-dd') && 
-          p.status === 'Agendado'
-        );
-      },
-      
-      // Filtros para despacho
-      getPedidosParaDespacho: () => {
-        return get().pedidos.filter(p => 
-          isToday(p.data_entrega) && 
-          (p.substatus === 'Separado' || p.substatus === 'Despachado') &&
-          p.status === 'Agendado'
-        );
-      },
-      
-      getPedidosAtrasados: () => {
-        const hoje = new Date();
-        return get().pedidos.filter(p => 
-          isBefore(p.data_entrega, hoje) && 
-          p.status === 'Agendado' &&
-          p.substatus !== 'Entregue'
-        );
-      },
-      
-      // Filtros legados
-      getPedidosParaEntrega: () => {
-        return get().pedidos.filter(p => 
-          p.status === 'Agendado' && 
-          p.substatus !== 'Reagendado' &&
-          p.substatus !== 'Não entregue'
-        );
-      },
-      
-      getPedidosReagendados: () => {
-        return get().pedidos.filter(p => p.substatus === 'Reagendado');
-      },
-      
-      getPedidosNaoEntregues: () => {
-        return get().pedidos.filter(p => p.substatus === 'Não entregue');
-      },
-      
-      getPedidosAgendados: () => {
-        return get().pedidos.filter(p => p.status === 'Agendado');
-      },
-      
-      getPedidosPrevistos: () => {
-        return get().pedidos.filter(p => p.status === 'Previsto');
+      atualizarDataReferencia: async () => {
+        console.log('🔄 Atualizando data de referência para hoje...');
+        await get().carregarPedidos();
+        set({ ultimaAtualizacao: new Date() });
+        toast.success("Data de referência atualizada com sucesso!");
       },
       
       carregarPedidos: async () => {
         set({ isLoading: true });
+        
         try {
-          const inicioSemana = startOfWeek(get().semanaAtual, { weekStartsOn: 1 });
-          const fimSemana = endOfWeek(get().semanaAtual, { weekStartsOn: 1 });
-
+          console.log('🔄 Carregando agendamentos para expedição...');
+          
           const { data: agendamentos, error } = await supabase
             .from('agendamentos_clientes')
-            .select(`
-              *,
-              clientes!inner(id, nome, ativo, endereco_entrega)
-            `)
-            .gte('data_proxima_reposicao', inicioSemana.toISOString())
-            .lte('data_proxima_reposicao', fimSemana.toISOString())
-            .eq('clientes.ativo', true)
-            .in('status_agendamento', ['Agendado', 'Previsto'])
-            .order('data_proxima_reposicao', { ascending: true });
+            .select('*')
+            .eq('status_agendamento', 'Agendado');
 
-          if (error) throw error;
+          if (error) {
+            console.error('Erro ao carregar agendamentos:', error);
+            throw error;
+          }
 
-          const pedidosConvertidos = agendamentos?.map(agendamento => ({
-            id: agendamento.id,
-            cliente_id: agendamento.cliente_id,
-            cliente_nome: agendamento.clientes?.nome || 'Cliente não identificado',
-            cliente_endereco: agendamento.clientes?.endereco_entrega || '',
-            data_entrega: parseISO(agendamento.data_proxima_reposicao),
-            status: agendamento.status_agendamento,
-            substatus: agendamento.substatus_pedido || '',
-            substatus_pedido: agendamento.substatus_pedido || '',
-            quantidade_total: agendamento.quantidade_total || 0,
-            produtos: [], // Will be populated separately if needed
-            tipo_pedido: (agendamento.substatus_pedido === 'Alterado' ? 'Alterado' : 'Padrão') as 'Padrão' | 'Alterado',
-            prioridade: 'media' as 'baixa' | 'media' | 'alta',
-            editado: false
-          })) || [];
+          console.log('📥 Agendamentos carregados:', agendamentos?.length || 0);
 
+          // Tentar carregar dados dos clientes com link_google_maps
+          let clientesData: any[] = [];
+          
+          try {
+            const { data: clientesComLink, error: clientesError } = await supabase
+              .from('clientes')
+              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps');
+
+            if (clientesError) {
+              console.warn('Coluna link_google_maps não encontrada, carregando sem ela:', clientesError);
+              
+              // Fallback: carregar sem a coluna link_google_maps
+              const { data: clientesSemLink, error: fallbackError } = await supabase
+                .from('clientes')
+                .select('id, nome, endereco_entrega, contato_telefone');
+
+              if (fallbackError) {
+                throw fallbackError;
+              }
+
+              clientesData = clientesSemLink || [];
+            } else {
+              clientesData = clientesComLink || [];
+            }
+          } catch (fallbackError) {
+            console.error('Erro ao carregar dados dos clientes:', fallbackError);
+            clientesData = [];
+          }
+
+          const clientesMap = new Map(clientesData.map(c => [c.id, c]));
+
+          const pedidosFormatados = (agendamentos || []).map(agendamento => {
+            const cliente = clientesMap.get(agendamento.cliente_id);
+            
+            let dataPrevisao = new Date();
+            if (agendamento.data_proxima_reposicao) {
+              dataPrevisao = parseDataSegura(agendamento.data_proxima_reposicao);
+            }
+            
+            return {
+              id: agendamento.id,
+              cliente_id: agendamento.cliente_id,
+              cliente_nome: cliente?.nome || 'Cliente não encontrado',
+              cliente_endereco: cliente?.endereco_entrega,
+              cliente_telefone: cliente?.contato_telefone,
+              link_google_maps: cliente?.link_google_maps,
+              data_prevista_entrega: dataPrevisao,
+              quantidade_total: agendamento.quantidade_total || 0,
+              tipo_pedido: agendamento.tipo_pedido || 'Padrão',
+              status_agendamento: agendamento.status_agendamento,
+              substatus_pedido: (agendamento.substatus_pedido || 'Agendado') as SubstatusPedidoAgendado,
+              itens_personalizados: agendamento.itens_personalizados,
+              created_at: agendamento.created_at ? new Date(agendamento.created_at) : new Date()
+            };
+          });
+
+          console.log('✅ Pedidos formatados para expedição:', pedidosFormatados.length);
           set({ 
-            pedidos: pedidosConvertidos,
+            pedidos: pedidosFormatados,
             ultimaAtualizacao: new Date()
           });
-          console.log(`✅ ${pedidosConvertidos.length} pedidos carregados para expedição`);
+          
         } catch (error) {
-          console.error('❌ Erro ao carregar pedidos:', error);
-          toast.error('Erro ao carregar pedidos para expedição');
+          console.error('Erro ao carregar pedidos:', error);
+          toast.error("Erro ao carregar pedidos");
         } finally {
           set({ isLoading: false });
         }
       },
-      
+
       confirmarSeparacao: async (pedidoId: string) => {
         try {
-          console.log(`✅ Confirmando separação para pedido ${pedidoId}`);
+          const pedido = get().pedidos.find(p => p.id === pedidoId);
           
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({ 
-              substatus_pedido: 'Separado'
-            })
-            .eq('id', pedidoId);
-
-          if (error) throw error;
-
-          // Atualizar estado local
           set(state => ({
             pedidos: state.pedidos.map(p => 
-              p.id === pedidoId 
-                ? { ...p, substatus: 'Separado', substatus_pedido: 'Separado' }
-                : p
+              p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } : p
             )
           }));
 
-          toast.success('Pedido marcado como separado');
-        } catch (error) {
-          console.error('❌ Erro ao confirmar separação:', error);
-          toast.error('Erro ao confirmar separação');
-        }
-      },
-      
-      marcarTodosSeparados: async (pedidos: PedidoExpedicao[]) => {
-        try {
-          console.log(`✅ Marcando ${pedidos.length} pedidos como separados`);
-          
-          const ids = pedidos.map(p => p.id);
           const { error } = await supabase
             .from('agendamentos_clientes')
             .update({ substatus_pedido: 'Separado' })
-            .in('id', ids);
-
-          if (error) throw error;
-
-          // Atualizar estado local
-          set(state => ({
-            pedidos: state.pedidos.map(p => 
-              ids.includes(p.id)
-                ? { ...p, substatus: 'Separado', substatus_pedido: 'Separado' }
-                : p
-            )
-          }));
-
-          toast.success(`${pedidos.length} pedidos marcados como separados`);
-        } catch (error) {
-          console.error('❌ Erro ao marcar pedidos como separados:', error);
-          toast.error('Erro ao marcar pedidos como separados');
-        }
-      },
-
-      confirmarDespacho: async (pedidoId: string) => {
-        try {
-          console.log(`🚚 Confirmando despacho para pedido ${pedidoId}`);
-          
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({ 
-              substatus_pedido: 'Despachado'
-            })
             .eq('id', pedidoId);
 
-          if (error) throw error;
+          if (error) {
+            set(state => ({
+              pedidos: state.pedidos.map(p => 
+                p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } : p
+              )
+            }));
+            throw error;
+          }
 
-          // Atualizar estado local
-          set(state => ({
-            pedidos: state.pedidos.map(p => 
-              p.id === pedidoId 
-                ? { ...p, substatus: 'Despachado', substatus_pedido: 'Despachado' }
-                : p
-            )
-          }));
-
-          toast.success('Pedido despachado');
+          toast.success(`Separação confirmada para ${pedido?.cliente_nome}`);
         } catch (error) {
-          console.error('❌ Erro ao confirmar despacho:', error);
-          toast.error('Erro ao confirmar despacho');
+          console.error('Erro ao confirmar separação:', error);
+          toast.error("Erro ao confirmar separação");
         }
       },
 
-      confirmarDespachoEmMassa: async (pedidos: PedidoExpedicao[]) => {
+      desfazerSeparacao: async (pedidoId: string) => {
         try {
-          console.log(`🚚 Despachando ${pedidos.length} pedidos em massa`);
+          const pedido = get().pedidos.find(p => p.id === pedidoId);
           
-          const ids = pedidos.map(p => p.id);
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Despachado' })
-            .in('id', ids);
-
-          if (error) throw error;
-
-          // Atualizar estado local
           set(state => ({
             pedidos: state.pedidos.map(p => 
-              ids.includes(p.id)
-                ? { ...p, substatus: 'Despachado', substatus_pedido: 'Despachado' }
-                : p
+              p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } : p
             )
           }));
 
-          toast.success(`${pedidos.length} pedidos despachados`);
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ substatus_pedido: 'Agendado' })
+            .eq('id', pedidoId);
+
+          if (error) {
+            set(state => ({
+              pedidos: state.pedidos.map(p => 
+                p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } : p
+              )
+            }));
+            throw error;
+          }
+
+          toast.success(`Separação desfeita para ${pedido?.cliente_nome}`);
         } catch (error) {
-          console.error('❌ Erro ao despachar pedidos em massa:', error);
-          toast.error('Erro ao despachar pedidos');
+          console.error('Erro ao desfazer separação:', error);
+          toast.error("Erro ao desfazer separação");
         }
       },
 
       retornarParaSeparacao: async (pedidoId: string) => {
         try {
-          console.log(`↩️ Retornando pedido ${pedidoId} para separação`);
+          const pedido = get().pedidos.find(p => p.id === pedidoId);
           
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({ 
-              substatus_pedido: null
-            })
-            .eq('id', pedidoId);
-
-          if (error) throw error;
-
-          // Atualizar estado local
+          // Atualiza o estado local primeiro
           set(state => ({
             pedidos: state.pedidos.map(p => 
-              p.id === pedidoId 
-                ? { ...p, substatus: '', substatus_pedido: '' }
-                : p
+              p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } : p
             )
           }));
 
-          toast.success('Pedido retornado para separação');
-        } catch (error) {
-          console.error('❌ Erro ao retornar para separação:', error);
-          toast.error('Erro ao retornar para separação');
-        }
-      },
-      
-      atualizarDataReferencia: async () => {
-        await get().carregarPedidos();
-        toast.success('Dados atualizados');
-      },
-
-      confirmarEntrega: async (pedidoId: string, observacao?: string): Promise<boolean> => {
-        try {
-          console.log(`🚚 Iniciando confirmação de entrega para pedido ${pedidoId}`);
-          
-          const pedido = get().pedidos.find(p => p.id === pedidoId);
-          if (!pedido) {
-            console.error(`❌ Pedido ${pedidoId} não encontrado`);
-            toast.error('Pedido não encontrado');
-            return false;
-          }
-
-          // Validação de estoque usando o hook criado
-          const { validarEstoqueParaEntrega, processarBaixaEstoque } = useExpedicaoStockValidation();
-          
-          const itens = pedido.produtos.map(p => ({
-            produto_id: p.produto_id,
-            produto_nome: p.produto_nome,
-            quantidade: p.quantidade
-          }));
-
-          // Validar estoque antes de prosseguir
-          const estoqueValido = await validarEstoqueParaEntrega(itens);
-          if (!estoqueValido) {
-            console.log('❌ Entrega bloqueada por estoque insuficiente');
-            return false;
-          }
-
-          // Atualizar status no banco
-          const { error: updateError } = await supabase
+          // Atualiza no banco de dados
+          const { error } = await supabase
             .from('agendamentos_clientes')
-            .update({ 
-              status_agendamento: 'Entregue',
-              substatus_pedido: 'Entregue',
-              observacao: observacao
-            })
+            .update({ substatus_pedido: 'Agendado' })
             .eq('id', pedidoId);
 
-          if (updateError) {
-            console.error('❌ Erro ao atualizar status:', updateError);
-            throw updateError;
+          if (error) {
+            // Reverte se houver erro
+            set(state => ({
+              pedidos: state.pedidos.map(p => 
+                p.id === pedidoId ? { ...p, substatus_pedido: 'Despachado' as SubstatusPedidoAgendado } : p
+              )
+            }));
+            throw error;
           }
 
-          // Adicionar registro ao histórico
-          const historicoEntrega = {
-            cliente_id: pedido.cliente_id,
-            data: new Date(),
-            tipo: 'entrega' as const,
-            quantidade: pedido.quantidade_total,
-            itens,
-            status_anterior: pedido.status,
-            observacao: observacao || '',
-            editado_manualmente: false
-          };
+          toast.success(`${pedido?.cliente_nome} retornado para separação`);
+        } catch (error) {
+          console.error('Erro ao retornar para separação:', error);
+          toast.error("Erro ao retornar pedido para separação");
+        }
+      },
 
-          const entregaId = await useHistoricoEntregasStore.getState().adicionarRegistro(historicoEntrega);
+      confirmarDespacho: async (pedidoId: string) => {
+        try {
+          const pedido = get().pedidos.find(p => p.id === pedidoId);
           
-          if (entregaId) {
-            // Processar baixa de estoque
-            await processarBaixaEstoque(entregaId, itens);
+          set(state => ({
+            pedidos: state.pedidos.map(p => 
+              p.id === pedidoId ? { ...p, substatus_pedido: 'Despachado' as SubstatusPedidoAgendado } : p
+            )
+          }));
+
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ substatus_pedido: 'Despachado' })
+            .eq('id', pedidoId);
+
+          if (error) {
+            set(state => ({
+              pedidos: state.pedidos.map(p => 
+                p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } : p
+              )
+            }));
+            throw error;
           }
 
-          // Remover da lista local
+          toast.success(`Despacho confirmado para ${pedido?.cliente_nome}`);
+        } catch (error) {
+          console.error('Erro ao confirmar despacho:', error);
+          toast.error("Erro ao confirmar despacho");
+        }
+      },
+
+      confirmarEntrega: async (pedidoId: string, observacao?: string) => {
+        try {
+          const pedido = get().pedidos.find(p => p.id === pedidoId);
+          if (!pedido) throw new Error('Pedido não encontrado');
+
+          // Verificar se o pedido foi despachado
+          if (pedido.substatus_pedido !== 'Despachado') {
+            toast.error("Pedido deve estar despachado para confirmar entrega");
+            return;
+          }
+
+          console.log('🚚 Processando entrega com preservação de dados:', {
+            pedidoId,
+            tipoPedido: pedido.tipo_pedido,
+            itensPersonalizados: !!pedido.itens_personalizados,
+            dataPrevistaEntrega: pedido.data_prevista_entrega
+          });
+
+          // CRÍTICO: Gravar no histórico ANTES de alterar o agendamento
+          const historicoStore = useHistoricoEntregasStore.getState();
+          
+          // CORREÇÃO: Usar a data prevista de entrega do pedido como data da entrega
+          const dataEntrega = pedido.data_prevista_entrega;
+          
+          console.log('📝 Criando NOVO registro de entrega no histórico com data prevista:', dataEntrega);
+          await historicoStore.adicionarRegistro({
+            cliente_id: pedido.cliente_id,
+            cliente_nome: pedido.cliente_nome,
+            data: dataEntrega, // Usar data prevista do pedido, não data atual
+            tipo: 'entrega',
+            quantidade: pedido.quantidade_total,
+            itens: pedido.itens_personalizados || [],
+            status_anterior: pedido.substatus_pedido || 'Agendado',
+            observacao: observacao || undefined
+          });
+
+          // Remover do estado local da expedição
           set(state => ({
             pedidos: state.pedidos.filter(p => p.id !== pedidoId)
           }));
 
-          console.log(`✅ Entrega ${pedidoId} confirmada com sucesso`);
-          toast.success(`Entrega confirmada para ${pedido.cliente_nome}`);
-          return true;
+          // Carregar dados do cliente para periodicidade
+          const { data: cliente } = await supabase
+            .from('clientes')
+            .select('periodicidade_padrao')
+            .eq('id', pedido.cliente_id)
+            .single();
+
+          // CORREÇÃO: Calcular próxima data baseada na data prevista original, não na data atual
+          const proximaData = addDays(dataEntrega, cliente?.periodicidade_padrao || 7);
+          const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
+
+          // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido e itens personalizados
+          const dadosAtualizacao: any = {
+            data_proxima_reposicao: proximaDataFormatada,
+            status_agendamento: 'Previsto',
+            substatus_pedido: 'Agendado'
+          };
+
+          // PRESERVAR tipo de pedido e itens personalizados no reagendamento
+          if (pedido.tipo_pedido === 'Alterado') {
+            dadosAtualizacao.tipo_pedido = 'Alterado';
+            if (pedido.itens_personalizados) {
+              dadosAtualizacao.itens_personalizados = pedido.itens_personalizados;
+            }
+            console.log('✅ Preservando configuração alterada no reagendamento:', {
+              tipo_pedido: dadosAtualizacao.tipo_pedido,
+              itens_personalizados: !!dadosAtualizacao.itens_personalizados
+            });
+          } else {
+            dadosAtualizacao.tipo_pedido = 'Padrão';
+          }
+
+          await supabase
+            .from('agendamentos_clientes')
+            .update(dadosAtualizacao)
+            .eq('id', pedidoId);
+
+          console.log('✅ Entrega confirmada - NOVO registro criado no histórico com data prevista');
+          toast.success(`Entrega confirmada para ${pedido.cliente_nome} na data ${format(dataEntrega, 'dd/MM/yyyy')}. Reagendado como Previsto preservando configurações.`);
         } catch (error) {
           console.error('❌ Erro ao confirmar entrega:', error);
-          toast.error('Erro ao confirmar entrega');
-          return false;
+          toast.error("Erro ao confirmar entrega");
         }
-      },
-      
-      confirmarEntregaEmMassa: async (pedidos: PedidoExpedicao[]) => {
-        console.log(`🚚 Iniciando confirmação em massa para ${pedidos.length} pedidos`);
-        
-        let sucessos = 0;
-        let falhas = 0;
-        
-        for (const pedido of pedidos) {
-          const sucesso = await get().confirmarEntrega(pedido.id);
-          if (sucesso) {
-            sucessos++;
-          } else {
-            falhas++;
-          }
-        }
-        
-        if (sucessos > 0) {
-          toast.success(`${sucessos} entrega${sucessos > 1 ? 's' : ''} confirmada${sucessos > 1 ? 's' : ''}`);
-        }
-        if (falhas > 0) {
-          toast.error(`${falhas} entrega${falhas > 1 ? 's' : ''} falharam`);
-        }
-        
-        // Limpar seleção
-        set({ pedidosSelecionados: new Set() });
       },
 
       confirmarRetorno: async (pedidoId: string, observacao?: string) => {
         try {
-          console.log(`↩️ Confirmando retorno para pedido ${pedidoId}`);
-          
           const pedido = get().pedidos.find(p => p.id === pedidoId);
-          if (!pedido) {
-            throw new Error('Pedido não encontrado');
+          if (!pedido) throw new Error('Pedido não encontrado');
+
+          // Verificar se o pedido foi despachado
+          if (pedido.substatus_pedido !== 'Despachado') {
+            toast.error("Pedido deve estar despachado para confirmar retorno");
+            return;
           }
 
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({
-              substatus_pedido: 'Não entregue',
-              observacao: observacao || pedido.observacao
-            })
-            .eq('id', pedidoId);
+          console.log('🔄 Processando retorno com preservação de dados:', {
+            pedidoId,
+            tipoPedido: pedido.tipo_pedido,
+            itensPersonalizados: !!pedido.itens_personalizados,
+            dataPrevistaEntrega: pedido.data_prevista_entrega
+          });
 
-          if (error) throw error;
-
-          // Registrar no histórico
-          const registroHistorico = {
-            cliente_id: pedido.cliente_id,
-            data: new Date(),
-            tipo: 'retorno' as const,
-            quantidade: pedido.quantidade_total,
-            itens: [],
-            status_anterior: pedido.status,
-            observacao: `Não entregue${observacao ? ` - ${observacao}` : ''}`,
-            editado_manualmente: false
-          };
-
-          await useHistoricoEntregasStore.getState().adicionarRegistro(registroHistorico);
-
-          // Atualizar estado local
-          set(state => ({
-            pedidos: state.pedidos.map(p => 
-              p.id === pedidoId 
-                ? { ...p, substatus: 'Não entregue', substatus_pedido: 'Não entregue', observacao }
-                : p
-            )
-          }));
-
-          toast.success('Retorno confirmado');
-        } catch (error) {
-          console.error('❌ Erro ao confirmar retorno:', error);
-          toast.error('Erro ao confirmar retorno');
-        }
-      },
-
-      confirmarRetornoEmMassa: async (pedidos: PedidoExpedicao[]) => {
-        console.log(`↩️ Iniciando retorno em massa para ${pedidos.length} pedidos`);
-        
-        for (const pedido of pedidos) {
-          await get().confirmarRetorno(pedido.id, 'Retorno em massa');
-        }
-        
-        toast.success(`${pedidos.length} pedidos marcados como não entregues`);
-        
-        // Limpar seleção
-        set({ pedidosSelecionados: new Set() });
-      },
-
-      reagendarPedido: async (pedidoId: string, novaData: Date, observacao?: string) => {
-        try {
-          console.log(`📅 Reagendando pedido ${pedidoId} para ${format(novaData, 'dd/MM/yyyy')}`);
+          // CRÍTICO: Gravar no histórico ANTES de alterar o agendamento
+          const historicoStore = useHistoricoEntregasStore.getState();
           
-          const pedido = get().pedidos.find(p => p.id === pedidoId);
-          if (!pedido) {
-            throw new Error('Pedido não encontrado');
-          }
-
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({
-              data_proxima_reposicao: novaData.toISOString(),
-              substatus_pedido: 'Reagendado',
-              observacao: observacao || pedido.observacao
-            })
-            .eq('id', pedidoId);
-
-          if (error) throw error;
-
-          // Registrar no histórico
-          const registroHistorico = {
-            cliente_id: pedido.cliente_id,
-            data: new Date(),
-            tipo: 'retorno' as const,
-            quantidade: pedido.quantidade_total,
-            itens: [],
-            status_anterior: pedido.status,
-            observacao: `Reagendado para ${format(novaData, 'dd/MM/yyyy', { locale: ptBR })}${observacao ? ` - ${observacao}` : ''}`,
-            editado_manualmente: false
-          };
-
-          await useHistoricoEntregasStore.getState().adicionarRegistro(registroHistorico);
-
-          // Atualizar estado local
-          set(state => ({
-            pedidos: state.pedidos.map(p => 
-              p.id === pedidoId 
-                ? { ...p, data_entrega: novaData, substatus: 'Reagendado', observacao, editado: true }
-                : p
-            )
-          }));
-
-          toast.success(`Pedido reagendado para ${format(novaData, 'dd/MM/yyyy')}`);
-        } catch (error) {
-          console.error('❌ Erro ao reagendar pedido:', error);
-          toast.error('Erro ao reagendar pedido');
-        }
-      },
-
-      cancelarPedido: async (pedidoId: string, motivo?: string) => {
-        try {
-          console.log(`❌ Cancelando pedido ${pedidoId}`);
+          // CORREÇÃO: Usar a data prevista de entrega do pedido como data do retorno
+          const dataRetorno = pedido.data_prevista_entrega;
           
-          const pedido = get().pedidos.find(p => p.id === pedidoId);
-          if (!pedido) {
-            throw new Error('Pedido não encontrado');
-          }
-
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({
-              status_agendamento: 'Cancelado',
-              observacao: motivo || pedido.observacao
-            })
-            .eq('id', pedidoId);
-
-          if (error) throw error;
-
-          // Registrar no histórico
-          const registroHistorico = {
+          console.log('📝 Criando NOVO registro de retorno no histórico com data prevista:', dataRetorno);
+          await historicoStore.adicionarRegistro({
             cliente_id: pedido.cliente_id,
-            data: new Date(),
-            tipo: 'retorno' as const,
+            cliente_nome: pedido.cliente_nome,
+            data: dataRetorno, // Usar data prevista do pedido, não data atual
+            tipo: 'retorno',
             quantidade: pedido.quantidade_total,
-            itens: [],
-            status_anterior: pedido.status,
-            observacao: `Pedido cancelado${motivo ? ` - ${motivo}` : ''}`,
-            editado_manualmente: false
-          };
+            itens: pedido.itens_personalizados || [],
+            status_anterior: pedido.substatus_pedido || 'Agendado',
+            observacao: observacao || undefined
+          });
 
-          await useHistoricoEntregasStore.getState().adicionarRegistro(registroHistorico);
-
-          // Remover da lista local
+          // Remover do estado local da expedição
           set(state => ({
             pedidos: state.pedidos.filter(p => p.id !== pedidoId)
           }));
 
-          toast.success('Pedido cancelado');
+          // Reagendar para próximo dia útil baseado na data prevista original
+          const proximaData = getProximoDiaUtil(dataRetorno);
+          const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
+
+          // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido e itens personalizados
+          const dadosAtualizacao: any = {
+            data_proxima_reposicao: proximaDataFormatada,
+            status_agendamento: 'Previsto',
+            substatus_pedido: 'Agendado'
+          };
+
+          // PRESERVAR tipo de pedido e itens personalizados no reagendamento
+          if (pedido.tipo_pedido === 'Alterado') {
+            dadosAtualizacao.tipo_pedido = 'Alterado';
+            if (pedido.itens_personalizados) {
+              dadosAtualizacao.itens_personalizados = pedido.itens_personalizados;
+            }
+            console.log('✅ Preservando configuração alterada no retorno:', {
+              tipo_pedido: dadosAtualizacao.tipo_pedido,
+              itens_personalizados: !!dadosAtualizacao.itens_personalizados
+            });
+          } else {
+            dadosAtualizacao.tipo_pedido = 'Padrão';
+          }
+
+          await supabase
+            .from('agendamentos_clientes')
+            .update(dadosAtualizacao)
+            .eq('id', pedidoId);
+
+          console.log('✅ Retorno confirmado - NOVO registro criado no histórico com data prevista');
+          toast.success(`Retorno registrado para ${pedido.cliente_nome} na data ${format(dataRetorno, 'dd/MM/yyyy')}. Reagendado como Previsto preservando configurações.`);
         } catch (error) {
-          console.error('❌ Erro ao cancelar pedido:', error);
-          toast.error('Erro ao cancelar pedido');
+          console.error('❌ Erro ao confirmar retorno:', error);
+          toast.error("Erro ao confirmar retorno");
         }
       },
 
-      marcarComoNaoEntregue: async (pedidoId: string, motivo?: string) => {
+      marcarTodosSeparados: async (pedidos: PedidoExpedicao[]) => {
         try {
-          console.log(`🚫 Marcando pedido ${pedidoId} como não entregue`);
+          const pedidosParaSeparar = pedidos.filter(p => 
+            !p.substatus_pedido || p.substatus_pedido === 'Agendado'
+          );
           
-          const pedido = get().pedidos.find(p => p.id === pedidoId);
-          if (!pedido) {
-            throw new Error('Pedido não encontrado');
+          if (pedidosParaSeparar.length === 0) {
+            toast.error("Não há pedidos para separar");
+            return;
           }
 
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({
-              substatus_pedido: 'Não entregue',
-              observacao: motivo || pedido.observacao
-            })
-            .eq('id', pedidoId);
-
-          if (error) throw error;
-
-          // Registrar no histórico
-          const registroHistorico = {
-            cliente_id: pedido.cliente_id,
-            data: new Date(),
-            tipo: 'retorno' as const,
-            quantidade: pedido.quantidade_total,
-            itens: [],
-            status_anterior: pedido.status,
-            observacao: `Não entregue${motivo ? ` - ${motivo}` : ''}`,
-            editado_manualmente: false
-          };
-
-          await useHistoricoEntregasStore.getState().adicionarRegistro(registroHistorico);
-
-          // Atualizar estado local
           set(state => ({
             pedidos: state.pedidos.map(p => 
-              p.id === pedidoId 
-                ? { ...p, substatus: 'Não entregue', observacao: motivo, editado: true }
+              pedidosParaSeparar.some(ps => ps.id === p.id) 
+                ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } 
                 : p
             )
           }));
 
-          toast.success('Pedido marcado como não entregue');
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ substatus_pedido: 'Separado' })
+            .in('id', pedidosParaSeparar.map(p => p.id));
+
+          if (error) {
+            set(state => ({
+              pedidos: state.pedidos.map(p => 
+                pedidosParaSeparar.some(ps => ps.id === p.id) 
+                  ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } 
+                  : p
+              )
+            }));
+            throw error;
+          }
+
+          toast.success(`${pedidosParaSeparar.length} pedidos marcados como separados`);
         } catch (error) {
-          console.error('❌ Erro ao marcar pedido como não entregue:', error);
-          toast.error('Erro ao atualizar status do pedido');
+          console.error('Erro na separação em massa:', error);
+          toast.error("Erro na separação em massa");
         }
+      },
+
+      confirmarDespachoEmMassa: async (pedidos: PedidoExpedicao[]) => {
+        try {
+          const pedidosParaDespachar = pedidos.filter(p => p.substatus_pedido === 'Separado');
+          
+          if (pedidosParaDespachar.length === 0) {
+            toast.error("Não há pedidos separados para despachar");
+            return;
+          }
+
+          set(state => ({
+            pedidos: state.pedidos.map(p => 
+              pedidosParaDespachar.some(pd => pd.id === p.id) 
+                ? { ...p, substatus_pedido: 'Despachado' as SubstatusPedidoAgendado } 
+                : p
+            )
+          }));
+
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ substatus_pedido: 'Despachado' })
+            .in('id', pedidosParaDespachar.map(p => p.id));
+
+          if (error) {
+            set(state => ({
+              pedidos: state.pedidos.map(p => 
+                pedidosParaDespachar.some(pd => pd.id === p.id) 
+                  ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } 
+                  : p
+              )
+            }));
+            throw error;
+          }
+
+          toast.success(`${pedidosParaDespachar.length} pedidos despachados`);
+        } catch (error) {
+          console.error('Erro no despacho em massa:', error);
+          toast.error("Erro no despacho em massa");
+        }
+      },
+
+      confirmarEntregaEmMassa: async (pedidos: PedidoExpedicao[]) => {
+        try {
+          const pedidosParaEntregar = pedidos.filter(p => p.substatus_pedido === 'Despachado');
+          
+          if (pedidosParaEntregar.length === 0) {
+            toast.error("Não há pedidos despachados para entregar");
+            return;
+          }
+
+          console.log('🚚 Processando entregas em massa - criando registros no histórico...');
+          
+          // Gravar histórico para todos os pedidos - CADA UM UM NOVO REGISTRO
+          const historicoStore = useHistoricoEntregasStore.getState();
+          
+          set(state => ({
+            pedidos: state.pedidos.filter(p => 
+              !pedidosParaEntregar.some(pe => pe.id === p.id)
+            )
+          }));
+
+          for (const pedido of pedidosParaEntregar) {
+            console.log(`📝 Criando registro de entrega para ${pedido.cliente_nome}...`);
+            
+            // CORREÇÃO: Usar a data prevista de entrega do pedido
+            const dataEntrega = pedido.data_prevista_entrega;
+            
+            // Gravar no histórico - NOVO registro para cada pedido
+            await historicoStore.adicionarRegistro({
+              cliente_id: pedido.cliente_id,
+              cliente_nome: pedido.cliente_nome,
+              data: dataEntrega, // Usar data prevista do pedido, não data atual
+              tipo: 'entrega',
+              quantidade: pedido.quantidade_total,
+              itens: pedido.itens_personalizados || [],
+              status_anterior: pedido.substatus_pedido || 'Agendado'
+            });
+
+            const { data: cliente } = await supabase
+              .from('clientes')
+              .select('periodicidade_padrao')
+              .eq('id', pedido.cliente_id)
+              .single();
+
+            // CORREÇÃO: Calcular próxima data baseada na data prevista original
+            const proximaData = addDays(dataEntrega, cliente?.periodicidade_padrao || 7);
+            const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
+
+            // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido
+            const dadosAtualizacao: any = {
+              data_proxima_reposicao: proximaDataFormatada,
+              status_agendamento: 'Previsto',
+              substatus_pedido: 'Agendado'
+            };
+
+            // PRESERVAR tipo de pedido e itens personalizados
+            if (pedido.tipo_pedido === 'Alterado') {
+              dadosAtualizacao.tipo_pedido = 'Alterado';
+              if (pedido.itens_personalizados) {
+                dadosAtualizacao.itens_personalizados = pedido.itens_personalizados;
+              }
+            } else {
+              dadosAtualizacao.tipo_pedido = 'Padrão';
+            }
+
+            await supabase
+              .from('agendamentos_clientes')
+              .update(dadosAtualizacao)
+              .eq('id', pedido.id);
+          }
+
+          console.log(`✅ ${pedidosParaEntregar.length} entregas confirmadas - NOVOS registros criados no histórico com datas previstas`);
+          toast.success(`${pedidosParaEntregar.length} entregas confirmadas nas respectivas datas previstas e reagendadas como Previsto`);
+        } catch (error) {
+          console.error('❌ Erro na entrega em massa:', error);
+          toast.error("Erro na entrega em massa");
+        }
+      },
+
+      confirmarRetornoEmMassa: async (pedidos: PedidoExpedicao[]) => {
+        try {
+          const pedidosParaRetorno = pedidos.filter(p => p.substatus_pedido === 'Despachado');
+          
+          if (pedidosParaRetorno.length === 0) {
+            toast.error("Não há pedidos despachados para retorno");
+            return;
+          }
+
+          console.log('🔄 Processando retornos em massa - criando registros no histórico...');
+
+          // Gravar histórico para todos os pedidos - CADA UM UM NOVO REGISTRO
+          const historicoStore = useHistoricoEntregasStore.getState();
+
+          set(state => ({
+            pedidos: state.pedidos.filter(p => 
+              !pedidosParaRetorno.some(pr => pr.id === p.id)
+            )
+          }));
+
+          for (const pedido of pedidosParaRetorno) {
+            console.log(`📝 Criando registro de retorno para ${pedido.cliente_nome}...`);
+            
+            // CORREÇÃO: Usar a data prevista de entrega do pedido
+            const dataRetorno = pedido.data_prevista_entrega;
+            
+            // Gravar no histórico - NOVO registro para cada pedido
+            await historicoStore.adicionarRegistro({
+              cliente_id: pedido.cliente_id,
+              cliente_nome: pedido.cliente_nome,
+              data: dataRetorno, // Usar data prevista do pedido, não data atual
+              tipo: 'retorno',
+              quantidade: pedido.quantidade_total,
+              itens: pedido.itens_personalizados || [],
+              status_anterior: pedido.substatus_pedido || 'Agendado'
+            });
+
+            // Reagendar para próximo dia útil baseado na data prevista original
+            const proximaData = getProximoDiaUtil(dataRetorno);
+            const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
+
+            // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido
+            const dadosAtualizacao: any = {
+              data_proxima_reposicao: proximaDataFormatada,
+              status_agendamento: 'Previsto',
+              substatus_pedido: 'Agendado'
+            };
+
+            // PRESERVAR tipo de pedido e itens personalizados
+            if (pedido.tipo_pedido === 'Alterado') {
+              dadosAtualizacao.tipo_pedido = 'Alterado';
+              if (pedido.itens_personalizados) {
+                dadosAtualizacao.itens_personalizados = pedido.itens_personalizados;
+              }
+            } else {
+              dadosAtualizacao.tipo_pedido = 'Padrão';
+            }
+
+            await supabase
+              .from('agendamentos_clientes')
+              .update(dadosAtualizacao)
+              .eq('id', pedido.id);
+          }
+
+          console.log(`✅ ${pedidosParaRetorno.length} retornos confirmados - NOVOS registros criados no histórico com datas previstas`);
+          toast.success(`${pedidosParaRetorno.length} retornos registrados nas respectivas datas previstas e reagendados como Previsto`);
+        } catch (error) {
+          console.error('❌ Erro no retorno em massa:', error);
+          toast.error("Erro no retorno em massa");
+        }
+      },
+
+      getPedidosParaSeparacao: () => {
+        const hoje = new Date();
+        const hojeFormatado = format(hoje, 'yyyy-MM-dd');
+        
+        return get().pedidos.filter(p => {
+          const dataEntrega = parseDataSegura(p.data_prevista_entrega);
+          const dataEntregaFormatada = format(dataEntrega, 'yyyy-MM-dd');
+          
+          return p.status_agendamento === 'Agendado' && 
+                 (!p.substatus_pedido || p.substatus_pedido === 'Agendado') &&
+                 dataEntregaFormatada === hojeFormatado;
+        });
+      },
+
+      getPedidosParaDespacho: () => {
+        const hoje = new Date();
+        const hojeFormatado = format(hoje, 'yyyy-MM-dd');
+        
+        return get().pedidos.filter(p => {
+          const dataEntrega = parseDataSegura(p.data_prevista_entrega);
+          const dataEntregaFormatada = format(dataEntrega, 'yyyy-MM-dd');
+          
+          return p.status_agendamento === 'Agendado' &&
+                 (p.substatus_pedido === 'Separado' || p.substatus_pedido === 'Despachado') &&
+                 dataEntregaFormatada === hojeFormatado;
+        });
+      },
+
+      getPedidosProximoDia: () => {
+        const hoje = new Date();
+        const proximoDiaUtil = getProximoDiaUtil(hoje);
+        const proximoDiaStr = format(proximoDiaUtil, 'yyyy-MM-dd');
+        
+        return get().pedidos.filter(p => {
+          const dataEntrega = parseDataSegura(p.data_prevista_entrega);
+          const dataEntregaFormatada = format(dataEntrega, 'yyyy-MM-dd');
+          
+          return p.status_agendamento === 'Agendado' &&
+                 dataEntregaFormatada === proximoDiaStr;
+        });
+      },
+
+      getPedidosAtrasados: () => {
+        const hoje = startOfDay(new Date());
+        
+        return get().pedidos.filter(p => {
+          const dataEntrega = parseDataSegura(p.data_prevista_entrega);
+          const dataEntregaComparacao = startOfDay(dataEntrega);
+          
+          return p.status_agendamento === 'Agendado' &&
+                 isBefore(dataEntregaComparacao, hoje) &&
+                 p.substatus_pedido !== 'Entregue' && 
+                 p.substatus_pedido !== 'Retorno';
+        });
       }
     }),
     { name: 'expedicao-store' }

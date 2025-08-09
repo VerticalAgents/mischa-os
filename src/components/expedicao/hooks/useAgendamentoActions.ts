@@ -1,49 +1,85 @@
 
 import { useState } from "react";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
+import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { toast } from "sonner";
 
 export const useAgendamentoActions = () => {
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
   const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<any>(null);
-
-  const { agendamentos, salvarAgendamento } = useAgendamentoClienteStore();
+  
+  const { agendamentos, salvarAgendamento, carregarTodosAgendamentos } = useAgendamentoClienteStore();
+  const { pedidos, carregarPedidos } = useExpedicaoStore();
 
   const handleEditarAgendamento = (pedidoId: string) => {
     console.log('🔧 Editando agendamento para pedido ID:', pedidoId);
     
-    // Buscar nos agendamentos usando a propriedade cliente.id
-    const agendamento = agendamentos.find(a => a.cliente.id === pedidoId);
+    // Buscar primeiro nos agendamentos - use cliente.id para comparação
+    const agendamento = agendamentos.find(a => String(a.cliente.id) === pedidoId);
+    
     if (agendamento) {
-      setAgendamentoParaEditar({
-        ...agendamento,
-        data_entrega: agendamento.dataReposicao || new Date(),
-        data_prevista_entrega: agendamento.dataReposicao || new Date()
-      });
+      // Converter para o formato esperado pelo modal
+      const agendamentoFormatado = {
+        id: String(agendamento.cliente.id),
+        cliente: agendamento.cliente,
+        dataReposicao: agendamento.dataReposicao,
+        pedido: {
+          totalPedidoUnidades: agendamento.cliente.quantidadePadrao
+        }
+      };
+      
+      console.log('🔧 Agendamento formatado para edição:', agendamentoFormatado);
+      setAgendamentoParaEditar(agendamentoFormatado);
       setModalEditarAberto(true);
     } else {
-      console.error('❌ Agendamento não encontrado:', pedidoId);
-      toast.error('Agendamento não encontrado');
+      // Fallback: buscar nos pedidos da expedição
+      const pedidoExpedicao = pedidos.find(p => String(p.id) === pedidoId);
+      
+      if (pedidoExpedicao) {
+        const agendamentoFormatado = {
+          id: String(pedidoExpedicao.id),
+          cliente: {
+            id: pedidoExpedicao.cliente_id,
+            nome: pedidoExpedicao.cliente_nome,
+            quantidadePadrao: pedidoExpedicao.quantidade_total
+          },
+          dataReposicao: pedidoExpedicao.data_prevista_entrega,
+          pedido: {
+            totalPedidoUnidades: pedidoExpedicao.quantidade_total
+          }
+        };
+        
+        console.log('🔧 Agendamento formatado para edição (fallback):', agendamentoFormatado);
+        setAgendamentoParaEditar(agendamentoFormatado);
+        setModalEditarAberto(true);
+      } else {
+        console.error('❌ Agendamento não encontrado para edição:', pedidoId);
+        toast.error("Agendamento não encontrado");
+      }
     }
   };
 
-  const handleSalvarAgendamento = async (dadosAtualizados: any) => {
+  const handleSalvarAgendamento = async (agendamentoAtualizado: any) => {
     try {
-      console.log('💾 Salvando alterações no agendamento:', dadosAtualizados.cliente?.id || dadosAtualizados.cliente_id);
+      console.log('💾 Salvando agendamento atualizado:', agendamentoAtualizado);
       
-      // Usar salvarAgendamento disponível no store
-      if (salvarAgendamento) {
-        const clienteId = dadosAtualizados.cliente?.id || dadosAtualizados.cliente_id;
-        await salvarAgendamento(clienteId, dadosAtualizados);
-      }
+      await salvarAgendamento(agendamentoAtualizado.id, {
+        data_proxima_reposicao: agendamentoAtualizado.dataReposicao,
+        quantidade_total: agendamentoAtualizado.pedido?.totalPedidoUnidades || agendamentoAtualizado.cliente.quantidadePadrao
+      });
       
+      // Recarregar dados após atualização
+      await Promise.all([
+        carregarPedidos(), // MODIFICADO: Garantir que os pedidos são recarregados
+        carregarTodosAgendamentos()
+      ]);
+      
+      toast.success("Agendamento atualizado com sucesso!");
       setModalEditarAberto(false);
       setAgendamentoParaEditar(null);
-      
-      toast.success('Agendamento atualizado com sucesso');
     } catch (error) {
-      console.error('❌ Erro ao salvar agendamento:', error);
-      toast.error('Erro ao salvar agendamento');
+      console.error('Erro ao salvar agendamento:', error);
+      toast.error("Erro ao atualizar agendamento");
     }
   };
 

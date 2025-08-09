@@ -1672,10 +1672,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
-      process_entrega: {
-        Args: { p_entrega_id: string }
-        Returns: undefined
-      }
       refresh_dados_analise_giro: {
         Args: Record<PropertyKey, never>
         Returns: undefined
