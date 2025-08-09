@@ -256,12 +256,12 @@ export const useConfirmacaoEntrega = () => {
         const saldoAtual = await obterSaldoProduto(produtoId);
         const produto = produtos.find(p => p.id === produtoId);
         
-        if (saldoAtual < Number(quantidadeTotal)) {
+        if (saldoAtual < quantidadeTotal) {
           produtosInsuficientes.push({
             nome: produto?.nome || 'Produto não encontrado',
-            necessario: Number(quantidadeTotal),
+            necessario: quantidadeTotal,
             disponivel: saldoAtual,
-            faltante: Number(quantidadeTotal) - saldoAtual
+            faltante: quantidadeTotal - saldoAtual
           });
         }
       }
