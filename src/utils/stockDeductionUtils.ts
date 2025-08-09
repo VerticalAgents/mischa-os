@@ -1,197 +1,150 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-export const verificarObjetosBanco = async () => {
+interface DiagnosticoResultado {
+  temFlagAtiva: boolean;
+  temFuncaoComputeItens: boolean;
+  temTriggerProcessEntrega: boolean;
+  temRestricaoUnica: boolean;
+  detalhes: {
+    flagStatus: string;
+    funcaoStatus: string;
+    triggerStatus: string;
+    restricaoStatus: string;
+  };
+}
+
+export const diagnosticarConfiguracaoEstoque = async (): Promise<DiagnosticoResultado> => {
+  const resultado: DiagnosticoResultado = {
+    temFlagAtiva: false,
+    temFuncaoComputeItens: false,
+    temTriggerProcessEntrega: false,
+    temRestricaoUnica: false,
+    detalhes: {
+      flagStatus: 'Verificando...',
+      funcaoStatus: 'Verificando...',
+      triggerStatus: 'Verificando...',
+      restricaoStatus: 'Verificando...'
+    }
+  };
+
   try {
-    console.log('🔍 Verificando objetos do banco...');
+    // 1. Verificar se existe a tabela feature_flags
+    console.log('🔍 Verificando tabela feature_flags...');
+    const { data: flagsTable, error: flagsError } = await supabase
+      .from('feature_flags')
+      .select('*')
+      .limit(1);
 
-    // Verificações simplificadas usando RPC calls diretas
-    const verificacoes = {
-      app_feature_flags: false,
-      get_feature_flag: false,
-      compute_entrega_itens: false,
-      process_entrega: false,
-      trigger_process_entrega: false,
-      after_insert_trigger: false,
-      constraint_unique: false
-    };
+    if (flagsError) {
+      console.log('❌ Tabela feature_flags não existe:', flagsError.message);
+      resultado.detalhes.flagStatus = 'Tabela feature_flags não existe';
+    } else {
+      // Verificar flag específica
+      const { data: flagData, error: flagQueryError } = await supabase
+        .from('feature_flags')
+        .select('enabled')
+        .eq('name', 'auto_baixa_entrega')
+        .single();
 
-    // Verificar tabela app_feature_flags tentando uma consulta simples
-    try {
-      const { error: flagsError } = await supabase.rpc('get_feature_flag', { flag_name: 'auto_baixa_entrega' });
-      if (!flagsError) {
-        verificacoes.app_feature_flags = true;
-        verificacoes.get_feature_flag = true;
+      if (flagQueryError) {
+        console.log('❌ Flag auto_baixa_entrega não encontrada:', flagQueryError.message);
+        resultado.detalhes.flagStatus = 'Flag auto_baixa_entrega não encontrada';
+      } else {
+        resultado.temFlagAtiva = flagData.enabled;
+        resultado.detalhes.flagStatus = flagData.enabled ? 'Ativa' : 'Inativa';
+        console.log(`✅ Flag auto_baixa_entrega: ${flagData.enabled ? 'ATIVA' : 'INATIVA'}`);
       }
-    } catch (e) {
-      console.log('Feature flags não disponíveis:', e);
     }
 
-    // Verificar outras funções tentando chamá-las
-    try {
-      const { error: computeError } = await supabase.rpc('compute_entrega_itens', { p_entrega_id: '00000000-0000-0000-0000-000000000000' });
-      if (!computeError || computeError.message?.includes('not found')) {
-        verificacoes.compute_entrega_itens = true;
-      }
-    } catch (e) {
-      console.log('compute_entrega_itens não disponível');
+    // 2. Verificar constraint única em movimentacoes_estoque_produtos
+    console.log('🔍 Verificando constraint única...');
+    const { data: constraintData, error: constraintError } = await supabase
+      .rpc('check_unique_constraint_exists')
+      .single();
+
+    if (constraintError) {
+      console.log('❌ Erro ao verificar constraint:', constraintError.message);
+      resultado.detalhes.restricaoStatus = 'Erro ao verificar constraint';
+    } else {
+      resultado.temRestricaoUnica = constraintData || false;
+      resultado.detalhes.restricaoStatus = constraintData ? 'Presente' : 'Ausente';
+      console.log(`${constraintData ? '✅' : '❌'} Constraint única: ${constraintData ? 'PRESENTE' : 'AUSENTE'}`);
     }
 
-    try {
-      const { error: processError } = await supabase.rpc('process_entrega', { p_entrega_id: '00000000-0000-0000-0000-000000000000' });
-      if (!processError || processError.message?.includes('not found')) {
-        verificacoes.process_entrega = true;
-      }
-    } catch (e) {
-      console.log('process_entrega não disponível');
+    // 3. Verificar se existem dados válidos para testar
+    console.log('🔍 Verificando dados de exemplo...');
+    const { data: sampleData, error: sampleError } = await supabase
+      .from('historico_entregas')
+      .select('id')
+      .limit(1);
+
+    if (sampleError) {
+      console.log('❌ Erro ao verificar dados:', sampleError.message);
+    } else {
+      console.log(`📊 Registros encontrados no histórico: ${sampleData?.length || 0}`);
     }
 
-    // Para triggers e constraints, vamos assumir que existem se as funções existem
-    if (verificacoes.compute_entrega_itens && verificacoes.process_entrega) {
-      verificacoes.trigger_process_entrega = true;
-      verificacoes.after_insert_trigger = true;
-      verificacoes.constraint_unique = true;
-    }
-
-    console.log('✅ Verificação de objetos concluída:', verificacoes);
-    return verificacoes;
   } catch (error) {
-    console.error('❌ Erro na verificação de objetos:', error);
+    console.error('❌ Erro geral no diagnóstico:', error);
+  }
+
+  return resultado;
+};
+
+export const verificarEstoqueProduto = async (produtoId: string): Promise<{
+  existe: boolean;
+  estoque: number;
+  nome: string;
+}> => {
+  try {
+    const { data, error } = await supabase
+      .from('produtos_finais')
+      .select('id, nome, estoque_atual')
+      .eq('id', produtoId)
+      .eq('ativo', true)
+      .single();
+
+    if (error) {
+      console.log(`❌ Produto ${produtoId} não encontrado:`, error.message);
+      return { existe: false, estoque: 0, nome: 'N/A' };
+    }
+
     return {
-      app_feature_flags: false,
-      get_feature_flag: false,
-      compute_entrega_itens: false,
-      process_entrega: false,
-      trigger_process_entrega: false,
-      after_insert_trigger: false,
-      constraint_unique: false
+      existe: true,
+      estoque: data.estoque_atual || 0,
+      nome: data.nome
     };
-  }
-};
-
-export const verificarFeatureFlags = async () => {
-  try {
-    console.log('🚩 Verificando feature flags...');
-
-    const flags = [
-      { flag_name: 'auto_baixa_entrega', enabled: false }
-    ];
-
-    // Tentar obter o valor da flag
-    try {
-      const { data: flagValue, error } = await supabase.rpc('get_feature_flag', { flag_name: 'auto_baixa_entrega' });
-      if (!error) {
-        flags[0].enabled = flagValue === true;
-      }
-    } catch (e) {
-      console.log('Feature flag não disponível');
-    }
-
-    return { flags };
   } catch (error) {
-    console.error('❌ Erro ao verificar feature flags:', error);
-    return { 
-      flags: [
-        { flag_name: 'auto_baixa_entrega', enabled: false }
-      ] 
-    };
+    console.error('❌ Erro ao verificar produto:', error);
+    return { existe: false, estoque: 0, nome: 'N/A' };
   }
 };
 
-export const verificarMovimentacoesEstoque = async (entregaId: string) => {
+export const verificarMovimentacoesEntrega = async (entregaId: string): Promise<{
+  existeMovimentacao: boolean;
+  totalMovimentacoes: number;
+  detalhes: any[];
+}> => {
   try {
-    const { data: movimentacoes, error } = await supabase
+    const { data, error } = await supabase
       .from('movimentacoes_estoque_produtos')
       .select('*')
       .eq('referencia_tipo', 'entrega')
       .eq('referencia_id', entregaId);
 
     if (error) {
-      console.error('Erro ao verificar movimentações:', error);
-      return [];
+      console.error('❌ Erro ao verificar movimentações:', error);
+      return { existeMovimentacao: false, totalMovimentacoes: 0, detalhes: [] };
     }
-
-    return movimentacoes || [];
-  } catch (error) {
-    console.error('Erro ao verificar movimentações:', error);
-    return [];
-  }
-};
-
-export const verificarSaldosProdutos = async () => {
-  try {
-    const { data: produtos, error } = await supabase
-      .from('produtos_finais')
-      .select('id, nome, estoque_atual')
-      .eq('ativo', true);
-
-    if (error) {
-      console.error('Erro ao verificar saldos:', error);
-      return [];
-    }
-
-    return produtos || [];
-  } catch (error) {
-    console.error('Erro ao verificar saldos:', error);
-    return [];
-  }
-};
-
-export const executarDiagnosticoCompleto = async () => {
-  try {
-    console.log('🔍 Executando diagnóstico completo...');
-    
-    // Buscar última entrega
-    const { data: ultimaEntrega, error: entregaError } = await supabase
-      .from('historico_entregas')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (entregaError || !ultimaEntrega) {
-      console.log('Nenhuma entrega encontrada para diagnóstico');
-      return {
-        ultimaEntrega: null,
-        movimentacoes: [],
-        resumo: {
-          entregaTemItensComProdutoId: false,
-          houveBaixaAutomatica: false,
-          totalProdutosAtivos: 0
-        }
-      };
-    }
-
-    // Verificar movimentações da última entrega
-    const movimentacoes = await verificarMovimentacoesEstoque(ultimaEntrega.id);
-
-    // Verificar se os itens têm produto_id válido
-    const itensComProdutoId = ultimaEntrega.itens?.filter((item: any) => 
-      item.produto_id && item.produto_id.length > 0
-    ) || [];
-
-    // Verificar produtos ativos
-    const produtosAtivos = await verificarSaldosProdutos();
 
     return {
-      ultimaEntrega,
-      movimentacoes,
-      resumo: {
-        entregaTemItensComProdutoId: itensComProdutoId.length > 0,
-        houveBaixaAutomatica: movimentacoes.length > 0,
-        totalProdutosAtivos: produtosAtivos.length
-      }
+      existeMovimentacao: (data?.length || 0) > 0,
+      totalMovimentacoes: data?.length || 0,
+      detalhes: data || []
     };
   } catch (error) {
-    console.error('❌ Erro no diagnóstico completo:', error);
-    return {
-      ultimaEntrega: null,
-      movimentacoes: [],
-      resumo: {
-        entregaTemItensComProdutoId: false,
-        houveBaixaAutomatica: false,
-        totalProdutosAtivos: 0
-      }
-    };
+    console.error('❌ Erro ao verificar movimentações:', error);
+    return { existeMovimentacao: false, totalMovimentacoes: 0, detalhes: [] };
   }
 };
