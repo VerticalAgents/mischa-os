@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useProdutoStore } from '@/hooks/useProdutoStore';
 
 interface ProdutoInsuficiente {
   nome: string;
@@ -22,9 +21,8 @@ interface PedidoEntrega {
 
 export const useConfirmacaoEntrega = () => {
   const [loading, setLoading] = useState(false);
-  const { produtos } = useProdutoStore();
 
-  // Substitui o cálculo local por RPC no servidor (fonte única da verdade)
+  // Calcular itens usando RPC no servidor (fonte única da verdade)
   const calcularItensEntrega = async (pedido: PedidoEntrega) => {
     console.log('🧮 [RPC] Calculando itens para entrega:', pedido.id);
     const { data, error } = await supabase.rpc('compute_entrega_itens', {
@@ -177,7 +175,13 @@ export const useConfirmacaoEntrega = () => {
       for (const produtoId of Object.keys(todosProdutosNecessarios)) {
         const quantidadeTotal = Number(todosProdutosNecessarios[produtoId]);
         const saldoAtual = await obterSaldoProduto(produtoId);
-        const produto = produtos.find(p => p.id === produtoId);
+        
+        // Buscar nome do produto direto do banco
+        const { data: produto } = await supabase
+          .from('produtos_finais')
+          .select('nome')
+          .eq('id', produtoId)
+          .single();
         
         if (saldoAtual < quantidadeTotal) {
           produtosInsuficientes.push({
@@ -204,6 +208,8 @@ export const useConfirmacaoEntrega = () => {
 
       // 3) Processar cada entrega no servidor (transação por pedido)
       let sucesso = 0;
+      const erros: string[] = [];
+      
       for (const pedido of pedidos) {
         const { error: procError } = await supabase.rpc('process_entrega_safe', {
           p_agendamento_id: pedido.id,
@@ -212,7 +218,8 @@ export const useConfirmacaoEntrega = () => {
 
         if (procError) {
           console.error(`Erro ao processar entrega do cliente ${pedido.cliente_nome}:`, procError);
-          continue; // segue com as demais
+          erros.push(`${pedido.cliente_nome}: ${procError.message}`);
+          continue;
         }
         sucesso += 1;
       }
@@ -220,16 +227,24 @@ export const useConfirmacaoEntrega = () => {
       if (sucesso === 0) {
         toast({
           title: "Falha ao confirmar entregas",
-          description: "Nenhuma entrega foi processada com sucesso.",
+          description: erros.length > 0 ? erros.join('\n') : "Nenhuma entrega foi processada com sucesso.",
           variant: "destructive"
         });
         return false;
       }
 
-      toast({
-        title: "Entregas confirmadas",
-        description: `${sucesso} de ${pedidos.length} entregas confirmadas com baixa automática no estoque.`,
-      });
+      if (erros.length > 0) {
+        toast({
+          title: "Entregas parcialmente confirmadas",
+          description: `${sucesso} de ${pedidos.length} entregas confirmadas. Erros: ${erros.join(', ')}`,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Entregas confirmadas",
+          description: `${sucesso} de ${pedidos.length} entregas confirmadas com baixa automática no estoque.`,
+        });
+      }
 
       return true;
     } catch (error) {
