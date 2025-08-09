@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfWeek, endOfWeek, parseISO } from "date-fns";
+import { format, startOfWeek, endOfWeek, parseISO, isToday, isBefore, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { useHistoricoEntregasStore } from "./useHistoricoEntregasStore";
@@ -24,33 +24,59 @@ interface PedidoExpedicao {
   quantidade_total: number;
   produtos: PedidoProduto[];
   observacao?: string;
-  tipo_pedido: 'agendado' | 'previsto';
+  tipo_pedido: 'Padrão' | 'Alterado';
   rota?: string;
   prioridade: 'baixa' | 'media' | 'alta';
   confirmado_producao?: boolean;
   data_expedicao?: Date;
   editado?: boolean;
   status_cliente?: string;
+  substatus_pedido?: string;
+  cliente_endereco?: string;
 }
 
 interface ExpedicaoStore {
   pedidos: PedidoExpedicao[];
   isLoading: boolean;
   semanaAtual: Date;
+  ultimaAtualizacao?: Date;
   pedidosSelecionados: Set<string>;
   
+  // Carregamento
   carregarPedidos: () => Promise<void>;
-  confirmarEntrega: (pedidoId: string) => Promise<boolean>;
-  confirmarEntregaEmMassa: (pedidosIds: string[]) => Promise<void>;
+  
+  // Separação
+  getPedidosParaSeparacao: () => PedidoExpedicao[];
+  getPedidosProximoDia: () => PedidoExpedicao[];
+  confirmarSeparacao: (pedidoId: string) => Promise<void>;
+  marcarTodosSeparados: (pedidos: PedidoExpedicao[]) => Promise<void>;
+  atualizarDataReferencia: () => Promise<void>;
+  
+  // Despacho
+  getPedidosParaDespacho: () => PedidoExpedicao[];
+  getPedidosAtrasados: () => PedidoExpedicao[];
+  confirmarDespacho: (pedidoId: string) => Promise<void>;
+  confirmarDespachoEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
+  retornarParaSeparacao: (pedidoId: string) => Promise<void>;
+  
+  // Entrega
+  confirmarEntrega: (pedidoId: string, observacao?: string) => Promise<boolean>;
+  confirmarEntregaEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
+  confirmarRetorno: (pedidoId: string, observacao?: string) => Promise<void>;
+  confirmarRetornoEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
+  
+  // Reagendamento
   reagendarPedido: (pedidoId: string, novaData: Date, observacao?: string) => Promise<void>;
   cancelarPedido: (pedidoId: string, motivo?: string) => Promise<void>;
   marcarComoNaoEntregue: (pedidoId: string, motivo?: string) => Promise<void>;
   
+  // Seleção
   setSemanaAtual: (semana: Date) => void;
   togglePedidoSelecionado: (pedidoId: string) => void;
   selecionarTodosPedidos: () => void;
   limparSelecao: () => void;
   
+  // Filtros legados
   getPedidosParaEntrega: () => PedidoExpedicao[];
   getPedidosReagendados: () => PedidoExpedicao[];
   getPedidosNaoEntregues: () => PedidoExpedicao[];
@@ -64,6 +90,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       pedidos: [],
       isLoading: false,
       semanaAtual: new Date(),
+      ultimaAtualizacao: undefined,
       pedidosSelecionados: new Set(),
       
       setSemanaAtual: (semana: Date) => set({ semanaAtual: semana }),
@@ -87,6 +114,43 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       
       limparSelecao: () => set({ pedidosSelecionados: new Set() }),
       
+      // Filtros para separação
+      getPedidosParaSeparacao: () => {
+        const hoje = new Date();
+        return get().pedidos.filter(p => 
+          isToday(p.data_entrega) && 
+          p.status === 'Agendado' && 
+          p.substatus !== 'Separado'
+        );
+      },
+      
+      getPedidosProximoDia: () => {
+        const amanha = addDays(new Date(), 1);
+        return get().pedidos.filter(p => 
+          format(p.data_entrega, 'yyyy-MM-dd') === format(amanha, 'yyyy-MM-dd') && 
+          p.status === 'Agendado'
+        );
+      },
+      
+      // Filtros para despacho
+      getPedidosParaDespacho: () => {
+        return get().pedidos.filter(p => 
+          isToday(p.data_entrega) && 
+          (p.substatus === 'Separado' || p.substatus === 'Despachado') &&
+          p.status === 'Agendado'
+        );
+      },
+      
+      getPedidosAtrasados: () => {
+        const hoje = new Date();
+        return get().pedidos.filter(p => 
+          isBefore(p.data_entrega, hoje) && 
+          p.status === 'Agendado' &&
+          p.substatus !== 'Entregue'
+        );
+      },
+      
+      // Filtros legados
       getPedidosParaEntrega: () => {
         return get().pedidos.filter(p => 
           p.status === 'Agendado' && 
@@ -104,11 +168,11 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       },
       
       getPedidosAgendados: () => {
-        return get().pedidos.filter(p => p.tipo_pedido === 'agendado');
+        return get().pedidos.filter(p => p.status === 'Agendado');
       },
       
       getPedidosPrevistos: () => {
-        return get().pedidos.filter(p => p.tipo_pedido === 'previsto');
+        return get().pedidos.filter(p => p.status === 'Previsto');
       },
       
       carregarPedidos: async () => {
@@ -121,13 +185,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .from('agendamentos_clientes')
             .select(`
               *,
-              clientes!inner(id, nome, ativo, status_cliente),
-              produtos_agendamento(
-                id,
-                produto_id,
-                quantidade,
-                produtos_finais(id, nome)
-              )
+              clientes!inner(id, nome, ativo, endereco_completo)
             `)
             .gte('data_proxima_reposicao', inicioSemana.toISOString())
             .lte('data_proxima_reposicao', fimSemana.toISOString())
@@ -140,27 +198,23 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const pedidosConvertidos = agendamentos?.map(agendamento => ({
             id: agendamento.id,
             cliente_id: agendamento.cliente_id,
-            cliente_nome: agendamento.clientes.nome,
+            cliente_nome: agendamento.clientes?.nome || 'Cliente não identificado',
+            cliente_endereco: agendamento.clientes?.endereco_completo || '',
             data_entrega: parseISO(agendamento.data_proxima_reposicao),
             status: agendamento.status_agendamento,
             substatus: agendamento.substatus_pedido || '',
+            substatus_pedido: agendamento.substatus_pedido || '',
             quantidade_total: agendamento.quantidade_total || 0,
-            produtos: agendamento.produtos_agendamento?.map?.((pa: any) => ({
-              produto_id: pa.produto_id,
-              produto_nome: pa.produtos_finais?.nome || 'Produto não identificado',
-              quantidade: pa.quantidade
-            })) || [],
-            observacao: agendamento.observacao,
-            tipo_pedido: agendamento.status_agendamento === 'Agendado' ? 'agendado' : 'previsto' as 'agendado' | 'previsto',
-            rota: agendamento.rota_entrega,
+            produtos: [], // Will be populated separately if needed
+            tipo_pedido: (agendamento.substatus_pedido === 'Alterado' ? 'Alterado' : 'Padrão') as 'Padrão' | 'Alterado',
             prioridade: 'media' as 'baixa' | 'media' | 'alta',
-            confirmado_producao: agendamento.confirmado_producao,
-            data_expedicao: agendamento.data_expedicao ? parseISO(agendamento.data_expedicao) : undefined,
-            editado: agendamento.editado,
-            status_cliente: agendamento.clientes.status_cliente
+            editado: false
           })) || [];
 
-          set({ pedidos: pedidosConvertidos });
+          set({ 
+            pedidos: pedidosConvertidos,
+            ultimaAtualizacao: new Date()
+          });
           console.log(`✅ ${pedidosConvertidos.length} pedidos carregados para expedição`);
         } catch (error) {
           console.error('❌ Erro ao carregar pedidos:', error);
@@ -170,7 +224,155 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         }
       },
       
-      confirmarEntrega: async (pedidoId: string): Promise<boolean> => {
+      confirmarSeparacao: async (pedidoId: string) => {
+        try {
+          console.log(`✅ Confirmando separação para pedido ${pedidoId}`);
+          
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ 
+              substatus_pedido: 'Separado'
+            })
+            .eq('id', pedidoId);
+
+          if (error) throw error;
+
+          // Atualizar estado local
+          set(state => ({
+            pedidos: state.pedidos.map(p => 
+              p.id === pedidoId 
+                ? { ...p, substatus: 'Separado', substatus_pedido: 'Separado' }
+                : p
+            )
+          }));
+
+          toast.success('Pedido marcado como separado');
+        } catch (error) {
+          console.error('❌ Erro ao confirmar separação:', error);
+          toast.error('Erro ao confirmar separação');
+        }
+      },
+      
+      marcarTodosSeparados: async (pedidos: PedidoExpedicao[]) => {
+        try {
+          console.log(`✅ Marcando ${pedidos.length} pedidos como separados`);
+          
+          const ids = pedidos.map(p => p.id);
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ substatus_pedido: 'Separado' })
+            .in('id', ids);
+
+          if (error) throw error;
+
+          // Atualizar estado local
+          set(state => ({
+            pedidos: state.pedidos.map(p => 
+              ids.includes(p.id)
+                ? { ...p, substatus: 'Separado', substatus_pedido: 'Separado' }
+                : p
+            )
+          }));
+
+          toast.success(`${pedidos.length} pedidos marcados como separados`);
+        } catch (error) {
+          console.error('❌ Erro ao marcar pedidos como separados:', error);
+          toast.error('Erro ao marcar pedidos como separados');
+        }
+      },
+
+      confirmarDespacho: async (pedidoId: string) => {
+        try {
+          console.log(`🚚 Confirmando despacho para pedido ${pedidoId}`);
+          
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ 
+              substatus_pedido: 'Despachado'
+            })
+            .eq('id', pedidoId);
+
+          if (error) throw error;
+
+          // Atualizar estado local
+          set(state => ({
+            pedidos: state.pedidos.map(p => 
+              p.id === pedidoId 
+                ? { ...p, substatus: 'Despachado', substatus_pedido: 'Despachado' }
+                : p
+            )
+          }));
+
+          toast.success('Pedido despachado');
+        } catch (error) {
+          console.error('❌ Erro ao confirmar despacho:', error);
+          toast.error('Erro ao confirmar despacho');
+        }
+      },
+
+      confirmarDespachoEmMassa: async (pedidos: PedidoExpedicao[]) => {
+        try {
+          console.log(`🚚 Despachando ${pedidos.length} pedidos em massa`);
+          
+          const ids = pedidos.map(p => p.id);
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ substatus_pedido: 'Despachado' })
+            .in('id', ids);
+
+          if (error) throw error;
+
+          // Atualizar estado local
+          set(state => ({
+            pedidos: state.pedidos.map(p => 
+              ids.includes(p.id)
+                ? { ...p, substatus: 'Despachado', substatus_pedido: 'Despachado' }
+                : p
+            )
+          }));
+
+          toast.success(`${pedidos.length} pedidos despachados`);
+        } catch (error) {
+          console.error('❌ Erro ao despachar pedidos em massa:', error);
+          toast.error('Erro ao despachar pedidos');
+        }
+      },
+
+      retornarParaSeparacao: async (pedidoId: string) => {
+        try {
+          console.log(`↩️ Retornando pedido ${pedidoId} para separação`);
+          
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ 
+              substatus_pedido: null
+            })
+            .eq('id', pedidoId);
+
+          if (error) throw error;
+
+          // Atualizar estado local
+          set(state => ({
+            pedidos: state.pedidos.map(p => 
+              p.id === pedidoId 
+                ? { ...p, substatus: '', substatus_pedido: '' }
+                : p
+            )
+          }));
+
+          toast.success('Pedido retornado para separação');
+        } catch (error) {
+          console.error('❌ Erro ao retornar para separação:', error);
+          toast.error('Erro ao retornar para separação');
+        }
+      },
+      
+      atualizarDataReferencia: async () => {
+        await get().carregarPedidos();
+        toast.success('Dados atualizados');
+      },
+
+      confirmarEntrega: async (pedidoId: string, observacao?: string): Promise<boolean> => {
         try {
           console.log(`🚚 Iniciando confirmação de entrega para pedido ${pedidoId}`);
           
@@ -202,7 +404,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .from('agendamentos_clientes')
             .update({ 
               status_agendamento: 'Entregue',
-              data_entrega_efetiva: new Date().toISOString()
+              substatus_pedido: 'Entregue',
+              observacao: observacao
             })
             .eq('id', pedidoId);
 
@@ -218,7 +421,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             tipo: 'entrega' as const,
             quantidade: pedido.quantidade_total,
             itens,
-            status_anterior: pedido.status
+            status_anterior: pedido.status,
+            observacao: observacao || ''
           };
 
           const entregaId = await useHistoricoEntregasStore.getState().adicionarRegistro(historicoEntrega);
@@ -243,14 +447,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         }
       },
       
-      confirmarEntregaEmMassa: async (pedidosIds: string[]) => {
-        console.log(`🚚 Iniciando confirmação em massa para ${pedidosIds.length} pedidos`);
+      confirmarEntregaEmMassa: async (pedidos: PedidoExpedicao[]) => {
+        console.log(`🚚 Iniciando confirmação em massa para ${pedidos.length} pedidos`);
         
         let sucessos = 0;
         let falhas = 0;
         
-        for (const pedidoId of pedidosIds) {
-          const sucesso = await get().confirmarEntrega(pedidoId);
+        for (const pedido of pedidos) {
+          const sucesso = await get().confirmarEntrega(pedido.id);
           if (sucesso) {
             sucessos++;
           } else {
@@ -264,6 +468,66 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         if (falhas > 0) {
           toast.error(`${falhas} entrega${falhas > 1 ? 's' : ''} falharam`);
         }
+        
+        // Limpar seleção
+        set({ pedidosSelecionados: new Set() });
+      },
+
+      confirmarRetorno: async (pedidoId: string, observacao?: string) => {
+        try {
+          console.log(`↩️ Confirmando retorno para pedido ${pedidoId}`);
+          
+          const pedido = get().pedidos.find(p => p.id === pedidoId);
+          if (!pedido) {
+            throw new Error('Pedido não encontrado');
+          }
+
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({
+              substatus_pedido: 'Não entregue',
+              observacao: observacao || pedido.observacao
+            })
+            .eq('id', pedidoId);
+
+          if (error) throw error;
+
+          // Registrar no histórico
+          const registroHistorico = {
+            cliente_id: pedido.cliente_id,
+            data: new Date(),
+            tipo: 'retorno' as const,
+            quantidade: pedido.quantidade_total,
+            status_anterior: pedido.status,
+            observacao: `Não entregue${observacao ? ` - ${observacao}` : ''}`
+          };
+
+          await useHistoricoEntregasStore.getState().adicionarRegistro(registroHistorico);
+
+          // Atualizar estado local
+          set(state => ({
+            pedidos: state.pedidos.map(p => 
+              p.id === pedidoId 
+                ? { ...p, substatus: 'Não entregue', substatus_pedido: 'Não entregue', observacao }
+                : p
+            )
+          }));
+
+          toast.success('Retorno confirmado');
+        } catch (error) {
+          console.error('❌ Erro ao confirmar retorno:', error);
+          toast.error('Erro ao confirmar retorno');
+        }
+      },
+
+      confirmarRetornoEmMassa: async (pedidos: PedidoExpedicao[]) => {
+        console.log(`↩️ Iniciando retorno em massa para ${pedidos.length} pedidos`);
+        
+        for (const pedido of pedidos) {
+          await get().confirmarRetorno(pedido.id, 'Retorno em massa');
+        }
+        
+        toast.success(`${pedidos.length} pedidos marcados como não entregues`);
         
         // Limpar seleção
         set({ pedidosSelecionados: new Set() });
@@ -283,8 +547,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .update({
               data_proxima_reposicao: novaData.toISOString(),
               substatus_pedido: 'Reagendado',
-              observacao: observacao || pedido.observacao,
-              editado: true
+              observacao: observacao || pedido.observacao
             })
             .eq('id', pedidoId);
 
@@ -331,8 +594,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .from('agendamentos_clientes')
             .update({
               status_agendamento: 'Cancelado',
-              observacao: motivo || pedido.observacao,
-              editado: true
+              observacao: motivo || pedido.observacao
             })
             .eq('id', pedidoId);
 
@@ -375,8 +637,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .from('agendamentos_clientes')
             .update({
               substatus_pedido: 'Não entregue',
-              observacao: motivo || pedido.observacao,
-              editado: true
+              observacao: motivo || pedido.observacao
             })
             .eq('id', pedidoId);
 
