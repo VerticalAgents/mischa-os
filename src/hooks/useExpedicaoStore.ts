@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SubstatusPedidoAgendado } from '@/types';
 import { addBusinessDays, isWeekend, format, addDays, isBefore, startOfDay } from 'date-fns';
 import { useHistoricoEntregasStore } from './useHistoricoEntregasStore';
+import { useExpedicaoStockValidation } from './useExpedicaoStockValidation';
 
 interface PedidoExpedicao {
   id: string;
@@ -310,14 +311,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
-          console.log('🚚 Processando entrega com preservação de dados:', {
+          console.log('🚚 Processando entrega com validação de estoque:', {
             pedidoId,
             tipoPedido: pedido.tipo_pedido,
             itensPersonalizados: !!pedido.itens_personalizados,
             dataPrevistaEntrega: pedido.data_prevista_entrega
           });
 
-          // NOVO: Montar itens com produto_id real para o histórico
+          // NOVO: Montar itens com produto_id real para validação de estoque
           let itensParaHistorico: any[] = [];
           
           if (pedido.itens_personalizados && pedido.itens_personalizados.length > 0) {
@@ -425,10 +426,19 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             }
           }
 
-          console.log('✅ Itens mapeados para histórico:', itensParaHistorico);
+          console.log('✅ Itens mapeados para validação:', itensParaHistorico);
 
           if (itensParaHistorico.length === 0) {
-            throw new Error('Não foi possível mapear itens para o histórico. Verifique se há produtos cadastrados.');
+            throw new Error('Não foi possível mapear itens para validação de estoque. Verifique se há produtos cadastrados.');
+          }
+
+          // NOVA VALIDAÇÃO: Verificar estoque antes de prosseguir
+          const { validarEstoqueParaEntrega, processarBaixaEstoque } = useExpedicaoStockValidation();
+          
+          const estoqueValido = await validarEstoqueParaEntrega(itensParaHistorico);
+          if (!estoqueValido) {
+            console.log('❌ Validação de estoque falhou - operação cancelada');
+            return; // Sair sem confirmar a entrega
           }
 
           // CRÍTICO: Gravar no histórico ANTES de alterar o agendamento
@@ -438,7 +448,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const dataEntrega = pedido.data_prevista_entrega;
           
           console.log('📝 Criando NOVO registro de entrega no histórico com data prevista:', dataEntrega);
-          await historicoStore.adicionarRegistro({
+          const entregaId = await historicoStore.adicionarRegistro({
             cliente_id: pedido.cliente_id,
             cliente_nome: pedido.cliente_nome,
             data: dataEntrega, // Usar data prevista do pedido, não data atual
@@ -448,6 +458,16 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             status_anterior: pedido.substatus_pedido || 'Agendado',
             observacao: observacao || undefined
           });
+
+          if (!entregaId) {
+            throw new Error('Erro ao criar registro de entrega no histórico');
+          }
+
+          // NOVA FUNCIONALIDADE: Processar baixa de estoque
+          const baixaSucesso = await processarBaixaEstoque(entregaId, itensParaHistorico);
+          if (!baixaSucesso) {
+            console.warn('⚠️ Falha na baixa de estoque, mas entrega será mantida no histórico');
+          }
 
           // Remover do estado local da expedição
           set(state => ({
@@ -491,11 +511,11 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .update(dadosAtualizacao)
             .eq('id', pedidoId);
 
-          console.log('✅ Entrega confirmada - NOVO registro criado no histórico com data prevista');
-          toast.success(`Entrega confirmada para ${pedido.cliente_nome} na data ${format(dataEntrega, 'dd/MM/yyyy')}. Reagendado como Previsto preservando configurações.`);
+          console.log('✅ Entrega confirmada - NOVO registro criado no histórico com validação e baixa de estoque');
+          toast.success(`Entrega confirmada para ${pedido.cliente_nome} na data ${format(dataEntrega, 'dd/MM/yyyy')}. ${baixaSucesso ? 'Estoque atualizado.' : ''} Reagendado como Previsto.`);
         } catch (error) {
           console.error('❌ Erro ao confirmar entrega:', error);
-          toast.error("Erro ao confirmar entrega");
+          toast.error("Erro ao confirmar entrega: " + (error instanceof Error ? error.message : "Erro desconhecido"));
         }
       },
 
