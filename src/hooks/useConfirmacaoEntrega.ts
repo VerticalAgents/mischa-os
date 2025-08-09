@@ -59,7 +59,7 @@ export const useConfirmacaoEntrega = () => {
         return 0;
       }
 
-      return data || 0;
+      return Number(data || 0);
     } catch (error) {
       console.error('Erro ao obter saldo do produto:', error);
       return 0;
@@ -254,7 +254,7 @@ export const useConfirmacaoEntrega = () => {
       const produtosInsuficientes: ProdutoInsuficiente[] = [];
       
       for (const produtoId of Object.keys(todosProdutosNecessarios)) {
-        const quantidadeTotal = todosProdutosNecessarios[produtoId];
+        const quantidadeTotal = Number(todosProdutosNecessarios[produtoId]);
         const saldoAtual = await obterSaldoProduto(produtoId);
         const produto = produtos.find(p => p.id === produtoId);
         
