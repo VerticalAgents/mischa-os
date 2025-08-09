@@ -1653,6 +1653,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      compute_entrega_itens: {
+        Args: { p_agendamento_id: string }
+        Returns: {
+          produto_id: string
+          produto_nome: string
+          quantidade: number
+        }[]
+      }
       get_request_ip: {
         Args: Record<PropertyKey, never>
         Returns: unknown
@@ -1670,6 +1678,14 @@ export type Database = {
       }
       populate_historico_giro_semanal: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      process_entrega: {
+        Args: { p_entrega_id: string }
+        Returns: undefined
+      }
+      process_entrega_safe: {
+        Args: { p_agendamento_id: string; p_observacao?: string }
         Returns: undefined
       }
       refresh_dados_analise_giro: {
