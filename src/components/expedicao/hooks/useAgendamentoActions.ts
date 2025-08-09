@@ -7,18 +7,18 @@ export const useAgendamentoActions = () => {
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
   const [agendamentoParaEditar, setAgendamentoParaEditar] = useState<any>(null);
 
-  const { agendamentos, atualizarAgendamento } = useAgendamentoClienteStore();
+  const { agendamentos, salvarAgendamento } = useAgendamentoClienteStore();
 
   const handleEditarAgendamento = (pedidoId: string) => {
     console.log('🔧 Editando agendamento para pedido ID:', pedidoId);
     
-    // Buscar nos agendamentos usando propriedades existentes
-    const agendamento = agendamentos.find(a => a.cliente_id === pedidoId);
+    // Buscar nos agendamentos usando a propriedade cliente.id
+    const agendamento = agendamentos.find(a => a.cliente.id === pedidoId);
     if (agendamento) {
       setAgendamentoParaEditar({
         ...agendamento,
-        data_entrega: agendamento.data_proxima_reposicao || new Date(),
-        data_prevista_entrega: agendamento.data_proxima_reposicao || new Date()
+        data_entrega: agendamento.dataReposicao || new Date(),
+        data_prevista_entrega: agendamento.dataReposicao || new Date()
       });
       setModalEditarAberto(true);
     } else {
@@ -29,11 +29,12 @@ export const useAgendamentoActions = () => {
 
   const handleSalvarAgendamento = async (dadosAtualizados: any) => {
     try {
-      console.log('💾 Salvando alterações no agendamento:', dadosAtualizados.cliente_id);
+      console.log('💾 Salvando alterações no agendamento:', dadosAtualizados.cliente?.id || dadosAtualizados.cliente_id);
       
-      // Usar carregarAgendamentos ao invés de atualizarAgendamento se não existir
-      if (atualizarAgendamento) {
-        await atualizarAgendamento(dadosAtualizados.cliente_id, dadosAtualizados);
+      // Usar salvarAgendamento disponível no store
+      if (salvarAgendamento) {
+        const clienteId = dadosAtualizados.cliente?.id || dadosAtualizados.cliente_id;
+        await salvarAgendamento(clienteId, dadosAtualizados);
       }
       
       setModalEditarAberto(false);
