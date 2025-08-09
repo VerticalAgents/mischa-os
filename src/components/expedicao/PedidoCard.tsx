@@ -1,31 +1,30 @@
-import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Check, X, Edit, Calendar, Truck, Package, ArrowLeft, Clock } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import TipoPedidoBadge from './TipoPedidoBadge';
-import ProdutoNomeDisplay from './ProdutoNomeDisplay';
-export interface PedidoCardData {
-  id: string;
-  cliente_nome: string;
-  cliente_endereco?: string;
-  cliente_telefone?: string;
-  data_prevista_entrega: Date;
-  quantidade_total: number;
-  tipo_pedido: string;
-  substatus_pedido: string;
-  itens?: Array<{
-    produto_id: string;
-    produto_nome: string;
-    quantidade: number;
-  }>;
-}
+import { useState } from "react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { TipoPedidoBadge } from "./TipoPedidoBadge";
+import { ProdutoNomeDisplay } from "./ProdutoNomeDisplay";
+import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
+
 interface PedidoCardProps {
-  pedido: PedidoCardData;
+  pedido: {
+    id: string;
+    cliente_id: string;
+    cliente_nome: string;
+    cliente_endereco?: string;
+    cliente_telefone?: string;
+    link_google_maps?: string;
+    data_prevista_entrega: Date;
+    quantidade_total: number;
+    tipo_pedido: string;
+    substatus_pedido?: string;
+    itens_personalizados?: any;
+  };
   onMarcarSeparado?: () => void;
   onEditarAgendamento?: () => void;
   showDespachoActions?: boolean;
@@ -35,7 +34,8 @@ interface PedidoCardProps {
   onConfirmarRetorno?: (observacao?: string) => void;
   onRetornarParaSeparacao?: () => void;
 }
-export default function PedidoCard({
+
+const PedidoCard = ({
   pedido,
   onMarcarSeparado,
   onEditarAgendamento,
@@ -45,180 +45,287 @@ export default function PedidoCard({
   onConfirmarEntrega,
   onConfirmarRetorno,
   onRetornarParaSeparacao
-}: PedidoCardProps) {
-  const [observacaoEntrega, setObservacaoEntrega] = useState('');
-  const [observacaoRetorno, setObservacaoRetorno] = useState('');
+}: PedidoCardProps) => {
+  const [observacaoEntrega, setObservacaoEntrega] = useState("");
+  const [observacaoRetorno, setObservacaoRetorno] = useState("");
   const [dialogEntregaAberto, setDialogEntregaAberto] = useState(false);
   const [dialogRetornoAberto, setDialogRetornoAberto] = useState(false);
-  const handleConfirmarEntrega = () => {
-    onConfirmarEntrega?.(observacaoEntrega);
-    setObservacaoEntrega('');
-    setDialogEntregaAberto(false);
-  };
-  const handleConfirmarRetorno = () => {
-    onConfirmarRetorno?.(observacaoRetorno);
-    setObservacaoRetorno('');
-    setDialogRetornoAberto(false);
-  };
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Agendado':
-        return 'bg-blue-100 text-blue-800';
-      case 'Separado':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Despachado':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  
+  const { confirmarEntrega, loading: loadingConfirmacao } = useConfirmacaoEntrega();
+
+  const handleConfirmarEntrega = async () => {
+    try {
+      const sucesso = await confirmarEntrega(pedido, observacaoEntrega);
+      if (sucesso) {
+        setDialogEntregaAberto(false);
+        setObservacaoEntrega("");
+        // Chamar callback se existir para atualizar o estado do componente pai
+        if (onConfirmarEntrega) {
+          onConfirmarEntrega(observacaoEntrega);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao confirmar entrega:', error);
     }
   };
-  const isPedidoDespachado = pedido.substatus_pedido === 'Despachado';
-  return <Card className="w-full">
-      <CardContent className="p-4">
-        <div className="space-y-4">
-          {/* Cabeçalho com informações do cliente */}
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-lg truncate">{pedido.cliente_nome}</h3>
-              {pedido.cliente_endereco && <p className="text-sm text-muted-foreground mt-1 text-left">{pedido.cliente_endereco}</p>}
-              {pedido.cliente_telefone && <p className="text-sm text-muted-foreground text-left">{pedido.cliente_telefone}</p>}
+
+  const handleConfirmarRetorno = () => {
+    if (onConfirmarRetorno) {
+      onConfirmarRetorno(observacaoRetorno);
+      setDialogRetornoAberto(false);
+      setObservacaoRetorno("");
+    }
+  };
+
+  return (
+    <Card className="mb-4 shadow-sm border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <User className="h-5 w-5 text-blue-600" />
+            <div>
+              <h3 className="font-semibold text-lg text-gray-900">{pedido.cliente_nome}</h3>
+              <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  {format(pedido.data_prevista_entrega, "dd/MM/yyyy", { locale: ptBR })}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Package className="h-4 w-4" />
+                  {pedido.quantidade_total} unidades
+                </div>
+              </div>
             </div>
-            <div className="flex flex-col items-end gap-2">
-              <Badge className={getStatusColor(pedido.substatus_pedido)}>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <TipoPedidoBadge tipo={pedido.tipo_pedido} />
+            {pedido.substatus_pedido && (
+              <Badge 
+                variant={
+                  pedido.substatus_pedido === 'Separado' ? 'default' :
+                  pedido.substatus_pedido === 'Despachado' ? 'secondary' :
+                  'outline'
+                }
+              >
                 {pedido.substatus_pedido}
               </Badge>
-              <TipoPedidoBadge tipo={pedido.tipo_pedido} />
-            </div>
-          </div>
-
-          {/* Informações do pedido */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-muted/50 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium text-left">Data de Entrega</p>
-                <p className="text-sm text-muted-foreground text-left">
-                  {format(pedido.data_prevista_entrega, "dd/MM/yyyy", {
-                  locale: ptBR
-                })}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Package className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium text-left">Quantidade</p>
-                <p className="text-sm text-muted-foreground">{pedido.quantidade_total} unidades</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium text-left">Status</p>
-                <p className="text-sm text-muted-foreground text-left">{pedido.substatus_pedido}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Lista de produtos */}
-          {pedido.itens && pedido.itens.length > 0 && <div className="space-y-2">
-              <h4 className="font-medium text-sm">Produtos:</h4>
-              <div className="space-y-1">
-                {pedido.itens.map((item, index) => <div key={index} className="flex justify-between items-center text-sm p-2 bg-background rounded">
-                    <ProdutoNomeDisplay produtoId={item.produto_id} nomeFallback={item.produto_nome} />
-                    <span className="font-medium">{item.quantidade}x</span>
-                  </div>)}
-              </div>
-            </div>}
-
-          {/* Ações */}
-          <div className="flex flex-wrap gap-2 pt-2 border-t">
-            {!showDespachoActions ?
-          // Ações da separação
-          <>
-                <Button size="sm" onClick={onMarcarSeparado} className="flex items-center gap-1">
-                  <Check className="h-4 w-4" />
-                  Marcar como Separado
-                </Button>
-                <Button size="sm" variant="outline" onClick={onEditarAgendamento} className="flex items-center gap-1">
-                  <Edit className="h-4 w-4" />
-                  Editar Agendamento
-                </Button>
-              </> :
-          // Ações do despacho
-          <>
-                {pedido.substatus_pedido === 'Separado' && <Button size="sm" onClick={onConfirmarDespacho} className="flex items-center gap-1">
-                    <Truck className="h-4 w-4" />
-                    Despachar Pedido
-                  </Button>}
-
-                {pedido.substatus_pedido === 'Despachado' && <>
-                    <Dialog open={dialogEntregaAberto} onOpenChange={setDialogEntregaAberto}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" className="bg-green-600 hover:bg-green-700 flex items-center gap-1">
-                          <Check className="h-4 w-4" />
-                          Confirmar Entrega
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Confirmar Entrega</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <p>Confirmar entrega para <strong>{pedido.cliente_nome}</strong>?</p>
-                          <Textarea placeholder="Observações (opcional)" value={observacaoEntrega} onChange={e => setObservacaoEntrega(e.target.value)} />
-                        </div>
-                        <DialogFooter>
-                          <Button variant="outline" onClick={() => setDialogEntregaAberto(false)}>
-                            Cancelar
-                          </Button>
-                          <Button onClick={handleConfirmarEntrega} className="bg-green-600 hover:bg-green-700">
-                            Confirmar Entrega
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-
-                    <Dialog open={dialogRetornoAberto} onOpenChange={setDialogRetornoAberto}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" variant="destructive" className="flex items-center gap-1">
-                          <X className="h-4 w-4" />
-                          Confirmar Retorno
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Confirmar Retorno</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <p>Confirmar retorno para <strong>{pedido.cliente_nome}</strong>?</p>
-                          <Textarea placeholder="Motivo do retorno (opcional)" value={observacaoRetorno} onChange={e => setObservacaoRetorno(e.target.value)} />
-                        </div>
-                        <DialogFooter>
-                          <Button variant="outline" onClick={() => setDialogRetornoAberto(false)}>
-                            Cancelar
-                          </Button>
-                          <Button onClick={handleConfirmarRetorno} variant="destructive">
-                            Confirmar Retorno
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </>}
-
-                {/* Botão de reagendar para pedidos atrasados */}
-                {showReagendarButton && <Button size="sm" variant="outline" onClick={onEditarAgendamento} className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    Reagendar
-                  </Button>}
-
-                <Button size="sm" variant="outline" onClick={onRetornarParaSeparacao} className="flex items-center gap-1">
-                  <ArrowLeft className="h-4 w-4" />
-                  Retornar p/ Separação
-                </Button>
-              </>}
+            )}
           </div>
         </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {pedido.cliente_endereco && (
+          <div className="flex items-start gap-2 text-sm text-gray-600">
+            <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span>{pedido.cliente_endereco}</span>
+          </div>
+        )}
+
+        {pedido.cliente_telefone && (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Phone className="h-4 w-4" />
+            <span>{pedido.cliente_telefone}</span>
+          </div>
+        )}
+
+        {pedido.itens_personalizados && pedido.itens_personalizados.length > 0 && (
+          <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+            <h4 className="font-medium text-amber-800 mb-2">Itens Personalizados:</h4>
+            <div className="space-y-1">
+              {pedido.itens_personalizados.map((item: any, index: number) => (
+                <div key={index} className="flex justify-between text-sm text-amber-700">
+                  <ProdutoNomeDisplay nome={item.produto || item.nome} />
+                  <span className="font-medium">{item.quantidade}x</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2 pt-2">
+          {!showDespachoActions && (
+            <>
+              {(!pedido.substatus_pedido || pedido.substatus_pedido === 'Agendado') && (
+                <Button 
+                  onClick={onMarcarSeparado}
+                  size="sm" 
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                  Marcar Separado
+                </Button>
+              )}
+            </>
+          )}
+
+          {showDespachoActions && (
+            <>
+              {pedido.substatus_pedido === 'Separado' && (
+                <Button 
+                  onClick={onConfirmarDespacho}
+                  size="sm" 
+                  variant="outline"
+                >
+                  <Truck className="h-4 w-4 mr-1" />
+                  Confirmar Despacho
+                </Button>
+              )}
+
+              {pedido.substatus_pedido === 'Despachado' && (
+                <>
+                  <Dialog open={dialogEntregaAberto} onOpenChange={setDialogEntregaAberto}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        Confirmar Entrega
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Confirmar Entrega - {pedido.cliente_nome}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <p className="text-sm text-gray-600">
+                          Tem certeza que deseja confirmar a entrega? Esta ação irá:
+                        </p>
+                        <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                          <li>Validar se há estoque suficiente dos produtos</li>
+                          <li>Dar baixa automática no estoque</li>
+                          <li>Registrar no histórico de entregas</li>
+                          <li>Reagendar automaticamente para próxima entrega</li>
+                        </ul>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Observação (opcional):
+                          </label>
+                          <Textarea
+                            value={observacaoEntrega}
+                            onChange={(e) => setObservacaoEntrega(e.target.value)}
+                            placeholder="Digite uma observação sobre a entrega..."
+                            rows={3}
+                          />
+                        </div>
+                        
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setDialogEntregaAberto(false);
+                              setObservacaoEntrega("");
+                            }}
+                            disabled={loadingConfirmacao}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={handleConfirmarEntrega}
+                            className="bg-green-600 hover:bg-green-700"
+                            disabled={loadingConfirmacao}
+                          >
+                            {loadingConfirmacao ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Confirmando...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                Confirmar Entrega
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Dialog open={dialogRetornoAberto} onOpenChange={setDialogRetornoAberto}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="destructive">
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Confirmar Retorno
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Confirmar Retorno - {pedido.cliente_nome}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <p className="text-sm text-gray-600">
+                          Tem certeza que deseja confirmar o retorno? O pedido será reagendado para o próximo dia útil.
+                        </p>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Motivo do retorno:
+                          </label>
+                          <Textarea
+                            value={observacaoRetorno}
+                            onChange={(e) => setObservacaoRetorno(e.target.value)}
+                            placeholder="Digite o motivo do retorno..."
+                            rows={3}
+                          />
+                        </div>
+                        
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setDialogRetornoAberto(false);
+                              setObservacaoRetorno("");
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={handleConfirmarRetorno}
+                            variant="destructive"
+                          >
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Confirmar Retorno
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Button 
+                    onClick={onRetornarParaSeparacao}
+                    size="sm" 
+                    variant="outline"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    Retornar p/ Separação
+                  </Button>
+                </>
+              )}
+            </>
+          )}
+
+          {showReagendarButton && (
+            <Button 
+              onClick={onEditarAgendamento}
+              size="sm" 
+              variant="outline"
+            >
+              Reagendar
+            </Button>
+          )}
+
+          <Button 
+            onClick={onEditarAgendamento}
+            size="sm" 
+            variant="outline"
+          >
+            Editar
+          </Button>
+        </div>
       </CardContent>
-    </Card>;
-}
+    </Card>
+  );
+};
+
+export default PedidoCard;

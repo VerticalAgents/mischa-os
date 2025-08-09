@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -5,12 +6,13 @@ import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
 import { usePedidoConverter } from "./hooks/usePedidoConverter";
 import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
+import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
 import { DebugInfo } from "./components/DebugInfo";
 import PedidoCard from "./PedidoCard";
 import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
 import { OrganizadorEntregas } from "./OrganizadorEntregas";
 import { toast } from "sonner";
-import { Truck, Package, ArrowLeft, ClipboardList } from "lucide-react";
+import { Truck, Package, ArrowLeft, ClipboardList, Loader2 } from "lucide-react";
 
 interface DespachoProps {
   tipoFiltro: "hoje" | "atrasadas";
@@ -33,6 +35,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   } = useExpedicaoStore();
 
   const { converterPedidoParaCard } = usePedidoConverter();
+  const { confirmarEntregaEmMassa: confirmarEntregaEmMassaHook, loading: loadingConfirmacao } = useConfirmacaoEntrega();
   const {
     modalEditarAberto,
     setModalEditarAberto,
@@ -74,7 +77,15 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
       return;
     }
     
-    await confirmarEntregaEmMassa(pedidosFiltrados);
+    try {
+      const sucesso = await confirmarEntregaEmMassaHook(pedidosDespachados);
+      if (sucesso) {
+        // Recarregar os dados após confirmação bem-sucedida
+        await carregarPedidos();
+      }
+    } catch (error) {
+      console.error('Erro ao confirmar entregas em massa:', error);
+    }
   };
 
   const handleRetornoEmMassa = async () => {
@@ -96,6 +107,12 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
       return;
     }
     setOrganizadorAberto(true);
+  };
+
+  const handleConfirmarEntregaIndividual = async (pedidoId: string, observacao?: string) => {
+    // A confirmação já é feita pelo PedidoCard usando o hook useConfirmacaoEntrega
+    // Aqui só precisamos recarregar os dados
+    await carregarPedidos();
   };
 
   if (isLoading) {
@@ -143,10 +160,20 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
               onClick={handleEntregaEmMassa} 
               size="sm" 
               className="bg-green-600 hover:bg-green-700"
-              disabled={!todosDespachados}
+              disabled={!todosDespachados || loadingConfirmacao}
               title={!todosDespachados ? "Todos os pedidos devem estar despachados" : ""}
             >
-              <Package className="h-4 w-4 mr-1" /> Entregar Todos
+              {loadingConfirmacao ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  Confirmando...
+                </>
+              ) : (
+                <>
+                  <Package className="h-4 w-4 mr-1" /> 
+                  Entregar Todos
+                </>
+              )}
             </Button>
             <Button 
               onClick={handleRetornoEmMassa} 
@@ -174,7 +201,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 showDespachoActions={true}
                 showReagendarButton={tipoFiltro === "atrasadas" && pedido.substatus_pedido === 'Agendado'}
                 onConfirmarDespacho={() => confirmarDespacho(String(pedido.id))}
-                onConfirmarEntrega={(observacao) => confirmarEntrega(String(pedido.id), observacao)}
+                onConfirmarEntrega={(observacao) => handleConfirmarEntregaIndividual(String(pedido.id), observacao)}
                 onConfirmarRetorno={(observacao) => confirmarRetorno(String(pedido.id), observacao)}
                 onRetornarParaSeparacao={() => handleRetornarParaSeparacao(String(pedido.id))}
               />

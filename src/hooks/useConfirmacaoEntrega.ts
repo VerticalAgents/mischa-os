@@ -31,7 +31,7 @@ export const useConfirmacaoEntrega = () => {
       return pedido.itens_personalizados.map((item: any) => ({
         produto_id: produtos.find(p => p.nome === item.produto)?.id || null,
         produto_nome: item.produto || item.nome,
-        quantidade: item.quantidade
+        quantidade: Number(item.quantidade || 0)
       })).filter((item: any) => item.produto_id); // Filtrar apenas produtos válidos
     } else {
       // Usar distribuição padrão baseada nos produtos cadastrados
