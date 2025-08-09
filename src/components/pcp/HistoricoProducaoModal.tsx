@@ -257,7 +257,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
                 <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
                   <p className="text-sm text-amber-700">
-                    <strong>Rendimento não definido.</strong> Defina em Precificação > Rendimentos.
+                    <strong>Rendimento não definido.</strong> Defina em Precificação {'>'}  Rendimentos.
                   </p>
                 </div>
               ) : rendimentoAtual ? (
