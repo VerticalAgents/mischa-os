@@ -13,6 +13,7 @@ export interface ItemHistoricoEntrega {
 export interface HistoricoEntrega {
   id?: string;
   cliente_id: string;
+  cliente_nome?: string;
   data: Date | string;
   tipo: 'entrega' | 'retorno';
   quantidade: number;
@@ -122,6 +123,12 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
           if (updateData.itens) {
             updateData.itens = JSON.stringify(updateData.itens);
           }
+          if (updateData.created_at instanceof Date) {
+            updateData.created_at = updateData.created_at.toISOString();
+          }
+          if (updateData.updated_at instanceof Date) {
+            updateData.updated_at = updateData.updated_at.toISOString();
+          }
           
           const { error } = await supabase
             .from('historico_entregas')
@@ -168,7 +175,10 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
           
           let query = supabase
             .from('historico_entregas')
-            .select('*')
+            .select(`
+              *,
+              clientes!inner(nome)
+            `)
             .order('data', { ascending: false })
             .order('created_at', { ascending: false });
 
@@ -188,6 +198,7 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
           // Converter dados do banco para o formato interno
           const historico = data?.map(item => ({
             ...item,
+            cliente_nome: item.clientes?.nome || 'Cliente não encontrado',
             data: new Date(item.data),
             created_at: item.created_at ? new Date(item.created_at) : undefined,
             updated_at: item.updated_at ? new Date(item.updated_at) : undefined,

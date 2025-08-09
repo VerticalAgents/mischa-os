@@ -1,10 +1,10 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfWeek, endOfWeek, parseISO, isValid } from "date-fns";
+import { format, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { Cliente } from "@/types";
 import { useHistoricoEntregasStore } from "./useHistoricoEntregasStore";
 import { useExpedicaoStockValidation } from "./useExpedicaoStockValidation";
 
@@ -129,11 +129,11 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                 produtos_finais(id, nome)
               )
             `)
-            .gte('data_entrega', inicioSemana.toISOString())
-            .lte('data_entrega', fimSemana.toISOString())
+            .gte('data_proxima_reposicao', inicioSemana.toISOString())
+            .lte('data_proxima_reposicao', fimSemana.toISOString())
             .eq('clientes.ativo', true)
-            .in('status', ['Agendado', 'Previsto'])
-            .order('data_entrega', { ascending: true });
+            .in('status_agendamento', ['Agendado', 'Previsto'])
+            .order('data_proxima_reposicao', { ascending: true });
 
           if (error) throw error;
 
@@ -141,17 +141,17 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             id: agendamento.id,
             cliente_id: agendamento.cliente_id,
             cliente_nome: agendamento.clientes.nome,
-            data_entrega: parseISO(agendamento.data_entrega),
-            status: agendamento.status,
-            substatus: agendamento.substatus || '',
+            data_entrega: parseISO(agendamento.data_proxima_reposicao),
+            status: agendamento.status_agendamento,
+            substatus: agendamento.substatus_pedido || '',
             quantidade_total: agendamento.quantidade_total || 0,
-            produtos: agendamento.produtos_agendamento?.map((pa: any) => ({
+            produtos: agendamento.produtos_agendamento?.map?.((pa: any) => ({
               produto_id: pa.produto_id,
               produto_nome: pa.produtos_finais?.nome || 'Produto não identificado',
               quantidade: pa.quantidade
             })) || [],
             observacao: agendamento.observacao,
-            tipo_pedido: agendamento.status === 'Agendado' ? 'agendado' : 'previsto' as 'agendado' | 'previsto',
+            tipo_pedido: agendamento.status_agendamento === 'Agendado' ? 'agendado' : 'previsto' as 'agendado' | 'previsto',
             rota: agendamento.rota_entrega,
             prioridade: 'media' as 'baixa' | 'media' | 'alta',
             confirmado_producao: agendamento.confirmado_producao,
@@ -201,7 +201,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const { error: updateError } = await supabase
             .from('agendamentos_clientes')
             .update({ 
-              status: 'Entregue',
+              status_agendamento: 'Entregue',
               data_entrega_efetiva: new Date().toISOString()
             })
             .eq('id', pedidoId);
@@ -281,8 +281,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const { error } = await supabase
             .from('agendamentos_clientes')
             .update({
-              data_entrega: novaData.toISOString(),
-              substatus: 'Reagendado',
+              data_proxima_reposicao: novaData.toISOString(),
+              substatus_pedido: 'Reagendado',
               observacao: observacao || pedido.observacao,
               editado: true
             })
@@ -330,7 +330,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const { error } = await supabase
             .from('agendamentos_clientes')
             .update({
-              status: 'Cancelado',
+              status_agendamento: 'Cancelado',
               observacao: motivo || pedido.observacao,
               editado: true
             })
@@ -374,7 +374,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const { error } = await supabase
             .from('agendamentos_clientes')
             .update({
-              substatus: 'Não entregue',
+              substatus_pedido: 'Não entregue',
               observacao: motivo || pedido.observacao,
               editado: true
             })
