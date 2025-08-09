@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -12,6 +13,7 @@ interface ProdutoInsuficiente {
 
 interface PedidoEntrega {
   id: string;
+  cliente_id: string;
   cliente_nome: string;
   quantidade_total: number;
   tipo_pedido: string;
@@ -34,8 +36,8 @@ export const useConfirmacaoEntrega = () => {
       })).filter((item: any) => item.produto_id); // Filtrar apenas produtos válidos
     } else {
       // Usar distribuição padrão baseada nos produtos cadastrados
-      const quantidadePorProduto = Math.floor(pedido.quantidade_total / Math.max(1, produtos.length));
-      const resto = pedido.quantidade_total % Math.max(1, produtos.length);
+      const quantidadePorProduto = Math.floor(Number(pedido.quantidade_total) / Math.max(1, produtos.length));
+      const resto = Number(pedido.quantidade_total) % Math.max(1, produtos.length);
       
       return produtos.slice(0, Math.min(produtos.length, 5)).map((produto, index) => ({
         produto_id: produto.id,
@@ -186,9 +188,9 @@ export const useConfirmacaoEntrega = () => {
       proximaData.setDate(proximaData.getDate() + 7); // Reagendar para 7 dias
 
       const { error: reagendamentoError } = await supabase
-        .from('agendamentos')
+        .from('agendamentos_clientes')
         .update({
-          data_prevista_entrega: proximaData.toISOString(),
+          data_proxima_reposicao: proximaData.toISOString().split('T')[0],
           substatus_pedido: 'Agendado',
           updated_at: new Date().toISOString()
         })
@@ -327,9 +329,9 @@ export const useConfirmacaoEntrega = () => {
         proximaData.setDate(proximaData.getDate() + 7);
 
         const { error: reagendamentoError } = await supabase
-          .from('agendamentos')
+          .from('agendamentos_clientes')
           .update({
-            data_prevista_entrega: proximaData.toISOString(),
+            data_proxima_reposicao: proximaData.toISOString().split('T')[0],
             substatus_pedido: 'Agendado',
             updated_at: new Date().toISOString()
           })

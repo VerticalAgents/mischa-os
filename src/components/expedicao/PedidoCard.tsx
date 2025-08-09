@@ -137,7 +137,7 @@ const PedidoCard = ({
             <div className="space-y-1">
               {pedido.itens_personalizados.map((item: any, index: number) => (
                 <div key={index} className="flex justify-between text-sm text-amber-700">
-                  <ProdutoNomeDisplay nome={item.produto || item.nome} />
+                  <ProdutoNomeDisplay produtoId={item.produto_id || 'custom'} nomeFallback={item.produto || item.nome} />
                   <span className="font-medium">{item.quantidade}x</span>
                 </div>
               ))}
