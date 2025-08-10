@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import PedidoCard from "./PedidoCard";
@@ -8,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import EditarAgendamentoDialog from "@/components/agendamento/EditarAgendamentoDialog";
+import AgendamentoEditModal from "@/components/agendamento/AgendamentoEditModal";
+import { AgendamentoItem } from "@/components/agendamento/types";
 
 const SeparacaoPedidos = () => {
   const { 
@@ -21,7 +23,7 @@ const SeparacaoPedidos = () => {
   const [filtroTexto, setFiltroTexto] = useState("");
   const [filtroTipoPedido, setFiltroTipoPedido] = useState("todos");
   const [filtroData, setFiltroData] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [pedidoEditando, setPedidoEditando] = useState<any>(null);
+  const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
 
   useEffect(() => {
@@ -33,11 +35,46 @@ const SeparacaoPedidos = () => {
   };
 
   const handleEditarPedido = (pedido: any) => {
-    setPedidoEditando(pedido);
+    // Converter o pedido da expedição para o formato AgendamentoItem
+    const agendamentoFormatado: AgendamentoItem = {
+      id: pedido.id,
+      cliente: {
+        id: pedido.cliente_id,
+        nome: pedido.cliente_nome,
+        quantidadePadrao: pedido.quantidade_total || 0,
+        telefone: "",
+        endereco: "",
+        bairro: "",
+        cidade: "",
+        estado: "",
+        cep: "",
+        representante: "",
+        rota: "",
+        tipoCobranca: "",
+        tipoLogistica: "",
+        categoriaEstabelecimento: "",
+        giroSemanal: 0,
+        saboresPadrao: []
+      },
+      dataReposicao: new Date(pedido.data_prevista_entrega),
+      statusAgendamento: "Agendado" as const,
+      pedido: {
+        id: parseInt(pedido.id),
+        idCliente: pedido.cliente_id,
+        dataPedido: new Date(),
+        dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
+        statusPedido: 'Agendado',
+        itensPedido: pedido.produtos_info || [],
+        totalPedidoUnidades: pedido.quantidade_total,
+        tipoPedido: pedido.tipo_pedido as "Padrão" | "Alterado" | "Único"
+      }
+    };
+
+    setPedidoEditando(agendamentoFormatado);
     setModalEditarAberto(true);
   };
 
-  const handleSalvarAgendamento = (agendamentoAtualizado: any) => {
+  const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
     // Recarregar pedidos após edição
     carregarPedidos();
     setModalEditarAberto(false);
@@ -155,15 +192,13 @@ const SeparacaoPedidos = () => {
         )}
       </div>
 
-      {/* Modal de Edição */}
-      {pedidoEditando && (
-        <EditarAgendamentoDialog
-          agendamento={pedidoEditando}
-          open={modalEditarAberto}
-          onOpenChange={setModalEditarAberto}
-          onSalvar={handleSalvarAgendamento}
-        />
-      )}
+      {/* Modal de Edição - Agora usando o modal completo */}
+      <AgendamentoEditModal
+        agendamento={pedidoEditando}
+        open={modalEditarAberto}
+        onOpenChange={setModalEditarAberto}
+        onSalvar={handleSalvarAgendamento}
+      />
     </div>
   );
 };
