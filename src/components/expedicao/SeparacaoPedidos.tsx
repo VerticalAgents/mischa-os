@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import PedidoCard from "./PedidoCard";
@@ -50,8 +49,8 @@ const SeparacaoPedidos = () => {
         cep: "",
         representante: "",
         rota: "",
-        tipoCobranca: "",
-        tipoLogistica: "",
+        tipoCobranca: "À vista",
+        tipoLogistica: "Própria",
         categoriaEstabelecimento: "",
         giroSemanal: 0,
         saboresPadrao: []
