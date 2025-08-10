@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import PedidoCard from "./PedidoCard";
@@ -14,8 +13,8 @@ const SeparacaoPedidos = () => {
   const { 
     pedidos, 
     isLoading, 
-    fetchPedidos, 
-    marcarPedidoComoSeparado 
+    carregarPedidos, 
+    confirmarSeparacao 
   } = useExpedicaoStore();
 
   const [filtroTexto, setFiltroTexto] = useState("");
@@ -23,11 +22,11 @@ const SeparacaoPedidos = () => {
   const [filtroData, setFiltroData] = useState("");
 
   useEffect(() => {
-    fetchPedidos();
-  }, [fetchPedidos]);
+    carregarPedidos();
+  }, [carregarPedidos]);
 
   const handleMarcarSeparado = async (pedidoId: string) => {
-    await marcarPedidoComoSeparado(pedidoId);
+    await confirmarSeparacao(pedidoId);
   };
 
   // Filtrar pedidos para separação (Agendado e não separados ainda)
@@ -70,7 +69,7 @@ const SeparacaoPedidos = () => {
           </Badge>
         </div>
         <Button 
-          onClick={() => fetchPedidos()} 
+          onClick={() => carregarPedidos()} 
           size="sm"
           variant="outline"
           disabled={isLoading}
