@@ -25,23 +25,32 @@ export const useConfirmacaoEntrega = () => {
   // Calcular itens usando RPC no servidor (fonte única da verdade)
   const calcularItensEntrega = async (pedido: PedidoEntrega) => {
     console.log('🧮 [RPC] Calculando itens para entrega:', pedido.id);
-    const { data, error } = await supabase.rpc('compute_entrega_itens', {
-      p_agendamento_id: pedido.id
-    });
+    try {
+      const { data, error } = await supabase.rpc('compute_entrega_itens', {
+        p_agendamento_id: pedido.id
+      });
 
-    if (error) {
-      console.error('Erro ao calcular itens via RPC:', error);
-      return [];
+      if (error) {
+        console.error('Erro ao calcular itens via RPC:', error);
+        throw new Error(`Erro ao calcular itens para ${pedido.cliente_nome}: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error(`Não foi possível calcular itens para ${pedido.cliente_nome}. Verifique se há produtos ativos ou proporções configuradas.`);
+      }
+
+      const itens = data.map((item: any) => ({
+        produto_id: item.produto_id as string,
+        produto_nome: item.produto_nome as string,
+        quantidade: Number(item.quantidade || 0)
+      }));
+
+      console.log('📦 Itens calculados (server):', itens);
+      return itens;
+    } catch (error) {
+      console.error('Erro fatal ao calcular itens:', error);
+      throw error;
     }
-
-    const itens = (data || []).map((item: any) => ({
-      produto_id: item.produto_id as string,
-      produto_nome: item.produto_nome as string,
-      quantidade: Number(item.quantidade || 0)
-    }));
-
-    console.log('📦 Itens calculados (server):', itens);
-    return itens;
   };
 
   const obterSaldoProduto = async (produtoId: string): Promise<number> => {
@@ -155,37 +164,56 @@ export const useConfirmacaoEntrega = () => {
     try {
       console.log('🚚 Iniciando confirmação de entregas em massa (server-side):', pedidos.length);
 
-      // 1) Agregar necessidades por produto usando o cálculo do servidor
-      const todosProdutosNecessarios: Record<string, number> = {};
+      // 1) Pré-validação: tentar calcular itens para todos os pedidos
+      const pedidosComItens: Array<{ pedido: PedidoEntrega; itens: any[] }> = [];
+      const pedidosComErro: string[] = [];
 
       for (const pedido of pedidos) {
-        const itensEntrega = await calcularItensEntrega(pedido);
-        for (const item of itensEntrega) {
-          if (!item.produto_id || Number(item.quantidade) <= 0) continue;
-          if (!todosProdutosNecessarios[item.produto_id]) {
-            todosProdutosNecessarios[item.produto_id] = 0;
-          }
-          todosProdutosNecessarios[item.produto_id] += Number(item.quantidade);
+        try {
+          const itensEntrega = await calcularItensEntrega(pedido);
+          pedidosComItens.push({ pedido, itens: itensEntrega });
+        } catch (error) {
+          console.error(`Erro ao calcular itens para ${pedido.cliente_nome}:`, error);
+          pedidosComErro.push(`${pedido.cliente_nome}: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
         }
       }
 
-      // 2) Validar saldos consolidados
+      // Se há pedidos com erro, abortar operação
+      if (pedidosComErro.length > 0) {
+        toast({
+          title: "Erro na pré-validação",
+          description: `Não foi possível calcular itens para alguns pedidos:\n${pedidosComErro.join('\n')}`,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      // 2) Agregar necessidades por produto
+      const todosProdutosNecessarios: Record<string, { quantidade: number; nome: string }> = {};
+
+      for (const { itens } of pedidosComItens) {
+        for (const item of itens) {
+          if (!item.produto_id || Number(item.quantidade) <= 0) continue;
+          
+          if (!todosProdutosNecessarios[item.produto_id]) {
+            todosProdutosNecessarios[item.produto_id] = { 
+              quantidade: 0, 
+              nome: item.produto_nome 
+            };
+          }
+          todosProdutosNecessarios[item.produto_id].quantidade += Number(item.quantidade);
+        }
+      }
+
+      // 3) Validar saldos consolidados
       const produtosInsuficientes: ProdutoInsuficiente[] = [];
       
-      for (const produtoId of Object.keys(todosProdutosNecessarios)) {
-        const quantidadeTotal = Number(todosProdutosNecessarios[produtoId]);
+      for (const [produtoId, { quantidade: quantidadeTotal, nome }] of Object.entries(todosProdutosNecessarios)) {
         const saldoAtual = await obterSaldoProduto(produtoId);
-        
-        // Buscar nome do produto direto do banco
-        const { data: produto } = await supabase
-          .from('produtos_finais')
-          .select('nome')
-          .eq('id', produtoId)
-          .single();
         
         if (saldoAtual < quantidadeTotal) {
           produtosInsuficientes.push({
-            nome: produto?.nome || 'Produto não encontrado',
+            nome,
             necessario: quantidadeTotal,
             disponivel: saldoAtual,
             faltante: quantidadeTotal - saldoAtual
@@ -206,22 +234,27 @@ export const useConfirmacaoEntrega = () => {
         return false;
       }
 
-      // 3) Processar cada entrega no servidor (transação por pedido)
+      // 4) Processar cada entrega no servidor (transação por pedido)
       let sucesso = 0;
       const erros: string[] = [];
       
-      for (const pedido of pedidos) {
-        const { error: procError } = await supabase.rpc('process_entrega_safe', {
-          p_agendamento_id: pedido.id,
-          p_observacao: null
-        });
+      for (const { pedido } of pedidosComItens) {
+        try {
+          const { error: procError } = await supabase.rpc('process_entrega_safe', {
+            p_agendamento_id: pedido.id,
+            p_observacao: null
+          });
 
-        if (procError) {
-          console.error(`Erro ao processar entrega do cliente ${pedido.cliente_nome}:`, procError);
-          erros.push(`${pedido.cliente_nome}: ${procError.message}`);
-          continue;
+          if (procError) {
+            console.error(`Erro ao processar entrega do cliente ${pedido.cliente_nome}:`, procError);
+            erros.push(`${pedido.cliente_nome}: ${procError.message}`);
+            continue;
+          }
+          sucesso += 1;
+        } catch (error) {
+          console.error(`Erro fatal ao processar entrega do cliente ${pedido.cliente_nome}:`, error);
+          erros.push(`${pedido.cliente_nome}: ${error instanceof Error ? error.message : 'Erro inesperado'}`);
         }
-        sucesso += 1;
       }
 
       if (sucesso === 0) {
