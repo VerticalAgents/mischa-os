@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import PedidoCard from "./PedidoCard";
@@ -41,19 +42,22 @@ const SeparacaoPedidos = () => {
         id: pedido.cliente_id,
         nome: pedido.cliente_nome,
         quantidadePadrao: pedido.quantidade_total || 0,
-        telefone: "",
-        endereco: "",
-        bairro: "",
-        cidade: "",
-        estado: "",
-        cep: "",
-        representante: "",
-        rota: "",
+        contatoTelefone: pedido.cliente_telefone || "",
+        enderecoEntrega: pedido.cliente_endereco || "",
+        cnpjCpf: "",
+        contatoNome: "",
+        contatoEmail: "",
+        periodicidadePadrao: 7,
+        statusCliente: "Ativo",
+        dataCadastro: new Date(),
+        ativo: true,
+        contabilizarGiroMedio: true,
         tipoCobranca: "À vista",
         tipoLogistica: "Própria",
-        categoriaEstabelecimento: "",
-        giroSemanal: 0,
-        saboresPadrao: []
+        emiteNotaFiscal: false,
+        formaPagamento: "Dinheiro",
+        categoriaId: 1,
+        subcategoriaId: 1
       },
       dataReposicao: new Date(pedido.data_prevista_entrega),
       statusAgendamento: "Agendado" as const,
