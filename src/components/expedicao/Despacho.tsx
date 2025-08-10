@@ -38,7 +38,7 @@ export default function Despacho({ tipoFiltro }: DespachoProps) {
     to: addDays(new Date(), 7),
   });
   const [pedidosFiltrados, setPedidosFiltrados] = useState<PedidoCardData[]>([]);
-  const { pedidos, loading } = useExpedicaoStore();
+  const { pedidos, isLoading } = useExpedicaoStore();
   const { converterPedidoParaCard } = usePedidoConverter();
 
   useEffect(() => {
@@ -135,7 +135,7 @@ export default function Despacho({ tipoFiltro }: DespachoProps) {
         )}
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="space-y-3">
