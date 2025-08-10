@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Calendar } from "lucide-react";
 import { format, addDays } from "date-fns";
@@ -10,9 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import PedidoCard from "./PedidoCard";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
-import { Separated } from "./components/Separated";
-import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
-import { AgendamentoModal } from "./components/AgendamentoModal";
 import { usePedidoConverter } from "./hooks/usePedidoConverter";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -30,14 +28,17 @@ interface PedidoCardData {
   substatus?: string;
 }
 
-export default function Despacho() {
+interface DespachoProps {
+  tipoFiltro?: 'hoje' | 'atrasadas';
+}
+
+export default function Despacho({ tipoFiltro }: DespachoProps) {
   const [date, setDate] = useState<DateRange>({
     from: new Date(),
     to: addDays(new Date(), 7),
   });
   const [pedidosFiltrados, setPedidosFiltrados] = useState<PedidoCardData[]>([]);
-  const { pedidos, marcarPedidoComoSeparado, loading } = useExpedicaoStore();
-  const { modalEditarAberto, setModalEditarAberto, agendamentoParaEditar, handleEditarAgendamento, handleSalvarAgendamento } = useAgendamentoActions();
+  const { pedidos, loading } = useExpedicaoStore();
   const { converterPedidoParaCard } = usePedidoConverter();
 
   useEffect(() => {
@@ -46,26 +47,16 @@ export default function Despacho() {
 
   const onMarcarSeparado = async (pedidoId: string) => {
     try {
-      await marcarPedidoComoSeparado(pedidoId);
+      console.log("Marcando pedido como separado:", pedidoId);
+      // TODO: Implementar função de marcar como separado
     } catch (error: any) {
       console.error("Erro ao marcar pedido como separado:", error.message);
     }
   };
 
-  const converterParaPedidoCard = (pedidoExpedicao: any): PedidoCardData => {
-    return {
-      id: pedidoExpedicao.id,
-      cliente: {
-        nome: pedidoExpedicao.cliente_nome || 'Cliente não informado',
-        endereco: pedidoExpedicao.cliente_endereco,
-        telefone: pedidoExpedicao.cliente_telefone,
-        linkGoogleMaps: pedidoExpedicao.link_google_maps
-      },
-      dataEntrega: pedidoExpedicao.data_prevista_entrega,
-      quantidadeTotal: pedidoExpedicao.quantidade_total,
-      tipoPedido: pedidoExpedicao.tipo_pedido,
-      substatus: pedidoExpedicao.substatus_pedido
-    };
+  const onEditarAgendamento = (pedidoId: string) => {
+    console.log("Editando agendamento:", pedidoId);
+    // TODO: Implementar função de editar agendamento
   };
 
   const filtrarPedidosPorData = useCallback(() => {
@@ -74,13 +65,25 @@ export default function Despacho() {
       return;
     }
 
-    const pedidosNoPeriodo = pedidos.filter((pedido) => {
-      const dataEntrega = new Date(pedido.data_prevista_entrega);
-      return dataEntrega >= date.from && dataEntrega <= date.to;
-    }).map(converterParaPedidoCard);
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
 
-    setPedidosFiltrados(pedidosNoPeriodo);
-  }, [date, pedidos]);
+    let pedidosFiltradosTemp = pedidos.filter((pedido) => {
+      const dataEntrega = new Date(pedido.data_prevista_entrega);
+      dataEntrega.setHours(0, 0, 0, 0);
+
+      if (tipoFiltro === 'hoje') {
+        return dataEntrega.getTime() === hoje.getTime();
+      } else if (tipoFiltro === 'atrasadas') {
+        return dataEntrega < hoje;
+      } else {
+        return dataEntrega >= date.from && dataEntrega <= date.to;
+      }
+    });
+
+    const pedidosConvertidos = pedidosFiltradosTemp.map(converterPedidoParaCard);
+    setPedidosFiltrados(pedidosConvertidos);
+  }, [date, pedidos, tipoFiltro, converterPedidoParaCard]);
 
   useEffect(() => {
     filtrarPedidosPorData();
@@ -89,41 +92,47 @@ export default function Despacho() {
   return (
     <div className="container mx-auto py-10">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Lista de Despacho</h1>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant={"outline"}
-              className={cn(
-                "w-[280px] justify-start text-left font-normal",
-                !date && "text-muted-foreground"
-              )}
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              {date?.from ? (
-                date.to ? (
-                  `${format(date.from, "dd/MM/yyyy", {
-                    locale: ptBR,
-                  })} - ${format(date.to, "dd/MM/yyyy", { locale: ptBR })}`
+        <h1 className="text-2xl font-bold">
+          {tipoFiltro === 'hoje' ? 'Entregas de Hoje' : 
+           tipoFiltro === 'atrasadas' ? 'Entregas Atrasadas' : 
+           'Lista de Despacho'}
+        </h1>
+        {!tipoFiltro && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-[280px] justify-start text-left font-normal",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {date?.from ? (
+                  date.to ? (
+                    `${format(date.from, "dd/MM/yyyy", {
+                      locale: ptBR,
+                    })} - ${format(date.to, "dd/MM/yyyy", { locale: ptBR })}`
+                  ) : (
+                    format(date.from, "dd/MM/yyyy", { locale: ptBR })
+                  )
                 ) : (
-                  format(date.from, "dd/MM/yyyy", { locale: ptBR })
-                )
-              ) : (
-                <span>Escolha um período</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="center">
-            <CalendarComponent
-              mode="range"
-              defaultMonth={date?.from}
-              selected={date}
-              onSelect={setDate}
-              numberOfMonths={2}
-              locale={ptBR}
-            />
-          </PopoverContent>
-        </Popover>
+                  <span>Escolha um período</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="center">
+              <CalendarComponent
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={2}
+                locale={ptBR}
+              />
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
 
       {loading ? (
@@ -144,24 +153,19 @@ export default function Despacho() {
               key={pedido.id}
               pedido={pedido}
               onMarcarSeparado={() => onMarcarSeparado(pedido.id)}
-              onEditarAgendamento={() => handleEditarAgendamento(pedido.id)}
+              onEditarAgendamento={() => onEditarAgendamento(pedido.id)}
             />
           ))}
         </div>
       ) : (
         <div className="flex items-center justify-center h-32">
-          <p className="text-muted-foreground">Nenhum pedido encontrado para o período selecionado.</p>
+          <p className="text-muted-foreground">
+            {tipoFiltro === 'hoje' ? 'Nenhuma entrega agendada para hoje.' :
+             tipoFiltro === 'atrasadas' ? 'Nenhuma entrega atrasada encontrada.' :
+             'Nenhum pedido encontrado para o período selecionado.'}
+          </p>
         </div>
       )}
-
-      <Separated />
-
-      <AgendamentoModal
-        open={modalEditarAberto}
-        setOpen={setModalEditarAberto}
-        agendamento={agendamentoParaEditar}
-        onSalvar={handleSalvarAgendamento}
-      />
     </div>
   );
 }

@@ -39,11 +39,34 @@ export default function PedidoCard({
     setIsExpanded(!isExpanded);
   };
 
+  // Verificar se pedido e pedido.cliente existem antes de acessar propriedades
+  if (!pedido) {
+    console.error('PedidoCard: pedido is undefined');
+    return (
+      <Card className="w-full">
+        <CardContent className="p-4">
+          <p className="text-muted-foreground">Erro: Dados do pedido não encontrados</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!pedido.cliente) {
+    console.error('PedidoCard: pedido.cliente is undefined', pedido);
+    return (
+      <Card className="w-full">
+        <CardContent className="p-4">
+          <p className="text-muted-foreground">Erro: Dados do cliente não encontrados</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Safely access cliente data with fallbacks
-  const clienteNome = pedido?.cliente?.nome || 'Cliente não informado';
-  const clienteEndereco = pedido?.cliente?.endereco;
-  const clienteTelefone = pedido?.cliente?.telefone;
-  const linkGoogleMaps = pedido?.cliente?.linkGoogleMaps;
+  const clienteNome = pedido.cliente.nome || 'Cliente não informado';
+  const clienteEndereco = pedido.cliente.endereco;
+  const clienteTelefone = pedido.cliente.telefone;
+  const linkGoogleMaps = pedido.cliente.linkGoogleMaps;
 
   return (
     <Card className="w-full">

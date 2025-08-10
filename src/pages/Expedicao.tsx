@@ -3,10 +3,9 @@ import { useState, useEffect } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SeparacaoPedidos } from "@/components/expedicao/SeparacaoPedidos";
-import { Despacho } from "@/components/expedicao/Despacho";
+import Despacho from "@/components/expedicao/Despacho";
 import { HistoricoEntregas } from "@/components/expedicao/HistoricoEntregas";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
-import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 
 export default function Expedicao() {
   const [activeTab, setActiveTab] = useState<string>("separacao");
