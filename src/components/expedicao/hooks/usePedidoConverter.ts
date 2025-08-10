@@ -32,24 +32,17 @@ export const usePedidoConverter = () => {
     console.log('📦 Itens do pedido convertidos:', itens);
 
     // Retornar objeto que corresponde à interface PedidoCardData
-    // Garantir que o objeto cliente sempre exista
-    const pedidoConvertido = {
+    return {
       id: pedidoExpedicao.id,
-      cliente: {
-        nome: pedidoExpedicao.cliente_nome || 'Cliente não informado',
-        endereco: pedidoExpedicao.cliente_endereco || undefined,
-        telefone: pedidoExpedicao.cliente_telefone || undefined,
-        linkGoogleMaps: pedidoExpedicao.link_google_maps || undefined
-      },
-      dataEntrega: pedidoExpedicao.data_prevista_entrega,
-      quantidadeTotal: pedidoExpedicao.quantidade_total || 0,
-      tipoPedido: pedidoExpedicao.tipo_pedido || 'Padrão',
-      substatus: pedidoExpedicao.substatus_pedido || 'Agendado',
+      cliente_nome: pedidoExpedicao.cliente_nome,
+      cliente_endereco: pedidoExpedicao.cliente_endereco,
+      cliente_telefone: pedidoExpedicao.cliente_telefone,
+      data_prevista_entrega: new Date(pedidoExpedicao.data_prevista_entrega),
+      quantidade_total: pedidoExpedicao.quantidade_total,
+      tipo_pedido: pedidoExpedicao.tipo_pedido,
+      substatus_pedido: pedidoExpedicao.substatus_pedido || 'Agendado',
       itens: itens
     };
-
-    console.log('✅ Pedido convertido:', pedidoConvertido);
-    return pedidoConvertido;
   };
 
   return { converterPedidoParaCard };
