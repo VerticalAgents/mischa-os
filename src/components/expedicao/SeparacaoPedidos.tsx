@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import PedidoCard from "./PedidoCard";
@@ -12,6 +10,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import AgendamentoEditModal from "@/components/agendamento/AgendamentoEditModal";
 import { AgendamentoItem } from "@/components/agendamento/types";
+import { PrintingActions } from "./components/PrintingActions";
 
 const SeparacaoPedidos = () => {
   const { 
@@ -125,15 +124,24 @@ const SeparacaoPedidos = () => {
             {pedidosParaSeparacao.length} pedidos
           </Badge>
         </div>
-        <Button 
-          onClick={() => carregarPedidos()} 
-          size="sm"
-          variant="outline"
-          disabled={isLoading}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          <PrintingActions
+            activeSubTab="todos"
+            pedidosPadrao={pedidosFiltrados.filter(p => p.tipo_pedido === 'Padrão')}
+            pedidosAlterados={pedidosFiltrados.filter(p => p.tipo_pedido === 'Alterado')}
+            pedidosProximoDia={[]}
+            todosPedidos={pedidosFiltrados}
+          />
+          <Button 
+            onClick={() => carregarPedidos()} 
+            size="sm"
+            variant="outline"
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}
