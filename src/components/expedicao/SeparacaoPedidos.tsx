@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import PedidoCard from "./PedidoCard";
@@ -37,7 +38,6 @@ const SeparacaoPedidos = () => {
   const handleEditarPedido = (pedido: any) => {
     // Converter o pedido da expedição para o formato AgendamentoItem
     const agendamentoFormatado: AgendamentoItem = {
-      id: pedido.id,
       cliente: {
         id: pedido.cliente_id,
         nome: pedido.cliente_nome,
@@ -61,6 +61,7 @@ const SeparacaoPedidos = () => {
       },
       dataReposicao: new Date(pedido.data_prevista_entrega),
       statusAgendamento: "Agendado" as const,
+      isPedidoUnico: pedido.tipo_pedido === "Único",
       pedido: {
         id: parseInt(pedido.id),
         idCliente: pedido.cliente_id,
