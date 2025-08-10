@@ -1661,6 +1661,14 @@ export type Database = {
           quantidade: number
         }[]
       }
+      compute_entrega_itens_v2: {
+        Args: { p_agendamento_id: string }
+        Returns: {
+          produto_id: string
+          produto_nome: string
+          quantidade: number
+        }[]
+      }
       get_request_ip: {
         Args: Record<PropertyKey, never>
         Returns: unknown
