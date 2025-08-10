@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import PedidoCard from "./PedidoCard";
@@ -38,11 +37,11 @@ const SeparacaoPedidos = () => {
     setModalEditarAberto(true);
   };
 
-  const handleCloseEditModal = () => {
-    setModalEditarAberto(false);
-    setPedidoEditando(null);
+  const handleSalvarAgendamento = (agendamentoAtualizado: any) => {
     // Recarregar pedidos após edição
     carregarPedidos();
+    setModalEditarAberto(false);
+    setPedidoEditando(null);
   };
 
   // Filtrar pedidos para separação (Agendado e não separados ainda)
@@ -160,8 +159,9 @@ const SeparacaoPedidos = () => {
       {pedidoEditando && (
         <EditarAgendamentoDialog
           agendamento={pedidoEditando}
-          isOpen={modalEditarAberto}
-          onClose={handleCloseEditModal}
+          open={modalEditarAberto}
+          onOpenChange={setModalEditarAberto}
+          onSalvar={handleSalvarAgendamento}
         />
       )}
     </div>
