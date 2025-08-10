@@ -19,12 +19,34 @@ export default function EditarAgendamentoDialog({
   onOpenChange, 
   onSalvar 
 }: EditarAgendamentoDialogProps) {
-  const [dataReposicao, setDataReposicao] = useState(
-    agendamento.dataReposicao.toISOString().split('T')[0]
-  );
-  const [quantidade, setQuantidade] = useState(
-    (agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao).toString()
-  );
+  // Handle both agendamento structure and expedição pedido structure
+  const getDataReposicao = () => {
+    if (agendamento.dataReposicao) {
+      return agendamento.dataReposicao.toISOString().split('T')[0];
+    }
+    // Fallback for expedição structure
+    if ((agendamento as any).data_prevista_entrega) {
+      const date = new Date((agendamento as any).data_prevista_entrega);
+      return date.toISOString().split('T')[0];
+    }
+    // Default to today
+    return new Date().toISOString().split('T')[0];
+  };
+
+  const getQuantidade = () => {
+    if (agendamento.pedido?.totalPedidoUnidades) {
+      return agendamento.pedido.totalPedidoUnidades.toString();
+    }
+    // Fallback for expedição structure
+    if ((agendamento as any).quantidade_total) {
+      return (agendamento as any).quantidade_total.toString();
+    }
+    // Fallback to cliente default
+    return agendamento.cliente.quantidadePadrao.toString();
+  };
+
+  const [dataReposicao, setDataReposicao] = useState(getDataReposicao());
+  const [quantidade, setQuantidade] = useState(getQuantidade());
 
   const handleSalvar = () => {
     const agendamentoAtualizado: AgendamentoItem = {
