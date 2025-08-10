@@ -41,8 +41,25 @@ export default function EditarAgendamentoDialog({
     if ((agendamento as any).quantidade_total) {
       return (agendamento as any).quantidade_total.toString();
     }
-    // Fallback to cliente default
-    return agendamento.cliente.quantidadePadrao.toString();
+    // Fallback to cliente default if available
+    if (agendamento.cliente?.quantidadePadrao) {
+      return agendamento.cliente.quantidadePadrao.toString();
+    }
+    // Default fallback
+    return "0";
+  };
+
+  const getClienteNome = () => {
+    // Try standard structure first
+    if (agendamento.cliente?.nome) {
+      return agendamento.cliente.nome;
+    }
+    // Fallback for expedição structure
+    if ((agendamento as any).cliente_nome) {
+      return (agendamento as any).cliente_nome;
+    }
+    // Default fallback
+    return "Cliente não identificado";
   };
 
   const [dataReposicao, setDataReposicao] = useState(getDataReposicao());
@@ -72,7 +89,7 @@ export default function EditarAgendamentoDialog({
         <div className="space-y-4 py-4">
           <div>
             <Label htmlFor="cliente">Cliente</Label>
-            <Input id="cliente" value={agendamento.cliente.nome} disabled />
+            <Input id="cliente" value={getClienteNome()} disabled />
           </div>
           
           <div>
