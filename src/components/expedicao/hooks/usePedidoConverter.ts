@@ -34,13 +34,16 @@ export const usePedidoConverter = () => {
     // Retornar objeto que corresponde à interface PedidoCardData
     return {
       id: pedidoExpedicao.id,
-      cliente_nome: pedidoExpedicao.cliente_nome,
-      cliente_endereco: pedidoExpedicao.cliente_endereco,
-      cliente_telefone: pedidoExpedicao.cliente_telefone,
-      data_prevista_entrega: new Date(pedidoExpedicao.data_prevista_entrega),
-      quantidade_total: pedidoExpedicao.quantidade_total,
-      tipo_pedido: pedidoExpedicao.tipo_pedido,
-      substatus_pedido: pedidoExpedicao.substatus_pedido || 'Agendado',
+      cliente: {
+        nome: pedidoExpedicao.cliente_nome || 'Cliente não informado',
+        endereco: pedidoExpedicao.cliente_endereco,
+        telefone: pedidoExpedicao.cliente_telefone,
+        linkGoogleMaps: pedidoExpedicao.link_google_maps
+      },
+      dataEntrega: pedidoExpedicao.data_prevista_entrega,
+      quantidadeTotal: pedidoExpedicao.quantidade_total,
+      tipoPedido: pedidoExpedicao.tipo_pedido,
+      substatus: pedidoExpedicao.substatus_pedido || 'Agendado',
       itens: itens
     };
   };

@@ -39,13 +39,19 @@ export default function PedidoCard({
     setIsExpanded(!isExpanded);
   };
 
+  // Safely access cliente data with fallbacks
+  const clienteNome = pedido?.cliente?.nome || 'Cliente não informado';
+  const clienteEndereco = pedido?.cliente?.endereco;
+  const clienteTelefone = pedido?.cliente?.telefone;
+  const linkGoogleMaps = pedido?.cliente?.linkGoogleMaps;
+
   return (
     <Card className="w-full">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-lg">{pedido.cliente.nome}</h3>
+              <h3 className="font-semibold text-lg">{clienteNome}</h3>
               <TipoPedidoBadge tipo={pedido.tipoPedido} />
             </div>
             {pedido.substatus && (
@@ -90,14 +96,14 @@ export default function PedidoCard({
         </div>
 
         {/* Endereço e contato */}
-        {pedido.cliente.endereco && (
+        {clienteEndereco && (
           <div className="flex items-start gap-2 text-sm">
             <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
             <div className="flex-1">
-              <span>{pedido.cliente.endereco}</span>
-              {pedido.cliente.linkGoogleMaps && (
+              <span>{clienteEndereco}</span>
+              {linkGoogleMaps && (
                 <a
-                  href={pedido.cliente.linkGoogleMaps}
+                  href={linkGoogleMaps}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="ml-2 inline-flex items-center gap-1 text-blue-600 hover:text-blue-800"
@@ -110,10 +116,10 @@ export default function PedidoCard({
           </div>
         )}
 
-        {pedido.cliente.telefone && (
+        {clienteTelefone && (
           <div className="flex items-center gap-2 text-sm">
             <Phone className="h-4 w-4 text-muted-foreground" />
-            <span>{pedido.cliente.telefone}</span>
+            <span>{clienteTelefone}</span>
           </div>
         )}
 
