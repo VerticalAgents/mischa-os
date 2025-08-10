@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import TipoPedidoBadge from "./TipoPedidoBadge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
+import ProdutosList from "./ProdutosList";
 import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
 
 interface PedidoCardProps {
@@ -30,6 +31,7 @@ interface PedidoCardProps {
   onEditarAgendamento?: () => void;
   showDespachoActions?: boolean;
   showReagendarButton?: boolean;
+  showProdutosList?: boolean;
   onConfirmarDespacho?: () => void;
   onConfirmarEntrega?: (observacao?: string) => void;
   onConfirmarRetorno?: (observacao?: string) => void;
@@ -42,6 +44,7 @@ const PedidoCard = ({
   onEditarAgendamento,
   showDespachoActions = false,
   showReagendarButton = false,
+  showProdutosList = false,
   onConfirmarDespacho,
   onConfirmarEntrega,
   onConfirmarRetorno,
@@ -131,7 +134,11 @@ const PedidoCard = ({
           </div>
         )}
 
-        {pedido.itens_personalizados && pedido.itens_personalizados.length > 0 && (
+        {showProdutosList && (
+          <ProdutosList pedido={pedido} />
+        )}
+
+        {!showProdutosList && pedido.itens_personalizados && pedido.itens_personalizados.length > 0 && (
           <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
             <h4 className="font-medium text-amber-800 mb-2">Itens Personalizados:</h4>
             <div className="space-y-1">
