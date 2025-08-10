@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import PedidoCard from "./PedidoCard";
@@ -8,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import EditarAgendamentoDialog from "@/components/agendamento/EditarAgendamentoDialog";
 
 const SeparacaoPedidos = () => {
   const { 
@@ -18,8 +20,10 @@ const SeparacaoPedidos = () => {
   } = useExpedicaoStore();
 
   const [filtroTexto, setFiltroTexto] = useState("");
-  const [filtroStatus, setFiltroStatus] = useState("todos");
-  const [filtroData, setFiltroData] = useState("");
+  const [filtroTipoPedido, setFiltroTipoPedido] = useState("todos");
+  const [filtroData, setFiltroData] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [pedidoEditando, setPedidoEditando] = useState<any>(null);
+  const [modalEditarAberto, setModalEditarAberto] = useState(false);
 
   useEffect(() => {
     carregarPedidos();
@@ -27,6 +31,18 @@ const SeparacaoPedidos = () => {
 
   const handleMarcarSeparado = async (pedidoId: string) => {
     await confirmarSeparacao(pedidoId);
+  };
+
+  const handleEditarPedido = (pedido: any) => {
+    setPedidoEditando(pedido);
+    setModalEditarAberto(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setModalEditarAberto(false);
+    setPedidoEditando(null);
+    // Recarregar pedidos após edição
+    carregarPedidos();
   };
 
   // Filtrar pedidos para separação (Agendado e não separados ainda)
@@ -41,13 +57,14 @@ const SeparacaoPedidos = () => {
       pedido.cliente_nome.toLowerCase().includes(filtroTexto.toLowerCase()) ||
       pedido.id.toLowerCase().includes(filtroTexto.toLowerCase());
     
-    const matchStatus = filtroStatus === "todos" || 
-      (filtroStatus === "agendado" && (!pedido.substatus_pedido || pedido.substatus_pedido === 'Agendado'));
+    const matchTipoPedido = filtroTipoPedido === "todos" || 
+      (filtroTipoPedido === "padrao" && pedido.tipo_pedido === 'Padrão') ||
+      (filtroTipoPedido === "alterado" && pedido.tipo_pedido === 'Alterado');
     
     const matchData = !filtroData || 
       format(pedido.data_prevista_entrega, "yyyy-MM-dd") === filtroData;
 
-    return matchTexto && matchStatus && matchData;
+    return matchTexto && matchTipoPedido && matchData;
   });
 
   if (isLoading) {
@@ -91,14 +108,15 @@ const SeparacaoPedidos = () => {
           />
         </div>
         
-        <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+        <Select value={filtroTipoPedido} onValueChange={setFiltroTipoPedido}>
           <SelectTrigger>
             <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder="Tipo de Pedido" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos os status</SelectItem>
-            <SelectItem value="agendado">Agendado</SelectItem>
+            <SelectItem value="todos">Todos os tipos</SelectItem>
+            <SelectItem value="padrao">Padrão</SelectItem>
+            <SelectItem value="alterado">Alterado</SelectItem>
           </SelectContent>
         </Select>
 
@@ -131,11 +149,21 @@ const SeparacaoPedidos = () => {
               key={pedido.id}
               pedido={pedido}
               onMarcarSeparado={() => handleMarcarSeparado(pedido.id)}
+              onEditarAgendamento={() => handleEditarPedido(pedido)}
               showProdutosList={true}
             />
           ))
         )}
       </div>
+
+      {/* Modal de Edição */}
+      {pedidoEditando && (
+        <EditarAgendamentoDialog
+          agendamento={pedidoEditando}
+          isOpen={modalEditarAberto}
+          onClose={handleCloseEditModal}
+        />
+      )}
     </div>
   );
 };
