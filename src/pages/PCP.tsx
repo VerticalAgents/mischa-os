@@ -1,73 +1,81 @@
 
+import { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Layers } from "lucide-react";
+import { useTabPersistence } from "@/hooks/useTabPersistence";
+
+// Import components
 import ProjecaoProducaoTab from "@/components/pcp/ProjecaoProducaoTab";
 import NecessidadeDiariaTab from "@/components/pcp/NecessidadeDiariaTab";
 import ProducaoAgendadaTab from "@/components/pcp/ProducaoAgendadaTab";
 import HistoricoProducao from "@/components/pcp/HistoricoProducao";
 import AuditoriaPCPTab from "@/components/pcp/AuditoriaPCPTab";
-import PCPHeader from "@/components/pcp/PCPHeader";
-import { usePlanejamentoProducaoStore } from "@/hooks/usePlanejamentoProducaoStore";
-import { useTabPersistenceV2 } from "@/hooks/useTabPersistenceV2";
-import { format, startOfWeek, endOfWeek, subWeeks, addWeeks } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 export default function PCP() {
-  const { activeTab, setActiveTab, semanaAtual, setSemanaAtual } = usePlanejamentoProducaoStore();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { activeTab, changeTab } = useTabPersistence("projecao-producao");
   
-  useTabPersistenceV2('pcp', activeTab, setActiveTab);
+  // Sincronização com a URL
+  const tabFromUrl = searchParams.get('tab');
+  
+  // Sincronizar com URL ao montar
+  useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      changeTab(tabFromUrl);
+    } else if (!tabFromUrl) {
+      // Se não há tab na URL, usar a do store e atualizar a URL
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.set('tab', activeTab);
+      setSearchParams(newSearchParams, { replace: true });
+    }
+  }, [tabFromUrl, activeTab, changeTab, searchParams, setSearchParams]);
 
-  const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
-  const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
-
-  const voltarSemana = () => {
-    setSemanaAtual(subWeeks(semanaAtual, 1));
-  };
-
-  const avancarSemana = () => {
-    setSemanaAtual(addWeeks(semanaAtual, 1));
-  };
-
-  const voltarHoje = () => {
-    setSemanaAtual(new Date());
+  const handleTabChange = (value: string) => {
+    changeTab(value);
+    
+    // Atualizar URL sem reload
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('tab', value);
+    setSearchParams(newSearchParams, { replace: true });
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <PCPHeader 
-        inicioSemana={inicioSemana}
-        fimSemana={fimSemana}
-        voltarSemana={voltarSemana}
-        avancarSemana={avancarSemana}
-        semanaAtual={semanaAtual}
+    <div className="container mx-auto py-6">
+      <PageHeader 
+        title="PCP - Planejamento e Controle da Produção" 
+        description="Gerencie a produção, estoques e planejamento de forma integrada"
+        icon={<Layers className="h-6 w-6" />}
       />
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="projecao-producao">Projeção</TabsTrigger>
-          <TabsTrigger value="necessidade-diaria">Necessidade</TabsTrigger>
+      
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
+        <TabsList className="w-full justify-start">
+          <TabsTrigger value="projecao-producao">Projeção de Produção</TabsTrigger>
+          <TabsTrigger value="necessidade-diaria">Necessidade Diária</TabsTrigger>
           <TabsTrigger value="producao-agendada">Produção Agendada</TabsTrigger>
           <TabsTrigger value="historico">Histórico</TabsTrigger>
-          <TabsTrigger value="auditoria-pcp">Auditoria</TabsTrigger>
+          <TabsTrigger value="auditoria-pcp">Auditoria PCP</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="projecao-producao" className="space-y-6 mt-6" forceMount>
-          <ProjecaoProducaoTab />
+        
+        <TabsContent value="projecao-producao" className="space-y-6 mt-6" forceMount={activeTab === "projecao-producao" ? true : undefined}>
+          {activeTab === "projecao-producao" && <ProjecaoProducaoTab />}
+        </TabsContent>
+        
+        <TabsContent value="necessidade-diaria" className="space-y-6 mt-6" forceMount={activeTab === "necessidade-diaria" ? true : undefined}>
+          {activeTab === "necessidade-diaria" && <NecessidadeDiariaTab />}
+        </TabsContent>
+        
+        <TabsContent value="producao-agendada" className="space-y-6 mt-6" forceMount={activeTab === "producao-agendada" ? true : undefined}>
+          {activeTab === "producao-agendada" && <ProducaoAgendadaTab />}
         </TabsContent>
 
-        <TabsContent value="necessidade-diaria" className="space-y-6 mt-6" forceMount>
-          <NecessidadeDiariaTab />
+        <TabsContent value="historico" className="space-y-6 mt-6">
+          {activeTab === "historico" && <HistoricoProducao />}
         </TabsContent>
 
-        <TabsContent value="producao-agendada" className="space-y-6 mt-6" forceMount>
-          <ProducaoAgendadaTab />
-        </TabsContent>
-
-        <TabsContent value="historico" className="space-y-6 mt-6" forceMount>
-          <HistoricoProducao />
-        </TabsContent>
-
-        <TabsContent value="auditoria-pcp" className="space-y-6 mt-6" forceMount>
-          <AuditoriaPCPTab />
+        <TabsContent value="auditoria-pcp" className="space-y-6 mt-6">
+          {activeTab === "auditoria-pcp" && <AuditoriaPCPTab />}
         </TabsContent>
       </Tabs>
     </div>

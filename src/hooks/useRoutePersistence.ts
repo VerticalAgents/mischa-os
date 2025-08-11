@@ -1,16 +1,14 @@
 
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 
-const LEGACY_KEY = 'lastVisitedRoute';
+const ROUTE_STORAGE_KEY = 'lastVisitedRoute';
 
 export const useRoutePersistence = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const ROUTE_STORAGE_KEY = user?.id ? `${LEGACY_KEY}:${user.id}` : LEGACY_KEY;
 
+  // Salva a rota atual sempre que ela muda (exceto rotas de auth)
   useEffect(() => {
     const currentPath = location.pathname + location.search + location.hash;
     
@@ -20,16 +18,17 @@ export const useRoutePersistence = () => {
         currentPath !== '/' && 
         currentPath !== '/home' &&
         !currentPath.startsWith('/auth')) {
+      console.log('🔄 Salvando rota atual:', currentPath);
       localStorage.setItem(ROUTE_STORAGE_KEY, currentPath);
     }
-  }, [location.pathname, location.search, location.hash, ROUTE_STORAGE_KEY]);
+  }, [location.pathname, location.search, location.hash]);
 
   // Restaura a rota salva apenas quando solicitado
   const restoreRoute = () => {
-    // Tenta nova chave por usuário; se não existir, usa legado
-    const savedRoute = localStorage.getItem(ROUTE_STORAGE_KEY) 
-      || localStorage.getItem(LEGACY_KEY);
+    const savedRoute = localStorage.getItem(ROUTE_STORAGE_KEY);
     const currentPath = location.pathname + location.search + location.hash;
+    
+    console.log('🔍 Verificando rota salva:', { savedRoute, currentPath });
     
     // Se existe uma rota salva e é diferente da atual
     if (savedRoute && 
@@ -40,20 +39,19 @@ export const useRoutePersistence = () => {
         savedRoute !== '/home' &&
         !savedRoute.startsWith('/auth')) {
       
+      console.log('🚀 Restaurando rota para:', savedRoute);
       navigate(savedRoute, { replace: true });
       return true;
     }
     
+    console.log('✅ Mantendo rota atual:', currentPath);
     return false;
   };
 
+  // Limpar persistência quando necessário
   const clearRoutePersistence = () => {
     localStorage.removeItem(ROUTE_STORAGE_KEY);
-    localStorage.removeItem(LEGACY_KEY);
   };
 
-  return {
-    restoreRoute,
-    clearRoutePersistence
-  };
+  return { restoreRoute, clearRoutePersistence };
 };

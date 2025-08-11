@@ -1,64 +1,162 @@
-import React, { useState } from "react";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { useSidebar } from "@/hooks/useSidebar";
-import { useAuth } from "@/contexts/AuthContext";
-import { useRoutePersistence } from "@/hooks/useRoutePersistence";
-import { Link } from 'react-router-dom';
 
-interface SidebarLogoProps {
-  title: string;
-  currentLogoSrc: string;
-  showFullContent: boolean;
+import React, { createContext, useContext, useState } from "react";
+import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "./button";
+import { useThemeStore } from "@/lib/theme";
+
+// Interface definitions
+interface SidebarContextType {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  animate: boolean;
 }
 
-const SidebarLogo = ({ title, currentLogoSrc, showFullContent }: SidebarLogoProps) => (
-  <div className="flex items-center justify-center p-4 border-b border-sidebar-border">
-    <Link to="/" className={cn("flex items-center", showFullContent ? "space-x-2" : "justify-center w-full")}>
-      <img src={currentLogoSrc} alt="Logo" className="h-8 w-8" />
-      {showFullContent && (
-        <span className="font-bold text-lg text-sidebar-foreground">{title}</span>
-      )}
-    </Link>
-  </div>
-);
+interface SidebarProps {
+  open?: boolean;
+  setOpen?: (open: boolean) => void;
+  animate?: boolean;
+  children?: React.ReactNode;
+}
 
-interface SidebarItemProps {
+interface SidebarBodyProps {
+  className?: string;
+  children?: React.ReactNode;
+}
+
+interface SidebarLinkProps {
   link: {
-    href: string;
     label: string;
+    href: string;
     icon: React.ReactNode;
   };
-  active: boolean;
-  showFullContent: boolean;
+  active?: boolean;
   onClick?: () => void;
 }
 
-interface SidebarAnimatedProps {
-  logoTitle: string;
-  logoSrc: string;
-  sidebarLinks: {
-    href: string;
-    label: string;
-    icon: React.ReactNode;
-  }[];
+interface SidebarHeaderProps {
+  className?: string;
+  logoSrc?: string;
+  title?: string;
+  darkModeLogo?: string;
+  lightModeLogo?: string;
 }
 
-const SidebarItem = ({ link, active, showFullContent, onClick }: SidebarItemProps) => (
-  <li>
-    <Link
-      to={link.href}
+// Create context for sidebar state management
+const SidebarContext = createContext<SidebarContextType>({
+  open: true,
+  setOpen: () => {},
+  animate: true
+});
+
+// Hook to use the sidebar context
+export const useSidebar = () => useContext(SidebarContext);
+
+// Sidebar Provider component
+export const SidebarProvider = ({
+  children,
+  defaultOpen = true,
+  animate = true
+}: {
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  animate?: boolean;
+}) => {
+  const [open, setOpen] = useState(defaultOpen);
+  
+  return (
+    <SidebarContext.Provider value={{ open, setOpen, animate }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+};
+
+// Sidebar component
+export const Sidebar = ({ children, open: propOpen, setOpen: propSetOpen, animate = true }: SidebarProps) => {
+  const context = useSidebar();
+  const isOpen = propOpen !== undefined ? propOpen : context.open;
+  const setIsOpen = propSetOpen || context.setOpen;
+  const shouldAnimate = animate !== undefined ? animate : context.animate;
+  
+  return (
+    <SidebarProvider defaultOpen={isOpen} animate={shouldAnimate}>
+      <aside
+        className={cn(
+          "border-r bg-sidebar-background text-sidebar-foreground h-screen transition-all fixed left-0 z-10",
+          shouldAnimate
+            ? isOpen
+              ? "w-64"
+              : "w-16"
+            : "w-64"
+        )}
+      >
+        <div className="absolute right-0 top-3 transform translate-x-1/2 z-10">
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full h-6 w-6 bg-background text-foreground border-border"
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            {isOpen ? (
+              <ChevronLeft className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
+          </Button>
+        </div>
+        {children}
+      </aside>
+    </SidebarProvider>
+  );
+};
+
+// Sidebar body component
+export const SidebarBody = ({ className, children }: SidebarBodyProps) => {
+  return (
+    <div className={cn("flex flex-col h-full", className)}>
+      {children}
+    </div>
+  );
+};
+
+// Sidebar header component
+export const SidebarHeader = ({ 
+  className, 
+  logoSrc = "/logo.svg", 
+  title = "MischaOS",
+  darkModeLogo = "/logo.svg",
+  lightModeLogo = "/logo.svg"
+}: SidebarHeaderProps) => {
+  const { open, animate } = useSidebar();
+  const { isDark } = useThemeStore();
+  const showFullContent = animate ? open : true;
+  
+  // Use the appropriate logo based on the theme
+  const currentLogoSrc = isDark ? darkModeLogo : lightModeLogo;
+  
+  return (
+    <div className={cn("flex h-14 items-center border-b px-6", className)}>
+      <a href="/" className={cn("flex items-center", showFullContent ? "space-x-2" : "justify-center w-full")}>
+        <img src={currentLogoSrc} alt="Logo" className="h-8 w-8" />
+        {showFullContent && (
+          <span className="font-bold text-lg text-sidebar-foreground">{title}</span>
+        )}
+      </a>
+    </div>
+  );
+};
+
+// Sidebar link component
+export const SidebarLink = ({ link, active, onClick }: SidebarLinkProps) => {
+  const { open, animate } = useSidebar();
+  const showFullContent = animate ? open : true;
+  
+  return (
+    <a
+      href={link.href}
       onClick={(e) => {
         if (onClick) {
+          e.preventDefault();
           onClick();
         }
       }}
@@ -72,106 +170,14 @@ const SidebarItem = ({ link, active, showFullContent, onClick }: SidebarItemProp
     >
       <span className="flex-shrink-0">{link.icon}</span>
       {showFullContent && <span className="truncate">{link.label}</span>}
-    </Link>
-  </li>
-);
-
-export const SidebarAnimated = ({
-  logoTitle,
-  logoSrc,
-  sidebarLinks,
-}: SidebarAnimatedProps) => {
-  const { showFullContent, toggleSidebar } = useSidebar();
-  const { signOut } = useAuth();
-  const { clearRoutePersistence } = useRoutePersistence();
-  const [isMounted, setIsMounted] = useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) {
-    return null;
-  }
-
-  return (
-    <>
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-80">
-          <SheetHeader className="space-y-2.5">
-            <SheetTitle>Menu</SheetTitle>
-            <SheetDescription>
-              Navegue pelo sistema
-            </SheetDescription>
-          </SheetHeader>
-        </SheetContent>
-      </Sheet>
-
-      <aside
-        className={cn(
-          "group/sidebar fixed left-0 top-0 flex h-full w-20 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar-background transition-all duration-300",
-          showFullContent ? "md:w-60" : "md:w-20"
-        )}
-      >
-        <SidebarLogo
-          title={logoTitle}
-          currentLogoSrc={logoSrc}
-          showFullContent={showFullContent}
-        />
-
-        <nav className="flex-1">
-          <ul className="flex flex-col gap-0.5 p-4">
-            {sidebarLinks.map((link) => (
-              <SidebarItem
-                key={link.href}
-                link={link}
-                active={false}
-                showFullContent={showFullContent}
-                onClick={() => {}}
-              />
-            ))}
-          </ul>
-        </nav>
-
-        <div className="border-t border-sidebar-border p-3">
-          <Button
-            variant="ghost"
-            className="group w-full justify-start rounded-md px-3 py-2.5 text-sm transition-colors hover:bg-sidebar-background-hover"
-            onClick={async () => {
-              await signOut();
-              clearRoutePersistence();
-              toggleSidebar();
-            }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="mr-2 h-4 w-4"
-            >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" x2="9" y1="12" y2="12"></line>
-            </svg>
-            <span className={cn(showFullContent ? "block" : "hidden", "group-hover:block")}>
-              Sair
-            </span>
-          </Button>
-        </div>
-      </aside>
-    </>
+    </a>
   );
+};
+
+export default {
+  Sidebar,
+  SidebarBody,
+  SidebarLink,
+  SidebarHeader,
+  useSidebar
 };
