@@ -14,10 +14,7 @@ import { ptBR } from 'date-fns/locale';
 export default function PCP() {
   const { activeTab, setActiveTab, semanaAtual, setSemanaAtual } = usePlanejamentoProducaoStore();
   
-  useTabPersistenceV2('pcp', {
-    activeTab,
-    setActiveTab
-  });
+  useTabPersistenceV2('pcp', activeTab, setActiveTab);
 
   const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
   const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
@@ -41,7 +38,6 @@ export default function PCP() {
         fimSemana={fimSemana}
         voltarSemana={voltarSemana}
         avancarSemana={avancarSemana}
-        voltarHoje={voltarHoje}
         semanaAtual={semanaAtual}
       />
 

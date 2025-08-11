@@ -10,10 +10,7 @@ import { useTabPersistenceV2 } from "@/hooks/useTabPersistenceV2";
 export default function GestaoComercial() {
   const { activeTab, setActiveTab } = useGestaoComercialUiStore();
   
-  useTabPersistenceV2('gestao-comercial', {
-    activeTab,
-    setActiveTab
-  });
+  useTabPersistenceV2('gestao-comercial', activeTab, setActiveTab);
 
   return (
     <div className="container mx-auto p-6 space-y-6">

@@ -1,20 +1,15 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SeparacaoPedidos from '@/components/expedicao/SeparacaoPedidos';
-import Despacho from '@/components/expedicao/Despacho';
-import HistoricoEntregas from '@/components/expedicao/HistoricoEntregas';
+import { Despacho } from '@/components/expedicao/Despacho';
+import { HistoricoEntregas } from '@/components/expedicao/HistoricoEntregas';
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import { useTabPersistenceV2 } from "@/hooks/useTabPersistenceV2";
 
 export default function Expedicao() {
   const { activeTab, setActiveTab, entregasTab, setEntregasTab } = useExpedicaoUiStore();
   
-  useTabPersistenceV2('expedicao', {
-    activeTab,
-    setActiveTab,
-    entregasTab,
-    setEntregasTab
-  });
+  useTabPersistenceV2('expedicao', activeTab, setActiveTab);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
