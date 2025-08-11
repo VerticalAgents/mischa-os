@@ -1,103 +1,47 @@
-
-import { useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
-import BreadcrumbNavigation from "@/components/common/Breadcrumb";
+import FunilLeads from "@/components/gestao-comercial/FunilLeads";
+import Representantes from "@/components/gestao-comercial/Representantes";
+import Distribuidores from "@/components/gestao-comercial/Distribuidores";
+import Parceiros from "@/components/gestao-comercial/Parceiros";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Building, HelpingHand, UserCircle, Users } from "lucide-react";
-import FunilLeads from "./gestao-comercial/FunilLeads";
-import Distribuidores from "./gestao-comercial/Distribuidores";
-import Parceiros from "./gestao-comercial/Parceiros";
-import Representantes from "./gestao-comercial/Representantes";
-import { useGestaoComercialUiStore } from "@/hooks/useGestaoComercialUiStore";
+import { useTabPersistence } from "@/hooks/useTabPersistence";
 
 export default function GestaoComercial() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  
-  // Usar store para persistir estado
-  const { activeTab, setActiveTab } = useGestaoComercialUiStore();
-  
-  // Sincronização com a URL
-  const tabFromUrl = searchParams.get('tab');
-  
-  // Sincronizar com URL ao montar
-  useEffect(() => {
-    if (tabFromUrl && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
-    } else if (!tabFromUrl) {
-      // Se não há tab na URL, usar a do store e atualizar a URL
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.set('tab', activeTab);
-      setSearchParams(newSearchParams, { replace: true });
-    }
-  }, [tabFromUrl, activeTab, setActiveTab, searchParams, setSearchParams]);
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    
-    // Atualizar URL sem reload
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set('tab', value);
-    setSearchParams(newSearchParams, { replace: true });
-  };
+  const { activeTab, changeTab } = useTabPersistence("representantes");
 
   return (
-    <div className="container mx-auto">
-      <BreadcrumbNavigation />
-      
-      <PageHeader
+    <>
+      <PageHeader 
         title="Gestão Comercial"
-        description="Gerencie representantes, leads, distribuidores e parcerias comerciais"
+        description="Gestão de representantes, leads e parcerias comerciais"
       />
+      
+      <div className="mt-8">
+        <Tabs value={activeTab} onValueChange={changeTab}>
+          <TabsList className="grid grid-cols-4 mb-8">
+            <TabsTrigger value="representantes">Representantes</TabsTrigger>
+            <TabsTrigger value="funil-leads">Funil de Leads</TabsTrigger>
+            <TabsTrigger value="distribuidores">Distribuidores</TabsTrigger>
+            <TabsTrigger value="parceiros">Parceiros</TabsTrigger>
+          </TabsList>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={handleTabChange}
-        className="w-full"
-      >
-        {/* Always visible tabs at the top */}
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b mb-6">
-          <div className="container mx-auto py-4">
-            <TabsList className="grid w-full grid-cols-4 max-w-2xl">
-              <TabsTrigger value="representantes" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                <span className="hidden sm:inline">Representantes</span>
-              </TabsTrigger>
-              <TabsTrigger value="funil-leads" className="flex items-center gap-2">
-                <UserCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">Funil de Leads</span>
-              </TabsTrigger>
-              <TabsTrigger value="distribuidores" className="flex items-center gap-2">
-                <Building className="h-4 w-4" />
-                <span className="hidden sm:inline">Distribuidores</span>
-              </TabsTrigger>
-              <TabsTrigger value="parceiros" className="flex items-center gap-2">
-                <HelpingHand className="h-4 w-4" />
-                <span className="hidden sm:inline">Parceiros</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
-        </div>
-
-        {/* Tab content with forceMount for critical tabs */}
-        <div className="mt-6">
-          <TabsContent value="representantes" forceMount={activeTab === "representantes" ? true : undefined}>
-            {activeTab === "representantes" && <Representantes />}
+          <TabsContent value="representantes" forceMount>
+            <Representantes />
           </TabsContent>
 
-          <TabsContent value="funil-leads" forceMount={activeTab === "funil-leads" ? true : undefined}>
-            {activeTab === "funil-leads" && <FunilLeads />}
+          <TabsContent value="funil-leads" forceMount>
+            <FunilLeads />
           </TabsContent>
 
-          <TabsContent value="distribuidores">
-            {activeTab === "distribuidores" && <Distribuidores />}
+          <TabsContent value="distribuidores" forceMount>
+            <Distribuidores />
           </TabsContent>
 
-          <TabsContent value="parceiros">
-            {activeTab === "parceiros" && <Parceiros />}
+          <TabsContent value="parceiros" forceMount>
+            <Parceiros />
           </TabsContent>
-        </div>
-      </Tabs>
-    </div>
+        </Tabs>
+      </div>
+    </>
   );
 }
