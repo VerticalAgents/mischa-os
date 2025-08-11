@@ -45,6 +45,14 @@ export default function EditarInsumoModal({ isOpen, onClose, insumo }: EditarIns
     }
   };
 
+  const handleCategoriaChange = (value: string) => {
+    setCategoria(value as "Matéria Prima" | "Embalagem" | "Outros");
+  };
+
+  const handleUnidadeChange = (value: string) => {
+    setUnidadeMedida(value as "g" | "kg" | "ml" | "l" | "un" | "pct");
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
@@ -65,7 +73,7 @@ export default function EditarInsumoModal({ isOpen, onClose, insumo }: EditarIns
 
           <div className="space-y-2">
             <Label htmlFor="categoria">Categoria</Label>
-            <Select value={categoria} onValueChange={setCategoria}>
+            <Select value={categoria} onValueChange={handleCategoriaChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione uma categoria" />
               </SelectTrigger>
@@ -92,7 +100,7 @@ export default function EditarInsumoModal({ isOpen, onClose, insumo }: EditarIns
 
             <div className="space-y-2">
               <Label htmlFor="unidade">Unidade de Medida</Label>
-              <Select value={unidadeMedida} onValueChange={setUnidadeMedida}>
+              <Select value={unidadeMedida} onValueChange={handleUnidadeChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Unidade" />
                 </SelectTrigger>
