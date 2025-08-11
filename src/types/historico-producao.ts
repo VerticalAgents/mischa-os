@@ -6,7 +6,6 @@ export interface HistoricoProducao {
   produtoNome: string;
   formasProducidas: number;
   unidadesCalculadas: number;
-  turno?: string;
   observacoes?: string;
   origem: 'Manual' | 'Automatico';
   
@@ -21,6 +20,5 @@ export interface RegistroProducaoForm {
   produtoId: string;
   formasProducidas: number;
   dataProducao: Date;
-  turno?: string;
   observacoes?: string;
 }

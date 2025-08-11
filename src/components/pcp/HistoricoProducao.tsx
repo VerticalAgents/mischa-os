@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Eye, Edit, Trash2, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
 import { useSupabaseHistoricoProducao } from '@/hooks/useSupabaseHistoricoProducao';
 import { HistoricoProducaoModal } from './HistoricoProducaoModal';
 import { ConfirmacaoProducaoButton } from './ConfirmacaoProducaoButton';
@@ -46,7 +46,7 @@ export default function HistoricoProducao() {
       produto_nome: dados.produtoNome,
       formas_producidas: dados.formasProducidas,
       unidades_calculadas: dados.unidadesCalculadas || dados.unidadesPrevistas,
-      turno: dados.turno,
+      turno: dados.turno || 'Matutino', // Valor padrão para compatibilidade
       observacoes: dados.observacoes,
       origem: dados.origem,
       
@@ -90,10 +90,12 @@ export default function HistoricoProducao() {
     setDiasExpandidos(novosDiasExpandidos);
   };
 
-  // Agrupar registros por data
+  // Agrupar registros por data - Correção: usar o formato de data correto
   const diasProducao: DiaProducao[] = historico.reduce((acc: DiaProducao[], registro) => {
     const data = registro.data_producao;
-    const dataFormatada = format(new Date(data), "EEEE, dd/MM/yyyy", { locale: ptBR });
+    // Corrigir o formato da data para evitar problemas de timezone
+    const dataObj = new Date(data + 'T00:00:00');
+    const dataFormatada = format(dataObj, "EEEE, dd/MM/yyyy", { locale: ptBR });
     
     let dia = acc.find(d => d.data === data);
     

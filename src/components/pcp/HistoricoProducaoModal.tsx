@@ -16,7 +16,13 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useRendimentosReceitaProduto } from "@/hooks/useRendimentosReceitaProduto";
-import { RegistroProducaoForm } from "@/types/historico-producao";
+
+interface RegistroProducaoForm {
+  produtoId: string;
+  formasProducidas: number;
+  dataProducao: Date;
+  observacoes?: string;
+}
 
 interface HistoricoModalProps {
   isOpen: boolean;
@@ -45,7 +51,6 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
       dataProducao: registro?.dataProducao || new Date(),
       produtoId: registro?.produtoId || "",
       formasProducidas: registro?.formasProducidas || 1,
-      turno: registro?.turno || "",
       observacoes: registro?.observacoes || ""
     }
   });
@@ -130,7 +135,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
         produtoNome: produtoSelecionado.nome,
         formasProducidas: data.formasProducidas,
         unidadesCalculadas: unidadesPrevistas, // Manter compatibilidade
-        turno: data.turno || 'Matutino',
+        turno: 'Matutino', // Valor padrão para compatibilidade com backend
         observacoes: data.observacoes || '',
         origem: 'Manual' as const,
         
@@ -242,7 +247,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="formasProducidas">Formas Produzidas</Label>
               <Input
                 type="number"
@@ -272,23 +277,6 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
               {errors.formasProducidas && (
                 <p className="text-sm text-destructive">{errors.formasProducidas.message}</p>
               )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="turno">Turno (opcional)</Label>
-              <Select 
-                value={watch('turno') || ''} 
-                onValueChange={(value) => setValue('turno', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o turno" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Matutino">Matutino</SelectItem>
-                  <SelectItem value="Vespertino">Vespertino</SelectItem>
-                  <SelectItem value="Noturno">Noturno</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
 
