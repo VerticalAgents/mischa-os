@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   Session,
@@ -5,15 +6,21 @@ import {
   AuthChangeEvent,
 } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface AuthContextProps {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  isAuthenticated: boolean;
   signIn: (email: string) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, fullName: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  logout: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 interface AuthProviderProps {
@@ -24,8 +31,14 @@ const AuthContext = createContext<AuthContextProps>({
   session: null,
   user: null,
   loading: false,
+  isAuthenticated: false,
   signIn: async () => {},
+  signInWithEmail: async () => {},
+  signUpWithEmail: async () => {},
+  signInWithGoogle: async () => {},
   signOut: async () => {},
+  logout: async () => {},
+  refreshSession: async () => {},
 });
 
 export const useAuth = () => {
@@ -62,9 +75,61 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setLoading(true);
       const { error } = await supabase.auth.signInWithOtp({ email });
       if (error) throw error;
-      toast.success('Verifique seu email para o link de login mágico!');
+      toast('Verifique seu email para o link de login mágico!');
     } catch (error: any) {
-      toast.error(error.error_description || error.message);
+      toast(error.error_description || error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithEmail = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } catch (error: any) {
+      toast(error.error_description || error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUpWithEmail = async (email: string, password: string, fullName: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            full_name: fullName
+          }
+        }
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      toast(error.error_description || error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      toast(error.error_description || error.message);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -77,11 +142,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setSession(null);
       setUser(null);
       navigate('/login');
-      toast.success('Logout realizado com sucesso');
+      toast('Logout realizado com sucesso');
     } catch (error: any) {
-      toast.error(error.error_description || error.message);
+      toast(error.error_description || error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const logout = signOut;
+
+  const refreshSession = async () => {
+    try {
+      const { error } = await supabase.auth.refreshSession();
+      if (error) throw error;
+    } catch (error: any) {
+      throw error;
     }
   };
 
@@ -109,14 +185,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             navigate(target, { replace: true });
           }
           
-          toast.success("Login realizado com sucesso");
+          toast("Login realizado com sucesso");
         }
 
         if (event === 'SIGNED_OUT') {
           setSession(null);
           setUser(null);
           navigate('/login');
-          toast.success("Logout realizado com sucesso");
+          toast("Logout realizado com sucesso");
         }
 
         if (event === 'USER_UPDATED') {
@@ -135,8 +211,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     session,
     user,
     loading,
+    isAuthenticated: !!session,
     signIn,
+    signInWithEmail,
+    signUpWithEmail,
+    signInWithGoogle,
     signOut,
+    logout,
+    refreshSession,
   };
 
   return (
