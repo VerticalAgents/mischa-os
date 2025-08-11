@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, TrendingDown, BarChart3, Search } from "lucide-react";
+import { Plus, TrendingDown, BarChart3, Search, Settings } from "lucide-react";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { useMovimentacoesEstoqueInsumos } from "@/hooks/useMovimentacoesEstoqueInsumos";
 import MovimentacaoEstoqueModal from "../MovimentacaoEstoqueModal";
 import BaixaEstoqueModal from "../BaixaEstoqueModal";
 import HistoricoMovimentacoes from "../HistoricoMovimentacoes";
+import EditarInsumoModal from "../EditarInsumoModal";
 
 export default function EstoqueInsumosTab() {
   const { insumos, loading: loadingInsumos } = useSupabaseInsumos();
@@ -20,7 +21,9 @@ export default function EstoqueInsumosTab() {
   const [saldos, setSaldos] = useState<Record<string, number>>({});
   const [modalMovimentacao, setModalMovimentacao] = useState(false);
   const [modalBaixa, setModalBaixa] = useState(false);
+  const [modalEditar, setModalEditar] = useState(false);
   const [insumoSelecionado, setInsumoSelecionado] = useState<{id: string, nome: string} | null>(null);
+  const [insumoParaEditar, setInsumoParaEditar] = useState<any>(null);
   const [showHistorico, setShowHistorico] = useState<string | null>(null);
 
   // Carregar saldos dos insumos
@@ -69,10 +72,21 @@ export default function EstoqueInsumosTab() {
     setModalBaixa(true);
   };
 
+  const handleModalEditar = (insumo: any) => {
+    setInsumoParaEditar(insumo);
+    setModalEditar(true);
+  };
+
   const handleCloseModal = () => {
     setModalMovimentacao(false);
     setModalBaixa(false);
     setInsumoSelecionado(null);
+    carregarSaldos();
+  };
+
+  const handleCloseEditarModal = () => {
+    setModalEditar(false);
+    setInsumoParaEditar(null);
     carregarSaldos();
   };
 
@@ -144,7 +158,18 @@ export default function EstoqueInsumosTab() {
                   return (
                     <TableRow key={insumo.id}>
                       <TableCell>
-                        <div className="font-medium">{insumo.nome}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium">{insumo.nome}</div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleModalEditar(insumo)}
+                            className="h-6 w-6 p-0"
+                            title="Editar insumo"
+                          >
+                            <Settings className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{insumo.categoria}</Badge>
@@ -237,6 +262,15 @@ export default function EstoqueInsumosTab() {
             onSuccess={handleCloseModal}
           />
         </>
+      )}
+
+      {/* Modal de Editar Insumo */}
+      {insumoParaEditar && (
+        <EditarInsumoModal
+          isOpen={modalEditar}
+          onClose={handleCloseEditarModal}
+          insumo={insumoParaEditar}
+        />
       )}
     </div>
   );
