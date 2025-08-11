@@ -12,38 +12,35 @@ export const useRoutePersistence = () => {
   useEffect(() => {
     const currentPath = location.pathname + location.search + location.hash;
     
-    // Não salvar rotas de autenticação ou root vazia
+    // Não salvar rotas de autenticação, root vazia ou rotas inválidas
     if (currentPath !== '/auth' && 
         currentPath !== '/login' && 
         currentPath !== '/' && 
+        currentPath !== '/home' &&
         !currentPath.startsWith('/auth')) {
       console.log('🔄 Salvando rota atual:', currentPath);
       localStorage.setItem(ROUTE_STORAGE_KEY, currentPath);
     }
   }, [location.pathname, location.search, location.hash]);
 
-  // Restaura a rota salva apenas na inicialização
+  // Restaura a rota salva apenas quando solicitado
   const restoreRoute = () => {
     const savedRoute = localStorage.getItem(ROUTE_STORAGE_KEY);
     const currentPath = location.pathname + location.search + location.hash;
     
     console.log('🔍 Verificando rota salva:', { savedRoute, currentPath });
     
-    // Se existe uma rota salva, não estamos nela, e não é uma rota de auth
-    // E IMPORTANTE: só restaurar se estivermos na rota raiz "/"
+    // Se existe uma rota salva e é diferente da atual
     if (savedRoute && 
         savedRoute !== currentPath && 
         savedRoute !== '/auth' && 
         savedRoute !== '/login' && 
         savedRoute !== '/' &&
-        !savedRoute.startsWith('/auth') &&
-        currentPath === '/') {
+        savedRoute !== '/home' &&
+        !savedRoute.startsWith('/auth')) {
       
       console.log('🚀 Restaurando rota para:', savedRoute);
-      // Usar timeout para evitar conflitos com auth
-      setTimeout(() => {
-        navigate(savedRoute, { replace: true });
-      }, 100);
+      navigate(savedRoute, { replace: true });
       return true;
     }
     

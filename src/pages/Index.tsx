@@ -13,15 +13,21 @@ export default function Index() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        // Usuário logado, só redireciona se estivermos na rota raiz
+        // Usuário logado
         if (location.pathname === '/') {
+          // Só tenta restaurar se estivermos na rota raiz
           const routeRestored = restoreRoute();
           if (!routeRestored) {
-            // Se não conseguiu restaurar, vai para home
-            navigate('/home', { replace: true });
+            // Se não conseguiu restaurar nenhuma rota, vai para a última rota salva ou home
+            const savedRoute = localStorage.getItem('lastVisitedRoute');
+            if (savedRoute && savedRoute !== '/' && savedRoute !== '/home' && !savedRoute.startsWith('/auth')) {
+              navigate(savedRoute, { replace: true });
+            } else {
+              navigate('/home', { replace: true });
+            }
           }
         }
-        // Se já estamos em uma rota específica, não faz nada
+        // Se já estamos em uma rota específica, não faz nada - MANTÉM a rota atual
       } else {
         // Usuário não logado, vai para auth
         navigate('/auth', { replace: true });
