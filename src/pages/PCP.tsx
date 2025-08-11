@@ -58,15 +58,15 @@ export default function PCP() {
           <TabsTrigger value="auditoria-pcp">Auditoria PCP</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="projecao-producao" className="space-y-6 mt-6" forceMount={activeTab === "projecao-producao"}>
+        <TabsContent value="projecao-producao" className="space-y-6 mt-6" forceMount={activeTab === "projecao-producao" ? true : undefined}>
           {activeTab === "projecao-producao" && <ProjecaoProducaoTab />}
         </TabsContent>
         
-        <TabsContent value="necessidade-diaria" className="space-y-6 mt-6" forceMount={activeTab === "necessidade-diaria"}>
+        <TabsContent value="necessidade-diaria" className="space-y-6 mt-6" forceMount={activeTab === "necessidade-diaria" ? true : undefined}>
           {activeTab === "necessidade-diaria" && <NecessidadeDiariaTab />}
         </TabsContent>
         
-        <TabsContent value="producao-agendada" className="space-y-6 mt-6" forceMount={activeTab === "producao-agendada"}>
+        <TabsContent value="producao-agendada" className="space-y-6 mt-6" forceMount={activeTab === "producao-agendada" ? true : undefined}>
           {activeTab === "producao-agendada" && <ProducaoAgendadaTab />}
         </TabsContent>
 

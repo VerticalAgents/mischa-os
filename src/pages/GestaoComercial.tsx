@@ -81,11 +81,11 @@ export default function GestaoComercial() {
 
         {/* Tab content with forceMount for critical tabs */}
         <div className="mt-6">
-          <TabsContent value="representantes" forceMount={activeTab === "representantes"}>
+          <TabsContent value="representantes" forceMount={activeTab === "representantes" ? true : undefined}>
             {activeTab === "representantes" && <Representantes />}
           </TabsContent>
 
-          <TabsContent value="funil-leads" forceMount={activeTab === "funil-leads"}>
+          <TabsContent value="funil-leads" forceMount={activeTab === "funil-leads" ? true : undefined}>
             {activeTab === "funil-leads" && <FunilLeads />}
           </TabsContent>
 

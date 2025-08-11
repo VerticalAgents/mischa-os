@@ -75,11 +75,11 @@ export default function Expedicao() {
           <TabsTrigger value="historico">Histórico de Entregas</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="separacao" className="space-y-4" forceMount={activeTab === "separacao"}>
+        <TabsContent value="separacao" className="space-y-4" forceMount={activeTab === "separacao" ? true : undefined}>
           {activeTab === "separacao" && <SeparacaoPedidos />}
         </TabsContent>
         
-        <TabsContent value="despacho" className="space-y-4" forceMount={activeTab === "despacho"}>
+        <TabsContent value="despacho" className="space-y-4" forceMount={activeTab === "despacho" ? true : undefined}>
           {activeTab === "despacho" && (
             <Tabs value={entregasTab} onValueChange={handleEntregasTabChange} className="space-y-4">
               <TabsList className="w-full border-b">
@@ -91,18 +91,18 @@ export default function Expedicao() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="hoje" forceMount={entregasTab === "hoje"}>
+              <TabsContent value="hoje" forceMount={entregasTab === "hoje" ? true : undefined}>
                 {entregasTab === "hoje" && <Despacho tipoFiltro="hoje" />}
               </TabsContent>
               
-              <TabsContent value="atrasadas" forceMount={entregasTab === "atrasadas"}>
+              <TabsContent value="atrasadas" forceMount={entregasTab === "atrasadas" ? true : undefined}>
                 {entregasTab === "atrasadas" && <Despacho tipoFiltro="atrasadas" />}
               </TabsContent>
             </Tabs>
           )}
         </TabsContent>
         
-        <TabsContent value="historico" className="space-y-4" forceMount={activeTab === "historico"}>
+        <TabsContent value="historico" className="space-y-4" forceMount={activeTab === "historico" ? true : undefined}>
           {activeTab === "historico" && <HistoricoEntregas />}
         </TabsContent>
       </Tabs>
