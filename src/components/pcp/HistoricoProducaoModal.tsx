@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -57,7 +56,9 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
 
   const formas = watch('formasProducidas') || 0;
   const produtoId = watch('produtoId');
-  const unidadesPrevistas = rendimentoAtual ? formas * rendimentoAtual : 0;
+  
+  // Arredondar para baixo para evitar problemas com números fracionários
+  const unidadesPrevistas = rendimentoAtual ? Math.floor(formas * rendimentoAtual) : 0;
 
   // Buscar rendimento quando produto for selecionado
   useEffect(() => {
@@ -128,24 +129,24 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
         return;
       }
 
-      // Preparar dados com snapshot do rendimento
+      // Preparar dados com snapshot do rendimento - usando valor arredondado
       const registroData = {
         dataProducao: selectedDate,
         produtoId: produtoSelecionado.id,
         produtoNome: produtoSelecionado.nome,
         formasProducidas: data.formasProducidas,
-        unidadesCalculadas: unidadesPrevistas, // Manter compatibilidade
+        unidadesCalculadas: unidadesPrevistas, // Já arredondado para baixo
         turno: 'Matutino', // Valor padrão para compatibilidade com backend
         observacoes: data.observacoes || '',
         origem: 'Manual' as const,
         
         // Novos campos para snapshot
         rendimentoUsado: rendimentoAtual,
-        unidadesPrevistas: unidadesPrevistas,
+        unidadesPrevistas: unidadesPrevistas, // Já arredondado para baixo
         status: 'Registrado'
       };
 
-      console.log('Dados a serem salvos com snapshot:', registroData);
+      console.log('Dados a serem salvos com snapshot (unidades arredondadas):', registroData);
 
       onSuccess(registroData);
 
@@ -267,7 +268,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
                 </div>
               ) : rendimentoAtual ? (
                 <p className="text-sm text-muted-foreground">
-                  Equivale a <strong>{unidadesPrevistas} unidades</strong> ({rendimentoAtual} por forma)
+                  Equivale a <strong>{unidadesPrevistas} unidades</strong> ({rendimentoAtual} por forma - arredondado para baixo)
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground">
