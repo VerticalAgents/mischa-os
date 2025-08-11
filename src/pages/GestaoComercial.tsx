@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -9,25 +9,36 @@ import FunilLeads from "./gestao-comercial/FunilLeads";
 import Distribuidores from "./gestao-comercial/Distribuidores";
 import Parceiros from "./gestao-comercial/Parceiros";
 import Representantes from "./gestao-comercial/Representantes";
+import { useGestaoComercialUiStore } from "@/hooks/useGestaoComercialUiStore";
 
 export default function GestaoComercial() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   
-  // Determine active tab based on current route
-  const getActiveTab = () => {
-    const path = location.pathname;
-    if (path.includes('funil-leads')) return 'funil-leads';
-    if (path.includes('distribuidores')) return 'distribuidores';
-    if (path.includes('parceiros')) return 'parceiros';
-    return 'representantes';
-  };
-
-  const [activeTab, setActiveTab] = useState(getActiveTab());
+  // Usar store para persistir estado
+  const { activeTab, setActiveTab } = useGestaoComercialUiStore();
+  
+  // Sincronização com a URL
+  const tabFromUrl = searchParams.get('tab');
+  
+  // Sincronizar com URL ao montar
+  useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    } else if (!tabFromUrl) {
+      // Se não há tab na URL, usar a do store e atualizar a URL
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.set('tab', activeTab);
+      setSearchParams(newSearchParams, { replace: true });
+    }
+  }, [tabFromUrl, activeTab, setActiveTab, searchParams, setSearchParams]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    navigate(`/gestao-comercial/${value}`);
+    
+    // Atualizar URL sem reload
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('tab', value);
+    setSearchParams(newSearchParams, { replace: true });
   };
 
   return (
@@ -68,22 +79,22 @@ export default function GestaoComercial() {
           </div>
         </div>
 
-        {/* Tab content */}
+        {/* Tab content with forceMount for critical tabs */}
         <div className="mt-6">
-          <TabsContent value="representantes">
-            <Representantes />
+          <TabsContent value="representantes" forceMount={activeTab === "representantes"}>
+            {activeTab === "representantes" && <Representantes />}
           </TabsContent>
 
-          <TabsContent value="funil-leads">
-            <FunilLeads />
+          <TabsContent value="funil-leads" forceMount={activeTab === "funil-leads"}>
+            {activeTab === "funil-leads" && <FunilLeads />}
           </TabsContent>
 
           <TabsContent value="distribuidores">
-            <Distribuidores />
+            {activeTab === "distribuidores" && <Distribuidores />}
           </TabsContent>
 
           <TabsContent value="parceiros">
-            <Parceiros />
+            {activeTab === "parceiros" && <Parceiros />}
           </TabsContent>
         </div>
       </Tabs>

@@ -1,5 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
+import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Search, Filter } from "lucide-react";
@@ -20,9 +22,16 @@ const SeparacaoPedidos = () => {
     confirmarSeparacao 
   } = useExpedicaoStore();
 
-  const [filtroTexto, setFiltroTexto] = useState("");
-  const [filtroTipoPedido, setFiltroTipoPedido] = useState("todos");
-  const [filtroData, setFiltroData] = useState(format(new Date(), "yyyy-MM-dd"));
+  // Usar store UI para persistir filtros
+  const {
+    filtroTexto,
+    filtroTipoPedido,
+    filtroData,
+    setFiltroTexto,
+    setFiltroTipoPedido,
+    setFiltroData
+  } = useExpedicaoUiStore();
+
   const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
 
