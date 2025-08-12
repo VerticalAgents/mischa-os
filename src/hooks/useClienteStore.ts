@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { Cliente } from '@/types';
 import { supabase } from '@/lib/supabase';
@@ -9,6 +10,7 @@ interface ClienteState {
   atualizarCliente: (id: string, cliente: Partial<Cliente>) => Promise<void>;
   excluirCliente: (id: string) => Promise<void>;
   carregarClientes: () => Promise<void>;
+  duplicarCliente: (clienteId: string) => Promise<Cliente>;
 }
 
 export const useClienteStore = create<ClienteState>((set, get) => ({
@@ -161,14 +163,5 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
       console.error('Erro ao duplicar cliente:', error);
       throw error;
     }
-  },
-  return {
-    clientes: get().clientes,
-    loading: get().loading,
-    adicionarCliente: get().adicionarCliente,
-    atualizarCliente: get().atualizarCliente,
-    excluirCliente: get().excluirCliente,
-    carregarClientes: get().carregarClientes,
-    duplicarCliente: get().duplicarCliente
-  };
+  }
 }));
