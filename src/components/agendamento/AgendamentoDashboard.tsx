@@ -228,7 +228,7 @@ export default function AgendamentoDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Distribuição por Status</CardTitle>
-            <CardDescription>Visão geral dos agendamentos por status</CardDescription>
+            <CardDescription className="text-left">Visão geral dos agendamentos por status</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-80">
@@ -251,7 +251,7 @@ export default function AgendamentoDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Agendamentos por Dia da Semana</CardTitle>
-            <CardDescription>Distribuição dos agendamentos ao longo da semana</CardDescription>
+            <CardDescription className="text-left">Distribuição dos agendamentos ao longo da semana</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-80">
