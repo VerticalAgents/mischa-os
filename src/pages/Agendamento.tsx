@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,17 +13,22 @@ import { useSearchParams } from "react-router-dom";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
-
 export default function Agendamento() {
   const [searchParams] = useSearchParams();
-  const { activeTab, changeTab } = useTabPersistence("dashboard");
-  const { clientes } = useClienteStore();
-  const { agendamentos } = useAgendamentoClienteStore();
-  
+  const {
+    activeTab,
+    changeTab
+  } = useTabPersistence("dashboard");
+  const {
+    clientes
+  } = useClienteStore();
+  const {
+    agendamentos
+  } = useAgendamentoClienteStore();
+
   // Estados para controlar a visibilidade das abas
   const [temAgendamentosPendentes, setTemAgendamentosPendentes] = useState(false);
   const [temAgendamentosAtrasados, setTemAgendamentosAtrasados] = useState(false);
-
   useEffect(() => {
     // Verificar se há parâmetro de tab na URL e atualizar
     const tab = searchParams.get("tab");
@@ -32,13 +36,10 @@ export default function Agendamento() {
       changeTab(tab);
     }
   }, [searchParams, changeTab]);
-
   useEffect(() => {
     // Verificar se há clientes sem agendamento
     const clientesComAgendamento = new Set(agendamentos.map(a => a.cliente.id));
-    const clientesSemAgendamento = clientes.filter(cliente => 
-      cliente.ativo && !clientesComAgendamento.has(cliente.id)
-    );
+    const clientesSemAgendamento = clientes.filter(cliente => cliente.ativo && !clientesComAgendamento.has(cliente.id));
     setTemAgendamentosPendentes(clientesSemAgendamento.length > 0);
 
     // Verificar se há agendamentos atrasados
@@ -51,28 +52,19 @@ export default function Agendamento() {
     });
     setTemAgendamentosAtrasados(agendamentosAtrasados.length > 0);
   }, [clientes, agendamentos]);
-
-  return (
-    <div className="space-y-6">
-      <PageHeader 
-        title="Agendamento" 
-        description="Gerenciamento de agendamentos e confirmação de reposições" 
-      />
+  return <div className="space-y-6">
+      <PageHeader title="Agendamento" description="Gerenciamento de agendamentos e confirmação de reposições" />
       
       <Tabs value={activeTab} onValueChange={changeTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="todos">Todos os Agendamentos</TabsTrigger>
+          <TabsTrigger value="todos">Agendamentos</TabsTrigger>
           <TabsTrigger value="previstos">Pedidos Previstos</TabsTrigger>
           <TabsTrigger value="agendados">Pedidos Agendados</TabsTrigger>
           <TabsTrigger value="representantes">Representantes</TabsTrigger>
           <TabsTrigger value="confirmacao">Confirmação de Reposição</TabsTrigger>
-          {temAgendamentosPendentes && (
-            <TabsTrigger value="pendentes">Agendamentos Pendentes</TabsTrigger>
-          )}
-          {temAgendamentosAtrasados && (
-            <TabsTrigger value="atrasados">Agendamentos Atrasados</TabsTrigger>
-          )}
+          {temAgendamentosPendentes && <TabsTrigger value="pendentes">Pendente</TabsTrigger>}
+          {temAgendamentosAtrasados && <TabsTrigger value="atrasados">Atrasado</TabsTrigger>}
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-4">
@@ -99,18 +91,13 @@ export default function Agendamento() {
           <NovaConfirmacaoReposicaoTab />
         </TabsContent>
         
-        {temAgendamentosPendentes && (
-          <TabsContent value="pendentes" className="space-y-4">
+        {temAgendamentosPendentes && <TabsContent value="pendentes" className="space-y-4">
             <AgendamentosPendentes />
-          </TabsContent>
-        )}
+          </TabsContent>}
         
-        {temAgendamentosAtrasados && (
-          <TabsContent value="atrasados" className="space-y-4">
+        {temAgendamentosAtrasados && <TabsContent value="atrasados" className="space-y-4">
             <AgendamentosAtrasados />
-          </TabsContent>
-        )}
+          </TabsContent>}
       </Tabs>
-    </div>
-  );
+    </div>;
 }
