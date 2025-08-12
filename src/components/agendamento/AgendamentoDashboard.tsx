@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
+
 export default function AgendamentoDashboard() {
   const {
     agendamentos,
@@ -29,6 +30,7 @@ export default function AgendamentoDashboard() {
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
   const [selectedAgendamento, setSelectedAgendamento] = useState<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
+
   useEffect(() => {
     const loadData = async () => {
       if (agendamentos.length === 0 && !isLoading) {
@@ -41,7 +43,7 @@ export default function AgendamentoDashboard() {
       }
     };
     loadData();
-  }, []); // Empty dependency array to run only once
+  }, []);
 
   // Calcular indicadores da semana
   const indicadoresSemana = useMemo(() => {
@@ -81,6 +83,7 @@ export default function AgendamentoDashboard() {
       quantidade: count
     }));
   }, [agendamentos]);
+
   const dadosGraficoSemanal = useMemo(() => {
     const hoje = new Date();
     const inicioSemana = startOfWeek(hoje, {
@@ -125,17 +128,37 @@ export default function AgendamentoDashboard() {
       return 0;
     });
   }, [agendamentos, diaSelecionado]);
+
   const coresPieChart = ['#10B981', '#F59E0B', '#EF4444'];
+
   const handleDiaClick = (dataCompleta: Date) => {
     setDiaSelecionado(dataCompleta);
   };
-  const handleEditarAgendamento = (agendamento: any) => {
-    setSelectedAgendamento(agendamento);
+
+  const handleEditarAgendamento = async (agendamento: any) => {
+    // Carregar dados atuais do banco antes de abrir o modal
+    const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
+    
+    if (agendamentoAtual) {
+      // Criar objeto com dados completos para o modal
+      const agendamentoCompleto = {
+        ...agendamento,
+        quantidadeAtual: agendamentoAtual.quantidade_total || agendamento.cliente.quantidadePadrao,
+        tipoPedidoAtual: agendamentoAtual.tipo_pedido || 'Padrão',
+        itensPersonalizados: agendamentoAtual.itens_personalizados || []
+      };
+      setSelectedAgendamento(agendamentoCompleto);
+    } else {
+      setSelectedAgendamento(agendamento);
+    }
+    
     setModalOpen(true);
   };
-  const handleSalvarAgendamento = (agendamentoAtualizado: any) => {
-    carregarTodosAgendamentos();
+
+  const handleSalvarAgendamento = async (agendamentoAtualizado: any) => {
+    await carregarTodosAgendamentos();
   };
+
   const handleConfirmarAgendamento = async (agendamento: any) => {
     try {
       console.log('AgendamentoDashboard: Confirmando agendamento previsto para cliente:', agendamento.cliente.nome);
@@ -174,6 +197,18 @@ export default function AgendamentoDashboard() {
       });
     }
   };
+
+  // Função para obter a quantidade correta do agendamento
+  const obterQuantidadeAgendamento = async (agendamento: any) => {
+    try {
+      const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
+      return agendamentoAtual?.quantidade_total || agendamento.cliente.quantidadePadrao;
+    } catch (error) {
+      console.error('Erro ao obter quantidade do agendamento:', error);
+      return agendamento.cliente.quantidadePadrao;
+    }
+  };
+
   return <div className="space-y-6">
       {/* Cards de Indicadores */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -308,28 +343,55 @@ export default function AgendamentoDashboard() {
           </CardHeader>
           <CardContent>
             {agendamentosDiaSelecionado.length > 0 ? <div className="space-y-3">
-                {agendamentosDiaSelecionado.map(agendamento => <div key={agendamento.cliente.id} className={`flex items-center justify-between p-3 border rounded-lg ${agendamento.statusAgendamento === "Agendado" ? "bg-green-50" : "bg-yellow-50"}`}>
-                    <div className="flex-1">
-                      <div className="font-medium">{agendamento.cliente.nome}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Quantidade: {agendamento.cliente.quantidadePadrao} unidades
+                {agendamentosDiaSelecionado.map(agendamento => {
+                  // Criar um componente que busca a quantidade atualizada
+                  const QuantidadeAtualizada = ({ agendamento }: { agendamento: any }) => {
+                    const [quantidade, setQuantidade] = useState(agendamento.cliente.quantidadePadrao);
+                    const [tipoPedido, setTipoPedido] = useState('Padrão');
+                    
+                    useEffect(() => {
+                      const buscarDados = async () => {
+                        try {
+                          const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
+                          if (agendamentoAtual) {
+                            setQuantidade(agendamentoAtual.quantidade_total || agendamento.cliente.quantidadePadrao);
+                            setTipoPedido(agendamentoAtual.tipo_pedido || 'Padrão');
+                          }
+                        } catch (error) {
+                          console.error('Erro ao buscar dados do agendamento:', error);
+                        }
+                      };
+                      buscarDados();
+                    }, [agendamento.cliente.id]);
+
+                    return (
+                      <div key={agendamento.cliente.id} className={`flex items-center justify-between p-3 border rounded-lg ${agendamento.statusAgendamento === "Agendado" ? "bg-green-50" : "bg-yellow-50"}`}>
+                        <div className="flex-1 text-left">
+                          <div className="font-medium text-left">{agendamento.cliente.nome}</div>
+                          <div className="text-sm text-muted-foreground text-left">
+                            Quantidade: {quantidade} unidades
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
+                          <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
+                            {agendamento.statusAgendamento}
+                          </Badge>
+                          <div className="flex gap-1">
+                            {agendamento.statusAgendamento === "Previsto" && <Button variant="default" size="sm" onClick={() => handleConfirmarAgendamento(agendamento)} className="bg-green-500 hover:bg-green-600 h-8 px-2">
+                                <CheckCheck className="h-3 w-3" />
+                              </Button>}
+                            <Button variant="secondary" size="sm" onClick={() => handleEditarAgendamento(agendamento)} className="h-8 px-2">
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <TipoPedidoBadge tipo={agendamento.pedido?.tipoPedido || 'Padrão'} />
-                      <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
-                        {agendamento.statusAgendamento}
-                      </Badge>
-                      <div className="flex gap-1">
-                        {agendamento.statusAgendamento === "Previsto" && <Button variant="default" size="sm" onClick={() => handleConfirmarAgendamento(agendamento)} className="bg-green-500 hover:bg-green-600 h-8 px-2">
-                            <CheckCheck className="h-3 w-3" />
-                          </Button>}
-                        <Button variant="secondary" size="sm" onClick={() => handleEditarAgendamento(agendamento)} className="h-8 px-2">
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>)}
+                    );
+                  };
+
+                  return <QuantidadeAtualizada key={agendamento.cliente.id} agendamento={agendamento} />;
+                })}
               </div> : <div className="text-center py-8 text-muted-foreground">
                 Nenhum agendamento para este dia
               </div>}
