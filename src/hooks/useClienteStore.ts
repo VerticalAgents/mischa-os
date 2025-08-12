@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { Cliente, StatusCliente } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,9 +61,10 @@ const transformDbRowToCliente = (row: any): Cliente => {
   };
 };
 
-// Helper function to transform Cliente to database row format
+// Helper function to transform Cliente to database row format (sanitized)
 const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
-  return {
+  // Lista de campos válidos na tabela clientes do Supabase
+  const validFields = {
     nome: cliente.nome,
     cnpj_cpf: cliente.cnpjCpf,
     endereco_entrega: cliente.enderecoEntrega,
@@ -92,10 +92,19 @@ const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
     tipo_cobranca: cliente.tipoCobranca,
     forma_pagamento: cliente.formaPagamento,
     observacoes: cliente.observacoes,
-    categoria_id: cliente.categoriaId,
-    subcategoria_id: cliente.subcategoriaId,
-    categorias_habilitadas: cliente.categoriasHabilitadas
+    categorias_habilitadas: cliente.categoriasHabilitadas,
+    updated_at: new Date().toISOString()
   };
+
+  // Remove campos undefined/null para evitar problemas no Supabase
+  const sanitizedFields: any = {};
+  Object.entries(validFields).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      sanitizedFields[key] = value;
+    }
+  });
+
+  return sanitizedFields;
 };
 
 export const useClienteStore = create<ClienteState>((set, get) => ({
@@ -111,6 +120,8 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
     try {
       const dbData = transformClienteToDbRow(cliente);
       
+      console.log('useClienteStore: Payload sanitizado para inserção:', dbData);
+
       const { data, error } = await supabase
         .from('clientes')
         .insert([
@@ -123,8 +134,16 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         .single();
 
       if (error) {
+        console.error('useClienteStore: Erro do Supabase ao inserir cliente:', {
+          message: error.message,
+          code: error.code,
+          hint: error.hint,
+          details: error.details
+        });
         throw error;
       }
+
+      console.log('useClienteStore: Cliente inserido com sucesso:', data);
 
       const novoCliente = transformDbRowToCliente(data);
 
@@ -135,7 +154,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
 
       return novoCliente;
     } catch (error: any) {
-      console.error("Erro ao adicionar cliente:", error);
+      console.error("useClienteStore: Erro ao adicionar cliente:", error);
       set({ loading: false });
       throw error;
     }
@@ -145,6 +164,8 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
     try {
       const dbData = transformClienteToDbRow(cliente);
       
+      console.log('useClienteStore: Payload sanitizado para atualização:', dbData);
+      
       const { data, error } = await supabase
         .from('clientes')
         .update(dbData)
@@ -153,8 +174,16 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         .single();
 
       if (error) {
+        console.error('useClienteStore: Erro do Supabase ao atualizar cliente:', {
+          message: error.message,
+          code: error.code,
+          hint: error.hint,
+          details: error.details
+        });
         throw error;
       }
+
+      console.log('useClienteStore: Cliente atualizado com sucesso:', data);
 
       const clienteAtualizado = transformDbRowToCliente(data);
 
@@ -164,7 +193,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         loading: false,
       }));
     } catch (error: any) {
-      console.error("Erro ao atualizar cliente:", error);
+      console.error("useClienteStore: Erro ao atualizar cliente:", error);
       set({ loading: false });
       throw error;
     }

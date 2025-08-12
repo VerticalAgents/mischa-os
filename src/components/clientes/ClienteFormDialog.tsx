@@ -205,19 +205,46 @@ export default function ClienteFormDialog({
         });
       }
 
+      // Salvar categorias de forma não-bloqueante
       if (formData.categoriasHabilitadas && formData.categoriasHabilitadas.length > 0) {
-        console.log('ClienteFormDialog: Salvando categorias do cliente:', formData.categoriasHabilitadas);
-        await salvarCategoriasCliente(clienteId, formData.categoriasHabilitadas);
+        try {
+          console.log('ClienteFormDialog: Salvando categorias do cliente:', formData.categoriasHabilitadas);
+          await salvarCategoriasCliente(clienteId, formData.categoriasHabilitadas);
+          console.log('ClienteFormDialog: Categorias salvas com sucesso');
+        } catch (categoriaError) {
+          console.error('ClienteFormDialog: Erro ao salvar categorias (não-bloqueante):', categoriaError);
+          toast({
+            title: "Aviso",
+            description: "Cliente salvo, mas houve um problema ao salvar as categorias. Tente editá-las novamente.",
+            variant: "default"
+          });
+        }
       }
 
       onClienteUpdate?.();
       onOpenChange(false);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('ClienteFormDialog: Erro ao salvar cliente:', error);
+      
+      // Mostrar detalhes específicos do erro do Supabase
+      let errorMessage = "Não foi possível salvar os dados do cliente.";
+      
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      if (error.hint) {
+        errorMessage += ` Dica: ${error.hint}`;
+      }
+      
+      if (error.code) {
+        errorMessage += ` (Código: ${error.code})`;
+      }
+      
       toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar os dados do cliente. Verifique os campos obrigatórios.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
