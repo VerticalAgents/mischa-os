@@ -1,20 +1,25 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
+import { useToast } from "@/hooks/use-toast";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
+import AgendamentoEditModal from "./AgendamentoEditModal";
 
 export default function AgendamentoDashboard() {
-  const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
-  const { clientes } = useClienteStore();
+  const { agendamentos, carregarTodosAgendamentos, obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
+  const { clientes, carregarClientes } = useClienteStore();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
+  const [selectedAgendamento, setSelectedAgendamento] = useState<any>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -95,19 +100,79 @@ export default function AgendamentoDashboard() {
     });
   }, [agendamentos]);
 
-  // Agendamentos do dia selecionado
+  // Agendamentos do dia selecionado com ordenação
   const agendamentosDiaSelecionado = useMemo(() => {
     if (!diaSelecionado) return [];
     
-    return agendamentos.filter(agendamento => 
+    const agendamentosFiltered = agendamentos.filter(agendamento => 
       isSameDay(new Date(agendamento.dataReposicao), diaSelecionado)
     );
+
+    // Ordenar: Agendados primeiro, depois Previstos
+    return agendamentosFiltered.sort((a, b) => {
+      if (a.statusAgendamento === "Agendado" && b.statusAgendamento === "Previsto") return -1;
+      if (a.statusAgendamento === "Previsto" && b.statusAgendamento === "Agendado") return 1;
+      return 0;
+    });
   }, [agendamentos, diaSelecionado]);
 
   const coresPieChart = ['#10B981', '#F59E0B', '#EF4444'];
 
   const handleDiaClick = (dataCompleta: Date) => {
     setDiaSelecionado(dataCompleta);
+  };
+
+  const handleEditarAgendamento = (agendamento: any) => {
+    setSelectedAgendamento(agendamento);
+    setModalOpen(true);
+  };
+
+  const handleSalvarAgendamento = (agendamentoAtualizado: any) => {
+    carregarTodosAgendamentos();
+  };
+
+  const handleConfirmarAgendamento = async (agendamento: any) => {
+    try {
+      console.log('AgendamentoDashboard: Confirmando agendamento previsto para cliente:', agendamento.cliente.nome);
+
+      const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
+      
+      if (agendamentoAtual) {
+        console.log('✅ Preservando dados do agendamento:', {
+          tipo: agendamentoAtual.tipo_pedido,
+          itens: !!agendamentoAtual.itens_personalizados,
+          quantidade: agendamentoAtual.quantidade_total,
+          data_atual: agendamentoAtual.data_proxima_reposicao
+        });
+
+        // Alterar apenas o status para "Agendado", preservando todos os outros dados
+        await salvarAgendamento(agendamento.cliente.id, {
+          status_agendamento: 'Agendado',
+          // Preservar TODOS os dados existentes sem alteração
+          data_proxima_reposicao: agendamentoAtual.data_proxima_reposicao,
+          quantidade_total: agendamentoAtual.quantidade_total,
+          tipo_pedido: agendamentoAtual.tipo_pedido,
+          itens_personalizados: agendamentoAtual.itens_personalizados
+        });
+
+        console.log('✅ Agendamento confirmado (Previsto → Agendado)');
+      }
+      
+      await carregarTodosAgendamentos();
+      await carregarClientes();
+      
+      toast({
+        title: "Sucesso",
+        description: `Agendamento confirmado para ${agendamento.cliente.nome}`,
+      });
+    } catch (error) {
+      console.error('Erro ao confirmar agendamento:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao confirmar agendamento",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -272,7 +337,14 @@ export default function AgendamentoDashboard() {
             {agendamentosDiaSelecionado.length > 0 ? (
               <div className="space-y-3">
                 {agendamentosDiaSelecionado.map((agendamento) => (
-                  <div key={agendamento.cliente.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div 
+                    key={agendamento.cliente.id} 
+                    className={`flex items-center justify-between p-3 border rounded-lg ${
+                      agendamento.statusAgendamento === "Agendado" 
+                        ? "bg-green-50" 
+                        : "bg-yellow-50"
+                    }`}
+                  >
                     <div className="flex-1">
                       <div className="font-medium">{agendamento.cliente.nome}</div>
                       <div className="text-sm text-muted-foreground">
@@ -289,6 +361,26 @@ export default function AgendamentoDashboard() {
                       >
                         {agendamento.statusAgendamento}
                       </Badge>
+                      <div className="flex gap-1">
+                        {agendamento.statusAgendamento === "Previsto" && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleConfirmarAgendamento(agendamento)}
+                            className="bg-green-500 hover:bg-green-600 h-8 px-2"
+                          >
+                            <CheckCheck className="h-3 w-3" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleEditarAgendamento(agendamento)}
+                          className="h-8 px-2"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -301,6 +393,13 @@ export default function AgendamentoDashboard() {
           </CardContent>
         </Card>
       )}
+
+      <AgendamentoEditModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        agendamento={selectedAgendamento}
+        onSalvar={handleSalvarAgendamento}
+      />
     </div>
   );
 }
