@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { Cliente } from '@/types';
+import { Cliente, StatusCliente } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ClienteState {
@@ -9,7 +9,7 @@ interface ClienteState {
   clienteAtual: Cliente | null;
   filtros: {
     termo: string;
-    status: string;
+    status: StatusCliente | 'Todos' | '';
   };
   adicionarCliente: (cliente: Omit<Cliente, 'id' | 'dataCadastro'>) => Promise<Cliente>;
   atualizarCliente: (id: string, cliente: Partial<Cliente>) => Promise<void>;
@@ -21,8 +21,46 @@ interface ClienteState {
   getClientePorId: (id: string) => Cliente | undefined;
   getClientesFiltrados: () => Cliente[];
   setFiltroTermo: (termo: string) => void;
-  setFiltroStatus: (status: string) => void;
+  setFiltroStatus: (status: StatusCliente | 'Todos' | '') => void;
 }
+
+// Helper function to transform database row to Cliente interface
+const transformDbRowToCliente = (row: any): Cliente => {
+  return {
+    id: row.id,
+    nome: row.nome || '',
+    cnpjCpf: row.cnpj_cpf,
+    enderecoEntrega: row.endereco_entrega,
+    linkGoogleMaps: row.link_google_maps,
+    contatoNome: row.contato_nome,
+    contatoTelefone: row.contato_telefone,
+    contatoEmail: row.contato_email,
+    quantidadePadrao: row.quantidade_padrao || 0,
+    periodicidadePadrao: row.periodicidade_padrao || 7,
+    statusCliente: row.status_cliente || 'Ativo',
+    dataCadastro: new Date(row.created_at),
+    metaGiroSemanal: row.meta_giro_semanal,
+    ultimaDataReposicaoEfetiva: row.ultima_data_reposicao_efetiva ? new Date(row.ultima_data_reposicao_efetiva) : undefined,
+    statusAgendamento: row.status_agendamento,
+    proximaDataReposicao: row.proxima_data_reposicao ? new Date(row.proxima_data_reposicao) : undefined,
+    ativo: row.ativo || true,
+    giroMedioSemanal: row.giro_medio_semanal,
+    janelasEntrega: row.janelas_entrega,
+    representanteId: row.representante_id,
+    rotaEntregaId: row.rota_entrega_id,
+    categoriaEstabelecimentoId: row.categoria_estabelecimento_id,
+    instrucoesEntrega: row.instrucoes_entrega,
+    contabilizarGiroMedio: row.contabilizar_giro_medio || true,
+    tipoLogistica: row.tipo_logistica || 'Própria',
+    emiteNotaFiscal: row.emite_nota_fiscal || true,
+    tipoCobranca: row.tipo_cobranca || 'À vista',
+    formaPagamento: row.forma_pagamento || 'Boleto',
+    observacoes: row.observacoes,
+    categoriaId: row.categoria_id || 1,
+    subcategoriaId: row.subcategoria_id || 1,
+    categoriasHabilitadas: row.categorias_habilitadas || []
+  };
+};
 
 export const useClienteStore = create<ClienteState>((set, get) => ({
   clientes: [],
@@ -40,7 +78,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         .insert([
           {
             ...cliente,
-            dataCadastro: new Date().toISOString(),
+            created_at: new Date().toISOString(),
           },
         ])
         .select()
@@ -50,10 +88,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         throw error;
       }
 
-      const novoCliente: Cliente = {
-        ...data,
-        dataCadastro: new Date(data.dataCadastro),
-      };
+      const novoCliente = transformDbRowToCliente(data);
 
       set((state) => ({
         clientes: [...state.clientes, novoCliente],
@@ -123,12 +158,9 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         throw error;
       }
 
-      const clientesComDataCorrigida = data.map(cliente => ({
-        ...cliente,
-        dataCadastro: new Date(cliente.dataCadastro),
-      }));
+      const clientesTransformados = data.map(transformDbRowToCliente);
 
-      set({ clientes: clientesComDataCorrigida, loading: false });
+      set({ clientes: clientesTransformados, loading: false });
     } catch (error: any) {
       console.error("Erro ao carregar clientes:", error);
       set({ loading: false });
@@ -198,7 +230,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         cliente.nome.toLowerCase().includes(filtros.termo.toLowerCase()) ||
         (cliente.cnpjCpf && cliente.cnpjCpf.toLowerCase().includes(filtros.termo.toLowerCase()));
       
-      const matchStatus = !filtros.status || cliente.statusCliente === filtros.status;
+      const matchStatus = !filtros.status || filtros.status === 'Todos' || cliente.statusCliente === filtros.status;
       
       return matchTermo && matchStatus;
     });
@@ -208,7 +240,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
       filtros: { ...state.filtros, termo }
     }));
   },
-  setFiltroStatus: (status: string) => {
+  setFiltroStatus: (status: StatusCliente | 'Todos' | '') => {
     set((state) => ({
       filtros: { ...state.filtros, status }
     }));
