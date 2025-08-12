@@ -56,7 +56,6 @@ export default function ClienteFormDialog({
   const { salvarPrecos } = useSupabasePrecosCategoriaCliente();
   const { salvarCategoriasCliente } = useClientesCategorias();
 
-  // Estado do formulário
   const [formData, setFormData] = useState<Partial<Cliente>>({
     nome: '',
     cnpjCpf: '',
@@ -84,7 +83,6 @@ export default function ClienteFormDialog({
 
   const [isSaving, setIsSaving] = useState(false);
 
-  // Carregar dados do cliente quando abrir para edição
   useEffect(() => {
     if (cliente && open) {
       console.log('ClienteFormDialog: Carregando dados do cliente para edição:', cliente);
@@ -157,6 +155,24 @@ export default function ClienteFormDialog({
       return;
     }
 
+    if (!formData.enderecoEntrega?.trim()) {
+      toast({
+        title: "Erro",
+        description: "Endereço de entrega é obrigatório",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.linkGoogleMaps?.trim()) {
+      toast({
+        title: "Erro",
+        description: "Link do Google Maps é obrigatório",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -165,7 +181,6 @@ export default function ClienteFormDialog({
       let clienteId: string;
 
       if (cliente) {
-        // Atualização de cliente existente - passar dados em camelCase
         await atualizarCliente(cliente.id, formData);
         clienteId = cliente.id;
         
@@ -174,7 +189,6 @@ export default function ClienteFormDialog({
           description: "Dados do cliente foram salvos com sucesso"
         });
       } else {
-        // Criação de novo cliente - passar dados em camelCase
         const novoCliente = await adicionarCliente(formData as Omit<Cliente, 'id' | 'dataCadastro'>);
         clienteId = novoCliente.id;
         
@@ -184,13 +198,11 @@ export default function ClienteFormDialog({
         });
       }
 
-      // Salvar categorias habilitadas
       if (formData.categoriasHabilitadas && formData.categoriasHabilitadas.length > 0) {
         console.log('ClienteFormDialog: Salvando categorias do cliente:', formData.categoriasHabilitadas);
         await salvarCategoriasCliente(clienteId, formData.categoriasHabilitadas);
       }
 
-      // Chamar callback de atualização
       onClienteUpdate?.();
       onOpenChange(false);
 
@@ -206,7 +218,6 @@ export default function ClienteFormDialog({
     }
   };
 
-  // Criar um objeto cliente temporário para passar para o componente PrecificacaoPorCategoria
   const clienteTemp: Cliente = {
     id: cliente?.id || '',
     nome: formData.nome || '',
@@ -252,7 +263,6 @@ export default function ClienteFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Dados Básicos */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Dados Básicos</CardTitle>
@@ -260,7 +270,9 @@ export default function ClienteFormDialog({
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="nome">Nome *</Label>
+                  <Label htmlFor="nome">
+                    Nome <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="nome"
                     value={formData.nome || ''}
@@ -279,22 +291,28 @@ export default function ClienteFormDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="enderecoEntrega">Endereço de Entrega</Label>
+                <Label htmlFor="enderecoEntrega">
+                  Endereço de Entrega <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="enderecoEntrega"
                   value={formData.enderecoEntrega || ''}
                   onChange={(e) => handleInputChange('enderecoEntrega', e.target.value)}
+                  required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="linkGoogleMaps">Link do Google Maps</Label>
+                <Label htmlFor="linkGoogleMaps">
+                  Link do Google Maps <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="linkGoogleMaps"
                   type="url"
                   placeholder="https://maps.app.goo.gl/wTpwoh5LT8hDRPke6"
                   value={formData.linkGoogleMaps || ''}
                   onChange={(e) => handleInputChange('linkGoogleMaps', e.target.value)}
+                  required
                 />
               </div>
 
@@ -328,7 +346,6 @@ export default function ClienteFormDialog({
             </CardContent>
           </Card>
 
-          {/* Configurações Comerciais */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Configurações Comerciais</CardTitle>
@@ -374,7 +391,6 @@ export default function ClienteFormDialog({
             </CardContent>
           </Card>
 
-          {/* Configurações de Entrega e Logística */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Configurações de Entrega e Logística</CardTitle>
@@ -479,7 +495,6 @@ export default function ClienteFormDialog({
             </CardContent>
           </Card>
 
-          {/* Configurações Financeiras */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Configurações Financeiras</CardTitle>
@@ -552,19 +567,16 @@ export default function ClienteFormDialog({
             </CardContent>
           </Card>
 
-          {/* Categorias de Produtos */}
           <CategoriasProdutoSelector 
             value={formData.categoriasHabilitadas || []}
             onChange={handleCategoriasChange}
             clienteId={cliente?.id}
           />
 
-          {/* Precificação por Categoria - Passa o cliente temporário */}
           <PrecificacaoPorCategoria
             cliente={clienteTemp}
           />
 
-          {/* Observações */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Observações</CardTitle>
