@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -73,8 +72,17 @@ export default function ClientesTable({
   const handleDuplicarCliente = async (cliente: Cliente) => {
     try {
       await duplicarCliente(cliente.id);
+      toast({
+        title: "Cliente duplicado",
+        description: `As configurações de ${cliente.nome} foram copiadas para um novo cliente`
+      });
     } catch (error) {
       console.error('Erro ao duplicar cliente:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao duplicar cliente",
+        variant: "destructive"
+      });
     }
   };
 
@@ -122,7 +130,22 @@ export default function ClientesTable({
       case "status":
         return <StatusBadge status={cliente.statusCliente} />;
       case "statusAgendamento":
-        return <StatusBadge status={cliente.statusAgendamento || 'Não Agendado'} />;
+        // Ensure the status matches the expected types for StatusBadge
+        const statusAgendamento = cliente.statusAgendamento || 'Não Agendado';
+        // Map the status to match StatusCliente type if needed
+        const mappedStatus = statusAgendamento === 'Não Agendado' ? 'Inativo' : 
+                            statusAgendamento === 'Agendar' ? 'A ativar' :
+                            statusAgendamento === 'Agendado' ? 'Ativo' :
+                            statusAgendamento === 'Cancelado' ? 'Inativo' : 'Ativo';
+        return (
+          <Badge variant={
+            statusAgendamento === 'Agendado' ? 'default' :
+            statusAgendamento === 'Agendar' ? 'secondary' :
+            statusAgendamento === 'Cancelado' ? 'destructive' : 'outline'
+          }>
+            {statusAgendamento}
+          </Badge>
+        );
       case "acoes":
         return (
           <DropdownMenu>
