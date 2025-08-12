@@ -1,21 +1,37 @@
 
 import { create } from 'zustand';
 import { Cliente } from '@/types';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ClienteState {
   clientes: Cliente[];
   loading: boolean;
+  clienteAtual: Cliente | null;
+  filtros: {
+    termo: string;
+    status: string;
+  };
   adicionarCliente: (cliente: Omit<Cliente, 'id' | 'dataCadastro'>) => Promise<Cliente>;
   atualizarCliente: (id: string, cliente: Partial<Cliente>) => Promise<void>;
   excluirCliente: (id: string) => Promise<void>;
+  removerCliente: (id: string) => Promise<void>;
   carregarClientes: () => Promise<void>;
   duplicarCliente: (clienteId: string) => Promise<Cliente>;
+  selecionarCliente: (id: string | null) => void;
+  getClientePorId: (id: string) => Cliente | undefined;
+  getClientesFiltrados: () => Cliente[];
+  setFiltroTermo: (termo: string) => void;
+  setFiltroStatus: (status: string) => void;
 }
 
 export const useClienteStore = create<ClienteState>((set, get) => ({
   clientes: [],
   loading: false,
+  clienteAtual: null,
+  filtros: {
+    termo: '',
+    status: '',
+  },
   adicionarCliente: async (cliente) => {
     set({ loading: true });
     try {
@@ -92,11 +108,15 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
       throw error;
     }
   },
+  removerCliente: async (id) => {
+    // Alias for excluirCliente to maintain compatibility
+    return get().excluirCliente(id);
+  },
   carregarClientes: async () => {
     set({ loading: true });
     try {
       const { data, error } = await supabase
-        .from<Cliente>('clientes')
+        .from('clientes')
         .select('*');
 
       if (error) {
@@ -163,5 +183,34 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
       console.error('Erro ao duplicar cliente:', error);
       throw error;
     }
-  }
+  },
+  selecionarCliente: (id: string | null) => {
+    const cliente = id ? get().clientes.find(c => c.id === id) : null;
+    set({ clienteAtual: cliente || null });
+  },
+  getClientePorId: (id: string) => {
+    return get().clientes.find(c => c.id === id);
+  },
+  getClientesFiltrados: () => {
+    const { clientes, filtros } = get();
+    return clientes.filter(cliente => {
+      const matchTermo = !filtros.termo || 
+        cliente.nome.toLowerCase().includes(filtros.termo.toLowerCase()) ||
+        (cliente.cnpjCpf && cliente.cnpjCpf.toLowerCase().includes(filtros.termo.toLowerCase()));
+      
+      const matchStatus = !filtros.status || cliente.statusCliente === filtros.status;
+      
+      return matchTermo && matchStatus;
+    });
+  },
+  setFiltroTermo: (termo: string) => {
+    set((state) => ({
+      filtros: { ...state.filtros, termo }
+    }));
+  },
+  setFiltroStatus: (status: string) => {
+    set((state) => ({
+      filtros: { ...state.filtros, status }
+    }));
+  },
 }));

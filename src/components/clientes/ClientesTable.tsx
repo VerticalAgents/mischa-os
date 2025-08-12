@@ -107,7 +107,7 @@ export default function ClientesTable({
     const isInteractiveElement = target.closest('button') || 
                                 target.closest('[role="checkbox"]') || 
                                 target.closest('[role="menuitem"]') ||
-                                target.type === 'checkbox';
+                                (target as HTMLInputElement).type === 'checkbox';
     
     if (!isInteractiveElement) {
       onSelectCliente(clienteId);
@@ -148,13 +148,7 @@ export default function ClientesTable({
       case "status":
         return <StatusBadge status={cliente.statusCliente} />;
       case "statusAgendamento":
-        // Ensure the status matches the expected types for StatusBadge
         const statusAgendamento = cliente.statusAgendamento || 'Não Agendado';
-        // Map the status to match StatusCliente type if needed
-        const mappedStatus = statusAgendamento === 'Não Agendado' ? 'Inativo' : 
-                            statusAgendamento === 'Agendar' ? 'A ativar' :
-                            statusAgendamento === 'Agendado' ? 'Ativo' :
-                            statusAgendamento === 'Cancelado' ? 'Inativo' : 'Ativo';
         return (
           <Badge variant={
             statusAgendamento === 'Agendado' ? 'default' :
