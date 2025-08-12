@@ -56,10 +56,10 @@ export default function Agendamento() {
     });
     setTemAgendamentosAtrasados(agendamentosAtrasados.length > 0);
 
-    // Verificar se há agendamentos despachados
+    // Verificar se há agendamentos despachados - usando statusPedido do objeto pedido
     const agendamentosDespachados = agendamentos.filter(agendamento => 
       agendamento.statusAgendamento === "Agendado" && 
-      agendamento.pedido?.substatus === "Despachado"
+      agendamento.pedido?.statusPedido === "Despachado"
     );
     setTemAgendamentosDespachados(agendamentosDespachados.length > 0);
   }, [clientes, agendamentos]);

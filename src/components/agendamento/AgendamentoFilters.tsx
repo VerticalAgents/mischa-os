@@ -24,7 +24,7 @@ export default function AgendamentoFilters({
     previstos: agendamentos.filter(a => a.statusAgendamento === "Previsto").length,
     agendados: agendamentos.filter(a => a.statusAgendamento === "Agendado").length,
     pedidosUnicos: agendamentos.filter(a => a.isPedidoUnico).length,
-    despachados: agendamentos.filter(a => a.statusAgendamento === "Agendado" && a.pedido?.substatus === "Despachado").length
+    despachados: agendamentos.filter(a => a.statusAgendamento === "Agendado" && a.pedido?.statusPedido === "Despachado").length
   };
 
   const agendamentosFiltrados = () => {
