@@ -146,7 +146,11 @@ export default function ClienteFormDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome?.trim()) {
+    console.log('ClienteFormDialog: Dados do formulário antes da validação:', formData);
+    
+    // Validação dos campos obrigatórios
+    if (!formData.nome || formData.nome.trim() === '') {
+      console.log('ClienteFormDialog: Erro - Nome vazio:', formData.nome);
       toast({
         title: "Erro",
         description: "Nome do cliente é obrigatório",
@@ -155,7 +159,8 @@ export default function ClienteFormDialog({
       return;
     }
 
-    if (!formData.enderecoEntrega?.trim()) {
+    if (!formData.enderecoEntrega || formData.enderecoEntrega.trim() === '') {
+      console.log('ClienteFormDialog: Erro - Endereço vazio:', formData.enderecoEntrega);
       toast({
         title: "Erro",
         description: "Endereço de entrega é obrigatório",
@@ -164,7 +169,8 @@ export default function ClienteFormDialog({
       return;
     }
 
-    if (!formData.linkGoogleMaps?.trim()) {
+    if (!formData.linkGoogleMaps || formData.linkGoogleMaps.trim() === '') {
+      console.log('ClienteFormDialog: Erro - Link Google Maps vazio:', formData.linkGoogleMaps);
       toast({
         title: "Erro",
         description: "Link do Google Maps é obrigatório",
@@ -173,6 +179,7 @@ export default function ClienteFormDialog({
       return;
     }
 
+    console.log('ClienteFormDialog: Validação passou, iniciando salvamento');
     setIsSaving(true);
 
     try {
