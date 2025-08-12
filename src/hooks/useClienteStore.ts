@@ -29,36 +29,72 @@ const transformDbRowToCliente = (row: any): Cliente => {
   return {
     id: row.id,
     nome: row.nome || '',
-    cnpjCpf: row.cnpj_cpf,
-    enderecoEntrega: row.endereco_entrega,
-    linkGoogleMaps: row.link_google_maps,
-    contatoNome: row.contato_nome,
-    contatoTelefone: row.contato_telefone,
-    contatoEmail: row.contato_email,
+    cnpjCpf: row.cnpj_cpf || '',
+    enderecoEntrega: row.endereco_entrega || '',
+    linkGoogleMaps: row.link_google_maps || '',
+    contatoNome: row.contato_nome || '',
+    contatoTelefone: row.contato_telefone || '',
+    contatoEmail: row.contato_email || '',
     quantidadePadrao: row.quantidade_padrao || 0,
     periodicidadePadrao: row.periodicidade_padrao || 7,
     statusCliente: row.status_cliente || 'Ativo',
     dataCadastro: new Date(row.created_at),
-    metaGiroSemanal: row.meta_giro_semanal,
+    metaGiroSemanal: row.meta_giro_semanal || 0,
     ultimaDataReposicaoEfetiva: row.ultima_data_reposicao_efetiva ? new Date(row.ultima_data_reposicao_efetiva) : undefined,
     statusAgendamento: row.status_agendamento,
     proximaDataReposicao: row.proxima_data_reposicao ? new Date(row.proxima_data_reposicao) : undefined,
-    ativo: row.ativo || true,
-    giroMedioSemanal: row.giro_medio_semanal,
-    janelasEntrega: row.janelas_entrega,
+    ativo: row.ativo ?? true,
+    giroMedioSemanal: row.giro_medio_semanal || 0,
+    janelasEntrega: row.janelas_entrega || [],
     representanteId: row.representante_id,
     rotaEntregaId: row.rota_entrega_id,
     categoriaEstabelecimentoId: row.categoria_estabelecimento_id,
-    instrucoesEntrega: row.instrucoes_entrega,
-    contabilizarGiroMedio: row.contabilizar_giro_medio || true,
+    instrucoesEntrega: row.instrucoes_entrega || '',
+    contabilizarGiroMedio: row.contabilizar_giro_medio ?? true,
     tipoLogistica: row.tipo_logistica || 'Própria',
-    emiteNotaFiscal: row.emite_nota_fiscal || true,
+    emiteNotaFiscal: row.emite_nota_fiscal ?? true,
     tipoCobranca: row.tipo_cobranca || 'À vista',
     formaPagamento: row.forma_pagamento || 'Boleto',
-    observacoes: row.observacoes,
+    observacoes: row.observacoes || '',
     categoriaId: row.categoria_id || 1,
     subcategoriaId: row.subcategoria_id || 1,
     categoriasHabilitadas: row.categorias_habilitadas || []
+  };
+};
+
+// Helper function to transform Cliente to database row format
+const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
+  return {
+    nome: cliente.nome,
+    cnpj_cpf: cliente.cnpjCpf,
+    endereco_entrega: cliente.enderecoEntrega,
+    link_google_maps: cliente.linkGoogleMaps,
+    contato_nome: cliente.contatoNome,
+    contato_telefone: cliente.contatoTelefone,
+    contato_email: cliente.contatoEmail,
+    quantidade_padrao: cliente.quantidadePadrao,
+    periodicidade_padrao: cliente.periodicidadePadrao,
+    status_cliente: cliente.statusCliente,
+    meta_giro_semanal: cliente.metaGiroSemanal,
+    ultima_data_reposicao_efetiva: cliente.ultimaDataReposicaoEfetiva?.toISOString(),
+    status_agendamento: cliente.statusAgendamento,
+    proxima_data_reposicao: cliente.proximaDataReposicao?.toISOString(),
+    ativo: cliente.ativo,
+    giro_medio_semanal: cliente.giroMedioSemanal,
+    janelas_entrega: cliente.janelasEntrega,
+    representante_id: cliente.representanteId,
+    rota_entrega_id: cliente.rotaEntregaId,
+    categoria_estabelecimento_id: cliente.categoriaEstabelecimentoId,
+    instrucoes_entrega: cliente.instrucoesEntrega,
+    contabilizar_giro_medio: cliente.contabilizarGiroMedio,
+    tipo_logistica: cliente.tipoLogistica,
+    emite_nota_fiscal: cliente.emiteNotaFiscal,
+    tipo_cobranca: cliente.tipoCobranca,
+    forma_pagamento: cliente.formaPagamento,
+    observacoes: cliente.observacoes,
+    categoria_id: cliente.categoriaId,
+    subcategoria_id: cliente.subcategoriaId,
+    categorias_habilitadas: cliente.categoriasHabilitadas
   };
 };
 
@@ -73,11 +109,13 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
   adicionarCliente: async (cliente) => {
     set({ loading: true });
     try {
+      const dbData = transformClienteToDbRow(cliente);
+      
       const { data, error } = await supabase
         .from('clientes')
         .insert([
           {
-            ...cliente,
+            ...dbData,
             created_at: new Date().toISOString(),
           },
         ])
@@ -105,17 +143,24 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
   atualizarCliente: async (id, cliente) => {
     set({ loading: true });
     try {
-      const { error } = await supabase
+      const dbData = transformClienteToDbRow(cliente);
+      
+      const { data, error } = await supabase
         .from('clientes')
-        .update(cliente)
-        .eq('id', id);
+        .update(dbData)
+        .eq('id', id)
+        .select()
+        .single();
 
       if (error) {
         throw error;
       }
 
+      const clienteAtualizado = transformDbRowToCliente(data);
+
       set((state) => ({
-        clientes: state.clientes.map((c) => (c.id === id ? { ...c, ...cliente } : c)),
+        clientes: state.clientes.map((c) => (c.id === id ? clienteAtualizado : c)),
+        clienteAtual: state.clienteAtual?.id === id ? clienteAtualizado : state.clienteAtual,
         loading: false,
       }));
     } catch (error: any) {
@@ -135,6 +180,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
 
       set((state) => ({
         clientes: state.clientes.filter((cliente) => cliente.id !== id),
+        clienteAtual: state.clienteAtual?.id === id ? null : state.clienteAtual,
         loading: false,
       }));
     } catch (error: any) {
@@ -160,7 +206,18 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
 
       const clientesTransformados = data.map(transformDbRowToCliente);
 
-      set({ clientes: clientesTransformados, loading: false });
+      set((state) => {
+        // Sync clienteAtual if it exists
+        const clienteAtualAtualizado = state.clienteAtual 
+          ? clientesTransformados.find(c => c.id === state.clienteAtual?.id) || state.clienteAtual
+          : null;
+          
+        return {
+          clientes: clientesTransformados,
+          clienteAtual: clienteAtualAtualizado,
+          loading: false
+        };
+      });
     } catch (error: any) {
       console.error("Erro ao carregar clientes:", error);
       set({ loading: false });
