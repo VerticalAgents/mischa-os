@@ -16,6 +16,7 @@ interface ClienteStore {
   // Ações
   carregarClientes: () => Promise<void>;
   adicionarCliente: (cliente: Omit<Cliente, 'id' | 'dataCadastro'>) => Promise<Cliente>;
+  duplicarCliente: (id: string) => Promise<void>;
   atualizarCliente: (id: string, dadosCliente: Partial<Cliente>) => Promise<void>;
   removerCliente: (id: string) => Promise<void>;
   selecionarCliente: (id: string | null) => void;
@@ -269,6 +270,72 @@ export const useClienteStore = create<ClienteStore>()(
         } catch (error) {
           await handleSupabaseError(error, 'adicionarCliente', executeAdd);
           throw error;
+        } finally {
+          set({ loading: false });
+        }
+      },
+
+      duplicarCliente: async (id) => {
+        const executeDuplicate = async () => {
+          const clienteOriginal = get().clientes.find(c => c.id === id);
+          if (!clienteOriginal) {
+            toast({
+              title: "Erro",
+              description: "Cliente não encontrado",
+              variant: "destructive"
+            });
+            return;
+          }
+
+          console.log('useClienteStore: Duplicando cliente:', clienteOriginal.nome);
+
+          // Criar novo cliente com as mesmas configurações, mas dados básicos em branco
+          const clienteDuplicado: Omit<Cliente, 'id' | 'dataCadastro'> = {
+            // Dados básicos em branco
+            nome: '',
+            cnpjCpf: '',
+            enderecoEntrega: '',
+            linkGoogleMaps: '',
+            contatoNome: '',
+            contatoTelefone: '',
+            contatoEmail: '',
+            
+            // Manter todas as configurações do cliente original
+            quantidadePadrao: clienteOriginal.quantidadePadrao,
+            periodicidadePadrao: clienteOriginal.periodicidadePadrao,
+            statusCliente: clienteOriginal.statusCliente,
+            metaGiroSemanal: clienteOriginal.metaGiroSemanal,
+            janelasEntrega: clienteOriginal.janelasEntrega,
+            representanteId: clienteOriginal.representanteId,
+            rotaEntregaId: clienteOriginal.rotaEntregaId,
+            categoriaEstabelecimentoId: clienteOriginal.categoriaEstabelecimentoId,
+            instrucoesEntrega: clienteOriginal.instrucoesEntrega,
+            contabilizarGiroMedio: clienteOriginal.contabilizarGiroMedio,
+            tipoLogistica: clienteOriginal.tipoLogistica,
+            emiteNotaFiscal: clienteOriginal.emiteNotaFiscal,
+            tipoCobranca: clienteOriginal.tipoCobranca,
+            formaPagamento: clienteOriginal.formaPagamento,
+            observacoes: clienteOriginal.observacoes,
+            categoriasHabilitadas: clienteOriginal.categoriasHabilitadas,
+            ativo: true,
+            categoriaId: clienteOriginal.categoriaId,
+            subcategoriaId: clienteOriginal.subcategoriaId
+          };
+
+          // Adicionar o cliente duplicado
+          await get().adicionarCliente(clienteDuplicado);
+
+          toast({
+            title: "Cliente duplicado",
+            description: `As configurações de ${clienteOriginal.nome} foram copiadas para um novo cliente`
+          });
+        };
+
+        set({ loading: true });
+        try {
+          await executeDuplicate();
+        } catch (error) {
+          await handleSupabaseError(error, 'duplicarCliente', executeDuplicate);
         } finally {
           set({ loading: false });
         }

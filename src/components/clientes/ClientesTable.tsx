@@ -1,35 +1,33 @@
 
-import { ExternalLink, Calendar, ArrowUp, ArrowDown, Trash2 } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { Cliente, StatusCliente } from "@/types";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { MoreHorizontal, Eye, Edit, Trash2, Copy } from "lucide-react";
+import { Cliente } from "@/types";
 import StatusBadge from "@/components/common/StatusBadge";
-import { ColumnOption } from "./ClientesFilters";
-import { useState, useEffect } from "react";
-import { useThemeStore } from "@/lib/theme";
-import { cn } from "@/lib/utils";
+import { useClienteStore } from "@/hooks/useClienteStore";
+import { toast } from "@/hooks/use-toast";
+
+interface ColumnOption {
+  id: string;
+  label: string;
+  canToggle: boolean;
+}
 
 interface ClientesTableProps {
   clientes: Cliente[];
   visibleColumns: string[];
   columnOptions: ColumnOption[];
   onSelectCliente: (id: string) => void;
-  onDeleteCliente?: (id: string) => void;
-  selectedClientes?: string[];
-  onSelectAllClientes?: () => void;
-  onToggleClienteSelection?: (id: string) => void;
-  showSelectionControls?: boolean;
+  onDeleteCliente: (id: string) => void;
+  selectedClientes: string[];
+  onToggleClienteSelection: (id: string) => void;
+  onSelectAllClientes: () => void;
+  showSelectionControls: boolean;
 }
-
-type SortDirection = "asc" | "desc" | null;
-type SortConfig = {
-  key: string;
-  direction: SortDirection;
-};
 
 export default function ClientesTable({
   clientes,
@@ -37,351 +35,188 @@ export default function ClientesTable({
   columnOptions,
   onSelectCliente,
   onDeleteCliente,
-  selectedClientes = [],
+  selectedClientes,
   onToggleClienteSelection,
   onSelectAllClientes,
-  showSelectionControls = false
+  showSelectionControls
 }: ClientesTableProps) {
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "", direction: null });
-  const [columnOrder, setColumnOrder] = useState<string[]>(visibleColumns);
-  const { isDark } = useThemeStore();
+  const { duplicarCliente } = useClienteStore();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [clienteParaEditar, setClienteParaEditar] = useState<Cliente | null>(null);
 
-  // Update column order when visible columns change
-  useEffect(() => {
-    // Keep fixed columns (nome at start, acoes at end)
-    // and respect the order of other columns from visibleColumns
-    const orderedColumns = [...visibleColumns].sort((a, b) => {
-      if (a === "nome") return -1;
-      if (b === "nome") return 1;
-      if (a === "giroSemanal") return -1;
-      if (b === "giroSemanal") return 1;
-      if (a === "acoes") return 1;
-      if (b === "acoes") return -1;
-      return visibleColumns.indexOf(a) - visibleColumns.indexOf(b);
-    });
-    
-    setColumnOrder(orderedColumns);
-  }, [visibleColumns]);
+  const formatarData = (data: Date | undefined) => {
+    if (!data) return "-";
+    return new Date(data).toLocaleDateString('pt-BR');
+  };
 
-  // Helper to format periodicidade in text
-  const formatPeriodicidade = (dias: number): string => {
-    if (dias % 7 === 0) {
-      const semanas = dias / 7;
-      return semanas === 1 ? "1 semana" : `${semanas} semanas`;
-    } else if (dias === 3) {
-      return "3x semana";
-    } else {
-      return `${dias} dias`;
+  const formatarStatus = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'Ativo': 'Ativo',
+      'Inativo': 'Inativo',
+      'Em análise': 'Em análise',
+      'A ativar': 'A ativar',
+      'Standby': 'Standby'
+    };
+    return statusMap[status] || status;
+  };
+
+  const formatarStatusAgendamento = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'Agendar': 'Agendar',
+      'Não Agendado': 'Não Agendado',
+      'Agendado': 'Agendado',
+      'Cancelado': 'Cancelado'
+    };
+    return statusMap[status] || status;
+  };
+
+  const handleDuplicarCliente = async (cliente: Cliente) => {
+    try {
+      await duplicarCliente(cliente.id);
+    } catch (error) {
+      console.error('Erro ao duplicar cliente:', error);
     }
   };
 
-  // Calculate weekly turnover based on quantity and periodicity
-  const calcularGiroSemanal = (qtdPadrao: number, periodicidadeDias: number): number => {
-    // For periodicity in days, convert to weeks
-    if (periodicidadeDias === 3) {
-      // Special case: 3x per week
-      return qtdPadrao * 3;
-    }
-
-    // For other cases, calculate weekly turnover
-    const periodicidadeSemanas = periodicidadeDias / 7;
-    return Math.round(qtdPadrao / periodicidadeSemanas);
+  const handleEditarCliente = (cliente: Cliente) => {
+    setClienteParaEditar(cliente);
+    setIsFormOpen(true);
   };
 
-  // Function to handle sorting
-  const requestSort = (key: string) => {
-    let direction: SortDirection = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    } else if (sortConfig.key === key && sortConfig.direction === "desc") {
-      direction = null;
-    }
-    setSortConfig({ key, direction });
+  const handleFormClose = () => {
+    setIsFormOpen(false);
+    setClienteParaEditar(null);
   };
 
-  // Sort clients based on current sorting configuration
-  const sortedClientes = [...clientes].sort((a, b) => {
-    if (sortConfig.direction === null) {
-      return 0;
-    }
-
-    let aValue: any;
-    let bValue: any;
-
-    switch (sortConfig.key) {
+  const getColumnValue = (cliente: Cliente, columnId: string) => {
+    switch (columnId) {
       case "nome":
-        aValue = a.nome;
-        bValue = b.nome;
-        break;
-      case "cnpjCpf":
-        aValue = a.cnpjCpf || "";
-        bValue = b.cnpjCpf || "";
-        break;
-      case "enderecoEntrega":
-        aValue = a.enderecoEntrega || "";
-        bValue = b.enderecoEntrega || "";
-        break;
-      case "contato":
-        aValue = a.contatoNome || "";
-        bValue = b.contatoNome || "";
-        break;
-      case "quantidadePadrao":
-        aValue = a.quantidadePadrao;
-        bValue = b.quantidadePadrao;
-        break;
-      case "periodicidade":
-        aValue = a.periodicidadePadrao;
-        bValue = b.periodicidadePadrao;
-        break;
+        return cliente.nome;
       case "giroSemanal":
-        aValue = calcularGiroSemanal(a.quantidadePadrao, a.periodicidadePadrao);
-        bValue = calcularGiroSemanal(b.quantidadePadrao, b.periodicidadePadrao);
-        break;
+        return cliente.giroMedioSemanal || 0;
+      case "cnpjCpf":
+        return cliente.cnpjCpf || "-";
+      case "enderecoEntrega":
+        return cliente.enderecoEntrega || "-";
+      case "contato":
+        return cliente.contatoTelefone || cliente.contatoEmail || "-";
+      case "quantidadePadrao":
+        return cliente.quantidadePadrao || 0;
+      case "periodicidade":
+        return `${cliente.periodicidadePadrao || 7} dias`;
       case "status":
-        aValue = a.statusCliente;
-        bValue = b.statusCliente;
-        break;
+        return formatarStatus(cliente.statusCliente);
       case "statusAgendamento":
-        aValue = a.statusAgendamento || "";
-        bValue = b.statusAgendamento || "";
-        break;
+        return formatarStatusAgendamento(cliente.statusAgendamento || 'Não Agendado');
       case "proximaDataReposicao":
-        aValue = a.proximaDataReposicao ? a.proximaDataReposicao.getTime() : 0;
-        bValue = b.proximaDataReposicao ? b.proximaDataReposicao.getTime() : 0;
-        break;
+        return formatarData(cliente.proximaDataReposicao);
       default:
-        return 0;
+        return "-";
     }
-
-    if (sortConfig.direction === "asc") {
-      return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-    } else {
-      return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
-    }
-  });
-
-  const getSortIcon = (columnId: string) => {
-    if (sortConfig.key !== columnId) {
-      return null;
-    }
-    return sortConfig.direction === "asc" ? (
-      <ArrowUp className="ml-1 h-4 w-4" />
-    ) : (
-      <ArrowDown className="ml-1 h-4 w-4" />
-    );
   };
 
-  const allSelected = clientes.length > 0 && selectedClientes.length === clientes.length;
+  const renderCellContent = (cliente: Cliente, columnId: string) => {
+    const value = getColumnValue(cliente, columnId);
+    
+    switch (columnId) {
+      case "status":
+        return <StatusBadge status={cliente.statusCliente} />;
+      case "statusAgendamento":
+        return <StatusBadge status={cliente.statusAgendamento || 'Não Agendado'} />;
+      case "acoes":
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Abrir menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onSelectCliente(cliente.id)}>
+                <Eye className="mr-2 h-4 w-4" />
+                Visualizar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEditarCliente(cliente)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDuplicarCliente(cliente)}>
+                <Copy className="mr-2 h-4 w-4" />
+                Duplicar
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => onDeleteCliente(cliente.id)}
+                className="text-red-600"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      default:
+        return <span>{value}</span>;
+    }
+  };
 
   return (
-    <Card>
-      <CardContent className="p-0">
+    <>
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
               {showSelectionControls && (
-                <TableHead className="w-[50px]">
-                  <input 
-                    type="checkbox" 
-                    checked={allSelected}
-                    onChange={onSelectAllClientes}
-                    className="h-4 w-4"
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={selectedClientes.length === clientes.length && clientes.length > 0}
+                    onCheckedChange={onSelectAllClientes}
+                    aria-label="Selecionar todos"
                   />
                 </TableHead>
               )}
-              {columnOrder.map(columnId => {
-                const column = columnOptions.find(col => col.id === columnId);
-                if (!column || !visibleColumns.includes(columnId)) return null;
-                
-                return (
-                  <TableHead 
-                    key={columnId}
-                    className={cn(
-                      "cursor-pointer select-none",
-                      columnId === "giroSemanal" && "font-semibold"
-                    )}
-                    onClick={() => requestSort(columnId)}
-                  >
-                    <div className="flex items-center">
-                      {column.label}
-                      {getSortIcon(columnId)}
-                    </div>
-                  </TableHead>
-                );
-              })}
+              {columnOptions
+                .filter(col => visibleColumns.includes(col.id))
+                .map((column) => (
+                  <TableHead key={column.id}>{column.label}</TableHead>
+                ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedClientes.length === 0 ? (
+            {clientes.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={visibleColumns.length + (showSelectionControls ? 1 : 0)} className="h-24 text-center">
+                <TableCell 
+                  colSpan={visibleColumns.length + (showSelectionControls ? 1 : 0)} 
+                  className="h-24 text-center"
+                >
                   Nenhum cliente encontrado.
                 </TableCell>
               </TableRow>
             ) : (
-              sortedClientes.map(cliente => {
-                const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
-                const isSelected = selectedClientes.includes(cliente.id);
-                
-                return (
-                  <TableRow 
-                    key={cliente.id} 
-                    className={cn(
-                      "cursor-pointer",
-                      isSelected && "bg-muted/50"
-                    )}
-                    onClick={() => {
-                      if (showSelectionControls && onToggleClienteSelection) {
-                        onToggleClienteSelection(cliente.id);
-                      } else {
-                        onSelectCliente(cliente.id);
-                      }
-                    }}
-                  >
-                    {showSelectionControls && (
-                      <TableCell className="w-[50px]" onClick={(e) => e.stopPropagation()}>
-                        <input 
-                          type="checkbox" 
-                          checked={isSelected}
-                          onChange={() => onToggleClienteSelection && onToggleClienteSelection(cliente.id)}
-                          className="h-4 w-4"
-                        />
+              clientes.map((cliente) => (
+                <TableRow key={cliente.id}>
+                  {showSelectionControls && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedClientes.includes(cliente.id)}
+                        onCheckedChange={() => onToggleClienteSelection(cliente.id)}
+                        aria-label={`Selecionar ${cliente.nome}`}
+                      />
+                    </TableCell>
+                  )}
+                  {columnOptions
+                    .filter(col => visibleColumns.includes(col.id))
+                    .map((column) => (
+                      <TableCell key={`${cliente.id}-${column.id}`}>
+                        {renderCellContent(cliente, column.id)}
                       </TableCell>
-                    )}
-                    
-                    {columnOrder.map(columnId => {
-                      if (!visibleColumns.includes(columnId)) return null;
-                      
-                      switch(columnId) {
-                        case "nome":
-                          return (
-                            <TableCell key={`${cliente.id}-${columnId}`} className="font-medium">
-                              {cliente.nome}
-                            </TableCell>
-                          );
-                        case "cnpjCpf":
-                          return (
-                            <TableCell key={`${cliente.id}-${columnId}`}>
-                              {cliente.cnpjCpf || "-"}
-                            </TableCell>
-                          );
-                        case "enderecoEntrega":
-                          return (
-                            <TableCell key={`${cliente.id}-${columnId}`} className="max-w-[200px] truncate">
-                              {cliente.enderecoEntrega || "-"}
-                            </TableCell>
-                          );
-                        case "contato":
-                          return (
-                            <TableCell key={`${cliente.id}-${columnId}`}>
-                              {cliente.contatoNome || "-"}
-                              {cliente.contatoTelefone && (
-                                <div className="text-xs text-muted-foreground">
-                                  {cliente.contatoTelefone}
-                                </div>
-                              )}
-                            </TableCell>
-                          );
-                        case "quantidadePadrao":
-                          return (
-                            <TableCell key={`${cliente.id}-${columnId}`}>
-                              {cliente.quantidadePadrao}
-                            </TableCell>
-                          );
-                        case "periodicidade":
-                          return (
-                            <TableCell key={`${cliente.id}-${columnId}`}>
-                              {formatPeriodicidade(cliente.periodicidadePadrao)}
-                            </TableCell>
-                          );
-                        case "giroSemanal":
-                          return (
-                            <TableCell key={`${cliente.id}-${columnId}`}>
-                              <Badge 
-                                variant="outline" 
-                                className={cn(
-                                  "font-semibold",
-                                  isDark ? "bg-gray-800 text-gray-100" : "bg-gray-200 text-gray-800"
-                                )}
-                              >
-                                {giroSemanal}
-                              </Badge>
-                            </TableCell>
-                          );
-                        case "status":
-                          return (
-                            <TableCell key={`${cliente.id}-${columnId}`}>
-                              <StatusBadge status={cliente.statusCliente} />
-                            </TableCell>
-                          );
-                        case "statusAgendamento":
-                          return (
-                            <TableCell key={`${cliente.id}-${columnId}`}>
-                              <Badge variant={
-                                cliente.statusAgendamento === "Agendado" ? "default" : 
-                                cliente.statusAgendamento === "Previsto" ? "secondary" : 
-                                cliente.statusAgendamento === "Agendar" ? "outline" : "outline"
-                              }>
-                                {cliente.statusAgendamento || "Não Agendado"}
-                              </Badge>
-                            </TableCell>
-                          );
-                        case "proximaDataReposicao":
-                          return (
-                            <TableCell key={`${cliente.id}-${columnId}`}>
-                              {cliente.proximaDataReposicao ? (
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <span>
-                                    {format(cliente.proximaDataReposicao, "dd/MM/yyyy", { locale: ptBR })}
-                                  </span>
-                                </div>
-                              ) : "—"}
-                            </TableCell>
-                          );
-                        case "acoes":
-                          return (
-                            <TableCell key={`${cliente.id}-${columnId}`} className="text-right">
-                              <div className="flex justify-end gap-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onSelectCliente(cliente.id);
-                                  }}
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                  <span className="sr-only">Ver detalhes</span>
-                                </Button>
-                                {onDeleteCliente && (
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onDeleteCliente(cliente.id);
-                                    }}
-                                    className="text-destructive hover:text-destructive/90"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Excluir cliente</span>
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                          );
-                        default:
-                          return null;
-                      }
-                    })}
-                  </TableRow>
-                );
-              })
+                    ))}
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
-      </CardContent>
-    </Card>
+      </div>
+    </>
   );
 }
