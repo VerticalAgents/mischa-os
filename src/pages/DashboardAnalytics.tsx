@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { ArrowRight, Download } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
@@ -14,7 +13,7 @@ import { usePedidoStore } from "@/hooks/usePedidoStore";
 import OperationalSummary from "@/components/dashboard-analytics/OperationalSummary";
 import FinancialAnalysis from "@/components/dashboard-analytics/FinancialAnalysis";
 import CustomerBehavior from "@/components/dashboard-analytics/CustomerBehavior";
-import ProductionIndicators from "@/components/dashboard-analytics/ProductionIndicators";
+import ProductionIndicatorsV2 from "@/components/dashboard-analytics/ProductionIndicatorsV2";
 import AlertsRisks from "@/components/dashboard-analytics/AlertsRisks";
 import ProducaoSimuladaTab from "@/components/dashboard-analytics/ProducaoSimuladaTab";
 import EntregasAnalyticsTab from "@/components/dashboard-analytics/EntregasAnalyticsTab";
@@ -137,10 +136,7 @@ export default function DashboardAnalytics() {
           </TabsContent>
           
           <TabsContent value="production-indicators" className="mt-0">
-            <ProductionIndicators
-              registrosProducao={registrosProducao}
-              planejamentoProducao={planejamentoProducao}
-            />
+            <ProductionIndicatorsV2 />
           </TabsContent>
           
           <TabsContent value="producao-simulada" className="mt-0">
