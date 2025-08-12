@@ -18,10 +18,10 @@ export interface ColumnOption {
 interface ClientesFiltersProps {
   filtros: {
     termo: string;
-    status: StatusCliente | 'Todos';
+    status: StatusCliente | 'Todos' | '';
   };
   setFiltroTermo: (termo: string) => void;
-  setFiltroStatus: (status: StatusCliente | 'Todos') => void;
+  setFiltroStatus: (status: StatusCliente | 'Todos' | '') => void;
   visibleColumns: string[];
   setVisibleColumns: React.Dispatch<React.SetStateAction<string[]>>;
   columnOptions: ColumnOption[];
@@ -58,9 +58,9 @@ export default function ClientesFilters({
       <select 
         className="h-10 rounded-md border border-input bg-background px-3 py-2" 
         value={filtros.status} 
-        onChange={e => setFiltroStatus(e.target.value as StatusCliente | 'Todos')}
+        onChange={e => setFiltroStatus(e.target.value as StatusCliente | 'Todos' | '')}
       >
-        <option value="Todos">Todos os status</option>
+        <option value="">Todos os status</option>
         <option value="Ativo">Ativo</option>
         <option value="Em análise">Em análise</option>
         <option value="Inativo">Inativo</option>
