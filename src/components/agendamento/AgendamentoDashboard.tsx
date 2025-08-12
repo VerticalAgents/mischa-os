@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,11 +8,13 @@ import { ptBR } from "date-fns/locale";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
+import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 
 export default function AgendamentoDashboard() {
   const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
   const { clientes } = useClienteStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -86,12 +89,26 @@ export default function AgendamentoDashboard() {
         previstos,
         confirmados,
         total: previstos + confirmados,
-        isToday: isToday(dia)
+        isToday: isToday(dia),
+        dataCompleta: dia
       };
     });
   }, [agendamentos]);
 
+  // Agendamentos do dia selecionado
+  const agendamentosDiaSelecionado = useMemo(() => {
+    if (!diaSelecionado) return [];
+    
+    return agendamentos.filter(agendamento => 
+      isSameDay(new Date(agendamento.dataReposicao), diaSelecionado)
+    );
+  }, [agendamentos, diaSelecionado]);
+
   const coresPieChart = ['#10B981', '#F59E0B', '#EF4444'];
+
+  const handleDiaClick = (dataCompleta: Date) => {
+    setDiaSelecionado(dataCompleta);
+  };
 
   return (
     <div className="space-y-6">
@@ -202,16 +219,18 @@ export default function AgendamentoDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Calendário Semanal</CardTitle>
-          <CardDescription>Visão dos agendamentos por dia da semana atual</CardDescription>
+          <CardDescription>Visão dos agendamentos por dia da semana atual - Clique em um dia para ver os detalhes</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-7 gap-2">
             {dadosGraficoSemanal.map((dia, index) => (
               <div 
                 key={index} 
-                className={`p-4 border rounded-lg text-center ${
-                  dia.isToday ? 'border-primary bg-primary/10' : 'border-border'
+                className={`p-4 border rounded-lg text-center cursor-pointer transition-colors hover:bg-muted/50 ${
+                  dia.isToday ? 'border-primary bg-primary/10' : 
+                  diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado) ? 'border-primary bg-primary/20' : 'border-border'
                 }`}
+                onClick={() => handleDiaClick(dia.dataCompleta)}
               >
                 <div className="font-medium text-sm mb-2">{dia.diaSemana}</div>
                 <div className="text-lg font-bold mb-1">{dia.dia}</div>
@@ -236,6 +255,52 @@ export default function AgendamentoDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Agendamentos do Dia Selecionado */}
+      {diaSelecionado && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Agendamentos para {format(diaSelecionado, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</CardTitle>
+            <CardDescription>
+              {agendamentosDiaSelecionado.length === 0 
+                ? "Nenhum agendamento encontrado para este dia" 
+                : `${agendamentosDiaSelecionado.length} agendamento(s) encontrado(s)`
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {agendamentosDiaSelecionado.length > 0 ? (
+              <div className="space-y-3">
+                {agendamentosDiaSelecionado.map((agendamento) => (
+                  <div key={agendamento.cliente.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex-1">
+                      <div className="font-medium">{agendamento.cliente.nome}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Quantidade: {agendamento.cliente.quantidadePadrao} unidades
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <TipoPedidoBadge tipo={agendamento.pedido?.tipoPedido || 'Padrão'} />
+                      <Badge 
+                        variant={
+                          agendamento.statusAgendamento === "Agendado" ? "default" :
+                          agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"
+                        }
+                      >
+                        {agendamento.statusAgendamento}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhum agendamento para este dia
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
