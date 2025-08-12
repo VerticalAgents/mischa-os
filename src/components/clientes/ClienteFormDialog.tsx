@@ -83,7 +83,6 @@ export default function ClienteFormDialog({
     instrucoesEntrega: ''
   });
 
-  // Estado para preços por categoria - removido pois não é mais necessário
   const [isSaving, setIsSaving] = useState(false);
 
   // Carregar dados do cliente quando abrir para edição
@@ -166,9 +165,36 @@ export default function ClienteFormDialog({
 
       let clienteId: string;
 
+      // Preparar os dados para salvar, convertendo os campos corretamente
+      const dadosParaSalvar = {
+        nome: formData.nome || '',
+        cnpj_cpf: formData.cnpjCpf || '',
+        endereco_entrega: formData.enderecoEntrega || '',
+        link_google_maps: formData.linkGoogleMaps || '',
+        contato_nome: formData.contatoNome || '',
+        contato_telefone: formData.contatoTelefone || '',
+        contato_email: formData.contatoEmail || '',
+        quantidade_padrao: formData.quantidadePadrao || 0,
+        periodicidade_padrao: formData.periodicidadePadrao || 7,
+        status_cliente: formData.statusCliente || 'Ativo',
+        tipo_logistica: formData.tipoLogistica || 'Própria',
+        tipo_cobranca: formData.tipoCobranca || 'À vista',
+        forma_pagamento: formData.formaPagamento || 'Boleto',
+        emite_nota_fiscal: formData.emiteNotaFiscal ?? true,
+        contabilizar_giro_medio: formData.contabilizarGiroMedio ?? true,
+        observacoes: formData.observacoes || '',
+        categorias_habilitadas: formData.categoriasHabilitadas || [],
+        janelas_entrega: formData.janelasEntrega || [],
+        representante_id: formData.representanteId,
+        rota_entrega_id: formData.rotaEntregaId,
+        categoria_estabelecimento_id: formData.categoriaEstabelecimentoId,
+        instrucoes_entrega: formData.instrucoesEntrega || '',
+        ativo: true
+      };
+
       if (cliente) {
         // Atualização de cliente existente
-        await atualizarCliente(cliente.id, formData);
+        await atualizarCliente(cliente.id, dadosParaSalvar);
         clienteId = cliente.id;
         
         toast({
@@ -176,7 +202,7 @@ export default function ClienteFormDialog({
           description: "Dados do cliente foram salvos com sucesso"
         });
       } else {
-        // Criação de novo cliente
+        // Criação de novo cliente - usar os dados no formato correto
         const novoCliente = await adicionarCliente(formData as Omit<Cliente, 'id' | 'dataCadastro'>);
         clienteId = novoCliente.id;
         
@@ -200,7 +226,7 @@ export default function ClienteFormDialog({
       console.error('ClienteFormDialog: Erro ao salvar cliente:', error);
       toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar os dados do cliente",
+        description: "Não foi possível salvar os dados do cliente. Verifique os campos obrigatórios.",
         variant: "destructive"
       });
     } finally {
@@ -236,7 +262,6 @@ export default function ClienteFormDialog({
     dataCadastro: cliente?.dataCadastro ? 
       (typeof cliente.dataCadastro === 'string' ? new Date(cliente.dataCadastro) : cliente.dataCadastro) : 
       new Date(),
-    // Add missing required fields from Cliente interface
     ativo: cliente?.ativo ?? true,
     categoriaId: cliente?.categoriaId || 0,
     subcategoriaId: cliente?.subcategoriaId || 0
