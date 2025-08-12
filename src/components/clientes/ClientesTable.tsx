@@ -9,6 +9,7 @@ import { Cliente } from "@/types";
 import StatusBadge from "@/components/common/StatusBadge";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { toast } from "@/hooks/use-toast";
+import ClienteFormDialog from "./ClienteFormDialog";
 
 interface ColumnOption {
   id: string;
@@ -71,11 +72,15 @@ export default function ClientesTable({
 
   const handleDuplicarCliente = async (cliente: Cliente) => {
     try {
-      await duplicarCliente(cliente.id);
+      const clienteDuplicado = await duplicarCliente(cliente.id);
       toast({
         title: "Cliente duplicado",
         description: `As configurações de ${cliente.nome} foram copiadas para um novo cliente`
       });
+      
+      // Abrir modal de edição com o cliente duplicado
+      setClienteParaEditar(clienteDuplicado);
+      setIsFormOpen(true);
     } catch (error) {
       console.error('Erro ao duplicar cliente:', error);
       toast({
@@ -94,6 +99,19 @@ export default function ClientesTable({
   const handleFormClose = () => {
     setIsFormOpen(false);
     setClienteParaEditar(null);
+  };
+
+  const handleRowClick = (clienteId: string, event: React.MouseEvent) => {
+    // Verificar se o clique foi em um elemento interativo (checkbox, dropdown menu, etc)
+    const target = event.target as HTMLElement;
+    const isInteractiveElement = target.closest('button') || 
+                                target.closest('[role="checkbox"]') || 
+                                target.closest('[role="menuitem"]') ||
+                                target.type === 'checkbox';
+    
+    if (!isInteractiveElement) {
+      onSelectCliente(clienteId);
+    }
   };
 
   const getColumnValue = (cliente: Cliente, columnId: string) => {
@@ -217,9 +235,13 @@ export default function ClientesTable({
               </TableRow>
             ) : (
               clientes.map((cliente) => (
-                <TableRow key={cliente.id}>
+                <TableRow 
+                  key={cliente.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={(e) => handleRowClick(cliente.id, e)}
+                >
                   {showSelectionControls && (
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedClientes.includes(cliente.id)}
                         onCheckedChange={() => onToggleClienteSelection(cliente.id)}
@@ -240,6 +262,13 @@ export default function ClientesTable({
           </TableBody>
         </Table>
       </div>
+
+      <ClienteFormDialog 
+        open={isFormOpen} 
+        onOpenChange={handleFormClose}
+        cliente={clienteParaEditar}
+        onClienteUpdate={handleFormClose}
+      />
     </>
   );
 }
