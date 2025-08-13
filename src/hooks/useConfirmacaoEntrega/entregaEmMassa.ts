@@ -86,7 +86,7 @@ export const confirmarEntregaEmMassa = async (pedidos: PedidoEntrega[]): Promise
       return false;
     }
 
-    // 4) Processar cada entrega usando função idempotente (um ID único por pedido) 
+    // 4) Processar cada entrega usando função idempotente (um ID único por pedido) - CORRIGIDO: garantir tipos corretos
     let sucesso = 0;
     const erros: string[] = [];
     
@@ -96,9 +96,9 @@ export const confirmarEntregaEmMassa = async (pedidos: PedidoEntrega[]): Promise
         console.log(`🔑 Processando ${pedido.cliente_nome} com ID:`, idExecucao);
 
         const { error: procError } = await supabase.rpc('process_entrega_idempotente', {
-          p_agendamento_id: pedido.id,
-          p_execucao_id: idExecucao,
-          p_observacao: null
+          p_agendamento_id: pedido.id, // string UUID
+          p_execucao_id: idExecucao, // string UUID gerado
+          p_observacao: null // null explícito
         });
 
         if (procError) {

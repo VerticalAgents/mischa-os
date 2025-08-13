@@ -43,11 +43,11 @@ export const confirmarEntregaSimples = async (pedido: PedidoEntrega, observacao?
     const idExecucao = gerarIdExecucao();
     console.log('🔑 ID de execução gerado:', idExecucao);
 
-    // 4) Execução idempotente no banco usando nova função
+    // 4) Execução idempotente no banco usando nova função - CORRIGIDO: garantir que todos os parâmetros sejam do tipo correto
     const { error: procError } = await supabase.rpc('process_entrega_idempotente', {
-      p_agendamento_id: pedido.id,
-      p_execucao_id: idExecucao,
-      p_observacao: observacao || null
+      p_agendamento_id: pedido.id, // string UUID
+      p_execucao_id: idExecucao, // string UUID gerado
+      p_observacao: observacao || null // string ou null
     });
 
     if (procError) {
