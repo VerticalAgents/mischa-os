@@ -1,16 +1,16 @@
 
 import { useState } from 'react';
-import { confirmarEntregaSimples } from './useConfirmacaoEntrega/entregaSimples';
-import { confirmarEntregaEmMassa } from './useConfirmacaoEntrega/entregaEmMassa';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
-export interface ProdutoInsuficiente {
+interface ProdutoInsuficiente {
   nome: string;
   necessario: number;
   disponivel: number;
   faltante: number;
 }
 
-export interface PedidoEntrega {
+interface PedidoEntrega {
   id: string;
   cliente_id: string;
   cliente_nome: string;
@@ -22,19 +22,295 @@ export interface PedidoEntrega {
 export const useConfirmacaoEntrega = () => {
   const [loading, setLoading] = useState(false);
 
+  // Calcular itens usando RPC no servidor (fonte única da verdade)
+  const calcularItensEntrega = async (pedido: PedidoEntrega) => {
+    console.log('🧮 [RPC] Calculando itens para entrega usando v2:', pedido.id);
+    try {
+      const { data, error } = await supabase.rpc('compute_entrega_itens_v2', {
+        p_agendamento_id: pedido.id
+      });
+
+      if (error) {
+        console.error('Erro ao calcular itens via RPC v2:', error);
+        
+        // Melhorar mensagens de erro baseadas no tipo
+        if (error.message.includes('proporção padrão configurada')) {
+          throw new Error(`Configuração incompleta para ${pedido.cliente_nome}: Não há proporções padrão configuradas ou produtos ativos. Verifique as configurações em Configurações > Proporções.`);
+        } else if (error.message.includes('Agendamento') && error.message.includes('não encontrado')) {
+          throw new Error(`Agendamento de ${pedido.cliente_nome} não encontrado no sistema.`);
+        } else if (error.message.includes('quantidade total deve ser maior')) {
+          throw new Error(`Quantidade inválida para ${pedido.cliente_nome}: a quantidade total deve ser maior que zero.`);
+        } else if (error.message.includes('Nenhum item válido encontrado')) {
+          throw new Error(`Itens personalizados inválidos para ${pedido.cliente_nome}: verifique se os produtos estão ativos e as quantidades são válidas.`);
+        } else {
+          throw new Error(`Erro ao calcular itens para ${pedido.cliente_nome}: ${error.message}`);
+        }
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error(`Não foi possível calcular itens para ${pedido.cliente_nome}. Verifique se há produtos ativos ou proporções configuradas.`);
+      }
+
+      const itens = data.map((item: any) => ({
+        produto_id: item.produto_id as string,
+        produto_nome: item.produto_nome as string,
+        quantidade: Number(item.quantidade || 0)
+      }));
+
+      console.log('📦 Itens calculados (server v2):', itens);
+      return itens;
+    } catch (error) {
+      console.error('Erro fatal ao calcular itens:', error);
+      throw error;
+    }
+  };
+
+  const obterSaldoProduto = async (produtoId: string): Promise<number> => {
+    try {
+      const { data, error } = await supabase.rpc('saldo_produto', {
+        p_id: produtoId
+      });
+
+      if (error) {
+        console.error('Erro ao obter saldo do produto:', error);
+        return 0;
+      }
+
+      return Number(data || 0);
+    } catch (error) {
+      console.error('Erro ao obter saldo do produto:', error);
+      return 0;
+    }
+  };
+
+  const validarEstoqueDisponivel = async (itensEntrega: any[]): Promise<ProdutoInsuficiente[]> => {
+    const produtosInsuficientes: ProdutoInsuficiente[] = [];
+    
+    for (const item of itensEntrega) {
+      if (!item.produto_id || Number(item.quantidade) <= 0) continue;
+
+      const saldoAtual = await obterSaldoProduto(item.produto_id);
+      const quantidadeNecessaria = Number(item.quantidade);
+      
+      if (saldoAtual < quantidadeNecessaria) {
+        produtosInsuficientes.push({
+          nome: item.produto_nome,
+          necessario: quantidadeNecessaria,
+          disponivel: saldoAtual,
+          faltante: quantidadeNecessaria - saldoAtual
+        });
+      }
+    }
+
+    return produtosInsuficientes;
+  };
+
   const confirmarEntrega = async (pedido: PedidoEntrega, observacao?: string): Promise<boolean> => {
     setLoading(true);
     try {
-      return await confirmarEntregaSimples(pedido, observacao);
+      console.log('🚚 Iniciando confirmação de entrega (server-side v2):', pedido.id);
+
+      // 1) Calcular itens via servidor usando a nova função
+      const itensEntrega = await calcularItensEntrega(pedido);
+      if (itensEntrega.length === 0) {
+        toast({
+          title: "Erro na validação",
+          description: "Não foi possível calcular os itens necessários para a entrega",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      // 2) Validação de estoque (feedback imediato e detalhado)
+      const produtosInsuficientes = await validarEstoqueDisponivel(itensEntrega);
+      if (produtosInsuficientes.length > 0) {
+        const detalhes = produtosInsuficientes
+          .map(item => `• ${item.nome}: necessário ${item.necessario}, disponível ${item.disponivel} (falta ${item.faltante})`)
+          .join('\n');
+
+        toast({
+          title: "Estoque insuficiente",
+          description: `Os seguintes produtos não possuem estoque suficiente:\n${detalhes}`,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      // 3) Execução atômica no banco (baixa, histórico e reagendamento)
+      const { error: procError } = await supabase.rpc('process_entrega_safe', {
+        p_agendamento_id: pedido.id,
+        p_observacao: observacao || null
+      });
+
+      if (procError) {
+        console.error('Erro no processamento da entrega (RPC):', procError);
+        
+        // Melhorar mensagens de erro
+        let errorMessage = procError.message || "Ocorreu um erro inesperado";
+        if (procError.message.includes('já processada')) {
+          errorMessage = `A entrega de ${pedido.cliente_nome} já foi processada anteriormente.`;
+        } else if (procError.message.includes('Saldo insuficiente')) {
+          errorMessage = `Estoque insuficiente detectado durante o processamento da entrega de ${pedido.cliente_nome}. ${procError.message}`;
+        }
+        
+        toast({
+          title: "Erro ao confirmar entrega",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      toast({
+        title: "Entrega confirmada",
+        description: `Entrega para ${pedido.cliente_nome} confirmada com baixa automática no estoque.`,
+      });
+
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao confirmar entrega:', error);
+      toast({
+        title: "Erro ao confirmar entrega",
+        description: error instanceof Error ? error.message : "Ocorreu um erro inesperado",
+        variant: "destructive"
+      });
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
-  const confirmarEntregaEmMassaWrapper = async (pedidos: PedidoEntrega[]): Promise<boolean> => {
+  const confirmarEntregaEmMassa = async (pedidos: PedidoEntrega[]): Promise<boolean> => {
     setLoading(true);
     try {
-      return await confirmarEntregaEmMassa(pedidos);
+      console.log('🚚 Iniciando confirmação de entregas em massa (server-side v2):', pedidos.length);
+
+      // 1) Pré-validação: tentar calcular itens para todos os pedidos
+      const pedidosComItens: Array<{ pedido: PedidoEntrega; itens: any[] }> = [];
+      const pedidosComErro: string[] = [];
+
+      for (const pedido of pedidos) {
+        try {
+          const itensEntrega = await calcularItensEntrega(pedido);
+          pedidosComItens.push({ pedido, itens: itensEntrega });
+        } catch (error) {
+          console.error(`Erro ao calcular itens para ${pedido.cliente_nome}:`, error);
+          const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+          pedidosComErro.push(`${pedido.cliente_nome}: ${errorMsg}`);
+        }
+      }
+
+      // Se há pedidos com erro, abortar operação
+      if (pedidosComErro.length > 0) {
+        const detalhesErro = pedidosComErro.join('\n');
+        toast({
+          title: "Erro na pré-validação",
+          description: `Não foi possível calcular itens para alguns pedidos:\n${detalhesErro}`,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      // 2) Agregar necessidades por produto
+      const todosProdutosNecessarios: Record<string, { quantidade: number; nome: string }> = {};
+
+      for (const { itens } of pedidosComItens) {
+        for (const item of itens) {
+          if (!item.produto_id || Number(item.quantidade) <= 0) continue;
+          
+          if (!todosProdutosNecessarios[item.produto_id]) {
+            todosProdutosNecessarios[item.produto_id] = { 
+              quantidade: 0, 
+              nome: item.produto_nome 
+            };
+          }
+          todosProdutosNecessarios[item.produto_id].quantidade += Number(item.quantidade);
+        }
+      }
+
+      // 3) Validar saldos consolidados
+      const produtosInsuficientes: ProdutoInsuficiente[] = [];
+      
+      for (const [produtoId, { quantidade: quantidadeTotal, nome }] of Object.entries(todosProdutosNecessarios)) {
+        const saldoAtual = await obterSaldoProduto(produtoId);
+        
+        if (saldoAtual < quantidadeTotal) {
+          produtosInsuficientes.push({
+            nome,
+            necessario: quantidadeTotal,
+            disponivel: saldoAtual,
+            faltante: quantidadeTotal - saldoAtual
+          });
+        }
+      }
+
+      if (produtosInsuficientes.length > 0) {
+        const detalhes = produtosInsuficientes
+          .map(item => `• ${item.nome}: necessário ${item.necessario}, disponível ${item.disponivel} (falta ${item.faltante})`)
+          .join('\n');
+
+        toast({
+          title: "Estoque insuficiente para entrega em massa",
+          description: `Os seguintes produtos não possuem estoque suficiente:\n${detalhes}`,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      // 4) Processar cada entrega no servidor (transação por pedido)
+      let sucesso = 0;
+      const erros: string[] = [];
+      
+      for (const { pedido } of pedidosComItens) {
+        try {
+          const { error: procError } = await supabase.rpc('process_entrega_safe', {
+            p_agendamento_id: pedido.id,
+            p_observacao: null
+          });
+
+          if (procError) {
+            console.error(`Erro ao processar entrega do cliente ${pedido.cliente_nome}:`, procError);
+            erros.push(`${pedido.cliente_nome}: ${procError.message}`);
+            continue;
+          }
+          sucesso += 1;
+        } catch (error) {
+          console.error(`Erro fatal ao processar entrega do cliente ${pedido.cliente_nome}:`, error);
+          erros.push(`${pedido.cliente_nome}: ${error instanceof Error ? error.message : 'Erro inesperado'}`);
+        }
+      }
+
+      if (sucesso === 0) {
+        toast({
+          title: "Falha ao confirmar entregas",
+          description: erros.length > 0 ? erros.join('\n') : "Nenhuma entrega foi processada com sucesso.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      if (erros.length > 0) {
+        toast({
+          title: "Entregas parcialmente confirmadas",
+          description: `${sucesso} de ${pedidos.length} entregas confirmadas. Erros: ${erros.join(', ')}`,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Entregas confirmadas",
+          description: `${sucesso} de ${pedidos.length} entregas confirmadas com baixa automática no estoque.`,
+        });
+      }
+
+      return true;
+    } catch (error) {
+      console.error('❌ Erro na confirmação em massa:', error);
+      toast({
+        title: "Erro na confirmação em massa",
+        description: error instanceof Error ? error.message : "Ocorreu um erro inesperado",
+        variant: "destructive"
+      });
+      return false;
     } finally {
       setLoading(false);
     }
@@ -42,7 +318,7 @@ export const useConfirmacaoEntrega = () => {
 
   return {
     confirmarEntrega,
-    confirmarEntregaEmMassa: confirmarEntregaEmMassaWrapper,
+    confirmarEntregaEmMassa,
     loading
   };
 };

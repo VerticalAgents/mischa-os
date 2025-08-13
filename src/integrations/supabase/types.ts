@@ -1692,14 +1692,6 @@ export type Database = {
         Args: { p_entrega_id: string }
         Returns: undefined
       }
-      process_entrega_idempotente: {
-        Args: {
-          p_agendamento_id: string
-          p_execucao_id: string
-          p_observacao?: string
-        }
-        Returns: undefined
-      }
       process_entrega_safe: {
         Args: { p_agendamento_id: string; p_observacao?: string }
         Returns: undefined
