@@ -5,6 +5,7 @@ import { useSupabaseReceitas } from './useSupabaseReceitas';
 import { useSupabaseInsumos } from './useSupabaseInsumos';
 import { useSupabaseProdutos } from './useSupabaseProdutos';
 import { useProporoesPadrao } from './useProporoesPadrao';
+import { useRendimentosReceitaProduto } from './useRendimentosReceitaProduto';
 import { format } from 'date-fns';
 
 export interface NecessidadeInsumo {
@@ -34,6 +35,7 @@ export const useNecessidadeInsumos = () => {
   const { insumos } = useSupabaseInsumos();
   const { produtos } = useSupabaseProdutos();
   const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
+  const { rendimentos, obterRendimentoPorProduto } = useRendimentosReceitaProduto();
 
   // Processar agendamentos para o período específico (otimizado)
   const processarAgendamentosLocal = useCallback(async (
@@ -202,7 +204,7 @@ export const useNecessidadeInsumos = () => {
 
       console.log('🏭 Necessidade de produção:', Object.fromEntries(necessidadeProducao));
 
-      // Calcular necessidade de insumos por receita
+      // NOVA LÓGICA: Calcular necessidade de insumos usando rendimentos reais
       const necessidadeInsumosPorId = new Map<string, {
         nome: string;
         unidade: string;
@@ -211,40 +213,74 @@ export const useNecessidadeInsumos = () => {
       }>();
 
       let totalReceitas = 0;
+      let produtosProcessados = 0;
+      let produtosIgnorados = 0;
 
-      // LÓGICA CORRIGIDA PARA BROWNIE TRADICIONAL + MINI BROWNIE
-      const brownieTradicionalQuantidade = necessidadeProducao.get("Brownie Tradicional") || 0;
-      const miniBrownieQuantidade = necessidadeProducao.get("Mini Brownie Tradicional") || 0;
-      
-      // Calcular receitas separadamente mas somar para o mesmo insumo
-      let receitasBrownieTradicional = 0;
-      let receitasMiniBrownie = 0;
-      let totalReceitasBrownieTradicional = 0;
+      console.log('📋 === INICIANDO CÁLCULO DE RECEITAS COM RENDIMENTOS REAIS ===');
 
-      if (brownieTradicionalQuantidade > 0) {
-        receitasBrownieTradicional = Math.ceil(brownieTradicionalQuantidade / 40);
-        console.log(`📝 Brownie Tradicional: ${brownieTradicionalQuantidade} unidades = ${receitasBrownieTradicional} receitas (40 unidades/receita)`);
-      }
-      
-      if (miniBrownieQuantidade > 0) {
-        // Cada pacote de Mini Brownie precisa de 0,74 formas de Brownie Tradicional
-        receitasMiniBrownie = Math.ceil(miniBrownieQuantidade * 0.74);
-        console.log(`📝 Mini Brownie Tradicional: ${miniBrownieQuantidade} pacotes = ${receitasMiniBrownie} receitas (0,74 receitas/pacote)`);
-      }
-
-      // Total de receitas de Brownie Tradicional (tradicional + mini)
-      totalReceitasBrownieTradicional = receitasBrownieTradicional + receitasMiniBrownie;
-      
-      if (totalReceitasBrownieTradicional > 0) {
-        console.log(`📝 Total Brownie Tradicional: ${receitasBrownieTradicional} (tradicional) + ${receitasMiniBrownie} (mini) = ${totalReceitasBrownieTradicional} receitas`);
+      necessidadeProducao.forEach((quantidadeNecessaria, nomeProduto) => {
+        console.log(`\n🔍 Processando produto: "${nomeProduto}" (${quantidadeNecessaria} unidades)`);
         
-        const receita = receitas.find(r => r.nome === "Brownie Tradicional");
+        // Encontrar produto no banco
+        const produto = produtos.find(p => p.nome === nomeProduto && p.ativo);
         
-        if (receita) {
-          totalReceitas += totalReceitasBrownieTradicional;
+        if (!produto) {
+          console.log(`❌ Produto "${nomeProduto}" não encontrado ou inativo - IGNORADO`);
+          produtosIgnorados++;
+          return;
+        }
+
+        // Buscar rendimento real na tabela rendimentos_receita_produto
+        const rendimentoConfig = obterRendimentoPorProduto(produto.id);
+        
+        let receita = null;
+        let rendimento = 40; // default fallback
+        let numeroReceitas = 0;
+        let origemRendimento = 'fallback';
+
+        if (rendimentoConfig) {
+          // Usar rendimento real da tabela
+          rendimento = rendimentoConfig.rendimento;
+          origemRendimento = 'tabela_rendimentos';
+          
+          // Buscar receita pelo ID do rendimento
+          receita = receitas.find(r => r.id === rendimentoConfig.receita_id);
+          
+          if (receita) {
+            numeroReceitas = Math.ceil(quantidadeNecessaria / rendimento);
+            console.log(`✅ Rendimento encontrado na tabela: ${rendimento} unidades/receita`);
+            console.log(`✅ Receita encontrada: "${receita.nome}"`);
+            console.log(`📊 Cálculo: ${quantidadeNecessaria} ÷ ${rendimento} = ${numeroReceitas} receitas`);
+          } else {
+            console.log(`❌ Receita com ID ${rendimentoConfig.receita_id} não encontrada`);
+          }
+        }
+
+        // Fallback: buscar receita com mesmo nome + rendimento padrão 40
+        if (!receita) {
+          receita = receitas.find(r => r.nome === nomeProduto);
+          if (receita) {
+            numeroReceitas = Math.ceil(quantidadeNecessaria / rendimento);
+            origemRendimento = 'receita_mesmo_nome';
+            console.log(`⚠️ Usando fallback: receita "${receita.nome}" com rendimento padrão ${rendimento}`);
+            console.log(`📊 Cálculo fallback: ${quantidadeNecessaria} ÷ ${rendimento} = ${numeroReceitas} receitas`);
+          } else {
+            console.log(`❌ Receita "${nomeProduto}" não encontrada - PRODUTO IGNORADO`);
+            produtosIgnorados++;
+            return;
+          }
+        }
+
+        // Aplicar receita aos insumos
+        if (receita && numeroReceitas > 0) {
+          produtosProcessados++;
+          totalReceitas += numeroReceitas;
+          
+          console.log(`🎯 Aplicando ${numeroReceitas} receitas de "${receita.nome}" (origem: ${origemRendimento})`);
+          console.log(`📦 Insumos da receita: ${receita.itens.length}`);
 
           receita.itens.forEach(item => {
-            const quantidadeItem = Number(item.quantidade) * totalReceitasBrownieTradicional;
+            const quantidadeItem = Number(item.quantidade) * numeroReceitas;
             const atual = necessidadeInsumosPorId.get(item.insumo_id) || {
               nome: item.nome_insumo,
               unidade: '',
@@ -261,50 +297,17 @@ export const useNecessidadeInsumos = () => {
             
             atual.quantidade += quantidadeItem;
             necessidadeInsumosPorId.set(item.insumo_id, atual);
+            
+            console.log(`   - ${item.nome_insumo}: ${item.quantidade} x ${numeroReceitas} = ${quantidadeItem} ${atual.unidade}`);
           });
-        } else {
-          console.warn(`⚠️ Receita não encontrada para: Brownie Tradicional`);
         }
-      }
-
-      // Processar outros produtos (exceto Brownie Tradicional e Mini Brownie que já foram processados)
-      necessidadeProducao.forEach((quantidadeNecessaria, nomeProduto) => {
-        if (nomeProduto === "Brownie Tradicional" || nomeProduto === "Mini Brownie Tradicional") {
-          return; // Já processados acima
-        }
-        
-        const numeroReceitas = Math.ceil(quantidadeNecessaria / 40);
-        console.log(`📝 ${nomeProduto}: ${quantidadeNecessaria} unidades = ${numeroReceitas} receitas (40 unidades/receita)`);
-        
-        const receita = receitas.find(r => r.nome === nomeProduto);
-        
-        if (!receita) {
-          console.warn(`⚠️ Receita não encontrada para: ${nomeProduto}`);
-          return;
-        }
-
-        totalReceitas += numeroReceitas;
-
-        receita.itens.forEach(item => {
-          const quantidadeItem = Number(item.quantidade) * numeroReceitas;
-          const atual = necessidadeInsumosPorId.get(item.insumo_id) || {
-            nome: item.nome_insumo,
-            unidade: '',
-            quantidade: 0,
-            custoMedio: 0
-          };
-          
-          const insumo = insumos.find(i => i.id === item.insumo_id);
-          if (insumo) {
-            atual.nome = insumo.nome;
-            atual.unidade = insumo.unidade_medida;
-            atual.custoMedio = Number(insumo.custo_medio);
-          }
-          
-          atual.quantidade += quantidadeItem;
-          necessidadeInsumosPorId.set(item.insumo_id, atual);
-        });
       });
+
+      console.log(`\n📊 === RESUMO DO PROCESSAMENTO ===`);
+      console.log(`✅ Produtos processados: ${produtosProcessados}`);
+      console.log(`❌ Produtos ignorados: ${produtosIgnorados}`);
+      console.log(`🍰 Total de receitas: ${totalReceitas}`);
+      console.log(`🧪 Total de insumos únicos: ${necessidadeInsumosPorId.size}`);
 
       // Subtrair estoque atual de insumos e calcular o que comprar
       const necessidadeFinal: NecessidadeInsumo[] = [];
@@ -353,7 +356,7 @@ export const useNecessidadeInsumos = () => {
     } finally {
       setLoading(false);
     }
-  }, [processarAgendamentosLocal, receitas, insumos, produtos]);
+  }, [processarAgendamentosLocal, receitas, insumos, produtos, obterRendimentoPorProduto]);
 
   return {
     necessidadeInsumos,
