@@ -108,7 +108,7 @@ export const useConfirmacaoEntrega = () => {
   const confirmarEntrega = async (pedido: PedidoEntrega, observacao?: string): Promise<boolean> => {
     setLoading(true);
     try {
-      console.log('🚚 Iniciando confirmação de entrega (server-side v2):', pedido.id);
+      console.log('🚚 Iniciando confirmação de entrega:', pedido.id);
 
       // 1) Calcular itens via servidor usando a nova função
       const itensEntrega = await calcularItensEntrega(pedido);
@@ -147,9 +147,7 @@ export const useConfirmacaoEntrega = () => {
         
         // Melhorar mensagens de erro
         let errorMessage = procError.message || "Ocorreu um erro inesperado";
-        if (procError.message.includes('já processada')) {
-          errorMessage = `A entrega de ${pedido.cliente_nome} já foi processada anteriormente.`;
-        } else if (procError.message.includes('Saldo insuficiente')) {
+        if (procError.message.includes('Saldo insuficiente')) {
           errorMessage = `Estoque insuficiente detectado durante o processamento da entrega de ${pedido.cliente_nome}. ${procError.message}`;
         }
         
@@ -183,7 +181,7 @@ export const useConfirmacaoEntrega = () => {
   const confirmarEntregaEmMassa = async (pedidos: PedidoEntrega[]): Promise<boolean> => {
     setLoading(true);
     try {
-      console.log('🚚 Iniciando confirmação de entregas em massa (server-side v2):', pedidos.length);
+      console.log('🚚 Iniciando confirmação de entregas em massa:', pedidos.length);
 
       // 1) Pré-validação: tentar calcular itens para todos os pedidos
       const pedidosComItens: Array<{ pedido: PedidoEntrega; itens: any[] }> = [];
