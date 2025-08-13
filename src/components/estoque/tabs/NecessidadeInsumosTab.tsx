@@ -6,11 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Calculator, ShoppingCart, Calendar, DollarSign, Package, Loader2, TrendingUp } from "lucide-react";
+import { Calculator, ShoppingCart, Calendar, DollarSign, Package, Loader2 } from "lucide-react";
 import { useNecessidadeInsumos } from "@/hooks/useNecessidadeInsumos";
 import { format, addDays, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import ProdutosIgnoradosAlert from "../ProdutosIgnoradosAlert";
 
 export default function NecessidadeInsumosTab() {
   const [dataInicio, setDataInicio] = useState(() => {
@@ -30,9 +29,7 @@ export default function NecessidadeInsumosTab() {
     necessidadeInsumos, 
     resumoCalculo, 
     loading, 
-    calcularNecessidadeInsumos,
-    produtosIgnorados,
-    detalhesCalculo
+    calcularNecessidadeInsumos
   } = useNecessidadeInsumos();
 
   const handleCalcular = () => {
@@ -99,15 +96,6 @@ export default function NecessidadeInsumosTab() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Alertas sobre produtos ignorados */}
-      {resumoCalculo && (
-        <ProdutosIgnoradosAlert
-          produtosIgnorados={produtosIgnorados}
-          detalhesCalculo={detalhesCalculo}
-          coberturaRendimentos={resumoCalculo.coberturaRendimentos}
-        />
-      )}
 
       {/* Resumo do Cálculo */}
       {resumoCalculo && (
