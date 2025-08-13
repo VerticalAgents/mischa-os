@@ -12,6 +12,7 @@ import {
 export const confirmarEntregaSimples = async (pedido: PedidoEntrega, observacao?: string): Promise<boolean> => {
   try {
     console.log('🚚 Iniciando confirmação de entrega idempotente:', pedido.id);
+    console.log('📋 Dados do pedido:', JSON.stringify(pedido, null, 2));
 
     // 1) Calcular itens via servidor usando a nova função
     const itensEntrega = await calcularItensEntrega(pedido);
@@ -43,15 +44,29 @@ export const confirmarEntregaSimples = async (pedido: PedidoEntrega, observacao?
     const idExecucao = gerarIdExecucao();
     console.log('🔑 ID de execução gerado:', idExecucao);
 
-    // 4) Execução idempotente no banco usando nova função - CORRIGIDO: garantir que todos os parâmetros sejam do tipo correto
+    // 4) Validar tipos antes de enviar para RPC
+    const agendamentoIdValidado = String(pedido.id).trim();
+    const execucaoIdValidado = String(idExecucao).trim();
+    const observacaoValidada = observacao ? String(observacao).trim() : null;
+    
+    console.log('🔍 Parâmetros validados para RPC:');
+    console.log('- p_agendamento_id:', agendamentoIdValidado, typeof agendamentoIdValidado);
+    console.log('- p_execucao_id:', execucaoIdValidado, typeof execucaoIdValidado);
+    console.log('- p_observacao:', observacaoValidada, typeof observacaoValidada);
+
+    // 5) Execução idempotente no banco
     const { error: procError } = await supabase.rpc('process_entrega_idempotente', {
-      p_agendamento_id: pedido.id, // string UUID
-      p_execucao_id: idExecucao, // string UUID gerado
-      p_observacao: observacao || null // string ou null
+      p_agendamento_id: agendamentoIdValidado,
+      p_execucao_id: execucaoIdValidado,
+      p_observacao: observacaoValidada
     });
 
     if (procError) {
-      console.error('Erro no processamento da entrega idempotente:', procError);
+      console.error('❌ Erro detalhado na RPC:', procError);
+      console.error('❌ Código do erro:', procError.code);
+      console.error('❌ Mensagem completa:', procError.message);
+      console.error('❌ Detalhes:', procError.details);
+      console.error('❌ Hint:', procError.hint);
       
       // Melhorar mensagens de erro
       let errorMessage = procError.message || "Ocorreu um erro inesperado";
@@ -59,6 +74,8 @@ export const confirmarEntregaSimples = async (pedido: PedidoEntrega, observacao?
         errorMessage = `A entrega de ${pedido.cliente_nome} já foi processada anteriormente.`;
       } else if (procError.message.includes('Saldo insuficiente')) {
         errorMessage = `Estoque insuficiente detectado durante o processamento da entrega de ${pedido.cliente_nome}. ${procError.message}`;
+      } else if (procError.message.includes('invalid input syntax for type boolean')) {
+        errorMessage = `Erro de validação de dados na entrega de ${pedido.cliente_nome}. Contate o suporte técnico.`;
       }
       
       toast({

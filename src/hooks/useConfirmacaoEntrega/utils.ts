@@ -25,12 +25,19 @@ export const gerarIdExecucao = (): string => uuidv4();
 export const calcularItensEntrega = async (pedido: PedidoEntrega) => {
   console.log('🧮 [RPC] Calculando itens para entrega usando v2:', pedido.id);
   try {
+    // Garantir que o ID seja uma string válida
+    const agendamentoId = String(pedido.id).trim();
+    console.log('🔍 ID do agendamento para cálculo:', agendamentoId, typeof agendamentoId);
+
     const { data, error } = await supabase.rpc('compute_entrega_itens_v2', {
-      p_agendamento_id: pedido.id
+      p_agendamento_id: agendamentoId
     });
 
     if (error) {
-      console.error('Erro ao calcular itens via RPC v2:', error);
+      console.error('❌ Erro ao calcular itens via RPC v2:', error);
+      console.error('❌ Código do erro:', error.code);
+      console.error('❌ Mensagem completa:', error.message);
+      console.error('❌ Detalhes:', error.details);
       
       // Melhorar mensagens de erro baseadas no tipo
       if (error.message.includes('proporção padrão configurada')) {
@@ -59,25 +66,33 @@ export const calcularItensEntrega = async (pedido: PedidoEntrega) => {
     console.log('📦 Itens calculados (server v2):', itens);
     return itens;
   } catch (error) {
-    console.error('Erro fatal ao calcular itens:', error);
+    console.error('❌ Erro fatal ao calcular itens:', error);
     throw error;
   }
 };
 
 export const obterSaldoProduto = async (produtoId: string): Promise<number> => {
   try {
+    // Garantir que o ID seja uma string válida
+    const produtoIdValidado = String(produtoId).trim();
+    console.log('🔍 Consultando saldo do produto:', produtoIdValidado, typeof produtoIdValidado);
+
     const { data, error } = await supabase.rpc('saldo_produto', {
-      p_id: produtoId
+      p_id: produtoIdValidado
     });
 
     if (error) {
-      console.error('Erro ao obter saldo do produto:', error);
+      console.error('❌ Erro ao obter saldo do produto:', error);
+      console.error('❌ Código do erro:', error.code);
+      console.error('❌ Mensagem completa:', error.message);
       return 0;
     }
 
-    return Number(data || 0);
+    const saldo = Number(data || 0);
+    console.log('📊 Saldo obtido:', saldo);
+    return saldo;
   } catch (error) {
-    console.error('Erro ao obter saldo do produto:', error);
+    console.error('❌ Erro ao obter saldo do produto:', error);
     return 0;
   }
 };
