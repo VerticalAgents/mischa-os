@@ -189,7 +189,7 @@ export const useNecessidadeInsumos = () => {
 
       console.log('📦 Produtos consolidados:', Object.fromEntries(quantidadesPorProduto));
 
-      // Subtrair estoque atual de produtos
+      // Subtrair estoque atual de produtos para obter necessidade de produção
       const necessidadeProducao = new Map<string, number>();
       
       quantidadesPorProduto.forEach((quantidadeNecessaria, nomeProduto) => {
