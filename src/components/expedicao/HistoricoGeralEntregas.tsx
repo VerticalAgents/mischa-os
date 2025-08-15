@@ -5,15 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
-import { Check, X, Calendar, Edit, RotateCcw, Eye, Plus } from "lucide-react";
+import { Check, X, Calendar, RotateCcw, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { HistoricoEditModal } from "./HistoricoEditModal";
 import { HistoricoDetalhesModal } from "./HistoricoDetalhesModal";
 import { NovaEntregaManualModal } from "./NovaEntregaManualModal";
+import { HistoricoTable } from "./HistoricoTable";
 
 export const HistoricoGeralEntregas = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -137,6 +137,7 @@ export const HistoricoGeralEntregas = () => {
               onEditarRegistro={handleEditarRegistro}
               onVerDetalhes={handleVerDetalhes}
               isLoading={isLoading}
+              showClienteColumn={true}
             />
           </TabsContent>
           
@@ -146,6 +147,7 @@ export const HistoricoGeralEntregas = () => {
               onEditarRegistro={handleEditarRegistro}
               onVerDetalhes={handleVerDetalhes}
               isLoading={isLoading}
+              showClienteColumn={true}
             />
           </TabsContent>
           
@@ -155,6 +157,7 @@ export const HistoricoGeralEntregas = () => {
               onEditarRegistro={handleEditarRegistro}
               onVerDetalhes={handleVerDetalhes}
               isLoading={isLoading}
+              showClienteColumn={true}
             />
           </TabsContent>
         </Tabs>
@@ -177,102 +180,5 @@ export const HistoricoGeralEntregas = () => {
         onOpenChange={setNovaEntregaModalOpen}
       />
     </Card>
-  );
-};
-
-// Componente de tabela separado para reutilização
-const HistoricoTable = ({ 
-  registros, 
-  onEditarRegistro, 
-  onVerDetalhes, 
-  isLoading 
-}: { 
-  registros: any[]; 
-  onEditarRegistro: (registro: any) => void;
-  onVerDetalhes: (registro: any) => void;
-  isLoading: boolean;
-}) => {
-  if (isLoading) {
-    return (
-      <div className="text-center py-8">
-        <div className="animate-spin h-8 w-8 border-b-2 border-primary rounded-full mx-auto"></div>
-        <p className="mt-2 text-muted-foreground">Carregando histórico...</p>
-      </div>
-    );
-  }
-
-  if (registros.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        Não há registros no histórico com os filtros selecionados.
-      </div>
-    );
-  }
-
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Data</TableHead>
-          <TableHead>Cliente</TableHead>
-          <TableHead>Tipo</TableHead>
-          <TableHead>Quantidade</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Ações</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {registros.map((registro) => (
-          <TableRow key={registro.id}>
-            <TableCell>
-              {format(new Date(registro.data), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-            </TableCell>
-            <TableCell className="font-medium">
-              {registro.cliente_nome}
-              {registro.editado_manualmente && (
-                <Edit className="inline h-3 w-3 ml-1 text-muted-foreground" />
-              )}
-            </TableCell>
-            <TableCell>
-              {registro.tipo === 'entrega' ? (
-                <Badge variant="default" className="bg-green-500 text-white">
-                  <Check className="h-3 w-3 mr-1" />
-                  Entrega
-                </Badge>
-              ) : (
-                <Badge variant="destructive">
-                  <X className="h-3 w-3 mr-1" />
-                  Retorno
-                </Badge>
-              )}
-            </TableCell>
-            <TableCell>{registro.quantidade} unidades</TableCell>
-            <TableCell>
-              <Badge variant="outline">
-                {registro.status_anterior || 'N/A'}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-right">
-              <div className="flex gap-1 justify-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onVerDetalhes(registro)}
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onEditarRegistro(registro)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
   );
 };

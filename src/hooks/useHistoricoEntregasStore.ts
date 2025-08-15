@@ -65,14 +65,28 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
         try {
           console.log('🔄 Carregando histórico de entregas...', clienteId ? `para cliente ${clienteId}` : 'geral');
           
+          // Query otimizada - buscar apenas últimos 1000 registros ordenados por data
           let query = supabase
             .from('historico_entregas')
-            .select('*')
-            .order('data', { ascending: false });
+            .select(`
+              id,
+              cliente_id,
+              data,
+              tipo,
+              quantidade,
+              itens,
+              status_anterior,
+              observacao,
+              editado_manualmente,
+              created_at,
+              updated_at,
+              clientes!inner(nome)
+            `)
+            .order('data', { ascending: false })
+            .limit(1000);
           
           if (clienteId) {
             query = query.eq('cliente_id', clienteId);
-            // Atualizar filtro para cliente específico
             set(state => ({
               filtros: { ...state.filtros, clienteId }
             }));
@@ -85,29 +99,53 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             throw error;
           }
           
-          // Carregar nomes dos clientes
-          const clienteIds = [...new Set(historico?.map(h => h.cliente_id) || [])];
-          const { data: clientes } = await supabase
-            .from('clientes')
-            .select('id, nome')
-            .in('id', clienteIds);
+          // Buscar produtos em uma única query para resolver nomes
+          const produtoIds = new Set<string>();
+          historico?.forEach(registro => {
+            if (Array.isArray(registro.itens)) {
+              registro.itens.forEach((item: any) => {
+                if (item.produto_id) {
+                  produtoIds.add(item.produto_id);
+                }
+              });
+            }
+          });
+
+          // Buscar nomes dos produtos se houver IDs
+          let produtosMap = new Map<string, string>();
+          if (produtoIds.size > 0) {
+            const { data: produtos } = await supabase
+              .from('produtos_finais')
+              .select('id, nome')
+              .in('id', Array.from(produtoIds));
+            
+            produtosMap = new Map(produtos?.map(p => [p.id, p.nome]) || []);
+          }
           
-          const clientesMap = new Map(clientes?.map(c => [c.id, c.nome]) || []);
-          
-          const registrosFormatados: HistoricoEntrega[] = (historico || []).map(registro => ({
-            id: registro.id,
-            cliente_id: registro.cliente_id,
-            data: new Date(registro.data),
-            tipo: registro.tipo as 'entrega' | 'retorno',
-            quantidade: registro.quantidade,
-            itens: Array.isArray(registro.itens) ? registro.itens : [],
-            status_anterior: registro.status_anterior || undefined,
-            observacao: registro.observacao || undefined,
-            editado_manualmente: registro.editado_manualmente || false,
-            created_at: new Date(registro.created_at),
-            updated_at: new Date(registro.updated_at),
-            cliente_nome: clientesMap.get(registro.cliente_id) || 'Cliente não encontrado'
-          }));
+          const registrosFormatados: HistoricoEntrega[] = (historico || []).map(registro => {
+            // Processar itens para incluir nomes dos produtos
+            const itensProcessados = Array.isArray(registro.itens) 
+              ? registro.itens.map((item: any) => ({
+                  ...item,
+                  produto_nome: produtosMap.get(item.produto_id) || `Produto ${item.produto_id?.substring(0, 8) || 'N/A'}`
+                }))
+              : [];
+
+            return {
+              id: registro.id,
+              cliente_id: registro.cliente_id,
+              data: new Date(registro.data),
+              tipo: registro.tipo as 'entrega' | 'retorno',
+              quantidade: registro.quantidade,
+              itens: itensProcessados,
+              status_anterior: registro.status_anterior || undefined,
+              observacao: registro.observacao || undefined,
+              editado_manualmente: registro.editado_manualmente || false,
+              created_at: new Date(registro.created_at),
+              updated_at: new Date(registro.updated_at),
+              cliente_nome: (registro.clientes as any)?.nome || 'Cliente não encontrado'
+            };
+          });
           
           console.log('✅ Histórico carregado:', registrosFormatados.length, 'registros');
           set({ registros: registrosFormatados });
@@ -129,7 +167,6 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             data: registro.data
           });
 
-          // Preparar dados para inserção - sempre criar um NOVO registro
           const registroParaInserir = {
             cliente_id: registro.cliente_id,
             data: registro.data.toISOString(),
@@ -138,10 +175,9 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             itens: registro.itens || [],
             status_anterior: registro.status_anterior || null,
             observacao: registro.observacao || null,
-            editado_manualmente: registro.status_anterior === 'Manual' // Manual se criado manualmente
+            editado_manualmente: registro.status_anterior === 'Manual'
           };
 
-          // INSERT - NUNCA UPDATE - para garantir múltiplos registros por cliente
           const { data, error } = await supabase
             .from('historico_entregas')
             .insert([registroParaInserir])
@@ -153,7 +189,6 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             throw error;
           }
           
-          // Carregar nome do cliente para o novo registro
           const { data: cliente } = await supabase
             .from('clientes')
             .select('nome')
@@ -175,7 +210,6 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             cliente_nome: cliente?.nome || 'Cliente não encontrado'
           };
           
-          // Adicionar ao início da lista (mais recente primeiro)
           set(state => ({
             registros: [novoRegistro, ...state.registros]
           }));
@@ -190,7 +224,7 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
         } catch (error) {
           console.error('❌ Erro ao adicionar registro ao histórico:', error);
           toast.error("Erro ao adicionar registro ao histórico");
-          throw error; // Re-throw para permitir tratamento upstream
+          throw error;
         }
       },
       
@@ -203,7 +237,6 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             updated_at: new Date().toISOString()
           };
 
-          // Apenas incluir campos que foram fornecidos
           if (dados.quantidade !== undefined) {
             dadosParaAtualizar.quantidade = dados.quantidade;
           }
@@ -227,7 +260,6 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             throw error;
           }
           
-          // Atualizar no estado local
           set(state => ({
             registros: state.registros.map(registro =>
               registro.id === id
@@ -265,7 +297,6 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             throw error;
           }
           
-          // Remover do estado local
           set(state => ({
             registros: state.registros.filter(registro => registro.id !== id)
           }));
@@ -312,7 +343,7 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
         
         return registros.filter(registro => {
           const dataRegistro = new Date(registro.data);
-          dataRegistro.setHours(0, 0, 0, 0); // Resetar horas para comparação de data
+          dataRegistro.setHours(0, 0, 0, 0);
           
           const dataInicio = new Date(filtros.dataInicio);
           dataInicio.setHours(0, 0, 0, 0);
