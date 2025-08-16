@@ -2,8 +2,8 @@
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
-import { useProdutoStore } from "@/hooks/useProdutoStore";
-import { Package, AlertTriangle } from "lucide-react";
+import { useEstoqueProdutos } from "@/hooks/useEstoqueProdutos";
+import { Package, AlertTriangle, Loader2 } from "lucide-react";
 
 interface ResumoQuantidadeProdutosProps {
   pedidos: any[];
@@ -11,7 +11,7 @@ interface ResumoQuantidadeProdutosProps {
 
 export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosProps) => {
   const { calcularQuantidadesPorProporcao } = useProporoesPadrao();
-  const { produtos } = useProdutoStore();
+  const { produtos, loading: loadingEstoque, obterProdutoPorNome } = useEstoqueProdutos();
   
   // Calcular quantidades por produto
   const calcularQuantidadesTotais = async () => {
@@ -53,19 +53,29 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
   };
 
   const [quantidadesTotais, setQuantidadesTotais] = React.useState<{ [nome: string]: number }>({});
+  const [calculando, setCalculando] = React.useState(true);
   
   React.useEffect(() => {
     const carregarQuantidades = async () => {
-      const quantidades = await calcularQuantidadesTotais();
-      setQuantidadesTotais(quantidades);
+      if (loadingEstoque) return; // Aguardar estoque carregar
+      
+      setCalculando(true);
+      try {
+        const quantidades = await calcularQuantidadesTotais();
+        setQuantidadesTotais(quantidades);
+      } catch (error) {
+        console.error('Erro ao calcular quantidades:', error);
+      } finally {
+        setCalculando(false);
+      }
     };
     
     carregarQuantidades();
-  }, [pedidos]);
+  }, [pedidos, loadingEstoque, produtos]);
 
   // Verificar estoque disponível para cada produto
   const verificarEstoque = (nomeProduto: string, quantidadeNecessaria: number) => {
-    const produto = produtos.find(p => p.nome === nomeProduto);
+    const produto = obterProdutoPorNome(nomeProduto);
     if (!produto) return { temEstoque: false, estoqueAtual: 0 };
     
     const estoqueAtual = produto.estoque_atual || 0;
@@ -83,6 +93,27 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
     const { temEstoque } = verificarEstoque(nomeProduto, quantidade);
     return !temEstoque;
   });
+
+  // Loading state
+  if (loadingEstoque || calculando) {
+    return (
+      <Card className="p-4 mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+          <h3 className="text-lg font-semibold">Carregando resumo de produtos...</h3>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="border rounded-lg p-3 text-center bg-gray-100 animate-pulse">
+              <div className="h-4 bg-gray-300 rounded mb-2"></div>
+              <div className="h-8 bg-gray-300 rounded mb-1"></div>
+              <div className="h-3 bg-gray-300 rounded"></div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    );
+  }
 
   if (produtosComQuantidade.length === 0) {
     return null;
@@ -108,21 +139,21 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
               className={`border rounded-lg p-3 text-center ${
                 temEstoque 
                   ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200' 
-                  : 'bg-gradient-to-r from-red-50 to-red-100 border-red-300'
+                  : 'bg-gradient-to-r from-red-100 to-red-200 border-red-400'
               }`}
             >
               <div className="font-medium text-sm text-gray-800 mb-1 truncate" title={nomeProduto}>
                 {nomeProduto}
               </div>
               <div className={`text-2xl font-bold ${
-                temEstoque ? 'text-blue-700' : 'text-red-700'
+                temEstoque ? 'text-blue-700' : 'text-red-800'
               }`}>
                 {quantidade}
               </div>
               <div className="text-xs text-muted-foreground">unidades</div>
               
               {!temEstoque && (
-                <div className="mt-2 flex items-center justify-center gap-1 text-xs text-red-600">
+                <div className="mt-2 flex items-center justify-center gap-1 text-xs text-red-700">
                   <AlertTriangle className="h-3 w-3" />
                   <span>Estoque: {estoqueAtual}</span>
                 </div>
@@ -133,12 +164,12 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
       </div>
       
       {produtosSemEstoque.length > 0 && (
-        <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex items-center gap-2 text-red-700 text-sm font-medium">
+        <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded-lg">
+          <div className="flex items-center gap-2 text-red-800 text-sm font-medium">
             <AlertTriangle className="h-4 w-4" />
             Atenção: Estoque insuficiente
           </div>
-          <div className="text-xs text-red-600 mt-1">
+          <div className="text-xs text-red-700 mt-1">
             {produtosSemEstoque.length === 1 
               ? `O produto ${produtosSemEstoque[0][0]} não possui estoque suficiente.`
               : `${produtosSemEstoque.length} produtos não possuem estoque suficiente.`

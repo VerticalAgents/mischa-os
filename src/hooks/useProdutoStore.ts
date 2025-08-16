@@ -44,6 +44,7 @@ export const useProdutoStore = create<ProdutoStore>()(
         custoUnitario: Number(produto.custo_unitario || 0),
         categoria: produto.categoria_id ? `Categoria ${produto.categoria_id}` : "Não categorizado",
         estoqueMinimo: produto.estoque_minimo || 0,
+        estoque_atual: produto.estoque_atual || 0,
         categoriaId: produto.categoria_id || 0,
         subcategoriaId: produto.subcategoria_id || 0
       }));
@@ -69,6 +70,7 @@ export const useProdutoStore = create<ProdutoStore>()(
         custoUnitario: 0,
         categoria: "Não categorizado",
         estoqueMinimo: 0,
+        estoque_atual: 0,
         categoriaId: 0,
         subcategoriaId: 0
       });

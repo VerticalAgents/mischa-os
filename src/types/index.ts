@@ -1,4 +1,3 @@
-
 export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby';
 
 // Adding new types for client configuration
@@ -221,14 +220,15 @@ export interface Produto {
   descricao?: string;
   precoVenda: number;
   custoTotal: number;
-  margemLucro: number; // em porcentagem
+  margemLucro: number;
   componentes: ComponenteProduto[];
   ativo: boolean;
-  pesoUnitario?: number;
-  custoUnitario?: number;
-  unidadesProducao?: number;
-  categoria?: string; // Added category field
-  estoqueMinimo?: number; // Added estoqueMinimo field
+  unidadesProducao: number;
+  pesoUnitario: number;
+  custoUnitario: number;
+  categoria: string;
+  estoqueMinimo: number;
+  estoque_atual?: number;
   categoriaId: number;
   subcategoriaId: number;
 }
