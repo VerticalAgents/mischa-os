@@ -1,4 +1,5 @@
 
+import React from "react";
 import { Card } from "@/components/ui/card";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
