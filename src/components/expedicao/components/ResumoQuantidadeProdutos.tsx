@@ -1,28 +1,19 @@
+
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
 import { useEstoqueProdutos } from "@/hooks/useEstoqueProdutos";
-import { Package, AlertTriangle, Loader2, Info } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Package, AlertTriangle, Loader2 } from "lucide-react";
 
 interface ResumoQuantidadeProdutosProps {
   pedidos: any[];
-  contexto?: 'separacao' | 'despacho';
 }
 
-export const ResumoQuantidadeProdutos = ({ 
-  pedidos, 
-  contexto = 'separacao' 
-}: ResumoQuantidadeProdutosProps) => {
+export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosProps) => {
   const { calcularQuantidadesPorProporcao } = useProporoesPadrao();
+  const { produtos, loading: loadingEstoque, obterProdutoPorNome } = useEstoqueProdutos();
   
-  // Para separação, considerar reservas (estoque disponível)
-  // Para despacho, usar estoque bruto (estoque atual)
-  const considerarReservas = contexto === 'separacao';
-  const { produtos, loading: loadingEstoque, obterProdutoPorNome } = useEstoqueProdutos({ 
-    considerarReservas 
-  });
-  
+  // Calcular quantidades por produto
   const calcularQuantidadesTotais = async () => {
     const quantidadesPorProduto: { [nome: string]: number } = {};
     
@@ -85,21 +76,12 @@ export const ResumoQuantidadeProdutos = ({
   // Verificar estoque disponível para cada produto
   const verificarEstoque = (nomeProduto: string, quantidadeNecessaria: number) => {
     const produto = obterProdutoPorNome(nomeProduto);
-    if (!produto) return { 
-      temEstoque: false, 
-      estoqueReferencia: 0,
-      estoqueAtual: 0,
-      estoqueReservado: 0
-    };
+    if (!produto) return { temEstoque: false, estoqueAtual: 0 };
     
-    // Para separação, usar estoque disponível; para despacho, usar estoque atual
-    const estoqueReferencia = considerarReservas ? produto.estoque_disponivel : produto.estoque_atual;
-    
+    const estoqueAtual = produto.estoque_atual || 0;
     return {
-      temEstoque: estoqueReferencia >= quantidadeNecessaria,
-      estoqueReferencia,
-      estoqueAtual: produto.estoque_atual,
-      estoqueReservado: produto.estoque_reservado
+      temEstoque: estoqueAtual >= quantidadeNecessaria,
+      estoqueAtual
     };
   };
 
@@ -112,6 +94,7 @@ export const ResumoQuantidadeProdutos = ({
     return !temEstoque;
   });
 
+  // Loading state
   if (loadingEstoque || calculando) {
     return (
       <Card className="p-4 mb-4">
@@ -136,114 +119,69 @@ export const ResumoQuantidadeProdutos = ({
     return null;
   }
 
-  const tituloContexto = contexto === 'separacao' ? 'Separação' : 'Despacho';
-  const descricaoEstoque = considerarReservas ? 'disponível' : 'atual';
-
   return (
-    <TooltipProvider>
-      <Card className="p-4 mb-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Package className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-semibold">Resumo de Produtos para {tituloContexto}</h3>
-          <span className="ml-auto text-sm text-muted-foreground">
-            Total: {totalGeral} unidades
-          </span>
-          {considerarReservas && (
-            <Tooltip>
-              <TooltipTrigger>
-                <Info className="h-4 w-4 text-blue-500" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Estoque disponível = Estoque atual - Produtos já separados/despachados</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {produtosComQuantidade.map(([nomeProduto, quantidade]) => {
-            const { 
-              temEstoque, 
-              estoqueReferencia, 
-              estoqueAtual, 
-              estoqueReservado 
-            } = verificarEstoque(nomeProduto, quantidade);
-            
-            return (
-              <Tooltip key={nomeProduto}>
-                <TooltipTrigger asChild>
-                  <div 
-                    className={`border rounded-lg p-3 text-center cursor-help ${
-                      temEstoque 
-                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200' 
-                        : 'bg-gradient-to-r from-red-100 to-red-200 border-red-400'
-                    }`}
-                  >
-                    <div className="font-medium text-sm text-gray-800 mb-1 truncate" title={nomeProduto}>
-                      {nomeProduto}
-                    </div>
-                    <div className={`text-2xl font-bold ${
-                      temEstoque ? 'text-blue-700' : 'text-red-800'
-                    }`}>
-                      {quantidade}
-                    </div>
-                    <div className="text-xs text-muted-foreground">unidades</div>
-                    
-                    {!temEstoque && (
-                      <div className="mt-2 flex items-center justify-center gap-1 text-xs text-red-700">
-                        <AlertTriangle className="h-3 w-3" />
-                        <span>Estoque {descricaoEstoque}: {estoqueReferencia}</span>
-                      </div>
-                    )}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <div className="text-sm">
-                    <p><strong>{nomeProduto}</strong></p>
-                    <p>Necessário: {quantidade}</p>
-                    <p>Estoque atual: {estoqueAtual}</p>
-                    {considerarReservas && (
-                      <>
-                        <p>Estoque reservado: {estoqueReservado}</p>
-                        <p>Estoque disponível: {estoqueReferencia}</p>
-                      </>
-                    )}
-                    <p className={temEstoque ? 'text-green-600' : 'text-red-600'}>
-                      {temEstoque ? '✓ Suficiente' : '✗ Insuficiente'}
-                    </p>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </div>
-        
-        {produtosSemEstoque.length > 0 && (
-          <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded-lg">
-            <div className="flex items-center gap-2 text-red-800 text-sm font-medium">
-              <AlertTriangle className="h-4 w-4" />
-              Atenção: Estoque {descricaoEstoque} insuficiente
-            </div>
-            <div className="text-xs text-red-700 mt-1">
-              {produtosSemEstoque.length === 1 
-                ? `O produto ${produtosSemEstoque[0][0]} não possui estoque ${descricaoEstoque} suficiente.`
-                : `${produtosSemEstoque.length} produtos não possuem estoque ${descricaoEstoque} suficiente.`
-              }
-              {considerarReservas && (
-                <span className="block mt-1">
-                  Considere verificar os pedidos já separados/despachados na aba de Despacho.
-                </span>
+    <Card className="p-4 mb-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Package className="h-5 w-5 text-blue-600" />
+        <h3 className="text-lg font-semibold">Resumo de Produtos para Despacho</h3>
+        <span className="ml-auto text-sm text-muted-foreground">
+          Total: {totalGeral} unidades
+        </span>
+      </div>
+      
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        {produtosComQuantidade.map(([nomeProduto, quantidade]) => {
+          const { temEstoque, estoqueAtual } = verificarEstoque(nomeProduto, quantidade);
+          
+          return (
+            <div 
+              key={nomeProduto}
+              className={`border rounded-lg p-3 text-center ${
+                temEstoque 
+                  ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200' 
+                  : 'bg-gradient-to-r from-red-100 to-red-200 border-red-400'
+              }`}
+            >
+              <div className="font-medium text-sm text-gray-800 mb-1 truncate" title={nomeProduto}>
+                {nomeProduto}
+              </div>
+              <div className={`text-2xl font-bold ${
+                temEstoque ? 'text-blue-700' : 'text-red-800'
+              }`}>
+                {quantidade}
+              </div>
+              <div className="text-xs text-muted-foreground">unidades</div>
+              
+              {!temEstoque && (
+                <div className="mt-2 flex items-center justify-center gap-1 text-xs text-red-700">
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>Estoque: {estoqueAtual}</span>
+                </div>
               )}
             </div>
+          );
+        })}
+      </div>
+      
+      {produtosSemEstoque.length > 0 && (
+        <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded-lg">
+          <div className="flex items-center gap-2 text-red-800 text-sm font-medium">
+            <AlertTriangle className="h-4 w-4" />
+            Atenção: Estoque insuficiente
           </div>
-        )}
-        
-        <div className="mt-3 text-sm text-muted-foreground text-center">
-          {pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''} • 
-          {produtosComQuantidade.length} produto{produtosComQuantidade.length !== 1 ? 's' : ''} •
-          Estoque {descricaoEstoque}
+          <div className="text-xs text-red-700 mt-1">
+            {produtosSemEstoque.length === 1 
+              ? `O produto ${produtosSemEstoque[0][0]} não possui estoque suficiente.`
+              : `${produtosSemEstoque.length} produtos não possuem estoque suficiente.`
+            }
+          </div>
         </div>
-      </Card>
-    </TooltipProvider>
+      )}
+      
+      <div className="mt-3 text-sm text-muted-foreground text-center">
+        {pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''} • 
+        {produtosComQuantidade.length} produto{produtosComQuantidade.length !== 1 ? 's' : ''}
+      </div>
+    </Card>
   );
 };

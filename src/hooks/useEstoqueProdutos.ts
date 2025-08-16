@@ -1,64 +1,47 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useSupabaseProdutos, ProdutoSupabase } from './useSupabaseProdutos';
-import { useEstoqueReservado } from './useEstoqueReservado';
 
 export interface ProdutoComEstoque {
   id: string;
   nome: string;
   estoque_atual: number;
   estoque_minimo: number;
-  estoque_disponivel: number;
-  estoque_reservado: number;
   ativo: boolean;
 }
 
-interface UseEstoqueProdutosOptions {
-  considerarReservas?: boolean;
-}
-
-export const useEstoqueProdutos = (options: UseEstoqueProdutosOptions = {}) => {
-  const { considerarReservas = false } = options;
+export const useEstoqueProdutos = () => {
   const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
-  const { obterQuantidadeReservada, obterEstoqueDisponivel, isLoading: loadingReservas } = useEstoqueReservado();
   const [isReady, setIsReady] = useState(false);
 
-  // Aguardar o carregamento completo dos produtos e reservas
+  // Aguardar o carregamento completo dos produtos
   useEffect(() => {
-    if (!loadingProdutos && produtos.length >= 0 && (!considerarReservas || !loadingReservas)) {
+    if (!loadingProdutos && produtos.length >= 0) {
       // Pequeno delay para garantir que os dados estão totalmente carregados
       const timer = setTimeout(() => {
         setIsReady(true);
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [loadingProdutos, produtos, considerarReservas, loadingReservas]);
+  }, [loadingProdutos, produtos]);
 
   const produtosComEstoque = useMemo((): ProdutoComEstoque[] => {
     if (!isReady) return [];
     
-    return produtos.map(produto => {
-      const estoqueAtual = produto.estoque_atual || 0;
-      const estoqueReservado = considerarReservas ? obterQuantidadeReservada(produto.nome) : 0;
-      const estoqueDisponivel = considerarReservas ? obterEstoqueDisponivel(produto.nome, estoqueAtual) : estoqueAtual;
-
-      return {
-        id: produto.id,
-        nome: produto.nome,
-        estoque_atual: estoqueAtual,
-        estoque_minimo: produto.estoque_minimo || 0,
-        estoque_disponivel: estoqueDisponivel,
-        estoque_reservado: estoqueReservado,
-        ativo: produto.ativo
-      };
-    });
-  }, [produtos, isReady, considerarReservas, obterQuantidadeReservada, obterEstoqueDisponivel]);
+    return produtos.map(produto => ({
+      id: produto.id,
+      nome: produto.nome,
+      estoque_atual: produto.estoque_atual || 0,
+      estoque_minimo: produto.estoque_minimo || 0,
+      ativo: produto.ativo
+    }));
+  }, [produtos, isReady]);
 
   const obterEstoquePorNome = (nomeProduto: string): number => {
     const produto = produtosComEstoque.find(p => 
       p.nome.toLowerCase() === nomeProduto.toLowerCase()
     );
-    return considerarReservas ? (produto?.estoque_disponivel || 0) : (produto?.estoque_atual || 0);
+    return produto?.estoque_atual || 0;
   };
 
   const obterProdutoPorNome = (nomeProduto: string): ProdutoComEstoque | undefined => {
@@ -69,7 +52,7 @@ export const useEstoqueProdutos = (options: UseEstoqueProdutosOptions = {}) => {
 
   return {
     produtos: produtosComEstoque,
-    loading: loadingProdutos || !isReady || (considerarReservas && loadingReservas),
+    loading: loadingProdutos || !isReady,
     obterEstoquePorNome,
     obterProdutoPorNome,
     recarregar: () => {
