@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
@@ -35,15 +35,29 @@ const SeparacaoPedidos = () => {
   const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
 
-  useEffect(() => {
-    carregarPedidos();
+  // FASE 2: Memoizar carregarPedidos com useCallback
+  const carregarPedidosMemoized = useCallback(() => {
+    console.log('🔄 Chamando carregarPedidos memoizado');
+    return carregarPedidos();
   }, [carregarPedidos]);
 
-  const handleMarcarSeparado = async (pedidoId: string) => {
-    await confirmarSeparacao(pedidoId);
-  };
+  // FASE 2: useEffect com dependência memoizada
+  useEffect(() => {
+    console.log('🔄 SeparacaoPedidos useEffect executado');
+    carregarPedidosMemoized();
+  }, [carregarPedidosMemoized]);
 
-  const handleEditarPedido = (pedido: any) => {
+  // FASE 5: Handler memoizado para separação com proteções
+  const handleMarcarSeparado = useCallback(async (pedidoId: string) => {
+    console.log(`🔄 Marcando como separado: ${pedidoId}`);
+    try {
+      await confirmarSeparacao(pedidoId);
+    } catch (error) {
+      console.error(`❌ Erro ao marcar separado ${pedidoId}:`, error);
+    }
+  }, [confirmarSeparacao]);
+
+  const handleEditarPedido = useCallback((pedido: any) => {
     // Converter o pedido da expedição para o formato AgendamentoItem
     const agendamentoFormatado: AgendamentoItem = {
       cliente: {
@@ -84,14 +98,14 @@ const SeparacaoPedidos = () => {
 
     setPedidoEditando(agendamentoFormatado);
     setModalEditarAberto(true);
-  };
+  }, []);
 
-  const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
+  const handleSalvarAgendamento = useCallback((agendamentoAtualizado: AgendamentoItem) => {
     // Recarregar pedidos após edição
-    carregarPedidos();
+    carregarPedidosMemoized();
     setModalEditarAberto(false);
     setPedidoEditando(null);
-  };
+  }, [carregarPedidosMemoized]);
 
   // Filtrar pedidos para separação (Agendado e não separados ainda)
   const pedidosParaSeparacao = pedidos.filter(pedido => 
@@ -142,7 +156,7 @@ const SeparacaoPedidos = () => {
             todosPedidos={pedidosFiltrados}
           />
           <Button 
-            onClick={() => carregarPedidos()} 
+            onClick={carregarPedidosMemoized} 
             size="sm"
             variant="outline"
             disabled={isLoading}
