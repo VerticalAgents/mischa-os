@@ -20,19 +20,19 @@ interface UseEstoqueProdutosOptions {
 export const useEstoqueProdutos = (options: UseEstoqueProdutosOptions = {}) => {
   const { considerarReservas = false } = options;
   const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
-  const { obterQuantidadeReservada, obterEstoqueDisponivel } = useEstoqueReservado();
+  const { obterQuantidadeReservada, obterEstoqueDisponivel, isLoading: loadingReservas } = useEstoqueReservado();
   const [isReady, setIsReady] = useState(false);
 
-  // Aguardar o carregamento completo dos produtos
+  // Aguardar o carregamento completo dos produtos e reservas
   useEffect(() => {
-    if (!loadingProdutos && produtos.length >= 0) {
+    if (!loadingProdutos && produtos.length >= 0 && (!considerarReservas || !loadingReservas)) {
       // Pequeno delay para garantir que os dados estão totalmente carregados
       const timer = setTimeout(() => {
         setIsReady(true);
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [loadingProdutos, produtos]);
+  }, [loadingProdutos, produtos, considerarReservas, loadingReservas]);
 
   const produtosComEstoque = useMemo((): ProdutoComEstoque[] => {
     if (!isReady) return [];
@@ -69,7 +69,7 @@ export const useEstoqueProdutos = (options: UseEstoqueProdutosOptions = {}) => {
 
   return {
     produtos: produtosComEstoque,
-    loading: loadingProdutos || !isReady,
+    loading: loadingProdutos || !isReady || (considerarReservas && loadingReservas),
     obterEstoquePorNome,
     obterProdutoPorNome,
     recarregar: () => {

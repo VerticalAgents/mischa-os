@@ -1,5 +1,5 @@
 
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useExpedicaoStore } from './useExpedicaoStore';
 import { useProporoesPadrao } from './useProporoesPadrao';
 
@@ -10,9 +10,12 @@ interface EstoqueReservado {
 export const useEstoqueReservado = () => {
   const { pedidos } = useExpedicaoStore();
   const { calcularQuantidadesPorProporcao } = useProporoesPadrao();
+  const [quantidadesReservadas, setQuantidadesReservadas] = useState<EstoqueReservado>({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  const quantidadesReservadas = useMemo<EstoqueReservado>(() => {
+  useEffect(() => {
     const calcularReservas = async () => {
+      setIsLoading(true);
       const reservas: EstoqueReservado = {};
 
       // Filtrar apenas pedidos separados ou despachados (que ocupam estoque)
@@ -40,31 +43,11 @@ export const useEstoqueReservado = () => {
         }
       }
 
-      return reservas;
+      setQuantidadesReservadas(reservas);
+      setIsLoading(false);
     };
 
-    // Como useMemo não pode ser async, vamos retornar um objeto vazio por padrão
-    // e calcular as reservas de forma síncrona quando possível
-    const reservas: EstoqueReservado = {};
-
-    // Filtrar apenas pedidos separados ou despachados (que ocupam estoque)
-    const pedidosReservados = pedidos.filter(pedido => 
-      pedido.substatus_pedido === 'Separado' || pedido.substatus_pedido === 'Despachado'
-    );
-
-    pedidosReservados.forEach(pedido => {
-      if (pedido.tipo_pedido === 'Alterado' && pedido.itens_personalizados?.length > 0) {
-        // Pedido alterado - usar itens personalizados
-        pedido.itens_personalizados.forEach((item: any) => {
-          const nomeProduto = item.produto || item.nome || 'Produto desconhecido';
-          reservas[nomeProduto] = (reservas[nomeProduto] || 0) + item.quantidade;
-        });
-      }
-      // Para pedidos padrão, precisaríamos de uma abordagem diferente já que calcularQuantidadesPorProporcao é async
-      // Por enquanto, vamos apenas processar os alterados de forma síncrona
-    });
-
-    return reservas;
+    calcularReservas();
   }, [pedidos, calcularQuantidadesPorProporcao]);
 
   const obterQuantidadeReservada = (nomeProduto: string): number => {
@@ -79,6 +62,7 @@ export const useEstoqueReservado = () => {
   return {
     quantidadesReservadas,
     obterQuantidadeReservada,
-    obterEstoqueDisponivel
+    obterEstoqueDisponivel,
+    isLoading
   };
 };
