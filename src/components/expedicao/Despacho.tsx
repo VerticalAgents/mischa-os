@@ -25,7 +25,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     carregarPedidos, 
     confirmarDespacho,
     confirmarEntrega,
-    confirmarRetorno
+    confirmarRetorno,
+    retornarParaSeparacao
   } = useExpedicaoStore();
 
   // Usar store UI para persistir filtros
@@ -257,11 +258,13 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
             <PedidoCard
               key={pedido.id}
               pedido={pedido}
-              onMarcarDespachado={() => handleMarcarDespachado(pedido.id)}
+              onConfirmarDespacho={() => handleMarcarDespachado(pedido.id)}
               onConfirmarEntrega={() => handleConfirmarEntrega(pedido.id)}
               onConfirmarRetorno={() => handleConfirmarRetorno(pedido.id)}
               onEditarAgendamento={() => handleEditarPedido(pedido)}
               showProdutosList={true}
+              showDespachoActions={true}
+              onRetornarParaSeparacao={() => retornarParaSeparacao(pedido.id)}
             />
           ))
         )}
