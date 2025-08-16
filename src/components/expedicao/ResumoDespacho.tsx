@@ -1,8 +1,9 @@
-
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, TrendingUp } from "lucide-react";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
 import { usePedidoConverter } from "./hooks/usePedidoConverter";
+import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 
 interface ResumoDespachoProps {
@@ -25,24 +26,53 @@ interface ResumoProduto {
 export default function ResumoDespacho({ pedidos, titulo }: ResumoDespachoProps) {
   const { produtos } = useProdutoStore();
   const { converterPedidoParaCard } = usePedidoConverter();
+  const { obterProporcoesParaPedido } = useSupabaseProporoesPadrao();
 
   // Calcular resumo dos produtos
-  const resumoProdutos = pedidos.reduce((acc, pedido) => {
-    const pedidoConvertido = converterPedidoParaCard(pedido);
-    
-    pedidoConvertido.itens.forEach((item: ItemPedido) => {
-      if (!acc[item.produto_id]) {
-        acc[item.produto_id] = {
-          produto_id: item.produto_id,
-          produto_nome: item.produto_nome,
-          quantidade: 0
-        };
+  const calcularResumoProdutos = async () => {
+    const resumoProdutos: Record<string, ResumoProduto> = {};
+
+    for (const pedido of pedidos) {
+      if (pedido.tipo_pedido === 'Alterado' && pedido.itens_personalizados) {
+        // Para pedidos alterados, usar itens personalizados
+        const pedidoConvertido = converterPedidoParaCard(pedido);
+        
+        pedidoConvertido.itens.forEach((item: ItemPedido) => {
+          if (!resumoProdutos[item.produto_id]) {
+            resumoProdutos[item.produto_id] = {
+              produto_id: item.produto_id,
+              produto_nome: item.produto_nome,
+              quantidade: 0
+            };
+          }
+          resumoProdutos[item.produto_id].quantidade += item.quantidade;
+        });
+      } else {
+        // Para pedidos padrão, usar proporções cadastradas
+        const proporcoesResult = await obterProporcoesParaPedido(pedido.quantidade_total);
+        
+        proporcoesResult.forEach((item) => {
+          if (!resumoProdutos[item.produto_id]) {
+            resumoProdutos[item.produto_id] = {
+              produto_id: item.produto_id,
+              produto_nome: item.produto_nome,
+              quantidade: 0
+            };
+          }
+          resumoProdutos[item.produto_id].quantidade += item.quantidade;
+        });
       }
-      acc[item.produto_id].quantidade += item.quantidade;
-    });
-    
-    return acc;
-  }, {} as Record<string, ResumoProduto>);
+    }
+
+    return resumoProdutos;
+  };
+
+  // Como não podemos usar async no componente diretamente, vamos usar um estado local
+  const [resumoProdutos, setResumoProdutos] = React.useState<Record<string, ResumoProduto>>({});
+
+  React.useEffect(() => {
+    calcularResumoProdutos().then(setResumoProdutos);
+  }, [pedidos, obterProporcoesParaPedido]);
 
   const resumoProdutosArray = Object.values(resumoProdutos) as ResumoProduto[];
   const totalUnidades = resumoProdutosArray.reduce((sum: number, item: ResumoProduto) => sum + item.quantidade, 0);
