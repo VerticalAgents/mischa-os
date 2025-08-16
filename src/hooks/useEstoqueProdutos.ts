@@ -14,19 +14,19 @@ export interface ProdutoComEstoque {
 
 export const useEstoqueProdutos = () => {
   const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
-  const { obterQuantidadeReservada } = useEstoqueReservado();
+  const { obterQuantidadeReservada, isLoading: loadingReservado } = useEstoqueReservado();
   const [isReady, setIsReady] = useState(false);
 
-  // Aguardar o carregamento completo dos produtos
+  // Aguardar o carregamento completo dos produtos e estoque reservado
   useEffect(() => {
-    if (!loadingProdutos && produtos.length >= 0) {
+    if (!loadingProdutos && !loadingReservado && produtos.length >= 0) {
       // Pequeno delay para garantir que os dados estão totalmente carregados
       const timer = setTimeout(() => {
         setIsReady(true);
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [loadingProdutos, produtos]);
+  }, [loadingProdutos, loadingReservado, produtos]);
 
   const produtosComEstoque = useMemo((): ProdutoComEstoque[] => {
     if (!isReady) return [];
@@ -69,7 +69,7 @@ export const useEstoqueProdutos = () => {
 
   return {
     produtos: produtosComEstoque,
-    loading: loadingProdutos || !isReady,
+    loading: loadingProdutos || loadingReservado || !isReady,
     obterEstoquePorNome,
     obterEstoqueDisponivel,
     obterProdutoPorNome,
