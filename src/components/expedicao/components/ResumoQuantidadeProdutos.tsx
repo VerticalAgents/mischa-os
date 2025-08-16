@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
@@ -152,12 +151,12 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
               </div>
               <div className="text-xs text-muted-foreground">unidades</div>
               
-              {!temEstoque && (
-                <div className="mt-2 flex items-center justify-center gap-1 text-xs text-red-700">
-                  <AlertTriangle className="h-3 w-3" />
-                  <span>Estoque: {estoqueAtual}</span>
-                </div>
-              )}
+              <div className={`mt-2 flex items-center justify-center gap-1 text-xs ${
+                temEstoque ? 'text-green-700' : 'text-red-700'
+              }`}>
+                {!temEstoque && <AlertTriangle className="h-3 w-3" />}
+                <span>Estoque: {estoqueAtual}</span>
+              </div>
             </div>
           );
         })}
