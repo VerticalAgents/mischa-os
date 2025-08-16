@@ -125,6 +125,19 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     await carregarPedidos();
   };
 
+  // Wrapper functions to handle async calls properly
+  const handleConfirmarEntregaWrapper = (pedidoId: string, observacao?: string) => {
+    confirmarEntrega(pedidoId, observacao).catch(error => {
+      console.error('Erro ao confirmar entrega:', error);
+    });
+  };
+
+  const handleConfirmarRetornoWrapper = (pedidoId: string, observacao?: string) => {
+    confirmarRetorno(pedidoId, observacao).catch(error => {
+      console.error('Erro ao confirmar retorno:', error);
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -211,8 +224,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 showDespachoActions={true}
                 showReagendarButton={tipoFiltro === "atrasadas" && pedido.substatus_pedido === 'Agendado'}
                 onConfirmarDespacho={() => confirmarDespacho(String(pedido.id))}
-                onConfirmarEntrega={(observacao) => handleConfirmarEntregaIndividual(String(pedido.id), observacao)}
-                onConfirmarRetorno={(observacao) => confirmarRetorno(String(pedido.id), observacao)}
+                onConfirmarEntrega={(observacao) => handleConfirmarEntregaWrapper(String(pedido.id), observacao)}
+                onConfirmarRetorno={(observacao) => handleConfirmarRetornoWrapper(String(pedido.id), observacao)}
                 onRetornarParaSeparacao={() => handleRetornarParaSeparacao(String(pedido.id))}
               />
             ))}
