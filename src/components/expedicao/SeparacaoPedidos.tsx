@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
@@ -127,8 +126,11 @@ const SeparacaoPedidos = () => {
 
   return (
     <div className="space-y-6">
-      {/* Resumo de Quantidades de Produtos */}
-      <ResumoQuantidadeProdutos pedidos={pedidosFiltrados} />
+      {/* Resumo de Quantidades de Produtos - Passando contexto separacao */}
+      <ResumoQuantidadeProdutos 
+        pedidos={pedidosFiltrados} 
+        contexto="separacao" 
+      />
       
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">

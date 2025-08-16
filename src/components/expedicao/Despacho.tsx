@@ -1,259 +1,278 @@
-
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import React, { useState, useEffect } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
-import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
-import { usePedidoConverter } from "./hooks/usePedidoConverter";
-import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
-import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
-import { DebugInfo } from "./components/DebugInfo";
-import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
+import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
-import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
-import { OrganizadorEntregas } from "./OrganizadorEntregas";
-import { toast } from "sonner";
-import { Truck, Package, ArrowLeft, ClipboardList, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, Search, Filter, Truck, Calendar, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { format, isToday, isPast, startOfDay } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import AgendamentoEditModal from "@/components/agendamento/AgendamentoEditModal";
+import { AgendamentoItem } from "@/components/agendamento/types";
+import { PrintingActions } from "./components/PrintingActions";
+import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
 
 interface DespachoProps {
-  tipoFiltro: "hoje" | "atrasadas";
+  tipoFiltro: 'hoje' | 'atrasadas';
 }
 
 export const Despacho = ({ tipoFiltro }: DespachoProps) => {
-  const {
-    pedidos,
-    isLoading,
+  const { 
+    pedidos, 
+    isLoading, 
+    carregarPedidos, 
     confirmarDespacho,
     confirmarEntrega,
-    confirmarRetorno,
-    retornarParaSeparacao,
-    confirmarDespachoEmMassa,
-    confirmarEntregaEmMassa,
-    confirmarRetornoEmMassa,
-    getPedidosParaDespacho,
-    getPedidosAtrasados,
-    carregarPedidos
+    confirmarRetorno
   } = useExpedicaoStore();
 
-  const { converterPedidoParaCard } = usePedidoConverter();
-  const { confirmarEntregaEmMassa: confirmarEntregaEmMassaHook, loading: loadingConfirmacao } = useConfirmacaoEntrega();
+  // Usar store UI para persistir filtros
   const {
-    modalEditarAberto,
-    setModalEditarAberto,
-    agendamentoParaEditar,
-    handleEditarAgendamento,
-    handleSalvarAgendamento
-  } = useAgendamentoActions();
+    filtroTexto,
+    filtroTipoPedido,
+    filtroData,
+    setFiltroTexto,
+    setFiltroTipoPedido,
+    setFiltroData
+  } = useExpedicaoUiStore();
 
-  const [organizadorAberto, setOrganizadorAberto] = useState(false);
-
-  // Usar hook de sincronização
-  useExpedicaoSync();
+  const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
+  const [modalEditarAberto, setModalEditarAberto] = useState(false);
 
   useEffect(() => {
     carregarPedidos();
   }, [carregarPedidos]);
 
-  // Obter pedidos filtrados baseado no tipo
-  const pedidosFiltrados = tipoFiltro === "hoje" 
-    ? getPedidosParaDespacho() 
-    : getPedidosAtrasados();
-
-  // Verificar quantos pedidos estão despachados
-  const pedidosDespachados = pedidosFiltrados.filter(p => p.substatus_pedido === 'Despachado');
-  const todosDespachados = pedidosFiltrados.length > 0 && pedidosDespachados.length === pedidosFiltrados.length;
-
-  const handleDespachoEmMassa = async () => {
-    if (pedidosFiltrados.length === 0) {
-      toast.error("Não há pedidos para despachar.");
-      return;
-    }
-    
-    await confirmarDespachoEmMassa(pedidosFiltrados);
+  const handleMarcarDespachado = async (pedidoId: string) => {
+    await confirmarDespacho(pedidoId);
   };
 
-  const handleEntregaEmMassa = async () => {
-    if (!todosDespachados) {
-      toast.error("Todos os pedidos devem estar despachados para confirmar entrega em massa.");
-      return;
-    }
-    
-    try {
-      // Transformar pedidos despachados no formato correto para o hook
-      const pedidosParaEntrega = pedidosDespachados.map(pedido => ({
-        id: String(pedido.id),
-        cliente_id: String(pedido.cliente_id),
-        cliente_nome: pedido.cliente_nome,
-        quantidade_total: Number(pedido.quantidade_total),
-        tipo_pedido: pedido.tipo_pedido,
-        itens_personalizados: pedido.itens_personalizados
-      }));
+  const handleConfirmarEntrega = async (pedidoId: string) => {
+    await confirmarEntrega(pedidoId);
+  };
 
-      const sucesso = await confirmarEntregaEmMassaHook(pedidosParaEntrega);
-      if (sucesso) {
-        // Recarregar os dados após confirmação bem-sucedida
-        await carregarPedidos();
+  const handleConfirmarRetorno = async (pedidoId: string) => {
+    await confirmarRetorno(pedidoId);
+  };
+
+  const handleEditarPedido = (pedido: any) => {
+    // Converter o pedido da expedição para o formato AgendamentoItem
+    const agendamentoFormatado: AgendamentoItem = {
+      cliente: {
+        id: pedido.cliente_id,
+        nome: pedido.cliente_nome,
+        quantidadePadrao: pedido.quantidade_total || 0,
+        contatoTelefone: pedido.cliente_telefone || "",
+        enderecoEntrega: pedido.cliente_endereco || "",
+        cnpjCpf: "",
+        contatoNome: "",
+        contatoEmail: "",
+        periodicidadePadrao: 7,
+        statusCliente: "Ativo",
+        dataCadastro: new Date(),
+        ativo: true,
+        contabilizarGiroMedio: true,
+        tipoCobranca: "À vista",
+        tipoLogistica: "Própria",
+        emiteNotaFiscal: false,
+        formaPagamento: "Dinheiro",
+        categoriaId: 1,
+        subcategoriaId: 1
+      },
+      dataReposicao: new Date(pedido.data_prevista_entrega),
+      statusAgendamento: "Agendado" as const,
+      isPedidoUnico: pedido.tipo_pedido === "Único",
+      pedido: {
+        id: parseInt(pedido.id),
+        idCliente: pedido.cliente_id,
+        dataPedido: new Date(),
+        dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
+        statusPedido: 'Agendado',
+        itensPedido: pedido.produtos_info || [],
+        totalPedidoUnidades: pedido.quantidade_total,
+        tipoPedido: pedido.tipo_pedido as "Padrão" | "Alterado" | "Único"
       }
-    } catch (error) {
-      console.error('Erro ao confirmar entregas em massa:', error);
-    }
+    };
+
+    setPedidoEditando(agendamentoFormatado);
+    setModalEditarAberto(true);
   };
 
-  const handleRetornoEmMassa = async () => {
-    if (!todosDespachados) {
-      toast.error("Todos os pedidos devem estar despachados para confirmar retorno em massa.");
-      return;
+  const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
+    // Recarregar pedidos após edição
+    carregarPedidos();
+    setModalEditarAberto(false);
+    setPedidoEditando(null);
+  };
+
+  // Filtrar pedidos para despacho (Separados ou Despachados)
+  const pedidosParaDespacho = pedidos.filter(pedido => 
+    pedido.substatus_pedido === 'Separado' ||
+    pedido.substatus_pedido === 'Despachado'
+  );
+
+  // Filtrar por tipo (hoje ou atrasadas)
+  const pedidosFiltradosPorTipo = pedidosParaDespacho.filter(pedido => {
+    const hoje = startOfDay(new Date());
+    const dataEntrega = startOfDay(new Date(pedido.data_prevista_entrega));
+
+    if (tipoFiltro === 'hoje') {
+      return isToday(dataEntrega);
+    } else if (tipoFiltro === 'atrasadas') {
+      return isPast(dataEntrega) && !isToday(dataEntrega);
     }
+
+    return true;
+  });
+
+  // Aplicar filtros
+  const pedidosFiltrados = pedidosFiltradosPorTipo.filter(pedido => {
+    const matchTexto = !filtroTexto || 
+      pedido.cliente_nome.toLowerCase().includes(filtroTexto.toLowerCase()) ||
+      pedido.id.toLowerCase().includes(filtroTexto.toLowerCase());
     
-    await confirmarRetornoEmMassa(pedidosFiltrados);
-  };
+    const matchTipoPedido = filtroTipoPedido === "todos" || 
+      (filtroTipoPedido === "padrao" && pedido.tipo_pedido === 'Padrão') ||
+      (filtroTipoPedido === "alterado" && pedido.tipo_pedido === 'Alterado');
+    
+    const matchData = !filtroData || 
+      format(pedido.data_prevista_entrega, "yyyy-MM-dd") === filtroData;
 
-  const handleRetornarParaSeparacao = async (pedidoId: string) => {
-    await retornarParaSeparacao(pedidoId);
-  };
-
-  const handleOrganizarEntregas = () => {
-    if (pedidosFiltrados.length === 0) {
-      toast.error("Não há entregas para organizar.");
-      return;
-    }
-    setOrganizadorAberto(true);
-  };
-
-  const handleConfirmarEntregaIndividual = async (pedidoId: string, observacao?: string) => {
-    // A confirmação já é feita pelo PedidoCard usando o hook useConfirmacaoEntrega
-    // Aqui só precisamos recarregar os dados
-    await carregarPedidos();
-  };
+    return matchTexto && matchTipoPedido && matchData;
+  });
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Card className="p-4">
-          <div className="flex justify-center items-center h-32">
-            <div className="text-muted-foreground">Carregando pedidos...</div>
-          </div>
-        </Card>
+      <div className="flex items-center justify-center p-8">
+        <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+        Carregando pedidos...
       </div>
     );
   }
 
-  const titulo = tipoFiltro === "hoje" ? "Entregas de Hoje" : "Entregas Atrasadas";
-  const icone = tipoFiltro === "hoje" ? <Truck className="h-5 w-5" /> : <Package className="h-5 w-5" />;
+  const totalPedidos = pedidosFiltrados.length;
+  const pedidosDespachados = pedidosFiltrados.filter(p => p.substatus_pedido === 'Despachado').length;
+  const pedidosSeparados = totalPedidos - pedidosDespachados;
 
   return (
-    <div className="space-y-4">
-      {/* Resumo de Quantidades de Produtos */}
-      <ResumoQuantidadeProdutos pedidos={pedidosFiltrados} />
+    <div className="space-y-6">
+      {/* Resumo de Quantidades de Produtos - Passando contexto despacho */}
+      <ResumoQuantidadeProdutos 
+        pedidos={pedidosFiltrados} 
+        contexto="despacho" 
+      />
       
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            {icone}
-            {titulo}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold">
+            {tipoFiltro === 'hoje' ? 'Despacho de Hoje' : 'Despacho Atrasados'}
           </h2>
-          <div className="flex flex-wrap gap-2">
-            <Button 
-              onClick={handleOrganizarEntregas}
-              size="sm" 
-              variant="outline"
-              className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-            >
-              <ClipboardList className="h-4 w-4" />
-              Organizar Entregas
-            </Button>
-            <Button 
-              onClick={handleDespachoEmMassa} 
-              size="sm" 
-              variant="outline"
-              className="flex items-center gap-1"
-            >
-              <Truck className="h-4 w-4" /> Despachar Todos
-            </Button>
-            <Button 
-              onClick={handleEntregaEmMassa} 
-              size="sm" 
-              className="bg-green-600 hover:bg-green-700"
-              disabled={!todosDespachados || loadingConfirmacao}
-              title={!todosDespachados ? "Todos os pedidos devem estar despachados" : ""}
-            >
-              {loadingConfirmacao ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  Confirmando...
-                </>
-              ) : (
-                <>
-                  <Package className="h-4 w-4 mr-1" /> 
-                  Entregar Todos
-                </>
-              )}
-            </Button>
-            <Button 
-              onClick={handleRetornoEmMassa} 
-              size="sm" 
-              variant="destructive"
-              disabled={!todosDespachados}
-              title={!todosDespachados ? "Todos os pedidos devem estar despachados" : ""}
-            >
-              Retorno em Massa
-            </Button>
-          </div>
+          <Badge variant="secondary">
+            {totalPedidos} pedidos
+          </Badge>
+          {tipoFiltro === 'hoje' && (
+            <>
+              <Badge variant="outline" className="ml-2">
+                <Truck className="h-3 w-3 mr-1" />
+                {pedidosDespachados} despachados
+              </Badge>
+              <Badge variant="outline">
+                <Calendar className="h-3 w-3 mr-1" />
+                {pedidosSeparados} aguardando despacho
+              </Badge>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <PrintingActions
+            activeSubTab={tipoFiltro}
+            pedidosPadrao={pedidosFiltrados.filter(p => p.tipo_pedido === 'Padrão')}
+            pedidosAlterados={pedidosFiltrados.filter(p => p.tipo_pedido === 'Alterado')}
+            pedidosProximoDia={[]}
+            todosPedidos={pedidosFiltrados}
+          />
+          <Button 
+            onClick={() => carregarPedidos()} 
+            size="sm"
+            variant="outline"
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+        <div className="relative">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Buscar por cliente ou ID..."
+            value={filtroTexto}
+            onChange={(e) => setFiltroTexto(e.target.value)}
+            className="pl-9"
+          />
         </div>
         
-        {/* Debug Info Component */}
-        <DebugInfo tipo="despacho" dadosAtivos={pedidosFiltrados} />
-        
-        {pedidosFiltrados.length > 0 ? (
-          <div className="space-y-4">
-            {pedidosFiltrados.map((pedido) => (
-              <PedidoCard 
-                key={pedido.id}
-                pedido={{
-                  ...converterPedidoParaCard(pedido),
-                  cliente_id: String(pedido.cliente_id) // Ensure cliente_id is included
-                }}
-                onMarcarSeparado={() => {}} // Não usado no despacho
-                onEditarAgendamento={() => handleEditarAgendamento(String(pedido.id))} // Agora funciona no despacho também
-                showDespachoActions={true}
-                showReagendarButton={tipoFiltro === "atrasadas" && pedido.substatus_pedido === 'Agendado'}
-                onConfirmarDespacho={() => confirmarDespacho(String(pedido.id))}
-                onConfirmarEntrega={(observacao) => handleConfirmarEntregaIndividual(String(pedido.id), observacao)}
-                onConfirmarRetorno={(observacao) => confirmarRetorno(String(pedido.id), observacao)}
-                onRetornarParaSeparacao={() => handleRetornarParaSeparacao(String(pedido.id))}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-6 text-muted-foreground">
-            {tipoFiltro === "hoje" 
-              ? "Não há pedidos agendados para entrega hoje."
-              : "Não há pedidos atrasados pendentes."
+        <Select value={filtroTipoPedido} onValueChange={setFiltroTipoPedido}>
+          <SelectTrigger>
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Tipo de Pedido" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os tipos</SelectItem>
+            <SelectItem value="padrao">Padrão</SelectItem>
+            <SelectItem value="alterado">Alterado</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Input
+          type="date"
+          value={filtroData}
+          onChange={(e) => setFiltroData(e.target.value)}
+          placeholder="Filtrar por data"
+        />
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">
+            {pedidosFiltrados.length} de {pedidosParaDespacho.length} pedidos
+          </span>
+        </div>
+      </div>
+
+      {/* Lista de Pedidos */}
+      <div className="space-y-4">
+        {pedidosFiltrados.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            {pedidosParaDespacho.length === 0 
+              ? "Nenhum pedido aguardando despacho"
+              : "Nenhum pedido encontrado com os filtros aplicados"
             }
           </div>
+        ) : (
+          pedidosFiltrados.map((pedido) => (
+            <PedidoCard
+              key={pedido.id}
+              pedido={pedido}
+              onMarcarDespachado={() => handleMarcarDespachado(pedido.id)}
+              onConfirmarEntrega={() => handleConfirmarEntrega(pedido.id)}
+              onConfirmarRetorno={() => handleConfirmarRetorno(pedido.id)}
+              onEditarAgendamento={() => handleEditarPedido(pedido)}
+              showProdutosList={true}
+            />
+          ))
         )}
-      </Card>
+      </div>
 
-      {/* Modal de edição de agendamento completo */}
-      {agendamentoParaEditar && (
-        <AgendamentoEditModal
-          agendamento={agendamentoParaEditar}
-          open={modalEditarAberto}
-          onOpenChange={setModalEditarAberto}
-          onSalvar={handleSalvarAgendamento}
-        />
-      )}
-
-      {/* Modal do Organizador de Entregas */}
-      <OrganizadorEntregas
-        open={organizadorAberto}
-        onOpenChange={setOrganizadorAberto}
-        entregas={pedidosFiltrados.map(p => ({
-          id: p.id,
-          cliente_nome: p.cliente_nome,
-          cliente_endereco: p.cliente_endereco,
-          link_google_maps: (p as any).link_google_maps // Casting temporário, pois o tipo não inclui este campo ainda
-        }))}
+      {/* Modal de Edição - Agora usando o modal completo */}
+      <AgendamentoEditModal
+        agendamento={pedidoEditando}
+        open={modalEditarAberto}
+        onOpenChange={setModalEditarAberto}
+        onSalvar={handleSalvarAgendamento}
       />
     </div>
   );

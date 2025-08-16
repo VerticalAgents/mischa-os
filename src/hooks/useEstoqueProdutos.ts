@@ -1,17 +1,26 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useSupabaseProdutos, ProdutoSupabase } from './useSupabaseProdutos';
+import { useEstoqueReservado } from './useEstoqueReservado';
 
 export interface ProdutoComEstoque {
   id: string;
   nome: string;
   estoque_atual: number;
   estoque_minimo: number;
+  estoque_disponivel: number;
+  estoque_reservado: number;
   ativo: boolean;
 }
 
-export const useEstoqueProdutos = () => {
+interface UseEstoqueProdutosOptions {
+  considerarReservas?: boolean;
+}
+
+export const useEstoqueProdutos = (options: UseEstoqueProdutosOptions = {}) => {
+  const { considerarReservas = false } = options;
   const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
+  const { obterQuantidadeReservada, obterEstoqueDisponivel } = useEstoqueReservado();
   const [isReady, setIsReady] = useState(false);
 
   // Aguardar o carregamento completo dos produtos
@@ -28,20 +37,28 @@ export const useEstoqueProdutos = () => {
   const produtosComEstoque = useMemo((): ProdutoComEstoque[] => {
     if (!isReady) return [];
     
-    return produtos.map(produto => ({
-      id: produto.id,
-      nome: produto.nome,
-      estoque_atual: produto.estoque_atual || 0,
-      estoque_minimo: produto.estoque_minimo || 0,
-      ativo: produto.ativo
-    }));
-  }, [produtos, isReady]);
+    return produtos.map(produto => {
+      const estoqueAtual = produto.estoque_atual || 0;
+      const estoqueReservado = considerarReservas ? obterQuantidadeReservada(produto.nome) : 0;
+      const estoqueDisponivel = considerarReservas ? obterEstoqueDisponivel(produto.nome, estoqueAtual) : estoqueAtual;
+
+      return {
+        id: produto.id,
+        nome: produto.nome,
+        estoque_atual: estoqueAtual,
+        estoque_minimo: produto.estoque_minimo || 0,
+        estoque_disponivel: estoqueDisponivel,
+        estoque_reservado: estoqueReservado,
+        ativo: produto.ativo
+      };
+    });
+  }, [produtos, isReady, considerarReservas, obterQuantidadeReservada, obterEstoqueDisponivel]);
 
   const obterEstoquePorNome = (nomeProduto: string): number => {
     const produto = produtosComEstoque.find(p => 
       p.nome.toLowerCase() === nomeProduto.toLowerCase()
     );
-    return produto?.estoque_atual || 0;
+    return considerarReservas ? (produto?.estoque_disponivel || 0) : (produto?.estoque_atual || 0);
   };
 
   const obterProdutoPorNome = (nomeProduto: string): ProdutoComEstoque | undefined => {
