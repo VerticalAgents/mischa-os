@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,6 +8,7 @@ import { usePedidoConverter } from "./hooks/usePedidoConverter";
 import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
 import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
 import { DebugInfo } from "./components/DebugInfo";
+import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
 import PedidoCard from "./PedidoCard";
 import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
 import { OrganizadorEntregas } from "./OrganizadorEntregas";
@@ -141,6 +143,9 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
   return (
     <div className="space-y-4">
+      {/* Resumo de Quantidades de Produtos */}
+      <ResumoQuantidadeProdutos pedidos={pedidosFiltrados} />
+      
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
