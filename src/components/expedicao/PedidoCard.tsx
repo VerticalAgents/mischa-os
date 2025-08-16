@@ -176,25 +176,14 @@ const PedidoCard = ({
           {showDespachoActions && (
             <>
               {pedido.substatus_pedido === 'Separado' && (
-                <>
-                  <Button 
-                    onClick={onConfirmarDespacho}
-                    size="sm" 
-                    variant="outline"
-                  >
-                    <Truck className="h-4 w-4 mr-1" />
-                    Confirmar Despacho
-                  </Button>
-                  
-                  <Button 
-                    onClick={onRetornarParaSeparacao}
-                    size="sm" 
-                    variant="outline"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Retornar p/ Separação
-                  </Button>
-                </>
+                <Button 
+                  onClick={onConfirmarDespacho}
+                  size="sm" 
+                  variant="outline"
+                >
+                  <Truck className="h-4 w-4 mr-1" />
+                  Confirmar Despacho
+                </Button>
               )}
 
               {pedido.substatus_pedido === 'Despachado' && (
