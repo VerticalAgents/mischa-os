@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { ptBR } from "date-fns/locale";
 import TipoPedidoBadge from "./TipoPedidoBadge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 import ProdutosList from "./ProdutosList";
+import ComposicaoPedido from "./ComposicaoPedido";
 import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
 
 interface PedidoCardProps {
@@ -134,11 +134,16 @@ const PedidoCard = ({
           </div>
         )}
 
+        {/* Adicionar ComposicaoPedido para páginas de despacho */}
+        {showDespachoActions && (
+          <ComposicaoPedido pedido={pedido} />
+        )}
+
         {showProdutosList && (
           <ProdutosList pedido={pedido} />
         )}
 
-        {!showProdutosList && pedido.itens_personalizados && pedido.itens_personalizados.length > 0 && (
+        {!showProdutosList && !showDespachoActions && pedido.itens_personalizados && pedido.itens_personalizados.length > 0 && (
           <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
             <h4 className="font-medium text-amber-800 mb-2">Itens Personalizados:</h4>
             <div className="space-y-1">

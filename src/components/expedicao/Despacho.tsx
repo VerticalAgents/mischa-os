@@ -12,6 +12,7 @@ import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
 import { OrganizadorEntregas } from "./OrganizadorEntregas";
 import { toast } from "sonner";
 import { Truck, Package, ArrowLeft, ClipboardList, Loader2 } from "lucide-react";
+import ResumoDespacho from "./ResumoDespacho";
 
 interface DespachoProps {
   tipoFiltro: "hoje" | "atrasadas";
@@ -141,6 +142,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
   return (
     <div className="space-y-4">
+      <ResumoDespacho pedidos={pedidosFiltrados} titulo={titulo} />
+
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -206,10 +209,10 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 key={pedido.id}
                 pedido={{
                   ...converterPedidoParaCard(pedido),
-                  cliente_id: String(pedido.cliente_id) // Ensure cliente_id is included
+                  cliente_id: String(pedido.cliente_id)
                 }}
-                onMarcarSeparado={() => {}} // Não usado no despacho
-                onEditarAgendamento={() => handleEditarAgendamento(String(pedido.id))} // Agora funciona no despacho também
+                onMarcarSeparado={() => {}}
+                onEditarAgendamento={() => handleEditarAgendamento(String(pedido.id))}
                 showDespachoActions={true}
                 showReagendarButton={tipoFiltro === "atrasadas" && pedido.substatus_pedido === 'Agendado'}
                 onConfirmarDespacho={() => confirmarDespacho(String(pedido.id))}
