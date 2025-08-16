@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -204,10 +205,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
             {pedidosFiltrados.map((pedido) => (
               <PedidoCard 
                 key={pedido.id}
-                pedido={{
-                  ...converterPedidoParaCard(pedido),
-                  cliente_id: String(pedido.cliente_id) // Ensure cliente_id is included
-                }}
+                pedido={converterPedidoParaCard(pedido)}
                 onMarcarSeparado={() => {}} // Não usado no despacho
                 onEditarAgendamento={() => handleEditarAgendamento(String(pedido.id))} // Agora funciona no despacho também
                 showDespachoActions={true}

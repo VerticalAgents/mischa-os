@@ -12,6 +12,7 @@ interface SeparacaoTabsProps {
   converterPedidoParaCard: (pedido: any) => any;
   confirmarSeparacao: (pedidoId: string) => void;
   handleEditarAgendamento: (pedidoId: string) => void;
+  desfazerSeparacao: (pedidoId: string) => Promise<void>;
 }
 
 export const SeparacaoTabs = ({
@@ -23,7 +24,8 @@ export const SeparacaoTabs = ({
   pedidosProximoDia,
   converterPedidoParaCard,
   confirmarSeparacao,
-  handleEditarAgendamento
+  handleEditarAgendamento,
+  desfazerSeparacao
 }: SeparacaoTabsProps) => {
   return (
     <Tabs 
@@ -54,6 +56,7 @@ export const SeparacaoTabs = ({
                 pedido={converterPedidoParaCard(pedido)}
                 onMarcarSeparado={() => confirmarSeparacao(pedido.id)}
                 onEditarAgendamento={() => handleEditarAgendamento(pedido.id)}
+                onDesfazerSeparacao={() => desfazerSeparacao(pedido.id)}
               />
             ))}
           </div>
@@ -73,6 +76,7 @@ export const SeparacaoTabs = ({
                 pedido={converterPedidoParaCard(pedido)}
                 onMarcarSeparado={() => confirmarSeparacao(pedido.id)}
                 onEditarAgendamento={() => handleEditarAgendamento(pedido.id)}
+                onDesfazerSeparacao={() => desfazerSeparacao(pedido.id)}
               />
             ))}
           </div>
@@ -92,6 +96,7 @@ export const SeparacaoTabs = ({
                 pedido={converterPedidoParaCard(pedido)}
                 onMarcarSeparado={() => confirmarSeparacao(pedido.id)}
                 onEditarAgendamento={() => handleEditarAgendamento(pedido.id)}
+                onDesfazerSeparacao={() => desfazerSeparacao(pedido.id)}
               />
             ))}
           </div>
@@ -111,6 +116,7 @@ export const SeparacaoTabs = ({
                 pedido={converterPedidoParaCard(pedido)}
                 onMarcarSeparado={() => confirmarSeparacao(pedido.id)}
                 onEditarAgendamento={() => handleEditarAgendamento(pedido.id)}
+                onDesfazerSeparacao={() => desfazerSeparacao(pedido.id)}
               />
             ))}
           </div>
