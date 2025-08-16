@@ -6,6 +6,7 @@ import { SubstatusPedidoAgendado } from '@/types';
 import { addBusinessDays, isWeekend, format, addDays, isBefore, startOfDay } from 'date-fns';
 import { useHistoricoEntregasStore } from './useHistoricoEntregasStore';
 import { useConfirmacaoEntrega } from './useConfirmacaoEntrega';
+import { useReservaEstoque } from './useReservaEstoque';
 
 interface PedidoExpedicao {
   id: string;
@@ -177,6 +178,16 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         try {
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           
+          // Primeiro, tentar reservar os itens
+          const { reservarItensEntrega } = useReservaEstoque();
+          const reservaOk = await reservarItensEntrega(pedidoId);
+          
+          if (!reservaOk) {
+            console.log('❌ Reserva falhou, separação não confirmada');
+            return;
+          }
+
+          // Se reserva foi bem-sucedida, atualizar status
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } : p
@@ -189,6 +200,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .eq('id', pedidoId);
 
           if (error) {
+            // Se falhou no banco, desfazer reserva e reverter estado
+            const { desfazerReserva } = useReservaEstoque();
+            await desfazerReserva(pedidoId);
+            
             set(state => ({
               pedidos: state.pedidos.map(p => 
                 p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } : p
@@ -197,7 +212,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             throw error;
           }
 
-          toast.success(`Separação confirmada para ${pedido?.cliente_nome}`);
+          toast.success(`Separação confirmada para ${pedido?.cliente_nome} com reserva de estoque`);
         } catch (error) {
           console.error('Erro ao confirmar separação:', error);
           toast.error("Erro ao confirmar separação");
@@ -208,6 +223,16 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         try {
           const pedido = get().pedidos.find(p => p.id === pedidoId);
           
+          // Primeiro, desfazer a reserva
+          const { desfazerReserva } = useReservaEstoque();
+          const desfezReserva = await desfazerReserva(pedidoId);
+          
+          if (!desfezReserva) {
+            console.log('❌ Não foi possível desfazer reserva');
+            return;
+          }
+
+          // Atualizar estado local
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } : p
@@ -326,6 +351,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             console.log('❌ Entrega não foi confirmada devido a problemas de estoque');
             return;
           }
+
+          // NOVO: Consumir reserva após confirmação da entrega
+          const { consumirReserva } = useReservaEstoque();
+          await consumirReserva(pedidoId);
 
           // CRÍTICO: Gravar no histórico ANTES de alterar o agendamento
           const historicoStore = useHistoricoEntregasStore.getState();
@@ -485,31 +514,55 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
-          set(state => ({
-            pedidos: state.pedidos.map(p => 
-              pedidosParaSeparar.some(ps => ps.id === p.id) 
-                ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } 
-                : p
-            )
-          }));
+          // Processar um por vez para controlar reservas
+          const { reservarItensEntrega } = useReservaEstoque();
+          let sucessos = 0;
+          let falhas = 0;
 
-          const { error } = await supabase
-            .from('agendamentos_clientes')
-            .update({ substatus_pedido: 'Separado' })
-            .in('id', pedidosParaSeparar.map(p => p.id));
+          for (const pedido of pedidosParaSeparar) {
+            try {
+              const reservaOk = await reservarItensEntrega(pedido.id);
+              if (reservaOk) {
+                // Atualizar no banco
+                const { error } = await supabase
+                  .from('agendamentos_clientes')
+                  .update({ substatus_pedido: 'Separado' })
+                  .eq('id', pedido.id);
 
-          if (error) {
-            set(state => ({
-              pedidos: state.pedidos.map(p => 
-                pedidosParaSeparar.some(ps => ps.id === p.id) 
-                  ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } 
-                  : p
-              )
-            }));
-            throw error;
+                if (error) {
+                  // Desfazer reserva se falhou no banco
+                  const { desfazerReserva } = useReservaEstoque();
+                  await desfazerReserva(pedido.id);
+                  falhas++;
+                } else {
+                  sucessos++;
+                }
+              } else {
+                falhas++;
+              }
+            } catch (error) {
+              console.error(`Erro ao separar pedido ${pedido.cliente_nome}:`, error);
+              falhas++;
+            }
           }
 
-          toast.success(`${pedidosParaSeparar.length} pedidos marcados como separados`);
+          // Atualizar estado local para os sucessos
+          if (sucessos > 0) {
+            set(state => ({
+              pedidos: state.pedidos.map(p => {
+                const foiSeparado = pedidosParaSeparar.some(ps => ps.id === p.id);
+                return foiSeparado ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } : p;
+              })
+            }));
+          }
+
+          if (sucessos > 0 && falhas === 0) {
+            toast.success(`${sucessos} pedidos marcados como separados com reserva de estoque`);
+          } else if (sucessos > 0 && falhas > 0) {
+            toast.warning(`${sucessos} pedidos separados, ${falhas} falharam (verifique estoque)`);
+          } else {
+            toast.error("Nenhum pedido pôde ser separado (verifique estoque disponível)");
+          }
         } catch (error) {
           console.error('Erro na separação em massa:', error);
           toast.error("Erro na separação em massa");
@@ -574,6 +627,12 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           if (!entregasConfirmadas) {
             console.log('❌ Entregas em massa não foram confirmadas devido a problemas de estoque');
             return;
+          }
+
+          // NOVO: Consumir reservas para todos os pedidos entregues
+          const { consumirReserva } = useReservaEstoque();
+          for (const pedido of pedidosParaEntregar) {
+            await consumirReserva(pedido.id);
           }
 
           // Gravar histórico para todos os pedidos - CADA UM UM NOVO REGISTRO
