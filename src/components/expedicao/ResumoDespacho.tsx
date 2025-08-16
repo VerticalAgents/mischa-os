@@ -44,7 +44,8 @@ export default function ResumoDespacho({ pedidos, titulo }: ResumoDespachoProps)
     return acc;
   }, {} as Record<string, ResumoProduto>);
 
-  const totalUnidades = Object.values(resumoProdutos).reduce((sum, item) => sum + item.quantidade, 0);
+  const resumoProdutosArray = Object.values(resumoProdutos) as ResumoProduto[];
+  const totalUnidades = resumoProdutosArray.reduce((sum: number, item: ResumoProduto) => sum + item.quantidade, 0);
   const totalPedidos = pedidos.length;
 
   if (totalPedidos === 0) {
@@ -70,7 +71,7 @@ export default function ResumoDespacho({ pedidos, titulo }: ResumoDespachoProps)
             <div className="text-sm text-blue-600">Unidades Total</div>
           </div>
           <div className="bg-white p-3 rounded-lg border border-blue-200">
-            <div className="text-2xl font-bold text-blue-800">{Object.keys(resumoProdutos).length}</div>
+            <div className="text-2xl font-bold text-blue-800">{resumoProdutosArray.length}</div>
             <div className="text-sm text-blue-600">Produtos Diferentes</div>
           </div>
           <div className="bg-white p-3 rounded-lg border border-blue-200">
@@ -81,16 +82,16 @@ export default function ResumoDespacho({ pedidos, titulo }: ResumoDespachoProps)
           </div>
         </div>
 
-        {Object.keys(resumoProdutos).length > 0 && (
+        {resumoProdutosArray.length > 0 && (
           <div className="bg-white p-4 rounded-lg border border-blue-200">
             <h4 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
               <Package className="h-4 w-4" />
               Composição por Produto
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {Object.values(resumoProdutos)
-                .sort((a, b) => b.quantidade - a.quantidade)
-                .map((item) => (
+              {resumoProdutosArray
+                .sort((a: ResumoProduto, b: ResumoProduto) => b.quantidade - a.quantidade)
+                .map((item: ResumoProduto) => (
                   <div key={item.produto_id} className="flex justify-between items-center bg-blue-50 p-2 rounded border border-blue-100">
                     <ProdutoNomeDisplay 
                       produtoId={item.produto_id} 
