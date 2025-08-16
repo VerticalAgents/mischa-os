@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -125,19 +124,6 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     await carregarPedidos();
   };
 
-  // Wrapper functions to handle async calls properly
-  const handleConfirmarEntregaWrapper = (pedidoId: string, observacao?: string) => {
-    confirmarEntrega(pedidoId, observacao).catch(error => {
-      console.error('Erro ao confirmar entrega:', error);
-    });
-  };
-
-  const handleConfirmarRetornoWrapper = (pedidoId: string, observacao?: string) => {
-    confirmarRetorno(pedidoId, observacao).catch(error => {
-      console.error('Erro ao confirmar retorno:', error);
-    });
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -218,14 +204,17 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
             {pedidosFiltrados.map((pedido) => (
               <PedidoCard 
                 key={pedido.id}
-                pedido={converterPedidoParaCard(pedido)}
+                pedido={{
+                  ...converterPedidoParaCard(pedido),
+                  cliente_id: String(pedido.cliente_id) // Ensure cliente_id is included
+                }}
                 onMarcarSeparado={() => {}} // Não usado no despacho
                 onEditarAgendamento={() => handleEditarAgendamento(String(pedido.id))} // Agora funciona no despacho também
                 showDespachoActions={true}
                 showReagendarButton={tipoFiltro === "atrasadas" && pedido.substatus_pedido === 'Agendado'}
                 onConfirmarDespacho={() => confirmarDespacho(String(pedido.id))}
-                onConfirmarEntrega={(observacao) => handleConfirmarEntregaWrapper(String(pedido.id), observacao)}
-                onConfirmarRetorno={(observacao) => handleConfirmarRetornoWrapper(String(pedido.id), observacao)}
+                onConfirmarEntrega={(observacao) => handleConfirmarEntregaIndividual(String(pedido.id), observacao)}
+                onConfirmarRetorno={(observacao) => confirmarRetorno(String(pedido.id), observacao)}
                 onRetornarParaSeparacao={() => handleRetornarParaSeparacao(String(pedido.id))}
               />
             ))}

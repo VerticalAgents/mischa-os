@@ -1,21 +1,22 @@
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Clock, MapPin, Phone, Package, Edit, CheckCircle, XCircle, Truck, RotateCcw } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 import TipoPedidoBadge from "./TipoPedidoBadge";
+import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 import ProdutosList from "./ProdutosList";
-import { useEstoqueConsolidado } from "@/hooks/useEstoqueConsolidado";
-import { EstoqueConsolidadoInfo } from "@/components/estoque/EstoqueConsolidadoInfo";
+import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
 
 interface PedidoCardProps {
   pedido: {
     id: string;
+    cliente_id: string;
     cliente_nome: string;
     cliente_endereco?: string;
     cliente_telefone?: string;
@@ -25,80 +26,92 @@ interface PedidoCardProps {
     tipo_pedido: string;
     substatus_pedido?: string;
     itens_personalizados?: any;
-    produtos?: Array<{
-      produto_id: string;
-      produto_nome: string;
-      quantidade: number;
-    }>;
   };
   onMarcarSeparado?: () => void;
-  onDesfazerSeparacao?: () => void;
   onEditarAgendamento?: () => void;
+  showDespachoActions?: boolean;
+  showReagendarButton?: boolean;
+  showProdutosList?: boolean;
   onConfirmarDespacho?: () => void;
+  onConfirmarEntrega?: (observacao?: string) => void;
+  onConfirmarRetorno?: (observacao?: string) => void;
   onRetornarParaSeparacao?: () => void;
-  onConfirmarEntrega?: () => void;
-  onConfirmarRetorno?: () => void;
-  showActions?: boolean;
 }
 
-export default function PedidoCard({
+const PedidoCard = ({
   pedido,
   onMarcarSeparado,
-  onDesfazerSeparacao,
   onEditarAgendamento,
+  showDespachoActions = false,
+  showReagendarButton = false,
+  showProdutosList = false,
   onConfirmarDespacho,
-  onRetornarParaSeparacao,
   onConfirmarEntrega,
   onConfirmarRetorno,
-  showActions = true
-}: PedidoCardProps) {
-  const [showProducts, setShowProducts] = useState(false);
+  onRetornarParaSeparacao
+}: PedidoCardProps) => {
+  const [observacaoEntrega, setObservacaoEntrega] = useState("");
+  const [observacaoRetorno, setObservacaoRetorno] = useState("");
+  const [dialogEntregaAberto, setDialogEntregaAberto] = useState(false);
+  const [dialogRetornoAberto, setDialogRetornoAberto] = useState(false);
   
-  // Obter IDs dos produtos para verificar estoque
-  const produtoIds = pedido.produtos?.map(p => p.produto_id) || [];
-  const { estoques, loading: loadingEstoque } = useEstoqueConsolidado(produtoIds);
+  const { confirmarEntrega, loading: loadingConfirmacao } = useConfirmacaoEntrega();
 
-  const getStatusColor = (substatus?: string) => {
-    switch (substatus) {
-      case 'Separado':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'Despachado':
-        return 'bg-green-100 text-green-800 border-green-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+  const handleConfirmarEntrega = async () => {
+    try {
+      const sucesso = await confirmarEntrega(pedido, observacaoEntrega);
+      if (sucesso) {
+        setDialogEntregaAberto(false);
+        setObservacaoEntrega("");
+        // Chamar callback se existir para atualizar o estado do componente pai
+        if (onConfirmarEntrega) {
+          onConfirmarEntrega(observacaoEntrega);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao confirmar entrega:', error);
     }
   };
 
-  const isDataAtrasada = pedido.data_prevista_entrega < new Date();
-  
-  // Verificar se há estoque insuficiente para separação
-  const temEstoqueInsuficiente = estoques.some(estoque => {
-    const produto = pedido.produtos?.find(p => p.produto_id === estoque.produto_id);
-    return produto && estoque.saldoReal < produto.quantidade;
-  });
-
-  const podeMarcarSeparado = (!pedido.substatus_pedido || pedido.substatus_pedido === 'Agendado') && !temEstoqueInsuficiente;
-  const podeDdDesfazerSeparacao = pedido.substatus_pedido === 'Separado';
-  const podeConfirmarDespacho = pedido.substatus_pedido === 'Separado';
-  const podeRetornarParaSeparacao = pedido.substatus_pedido === 'Despachado';
-  const podeConfirmarEntrega = pedido.substatus_pedido === 'Despachado';
+  const handleConfirmarRetorno = () => {
+    if (onConfirmarRetorno) {
+      onConfirmarRetorno(observacaoRetorno);
+      setDialogRetornoAberto(false);
+      setObservacaoRetorno("");
+    }
+  };
 
   return (
-    <Card className={cn(
-      "transition-all duration-200 hover:shadow-md",
-      isDataAtrasada && "border-orange-200 bg-orange-50/50",
-      pedido.substatus_pedido === 'Separado' && "border-blue-200 bg-blue-50/50",
-      pedido.substatus_pedido === 'Despachado' && "border-green-200 bg-green-50/50"
-    )}>
+    <Card className="mb-4 shadow-sm border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-foreground">
-            {pedido.cliente_nome}
-          </CardTitle>
+          <div className="flex items-center gap-3">
+            <User className="h-5 w-5 text-blue-600" />
+            <div>
+              <h3 className="font-semibold text-lg text-gray-900">{pedido.cliente_nome}</h3>
+              <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  {format(pedido.data_prevista_entrega, "dd/MM/yyyy", { locale: ptBR })}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Package className="h-4 w-4" />
+                  {pedido.quantidade_total} unidades
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <div className="flex items-center gap-2">
             <TipoPedidoBadge tipo={pedido.tipo_pedido} />
             {pedido.substatus_pedido && (
-              <Badge className={cn("text-xs", getStatusColor(pedido.substatus_pedido))}>
+              <Badge 
+                variant={
+                  pedido.substatus_pedido === 'Separado' ? 'default' :
+                  pedido.substatus_pedido === 'Despachado' ? 'secondary' :
+                  'outline'
+                }
+              >
                 {pedido.substatus_pedido}
               </Badge>
             )}
@@ -107,216 +120,220 @@ export default function PedidoCard({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            <span>
-              {format(pedido.data_prevista_entrega, "EEEE, dd/MM/yyyy", { locale: ptBR })}
-            </span>
-            {isDataAtrasada && (
-              <Badge variant="destructive" className="ml-2 text-xs">
-                Atrasado
-              </Badge>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Package className="h-4 w-4" />
-            <span>{pedido.quantidade_total} unidades</span>
-          </div>
-
-          {pedido.cliente_endereco && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <MapPin className="h-4 w-4" />
-              <span className="truncate">{pedido.cliente_endereco}</span>
-            </div>
-          )}
-
-          {pedido.cliente_telefone && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Phone className="h-4 w-4" />
-              <span>{pedido.cliente_telefone}</span>
-            </div>
-          )}
-        </div>
-
-        <Separator />
-
-        {/* Informações de Estoque */}
-        {pedido.produtos && pedido.produtos.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Produtos e Estoque:</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowProducts(!showProducts)}
-                className="h-6 px-2 text-xs"
-              >
-                {showProducts ? 'Ocultar' : 'Ver detalhes'}
-              </Button>
-            </div>
-            
-            {!showProducts ? (
-              <div className="space-y-1">
-                {pedido.produtos.map(produto => {
-                  const estoque = estoques.find(e => e.produto_id === produto.produto_id);
-                  const insuficiente = estoque && estoque.saldoReal < produto.quantidade;
-                  
-                  return (
-                    <div key={produto.produto_id} className="flex items-center justify-between text-xs">
-                      <span className={cn(
-                        "font-medium",
-                        insuficiente && "text-destructive"
-                      )}>
-                        {produto.produto_nome} ({produto.quantidade})
-                      </span>
-                      {estoque && (
-                        <EstoqueConsolidadoInfo estoque={estoque} compact />
-                      )}
-                      {insuficiente && (
-                        <Badge variant="destructive" className="ml-2 text-xs">
-                          Insuficiente
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {pedido.produtos.map(produto => {
-                  const estoque = estoques.find(e => e.produto_id === produto.produto_id);
-                  const insuficiente = estoque && estoque.saldoReal < produto.quantidade;
-                  
-                  return (
-                    <div key={produto.produto_id} className={cn(
-                      "p-2 rounded border",
-                      insuficiente ? "border-destructive bg-destructive/5" : "border-border"
-                    )}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-sm">
-                          {produto.produto_nome}
-                        </span>
-                        <Badge variant="outline">
-                          Necessário: {produto.quantidade}
-                        </Badge>
-                      </div>
-                      
-                      {estoque && (
-                        <EstoqueConsolidadoInfo estoque={estoque} />
-                      )}
-                      
-                      {insuficiente && (
-                        <div className="mt-2 text-xs text-destructive font-medium">
-                          ⚠️ Estoque insuficiente para separação
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+        {pedido.cliente_endereco && (
+          <div className="flex items-start gap-2 text-sm text-gray-600">
+            <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span>{pedido.cliente_endereco}</span>
           </div>
         )}
 
-        {temEstoqueInsuficiente && (
-          <div className="p-2 bg-destructive/10 border border-destructive/20 rounded text-xs text-destructive">
-            <strong>⚠️ Atenção:</strong> Estoque insuficiente para alguns produtos. Não é possível separar este pedido.
+        {pedido.cliente_telefone && (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Phone className="h-4 w-4" />
+            <span>{pedido.cliente_telefone}</span>
           </div>
         )}
 
-        {showActions && (
-          <>
-            <Separator />
-            <div className="flex flex-wrap gap-2">
-              {podeMarcarSeparado && (
-                <Button
+        {showProdutosList && (
+          <ProdutosList pedido={pedido} />
+        )}
+
+        {!showProdutosList && pedido.itens_personalizados && pedido.itens_personalizados.length > 0 && (
+          <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+            <h4 className="font-medium text-amber-800 mb-2">Itens Personalizados:</h4>
+            <div className="space-y-1">
+              {pedido.itens_personalizados.map((item: any, index: number) => (
+                <div key={index} className="flex justify-between text-sm text-amber-700">
+                  <ProdutoNomeDisplay produtoId={item.produto_id || 'custom'} nomeFallback={item.produto || item.nome} />
+                  <span className="font-medium">{item.quantidade}x</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2 pt-2">
+          {!showDespachoActions && (
+            <>
+              {(!pedido.substatus_pedido || pedido.substatus_pedido === 'Agendado') && (
+                <Button 
                   onClick={onMarcarSeparado}
-                  size="sm"
-                  className="flex items-center gap-2"
-                  disabled={loadingEstoque}
+                  size="sm" 
+                  className="bg-green-600 hover:bg-green-700"
                 >
-                  <CheckCircle className="h-4 w-4" />
-                  Separar
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                  Marcar Separado
                 </Button>
               )}
+            </>
+          )}
 
-              {podeDdDesfazerSeparacao && (
-                <Button
-                  onClick={onDesfazerSeparacao}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <XCircle className="h-4 w-4" />
-                  Desfazer
-                </Button>
-              )}
-
-              {podeConfirmarDespacho && (
-                <Button
+          {showDespachoActions && (
+            <>
+              {pedido.substatus_pedido === 'Separado' && (
+                <Button 
                   onClick={onConfirmarDespacho}
-                  variant="secondary"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Truck className="h-4 w-4" />
-                  Despachar
-                </Button>
-              )}
-
-              {podeRetornarParaSeparacao && (
-                <Button
-                  onClick={onRetornarParaSeparacao}
+                  size="sm" 
                   variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2"
                 >
-                  <RotateCcw className="h-4 w-4" />
-                  Voltar
+                  <Truck className="h-4 w-4 mr-1" />
+                  Confirmar Despacho
                 </Button>
               )}
 
-              {podeConfirmarEntrega && (
-                <Button
-                  onClick={onConfirmarEntrega}
-                  variant="default"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <CheckCircle className="h-4 w-4" />
-                  Entregar
-                </Button>
-              )}
+              {pedido.substatus_pedido === 'Despachado' && (
+                <>
+                  <Dialog open={dialogEntregaAberto} onOpenChange={setDialogEntregaAberto}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        Confirmar Entrega
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Confirmar Entrega - {pedido.cliente_nome}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <p className="text-sm text-gray-600">
+                          Tem certeza que deseja confirmar a entrega? Esta ação irá:
+                        </p>
+                        <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                          <li>Validar se há estoque suficiente dos produtos</li>
+                          <li>Dar baixa automática no estoque</li>
+                          <li>Registrar no histórico de entregas</li>
+                          <li>Reagendar automaticamente para próxima entrega</li>
+                        </ul>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Observação (opcional):
+                          </label>
+                          <Textarea
+                            value={observacaoEntrega}
+                            onChange={(e) => setObservacaoEntrega(e.target.value)}
+                            placeholder="Digite uma observação sobre a entrega..."
+                            rows={3}
+                          />
+                        </div>
+                        
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setDialogEntregaAberto(false);
+                              setObservacaoEntrega("");
+                            }}
+                            disabled={loadingConfirmacao}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={handleConfirmarEntrega}
+                            className="bg-green-600 hover:bg-green-700"
+                            disabled={loadingConfirmacao}
+                          >
+                            {loadingConfirmacao ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Confirmando...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                Confirmar Entrega
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
 
-              {podeConfirmarEntrega && (
-                <Button
-                  onClick={onConfirmarRetorno}
-                  variant="destructive"
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Retorno
-                </Button>
-              )}
+                  <Dialog open={dialogRetornoAberto} onOpenChange={setDialogRetornoAberto}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="destructive">
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Confirmar Retorno
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Confirmar Retorno - {pedido.cliente_nome}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <p className="text-sm text-gray-600">
+                          Tem certeza que deseja confirmar o retorno? O pedido será reagendado para o próximo dia útil.
+                        </p>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Motivo do retorno:
+                          </label>
+                          <Textarea
+                            value={observacaoRetorno}
+                            onChange={(e) => setObservacaoRetorno(e.target.value)}
+                            placeholder="Digite o motivo do retorno..."
+                            rows={3}
+                          />
+                        </div>
+                        
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setDialogRetornoAberto(false);
+                              setObservacaoRetorno("");
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={handleConfirmarRetorno}
+                            variant="destructive"
+                          >
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Confirmar Retorno
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
 
-              {onEditarAgendamento && (
-                <Button
-                  onClick={onEditarAgendamento}
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center gap-2 ml-auto"
-                >
-                  <Edit className="h-4 w-4" />
-                  Editar
-                </Button>
+                  <Button 
+                    onClick={onRetornarParaSeparacao}
+                    size="sm" 
+                    variant="outline"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    Retornar p/ Separação
+                  </Button>
+                </>
               )}
-            </div>
-          </>
-        )}
+            </>
+          )}
+
+          {showReagendarButton && (
+            <Button 
+              onClick={onEditarAgendamento}
+              size="sm" 
+              variant="outline"
+            >
+              Reagendar
+            </Button>
+          )}
+
+          <Button 
+            onClick={onEditarAgendamento}
+            size="sm" 
+            variant="outline"
+          >
+            Editar
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
-}
+};
+
+export default PedidoCard;
