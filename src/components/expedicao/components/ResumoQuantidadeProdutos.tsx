@@ -3,7 +3,7 @@ import React from "react";
 import { Card } from "@/components/ui/card";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
 import { useProdutoStore } from "@/hooks/useProdutoStore";
-import { Package } from "lucide-react";
+import { Package, AlertTriangle } from "lucide-react";
 
 interface ResumoQuantidadeProdutosProps {
   pedidos: any[];
@@ -63,8 +63,26 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
     carregarQuantidades();
   }, [pedidos]);
 
+  // Verificar estoque disponível para cada produto
+  const verificarEstoque = (nomeProduto: string, quantidadeNecessaria: number) => {
+    const produto = produtos.find(p => p.nome === nomeProduto);
+    if (!produto) return { temEstoque: false, estoqueAtual: 0 };
+    
+    const estoqueAtual = produto.estoque_atual || 0;
+    return {
+      temEstoque: estoqueAtual >= quantidadeNecessaria,
+      estoqueAtual
+    };
+  };
+
   const totalGeral = Object.values(quantidadesTotais).reduce((sum, qty) => sum + qty, 0);
   const produtosComQuantidade = Object.entries(quantidadesTotais).filter(([_, qty]) => qty > 0);
+
+  // Verificar se há produtos com estoque insuficiente
+  const produtosSemEstoque = produtosComQuantidade.filter(([nomeProduto, quantidade]) => {
+    const { temEstoque } = verificarEstoque(nomeProduto, quantidade);
+    return !temEstoque;
+  });
 
   if (produtosComQuantidade.length === 0) {
     return null;
@@ -81,21 +99,53 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
       </div>
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-        {produtosComQuantidade.map(([nomeProduto, quantidade]) => (
-          <div 
-            key={nomeProduto}
-            className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 text-center"
-          >
-            <div className="font-medium text-sm text-gray-800 mb-1 truncate" title={nomeProduto}>
-              {nomeProduto}
+        {produtosComQuantidade.map(([nomeProduto, quantidade]) => {
+          const { temEstoque, estoqueAtual } = verificarEstoque(nomeProduto, quantidade);
+          
+          return (
+            <div 
+              key={nomeProduto}
+              className={`border rounded-lg p-3 text-center ${
+                temEstoque 
+                  ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200' 
+                  : 'bg-gradient-to-r from-red-50 to-red-100 border-red-300'
+              }`}
+            >
+              <div className="font-medium text-sm text-gray-800 mb-1 truncate" title={nomeProduto}>
+                {nomeProduto}
+              </div>
+              <div className={`text-2xl font-bold ${
+                temEstoque ? 'text-blue-700' : 'text-red-700'
+              }`}>
+                {quantidade}
+              </div>
+              <div className="text-xs text-muted-foreground">unidades</div>
+              
+              {!temEstoque && (
+                <div className="mt-2 flex items-center justify-center gap-1 text-xs text-red-600">
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>Estoque: {estoqueAtual}</span>
+                </div>
+              )}
             </div>
-            <div className="text-2xl font-bold text-blue-700">
-              {quantidade}
-            </div>
-            <div className="text-xs text-muted-foreground">unidades</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+      
+      {produtosSemEstoque.length > 0 && (
+        <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2 text-red-700 text-sm font-medium">
+            <AlertTriangle className="h-4 w-4" />
+            Atenção: Estoque insuficiente
+          </div>
+          <div className="text-xs text-red-600 mt-1">
+            {produtosSemEstoque.length === 1 
+              ? `O produto ${produtosSemEstoque[0][0]} não possui estoque suficiente.`
+              : `${produtosSemEstoque.length} produtos não possuem estoque suficiente.`
+            }
+          </div>
+        </div>
+      )}
       
       <div className="mt-3 text-sm text-muted-foreground text-center">
         {pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''} • 

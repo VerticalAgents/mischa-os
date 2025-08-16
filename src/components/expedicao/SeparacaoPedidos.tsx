@@ -13,6 +13,7 @@ import { ptBR } from "date-fns/locale";
 import AgendamentoEditModal from "@/components/agendamento/AgendamentoEditModal";
 import { AgendamentoItem } from "@/components/agendamento/types";
 import { PrintingActions } from "./components/PrintingActions";
+import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
 
 const SeparacaoPedidos = () => {
   const { 
@@ -126,6 +127,9 @@ const SeparacaoPedidos = () => {
 
   return (
     <div className="space-y-6">
+      {/* Resumo de Quantidades de Produtos */}
+      <ResumoQuantidadeProdutos pedidos={pedidosFiltrados} />
+      
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-xl font-semibold">Separação de Pedidos</h2>
