@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { toast } from "sonner";
@@ -236,9 +237,27 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       },
 
       retornarParaSeparacao: async (pedidoId: string) => {
+        console.log('🔄 Iniciando retorno para separação:', pedidoId);
+        
         try {
           const pedido = get().pedidos.find(p => p.id === pedidoId);
-          const statusAnterior = pedido?.substatus_pedido;
+          if (!pedido) {
+            console.error('❌ Pedido não encontrado:', pedidoId);
+            toast.error("Pedido não encontrado");
+            return;
+          }
+
+          const statusAnterior = pedido.substatus_pedido;
+          console.log('📊 Status anterior:', statusAnterior);
+          
+          // Validar se o pedido pode ser retornado
+          if (!statusAnterior || (statusAnterior !== 'Separado' && statusAnterior !== 'Despachado')) {
+            console.warn('⚠️ Status inválido para retorno:', statusAnterior);
+            toast.error("Pedido não pode ser retornado para separação");
+            return;
+          }
+
+          console.log('⏳ Atualizando estado local...');
           
           // Atualiza o estado local primeiro
           set(state => ({
@@ -247,6 +266,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             )
           }));
 
+          console.log('💾 Atualizando banco de dados...');
+
           // Atualiza no banco de dados
           const { error } = await supabase
             .from('agendamentos_clientes')
@@ -254,6 +275,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .eq('id', pedidoId);
 
           if (error) {
+            console.error('❌ Erro ao atualizar banco:', error);
+            
             // Reverte se houver erro - usar o status anterior
             set(state => ({
               pedidos: state.pedidos.map(p => 
@@ -263,10 +286,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             throw error;
           }
 
-          const acao = statusAnterior === 'Separado' ? 'retornado para separação' : 'retornado para separação';
-          toast.success(`${pedido?.cliente_nome} ${acao}`);
+          console.log('✅ Retorno para separação concluído');
+          toast.success(`${pedido.cliente_nome} retornado para separação`);
         } catch (error) {
-          console.error('Erro ao retornar para separação:', error);
+          console.error('❌ Erro ao retornar para separação:', error);
           toast.error("Erro ao retornar pedido para separação");
         }
       },
