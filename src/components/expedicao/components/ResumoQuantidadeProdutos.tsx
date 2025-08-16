@@ -1,4 +1,5 @@
 
+
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
@@ -58,9 +59,9 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
   const calcularQuantidadesNoDespacho = async () => {
     const quantidadesNoDespacho: { [nome: string]: number } = {};
     
-    // Filtrar pedidos que estão na aba de despacho (separados/prontos para despacho)
+    // Filtrar pedidos que estão na aba de despacho (despachados)
     const pedidosNoDespacho = todosPedidos.filter(pedido => 
-      pedido.substatus_pedido === 'Separado' || pedido.substatus_pedido === 'Pronto para despacho'
+      pedido.substatus_pedido === 'Despachado'
     );
     
     for (const pedido of pedidosNoDespacho) {
@@ -238,3 +239,4 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
     </Card>
   );
 };
+
