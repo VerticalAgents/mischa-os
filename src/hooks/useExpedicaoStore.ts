@@ -238,6 +238,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       retornarParaSeparacao: async (pedidoId: string) => {
         try {
           const pedido = get().pedidos.find(p => p.id === pedidoId);
+          const statusAnterior = pedido?.substatus_pedido;
           
           // Atualiza o estado local primeiro
           set(state => ({
@@ -253,16 +254,17 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .eq('id', pedidoId);
 
           if (error) {
-            // Reverte se houver erro
+            // Reverte se houver erro - usar o status anterior
             set(state => ({
               pedidos: state.pedidos.map(p => 
-                p.id === pedidoId ? { ...p, substatus_pedido: 'Despachado' as SubstatusPedidoAgendado } : p
+                p.id === pedidoId ? { ...p, substatus_pedido: statusAnterior as SubstatusPedidoAgendado } : p
               )
             }));
             throw error;
           }
 
-          toast.success(`${pedido?.cliente_nome} retornado para separação`);
+          const acao = statusAnterior === 'Separado' ? 'retornado para separação' : 'retornado para separação';
+          toast.success(`${pedido?.cliente_nome} ${acao}`);
         } catch (error) {
           console.error('Erro ao retornar para separação:', error);
           toast.error("Erro ao retornar pedido para separação");
