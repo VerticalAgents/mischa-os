@@ -2,6 +2,7 @@ import React from "react";
 import { Card } from "@/components/ui/card";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
 import { useEstoqueProdutos } from "@/hooks/useEstoqueProdutos";
+import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { Package, AlertTriangle, Loader2 } from "lucide-react";
 
 interface ResumoQuantidadeProdutosProps {
@@ -11,6 +12,7 @@ interface ResumoQuantidadeProdutosProps {
 export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosProps) => {
   const { calcularQuantidadesPorProporcao } = useProporoesPadrao();
   const { produtos, loading: loadingEstoque, obterProdutoPorNome } = useEstoqueProdutos();
+  const { pedidos: todosPedidos } = useExpedicaoStore();
   
   // Calcular quantidades por produto
   const calcularQuantidadesTotais = async () => {
@@ -51,7 +53,49 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
     return quantidadesPorProduto;
   };
 
+  // Calcular quantidades em separação (pedidos agendados)
+  const calcularQuantidadesEmSeparacao = async () => {
+    const quantidadesEmSeparacao: { [nome: string]: number } = {};
+    
+    // Filtrar pedidos que estão na aba de separação (agendados e não separados)
+    const pedidosEmSeparacao = todosPedidos.filter(pedido => 
+      !pedido.substatus_pedido || pedido.substatus_pedido === 'Agendado'
+    );
+    
+    for (const pedido of pedidosEmSeparacao) {
+      if (pedido.tipo_pedido === 'Alterado' && pedido.itens_personalizados?.length > 0) {
+        pedido.itens_personalizados.forEach((item: any) => {
+          const nomeProduto = item.produto || item.nome || 'Produto desconhecido';
+          quantidadesEmSeparacao[nomeProduto] = (quantidadesEmSeparacao[nomeProduto] || 0) + item.quantidade;
+        });
+      } else {
+        try {
+          const quantidadesProporcao = await calcularQuantidadesPorProporcao(pedido.quantidade_total);
+          quantidadesProporcao.forEach(item => {
+            quantidadesEmSeparacao[item.produto] = (quantidadesEmSeparacao[item.produto] || 0) + item.quantidade;
+          });
+        } catch (error) {
+          console.warn('Erro ao calcular proporções para pedido em separação:', pedido.id, error);
+          
+          const produtosAtivos = produtos.filter(p => p.ativo);
+          if (produtosAtivos.length > 0) {
+            const quantidadePorProduto = Math.floor(pedido.quantidade_total / produtosAtivos.length);
+            const resto = pedido.quantidade_total % produtosAtivos.length;
+            
+            produtosAtivos.forEach((produto, index) => {
+              const quantidade = quantidadePorProduto + (index < resto ? 1 : 0);
+              quantidadesEmSeparacao[produto.nome] = (quantidadesEmSeparacao[produto.nome] || 0) + quantidade;
+            });
+          }
+        }
+      }
+    }
+    
+    return quantidadesEmSeparacao;
+  };
+
   const [quantidadesTotais, setQuantidadesTotais] = React.useState<{ [nome: string]: number }>({});
+  const [quantidadesEmSeparacao, setQuantidadesEmSeparacao] = React.useState<{ [nome: string]: number }>({});
   const [calculando, setCalculando] = React.useState(true);
   
   React.useEffect(() => {
@@ -60,8 +104,12 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
       
       setCalculando(true);
       try {
-        const quantidades = await calcularQuantidadesTotais();
+        const [quantidades, quantidadesSeparacao] = await Promise.all([
+          calcularQuantidadesTotais(),
+          calcularQuantidadesEmSeparacao()
+        ]);
         setQuantidadesTotais(quantidades);
+        setQuantidadesEmSeparacao(quantidadesSeparacao);
       } catch (error) {
         console.error('Erro ao calcular quantidades:', error);
       } finally {
@@ -70,7 +118,7 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
     };
     
     carregarQuantidades();
-  }, [pedidos, loadingEstoque, produtos]);
+  }, [pedidos, loadingEstoque, produtos, todosPedidos]);
 
   // Verificar estoque disponível para cada produto
   const verificarEstoque = (nomeProduto: string, quantidadeNecessaria: number) => {
@@ -131,6 +179,7 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {produtosComQuantidade.map(([nomeProduto, quantidade]) => {
           const { temEstoque, estoqueAtual } = verificarEstoque(nomeProduto, quantidade);
+          const quantidadeEmSeparacao = quantidadesEmSeparacao[nomeProduto] || 0;
           
           return (
             <div 
@@ -156,6 +205,10 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
               }`}>
                 {!temEstoque && <AlertTriangle className="h-3 w-3" />}
                 <span>Estoque: {estoqueAtual}</span>
+              </div>
+              
+              <div className="mt-1 flex items-center justify-center text-xs text-gray-600">
+                <span>Em separação: {quantidadeEmSeparacao}</span>
               </div>
             </div>
           );
