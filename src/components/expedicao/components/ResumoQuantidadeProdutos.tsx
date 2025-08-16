@@ -3,13 +3,15 @@ import React from "react";
 import { Card } from "@/components/ui/card";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
 import { useEstoqueProdutos } from "@/hooks/useEstoqueProdutos";
-import { Package, AlertTriangle, Loader2 } from "lucide-react";
+import { Package, AlertTriangle, Loader2, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ResumoQuantidadeProdutosProps {
   pedidos: any[];
+  contexto?: 'separacao' | 'despacho'; // Para definir qual estoque usar
 }
 
-export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosProps) => {
+export const ResumoQuantidadeProdutos = ({ pedidos, contexto = 'separacao' }: ResumoQuantidadeProdutosProps) => {
   const { calcularQuantidadesPorProporcao } = useProporoesPadrao();
   const { produtos, loading: loadingEstoque, obterProdutoPorNome } = useEstoqueProdutos();
   
@@ -76,12 +78,16 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
   // Verificar estoque disponível para cada produto
   const verificarEstoque = (nomeProduto: string, quantidadeNecessaria: number) => {
     const produto = obterProdutoPorNome(nomeProduto);
-    if (!produto) return { temEstoque: false, estoqueAtual: 0 };
+    if (!produto) return { temEstoque: false, estoqueAtual: 0, estoqueDisponivel: 0 };
     
-    const estoqueAtual = produto.estoque_atual || 0;
+    // Para separação, usar estoque disponível (atual - reservado)
+    // Para despacho, usar estoque atual
+    const estoqueParaVerificar = contexto === 'separacao' ? produto.estoque_disponivel || 0 : produto.estoque_atual;
+    
     return {
-      temEstoque: estoqueAtual >= quantidadeNecessaria,
-      estoqueAtual
+      temEstoque: estoqueParaVerificar >= quantidadeNecessaria,
+      estoqueAtual: produto.estoque_atual,
+      estoqueDisponivel: produto.estoque_disponivel || 0
     };
   };
 
@@ -120,68 +126,101 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
   }
 
   return (
-    <Card className="p-4 mb-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Package className="h-5 w-5 text-blue-600" />
-        <h3 className="text-lg font-semibold">Resumo de Produtos para Despacho</h3>
-        <span className="ml-auto text-sm text-muted-foreground">
-          Total: {totalGeral} unidades
-        </span>
-      </div>
-      
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-        {produtosComQuantidade.map(([nomeProduto, quantidade]) => {
-          const { temEstoque, estoqueAtual } = verificarEstoque(nomeProduto, quantidade);
-          
-          return (
-            <div 
-              key={nomeProduto}
-              className={`border rounded-lg p-3 text-center ${
-                temEstoque 
-                  ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200' 
-                  : 'bg-gradient-to-r from-red-100 to-red-200 border-red-400'
-              }`}
-            >
-              <div className="font-medium text-sm text-gray-800 mb-1 truncate" title={nomeProduto}>
-                {nomeProduto}
-              </div>
-              <div className={`text-2xl font-bold ${
-                temEstoque ? 'text-blue-700' : 'text-red-800'
-              }`}>
-                {quantidade}
-              </div>
-              <div className="text-xs text-muted-foreground">unidades</div>
-              
-              {!temEstoque && (
-                <div className="mt-2 flex items-center justify-center gap-1 text-xs text-red-700">
-                  <AlertTriangle className="h-3 w-3" />
-                  <span>Estoque: {estoqueAtual}</span>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      
-      {produtosSemEstoque.length > 0 && (
-        <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded-lg">
-          <div className="flex items-center gap-2 text-red-800 text-sm font-medium">
-            <AlertTriangle className="h-4 w-4" />
-            Atenção: Estoque insuficiente
-          </div>
-          <div className="text-xs text-red-700 mt-1">
-            {produtosSemEstoque.length === 1 
-              ? `O produto ${produtosSemEstoque[0][0]} não possui estoque suficiente.`
-              : `${produtosSemEstoque.length} produtos não possuem estoque suficiente.`
-            }
-          </div>
+    <TooltipProvider>
+      <Card className="p-4 mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Package className="h-5 w-5 text-blue-600" />
+          <h3 className="text-lg font-semibold">Resumo de Produtos para Despacho</h3>
+          <span className="ml-auto text-sm text-muted-foreground">
+            Total: {totalGeral} unidades
+          </span>
+          {contexto === 'separacao' && (
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="h-4 w-4 text-blue-500" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Estoque considerando itens já separados</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
-      )}
-      
-      <div className="mt-3 text-sm text-muted-foreground text-center">
-        {pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''} • 
-        {produtosComQuantidade.length} produto{produtosComQuantidade.length !== 1 ? 's' : ''}
-      </div>
-    </Card>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          {produtosComQuantidade.map(([nomeProduto, quantidade]) => {
+            const { temEstoque, estoqueAtual, estoqueDisponivel } = verificarEstoque(nomeProduto, quantidade);
+            
+            return (
+              <Tooltip key={nomeProduto}>
+                <TooltipTrigger asChild>
+                  <div 
+                    className={`border rounded-lg p-3 text-center cursor-help ${
+                      temEstoque 
+                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200' 
+                        : 'bg-gradient-to-r from-red-100 to-red-200 border-red-400'
+                    }`}
+                  >
+                    <div className="font-medium text-sm text-gray-800 mb-1 truncate" title={nomeProduto}>
+                      {nomeProduto}
+                    </div>
+                    <div className={`text-2xl font-bold ${
+                      temEstoque ? 'text-blue-700' : 'text-red-800'
+                    }`}>
+                      {quantidade}
+                    </div>
+                    <div className="text-xs text-muted-foreground">unidades</div>
+                    
+                    {!temEstoque && (
+                      <div className="mt-2 flex items-center justify-center gap-1 text-xs text-red-700">
+                        <AlertTriangle className="h-3 w-3" />
+                        <span>
+                          {contexto === 'separacao' ? `Disp: ${estoqueDisponivel}` : `Est: ${estoqueAtual}`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="text-sm">
+                    <div><strong>{nomeProduto}</strong></div>
+                    <div>Necessário: {quantidade}</div>
+                    <div>Estoque atual: {estoqueAtual}</div>
+                    {contexto === 'separacao' && (
+                      <>
+                        <div>Estoque disponível: {estoqueDisponivel}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          (Atual - Separado)
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+        
+        {produtosSemEstoque.length > 0 && (
+          <div className="mt-3 p-2 bg-red-100 border border-red-300 rounded-lg">
+            <div className="flex items-center gap-2 text-red-800 text-sm font-medium">
+              <AlertTriangle className="h-4 w-4" />
+              Atenção: Estoque insuficiente
+            </div>
+            <div className="text-xs text-red-700 mt-1">
+              {produtosSemEstoque.length === 1 
+                ? `O produto ${produtosSemEstoque[0][0]} não possui estoque ${contexto === 'separacao' ? 'disponível' : 'atual'} suficiente.`
+                : `${produtosSemEstoque.length} produtos não possuem estoque ${contexto === 'separacao' ? 'disponível' : 'atual'} suficiente.`
+              }
+            </div>
+          </div>
+        )}
+        
+        <div className="mt-3 text-sm text-muted-foreground text-center">
+          {pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''} • 
+          {produtosComQuantidade.length} produto{produtosComQuantidade.length !== 1 ? 's' : ''}
+          {contexto === 'separacao' && ' • Estoque disponível'}
+        </div>
+      </Card>
+    </TooltipProvider>
   );
 };
