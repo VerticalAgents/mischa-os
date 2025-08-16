@@ -128,7 +128,7 @@ const SeparacaoPedidos = () => {
   return (
     <div className="space-y-6">
       {/* Resumo de Quantidades de Produtos */}
-      <ResumoQuantidadeProdutos pedidos={pedidosFiltrados} contexto="separacao" />
+      <ResumoQuantidadeProdutos pedidos={pedidosFiltrados} />
       
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
