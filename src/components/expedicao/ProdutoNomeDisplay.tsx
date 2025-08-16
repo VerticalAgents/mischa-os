@@ -1,13 +1,13 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProdutoNomeDisplayProps {
   produtoId: string;
   nomeFallback?: string;
-  className?: string;
 }
 
-export default function ProdutoNomeDisplay({ produtoId, nomeFallback, className }: ProdutoNomeDisplayProps) {
+export default function ProdutoNomeDisplay({ produtoId, nomeFallback }: ProdutoNomeDisplayProps) {
   const [nomeProduto, setNomeProduto] = useState<string>(nomeFallback || `Produto ${produtoId}`);
   const [loading, setLoading] = useState(true);
 
@@ -58,8 +58,8 @@ export default function ProdutoNomeDisplay({ produtoId, nomeFallback, className 
   }, [produtoId, nomeFallback]);
 
   if (loading) {
-    return <span className={`text-muted-foreground ${className || ''}`}>Carregando...</span>;
+    return <span className="text-muted-foreground">Carregando...</span>;
   }
 
-  return <span className={className}>{nomeProduto}</span>;
+  return <span>{nomeProduto}</span>;
 }

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,9 +11,7 @@ import { ptBR } from "date-fns/locale";
 import TipoPedidoBadge from "./TipoPedidoBadge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 import ProdutosList from "./ProdutosList";
-import ComposicaoPedido from "./ComposicaoPedido";
 import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
-import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 
 interface PedidoCardProps {
   pedido: {
@@ -56,16 +55,7 @@ const PedidoCard = ({
   const [dialogEntregaAberto, setDialogEntregaAberto] = useState(false);
   const [dialogRetornoAberto, setDialogRetornoAberto] = useState(false);
   
-  // FASE 5: Estado local de loading para cada operação
-  const [loadingRetorno, setLoadingRetorno] = useState(false);
-  const [loadingSeparacao, setLoadingSeparacao] = useState(false);
-  const [loadingDespacho, setLoadingDespacho] = useState(false);
-  
   const { confirmarEntrega, loading: loadingConfirmacao } = useConfirmacaoEntrega();
-  
-  // FASE 5: Usar store para verificar operações em andamento
-  const isOperationInProgress = useExpedicaoStore(state => state.isOperationInProgress);
-  const retornarParaSeparacao = useExpedicaoStore(state => state.retornarParaSeparacao);
 
   const handleConfirmarEntrega = async () => {
     try {
@@ -73,6 +63,7 @@ const PedidoCard = ({
       if (sucesso) {
         setDialogEntregaAberto(false);
         setObservacaoEntrega("");
+        // Chamar callback se existir para atualizar o estado do componente pai
         if (onConfirmarEntrega) {
           onConfirmarEntrega(observacaoEntrega);
         }
@@ -82,91 +73,13 @@ const PedidoCard = ({
     }
   };
 
-  const handleConfirmarRetorno = async () => {
-    // FASE 5: Proteção local de loading
-    if (loadingRetorno) return;
-    
-    setLoadingRetorno(true);
-    try {
-      if (onConfirmarRetorno) {
-        await onConfirmarRetorno(observacaoRetorno);
-        setDialogRetornoAberto(false);
-        setObservacaoRetorno("");
-      }
-    } catch (error) {
-      console.error('Erro ao confirmar retorno:', error);
-    } finally {
-      setLoadingRetorno(false);
+  const handleConfirmarRetorno = () => {
+    if (onConfirmarRetorno) {
+      onConfirmarRetorno(observacaoRetorno);
+      setDialogRetornoAberto(false);
+      setObservacaoRetorno("");
     }
   };
-
-  // FASE 5: Handler para retornar à separação com proteções
-  const handleRetornarParaSeparacao = async () => {
-    // FASE 5: Múltiplas proteções para evitar cliques duplos
-    if (loadingRetorno || isOperationInProgress(pedido.id)) {
-      console.log(`⚠️ Operação já em andamento para pedido ${pedido.id} - IGNORANDO CLIQUE`);
-      return;
-    }
-    
-    setLoadingRetorno(true);
-    console.log(`🔄 Iniciando retorno para separação: ${pedido.id}`);
-    
-    try {
-      // FASE 5: Usar função direta do store com timeout
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout na operação')), 10000)
-      );
-      
-      await Promise.race([
-        retornarParaSeparacao(pedido.id),
-        timeoutPromise
-      ]);
-      
-      console.log(`✅ Sucesso no retorno para separação: ${pedido.id}`);
-      
-      // Chamar callback se existir
-      if (onRetornarParaSeparacao) {
-        onRetornarParaSeparacao();
-      }
-    } catch (error) {
-      console.error(`❌ Erro no retorno para separação ${pedido.id}:`, error);
-    } finally {
-      setLoadingRetorno(false);
-      console.log(`🏁 Finalizando operação de retorno: ${pedido.id}`);
-    }
-  };
-
-  // FASE 5: Handler para separação com proteções
-  const handleMarcarSeparado = async () => {
-    if (loadingSeparacao || isOperationInProgress(pedido.id)) return;
-    
-    setLoadingSeparacao(true);
-    try {
-      if (onMarcarSeparado) {
-        await onMarcarSeparado();
-      }
-    } finally {
-      setLoadingSeparacao(false);
-    }
-  };
-
-  // FASE 5: Handler para despacho com proteções
-  const handleConfirmarDespacho = async () => {
-    if (loadingDespacho || isOperationInProgress(pedido.id)) return;
-    
-    setLoadingDespacho(true);
-    try {
-      if (onConfirmarDespacho) {
-        await onConfirmarDespacho();
-      }
-    } finally {
-      setLoadingDespacho(false);
-    }
-  };
-
-  // FASE 5: Verificar se qualquer operação está em andamento
-  const isAnyOperationInProgress = loadingRetorno || loadingSeparacao || loadingDespacho || 
-                                   isOperationInProgress(pedido.id) || loadingConfirmacao;
 
   return (
     <Card className="mb-4 shadow-sm border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
@@ -202,13 +115,6 @@ const PedidoCard = ({
                 {pedido.substatus_pedido}
               </Badge>
             )}
-            {/* FASE 5: Indicador visual de operação em andamento */}
-            {isAnyOperationInProgress && (
-              <Badge variant="outline" className="animate-pulse">
-                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                Processando...
-              </Badge>
-            )}
           </div>
         </div>
       </CardHeader>
@@ -228,15 +134,11 @@ const PedidoCard = ({
           </div>
         )}
 
-        {showDespachoActions && (
-          <ComposicaoPedido pedido={pedido} />
-        )}
-
         {showProdutosList && (
           <ProdutosList pedido={pedido} />
         )}
 
-        {!showProdutosList && !showDespachoActions && pedido.itens_personalizados && pedido.itens_personalizados.length > 0 && (
+        {!showProdutosList && pedido.itens_personalizados && pedido.itens_personalizados.length > 0 && (
           <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
             <h4 className="font-medium text-amber-800 mb-2">Itens Personalizados:</h4>
             <div className="space-y-1">
@@ -255,22 +157,12 @@ const PedidoCard = ({
             <>
               {(!pedido.substatus_pedido || pedido.substatus_pedido === 'Agendado') && (
                 <Button 
-                  onClick={handleMarcarSeparado}
+                  onClick={onMarcarSeparado}
                   size="sm" 
                   className="bg-green-600 hover:bg-green-700"
-                  disabled={isAnyOperationInProgress}
                 >
-                  {loadingSeparacao ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      Processando...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-1" />
-                      Marcar Separado
-                    </>
-                  )}
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                  Marcar Separado
                 </Button>
               )}
             </>
@@ -280,22 +172,12 @@ const PedidoCard = ({
             <>
               {pedido.substatus_pedido === 'Separado' && (
                 <Button 
-                  onClick={handleConfirmarDespacho}
+                  onClick={onConfirmarDespacho}
                   size="sm" 
                   variant="outline"
-                  disabled={isAnyOperationInProgress}
                 >
-                  {loadingDespacho ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      Processando...
-                    </>
-                  ) : (
-                    <>
-                      <Truck className="h-4 w-4 mr-1" />
-                      Confirmar Despacho
-                    </>
-                  )}
+                  <Truck className="h-4 w-4 mr-1" />
+                  Confirmar Despacho
                 </Button>
               )}
 
@@ -303,11 +185,7 @@ const PedidoCard = ({
                 <>
                   <Dialog open={dialogEntregaAberto} onOpenChange={setDialogEntregaAberto}>
                     <DialogTrigger asChild>
-                      <Button 
-                        size="sm" 
-                        className="bg-green-600 hover:bg-green-700"
-                        disabled={isAnyOperationInProgress}
-                      >
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700">
                         <CheckCircle2 className="h-4 w-4 mr-1" />
                         Confirmar Entrega
                       </Button>
@@ -336,7 +214,6 @@ const PedidoCard = ({
                             onChange={(e) => setObservacaoEntrega(e.target.value)}
                             placeholder="Digite uma observação sobre a entrega..."
                             rows={3}
-                            disabled={loadingConfirmacao}
                           />
                         </div>
                         
@@ -375,11 +252,7 @@ const PedidoCard = ({
 
                   <Dialog open={dialogRetornoAberto} onOpenChange={setDialogRetornoAberto}>
                     <DialogTrigger asChild>
-                      <Button 
-                        size="sm" 
-                        variant="destructive"
-                        disabled={isAnyOperationInProgress}
-                      >
+                      <Button size="sm" variant="destructive">
                         <XCircle className="h-4 w-4 mr-1" />
                         Confirmar Retorno
                       </Button>
@@ -402,7 +275,6 @@ const PedidoCard = ({
                             onChange={(e) => setObservacaoRetorno(e.target.value)}
                             placeholder="Digite o motivo do retorno..."
                             rows={3}
-                            disabled={loadingRetorno}
                           />
                         </div>
                         
@@ -413,51 +285,28 @@ const PedidoCard = ({
                               setDialogRetornoAberto(false);
                               setObservacaoRetorno("");
                             }}
-                            disabled={loadingRetorno}
                           >
                             Cancelar
                           </Button>
                           <Button
                             onClick={handleConfirmarRetorno}
                             variant="destructive"
-                            disabled={loadingRetorno}
                           >
-                            {loadingRetorno ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Processando...
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Confirmar Retorno
-                              </>
-                            )}
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Confirmar Retorno
                           </Button>
                         </div>
                       </div>
                     </DialogContent>
                   </Dialog>
 
-                  {/* FASE 5: Botão crítico com todas as proteções */}
                   <Button 
-                    onClick={handleRetornarParaSeparacao}
+                    onClick={onRetornarParaSeparacao}
                     size="sm" 
                     variant="outline"
-                    disabled={isAnyOperationInProgress}
-                    className={isAnyOperationInProgress ? 'opacity-50 cursor-not-allowed' : ''}
                   >
-                    {loadingRetorno ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                        Processando...
-                      </>
-                    ) : (
-                      <>
-                        <ArrowLeft className="h-4 w-4 mr-1" />
-                        Retornar p/ Separação
-                      </>
-                    )}
+                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    Retornar p/ Separação
                   </Button>
                 </>
               )}
@@ -469,7 +318,6 @@ const PedidoCard = ({
               onClick={onEditarAgendamento}
               size="sm" 
               variant="outline"
-              disabled={isAnyOperationInProgress}
             >
               Reagendar
             </Button>
@@ -479,7 +327,6 @@ const PedidoCard = ({
             onClick={onEditarAgendamento}
             size="sm" 
             variant="outline"
-            disabled={isAnyOperationInProgress}
           >
             Editar
           </Button>
