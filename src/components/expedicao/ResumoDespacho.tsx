@@ -10,6 +10,18 @@ interface ResumoDespachoProps {
   titulo: string;
 }
 
+interface ItemPedido {
+  produto_id: string;
+  produto_nome: string;
+  quantidade: number;
+}
+
+interface ResumoProduto {
+  produto_id: string;
+  produto_nome: string;
+  quantidade: number;
+}
+
 export default function ResumoDespacho({ pedidos, titulo }: ResumoDespachoProps) {
   const { produtos } = useProdutoStore();
   const { converterPedidoParaCard } = usePedidoConverter();
@@ -18,7 +30,7 @@ export default function ResumoDespacho({ pedidos, titulo }: ResumoDespachoProps)
   const resumoProdutos = pedidos.reduce((acc, pedido) => {
     const pedidoConvertido = converterPedidoParaCard(pedido);
     
-    pedidoConvertido.itens.forEach((item: any) => {
+    pedidoConvertido.itens.forEach((item: ItemPedido) => {
       if (!acc[item.produto_id]) {
         acc[item.produto_id] = {
           produto_id: item.produto_id,
@@ -30,7 +42,7 @@ export default function ResumoDespacho({ pedidos, titulo }: ResumoDespachoProps)
     });
     
     return acc;
-  }, {} as Record<string, { produto_id: string; produto_nome: string; quantidade: number }>);
+  }, {} as Record<string, ResumoProduto>);
 
   const totalUnidades = Object.values(resumoProdutos).reduce((sum, item) => sum + item.quantidade, 0);
   const totalPedidos = pedidos.length;
