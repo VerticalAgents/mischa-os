@@ -1,129 +1,231 @@
-import React, { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
-import PedidoCard from "./PedidoCard";
-import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
-import { SeparacaoTabs } from "./components/SeparacaoTabs";
-import { PrintingActions } from "./components/PrintingActions";
-import { Package, Calendar, Clock, Users } from "lucide-react";
-import { usePedidoConverter } from "./hooks/usePedidoConverter";
-import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
 
-export default function SeparacaoPedidos() {
+import { useState, useEffect } from "react";
+import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
+import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
+import PedidoCard from "./PedidoCard";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, Search, Filter } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import AgendamentoEditModal from "@/components/agendamento/AgendamentoEditModal";
+import { AgendamentoItem } from "@/components/agendamento/types";
+import { PrintingActions } from "./components/PrintingActions";
+import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
+
+const SeparacaoPedidos = () => {
   const { 
-    pedidos,
-    isLoading,
-    getPedidosParaSeparacao,
-    getPedidosProximoDia,
-    confirmarSeparacao,
-    marcarTodosSeparados,
-    ultimaAtualizacao
+    pedidos, 
+    isLoading, 
+    carregarPedidos, 
+    confirmarSeparacao 
   } = useExpedicaoStore();
 
-  const [activeSubTab, setActiveSubTab] = useState("todos");
-  const { converterPedidoParaCard } = usePedidoConverter();
-  const { handleEditarAgendamento } = useAgendamentoActions();
+  // Usar store UI para persistir filtros
+  const {
+    filtroTexto,
+    filtroTipoPedido,
+    filtroData,
+    setFiltroTexto,
+    setFiltroTipoPedido,
+    setFiltroData
+  } = useExpedicaoUiStore();
 
-  const pedidosHoje = getPedidosParaSeparacao();
-  const pedidosProximoDia = getPedidosProximoDia();
-  const pedidosSeparados = pedidos.filter(p => p.substatus_pedido === 'Separado');
+  const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
+  const [modalEditarAberto, setModalEditarAberto] = useState(false);
 
-  // Classificar pedidos por tipo
-  const pedidosPadrao = pedidosHoje.filter(p => p.tipo_pedido === 'Padrão');
-  const pedidosAlterados = pedidosHoje.filter(p => p.tipo_pedido === 'Alterado');
+  useEffect(() => {
+    carregarPedidos();
+  }, [carregarPedidos]);
 
-  console.log('📦 SeparacaoPedidos - Pedidos para resumo:', pedidosHoje);
+  const handleMarcarSeparado = async (pedidoId: string) => {
+    await confirmarSeparacao(pedidoId);
+  };
 
-  // Loading state
+  const handleEditarPedido = (pedido: any) => {
+    // Converter o pedido da expedição para o formato AgendamentoItem
+    const agendamentoFormatado: AgendamentoItem = {
+      cliente: {
+        id: pedido.cliente_id,
+        nome: pedido.cliente_nome,
+        quantidadePadrao: pedido.quantidade_total || 0,
+        contatoTelefone: pedido.cliente_telefone || "",
+        enderecoEntrega: pedido.cliente_endereco || "",
+        cnpjCpf: "",
+        contatoNome: "",
+        contatoEmail: "",
+        periodicidadePadrao: 7,
+        statusCliente: "Ativo",
+        dataCadastro: new Date(),
+        ativo: true,
+        contabilizarGiroMedio: true,
+        tipoCobranca: "À vista",
+        tipoLogistica: "Própria",
+        emiteNotaFiscal: false,
+        formaPagamento: "Dinheiro",
+        categoriaId: 1,
+        subcategoriaId: 1
+      },
+      dataReposicao: new Date(pedido.data_prevista_entrega),
+      statusAgendamento: "Agendado" as const,
+      isPedidoUnico: pedido.tipo_pedido === "Único",
+      pedido: {
+        id: parseInt(pedido.id),
+        idCliente: pedido.cliente_id,
+        dataPedido: new Date(),
+        dataPrevistaEntrega: new Date(pedido.data_prevista_entrega),
+        statusPedido: 'Agendado',
+        itensPedido: pedido.produtos_info || [],
+        totalPedidoUnidades: pedido.quantidade_total,
+        tipoPedido: pedido.tipo_pedido as "Padrão" | "Alterado" | "Único"
+      }
+    };
+
+    setPedidoEditando(agendamentoFormatado);
+    setModalEditarAberto(true);
+  };
+
+  const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
+    // Recarregar pedidos após edição
+    carregarPedidos();
+    setModalEditarAberto(false);
+    setPedidoEditando(null);
+  };
+
+  // Filtrar pedidos para separação (Agendado e não separados ainda)
+  const pedidosParaSeparacao = pedidos.filter(pedido => 
+    !pedido.substatus_pedido || 
+    pedido.substatus_pedido === 'Agendado'
+  );
+
+  // Aplicar filtros
+  const pedidosFiltrados = pedidosParaSeparacao.filter(pedido => {
+    const matchTexto = !filtroTexto || 
+      pedido.cliente_nome.toLowerCase().includes(filtroTexto.toLowerCase()) ||
+      pedido.id.toLowerCase().includes(filtroTexto.toLowerCase());
+    
+    const matchTipoPedido = filtroTipoPedido === "todos" || 
+      (filtroTipoPedido === "padrao" && pedido.tipo_pedido === 'Padrão') ||
+      (filtroTipoPedido === "alterado" && pedido.tipo_pedido === 'Alterado');
+    
+    const matchData = !filtroData || 
+      format(pedido.data_prevista_entrega, "yyyy-MM-dd") === filtroData;
+
+    return matchTexto && matchTipoPedido && matchData;
+  });
+
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-300 rounded mb-4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 bg-gray-300 rounded"></div>
-            ))}
-          </div>
-        </div>
+      <div className="flex items-center justify-center p-8">
+        <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+        Carregando pedidos...
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Resumo de Produtos - sempre mostrar, mesmo se vazio */}
-      <ResumoQuantidadeProdutos 
-        pedidos={pedidosHoje} 
-        contexto="separacao"
-      />
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <Package className="h-8 w-8 text-blue-600" />
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Para Separar</h3>
-              <p className="text-2xl font-bold">{pedidosHoje.length}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <Users className="h-8 w-8 text-green-600" />
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Separados</h3>
-              <p className="text-2xl font-bold">{pedidosSeparados.length}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <Calendar className="h-8 w-8 text-yellow-600" />
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Próximo Dia</h3>
-              <p className="text-2xl font-bold">{pedidosProximoDia.length}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <Clock className="h-8 w-8 text-gray-600" />
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Última Atualização</h3>
-              <p className="text-sm">
-                {ultimaAtualizacao ? new Date(ultimaAtualizacao).toLocaleTimeString() : 'Nunca'}
-              </p>
-            </div>
-          </div>
-        </Card>
+      {/* Resumo de Quantidades de Produtos */}
+      <ResumoQuantidadeProdutos pedidos={pedidosFiltrados} />
+      
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold">Separação de Pedidos</h2>
+          <Badge variant="secondary">
+            {pedidosParaSeparacao.length} pedidos
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <PrintingActions
+            activeSubTab="todos"
+            pedidosPadrao={pedidosFiltrados.filter(p => p.tipo_pedido === 'Padrão')}
+            pedidosAlterados={pedidosFiltrados.filter(p => p.tipo_pedido === 'Alterado')}
+            pedidosProximoDia={[]}
+            todosPedidos={pedidosFiltrados}
+          />
+          <Button 
+            onClick={() => carregarPedidos()} 
+            size="sm"
+            variant="outline"
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
-      {/* Ações de Impressão */}
-      <PrintingActions 
-        activeSubTab={activeSubTab}
-        pedidosPadrao={pedidosPadrao}
-        pedidosAlterados={pedidosAlterados}
-        pedidosProximoDia={pedidosProximoDia}
-        todosPedidos={pedidosHoje}
-      />
+      {/* Filtros */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+        <div className="relative">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Buscar por cliente ou ID..."
+            value={filtroTexto}
+            onChange={(e) => setFiltroTexto(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        
+        <Select value={filtroTipoPedido} onValueChange={setFiltroTipoPedido}>
+          <SelectTrigger>
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Tipo de Pedido" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os tipos</SelectItem>
+            <SelectItem value="padrao">Padrão</SelectItem>
+            <SelectItem value="alterado">Alterado</SelectItem>
+          </SelectContent>
+        </Select>
 
-      {/* Separação Tabs */}
-      <SeparacaoTabs 
-        activeSubTab={activeSubTab}
-        setActiveSubTab={setActiveSubTab}
-        todosPedidos={pedidosHoje}
-        pedidosPadrao={pedidosPadrao}
-        pedidosAlterados={pedidosAlterados}
-        pedidosProximoDia={pedidosProximoDia}
-        converterPedidoParaCard={converterPedidoParaCard}
-        confirmarSeparacao={confirmarSeparacao}
-        handleEditarAgendamento={handleEditarAgendamento}
+        <Input
+          type="date"
+          value={filtroData}
+          onChange={(e) => setFiltroData(e.target.value)}
+          placeholder="Filtrar por data"
+        />
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">
+            {pedidosFiltrados.length} de {pedidosParaSeparacao.length} pedidos
+          </span>
+        </div>
+      </div>
+
+      {/* Lista de Pedidos */}
+      <div className="space-y-4">
+        {pedidosFiltrados.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            {pedidosParaSeparacao.length === 0 
+              ? "Nenhum pedido aguardando separação"
+              : "Nenhum pedido encontrado com os filtros aplicados"
+            }
+          </div>
+        ) : (
+          pedidosFiltrados.map((pedido) => (
+            <PedidoCard
+              key={pedido.id}
+              pedido={pedido}
+              onMarcarSeparado={() => handleMarcarSeparado(pedido.id)}
+              onEditarAgendamento={() => handleEditarPedido(pedido)}
+              showProdutosList={true}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Modal de Edição - Agora usando o modal completo */}
+      <AgendamentoEditModal
+        agendamento={pedidoEditando}
+        open={modalEditarAberto}
+        onOpenChange={setModalEditarAberto}
+        onSalvar={handleSalvarAgendamento}
       />
     </div>
   );
-}
+};
+
+export default SeparacaoPedidos;

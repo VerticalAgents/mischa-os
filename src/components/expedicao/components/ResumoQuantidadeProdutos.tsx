@@ -1,25 +1,22 @@
 
+
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
 import { useEstoqueProdutos } from "@/hooks/useEstoqueProdutos";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
-import { Package, AlertTriangle, Loader2, Info } from "lucide-react";
+import { Package, AlertTriangle, Loader2 } from "lucide-react";
 
 interface ResumoQuantidadeProdutosProps {
   pedidos: any[];
-  contexto?: 'separacao' | 'despacho';
 }
 
-export const ResumoQuantidadeProdutos = ({ 
-  pedidos, 
-  contexto = 'separacao' 
-}: ResumoQuantidadeProdutosProps) => {
+export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosProps) => {
   const { calcularQuantidadesPorProporcao } = useProporoesPadrao();
   const { produtos, loading: loadingEstoque, obterProdutoPorNome } = useEstoqueProdutos();
   const { pedidos: todosPedidos } = useExpedicaoStore();
   
-  // Calcular quantidades por produto dos pedidos atuais
+  // Calcular quantidades por produto
   const calcularQuantidadesTotais = async () => {
     const quantidadesPorProduto: { [nome: string]: number } = {};
     
@@ -58,29 +55,29 @@ export const ResumoQuantidadeProdutos = ({
     return quantidadesPorProduto;
   };
 
-  // Calcular quantidades despachadas (produtos efetivamente no despacho)
-  const calcularQuantidadesDespachadas = async () => {
-    const quantidadesDespachadas: { [nome: string]: number } = {};
+  // Calcular quantidades no despacho (pedidos separados prontos para despacho)
+  const calcularQuantidadesNoDespacho = async () => {
+    const quantidadesNoDespacho: { [nome: string]: number } = {};
     
-    // Filtrar pedidos que estão despachados
-    const pedidosDespachados = todosPedidos.filter(pedido => 
+    // Filtrar pedidos que estão na aba de despacho (despachados)
+    const pedidosNoDespacho = todosPedidos.filter(pedido => 
       pedido.substatus_pedido === 'Despachado'
     );
     
-    for (const pedido of pedidosDespachados) {
+    for (const pedido of pedidosNoDespacho) {
       if (pedido.tipo_pedido === 'Alterado' && pedido.itens_personalizados?.length > 0) {
         pedido.itens_personalizados.forEach((item: any) => {
           const nomeProduto = item.produto || item.nome || 'Produto desconhecido';
-          quantidadesDespachadas[nomeProduto] = (quantidadesDespachadas[nomeProduto] || 0) + item.quantidade;
+          quantidadesNoDespacho[nomeProduto] = (quantidadesNoDespacho[nomeProduto] || 0) + item.quantidade;
         });
       } else {
         try {
           const quantidadesProporcao = await calcularQuantidadesPorProporcao(pedido.quantidade_total);
           quantidadesProporcao.forEach(item => {
-            quantidadesDespachadas[item.produto] = (quantidadesDespachadas[item.produto] || 0) + item.quantidade;
+            quantidadesNoDespacho[item.produto] = (quantidadesNoDespacho[item.produto] || 0) + item.quantidade;
           });
         } catch (error) {
-          console.warn('Erro ao calcular proporções para pedido despachado:', pedido.id, error);
+          console.warn('Erro ao calcular proporções para pedido no despacho:', pedido.id, error);
           
           const produtosAtivos = produtos.filter(p => p.ativo);
           if (produtosAtivos.length > 0) {
@@ -89,18 +86,18 @@ export const ResumoQuantidadeProdutos = ({
             
             produtosAtivos.forEach((produto, index) => {
               const quantidade = quantidadePorProduto + (index < resto ? 1 : 0);
-              quantidadesDespachadas[produto.nome] = (quantidadesDespachadas[produto.nome] || 0) + quantidade;
+              quantidadesNoDespacho[produto.nome] = (quantidadesNoDespacho[produto.nome] || 0) + quantidade;
             });
           }
         }
       }
     }
     
-    return quantidadesDespachadas;
+    return quantidadesNoDespacho;
   };
 
   const [quantidadesTotais, setQuantidadesTotais] = React.useState<{ [nome: string]: number }>({});
-  const [quantidadesDespachadas, setQuantidadesDespachadas] = React.useState<{ [nome: string]: number }>({});
+  const [quantidadesNoDespacho, setQuantidadesNoDespacho] = React.useState<{ [nome: string]: number }>({});
   const [calculando, setCalculando] = React.useState(true);
   
   React.useEffect(() => {
@@ -111,10 +108,10 @@ export const ResumoQuantidadeProdutos = ({
       try {
         const [quantidades, quantidadesDespacho] = await Promise.all([
           calcularQuantidadesTotais(),
-          calcularQuantidadesDespachadas()
+          calcularQuantidadesNoDespacho()
         ]);
         setQuantidadesTotais(quantidades);
-        setQuantidadesDespachadas(quantidadesDespacho);
+        setQuantidadesNoDespacho(quantidadesDespacho);
       } catch (error) {
         console.error('Erro ao calcular quantidades:', error);
       } finally {
@@ -128,24 +125,12 @@ export const ResumoQuantidadeProdutos = ({
   // Verificar estoque disponível para cada produto
   const verificarEstoque = (nomeProduto: string, quantidadeNecessaria: number) => {
     const produto = obterProdutoPorNome(nomeProduto);
-    if (!produto) return { 
-      temEstoque: false, 
-      estoqueAtual: 0, 
-      estoqueDisponivel: 0,
-      estoqueReservado: 0 
-    };
+    if (!produto) return { temEstoque: false, estoqueAtual: 0 };
     
-    // Para contexto de separação, usar estoque disponível
-    // Para contexto de despacho, usar estoque atual
-    const estoqueParaVerificar = contexto === 'separacao' 
-      ? produto.estoque_disponivel 
-      : produto.estoque_atual;
-    
+    const estoqueAtual = produto.estoque_atual || 0;
     return {
-      temEstoque: estoqueParaVerificar >= quantidadeNecessaria,
-      estoqueAtual: produto.estoque_atual,
-      estoqueDisponivel: produto.estoque_disponivel,
-      estoqueReservado: produto.estoque_reservado
+      temEstoque: estoqueAtual >= quantidadeNecessaria,
+      estoqueAtual
     };
   };
 
@@ -183,41 +168,20 @@ export const ResumoQuantidadeProdutos = ({
     return null;
   }
 
-  const tituloCard = contexto === 'separacao' 
-    ? 'Resumo de Produtos para Separação' 
-    : 'Resumo de Produtos para Despacho';
-
   return (
     <Card className="p-4 mb-4">
       <div className="flex items-center gap-2 mb-3">
         <Package className="h-5 w-5 text-blue-600" />
-        <h3 className="text-lg font-semibold">{tituloCard}</h3>
+        <h3 className="text-lg font-semibold">Resumo de Produtos para Despacho</h3>
         <span className="ml-auto text-sm text-muted-foreground">
           Total: {totalGeral} unidades
         </span>
       </div>
       
-      {contexto === 'separacao' && (
-        <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center gap-2 text-blue-800 text-sm">
-            <Info className="h-4 w-4" />
-            <span className="font-medium">Estoque para Separação</span>
-          </div>
-          <div className="text-xs text-blue-700 mt-1">
-            Exibindo estoque disponível (descontando produtos já separados ou despachados)
-          </div>
-        </div>
-      )}
-      
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {produtosComQuantidade.map(([nomeProduto, quantidade]) => {
-          const { 
-            temEstoque, 
-            estoqueAtual, 
-            estoqueDisponivel, 
-            estoqueReservado 
-          } = verificarEstoque(nomeProduto, quantidade);
-          const quantidadeDespachada = quantidadesDespachadas[nomeProduto] || 0;
+          const { temEstoque, estoqueAtual } = verificarEstoque(nomeProduto, quantidade);
+          const quantidadeNoDespacho = quantidadesNoDespacho[nomeProduto] || 0;
           
           return (
             <div 
@@ -242,30 +206,12 @@ export const ResumoQuantidadeProdutos = ({
                 temEstoque ? 'text-green-700' : 'text-red-700'
               }`}>
                 {!temEstoque && <AlertTriangle className="h-3 w-3" />}
-                <span>
-                  {contexto === 'separacao' 
-                    ? `Disponível: ${estoqueDisponivel}` 
-                    : `Estoque: ${estoqueAtual}`
-                  }
-                </span>
+                <span>Estoque: {estoqueAtual}</span>
               </div>
               
-              {contexto === 'separacao' && (
-                <div className="mt-1 space-y-1">
-                  <div className="flex items-center justify-center text-xs text-gray-600">
-                    <span>Registrado: {estoqueAtual}</span>
-                  </div>
-                  <div className="flex items-center justify-center text-xs text-orange-600">
-                    <span>Reservado: {estoqueReservado}</span>
-                  </div>
-                </div>
-              )}
-              
-              {contexto === 'despacho' && (
-                <div className="mt-1 flex items-center justify-center text-xs text-gray-600">
-                  <span>Despachado: {quantidadeDespachada}</span>
-                </div>
-              )}
+              <div className="mt-1 flex items-center justify-center text-xs text-gray-600">
+                <span>No despacho: {quantidadeNoDespacho}</span>
+              </div>
             </div>
           );
         })}
@@ -282,11 +228,6 @@ export const ResumoQuantidadeProdutos = ({
               ? `O produto ${produtosSemEstoque[0][0]} não possui estoque suficiente.`
               : `${produtosSemEstoque.length} produtos não possuem estoque suficiente.`
             }
-            {contexto === 'separacao' && (
-              <span className="block mt-1">
-                Considere produtos já separados ou despachados no cálculo.
-              </span>
-            )}
           </div>
         </div>
       )}
@@ -298,3 +239,4 @@ export const ResumoQuantidadeProdutos = ({
     </Card>
   );
 };
+
