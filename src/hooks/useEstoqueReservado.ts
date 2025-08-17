@@ -11,7 +11,7 @@ interface QuantidadeReservada {
 
 export const useEstoqueReservado = () => {
   const { pedidos } = useExpedicaoStore();
-  const { calcularQuantidadesPorProporcao } = useProporoesPadrao';
+  const { calcularQuantidadesPorProporcao } = useProporoesPadrao();
   const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
   
   const [quantidadesReservadas, setQuantidadesReservadas] = useState<{ [nome: string]: number }>({});
