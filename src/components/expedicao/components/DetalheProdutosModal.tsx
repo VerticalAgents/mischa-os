@@ -10,7 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Package, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import ProdutoNomeDisplay from "../ProdutoNomeDisplay";
 
 interface DetalheProdutosModalProps {
@@ -28,7 +27,6 @@ interface ProdutoQuantidade {
 export const DetalheProdutosModal = ({ open, onOpenChange, agendamento }: DetalheProdutosModalProps) => {
   const [produtos, setProdutos] = useState<ProdutoQuantidade[]>([]);
   const [loading, setLoading] = useState(false);
-  const { obterProporcoesParaPedido } = useSupabaseProporoesPadrao();
 
   useEffect(() => {
     if (!agendamento || !open) return;
@@ -48,26 +46,12 @@ export const DetalheProdutosModal = ({ open, onOpenChange, agendamento }: Detalh
           }));
           setProdutos(produtosPersonalizados);
         } else {
-          // Pedido padrão - calcular usando proporções
-          console.log('⚖️ Calculando proporções para quantidade total:', agendamento.quantidade_total);
-          const resultadosCalculo = await obterProporcoesParaPedido(agendamento.quantidade_total);
-          
-          console.log('📊 Resultados do cálculo de proporções:', resultadosCalculo);
-          
-          if (resultadosCalculo && resultadosCalculo.length > 0) {
-            const produtosPadrao = resultadosCalculo.map(item => ({
-              produto_id: item.produto_id,
-              produto_nome: item.produto_nome,
-              quantidade: item.quantidade
-            }));
-            setProdutos(produtosPadrao);
-          } else {
-            console.warn('⚠️ Nenhum resultado retornado do cálculo de proporções');
-            setProdutos([{
-              produto_nome: "Erro: Proporções não configuradas ou soma não é 100%",
-              quantidade: 0
-            }]);
-          }
+          // Pedido padrão - mostrar texto fixo para evitar loop
+          console.log('⚖️ Pedido padrão - mostrando configuração padrão');
+          setProdutos([{
+            produto_nome: "Produtos padrão conforme configuração",
+            quantidade: agendamento.quantidade_total
+          }]);
         }
       } catch (error) {
         console.error('❌ Erro ao calcular produtos:', error);
@@ -81,7 +65,7 @@ export const DetalheProdutosModal = ({ open, onOpenChange, agendamento }: Detalh
     };
 
     calcularProdutos();
-  }, [agendamento, open, obterProporcoesParaPedido]);
+  }, [agendamento, open]);
 
   if (!agendamento) return null;
 

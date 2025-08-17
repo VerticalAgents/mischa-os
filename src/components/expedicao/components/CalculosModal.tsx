@@ -13,6 +13,7 @@ import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { DetalheProdutosModal } from "./DetalheProdutosModal";
+import { ResumoUnidadesSeparadas } from "./ResumoUnidadesSeparadas";
 
 interface CalculosModalProps {
   open: boolean;
@@ -79,6 +80,12 @@ export const CalculosModal = ({ open, onOpenChange }: CalculosModalProps) => {
               Ferramenta para auxiliar no desenvolvimento visual do raciocínio de separação de pedidos.
             </DialogDescription>
           </DialogHeader>
+
+          {/* Card de Resumo de Unidades Separadas */}
+          <ResumoUnidadesSeparadas 
+            pedidosSeparados={pedidosSeparados} 
+            pedidosDespachados={pedidosDespachados} 
+          />
 
           <div className="grid grid-cols-2 gap-6">
             {/* Lista de Pedidos Separados */}
