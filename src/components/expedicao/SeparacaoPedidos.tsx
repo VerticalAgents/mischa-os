@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
@@ -16,13 +15,14 @@ export default function SeparacaoPedidos() {
     isLoading,
     getPedidosParaSeparacao,
     getPedidosProximoDia,
+    confirmarSeparacao,
     marcarTodosSeparados,
     ultimaAtualizacao
   } = useExpedicaoStore();
 
   const [activeSubTab, setActiveSubTab] = useState("todos");
   const { converterPedidoParaCard } = usePedidoConverter();
-  const { confirmarSeparacao, handleEditarAgendamento } = useAgendamentoActions();
+  const { handleEditarAgendamento } = useAgendamentoActions();
 
   const pedidosHoje = getPedidosParaSeparacao();
   const pedidosProximoDia = getPedidosProximoDia();
