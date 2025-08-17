@@ -1,5 +1,3 @@
-
-
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
@@ -55,29 +53,29 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
     return quantidadesPorProduto;
   };
 
-  // Calcular quantidades no despacho (pedidos separados prontos para despacho)
-  const calcularQuantidadesNoDespacho = async () => {
-    const quantidadesNoDespacho: { [nome: string]: number } = {};
+  // Calcular quantidades separadas (pedidos separados + despachados)
+  const calcularQuantidadesSeparadas = async () => {
+    const quantidadesSeparadas: { [nome: string]: number } = {};
     
-    // Filtrar pedidos que estão na aba de despacho (despachados)
-    const pedidosNoDespacho = todosPedidos.filter(pedido => 
-      pedido.substatus_pedido === 'Despachado'
+    // Filtrar pedidos que estão separados ou despachados
+    const pedidosSeparados = todosPedidos.filter(pedido => 
+      pedido.substatus_pedido === 'Separado' || pedido.substatus_pedido === 'Despachado'
     );
     
-    for (const pedido of pedidosNoDespacho) {
+    for (const pedido of pedidosSeparados) {
       if (pedido.tipo_pedido === 'Alterado' && pedido.itens_personalizados?.length > 0) {
         pedido.itens_personalizados.forEach((item: any) => {
           const nomeProduto = item.produto || item.nome || 'Produto desconhecido';
-          quantidadesNoDespacho[nomeProduto] = (quantidadesNoDespacho[nomeProduto] || 0) + item.quantidade;
+          quantidadesSeparadas[nomeProduto] = (quantidadesSeparadas[nomeProduto] || 0) + item.quantidade;
         });
       } else {
         try {
           const quantidadesProporcao = await calcularQuantidadesPorProporcao(pedido.quantidade_total);
           quantidadesProporcao.forEach(item => {
-            quantidadesNoDespacho[item.produto] = (quantidadesNoDespacho[item.produto] || 0) + item.quantidade;
+            quantidadesSeparadas[item.produto] = (quantidadesSeparadas[item.produto] || 0) + item.quantidade;
           });
         } catch (error) {
-          console.warn('Erro ao calcular proporções para pedido no despacho:', pedido.id, error);
+          console.warn('Erro ao calcular proporções para pedido separado:', pedido.id, error);
           
           const produtosAtivos = produtos.filter(p => p.ativo);
           if (produtosAtivos.length > 0) {
@@ -86,18 +84,18 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
             
             produtosAtivos.forEach((produto, index) => {
               const quantidade = quantidadePorProduto + (index < resto ? 1 : 0);
-              quantidadesNoDespacho[produto.nome] = (quantidadesNoDespacho[produto.nome] || 0) + quantidade;
+              quantidadesSeparadas[produto.nome] = (quantidadesSeparadas[produto.nome] || 0) + quantidade;
             });
           }
         }
       }
     }
     
-    return quantidadesNoDespacho;
+    return quantidadesSeparadas;
   };
 
   const [quantidadesTotais, setQuantidadesTotais] = React.useState<{ [nome: string]: number }>({});
-  const [quantidadesNoDespacho, setQuantidadesNoDespacho] = React.useState<{ [nome: string]: number }>({});
+  const [quantidadesSeparadas, setQuantidadesSeparadas] = React.useState<{ [nome: string]: number }>({});
   const [calculando, setCalculando] = React.useState(true);
   
   React.useEffect(() => {
@@ -106,12 +104,12 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
       
       setCalculando(true);
       try {
-        const [quantidades, quantidadesDespacho] = await Promise.all([
+        const [quantidades, quantidadesSep] = await Promise.all([
           calcularQuantidadesTotais(),
-          calcularQuantidadesNoDespacho()
+          calcularQuantidadesSeparadas()
         ]);
         setQuantidadesTotais(quantidades);
-        setQuantidadesNoDespacho(quantidadesDespacho);
+        setQuantidadesSeparadas(quantidadesSep);
       } catch (error) {
         console.error('Erro ao calcular quantidades:', error);
       } finally {
@@ -181,7 +179,7 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {produtosComQuantidade.map(([nomeProduto, quantidade]) => {
           const { temEstoque, estoqueAtual } = verificarEstoque(nomeProduto, quantidade);
-          const quantidadeNoDespacho = quantidadesNoDespacho[nomeProduto] || 0;
+          const quantidadeSeparada = quantidadesSeparadas[nomeProduto] || 0;
           
           return (
             <div 
@@ -210,7 +208,7 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
               </div>
               
               <div className="mt-1 flex items-center justify-center text-xs text-gray-600">
-                <span>No despacho: {quantidadeNoDespacho}</span>
+                <span>Separado: {quantidadeSeparada}</span>
               </div>
             </div>
           );
@@ -239,4 +237,3 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
     </Card>
   );
 };
-
