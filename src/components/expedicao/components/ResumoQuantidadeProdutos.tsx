@@ -121,14 +121,16 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
   }, [pedidos, loadingEstoque, produtos, todosPedidos]);
 
   // Verificar estoque disponível para cada produto
-  const verificarEstoque = (nomeProduto: string, quantidadeNecessaria: number) => {
+  const verificarEstoque = (nomeProduto: string, quantidadeNecessaria: number, quantidadeSeparada: number) => {
     const produto = obterProdutoPorNome(nomeProduto);
-    if (!produto) return { temEstoque: false, estoqueAtual: 0 };
+    if (!produto) return { temEstoque: false, estoqueDisponivel: 0 };
     
     const estoqueAtual = produto.estoque_atual || 0;
+    const estoqueDisponivel = estoqueAtual - quantidadeSeparada;
+    
     return {
-      temEstoque: estoqueAtual >= quantidadeNecessaria,
-      estoqueAtual
+      temEstoque: estoqueDisponivel >= quantidadeNecessaria,
+      estoqueDisponivel: Math.max(0, estoqueDisponivel) // Não mostrar valores negativos
     };
   };
 
@@ -137,7 +139,8 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
 
   // Verificar se há produtos com estoque insuficiente
   const produtosSemEstoque = produtosComQuantidade.filter(([nomeProduto, quantidade]) => {
-    const { temEstoque } = verificarEstoque(nomeProduto, quantidade);
+    const quantidadeSeparada = quantidadesSeparadas[nomeProduto] || 0;
+    const { temEstoque } = verificarEstoque(nomeProduto, quantidade, quantidadeSeparada);
     return !temEstoque;
   });
 
@@ -178,8 +181,8 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {produtosComQuantidade.map(([nomeProduto, quantidade]) => {
-          const { temEstoque, estoqueAtual } = verificarEstoque(nomeProduto, quantidade);
           const quantidadeSeparada = quantidadesSeparadas[nomeProduto] || 0;
+          const { temEstoque, estoqueDisponivel } = verificarEstoque(nomeProduto, quantidade, quantidadeSeparada);
           
           return (
             <div 
@@ -204,7 +207,7 @@ export const ResumoQuantidadeProdutos = ({ pedidos }: ResumoQuantidadeProdutosPr
                 temEstoque ? 'text-green-700' : 'text-red-700'
               }`}>
                 {!temEstoque && <AlertTriangle className="h-3 w-3" />}
-                <span>Estoque: {estoqueAtual}</span>
+                <span>Estoque: {estoqueDisponivel}</span>
               </div>
               
               <div className="mt-1 flex items-center justify-center text-xs text-gray-600">
