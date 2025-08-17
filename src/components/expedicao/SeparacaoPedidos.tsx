@@ -1,12 +1,14 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
-import { PedidoCard } from "./PedidoCard";
+import PedidoCard from "./PedidoCard";
 import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
 import { SeparacaoTabs } from "./components/SeparacaoTabs";
 import { PrintingActions } from "./components/PrintingActions";
 import { Package, Calendar, Clock, Users } from "lucide-react";
+import { usePedidoConverter } from "./hooks/usePedidoConverter";
+import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
 
 export default function SeparacaoPedidos() {
   const { 
@@ -18,9 +20,17 @@ export default function SeparacaoPedidos() {
     ultimaAtualizacao
   } = useExpedicaoStore();
 
+  const [activeSubTab, setActiveSubTab] = useState("todos");
+  const { converterPedidoParaCard } = usePedidoConverter();
+  const { confirmarSeparacao, handleEditarAgendamento } = useAgendamentoActions();
+
   const pedidosHoje = getPedidosParaSeparacao();
   const pedidosProximoDia = getPedidosProximoDia();
   const pedidosSeparados = pedidos.filter(p => p.substatus_pedido === 'Separado');
+
+  // Classificar pedidos por tipo
+  const pedidosPadrao = pedidosHoje.filter(p => p.tipo_pedido === 'Padrão');
+  const pedidosAlterados = pedidosHoje.filter(p => p.tipo_pedido === 'Alterado');
 
   console.log('📦 SeparacaoPedidos - Pedidos para resumo:', pedidosHoje);
 
@@ -74,7 +84,7 @@ export default function SeparacaoPedidos() {
           <div className="flex items-center gap-3">
             <Calendar className="h-8 w-8 text-yellow-600" />
             <div>
-              <h3 className="text-sm font-medium text-muted-foregreen">Próximo Dia</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">Próximo Dia</h3>
               <p className="text-2xl font-bold">{pedidosProximoDia.length}</p>
             </div>
           </div>
@@ -94,13 +104,25 @@ export default function SeparacaoPedidos() {
       </div>
 
       {/* Ações de Impressão */}
-      <PrintingActions pedidos={pedidosHoje} />
+      <PrintingActions 
+        activeSubTab={activeSubTab}
+        pedidosPadrao={pedidosPadrao}
+        pedidosAlterados={pedidosAlterados}
+        pedidosProximoDia={pedidosProximoDia}
+        todosPedidos={pedidosHoje}
+      />
 
       {/* Separação Tabs */}
       <SeparacaoTabs 
-        pedidosHoje={pedidosHoje}
+        activeSubTab={activeSubTab}
+        setActiveSubTab={setActiveSubTab}
+        todosPedidos={pedidosHoje}
+        pedidosPadrao={pedidosPadrao}
+        pedidosAlterados={pedidosAlterados}
         pedidosProximoDia={pedidosProximoDia}
-        onMarcarTodosSeparados={marcarTodosSeparados}
+        converterPedidoParaCard={converterPedidoParaCard}
+        confirmarSeparacao={confirmarSeparacao}
+        handleEditarAgendamento={handleEditarAgendamento}
       />
     </div>
   );
