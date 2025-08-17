@@ -1,5 +1,4 @@
-
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useExpedicaoStore } from './useExpedicaoStore';
 import { useProporoesPadrao } from './useProporoesPadrao';
 import { useEstoqueProdutos } from './useEstoqueProdutos';
@@ -57,10 +56,10 @@ export const useEstoqueReservado = () => {
     return quantidadesPorProduto;
   }, [pedidos, calcularQuantidadesPorProporcao, produtos]);
 
-  const [quantidadesCalculadas, setQuantidadesCalculadas] = React.useState<{ [nome: string]: number }>({});
-  const [loading, setLoading] = React.useState(true);
+  const [quantidadesCalculadas, setQuantidadesCalculadas] = useState<{ [nome: string]: number }>({});
+  const [loading, setLoading] = useState(true);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const calcular = async () => {
       setLoading(true);
       try {
