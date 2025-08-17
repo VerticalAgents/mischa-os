@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Package, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
+import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import ProdutoNomeDisplay from "../ProdutoNomeDisplay";
 
 interface DetalheProdutosModalProps {
@@ -28,7 +28,7 @@ interface ProdutoQuantidade {
 export const DetalheProdutosModal = ({ open, onOpenChange, agendamento }: DetalheProdutosModalProps) => {
   const [produtos, setProdutos] = useState<ProdutoQuantidade[]>([]);
   const [loading, setLoading] = useState(false);
-  const { calcularQuantidadesPorProporcao, temProporcoesConfiguradas } = useProporoesPadrao();
+  const { obterProporcoesParaPedido } = useSupabaseProporoesPadrao();
 
   useEffect(() => {
     if (!agendamento || !open) return;
@@ -36,8 +36,11 @@ export const DetalheProdutosModal = ({ open, onOpenChange, agendamento }: Detalh
     const calcularProdutos = async () => {
       setLoading(true);
       try {
+        console.log('🔄 Calculando produtos para agendamento:', agendamento);
+
         if (agendamento.tipo_pedido === 'Alterado' && agendamento.itens_personalizados?.length > 0) {
           // Pedido alterado - usar itens personalizados
+          console.log('📦 Usando itens personalizados:', agendamento.itens_personalizados);
           const produtosPersonalizados = agendamento.itens_personalizados.map((item: any) => ({
             produto_id: item.produto_id,
             produto_nome: item.produto || item.nome || 'Produto não identificado',
@@ -46,22 +49,28 @@ export const DetalheProdutosModal = ({ open, onOpenChange, agendamento }: Detalh
           setProdutos(produtosPersonalizados);
         } else {
           // Pedido padrão - calcular usando proporções
-          if (temProporcoesConfiguradas()) {
-            const quantidadesCalculadas = await calcularQuantidadesPorProporcao(agendamento.quantidade_total);
-            const produtosPadrao = quantidadesCalculadas.map(item => ({
-              produto_nome: item.produto,
+          console.log('⚖️ Calculando proporções para quantidade total:', agendamento.quantidade_total);
+          const resultadosCalculo = await obterProporcoesParaPedido(agendamento.quantidade_total);
+          
+          console.log('📊 Resultados do cálculo de proporções:', resultadosCalculo);
+          
+          if (resultadosCalculo && resultadosCalculo.length > 0) {
+            const produtosPadrao = resultadosCalculo.map(item => ({
+              produto_id: item.produto_id,
+              produto_nome: item.produto_nome,
               quantidade: item.quantidade
             }));
             setProdutos(produtosPadrao);
           } else {
+            console.warn('⚠️ Nenhum resultado retornado do cálculo de proporções');
             setProdutos([{
-              produto_nome: "Erro: Proporções não configuradas",
+              produto_nome: "Erro: Proporções não configuradas ou soma não é 100%",
               quantidade: 0
             }]);
           }
         }
       } catch (error) {
-        console.error('Erro ao calcular produtos:', error);
+        console.error('❌ Erro ao calcular produtos:', error);
         setProdutos([{
           produto_nome: "Erro ao calcular produtos",
           quantidade: 0
@@ -72,7 +81,7 @@ export const DetalheProdutosModal = ({ open, onOpenChange, agendamento }: Detalh
     };
 
     calcularProdutos();
-  }, [agendamento, open, calcularQuantidadesPorProporcao, temProporcoesConfiguradas]);
+  }, [agendamento, open, obterProporcoesParaPedido]);
 
   if (!agendamento) return null;
 
@@ -111,7 +120,7 @@ export const DetalheProdutosModal = ({ open, onOpenChange, agendamento }: Detalh
             <div className="space-y-3">
               <h4 className="font-medium">Composição do Pedido:</h4>
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {produtos.map((produto, index) => (
+                {produtos.length > 0 ? produtos.map((produto, index) => (
                   <div key={index} className="flex justify-between items-center p-3 border rounded-lg">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
@@ -128,7 +137,11 @@ export const DetalheProdutosModal = ({ open, onOpenChange, agendamento }: Detalh
                       {produto.quantidade} un.
                     </Badge>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center py-4 text-gray-500">
+                    Nenhum produto encontrado
+                  </div>
+                )}
               </div>
               
               {produtos.length > 0 && (
