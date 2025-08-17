@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Search, Filter } from "lucide-react";
+import { RefreshCw, Search, Filter, Calculator } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +13,7 @@ import AgendamentoEditModal from "@/components/agendamento/AgendamentoEditModal"
 import { AgendamentoItem } from "@/components/agendamento/types";
 import { PrintingActions } from "./components/PrintingActions";
 import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
+import { CalculosModal } from "./components/CalculosModal";
 
 const SeparacaoPedidos = () => {
   const { 
@@ -35,6 +35,7 @@ const SeparacaoPedidos = () => {
 
   const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
+  const [calculosModalAberto, setCalculosModalAberto] = useState(false);
 
   useEffect(() => {
     carregarPedidos();
@@ -138,6 +139,15 @@ const SeparacaoPedidos = () => {
           </Badge>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            onClick={() => setCalculosModalAberto(true)} 
+            size="sm"
+            variant="outline"
+            className="flex items-center gap-1"
+          >
+            <Calculator className="h-4 w-4" />
+            Cálculos
+          </Button>
           <PrintingActions
             activeSubTab="todos"
             pedidosPadrao={pedidosFiltrados.filter(p => p.tipo_pedido === 'Padrão')}
@@ -223,6 +233,12 @@ const SeparacaoPedidos = () => {
         open={modalEditarAberto}
         onOpenChange={setModalEditarAberto}
         onSalvar={handleSalvarAgendamento}
+      />
+
+      {/* Modal de Cálculos */}
+      <CalculosModal
+        open={calculosModalAberto}
+        onOpenChange={setCalculosModalAberto}
       />
     </div>
   );
