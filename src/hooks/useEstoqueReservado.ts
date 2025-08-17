@@ -1,7 +1,8 @@
+
 import { useMemo, useState, useEffect } from 'react';
 import { useExpedicaoStore } from './useExpedicaoStore';
 import { useProporoesPadrao } from './useProporoesPadrao';
-import { useEstoqueProdutos } from './useEstoqueProdutos';
+import { useSupabaseProdutos } from './useSupabaseProdutos';
 
 interface QuantidadeReservada {
   produto: string;
@@ -11,7 +12,7 @@ interface QuantidadeReservada {
 export const useEstoqueReservado = () => {
   const { pedidos } = useExpedicaoStore();
   const { calcularQuantidadesPorProporcao } = useProporoesPadrao();
-  const { produtos } = useEstoqueProdutos();
+  const { produtos } = useSupabaseProdutos();
 
   const quantidadesReservadas = useMemo(async (): Promise<{ [nome: string]: number }> => {
     const quantidadesPorProduto: { [nome: string]: number } = {};
