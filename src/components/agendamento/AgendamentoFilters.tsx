@@ -23,8 +23,7 @@ export default function AgendamentoFilters({
     todos: agendamentos.length,
     previstos: agendamentos.filter(a => a.statusAgendamento === "Previsto").length,
     agendados: agendamentos.filter(a => a.statusAgendamento === "Agendado").length,
-    pedidosUnicos: agendamentos.filter(a => a.isPedidoUnico).length,
-    despachados: agendamentos.filter(a => a.statusAgendamento === "Agendado" && a.pedido?.statusPedido === "Despachado").length
+    pedidosUnicos: agendamentos.filter(a => a.isPedidoUnico).length
   };
 
   const agendamentosFiltrados = () => {
@@ -49,10 +48,6 @@ export default function AgendamentoFilters({
           <TabsTrigger value="pedidos-unicos" className="flex items-center gap-2">
             Pedidos Únicos
             <Badge variant="secondary">{contadores.pedidosUnicos}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="despachados" className="flex items-center gap-2">
-            Despachados
-            <Badge variant="secondary">{contadores.despachados}</Badge>
           </TabsTrigger>
         </TabsList>
       </Tabs>

@@ -37,7 +37,7 @@ export default function Agendamento() {
   useEffect(() => {
     // Verificar se há parâmetro de tab na URL e atualizar
     const tab = searchParams.get("tab");
-    if (tab && ["dashboard", "agendamentos", "representantes", "confirmacao", "pendentes", "atrasados", "despachados", "sem-data"].includes(tab)) {
+    if (tab && ["dashboard", "agendamentos", "despachados", "representantes", "confirmacao", "pendentes", "atrasados", "despachados", "sem-data"].includes(tab)) {
       changeTab(tab);
     }
   }, [searchParams, changeTab]);
@@ -80,12 +80,12 @@ export default function Agendamento() {
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="agendamentos">Agendamentos</TabsTrigger>
+          <TabsTrigger value="despachados">Despachado</TabsTrigger>
           <TabsTrigger value="representantes">Representantes</TabsTrigger>
           <TabsTrigger value="confirmacao">Confirmação de Reposição</TabsTrigger>
           {temAgendamentosPendentes && <TabsTrigger value="pendentes">Pendente</TabsTrigger>}
           {temAgendamentosAtrasados && <TabsTrigger value="atrasados">Atrasado</TabsTrigger>}
           {temAgendamentosSemData && <TabsTrigger value="sem-data">Sem Agendamento</TabsTrigger>}
-          {temAgendamentosDespachados && <TabsTrigger value="despachados">Despachado</TabsTrigger>}
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-4">
@@ -94,6 +94,10 @@ export default function Agendamento() {
         
         <TabsContent value="agendamentos" className="space-y-4">
           <TodosAgendamentos />
+        </TabsContent>
+        
+        <TabsContent value="despachados" className="space-y-4">
+          <AgendamentosDespachados />
         </TabsContent>
         
         <TabsContent value="representantes" className="space-y-4">
@@ -119,12 +123,6 @@ export default function Agendamento() {
         {temAgendamentosSemData && (
           <TabsContent value="sem-data" className="space-y-4">
             <AgendamentosSemData />
-          </TabsContent>
-        )}
-        
-        {temAgendamentosDespachados && (
-          <TabsContent value="despachados" className="space-y-4">
-            <AgendamentosDespachados />
           </TabsContent>
         )}
       </Tabs>

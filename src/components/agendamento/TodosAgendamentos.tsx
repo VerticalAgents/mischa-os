@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -42,17 +41,25 @@ export default function TodosAgendamentos() {
     setSortDirection(direction);
   };
 
+  // Filtrar agendamentos excluindo status "Agendar" e substatus "Despachado"
+  const agendamentosFiltrados = useMemo(() => {
+    return agendamentos.filter(a => 
+      a.statusAgendamento !== "Agendar" && 
+      a.pedido?.statusPedido !== "Despachado"
+    );
+  }, [agendamentos]);
+
   // Filtrar agendamentos com base no status selecionado
   const agendamentosFiltradosPorStatus = useMemo(() => {
     switch (filtroStatus) {
       case "previstos":
-        return agendamentos.filter(a => a.statusAgendamento === "Previsto");
+        return agendamentosFiltrados.filter(a => a.statusAgendamento === "Previsto");
       case "agendados":
-        return agendamentos.filter(a => a.statusAgendamento === "Agendado");
+        return agendamentosFiltrados.filter(a => a.statusAgendamento === "Agendado");
       default:
-        return agendamentos;
+        return agendamentosFiltrados;
     }
-  }, [agendamentos, filtroStatus]);
+  }, [agendamentosFiltrados, filtroStatus]);
 
   // Filtrar agendamentos com base no termo de pesquisa
   const filteredAgendamentos = useMemo(() => {
@@ -163,7 +170,7 @@ export default function TodosAgendamentos() {
       <AgendamentoFilters
         abaAtiva="todos"
         onAbaChange={() => {}}
-        agendamentos={agendamentos}
+        agendamentos={agendamentosFiltrados}
         filtroStatus={filtroStatus}
         onFiltroStatusChange={setFiltroStatus}
       />
