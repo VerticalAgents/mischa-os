@@ -43,6 +43,8 @@ export default function Agendamento() {
   }, [searchParams, changeTab]);
 
   useEffect(() => {
+    console.log('Verificando agendamentos para visibilidade das abas:', agendamentos);
+    
     // Verificar se há clientes sem agendamento
     const clientesComAgendamento = new Set(agendamentos.map(a => a.cliente.id));
     const clientesSemAgendamento = clientes.filter(cliente => cliente.ativo && !clientesComAgendamento.has(cliente.id));
@@ -58,11 +60,12 @@ export default function Agendamento() {
     });
     setTemAgendamentosAtrasados(agendamentosAtrasados.length > 0);
 
-    // Verificar se há agendamentos despachados - usando statusPedido do objeto pedido
-    const agendamentosDespachados = agendamentos.filter(agendamento => 
-      agendamento.statusAgendamento === "Agendado" && 
-      agendamento.pedido?.statusPedido === "Despachado"
-    );
+    // Verificar se há agendamentos despachados - usando substatus_pedido
+    const agendamentosDespachados = agendamentos.filter(agendamento => {
+      console.log(`Verificando ${agendamento.cliente.nome}: substatus_pedido = ${agendamento.substatus_pedido}`);
+      return agendamento.substatus_pedido === "Despachado";
+    });
+    console.log('Agendamentos despachados encontrados:', agendamentosDespachados.length);
     setTemAgendamentosDespachados(agendamentosDespachados.length > 0);
 
     // Verificar se há agendamentos sem data (status "Agendar")
@@ -80,7 +83,7 @@ export default function Agendamento() {
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="agendamentos">Agendamentos</TabsTrigger>
-          <TabsTrigger value="despachados">Despachado</TabsTrigger>
+          {temAgendamentosDespachados && <TabsTrigger value="despachados">Despachado</TabsTrigger>}
           <TabsTrigger value="representantes">Representantes</TabsTrigger>
           <TabsTrigger value="confirmacao">Confirmação de Reposição</TabsTrigger>
           {temAgendamentosPendentes && <TabsTrigger value="pendentes">Pendente</TabsTrigger>}
@@ -96,9 +99,11 @@ export default function Agendamento() {
           <TodosAgendamentos />
         </TabsContent>
         
-        <TabsContent value="despachados" className="space-y-4">
-          <AgendamentosDespachados />
-        </TabsContent>
+        {temAgendamentosDespachados && (
+          <TabsContent value="despachados" className="space-y-4">
+            <AgendamentosDespachados />
+          </TabsContent>
+        )}
         
         <TabsContent value="representantes" className="space-y-4">
           <AgendamentoRepresentantes />

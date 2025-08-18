@@ -38,12 +38,15 @@ export default function AgendamentosDespachados() {
     setSortDirection(direction);
   };
 
-  // Filtrar apenas agendamentos despachados - usando statusPedido do objeto pedido
+  // Filtrar apenas agendamentos despachados - usando substatus_pedido
   const agendamentosDespachados = useMemo(() => {
-    return agendamentos.filter(a => 
-      a.statusAgendamento === "Agendado" && 
-      a.pedido?.statusPedido === "Despachado"
-    );
+    console.log('Todos os agendamentos:', agendamentos);
+    const despachados = agendamentos.filter(a => {
+      console.log(`Cliente: ${a.cliente.nome}, Status: ${a.statusAgendamento}, Substatus: ${a.substatus_pedido}`);
+      return a.substatus_pedido === "Despachado";
+    });
+    console.log('Agendamentos despachados encontrados:', despachados);
+    return despachados;
   }, [agendamentos]);
 
   // Filtrar agendamentos com base no termo de pesquisa
