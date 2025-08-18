@@ -9,6 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { format, isToday, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
+import EditarAgendamentoDialog from "@/components/agendamento/EditarAgendamentoDialog";
+import { toast } from "sonner";
 
 interface DespachoProps {
   tipoFiltro: "hoje" | "atrasadas";
@@ -19,8 +22,19 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     pedidos, 
     isLoading, 
     carregarPedidos, 
-    confirmarDespacho 
+    confirmarDespacho,
+    confirmarEntrega,
+    confirmarRetorno,
+    retornarParaSeparacao
   } = useExpedicaoStore();
+
+  const {
+    modalEditarAberto,
+    setModalEditarAberto,
+    agendamentoParaEditar,
+    handleEditarAgendamento,
+    handleSalvarAgendamento
+  } = useAgendamentoActions();
 
   const [filtroTexto, setFiltroTexto] = useState("");
   const [filtroTipoPedido, setFiltroTipoPedido] = useState("todos");
@@ -29,8 +43,44 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     carregarPedidos();
   }, [carregarPedidos]);
 
-  const handleMarcarDespachado = async (pedidoId: string) => {
-    await confirmarDespacho(pedidoId);
+  const handleConfirmarDespacho = async (pedidoId: string) => {
+    try {
+      await confirmarDespacho(pedidoId);
+      toast.success("Despacho confirmado com sucesso!");
+    } catch (error) {
+      console.error('Erro ao confirmar despacho:', error);
+      toast.error("Erro ao confirmar despacho");
+    }
+  };
+
+  const handleConfirmarEntrega = async (pedidoId: string, observacao?: string) => {
+    try {
+      await confirmarEntrega(pedidoId, observacao);
+      toast.success("Entrega confirmada com sucesso!");
+    } catch (error) {
+      console.error('Erro ao confirmar entrega:', error);
+      toast.error("Erro ao confirmar entrega");
+    }
+  };
+
+  const handleConfirmarRetorno = async (pedidoId: string, observacao?: string) => {
+    try {
+      await confirmarRetorno(pedidoId, observacao);
+      toast.success("Retorno confirmado com sucesso!");
+    } catch (error) {
+      console.error('Erro ao confirmar retorno:', error);
+      toast.error("Erro ao confirmar retorno");
+    }
+  };
+
+  const handleRetornarParaSeparacao = async (pedidoId: string) => {
+    try {
+      await retornarParaSeparacao(pedidoId);
+      toast.success("Pedido retornado para separação!");
+    } catch (error) {
+      console.error('Erro ao retornar para separação:', error);
+      toast.error("Erro ao retornar para separação");
+    }
   };
 
   // Aplicar filtro por tipo (hoje ou atrasadas) com lógicas diferentes
@@ -137,12 +187,27 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
             <PedidoCard
               key={pedido.id}
               pedido={pedido}
-              onMarcarSeparado={() => handleMarcarDespachado(pedido.id)}
+              showDespachoActions={true}
               showProdutosList={true}
+              onEditarAgendamento={() => handleEditarAgendamento(pedido.id)}
+              onConfirmarDespacho={() => handleConfirmarDespacho(pedido.id)}
+              onConfirmarEntrega={(observacao) => handleConfirmarEntrega(pedido.id, observacao)}
+              onConfirmarRetorno={(observacao) => handleConfirmarRetorno(pedido.id, observacao)}
+              onRetornarParaSeparacao={() => handleRetornarParaSeparacao(pedido.id)}
             />
           ))
         )}
       </div>
+
+      {/* Modal de Edição de Agendamento */}
+      {agendamentoParaEditar && (
+        <EditarAgendamentoDialog
+          agendamento={agendamentoParaEditar}
+          open={modalEditarAberto}
+          onOpenChange={setModalEditarAberto}
+          onSalvar={handleSalvarAgendamento}
+        />
+      )}
     </div>
   );
 };
