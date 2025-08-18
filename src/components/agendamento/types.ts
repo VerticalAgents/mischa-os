@@ -6,5 +6,6 @@ export interface AgendamentoItem {
   pedido?: Pedido;
   dataReposicao: Date;
   statusAgendamento: "Agendar" | "Previsto" | "Agendado";
+  substatus_pedido?: string;
   isPedidoUnico: boolean;
 }
