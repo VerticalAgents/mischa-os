@@ -2,9 +2,10 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, X, Edit, Eye } from "lucide-react";
+import { Check, X, Edit, Eye, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 
 interface HistoricoTableProps {
   registros: any[];
@@ -21,6 +22,8 @@ export const HistoricoTable = ({
   isLoading,
   showClienteColumn = true
 }: HistoricoTableProps) => {
+  const navigate = useNavigate();
+
   if (isLoading) {
     return (
       <div className="text-center py-8">
@@ -47,6 +50,11 @@ export const HistoricoTable = ({
     }).join(', ');
   };
 
+  const handleRedirectToCliente = (clienteId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/clientes?cliente=${clienteId}`);
+  };
+
   return (
     <Table>
       <TableHeader>
@@ -70,7 +78,18 @@ export const HistoricoTable = ({
             </TableCell>
             {showClienteColumn && (
               <TableCell className="font-medium">
-                {registro.cliente_nome}
+                <div className="flex items-center gap-2">
+                  <span>{registro.cliente_nome}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-1 h-6 w-6 opacity-60 hover:opacity-100"
+                    onClick={(e) => handleRedirectToCliente(registro.cliente_id, e)}
+                    title="Ver informações do cliente"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                </div>
               </TableCell>
             )}
             <TableCell>
