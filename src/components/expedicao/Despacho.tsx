@@ -9,6 +9,7 @@ import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
 import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
 import { DebugInfo } from "./components/DebugInfo";
 import { DespachoFilters } from "./components/DespachoFilters";
+import { ResumoStatusCard } from "./components/ResumoStatusCard";
 import PedidoCard from "./PedidoCard";
 import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
 import { OrganizadorEntregas } from "./OrganizadorEntregas";
@@ -163,11 +164,17 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     );
   }
 
-  const titulo = tipoFiltro === "hoje" ? "Entregas de Hoje" : "Entregas Atrasadas";
+  const titulo = tipoFiltro === "hoje" ? "Entregas de Hoje" : "Entregas Pendentes";
   const icone = tipoFiltro === "hoje" ? <Truck className="h-5 w-5" /> : <Package className="h-5 w-5" />;
 
   return (
     <div className="space-y-4">
+      {/* Card de Resumo de Status */}
+      <ResumoStatusCard 
+        tipo={tipoFiltro === "hoje" ? "hoje" : "pendentes"} 
+        pedidos={pedidosFiltrados} 
+      />
+
       {/* Filtros de Despacho */}
       <DespachoFilters
         filtroTexto={filtroTexto}
@@ -242,10 +249,10 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 key={pedido.id}
                 pedido={{
                   ...converterPedidoParaCard(pedido),
-                  cliente_id: String(pedido.cliente_id) // Ensure cliente_id is included
+                  cliente_id: String(pedido.cliente_id)
                 }}
-                onMarcarSeparado={() => {}} // Não usado no despacho
-                onEditarAgendamento={() => handleEditarAgendamento(String(pedido.id))} // Agora funciona no despacho também
+                onMarcarSeparado={() => {}}
+                onEditarAgendamento={() => handleEditarAgendamento(String(pedido.id))}
                 showDespachoActions={true}
                 showReagendarButton={tipoFiltro === "atrasadas" && pedido.substatus_pedido === 'Agendado'}
                 onConfirmarDespacho={() => confirmarDespacho(String(pedido.id))}
@@ -259,7 +266,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
           <div className="text-center py-6 text-muted-foreground">
             {tipoFiltro === "hoje" 
               ? "Não há pedidos agendados para entrega hoje."
-              : "Não há pedidos atrasados pendentes."
+              : "Não há pedidos pendentes."
             }
           </div>
         )}
@@ -283,7 +290,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
           id: p.id,
           cliente_nome: p.cliente_nome,
           cliente_endereco: p.cliente_endereco,
-          link_google_maps: (p as any).link_google_maps // Casting temporário, pois o tipo não inclui este campo ainda
+          link_google_maps: (p as any).link_google_maps
         }))}
       />
     </div>

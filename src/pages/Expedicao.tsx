@@ -7,6 +7,7 @@ import { HistoricoEntregas } from "@/components/expedicao/HistoricoEntregas";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import { useSearchParams, useNavigate } from "react-router-dom";
+
 export default function Expedicao() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -76,13 +77,14 @@ export default function Expedicao() {
         </TabsContent>
         
         <TabsContent value="despacho" className="space-y-4" forceMount={activeTab === "despacho" ? true : undefined}>
-          {activeTab === "despacho" && <Tabs value={entregasTab} onValueChange={handleEntregasTabChange} className="space-y-4">
+          {activeTab === "despacho" && (
+            <Tabs value={entregasTab} onValueChange={handleEntregasTabChange} className="space-y-4">
               <TabsList className="w-full border-b bg-white">
                 <TabsTrigger value="hoje" className="data-[state=active]:bg-green-500/10 data-[state=active]:text-green-700">
                   🟢 Entregas de Hoje
                 </TabsTrigger>
                 <TabsTrigger value="atrasadas" className="data-[state=active]:bg-yellow-500/10 data-[state=active]:text-yellow-700">
-                  🟡 Entregas Atrasadas
+                  🟡 Entregas Pendentes
                 </TabsTrigger>
               </TabsList>
 
@@ -93,7 +95,8 @@ export default function Expedicao() {
               <TabsContent value="atrasadas" forceMount={entregasTab === "atrasadas" ? true : undefined}>
                 {entregasTab === "atrasadas" && <Despacho tipoFiltro="atrasadas" />}
               </TabsContent>
-            </Tabs>}
+            </Tabs>
+          )}
         </TabsContent>
         
         <TabsContent value="historico" className="space-y-4" forceMount={activeTab === "historico" ? true : undefined}>
