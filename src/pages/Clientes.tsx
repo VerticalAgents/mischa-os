@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -18,6 +17,7 @@ export default function Clientes() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clienteToDelete, setClienteToDelete] = useState<string | null>(null);
+  const [shouldClearSelection, setShouldClearSelection] = useState(true);
   
   const {
     filtros,
@@ -32,10 +32,13 @@ export default function Clientes() {
     getClientePorId
   } = useClienteStore();
 
-  // Clear selected client when component mounts to always show list view
+  // Only clear selected client on initial mount, not on every render
   useEffect(() => {
-    selecionarCliente(null);
-  }, [selecionarCliente]);
+    if (shouldClearSelection) {
+      selecionarCliente(null);
+      setShouldClearSelection(false);
+    }
+  }, [selecionarCliente, shouldClearSelection]);
 
   // Carregar clientes ao montar o componente
   useEffect(() => {
@@ -76,7 +79,6 @@ export default function Clientes() {
 
   const handleFormClose = () => {
     setIsFormOpen(false);
-    // Trigger a refresh of the client list after closing the form
     setRefreshTrigger(prev => prev + 1);
   };
   
@@ -86,7 +88,6 @@ export default function Clientes() {
   
   const handleBackToList = () => {
     selecionarCliente(null);
-    // Reload clients when returning to list to ensure data is fresh
     setRefreshTrigger(prev => prev + 1);
   };
 
