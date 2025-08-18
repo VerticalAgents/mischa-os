@@ -17,7 +17,7 @@ export interface CriticalAlert {
 }
 
 export const useCriticalAlerts = () => {
-  const { pedidosSeparacao } = useExpedicaoStore();
+  const { pedidos } = useExpedicaoStore();
   const { clientesParaConfirmacao } = useConfirmacaoReposicaoStore();
   const { produtos } = useEstoqueProdutos();
 
@@ -44,8 +44,8 @@ export const useCriticalAlerts = () => {
 
     // Entregas atrasadas
     const hoje = startOfDay(new Date());
-    const entregasAtrasadas = pedidosSeparacao.filter(p => 
-      isBefore(new Date(p.data_entrega), hoje) && 
+    const entregasAtrasadas = pedidos.filter(p => 
+      isBefore(new Date(p.data_prevista_entrega), hoje) && 
       !['Entregue', 'Despachado'].includes(p.substatus_pedido)
     );
     
@@ -82,7 +82,7 @@ export const useCriticalAlerts = () => {
       const severityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
       return severityOrder[b.severity] - severityOrder[a.severity];
     });
-  }, [pedidosSeparacao, clientesParaConfirmacao, produtos]);
+  }, [pedidos, clientesParaConfirmacao, produtos]);
 
   return { alerts };
 };

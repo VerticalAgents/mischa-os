@@ -7,7 +7,7 @@ import { useSupabaseHistoricoProducao } from './useSupabaseHistoricoProducao';
 import { format, isToday, isBefore, startOfDay } from 'date-fns';
 
 export const useDashboardMetrics = () => {
-  const { pedidosSeparacao } = useExpedicaoStore();
+  const { pedidos } = useExpedicaoStore();
   const { clientesParaConfirmacao } = useConfirmacaoReposicaoStore();
   const { produtos: produtosEstoque } = useEstoqueProdutos();
   const { historico } = useSupabaseHistoricoProducao();
@@ -15,13 +15,13 @@ export const useDashboardMetrics = () => {
   // Agendamentos críticos
   const agendamentosCriticos = useMemo(() => {
     const hoje = startOfDay(new Date());
-    const pedidosHoje = pedidosSeparacao.filter(pedido => {
-      const dataEntrega = new Date(pedido.data_entrega);
+    const pedidosHoje = pedidos.filter(pedido => {
+      const dataEntrega = new Date(pedido.data_prevista_entrega);
       return isToday(dataEntrega) || isBefore(dataEntrega, hoje);
     });
     
     const atrasados = pedidosHoje.filter(pedido => 
-      isBefore(new Date(pedido.data_entrega), hoje)
+      isBefore(new Date(pedido.data_prevista_entrega), hoje)
     );
 
     return {
@@ -29,19 +29,19 @@ export const useDashboardMetrics = () => {
       atrasados: atrasados.length,
       percentualAtraso: pedidosHoje.length > 0 ? (atrasados.length / pedidosHoje.length) * 100 : 0
     };
-  }, [pedidosSeparacao]);
+  }, [pedidos]);
 
   // Separação de pedidos
   const separacaoPedidos = useMemo(() => {
-    const aguardandoSeparacao = pedidosSeparacao.filter(p => p.substatus_pedido === 'Agendado');
-    const separados = pedidosSeparacao.filter(p => p.substatus_pedido === 'Separado');
+    const aguardandoSeparacao = pedidos.filter(p => p.substatus_pedido === 'Agendado');
+    const separados = pedidos.filter(p => p.substatus_pedido === 'Separado');
     
     return {
       aguardando: aguardandoSeparacao.length,
       separados: separados.length,
-      total: pedidosSeparacao.length
+      total: pedidos.length
     };
-  }, [pedidosSeparacao]);
+  }, [pedidos]);
 
   // Confirmações pendentes
   const confirmacoesPendentes = useMemo(() => {
