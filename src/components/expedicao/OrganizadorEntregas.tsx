@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -183,9 +182,11 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
     }
   }, [open, entregas]);
 
-  // Filtrar entregas selecionadas
+  // Filtrar entregas selecionadas e ordenar por ordem
   useEffect(() => {
-    const selecionadas = entregasOrganizadas.filter(entrega => entrega.selecionada);
+    const selecionadas = entregasOrganizadas
+      .filter(entrega => entrega.selecionada)
+      .sort((a, b) => a.ordem - b.ordem);
     setEntregasSelecionadas(selecionadas);
   }, [entregasOrganizadas]);
 
@@ -243,48 +244,82 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
   };
 
   const handleSelecionarEntrega = (id: string, selecionada: boolean) => {
-    setEntregasOrganizadas(prev => 
-      prev.map(entrega => 
+    setEntregasOrganizadas(prev => {
+      const novoEstado = prev.map(entrega => 
         entrega.id === id ? { ...entrega, selecionada } : entrega
-      )
-    );
+      );
+
+      // Se estamos selecionando uma entrega, dar a ela a próxima ordem disponível
+      if (selecionada) {
+        const entregasSelecionadasCount = novoEstado.filter(e => e.selecionada && e.id !== id).length;
+        return novoEstado.map(entrega => 
+          entrega.id === id ? { ...entrega, ordem: entregasSelecionadasCount + 1 } : entrega
+        );
+      }
+
+      // Se estamos desselecionando, reordenar as ordens das entregas restantes
+      const entregasSelecionadasRestantes = novoEstado
+        .filter(e => e.selecionada)
+        .sort((a, b) => a.ordem - b.ordem);
+
+      return novoEstado.map(entrega => {
+        if (!entrega.selecionada) return entrega;
+        const index = entregasSelecionadasRestantes.findIndex(e => e.id === entrega.id);
+        return { ...entrega, ordem: index + 1 };
+      });
+    });
   };
 
   const handleReordenarEntrega = (entregaId: string, novaOrdem: number) => {
-    const entregaAtual = entregasSelecionadas.find(e => e.id === entregaId);
-    if (!entregaAtual) return;
-
-    const ordemAtual = entregaAtual.ordem;
-    if (ordemAtual === novaOrdem) return;
-
-    // Reordenar apenas dentro das entregas selecionadas
-    const novasEntregasSelecionadas = [...entregasSelecionadas];
-    const entregaMovida = novasEntregasSelecionadas.find(e => e.id === entregaId);
-    if (!entregaMovida) return;
-
-    // Remove a entrega da posição atual e insere na nova posição
-    const entregasReordenadas = novasEntregasSelecionadas.filter(e => e.id !== entregaId);
-    entregasReordenadas.splice(novaOrdem - 1, 0, entregaMovida);
-
-    // Atualiza as ordens
-    const entregasAtualizadas = entregasReordenadas.map((entrega, index) => ({
-      ...entrega,
-      ordem: index + 1
-    }));
-
-    // Atualiza o estado principal mantendo as não selecionadas
+    console.log(`🔄 Reordenando entrega ${entregaId} para posição ${novaOrdem}`);
+    
     setEntregasOrganizadas(prev => {
-      const novoEstado = [...prev];
-      entregasAtualizadas.forEach(entregaAtualizada => {
-        const index = novoEstado.findIndex(e => e.id === entregaAtualizada.id);
-        if (index !== -1) {
-          novoEstado[index] = entregaAtualizada;
-        }
+      // Primeiro, obter todas as entregas selecionadas ordenadas
+      const entregasSelecionadas = prev
+        .filter(e => e.selecionada)
+        .sort((a, b) => a.ordem - b.ordem);
+
+      console.log('📋 Entregas selecionadas antes da reordenação:', entregasSelecionadas.map(e => ({ id: e.id, nome: e.clienteNome, ordem: e.ordem })));
+
+      // Encontrar a entrega que está sendo movida
+      const entregaMovida = entregasSelecionadas.find(e => e.id === entregaId);
+      if (!entregaMovida) {
+        console.warn('⚠️ Entrega não encontrada para reordenação');
+        return prev;
+      }
+
+      const ordemAtual = entregasSelecionadas.findIndex(e => e.id === entregaId) + 1;
+      console.log(`📍 Ordem atual: ${ordemAtual}, Nova ordem: ${novaOrdem}`);
+
+      if (ordemAtual === novaOrdem) {
+        console.log('✅ Mesma posição, nenhuma alteração necessária');
+        return prev;
+      }
+
+      // Criar nova lista reordenada
+      const novaLista = [...entregasSelecionadas];
+      
+      // Remover a entrega da posição atual
+      novaLista.splice(ordemAtual - 1, 1);
+      
+      // Inserir na nova posição
+      novaLista.splice(novaOrdem - 1, 0, entregaMovida);
+
+      console.log('📋 Nova ordem das entregas:', novaLista.map((e, index) => ({ id: e.id, nome: e.clienteNome, novaOrdem: index + 1 })));
+
+      // Atualizar o estado com as novas ordens
+      return prev.map(entrega => {
+        if (!entrega.selecionada) return entrega;
+        
+        const novoIndex = novaLista.findIndex(e => e.id === entrega.id);
+        return { ...entrega, ordem: novoIndex + 1 };
       });
-      return novoEstado;
     });
 
-    toast.success(`${entregaAtual.clienteNome} movido para posição ${novaOrdem}`);
+    const entregaMovida = entregasOrganizadas.find(e => e.id === entregaId);
+    if (entregaMovida) {
+      toast.success(`${entregaMovida.clienteNome} movido para posição ${novaOrdem}`);
+    }
   };
 
   const copiarTexto = async () => {
@@ -344,86 +379,92 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
               
               <div className="flex-1 overflow-y-auto">
                 <div className="space-y-3">
-                  {entregasOrganizadas.map((entrega) => (
-                    <Card key={entrega.id} className={`p-4 ${!entrega.selecionada ? 'opacity-50 bg-gray-50' : ''}`}>
-                      <div className="flex items-start gap-3">
-                        <div className="flex items-center mt-1">
-                          <Checkbox
-                            checked={entrega.selecionada}
-                            onCheckedChange={(checked) => handleSelecionarEntrega(entrega.id, !!checked)}
-                          />
-                        </div>
-                        
-                        <div className="flex-1 space-y-3">
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="flex-1">
-                              <span className="font-medium text-lg text-gray-900">
-                                {entrega.selecionada ? String(entregasSelecionadas.findIndex(e => e.id === entrega.id) + 1).padStart(2, '0') : '--'}. {entrega.clienteNome}
-                              </span>
-                              <div className="text-sm text-gray-600 mt-1">
-                                <span className="font-medium">Rep:</span> {entrega.representante}
+                  {entregasOrganizadas.map((entrega) => {
+                    const posicaoAtual = entrega.selecionada 
+                      ? entregasSelecionadas.findIndex(e => e.id === entrega.id) + 1 
+                      : 0;
+
+                    return (
+                      <Card key={entrega.id} className={`p-4 ${!entrega.selecionada ? 'opacity-50 bg-gray-50' : ''}`}>
+                        <div className="flex items-start gap-3">
+                          <div className="flex items-center mt-1">
+                            <Checkbox
+                              checked={entrega.selecionada}
+                              onCheckedChange={(checked) => handleSelecionarEntrega(entrega.id, !!checked)}
+                            />
+                          </div>
+                          
+                          <div className="flex-1 space-y-3">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex-1">
+                                <span className="font-medium text-lg text-gray-900">
+                                  {entrega.selecionada ? String(posicaoAtual).padStart(2, '0') : '--'}. {entrega.clienteNome}
+                                </span>
+                                <div className="text-sm text-gray-600 mt-1">
+                                  <span className="font-medium">Rep:</span> {entrega.representante}
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2">
+                                {!entrega.googleMapsLink && (
+                                  <div className="flex items-center gap-1 text-red-600 text-sm">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    Sem endereço
+                                  </div>
+                                )}
+                                
+                                {/* Dropdown para reordenar - só habilitado se selecionada */}
+                                <Select 
+                                  value={entrega.selecionada ? posicaoAtual.toString() : ''}
+                                  onValueChange={(value) => handleReordenarEntrega(entrega.id, parseInt(value))}
+                                  disabled={!entrega.selecionada}
+                                >
+                                  <SelectTrigger className="w-24 h-8">
+                                    <div className="flex items-center gap-1">
+                                      <ArrowUpDown className="h-3 w-3" />
+                                      <SelectValue />
+                                    </div>
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-white border shadow-lg z-50 max-h-60 overflow-y-auto">
+                                    {Array.from({ length: entregasSelecionadas.length }, (_, i) => i + 1).map((num) => (
+                                      <SelectItem key={num} value={num.toString()}>
+                                        {num}º
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
                             </div>
-                            
-                            <div className="flex items-center gap-2">
-                              {!entrega.googleMapsLink && (
-                                <div className="flex items-center gap-1 text-red-600 text-sm">
-                                  <AlertTriangle className="h-4 w-4" />
-                                  Sem endereço
+
+                            {/* Informações adicionais */}
+                            <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                              <div><span className="font-medium">Cobrança:</span> {entrega.tipoCobranca}</div>
+                              <div><span className="font-medium">Pagamento:</span> {entrega.formaPagamento}</div>
+                              <div><span className="font-medium">Nota Fiscal:</span> {entrega.emiteNotaFiscal ? 'Sim' : 'Não'}</div>
+                              {entrega.precosCategorias && entrega.precosCategorias.length > 0 && (
+                                <div className="col-span-2">
+                                  <span className="font-medium">Preços:</span> {entrega.precosCategorias.map(p => `${p.categoria}: R$ ${p.preco.toFixed(2)}`).join(', ')}
                                 </div>
                               )}
-                              
-                              {/* Dropdown para reordenar - só habilitado se selecionada */}
-                              <Select 
-                                value={entrega.selecionada ? (entregasSelecionadas.findIndex(e => e.id === entrega.id) + 1).toString() : ''}
-                                onValueChange={(value) => handleReordenarEntrega(entrega.id, parseInt(value))}
-                                disabled={!entrega.selecionada}
-                              >
-                                <SelectTrigger className="w-24 h-8">
-                                  <div className="flex items-center gap-1">
-                                    <ArrowUpDown className="h-3 w-3" />
-                                    <SelectValue />
-                                  </div>
-                                </SelectTrigger>
-                                <SelectContent className="bg-white border shadow-lg z-50">
-                                  {Array.from({ length: entregasSelecionadas.length }, (_, i) => i + 1).map((num) => (
-                                    <SelectItem key={num} value={num.toString()}>
-                                      {num}º
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                            </div>
+                            
+                            <Textarea
+                              placeholder="Observação (opcional, máx. 200 caracteres)"
+                              value={entrega.observacao}
+                              onChange={(e) => handleObservacaoChange(entrega.id, e.target.value)}
+                              className="min-h-[60px] resize-none"
+                              maxLength={200}
+                              disabled={!entrega.selecionada}
+                            />
+                            
+                            <div className="text-sm text-gray-500">
+                              {entrega.observacao.length}/200 caracteres
                             </div>
                           </div>
-
-                          {/* Informações adicionais */}
-                          <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                            <div><span className="font-medium">Cobrança:</span> {entrega.tipoCobranca}</div>
-                            <div><span className="font-medium">Pagamento:</span> {entrega.formaPagamento}</div>
-                            <div><span className="font-medium">Nota Fiscal:</span> {entrega.emiteNotaFiscal ? 'Sim' : 'Não'}</div>
-                            {entrega.precosCategorias && entrega.precosCategorias.length > 0 && (
-                              <div className="col-span-2">
-                                <span className="font-medium">Preços:</span> {entrega.precosCategorias.map(p => `${p.categoria}: R$ ${p.preco.toFixed(2)}`).join(', ')}
-                              </div>
-                            )}
-                          </div>
-                          
-                          <Textarea
-                            placeholder="Observação (opcional, máx. 200 caracteres)"
-                            value={entrega.observacao}
-                            onChange={(e) => handleObservacaoChange(entrega.id, e.target.value)}
-                            className="min-h-[60px] resize-none"
-                            maxLength={200}
-                            disabled={!entrega.selecionada}
-                          />
-                          
-                          <div className="text-sm text-gray-500">
-                            {entrega.observacao.length}/200 caracteres
-                          </div>
                         </div>
-                      </div>
-                    </Card>
-                  ))}
+                      </Card>
+                    );
+                  })}
                 </div>
               </div>
             </div>
