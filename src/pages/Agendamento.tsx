@@ -43,7 +43,12 @@ export default function Agendamento() {
   }, [searchParams, changeTab]);
 
   useEffect(() => {
-    console.log('Verificando agendamentos para visibilidade das abas:', agendamentos);
+    console.log('🔍 DEBUG: Verificando agendamentos para visibilidade das abas. Total de agendamentos:', agendamentos.length);
+    
+    // Log detalhado de cada agendamento
+    agendamentos.forEach(agendamento => {
+      console.log(`📋 Cliente: ${agendamento.cliente.nome} | Status: ${agendamento.statusAgendamento} | Substatus: ${agendamento.substatus_pedido || 'undefined'}`);
+    });
     
     // Verificar se há clientes sem agendamento
     const clientesComAgendamento = new Set(agendamentos.map(a => a.cliente.id));
@@ -62,10 +67,13 @@ export default function Agendamento() {
 
     // Verificar se há agendamentos despachados - usando substatus_pedido
     const agendamentosDespachados = agendamentos.filter(agendamento => {
-      console.log(`Verificando ${agendamento.cliente.nome}: substatus_pedido = ${agendamento.substatus_pedido}`);
-      return agendamento.substatus_pedido === "Despachado";
+      const ehDespachado = agendamento.substatus_pedido === "Despachado";
+      if (ehDespachado) {
+        console.log(`✅ DESPACHADO ENCONTRADO: ${agendamento.cliente.nome}`);
+      }
+      return ehDespachado;
     });
-    console.log('Agendamentos despachados encontrados:', agendamentosDespachados.length);
+    console.log(`🚚 Total de agendamentos despachados encontrados: ${agendamentosDespachados.length}`);
     setTemAgendamentosDespachados(agendamentosDespachados.length > 0);
 
     // Verificar se há agendamentos sem data (status "Agendar")
@@ -75,7 +83,7 @@ export default function Agendamento() {
     setTemAgendamentosSemData(agendamentosSemData.length > 0);
   }, [clientes, agendamentos]);
 
-  console.log('Estado das abas:', {
+  console.log('📊 Estado final das abas:', {
     temAgendamentosPendentes,
     temAgendamentosAtrasados, 
     temAgendamentosDespachados,

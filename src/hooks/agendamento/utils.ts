@@ -1,3 +1,4 @@
+
 import { AgendamentoCliente } from './types';
 import { AgendamentoItem } from '@/components/agendamento/types';
 
@@ -68,6 +69,7 @@ export const convertToAgendamentoItem = (agendamento: any, cliente: any): Agenda
     },
     dataReposicao: agendamento.data_proxima_reposicao ? parseLocalDate(agendamento.data_proxima_reposicao) : new Date(),
     statusAgendamento: agendamento.status_agendamento,
+    substatus_pedido: agendamento.substatus_pedido, // CORREÇÃO: Adicionar o mapeamento do substatus_pedido
     isPedidoUnico: false,
     pedido: {
       id: 0,
