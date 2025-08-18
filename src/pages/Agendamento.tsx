@@ -7,6 +7,7 @@ import TodosAgendamentos from "@/components/agendamento/TodosAgendamentos";
 import AgendamentosPendentes from "@/components/agendamento/AgendamentosPendentes";
 import AgendamentosAtrasados from "@/components/agendamento/AgendamentosAtrasados";
 import AgendamentosDespachados from "@/components/agendamento/AgendamentosDespachados";
+import AgendamentosSemData from "@/components/agendamento/AgendamentosSemData";
 import AgendamentoRepresentantes from "@/components/agendamento/AgendamentoRepresentantes";
 import NovaConfirmacaoReposicaoTab from "@/components/agendamento/NovaConfirmacaoReposicaoTab";
 import { useSearchParams } from "react-router-dom";
@@ -31,11 +32,12 @@ export default function Agendamento() {
   const [temAgendamentosPendentes, setTemAgendamentosPendentes] = useState(false);
   const [temAgendamentosAtrasados, setTemAgendamentosAtrasados] = useState(false);
   const [temAgendamentosDespachados, setTemAgendamentosDespachados] = useState(false);
+  const [temAgendamentosSemData, setTemAgendamentosSemData] = useState(false);
 
   useEffect(() => {
     // Verificar se há parâmetro de tab na URL e atualizar
     const tab = searchParams.get("tab");
-    if (tab && ["dashboard", "agendamentos", "representantes", "confirmacao", "pendentes", "atrasados", "despachados"].includes(tab)) {
+    if (tab && ["dashboard", "agendamentos", "representantes", "confirmacao", "pendentes", "atrasados", "despachados", "sem-data"].includes(tab)) {
       changeTab(tab);
     }
   }, [searchParams, changeTab]);
@@ -62,6 +64,12 @@ export default function Agendamento() {
       agendamento.pedido?.statusPedido === "Despachado"
     );
     setTemAgendamentosDespachados(agendamentosDespachados.length > 0);
+
+    // Verificar se há agendamentos sem data (status "Agendar")
+    const agendamentosSemData = agendamentos.filter(agendamento => 
+      agendamento.statusAgendamento === "Agendar"
+    );
+    setTemAgendamentosSemData(agendamentosSemData.length > 0);
   }, [clientes, agendamentos]);
 
   return (
@@ -76,6 +84,7 @@ export default function Agendamento() {
           <TabsTrigger value="confirmacao">Confirmação de Reposição</TabsTrigger>
           {temAgendamentosPendentes && <TabsTrigger value="pendentes">Pendente</TabsTrigger>}
           {temAgendamentosAtrasados && <TabsTrigger value="atrasados">Atrasado</TabsTrigger>}
+          {temAgendamentosSemData && <TabsTrigger value="sem-data">Sem Agendamento</TabsTrigger>}
           {temAgendamentosDespachados && <TabsTrigger value="despachados">Despachado</TabsTrigger>}
         </TabsList>
         
@@ -104,6 +113,12 @@ export default function Agendamento() {
         {temAgendamentosAtrasados && (
           <TabsContent value="atrasados" className="space-y-4">
             <AgendamentosAtrasados />
+          </TabsContent>
+        )}
+        
+        {temAgendamentosSemData && (
+          <TabsContent value="sem-data" className="space-y-4">
+            <AgendamentosSemData />
           </TabsContent>
         )}
         
