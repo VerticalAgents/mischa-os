@@ -101,10 +101,11 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
   const hasValidationError = tipoPedido === "Alterado" && somaQuantidadesProdutos !== quantidadeTotal;
 
   const handleSalvar = async () => {
-    if (!proximaDataReposicao) {
+    // NOVA VALIDAÇÃO: Permitir data vazia apenas quando status for "Agendar"
+    if (statusAgendamento !== 'Agendar' && !proximaDataReposicao) {
       toast({
         title: "Data obrigatória",
-        description: "Por favor, selecione a data de reposição",
+        description: "Data de reposição é obrigatória para status 'Previsto' ou 'Agendado'",
         variant: "destructive"
       });
       return;
@@ -121,7 +122,8 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
 
     setIsLoading(true);
     try {
-      const dataReposicao = parseDateFromInput(proximaDataReposicao);
+      // Permitir data null quando status for "Agendar" e data estiver vazia
+      const dataReposicao = proximaDataReposicao ? parseDateFromInput(proximaDataReposicao) : null;
       
       // Log detalhado dos dados que serão enviados
       const dadosParaSalvar = {
@@ -146,7 +148,9 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
 
       toast({
         title: "Sucesso",
-        description: "Agendamento salvo com sucesso"
+        description: statusAgendamento === 'Agendar' && !dataReposicao 
+          ? "Agendamento salvo sem data definida" 
+          : "Agendamento salvo com sucesso"
       });
 
       // Recarregar lista de clientes para atualizar status
@@ -218,13 +222,23 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="dataReposicao">Data de Reposição</Label>
+          <Label htmlFor="dataReposicao">
+            Data de Reposição
+            {statusAgendamento === 'Agendar' && (
+              <span className="text-sm text-muted-foreground ml-2">(opcional para status "Agendar")</span>
+            )}
+          </Label>
           <Input
             id="dataReposicao"
             type="date"
             value={proximaDataReposicao}
             onChange={(e) => setProximaDataReposicao(e.target.value)}
           />
+          {statusAgendamento === 'Agendar' && !proximaDataReposicao && (
+            <p className="text-sm text-blue-600">
+              Você pode salvar sem definir uma data quando o status for "Agendar"
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
