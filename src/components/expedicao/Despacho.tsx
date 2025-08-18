@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
@@ -8,7 +8,7 @@ import { usePedidoConverter } from "./hooks/usePedidoConverter";
 import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
 import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
 import { DebugInfo } from "./components/DebugInfo";
-import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
+import { DespachoFilters } from "./components/DespachoFilters";
 import PedidoCard from "./PedidoCard";
 import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
 import { OrganizadorEntregas } from "./OrganizadorEntregas";
@@ -46,6 +46,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   } = useAgendamentoActions();
 
   const [organizadorAberto, setOrganizadorAberto] = useState(false);
+  const [filtroTexto, setFiltroTexto] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("todos");
 
   // Usar hook de sincronização
   useExpedicaoSync();
@@ -55,9 +57,32 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   }, [carregarPedidos]);
 
   // Obter pedidos filtrados baseado no tipo
-  const pedidosFiltrados = tipoFiltro === "hoje" 
+  const pedidosBase = tipoFiltro === "hoje" 
     ? getPedidosParaDespacho() 
     : getPedidosAtrasados();
+
+  // Aplicar filtros de busca e tipo
+  const pedidosFiltrados = useMemo(() => {
+    let pedidosFiltrados = pedidosBase;
+
+    // Filtro por texto (cliente ou ID)
+    if (filtroTexto.trim()) {
+      const searchTerm = filtroTexto.toLowerCase().trim();
+      pedidosFiltrados = pedidosFiltrados.filter(pedido => 
+        pedido.cliente_nome?.toLowerCase().includes(searchTerm) ||
+        pedido.id?.toString().includes(searchTerm)
+      );
+    }
+
+    // Filtro por tipo
+    if (filtroTipo !== "todos") {
+      pedidosFiltrados = pedidosFiltrados.filter(pedido => 
+        pedido.tipo_pedido === filtroTipo
+      );
+    }
+
+    return pedidosFiltrados;
+  }, [pedidosBase, filtroTexto, filtroTipo]);
 
   // Verificar quantos pedidos estão despachados
   const pedidosDespachados = pedidosFiltrados.filter(p => p.substatus_pedido === 'Despachado');
@@ -143,8 +168,14 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
   return (
     <div className="space-y-4">
-      {/* Resumo de Quantidades de Produtos */}
-      <ResumoQuantidadeProdutos pedidos={pedidosFiltrados} />
+      {/* Filtros de Despacho */}
+      <DespachoFilters
+        filtroTexto={filtroTexto}
+        filtroTipo={filtroTipo}
+        totalPedidos={pedidosFiltrados.length}
+        onFiltroTextoChange={setFiltroTexto}
+        onFiltroTipoChange={setFiltroTipo}
+      />
       
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
