@@ -41,11 +41,12 @@ export default function TodosAgendamentos() {
     setSortDirection(direction);
   };
 
-  // Filtrar agendamentos excluindo status "Agendar" e substatus "Despachado"
+  // Filtrar agendamentos excluindo status "Agendar", substatus "Despachado" e também agendamentos despachados
   const agendamentosFiltrados = useMemo(() => {
     return agendamentos.filter(a => 
       a.statusAgendamento !== "Agendar" && 
-      a.pedido?.statusPedido !== "Despachado"
+      a.pedido?.statusPedido !== "Despachado" &&
+      a.substatus_pedido !== "Despachado" // NOVO: Excluir agendamentos com substatus "Despachado"
     );
   }, [agendamentos]);
 
