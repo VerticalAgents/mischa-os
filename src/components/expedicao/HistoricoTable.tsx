@@ -6,6 +6,7 @@ import { Check, X, Edit, Eye, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { useClienteStore } from "@/hooks/useClienteStore";
 
 interface HistoricoTableProps {
   registros: any[];
@@ -23,6 +24,7 @@ export const HistoricoTable = ({
   showClienteColumn = true
 }: HistoricoTableProps) => {
   const navigate = useNavigate();
+  const { selecionarCliente } = useClienteStore();
 
   if (isLoading) {
     return (
@@ -52,7 +54,8 @@ export const HistoricoTable = ({
 
   const handleRedirectToCliente = (clienteId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/clientes?cliente=${clienteId}`);
+    selecionarCliente(clienteId);
+    navigate(`/clientes`);
   };
 
   return (

@@ -5,6 +5,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import AgendamentoActions from "./AgendamentoActions";
 
 interface AgendamentoItem {
@@ -29,6 +30,7 @@ interface AgendamentoRowProps {
 
 export default function AgendamentoRow({ agendamento, index, onEdit }: AgendamentoRowProps) {
   const navigate = useNavigate();
+  const { selecionarCliente } = useClienteStore();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -49,7 +51,8 @@ export default function AgendamentoRow({ agendamento, index, onEdit }: Agendamen
 
   const handleRedirectToCliente = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/clientes?cliente=${agendamento.cliente.id}`);
+    selecionarCliente(agendamento.cliente.id.toString());
+    navigate(`/clientes`);
   };
 
   return (
@@ -59,24 +62,26 @@ export default function AgendamentoRow({ agendamento, index, onEdit }: Agendamen
       onClick={() => onEdit(agendamento)}
     >
       <TableCell className="font-medium">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
           <div>
-            <div>{agendamento.cliente.nome}</div>
+            <div className="flex items-center gap-2">
+              <span>{agendamento.cliente.nome}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-1 h-6 w-6 opacity-60 hover:opacity-100"
+                onClick={handleRedirectToCliente}
+                title="Ver informações do cliente"
+              >
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </div>
             {!agendamento.isPedidoUnico && agendamento.cliente.contatoNome && (
               <div className="text-xs text-muted-foreground">
                 {agendamento.cliente.contatoNome}
               </div>
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-1 h-6 w-6 opacity-60 hover:opacity-100"
-            onClick={handleRedirectToCliente}
-            title="Ver informações do cliente"
-          >
-            <ExternalLink className="h-3 w-3" />
-          </Button>
         </div>
       </TableCell>
       <TableCell>

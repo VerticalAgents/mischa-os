@@ -9,6 +9,7 @@ import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircl
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import TipoPedidoBadge from "./TipoPedidoBadge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 import ProdutosList from "./ProdutosList";
@@ -52,6 +53,7 @@ const PedidoCard = ({
   onRetornarParaSeparacao
 }: PedidoCardProps) => {
   const navigate = useNavigate();
+  const { selecionarCliente } = useClienteStore();
   const [observacaoEntrega, setObservacaoEntrega] = useState("");
   const [observacaoRetorno, setObservacaoRetorno] = useState("");
   const [dialogEntregaAberto, setDialogEntregaAberto] = useState(false);
@@ -87,7 +89,8 @@ const PedidoCard = ({
 
   const handleRedirectToCliente = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/clientes?cliente=${pedido.cliente_id}`);
+    selecionarCliente(pedido.cliente_id);
+    navigate(`/clientes`);
   };
 
   return (
@@ -96,31 +99,31 @@ const PedidoCard = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <User className="h-5 w-5 text-blue-600" />
-            <div className="flex items-center gap-2">
-              <div>
+            <div>
+              <div className="flex items-center gap-2">
                 <h3 className="font-semibold text-lg text-gray-900">{pedido.cliente_nome}</h3>
-                <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {format(pedido.data_prevista_entrega, "dd/MM/yyyy", {
-                      locale: ptBR
-                    })}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Package className="h-4 w-4" />
-                    {pedido.quantidade_total} unidades
-                  </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-1 h-6 w-6 opacity-60 hover:opacity-100"
+                  onClick={handleRedirectToCliente}
+                  title="Ver informações do cliente"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  {format(pedido.data_prevista_entrega, "dd/MM/yyyy", {
+                    locale: ptBR
+                  })}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Package className="h-4 w-4" />
+                  {pedido.quantidade_total} unidades
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-1 h-6 w-6 opacity-60 hover:opacity-100"
-                onClick={handleRedirectToCliente}
-                title="Ver informações do cliente"
-              >
-                <ExternalLink className="h-3 w-3" />
-              </Button>
             </div>
           </div>
           
@@ -129,7 +132,10 @@ const PedidoCard = ({
             {pedido.substatus_pedido && (
               <Badge variant={
                 pedido.substatus_pedido === 'Separado' ? 'default' : 
-                pedido.substatus_pedido === 'Despachado' ? 'secondary' : 'outline'
+                pedido.substatus_pedido === 'Despachado' ? 'secondary' : 
+                pedido.substatus_pedido === 'Agendado' ? 'default' : 'outline'
+              } className={
+                pedido.substatus_pedido === 'Agendado' ? 'bg-green-500 text-white hover:bg-green-600' : ''
               }>
                 {pedido.substatus_pedido}
               </Badge>
