@@ -47,6 +47,7 @@ interface ExpedicaoStore {
   getPedidosParaDespacho: () => PedidoExpedicao[];
   getPedidosProximoDia: () => PedidoExpedicao[];
   getPedidosAtrasados: () => PedidoExpedicao[];
+  getPedidosSeparadosAntecipados: () => PedidoExpedicao[];
 }
 
 const getProximoDiaUtil = (data: Date): Date => {
@@ -440,7 +441,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           const proximaData = getProximoDiaUtil(dataRetorno);
           const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
-          // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido e itens personalizados
+          // CORREÇÃO: Status deve ser "Previsto" e preservar tipo de pedido
           const dadosAtualizacao: any = {
             data_proxima_reposicao: proximaDataFormatada,
             status_agendamento: 'Previsto',
@@ -768,6 +769,19 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                  isBefore(dataEntregaComparacao, hoje) &&
                  p.substatus_pedido !== 'Entregue' && 
                  p.substatus_pedido !== 'Retorno';
+        });
+      },
+
+      getPedidosSeparadosAntecipados: () => {
+        const hoje = startOfDay(new Date());
+        
+        return get().pedidos.filter(p => {
+          const dataEntrega = parseDataSegura(p.data_prevista_entrega);
+          const dataEntregaComparacao = startOfDay(dataEntrega);
+          
+          return p.status_agendamento === 'Agendado' &&
+                 p.substatus_pedido === 'Separado' &&
+                 dataEntregaComparacao > hoje;
         });
       }
     }),

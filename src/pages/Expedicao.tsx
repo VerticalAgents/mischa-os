@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -86,6 +87,9 @@ export default function Expedicao() {
                 <TabsTrigger value="atrasadas" className="data-[state=active]:bg-yellow-500/10 data-[state=active]:text-yellow-700">
                   🟡 Entregas Pendentes
                 </TabsTrigger>
+                <TabsTrigger value="antecipada" className="data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-700">
+                  🔵 Separação Antecipada
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="hoje" forceMount={entregasTab === "hoje" ? true : undefined}>
@@ -94,6 +98,10 @@ export default function Expedicao() {
               
               <TabsContent value="atrasadas" forceMount={entregasTab === "atrasadas" ? true : undefined}>
                 {entregasTab === "atrasadas" && <Despacho tipoFiltro="atrasadas" />}
+              </TabsContent>
+
+              <TabsContent value="antecipada" forceMount={entregasTab === "antecipada" ? true : undefined}>
+                {entregasTab === "antecipada" && <Despacho tipoFiltro="antecipada" />}
               </TabsContent>
             </Tabs>
           )}

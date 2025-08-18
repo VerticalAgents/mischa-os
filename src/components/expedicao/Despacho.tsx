@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { Truck, Package, ArrowLeft, ClipboardList, Loader2 } from "lucide-react";
 
 interface DespachoProps {
-  tipoFiltro: "hoje" | "atrasadas";
+  tipoFiltro: "hoje" | "atrasadas" | "antecipada";
 }
 
 export const Despacho = ({ tipoFiltro }: DespachoProps) => {
@@ -33,6 +33,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     confirmarRetornoEmMassa,
     getPedidosParaDespacho,
     getPedidosAtrasados,
+    getPedidosSeparadosAntecipados,
     carregarPedidos
   } = useExpedicaoStore();
 
@@ -60,7 +61,9 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   // Obter pedidos filtrados baseado no tipo
   const pedidosBase = tipoFiltro === "hoje" 
     ? getPedidosParaDespacho() 
-    : getPedidosAtrasados();
+    : tipoFiltro === "atrasadas"
+    ? getPedidosAtrasados()
+    : getPedidosSeparadosAntecipados();
 
   // Aplicar filtros de busca e tipo
   const pedidosFiltrados = useMemo(() => {
@@ -164,14 +167,23 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     );
   }
 
-  const titulo = tipoFiltro === "hoje" ? "Entregas de Hoje" : "Entregas Pendentes";
-  const icone = tipoFiltro === "hoje" ? <Truck className="h-5 w-5" /> : <Package className="h-5 w-5" />;
+  const titulo = tipoFiltro === "hoje" 
+    ? "Entregas de Hoje" 
+    : tipoFiltro === "atrasadas"
+    ? "Entregas Pendentes"
+    : "Separação Antecipada";
+    
+  const icone = tipoFiltro === "hoje" 
+    ? <Truck className="h-5 w-5" /> 
+    : tipoFiltro === "atrasadas"
+    ? <Package className="h-5 w-5" />
+    : <ClipboardList className="h-5 w-5" />;
 
   return (
     <div className="space-y-4">
       {/* Card de Resumo de Status */}
       <ResumoStatusCard 
-        tipo={tipoFiltro === "hoje" ? "hoje" : "pendentes"} 
+        tipo={tipoFiltro === "hoje" ? "hoje" : tipoFiltro === "atrasadas" ? "pendentes" : "antecipada"} 
         pedidos={pedidosFiltrados} 
       />
 
@@ -190,53 +202,55 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
             {icone}
             {titulo}
           </h2>
-          <div className="flex flex-wrap gap-2">
-            <Button 
-              onClick={handleOrganizarEntregas}
-              size="sm" 
-              variant="outline"
-              className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-            >
-              <ClipboardList className="h-4 w-4" />
-              Organizar Entregas
-            </Button>
-            <Button 
-              onClick={handleDespachoEmMassa} 
-              size="sm" 
-              variant="outline"
-              className="flex items-center gap-1"
-            >
-              <Truck className="h-4 w-4" /> Despachar Todos
-            </Button>
-            <Button 
-              onClick={handleEntregaEmMassa} 
-              size="sm" 
-              className="bg-green-600 hover:bg-green-700"
-              disabled={!todosDespachados || loadingConfirmacao}
-              title={!todosDespachados ? "Todos os pedidos devem estar despachados" : ""}
-            >
-              {loadingConfirmacao ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  Confirmando...
-                </>
-              ) : (
-                <>
-                  <Package className="h-4 w-4 mr-1" /> 
-                  Entregar Todos
-                </>
-              )}
-            </Button>
-            <Button 
-              onClick={handleRetornoEmMassa} 
-              size="sm" 
-              variant="destructive"
-              disabled={!todosDespachados}
-              title={!todosDespachados ? "Todos os pedidos devem estar despachados" : ""}
-            >
-              Retorno em Massa
-            </Button>
-          </div>
+          {tipoFiltro !== "antecipada" && (
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                onClick={handleOrganizarEntregas}
+                size="sm" 
+                variant="outline"
+                className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+              >
+                <ClipboardList className="h-4 w-4" />
+                Organizar Entregas
+              </Button>
+              <Button 
+                onClick={handleDespachoEmMassa} 
+                size="sm" 
+                variant="outline"
+                className="flex items-center gap-1"
+              >
+                <Truck className="h-4 w-4" /> Despachar Todos
+              </Button>
+              <Button 
+                onClick={handleEntregaEmMassa} 
+                size="sm" 
+                className="bg-green-600 hover:bg-green-700"
+                disabled={!todosDespachados || loadingConfirmacao}
+                title={!todosDespachados ? "Todos os pedidos devem estar despachados" : ""}
+              >
+                {loadingConfirmacao ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    Confirmando...
+                  </>
+                ) : (
+                  <>
+                    <Package className="h-4 w-4 mr-1" /> 
+                    Entregar Todos
+                  </>
+                )}
+              </Button>
+              <Button 
+                onClick={handleRetornoEmMassa} 
+                size="sm" 
+                variant="destructive"
+                disabled={!todosDespachados}
+                title={!todosDespachados ? "Todos os pedidos devem estar despachados" : ""}
+              >
+                Retorno em Massa
+              </Button>
+            </div>
+          )}
         </div>
         
         {/* Debug Info Component */}
@@ -253,7 +267,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 }}
                 onMarcarSeparado={() => {}}
                 onEditarAgendamento={() => handleEditarAgendamento(String(pedido.id))}
-                showDespachoActions={true}
+                showDespachoActions={tipoFiltro !== "antecipada"}
                 showReagendarButton={tipoFiltro === "atrasadas" && pedido.substatus_pedido === 'Agendado'}
                 onConfirmarDespacho={() => confirmarDespacho(String(pedido.id))}
                 onConfirmarEntrega={(observacao) => handleConfirmarEntregaIndividual(String(pedido.id), observacao)}
@@ -266,7 +280,9 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
           <div className="text-center py-6 text-muted-foreground">
             {tipoFiltro === "hoje" 
               ? "Não há pedidos agendados para entrega hoje."
-              : "Não há pedidos pendentes."
+              : tipoFiltro === "atrasadas"
+              ? "Não há pedidos pendentes."
+              : "Não há pedidos separados antecipadamente."
             }
           </div>
         )}
@@ -282,17 +298,19 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
         />
       )}
 
-      {/* Modal do Organizador de Entregas */}
-      <OrganizadorEntregas
-        open={organizadorAberto}
-        onOpenChange={setOrganizadorAberto}
-        entregas={pedidosFiltrados.map(p => ({
-          id: p.id,
-          cliente_nome: p.cliente_nome,
-          cliente_endereco: p.cliente_endereco,
-          link_google_maps: (p as any).link_google_maps
-        }))}
-      />
+      {/* Modal do Organizador de Entregas - só mostrar se não for separação antecipada */}
+      {tipoFiltro !== "antecipada" && (
+        <OrganizadorEntregas
+          open={organizadorAberto}
+          onOpenChange={setOrganizadorAberto}
+          entregas={pedidosFiltrados.map(p => ({
+            id: p.id,
+            cliente_nome: p.cliente_nome,
+            cliente_endereco: p.cliente_endereco,
+            link_google_maps: (p as any).link_google_maps
+          }))}
+        />
+      )}
     </div>
   );
 };
