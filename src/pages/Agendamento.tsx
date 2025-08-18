@@ -75,6 +75,13 @@ export default function Agendamento() {
     setTemAgendamentosSemData(agendamentosSemData.length > 0);
   }, [clientes, agendamentos]);
 
+  console.log('Estado das abas:', {
+    temAgendamentosPendentes,
+    temAgendamentosAtrasados, 
+    temAgendamentosDespachados,
+    temAgendamentosSemData
+  });
+
   return (
     <div className="space-y-6">
       <PageHeader title="Agendamento" description="Gerenciamento de agendamentos e confirmação de reposições" />
