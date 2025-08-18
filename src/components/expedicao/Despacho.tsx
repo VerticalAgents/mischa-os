@@ -33,20 +33,17 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     await confirmarDespacho(pedidoId);
   };
 
-  // Filtrar pedidos separados
-  const pedidosSeparados = pedidos.filter(pedido => 
-    pedido.substatus_pedido === 'Separado'
-  );
-
-  // Aplicar filtro por tipo (hoje ou atrasadas)
-  const pedidosPorTipo = pedidosSeparados.filter(pedido => {
+  // Aplicar filtro por tipo (hoje ou atrasadas) com lógicas diferentes
+  const pedidosPorTipo = pedidos.filter(pedido => {
     const dataEntrega = new Date(pedido.data_prevista_entrega);
     const hoje = new Date();
     
     if (tipoFiltro === "hoje") {
-      return isToday(dataEntrega);
+      // Para entregas de hoje: apenas pedidos separados com data de hoje
+      return pedido.substatus_pedido === 'Separado' && isToday(dataEntrega);
     } else {
-      return isBefore(dataEntrega, startOfDay(hoje));
+      // Para entregas atrasadas: todos os pedidos despachados com data anterior a hoje
+      return pedido.substatus_pedido === 'Despachado' && isBefore(dataEntrega, startOfDay(hoje));
     }
   });
 
@@ -73,7 +70,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   }
 
   const titulo = tipoFiltro === "hoje" ? "Entregas de Hoje" : "Entregas Atrasadas";
-  const cor = tipoFiltro === "hoje" ? "bg-green-100 text-green-800" : "bg-yellow[100 text-yellow-800";
+  const cor = tipoFiltro === "hoje" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800";
 
   return (
     <div className="space-y-6">
