@@ -37,7 +37,7 @@ export default function Agendamento() {
   useEffect(() => {
     // Verificar se há parâmetro de tab na URL e atualizar
     const tab = searchParams.get("tab");
-    if (tab && ["dashboard", "agendamentos", "despachados", "representantes", "confirmacao", "pendentes", "atrasados", "despachados", "sem-data"].includes(tab)) {
+    if (tab && ["dashboard", "agendamentos", "despachados", "representantes", "confirmacao", "pendentes", "atrasados", "sem-data"].includes(tab)) {
       changeTab(tab);
     }
   }, [searchParams, changeTab]);
