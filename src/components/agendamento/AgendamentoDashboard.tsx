@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { format, addDays, startOfWeek, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import type { Day } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +15,7 @@ import { SubstatusPedidoAgendado } from "@/types";
 
 export default function AgendamentoDashboard() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [weekStartsOn, setWeekStartsOn] = useState(0); // 0 para Domingo, 1 para Segunda
+  const [weekStartsOn, setWeekStartsOn] = useState<Day>(0); // 0 para Domingo, 1 para Segunda
   const [agendamentosPorDia, setAgendamentosPorDia] = useState<{ [key: string]: any[] }>({});
   const { agendamentos } = useAgendamentoClienteStore();
   const { clientes } = useClienteStore();
