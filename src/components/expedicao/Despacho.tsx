@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -269,6 +268,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 onEditarAgendamento={() => handleEditarAgendamento(String(pedido.id))}
                 showDespachoActions={tipoFiltro !== "antecipada"}
                 showReagendarButton={tipoFiltro === "atrasadas" && pedido.substatus_pedido === 'Agendado'}
+                showRetornarParaSeparacaoButton={tipoFiltro === "antecipada"}
                 onConfirmarDespacho={() => confirmarDespacho(String(pedido.id))}
                 onConfirmarEntrega={(observacao) => handleConfirmarEntregaIndividual(String(pedido.id), observacao)}
                 onConfirmarRetorno={(observacao) => confirmarRetorno(String(pedido.id), observacao)}

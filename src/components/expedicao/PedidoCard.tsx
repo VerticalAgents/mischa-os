@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +33,7 @@ interface PedidoCardProps {
   showDespachoActions?: boolean;
   showReagendarButton?: boolean;
   showProdutosList?: boolean;
+  showRetornarParaSeparacaoButton?: boolean;
   onConfirmarDespacho?: () => void;
   onConfirmarEntrega?: (observacao?: string) => void;
   onConfirmarRetorno?: (observacao?: string) => void;
@@ -47,6 +47,7 @@ const PedidoCard = ({
   showDespachoActions = false,
   showReagendarButton = false,
   showProdutosList = false,
+  showRetornarParaSeparacaoButton = false,
   onConfirmarDespacho,
   onConfirmarEntrega,
   onConfirmarRetorno,
@@ -179,7 +180,7 @@ const PedidoCard = ({
         )}
 
         <div className="flex flex-wrap gap-2 pt-2">
-          {!showDespachoActions && (
+          {!showDespachoActions && !showRetornarParaSeparacaoButton && (
             <>
               {(!pedido.substatus_pedido || pedido.substatus_pedido === 'Agendado') && (
                 <Button 
@@ -192,6 +193,18 @@ const PedidoCard = ({
                 </Button>
               )}
             </>
+          )}
+
+          {showRetornarParaSeparacaoButton && (
+            <Button 
+              onClick={onRetornarParaSeparacao} 
+              size="sm" 
+              variant="outline"
+              className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Retornar p/ Separação
+            </Button>
           )}
 
           {showDespachoActions && (
