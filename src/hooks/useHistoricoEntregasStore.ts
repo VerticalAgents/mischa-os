@@ -8,7 +8,7 @@ import { format, subMonths } from 'date-fns';
 interface HistoricoEntrega {
   id: string;
   cliente_id: string;
-  cliente_nome: string;
+  cliente_nome: string; // Calculado, não existe na tabela
   data: Date;
   tipo: 'entrega' | 'retorno';
   quantidade: number;
@@ -34,7 +34,7 @@ interface HistoricoEntregasStore {
   
   // Actions
   carregarHistorico: (clienteId?: string) => Promise<void>;
-  adicionarRegistro: (registro: Omit<HistoricoEntrega, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  adicionarRegistro: (registro: Omit<HistoricoEntrega, 'id' | 'created_at' | 'updated_at' | 'cliente_nome'>) => Promise<void>;
   editarRegistro: (id: string, dados: Partial<HistoricoEntrega>) => Promise<void>;
   removerRegistro: (id: string) => Promise<void>;
   
@@ -123,15 +123,7 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
           // Processar os registros e garantir que tenham nome do cliente
           const registrosProcessados = await Promise.all(
             data.map(async (registro) => {
-              let clienteNome = 'Cliente não encontrado';
-              
-              // Se já tem o nome do cliente no registro, usar ele
-              if (registro.cliente_nome) {
-                clienteNome = registro.cliente_nome;
-              } else {
-                // Caso contrário, buscar o nome do cliente
-                clienteNome = await carregarNomeCliente(registro.cliente_id);
-              }
+              const clienteNome = await carregarNomeCliente(registro.cliente_id);
 
               return {
                 id: registro.id,
@@ -140,7 +132,7 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
                 data: new Date(registro.data),
                 tipo: registro.tipo as 'entrega' | 'retorno',
                 quantidade: registro.quantidade || 0,
-                itens: registro.itens || [],
+                itens: Array.isArray(registro.itens) ? registro.itens : [],
                 status_anterior: registro.status_anterior,
                 observacao: registro.observacao,
                 editado_manualmente: registro.editado_manualmente || false,
@@ -208,6 +200,11 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
           
           // Marcar como editado manualmente
           updateData.editado_manualmente = true;
+
+          // Remover campos que não existem na tabela
+          delete updateData.cliente_nome;
+          delete updateData.created_at;
+          delete updateData.updated_at;
 
           const { error } = await supabase
             .from('historico_entregas')

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -52,7 +51,7 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
   const [tipoPedido, setTipoPedido] = useState<'Padrão' | 'Alterado'>('Padrão');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [atualizandoProdutos, setAtualizandoProdutos] = useState(false);
-  const { editarRegistro, excluirRegistro } = useHistoricoEntregasStore();
+  const { editarRegistro, removerRegistro } = useHistoricoEntregasStore();
   const { obterProporcoesParaPedido } = useSupabaseProporoesPadrao();
   const { produtos, inicializar } = useProdutoStore();
   const { carregarProdutos } = useSupabaseProdutos();
@@ -218,7 +217,7 @@ export const HistoricoEditModal = ({ open, onOpenChange, registro }: HistoricoEd
     }
 
     try {
-      await excluirRegistro(registro.id);
+      await removerRegistro(registro.id);
       onOpenChange(false);
       setShowDeleteDialog(false);
       toast.success("Registro excluído com sucesso");
