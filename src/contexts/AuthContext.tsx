@@ -32,6 +32,32 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Helper function to check time synchronization
+const checkTimeSynchronization = async (): Promise<boolean> => {
+  try {
+    const start = Date.now();
+    const response = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
+    const data = await response.json();
+    const serverTime = new Date(data.datetime).getTime();
+    const localTime = Date.now();
+    const timeDiff = Math.abs(serverTime - localTime);
+    
+    // If difference is more than 5 minutes (300000ms), consider it out of sync
+    if (timeDiff > 300000) {
+      secureLogger.warn('Time synchronization issue detected', { 
+        timeDiff: timeDiff / 1000,
+        localTime: new Date(localTime).toISOString(),
+        serverTime: new Date(serverTime).toISOString()
+      });
+      return false;
+    }
+    return true;
+  } catch (error) {
+    secureLogger.warn('Could not check time synchronization', { error });
+    return true; // Assume it's ok if we can't check
+  }
+};
+
 // Helper function to log authentication attempts
 const logAuthAttempt = async (
   email: string, 
@@ -124,10 +150,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const refreshSession = async () => {
     try {
       secureLogger.debug('Attempting to refresh session');
+      
+      // Check time sync before refreshing
+      const isTimeSynced = await checkTimeSynchronization();
+      if (!isTimeSynced) {
+        toast.error('Problema de sincronização de horário detectado. Verifique a data e hora do seu computador.');
+        secureLogger.warn('Session refresh attempted with time sync issue');
+      }
+      
       const { data: { session }, error } = await supabase.auth.refreshSession();
       
       if (error) {
         secureLogger.error('Error refreshing session', { error });
+        
+        // Handle specific JWT errors related to time issues
+        if (error.message?.includes('JWT expired') || error.message?.includes('token_expired')) {
+          toast.error('Sessão expirou devido a problemas de horário. Verifique a data e hora do seu computador e faça login novamente.');
+        }
+        
         // Se não conseguir renovar, fazer logout
         await logout();
         return;
@@ -140,6 +180,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     } catch (error) {
       secureLogger.error('Unexpected error refreshing session', { error });
+      toast.error('Erro inesperado ao renovar sessão. Verifique sua conexão e horário do sistema.');
       await logout();
     }
   };
@@ -152,26 +193,45 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const expiresAt = session.expires_at || 0;
     const timeUntilExpiry = expiresAt - now;
 
-    secureLogger.debug('Session expiry check', { timeUntilExpiry });
+    secureLogger.debug('Session expiry check', { 
+      timeUntilExpiry,
+      now: new Date(now * 1000).toISOString(),
+      expiresAt: new Date(expiresAt * 1000).toISOString()
+    });
+
+    // Se o tempo até expirar é negativo mas muito grande, pode ser problema de horário
+    if (timeUntilExpiry < -3600) { // Mais de 1 hora no passado
+      secureLogger.warn('Possible time sync issue detected', { timeUntilExpiry });
+      toast.warning('Possível problema de sincronização de horário detectado. Verifique a data e hora do seu computador.');
+    }
 
     // Se faltam menos de 5 minutos (300 segundos) para expirar, renovar
     if (timeUntilExpiry < 300 && timeUntilExpiry > 0) {
       secureLogger.info('Refreshing session preventively');
       refreshSession();
     }
-    // Se já expirou, fazer logout
-    else if (timeUntilExpiry <= 0) {
+    // Se já expirou (mas não muito no passado, para evitar problemas de horário), fazer logout
+    else if (timeUntilExpiry <= 0 && timeUntilExpiry > -300) {
       secureLogger.warn('Session expired, logging out');
       logout();
     }
   };
 
-  // Interceptar erros de JWT
+  // Interceptar erros de JWT com melhor tratamento
   const handleSupabaseError = (error: any) => {
     if (error?.message?.includes('JWT expired') || error?.code === 'PGRST301') {
-      secureLogger.warn('JWT expired detected, refreshing session');
-      toast.error('Sessão expirada. Renovando automaticamente...');
-      refreshSession();
+      secureLogger.warn('JWT expired detected', { error: error.message });
+      
+      // Check if it might be a time sync issue
+      checkTimeSynchronization().then(isTimeSynced => {
+        if (!isTimeSynced) {
+          toast.error('Sessão expirou devido a problemas de horário. Sincronize a data e hora do seu computador e tente novamente.');
+        } else {
+          toast.info('Sessão expirada. Renovando automaticamente...');
+          refreshSession();
+        }
+      });
+      
       return true;
     }
     return false;
@@ -179,6 +239,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     secureLogger.info('Initializing authentication context');
+    
+    // Check time synchronization on startup
+    checkTimeSynchronization().then(isTimeSynced => {
+      if (!isTimeSynced) {
+        toast.warning('Problema de sincronização de horário detectado. Isso pode afetar o login. Verifique a data e hora do seu computador.');
+      }
+    });
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -306,6 +373,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return;
       }
 
+      // Check time synchronization before login
+      const isTimeSynced = await checkTimeSynchronization();
+      if (!isTimeSynced) {
+        toast.warning('Problema de sincronização de horário detectado. O login pode falhar. Verifique a data e hora do seu computador.');
+      }
+
       const clientIP = await getClientIP();
 
       const isAllowed = await checkRateLimit(email, clientIP);
@@ -327,6 +400,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         
         if (error.message.includes('Invalid login credentials')) {
           toast.error("Email ou senha incorretos");
+        } else if (error.message.includes('JWT') || error.message.includes('token')) {
+          toast.error("Erro de autenticação. Verifique a data e hora do seu computador e tente novamente.");
         } else {
           toast.error("Erro ao fazer login: " + error.message);
         }
