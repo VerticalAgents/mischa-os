@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,6 @@ import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircl
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
-import { useClienteStore } from "@/hooks/useClienteStore";
 import TipoPedidoBadge from "./TipoPedidoBadge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 import ProdutosList from "./ProdutosList";
@@ -54,7 +54,6 @@ const PedidoCard = ({
   onRetornarParaSeparacao
 }: PedidoCardProps) => {
   const navigate = useNavigate();
-  const { selecionarCliente } = useClienteStore();
   const [observacaoEntrega, setObservacaoEntrega] = useState("");
   const [observacaoRetorno, setObservacaoRetorno] = useState("");
   const [dialogEntregaAberto, setDialogEntregaAberto] = useState(false);
@@ -90,8 +89,8 @@ const PedidoCard = ({
 
   const handleRedirectToCliente = (e: React.MouseEvent) => {
     e.stopPropagation();
-    selecionarCliente(pedido.cliente_id);
-    navigate(`/clientes`);
+    // Navigate with client ID as URL parameter
+    navigate(`/clientes?clienteId=${pedido.cliente_id}`);
   };
 
   return (

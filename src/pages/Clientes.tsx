@@ -1,4 +1,6 @@
+
 import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useColumnVisibility } from "@/hooks/useColumnVisibility";
@@ -11,6 +13,8 @@ import ClientesBulkActions from "@/components/clientes/ClientesBulkActions";
 import DeleteClienteDialog from "@/components/clientes/DeleteClienteDialog";
 
 export default function Clientes() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedClienteIds, setSelectedClienteIds] = useState<string[]>([]);
@@ -32,18 +36,36 @@ export default function Clientes() {
     getClientePorId
   } = useClienteStore();
 
+  // Handle URL parameter for direct client selection
+  const clienteIdFromUrl = searchParams.get('clienteId');
+
   // Only clear selected client on initial mount, not on every render
   useEffect(() => {
-    if (shouldClearSelection) {
+    if (shouldClearSelection && !clienteIdFromUrl) {
       selecionarCliente(null);
       setShouldClearSelection(false);
     }
-  }, [selecionarCliente, shouldClearSelection]);
+  }, [selecionarCliente, shouldClearSelection, clienteIdFromUrl]);
 
   // Carregar clientes ao montar o componente
   useEffect(() => {
     carregarClientes();
   }, [carregarClientes, refreshTrigger]);
+
+  // Handle client selection from URL parameter
+  useEffect(() => {
+    if (clienteIdFromUrl && !loading) {
+      const cliente = getClientePorId(clienteIdFromUrl);
+      if (cliente) {
+        selecionarCliente(clienteIdFromUrl);
+        // Clear the URL parameter after selecting the client
+        setSearchParams({});
+      } else {
+        // If client not found, refresh the data and try again
+        setRefreshTrigger(prev => prev + 1);
+      }
+    }
+  }, [clienteIdFromUrl, loading, getClientePorId, selecionarCliente, setSearchParams]);
 
   // Available columns for the table
   const columnOptions: ColumnOption[] = [
