@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -58,14 +57,13 @@ export default function Clientes() {
       const cliente = getClientePorId(clienteIdFromUrl);
       if (cliente) {
         selecionarCliente(clienteIdFromUrl);
-        // Clear the URL parameter after selecting the client
-        setSearchParams({});
+        // Don't clear the URL parameter immediately - keep it while client is selected
       } else {
         // If client not found, refresh the data and try again
         setRefreshTrigger(prev => prev + 1);
       }
     }
-  }, [clienteIdFromUrl, loading, getClientePorId, selecionarCliente, setSearchParams]);
+  }, [clienteIdFromUrl, loading, getClientePorId, selecionarCliente]);
 
   // Available columns for the table
   const columnOptions: ColumnOption[] = [
@@ -110,6 +108,8 @@ export default function Clientes() {
   
   const handleBackToList = () => {
     selecionarCliente(null);
+    // Clear URL parameters when user voluntarily goes back to the list
+    setSearchParams({});
     setRefreshTrigger(prev => prev + 1);
   };
 
