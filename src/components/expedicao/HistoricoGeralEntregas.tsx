@@ -33,9 +33,20 @@ export const HistoricoGeralEntregas = () => {
     getRegistrosFiltrados
   } = useHistoricoEntregasStore();
 
+  // Carrega dados na montagem do componente
   useEffect(() => {
+    console.log('HistoricoGeralEntregas: Carregando histórico na montagem');
     carregarHistorico();
-  }, []);
+  }, [carregarHistorico]);
+
+  // Debug: Log do estado atual
+  useEffect(() => {
+    console.log('HistoricoGeralEntregas: Estado atual:', {
+      totalRegistros: registros.length,
+      isLoading,
+      filtros
+    });
+  }, [registros, isLoading, filtros]);
 
   const registrosFiltrados = getRegistrosFiltrados();
   
@@ -53,7 +64,17 @@ export const HistoricoGeralEntregas = () => {
   };
 
   const handleResetFiltros = () => {
+    console.log('HistoricoGeralEntregas: Resetando filtros');
     resetFiltros();
+    // Forçar recarga dos dados após reset
+    setTimeout(() => {
+      carregarHistorico();
+    }, 100);
+  };
+
+  // Forçar recarga quando filtros mudam
+  const handleFiltroChange = () => {
+    console.log('HistoricoGeralEntregas: Filtros alterados, recarregando dados');
     carregarHistorico();
   };
 
@@ -96,7 +117,10 @@ export const HistoricoGeralEntregas = () => {
                 id="dataInicio"
                 type="date"
                 value={format(filtros.dataInicio, 'yyyy-MM-dd')}
-                onChange={(e) => setFiltroDataInicio(new Date(e.target.value))}
+                onChange={(e) => {
+                  setFiltroDataInicio(new Date(e.target.value));
+                  handleFiltroChange();
+                }}
               />
             </div>
             <div>
@@ -105,16 +129,29 @@ export const HistoricoGeralEntregas = () => {
                 id="dataFim"
                 type="date"
                 value={format(filtros.dataFim, 'yyyy-MM-dd')}
-                onChange={(e) => setFiltroDataFim(new Date(e.target.value))}
+                onChange={(e) => {
+                  setFiltroDataFim(new Date(e.target.value));
+                  handleFiltroChange();
+                }}
               />
             </div>
           </div>
         </div>
 
+        {/* Debug info para desenvolvimento */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="bg-yellow-50 p-3 rounded text-sm">
+            <strong>Debug:</strong> {registros.length} registros carregados, {registrosFiltrados.length} após filtros
+          </div>
+        )}
+
         {/* Tabs por tipo */}
         <Tabs 
           value={filtros.tipo} 
-          onValueChange={(value) => setFiltroTipo(value as any)}
+          onValueChange={(value) => {
+            setFiltroTipo(value as any);
+            handleFiltroChange();
+          }}
           className="w-full"
         >
           <TabsList className="mb-4">
