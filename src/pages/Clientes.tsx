@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,8 @@ export default function Clientes() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clienteToDelete, setClienteToDelete] = useState<string | null>(null);
-  const [shouldClearSelection, setShouldClearSelection] = useState(true);
+  const [processingUrlParam, setProcessingUrlParam] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
   
   const {
     filtros,
@@ -38,32 +40,57 @@ export default function Clientes() {
   // Handle URL parameter for direct client selection
   const clienteIdFromUrl = searchParams.get('clienteId');
 
-  // Only clear selected client on initial mount, not on every render
+  // Sequential loading and URL processing
   useEffect(() => {
-    if (shouldClearSelection && !clienteIdFromUrl) {
-      selecionarCliente(null);
-      setShouldClearSelection(false);
-    }
-  }, [selecionarCliente, shouldClearSelection, clienteIdFromUrl]);
-
-  // Carregar clientes ao montar o componente
-  useEffect(() => {
-    carregarClientes();
-  }, [carregarClientes, refreshTrigger]);
-
-  // Handle client selection from URL parameter
-  useEffect(() => {
-    if (clienteIdFromUrl && !loading) {
-      const cliente = getClientePorId(clienteIdFromUrl);
-      if (cliente) {
-        selecionarCliente(clienteIdFromUrl);
-        // Don't clear the URL parameter immediately - keep it while client is selected
-      } else {
-        // If client not found, refresh the data and try again
-        setRefreshTrigger(prev => prev + 1);
+    const processInitialLoad = async () => {
+      console.log('Clientes: Iniciando carregamento inicial');
+      
+      // Step 1: Load clients data first
+      if (initialLoad) {
+        await carregarClientes();
+        setInitialLoad(false);
+        console.log('Clientes: Dados carregados');
       }
+      
+      // Step 2: Process URL parameter only after data is loaded and not already processing
+      if (!loading && !initialLoad && clienteIdFromUrl && !processingUrlParam && !clienteAtual) {
+        console.log('Clientes: Processando parâmetro da URL:', clienteIdFromUrl);
+        setProcessingUrlParam(true);
+        
+        const cliente = getClientePorId(clienteIdFromUrl);
+        if (cliente) {
+          console.log('Clientes: Cliente encontrado, selecionando:', cliente.nome);
+          selecionarCliente(clienteIdFromUrl);
+        } else {
+          console.log('Clientes: Cliente não encontrado, tentando recarregar dados');
+          // If client not found, try refreshing data once more
+          setRefreshTrigger(prev => prev + 1);
+        }
+        
+        setProcessingUrlParam(false);
+      }
+    };
+
+    processInitialLoad();
+  }, [
+    carregarClientes,
+    loading,
+    initialLoad,
+    clienteIdFromUrl,
+    processingUrlParam,
+    clienteAtual,
+    getClientePorId,
+    selecionarCliente,
+    refreshTrigger
+  ]);
+
+  // Refresh data when refreshTrigger changes
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      console.log('Clientes: Recarregando devido ao refreshTrigger');
+      carregarClientes();
     }
-  }, [clienteIdFromUrl, loading, getClientePorId, selecionarCliente]);
+  }, [carregarClientes, refreshTrigger]);
 
   // Available columns for the table
   const columnOptions: ColumnOption[] = [
@@ -103,10 +130,14 @@ export default function Clientes() {
   };
   
   const handleSelectCliente = (id: string) => {
+    console.log('Clientes: Selecionando cliente via tabela:', id);
     selecionarCliente(id);
+    // Update URL to reflect the selection
+    setSearchParams({ clienteId: id });
   };
   
   const handleBackToList = () => {
+    console.log('Clientes: Voltando para a lista');
     selecionarCliente(null);
     // Clear URL parameters when user voluntarily goes back to the list
     setSearchParams({});
@@ -156,8 +187,18 @@ export default function Clientes() {
     setSelectedClienteIds([]);
   };
 
+  // Show loading state during initial load or URL processing
+  if (loading && initialLoad) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <div className="text-muted-foreground">Carregando clientes...</div>
+      </div>
+    );
+  }
+
   // Render client details view when a client is selected
   if (clienteAtual) {
+    console.log('Clientes: Renderizando detalhes do cliente:', clienteAtual.nome);
     return (
       <ClienteDetailsView 
         cliente={clienteAtual} 
