@@ -337,7 +337,6 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           console.log('📝 Criando NOVO registro de entrega no histórico com data prevista:', dataEntrega);
           await historicoStore.adicionarRegistro({
             cliente_id: pedido.cliente_id,
-            cliente_nome: pedido.cliente_nome,
             data: dataEntrega, // Usar data prevista do pedido, não data atual
             tipo: 'entrega',
             quantidade: pedido.quantidade_total,
@@ -423,7 +422,6 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           console.log('📝 Criando NOVO registro de retorno no histórico com data prevista:', dataRetorno);
           await historicoStore.adicionarRegistro({
             cliente_id: pedido.cliente_id,
-            cliente_nome: pedido.cliente_nome,
             data: dataRetorno, // Usar data prevista do pedido, não data atual
             tipo: 'retorno',
             quantidade: pedido.quantidade_total,
@@ -595,7 +593,6 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             // Gravar no histórico - NOVO registro para cada pedido
             await historicoStore.adicionarRegistro({
               cliente_id: pedido.cliente_id,
-              cliente_nome: pedido.cliente_nome,
               data: dataEntrega, // Usar data prevista do pedido, não data atual
               tipo: 'entrega',
               quantidade: pedido.quantidade_total,
@@ -673,7 +670,6 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             // Gravar no histórico - NOVO registro para cada pedido
             await historicoStore.adicionarRegistro({
               cliente_id: pedido.cliente_id,
-              cliente_nome: pedido.cliente_nome,
               data: dataRetorno, // Usar data prevista do pedido, não data atual
               tipo: 'retorno',
               quantidade: pedido.quantidade_total,
