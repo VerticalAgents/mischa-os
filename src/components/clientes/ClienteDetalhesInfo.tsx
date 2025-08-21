@@ -4,6 +4,7 @@ import { Cliente } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, MapPin, User, Phone, Mail, Building, Truck, CreditCard, FileText, Clock, Target } from "lucide-react";
+import { calcularMetaGiroSemanal } from '@/utils/giroCalculations';
 
 interface ClienteDetalhesInfoProps {
   cliente: Cliente;
@@ -26,6 +27,11 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
         return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
+
+  // Calcular meta de giro semanal dinamicamente
+  const metaGiroCalculada = cliente.metaGiroSemanal && cliente.metaGiroSemanal > 0 
+    ? cliente.metaGiroSemanal 
+    : calcularMetaGiroSemanal(cliente.quantidadePadrao || 0, cliente.periodicidadePadrao || 7);
 
   const InfoItem = ({ label, value, icon: Icon }: { label: string; value: string | number | undefined; icon?: any }) => {
     if (!value) return null;
@@ -136,10 +142,10 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
               value={`${cliente.periodicidadePadrao} dias`} 
               icon={Clock} 
             />
-            {cliente.metaGiroSemanal && (
+            {metaGiroCalculada > 0 && (
               <InfoItem 
                 label="Meta Giro Semanal" 
-                value={`${cliente.metaGiroSemanal} unidades`} 
+                value={`${metaGiroCalculada} unidades`} 
                 icon={Target} 
               />
             )}

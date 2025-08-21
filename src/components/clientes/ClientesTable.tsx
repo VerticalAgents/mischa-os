@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import StatusBadge from "@/components/common/StatusBadge";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { toast } from "@/hooks/use-toast";
 import ClienteFormDialog from "./ClienteFormDialog";
+import { calcularGiroSemanalPadrao } from "@/utils/giroCalculations";
 
 interface ColumnOption {
   id: string;
@@ -70,6 +72,20 @@ export default function ClientesTable({
     return statusMap[status] || status;
   };
 
+  // Função para calcular giro semanal dinâmicamente
+  const calcularGiroSemanalCliente = (cliente: Cliente): number => {
+    // Se já tem giro médio semanal válido (> 0), usar ele
+    if (cliente.giroMedioSemanal && cliente.giroMedioSemanal > 0) {
+      return cliente.giroMedioSemanal;
+    }
+    
+    // Caso contrário, calcular baseado na quantidade padrão e periodicidade
+    return calcularGiroSemanalPadrao(
+      cliente.quantidadePadrao || 0, 
+      cliente.periodicidadePadrao || 7
+    );
+  };
+
   const handleDuplicarCliente = async (cliente: Cliente) => {
     try {
       const clienteDuplicado = await duplicarCliente(cliente.id);
@@ -119,7 +135,7 @@ export default function ClientesTable({
       case "nome":
         return cliente.nome;
       case "giroSemanal":
-        return cliente.giroMedioSemanal || 0;
+        return calcularGiroSemanalCliente(cliente);
       case "cnpjCpf":
         return cliente.cnpjCpf || "-";
       case "enderecoEntrega":

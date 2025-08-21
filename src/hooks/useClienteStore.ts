@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Cliente, StatusCliente } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
+import { calcularGiroSemanalPadrao, calcularMetaGiroSemanal } from '@/utils/giroCalculations';
 
 interface ClienteState {
   clientes: Cliente[];
@@ -63,6 +64,22 @@ const transformDbRowToCliente = (row: any): Cliente => {
 
 // Helper function to transform Cliente to database row format (sanitized)
 const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
+  // Calcular giroMedioSemanal e metaGiroSemanal automaticamente se não foram fornecidos
+  const quantidadePadrao = cliente.quantidadePadrao || 0;
+  const periodicidadePadrao = cliente.periodicidadePadrao || 7;
+  
+  // Calcular giro médio semanal se não foi fornecido ou é zero
+  let giroMedioSemanalCalculado = cliente.giroMedioSemanal;
+  if (!giroMedioSemanalCalculado || giroMedioSemanalCalculado === 0) {
+    giroMedioSemanalCalculado = calcularGiroSemanalPadrao(quantidadePadrao, periodicidadePadrao);
+  }
+  
+  // Calcular meta de giro semanal se não foi fornecida ou é zero
+  let metaGiroSemanalCalculada = cliente.metaGiroSemanal;
+  if (!metaGiroSemanalCalculada || metaGiroSemanalCalculada === 0) {
+    metaGiroSemanalCalculada = calcularMetaGiroSemanal(quantidadePadrao, periodicidadePadrao);
+  }
+
   // Lista de campos válidos na tabela clientes do Supabase
   const validFields = {
     nome: cliente.nome,
@@ -75,12 +92,12 @@ const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
     quantidade_padrao: cliente.quantidadePadrao,
     periodicidade_padrao: cliente.periodicidadePadrao,
     status_cliente: cliente.statusCliente,
-    meta_giro_semanal: cliente.metaGiroSemanal,
+    meta_giro_semanal: metaGiroSemanalCalculada,
     ultima_data_reposicao_efetiva: cliente.ultimaDataReposicaoEfetiva?.toISOString(),
     status_agendamento: cliente.statusAgendamento,
     proxima_data_reposicao: cliente.proximaDataReposicao?.toISOString(),
     ativo: cliente.ativo,
-    giro_medio_semanal: cliente.giroMedioSemanal,
+    giro_medio_semanal: giroMedioSemanalCalculado,
     janelas_entrega: cliente.janelasEntrega,
     representante_id: cliente.representanteId,
     rota_entrega_id: cliente.rotaEntregaId,
@@ -120,7 +137,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
     try {
       const dbData = transformClienteToDbRow(cliente);
       
-      console.log('useClienteStore: Payload sanitizado para inserção:', dbData);
+      console.log('useClienteStore: Payload sanitizado para inserção (com cálculos automáticos):', dbData);
 
       const { data, error } = await supabase
         .from('clientes')
@@ -164,7 +181,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
     try {
       const dbData = transformClienteToDbRow(cliente);
       
-      console.log('useClienteStore: Payload sanitizado para atualização:', dbData);
+      console.log('useClienteStore: Payload sanitizado para atualização (com cálculos automáticos):', dbData);
       
       const { data, error } = await supabase
         .from('clientes')

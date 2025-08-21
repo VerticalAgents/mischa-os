@@ -48,6 +48,30 @@ export async function calcularGiroSemanalHistorico(clienteId: string): Promise<n
 }
 
 /**
+ * Calcula o giro semanal baseado na quantidade padrão e periodicidade
+ * 
+ * @param quantidadePadrao - Quantidade padrão do cliente
+ * @param periodicidadePadrao - Periodicidade em dias
+ * @returns Giro semanal calculado
+ */
+export function calcularGiroSemanalPadrao(quantidadePadrao: number, periodicidadePadrao: number): number {
+  if (periodicidadePadrao === 0 || quantidadePadrao === 0) return 0;
+  return Math.round((quantidadePadrao / periodicidadePadrao) * 7);
+}
+
+/**
+ * Calcula a meta de giro semanal (10% acima do giro padrão)
+ * 
+ * @param quantidadePadrao - Quantidade padrão do cliente
+ * @param periodicidadePadrao - Periodicidade em dias
+ * @returns Meta de giro semanal
+ */
+export function calcularMetaGiroSemanal(quantidadePadrao: number, periodicidadePadrao: number): number {
+  const giroBase = calcularGiroSemanalPadrao(quantidadePadrao, periodicidadePadrao);
+  return Math.round(giroBase * 1.1); // 10% acima do giro base
+}
+
+/**
  * Versão síncrona que usa dados já carregados em memória
  * Útil quando já temos os dados de entregas disponíveis
  * 
