@@ -107,9 +107,14 @@ export const convertAgendamentoToDbFormat = (agendamento: Partial<AgendamentoCli
   if (agendamento.tipo_pedido) dbData.tipo_pedido = agendamento.tipo_pedido;
   if (agendamento.status_agendamento) dbData.status_agendamento = agendamento.status_agendamento;
   
-  // Conversão correta da data preservando o valor exato
-  if (agendamento.data_proxima_reposicao) {
-    dbData.data_proxima_reposicao = formatDateForDatabase(agendamento.data_proxima_reposicao);
+  // CORREÇÃO: Processar data_proxima_reposicao mesmo quando for null
+  if (agendamento.data_proxima_reposicao !== undefined) {
+    if (agendamento.data_proxima_reposicao === null) {
+      console.log('🗓️ convertAgendamentoToDbFormat: Definindo data_proxima_reposicao como null');
+      dbData.data_proxima_reposicao = null;
+    } else {
+      dbData.data_proxima_reposicao = formatDateForDatabase(agendamento.data_proxima_reposicao);
+    }
   }
   
   if (agendamento.quantidade_total !== undefined) dbData.quantidade_total = agendamento.quantidade_total;
@@ -119,6 +124,13 @@ export const convertAgendamentoToDbFormat = (agendamento: Partial<AgendamentoCli
   // Timestamps automáticos
   if (agendamento.created_at) dbData.created_at = agendamento.created_at.toISOString();
   if (agendamento.updated_at) dbData.updated_at = agendamento.updated_at.toISOString();
+  
+  console.log('🔄 convertAgendamentoToDbFormat: Dados convertidos:', {
+    input: agendamento,
+    output: dbData,
+    dataProximaReposicaoProcessada: agendamento.data_proxima_reposicao !== undefined,
+    dataProximaReposicaoValue: agendamento.data_proxima_reposicao
+  });
   
   return dbData;
 };
