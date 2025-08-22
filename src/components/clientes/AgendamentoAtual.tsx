@@ -97,6 +97,14 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
     }
   }, [tipoPedido]);
 
+  // NOVA FUNCIONALIDADE: Limpar data automaticamente quando status for "Agendar"
+  useEffect(() => {
+    if (statusAgendamento === 'Agendar') {
+      console.log('🗓️ Status alterado para "Agendar" - limpando data automaticamente');
+      setProximaDataReposicao('');
+    }
+  }, [statusAgendamento]);
+
   const somaQuantidadesProdutos = produtosQuantidades.reduce((soma, produto) => soma + produto.quantidade, 0);
   const hasValidationError = tipoPedido === "Alterado" && somaQuantidadesProdutos !== quantidadeTotal;
 
@@ -122,16 +130,16 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
 
     setIsLoading(true);
     try {
-      // CORREÇÃO: Forçar data como null quando status for "Agendar" e data estiver vazia
+      // CORREÇÃO: Forçar data como null quando status for "Agendar" ou data estiver vazia
       let dataReposicao = null;
-      if (proximaDataReposicao && proximaDataReposicao.trim() !== '') {
+      if (statusAgendamento !== 'Agendar' && proximaDataReposicao && proximaDataReposicao.trim() !== '') {
         dataReposicao = parseDateFromInput(proximaDataReposicao);
       }
       
       // Log detalhado dos dados que serão enviados
       const dadosParaSalvar = {
         status_agendamento: statusAgendamento,
-        data_proxima_reposicao: dataReposicao, // Sempre será null se vazio ou Date se preenchido
+        data_proxima_reposicao: dataReposicao, // Sempre será null para status "Agendar" ou Date se preenchido
         tipo_pedido: tipoPedido,
         quantidade_total: quantidadeTotal,
         itens_personalizados: tipoPedido === "Alterado" ? produtosQuantidades : null
@@ -151,7 +159,7 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
 
       toast({
         title: "Sucesso",
-        description: statusAgendamento === 'Agendar' && !dataReposicao 
+        description: statusAgendamento === 'Agendar' || !dataReposicao 
           ? "Agendamento salvo sem data definida" 
           : "Agendamento salvo com sucesso"
       });
@@ -228,7 +236,7 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
           <Label htmlFor="dataReposicao">
             Data de Reposição
             {statusAgendamento === 'Agendar' && (
-              <span className="text-sm text-muted-foreground ml-2">(opcional para status "Agendar")</span>
+              <span className="text-sm text-muted-foreground ml-2">(será limpa automaticamente)</span>
             )}
           </Label>
           <Input
@@ -236,10 +244,11 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             type="date"
             value={proximaDataReposicao}
             onChange={(e) => setProximaDataReposicao(e.target.value)}
+            disabled={statusAgendamento === 'Agendar'}
           />
-          {statusAgendamento === 'Agendar' && !proximaDataReposicao && (
+          {statusAgendamento === 'Agendar' && (
             <p className="text-sm text-blue-600">
-              Você pode salvar sem definir uma data quando o status for "Agendar"
+              Para status "Agendar", a data será automaticamente limpa
             </p>
           )}
         </div>
