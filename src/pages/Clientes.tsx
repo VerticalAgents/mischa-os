@@ -107,10 +107,10 @@ export default function Clientes() {
     { id: "acoes", label: "Ações", canToggle: false }
   ];
 
-  // Column visibility state with persistence
+  // Column visibility state with persistence - removendo as colunas solicitadas do padrão
   const defaultColumns = [
     "nome", "giroSemanal", "cnpjCpf", "enderecoEntrega", "contato", "quantidadePadrao", 
-    "periodicidade", "status", "statusAgendamento", "proximaDataReposicao", "acoes"
+    "periodicidade", "status", "acoes"
   ];
   
   const { visibleColumns, setVisibleColumns } = useColumnVisibility(
