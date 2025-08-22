@@ -44,7 +44,7 @@ export default function AgendamentosAtrasados() {
   const [sortField, setSortField] = useState<SortField>('data');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
-  // Filtrar agendamentos atrasados (data anterior a hoje)
+  // Filtrar agendamentos atrasados (status "Previsto" e data anterior a hoje)
   const agendamentosAtrasados = useMemo(() => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -52,7 +52,7 @@ export default function AgendamentosAtrasados() {
     return agendamentos.filter(agendamento => {
       const dataAgendamento = new Date(agendamento.dataReposicao);
       dataAgendamento.setHours(0, 0, 0, 0);
-      return dataAgendamento < hoje;
+      return agendamento.statusAgendamento === 'Previsto' && dataAgendamento < hoje;
     });
   }, [agendamentos]);
 
@@ -203,12 +203,12 @@ export default function AgendamentosAtrasados() {
           />
         </div>
         <div className="text-sm text-muted-foreground">
-          {sortedAgendamentos.length} agendamento(s) atrasados
+          {sortedAgendamentos.length} agendamento(s) previstos atrasados
         </div>
       </div>
 
       <Table>
-        <TableCaption>Lista de agendamentos atrasados.</TableCaption>
+        <TableCaption>Lista de agendamentos previstos atrasados.</TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead>PDV</TableHead>
