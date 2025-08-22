@@ -43,8 +43,9 @@ export default function AgendamentosAtrasados() {
   const [sortField, setSortField] = useState<SortField>('data');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
-  // Filtrar agendamentos atrasados (status "Previsto" e data anterior a hoje) 
-  // OU (status "Agendado" com substatus "Em separação" ou "Separado")
+  // Filtrar agendamentos atrasados:
+  // 1. Status "Previsto" com data anterior a hoje
+  // 2. Status "Agendado" com data anterior a hoje, EXCETO os que têm substatus "despachado"
   const agendamentosAtrasados = useMemo(() => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -53,15 +54,20 @@ export default function AgendamentosAtrasados() {
       const dataAgendamento = new Date(agendamento.dataReposicao);
       dataAgendamento.setHours(0, 0, 0, 0);
       
+      // Data deve ser anterior a hoje
+      if (dataAgendamento >= hoje) {
+        return false;
+      }
+      
       // Agendamentos previstos com data anterior a hoje
-      if (agendamento.statusAgendamento === 'Previsto' && dataAgendamento < hoje) {
+      if (agendamento.statusAgendamento === 'Previsto') {
         return true;
       }
       
-      // Agendamentos com status "Agendado" e substatus "Em separação" ou "Separado"
+      // Agendamentos com status "Agendado" com data anterior a hoje, EXCETO os despachados
       if (agendamento.statusAgendamento === 'Agendado') {
         const substatus = agendamento.substatus_pedido;
-        return substatus === 'Em separação' || substatus === 'Separado' || substatus === 'Agendado';
+        return substatus !== 'Despachado';
       }
       
       return false;
@@ -220,7 +226,7 @@ export default function AgendamentosAtrasados() {
       </div>
 
       <Table>
-        <TableCaption>Lista de agendamentos previstos atrasados e agendados em separação/separado.</TableCaption>
+        <TableCaption>Lista de agendamentos atrasados: previstos com data anterior a hoje e agendados não despachados com data anterior a hoje.</TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead>PDV</TableHead>
