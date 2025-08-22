@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { format, addDays, isWeekend } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -44,7 +43,8 @@ export default function AgendamentosAtrasados() {
   const [sortField, setSortField] = useState<SortField>('data');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
-  // Filtrar agendamentos atrasados (status "Previsto" e data anterior a hoje)
+  // Filtrar agendamentos atrasados (status "Previsto" e data anterior a hoje) 
+  // OU (status "Agendado" com substatus "Em separação" ou "Separado")
   const agendamentosAtrasados = useMemo(() => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -52,7 +52,19 @@ export default function AgendamentosAtrasados() {
     return agendamentos.filter(agendamento => {
       const dataAgendamento = new Date(agendamento.dataReposicao);
       dataAgendamento.setHours(0, 0, 0, 0);
-      return agendamento.statusAgendamento === 'Previsto' && dataAgendamento < hoje;
+      
+      // Agendamentos previstos com data anterior a hoje
+      if (agendamento.statusAgendamento === 'Previsto' && dataAgendamento < hoje) {
+        return true;
+      }
+      
+      // Agendamentos com status "Agendado" e substatus "Em separação" ou "Separado"
+      if (agendamento.statusAgendamento === 'Agendado') {
+        const substatus = agendamento.substatus_pedido;
+        return substatus === 'Em separação' || substatus === 'Separado' || substatus === 'Agendado';
+      }
+      
+      return false;
     });
   }, [agendamentos]);
 
@@ -203,12 +215,12 @@ export default function AgendamentosAtrasados() {
           />
         </div>
         <div className="text-sm text-muted-foreground">
-          {sortedAgendamentos.length} agendamento(s) previstos atrasados
+          {sortedAgendamentos.length} agendamento(s) atrasados
         </div>
       </div>
 
       <Table>
-        <TableCaption>Lista de agendamentos previstos atrasados.</TableCaption>
+        <TableCaption>Lista de agendamentos previstos atrasados e agendados em separação/separado.</TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead>PDV</TableHead>
