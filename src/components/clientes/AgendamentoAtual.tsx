@@ -122,13 +122,16 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
 
     setIsLoading(true);
     try {
-      // Permitir data null quando status for "Agendar" e data estiver vazia
-      const dataReposicao = proximaDataReposicao ? parseDateFromInput(proximaDataReposicao) : null;
+      // CORREÇÃO: Forçar data como null quando status for "Agendar" e data estiver vazia
+      let dataReposicao = null;
+      if (proximaDataReposicao && proximaDataReposicao.trim() !== '') {
+        dataReposicao = parseDateFromInput(proximaDataReposicao);
+      }
       
       // Log detalhado dos dados que serão enviados
       const dadosParaSalvar = {
         status_agendamento: statusAgendamento,
-        data_proxima_reposicao: dataReposicao,
+        data_proxima_reposicao: dataReposicao, // Sempre será null se vazio ou Date se preenchido
         tipo_pedido: tipoPedido,
         quantidade_total: quantidadeTotal,
         itens_personalizados: tipoPedido === "Alterado" ? produtosQuantidades : null
@@ -139,7 +142,7 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
         statusAgendamento,
         tipoPedido,
         quantidadeTotal,
-        quantidadeTotalType: typeof quantidadeTotal,
+        proximaDataReposicaoInput: proximaDataReposicao,
         dataReposicao,
         dadosCompletos: dadosParaSalvar
       });
