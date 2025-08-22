@@ -4,8 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit } from "lucide-react";
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday } from "date-fns";
+import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight } from "lucide-react";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -33,6 +33,7 @@ export default function AgendamentoDashboard() {
   const [selectedAgendamento, setSelectedAgendamento] = useState<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [clientesContatados, setClientesContatados] = useState<Set<string>>(new Set());
+  const [semanaAtual, setSemanaAtual] = useState<Date>(new Date());
 
   useEffect(() => {
     const loadData = async () => {
@@ -48,13 +49,23 @@ export default function AgendamentoDashboard() {
     loadData();
   }, []);
 
-  // Calcular indicadores da semana
+  const navegarSemanaAnterior = () => {
+    setSemanaAtual(prev => subWeeks(prev, 1));
+  };
+
+  const navegarProximaSemana = () => {
+    setSemanaAtual(prev => addWeeks(prev, 1));
+  };
+
+  const voltarSemanaAtual = () => {
+    setSemanaAtual(new Date());
+  };
+
   const indicadoresSemana = useMemo(() => {
-    const hoje = new Date();
-    const inicioSemana = startOfWeek(hoje, {
+    const inicioSemana = startOfWeek(semanaAtual, {
       weekStartsOn: 1
     });
-    const fimSemana = endOfWeek(hoje, {
+    const fimSemana = endOfWeek(semanaAtual, {
       weekStartsOn: 1
     });
     const agendamentosSemana = agendamentos.filter(agendamento => {
@@ -72,11 +83,17 @@ export default function AgendamentoDashboard() {
       pendentes: clientesSemAgendamento.length,
       taxaConfirmacao: agendamentosSemana.length > 0 ? confirmados.length / agendamentosSemana.length * 100 : 0
     };
-  }, [agendamentos, clientes]);
+  }, [agendamentos, clientes, semanaAtual]);
 
-  // Dados para os gráficos
   const dadosGraficoStatus = useMemo(() => {
-    const contadores = agendamentos.reduce((acc, agendamento) => {
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const agendamentosSemana = agendamentos.filter(agendamento => {
+      const dataAgendamento = new Date(agendamento.dataReposicao);
+      return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana;
+    });
+    
+    const contadores = agendamentosSemana.reduce((acc, agendamento) => {
       const status = agendamento.statusAgendamento;
       acc[status] = (acc[status] || 0) + 1;
       return acc;
@@ -85,14 +102,13 @@ export default function AgendamentoDashboard() {
       status,
       quantidade: count
     }));
-  }, [agendamentos]);
+  }, [agendamentos, semanaAtual]);
 
   const dadosGraficoSemanal = useMemo(() => {
-    const hoje = new Date();
-    const inicioSemana = startOfWeek(hoje, {
+    const inicioSemana = startOfWeek(semanaAtual, {
       weekStartsOn: 1
     });
-    const fimSemana = endOfWeek(hoje, {
+    const fimSemana = endOfWeek(semanaAtual, {
       weekStartsOn: 1
     });
     const diasSemana = eachDayOfInterval({
@@ -117,9 +133,8 @@ export default function AgendamentoDashboard() {
         dataCompleta: dia
       };
     });
-  }, [agendamentos]);
+  }, [agendamentos, semanaAtual]);
 
-  // Agendamentos do dia selecionado com ordenação atualizada
   const agendamentosDiaSelecionado = useMemo(() => {
     if (!diaSelecionado) return [];
     const agendamentosFiltered = agendamentos.filter(agendamento => isSameDay(new Date(agendamento.dataReposicao), diaSelecionado));
@@ -223,7 +238,53 @@ export default function AgendamentoDashboard() {
     });
   };
 
+  const ehSemanaAtual = useMemo(() => {
+    const hoje = new Date();
+    const inicioSemanaAtual = startOfWeek(hoje, { weekStartsOn: 1 });
+    const inicioSemanaVisualizacao = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    return isSameDay(inicioSemanaAtual, inicioSemanaVisualizacao);
+  }, [semanaAtual]);
+
   return <div className="space-y-6">
+      {/* Navegação de Semanas */}
+      <div className="flex items-center justify-center gap-4 mb-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={navegarSemanaAnterior}
+          className="flex items-center gap-2"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Semana Anterior
+        </Button>
+        
+        <div className="text-center">
+          <div className="font-medium text-lg">
+            {format(startOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })} - {format(endOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM/yyyy', { locale: ptBR })}
+          </div>
+          {!ehSemanaAtual && (
+            <Button
+              variant="link"
+              size="sm"
+              onClick={voltarSemanaAtual}
+              className="text-xs text-muted-foreground"
+            >
+              Voltar para semana atual
+            </Button>
+          )}
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={navegarProximaSemana}
+          className="flex items-center gap-2"
+        >
+          Próxima Semana
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+
       {/* Cards de Indicadores */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -323,7 +384,7 @@ export default function AgendamentoDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Calendário Semanal</CardTitle>
-          <CardDescription className="text-left">Visão dos agendamentos por dia da semana atual - Clique em um dia para ver os detalhes</CardDescription>
+          <CardDescription className="text-left">Visão dos agendamentos por dia da semana selecionada - Clique em um dia para ver os detalhes</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-7 gap-2">
