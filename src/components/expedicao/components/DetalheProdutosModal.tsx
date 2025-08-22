@@ -41,7 +41,7 @@ export const DetalheProdutosModal = ({ open, onOpenChange, agendamento }: Detalh
           console.log('📦 Usando itens personalizados:', agendamento.itens_personalizados);
           const produtosPersonalizados = agendamento.itens_personalizados.map((item: any) => ({
             produto_id: item.produto_id,
-            produto_nome: item.produto || item.nome || 'Produto não identificado',
+            produto_nome: item.produto || item.nome || item.produto_nome || 'Produto não identificado',
             quantidade: item.quantidade || 0
           }));
           setProdutos(produtosPersonalizados);
