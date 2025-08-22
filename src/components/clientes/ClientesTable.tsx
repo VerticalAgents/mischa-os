@@ -141,19 +141,7 @@ export default function ClientesTable({
       case "enderecoEntrega":
         return cliente.enderecoEntrega || "-";
       case "contato":
-        // Modificação: mostrar nome do contato seguido do telefone
-        const nomeContato = cliente.contatoNome || "";
-        const telefoneContato = cliente.contatoTelefone || "";
-        
-        if (nomeContato && telefoneContato) {
-          return `${nomeContato} - ${telefoneContato}`;
-        } else if (nomeContato) {
-          return nomeContato;
-        } else if (telefoneContato) {
-          return telefoneContato;
-        } else {
-          return cliente.contatoEmail || "-";
-        }
+        return cliente.contatoTelefone || cliente.contatoEmail || "-";
       case "quantidadePadrao":
         return cliente.quantidadePadrao || 0;
       case "periodicidade":
