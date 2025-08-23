@@ -28,7 +28,7 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
       filtroTexto: "",
       filtroTipoPedido: "todos",
       filtroData: new Date().toISOString().split('T')[0],
-      activeTab: "separacao",
+      activeTab: "resumo",
       entregasTab: "hoje",
       
       // Ações

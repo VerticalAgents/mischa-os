@@ -3,7 +3,7 @@ import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Search, Filter, Calculator } from "lucide-react";
+import { RefreshCw, Search, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,6 @@ import AgendamentoEditModal from "@/components/agendamento/AgendamentoEditModal"
 import { AgendamentoItem } from "@/components/agendamento/types";
 import { PrintingActions } from "./components/PrintingActions";
 import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
-import { CalculosModal } from "./components/CalculosModal";
 
 const SeparacaoPedidos = () => {
   const { 
@@ -35,7 +34,6 @@ const SeparacaoPedidos = () => {
 
   const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
-  const [calculosModalAberto, setCalculosModalAberto] = useState(false);
 
   useEffect(() => {
     carregarPedidos();
@@ -46,7 +44,6 @@ const SeparacaoPedidos = () => {
   };
 
   const handleEditarPedido = (pedido: any) => {
-    // Converter o pedido da expedição para o formato AgendamentoItem
     const agendamentoFormatado: AgendamentoItem = {
       cliente: {
         id: pedido.cliente_id,
@@ -89,19 +86,16 @@ const SeparacaoPedidos = () => {
   };
 
   const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
-    // Recarregar pedidos após edição
     carregarPedidos();
     setModalEditarAberto(false);
     setPedidoEditando(null);
   };
 
-  // Filtrar pedidos para separação (Agendado e não separados ainda)
   const pedidosParaSeparacao = pedidos.filter(pedido => 
     !pedido.substatus_pedido || 
     pedido.substatus_pedido === 'Agendado'
   );
 
-  // Aplicar filtros
   const pedidosFiltrados = pedidosParaSeparacao.filter(pedido => {
     const matchTexto = !filtroTexto || 
       pedido.cliente_nome.toLowerCase().includes(filtroTexto.toLowerCase()) ||
@@ -128,7 +122,6 @@ const SeparacaoPedidos = () => {
 
   return (
     <div className="space-y-6">
-      {/* Resumo de Quantidades de Produtos */}
       <ResumoQuantidadeProdutos pedidos={pedidosFiltrados} />
       
       <div className="flex items-center justify-between">
@@ -139,15 +132,6 @@ const SeparacaoPedidos = () => {
           </Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            onClick={() => setCalculosModalAberto(true)} 
-            size="sm"
-            variant="outline"
-            className="flex items-center gap-1"
-          >
-            <Calculator className="h-4 w-4" />
-            Cálculos
-          </Button>
           <PrintingActions
             activeSubTab="todos"
             pedidosPadrao={pedidosFiltrados.filter(p => p.tipo_pedido === 'Padrão')}
@@ -167,7 +151,6 @@ const SeparacaoPedidos = () => {
         </div>
       </div>
 
-      {/* Filtros */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
         <div className="relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
@@ -205,7 +188,6 @@ const SeparacaoPedidos = () => {
         </div>
       </div>
 
-      {/* Lista de Pedidos */}
       <div className="space-y-4">
         {pedidosFiltrados.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
@@ -227,18 +209,11 @@ const SeparacaoPedidos = () => {
         )}
       </div>
 
-      {/* Modal de Edição - Agora usando o modal completo */}
       <AgendamentoEditModal
         agendamento={pedidoEditando}
         open={modalEditarAberto}
         onOpenChange={setModalEditarAberto}
         onSalvar={handleSalvarAgendamento}
-      />
-
-      {/* Modal de Cálculos */}
-      <CalculosModal
-        open={calculosModalAberto}
-        onOpenChange={setCalculosModalAberto}
       />
     </div>
   );
