@@ -3,7 +3,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Cliente } from "@/types";
 import { useClienteStore } from "@/hooks/useClienteStore";
-import { CheckSquare, Trash2 } from "lucide-react";
+import { useExportacao } from "@/hooks/useExportacao";
+import { CheckSquare, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -33,8 +34,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+interface ClienteExportacao extends Cliente {
+  statusConfirmacao: string;
+  dataReposicao: Date;
+  tipoPedido?: string;
+  observacoes?: string;
+}
+
 interface ClientesBulkActionsProps {
-  selectedClienteIds: string[]; // Changed from number[] to string[]
+  selectedClienteIds: string[];
   onClearSelection: () => void;
   onToggleSelectionMode: () => void;
   isSelectionMode: boolean;
@@ -51,8 +59,10 @@ export default function ClientesBulkActions({
   const [isBulkEditDialogOpen, setIsBulkEditDialogOpen] = useState(false);
   const [bulkEditField, setBulkEditField] = useState<string>("");
   const [bulkEditValue, setBulkEditValue] = useState<string>("");
+  const [isExporting, setIsExporting] = useState(false);
   
   const { removerCliente, clientes, atualizarCliente } = useClienteStore();
+  const { exportarCSV } = useExportacao();
   
   const handleDelete = () => {
     setIsDeleteDialogOpen(false);
@@ -109,6 +119,35 @@ export default function ClientesBulkActions({
     setBulkEditValue("");
     onClearSelection();
   };
+
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    
+    try {
+      // Filtrar clientes selecionados
+      const clientesSelecionados = clientes.filter(cliente => 
+        selectedClienteIds.includes(cliente.id)
+      );
+
+      // Transformar para o formato esperado pelo hook de exportação
+      const clientesParaExportar: ClienteExportacao[] = clientesSelecionados.map(cliente => ({
+        ...cliente,
+        statusConfirmacao: cliente.statusCliente || 'Não definido',
+        dataReposicao: cliente.proximaDataReposicao ? new Date(cliente.proximaDataReposicao) : new Date(),
+        tipoPedido: 'Padrão',
+        observacoes: cliente.observacoes || ''
+      }));
+
+      exportarCSV(clientesParaExportar, 'clientes_selecionados');
+      
+      toast.success(`${selectedClienteIds.length} clientes exportados com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao exportar clientes:', error);
+      toast.error('Erro ao exportar clientes. Tente novamente.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
   
   return (
     <>
@@ -129,6 +168,16 @@ export default function ClientesBulkActions({
               onClick={() => setIsBulkEditDialogOpen(true)}
             >
               Editar {selectedClienteIds.length} clientes
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={handleExportCSV}
+              disabled={isExporting}
+              className="flex items-center gap-1"
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? "Exportando..." : `Exportar ${selectedClienteIds.length} clientes`}
             </Button>
             
             <Button
@@ -162,7 +211,6 @@ export default function ClientesBulkActions({
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Second delete confirmation dialog */}
       <AlertDialog open={isConfirmDeleteDialogOpen} onOpenChange={setIsConfirmDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -182,7 +230,6 @@ export default function ClientesBulkActions({
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Bulk edit dialog */}
       <Dialog open={isBulkEditDialogOpen} onOpenChange={setIsBulkEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
