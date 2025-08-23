@@ -156,7 +156,7 @@ const ResumoExpedicao = () => {
 
       {/* Modal de Detalhes dos Produtos */}
       <DetalheProdutosModal
-        pedido={pedidoSelecionado}
+        agendamento={pedidoSelecionado}
         open={modalDetalhesAberto}
         onOpenChange={setModalDetalhesAberto}
       />
