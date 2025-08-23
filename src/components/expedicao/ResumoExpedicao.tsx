@@ -3,7 +3,7 @@ import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, Package, Eye } from "lucide-react";
+import { RefreshCw, Package, Eye, User, Calendar, Hash } from "lucide-react";
 import { ResumoUnidadesSeparadas } from "./components/ResumoUnidadesSeparadas";
 import { DetalheProdutosModal } from "./components/DetalheProdutosModal";
 import { useState } from "react";
@@ -75,32 +75,41 @@ const ResumoExpedicao = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="space-y-4 max-h-96 overflow-y-auto">
               {pedidosSeparados.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="text-sm text-muted-foreground text-center py-8 italic">
                   Nenhum pedido separado encontrado
                 </p>
               ) : (
                 pedidosSeparados.map((pedido) => (
-                  <div key={pedido.id} className="flex items-center justify-between p-3 border rounded-lg bg-green-50">
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{pedido.cliente_nome}</div>
-                      <div className="text-xs text-muted-foreground">
-                        ID: {pedido.id} • {pedido.quantidade_total} unidades
+                  <div key={pedido.id} className="group p-4 border border-green-200 rounded-xl bg-gradient-to-r from-green-50/80 to-green-50/40 hover:from-green-100/80 hover:to-green-100/40 transition-all duration-200 hover:shadow-md">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-green-600" />
+                          <span className="font-semibold text-green-800">{pedido.cliente_nome}</span>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Package className="h-3 w-3" />
+                            <span>{pedido.quantidade_total} unidades</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{format(new Date(pedido.data_prevista_entrega), "dd/MM/yyyy", { locale: ptBR })}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {format(new Date(pedido.data_prevista_entrega), "dd/MM/yyyy", { locale: ptBR })}
-                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleVerProdutos(pedido)}
+                        className="ml-4 opacity-70 group-hover:opacity-100 transition-opacity border-green-300 hover:bg-green-100 hover:border-green-400"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        Ver Produtos
+                      </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleVerProdutos(pedido)}
-                      className="ml-2"
-                    >
-                      <Eye className="h-3 w-3 mr-1" />
-                      Ver Produtos
-                    </Button>
                   </div>
                 ))
               )}
@@ -120,32 +129,41 @@ const ResumoExpedicao = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="space-y-4 max-h-96 overflow-y-auto">
               {pedidosDespachados.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="text-sm text-muted-foreground text-center py-8 italic">
                   Nenhum pedido despachado encontrado
                 </p>
               ) : (
                 pedidosDespachados.map((pedido) => (
-                  <div key={pedido.id} className="flex items-center justify-between p-3 border rounded-lg bg-blue-50">
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{pedido.cliente_nome}</div>
-                      <div className="text-xs text-muted-foreground">
-                        ID: {pedido.id} • {pedido.quantidade_total} unidades
+                  <div key={pedido.id} className="group p-4 border border-blue-200 rounded-xl bg-gradient-to-r from-blue-50/80 to-blue-50/40 hover:from-blue-100/80 hover:to-blue-100/40 transition-all duration-200 hover:shadow-md">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-blue-600" />
+                          <span className="font-semibold text-blue-800">{pedido.cliente_nome}</span>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Package className="h-3 w-3" />
+                            <span>{pedido.quantidade_total} unidades</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{format(new Date(pedido.data_prevista_entrega), "dd/MM/yyyy", { locale: ptBR })}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {format(new Date(pedido.data_prevista_entrega), "dd/MM/yyyy", { locale: ptBR })}
-                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleVerProdutos(pedido)}
+                        className="ml-4 opacity-70 group-hover:opacity-100 transition-opacity border-blue-300 hover:bg-blue-100 hover:border-blue-400"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        Ver Produtos
+                      </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleVerProdutos(pedido)}
-                      className="ml-2"
-                    >
-                      <Eye className="h-3 w-3 mr-1" />
-                      Ver Produtos
-                    </Button>
                   </div>
                 ))
               )}
