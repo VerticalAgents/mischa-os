@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Cliente } from "@/types";
@@ -129,16 +128,88 @@ export default function ClientesBulkActions({
         selectedClienteIds.includes(cliente.id)
       );
 
-      // Transformar para o formato esperado pelo hook de exportação
-      const clientesParaExportar: ClienteExportacao[] = clientesSelecionados.map(cliente => ({
-        ...cliente,
-        statusConfirmacao: cliente.statusCliente || 'Não definido',
-        dataReposicao: cliente.proximaDataReposicao ? new Date(cliente.proximaDataReposicao) : new Date(),
-        tipoPedido: 'Padrão',
-        observacoes: cliente.observacoes || ''
-      }));
+      // Criar um CSV customizado com todas as informações do cliente
+      const headers = [
+        'Nome',
+        'CNPJ/CPF',
+        'Status Cliente',
+        'Endereço de Entrega',
+        'Link Google Maps',
+        'Nome do Contato',
+        'Telefone do Contato',
+        'Email do Contato',
+        'Instruções de Entrega',
+        'Representante ID',
+        'Rota de Entrega ID',
+        'Categoria Estabelecimento ID',
+        'Forma de Pagamento',
+        'Tipo de Cobrança',
+        'Tipo de Logística',
+        'Quantidade Padrão',
+        'Periodicidade Padrão (dias)',
+        'Giro Médio Semanal',
+        'Meta Giro Semanal',
+        'Próxima Data Reposição',
+        'Última Data Reposição Efetiva',
+        'Status Agendamento',
+        'Categorias Habilitadas',
+        'Janelas de Entrega',
+        'Emite Nota Fiscal',
+        'Contabilizar Giro Médio',
+        'Ativo',
+        'Observações',
+        'Data de Criação',
+        'Data de Atualização'
+      ];
 
-      exportarCSV(clientesParaExportar, 'clientes_selecionados');
+      const csvContent = [
+        headers.join(','),
+        ...clientesSelecionados.map(cliente => [
+          `"${cliente.nome || ''}"`,
+          `"${cliente.cnpj_cpf || ''}"`,
+          `"${cliente.statusCliente || ''}"`,
+          `"${cliente.endereco_entrega || ''}"`,
+          `"${cliente.link_google_maps || ''}"`,
+          `"${cliente.contato_nome || ''}"`,
+          `"${cliente.contato_telefone || ''}"`,
+          `"${cliente.contato_email || ''}"`,
+          `"${cliente.instrucoes_entrega || ''}"`,
+          `"${cliente.representante_id || ''}"`,
+          `"${cliente.rota_entrega_id || ''}"`,
+          `"${cliente.categoria_estabelecimento_id || ''}"`,
+          `"${cliente.forma_pagamento || ''}"`,
+          `"${cliente.tipo_cobranca || ''}"`,
+          `"${cliente.tipo_logistica || ''}"`,
+          `"${cliente.quantidade_padrao || 0}"`,
+          `"${cliente.periodicidade_padrao || 0}"`,
+          `"${cliente.giro_medio_semanal || 0}"`,
+          `"${cliente.meta_giro_semanal || 0}"`,
+          `"${cliente.proxima_data_reposicao || ''}"`,
+          `"${cliente.ultima_data_reposicao_efetiva || ''}"`,
+          `"${cliente.status_agendamento || ''}"`,
+          `"${JSON.stringify(cliente.categorias_habilitadas || [])}"`,
+          `"${JSON.stringify(cliente.janelas_entrega || {})}"`,
+          `"${cliente.emite_nota_fiscal ? 'Sim' : 'Não'}"`,
+          `"${cliente.contabilizar_giro_medio ? 'Sim' : 'Não'}"`,
+          `"${cliente.ativo ? 'Sim' : 'Não'}"`,
+          `"${cliente.observacoes || ''}"`,
+          `"${cliente.created_at || ''}"`,
+          `"${cliente.updated_at || ''}"`
+        ].join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `clientes_completo_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
       
       toast.success(`${selectedClienteIds.length} clientes exportados com sucesso!`);
     } catch (error) {
