@@ -37,13 +37,15 @@ export const DetalheProdutosModal = ({ open, onOpenChange, agendamento }: Detalh
         console.log('🔄 Calculando produtos para agendamento:', agendamento);
 
         if (agendamento.tipo_pedido === 'Alterado' && agendamento.itens_personalizados?.length > 0) {
-          // Pedido alterado - usar itens personalizados
+          // Pedido alterado - usar itens personalizados e filtrar produtos com quantidade 0
           console.log('📦 Usando itens personalizados:', agendamento.itens_personalizados);
-          const produtosPersonalizados = agendamento.itens_personalizados.map((item: any) => ({
-            produto_id: item.produto_id,
-            produto_nome: item.produto || item.nome || item.produto_nome || 'Produto não identificado',
-            quantidade: item.quantidade || 0
-          }));
+          const produtosPersonalizados = agendamento.itens_personalizados
+            .filter((item: any) => item.quantidade > 0) // Filtrar produtos com quantidade maior que 0
+            .map((item: any) => ({
+              produto_id: item.produto_id,
+              produto_nome: item.produto || item.nome || item.produto_nome || 'Produto não identificado',
+              quantidade: item.quantidade || 0
+            }));
           setProdutos(produtosPersonalizados);
         } else {
           // Pedido padrão - mostrar texto fixo para evitar loop

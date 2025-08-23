@@ -18,6 +18,9 @@ export default function ProdutosList({ pedido }: ProdutosListProps) {
 
   const isAlterado = pedido.tipo_pedido === "Alterado";
 
+  // Filtrar itens personalizados que têm quantidade maior que 0
+  const itensComQuantidade = pedido.itens_personalizados?.filter(item => item.quantidade > 0) || [];
+
   return (
     <div className="space-y-2">
       <Button
@@ -47,8 +50,8 @@ export default function ProdutosList({ pedido }: ProdutosListProps) {
           </div>
           
           <div className="space-y-2">
-            {pedido.itens_personalizados && pedido.itens_personalizados.length > 0 ? (
-              pedido.itens_personalizados.map((item: any, index: number) => (
+            {isAlterado && itensComQuantidade.length > 0 ? (
+              itensComQuantidade.map((item: any, index: number) => (
                 <div key={index} className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
