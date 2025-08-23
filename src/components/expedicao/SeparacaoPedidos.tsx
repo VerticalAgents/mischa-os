@@ -3,7 +3,7 @@ import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Search, Filter, Calculator } from "lucide-react";
+import { RefreshCw, Search, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +12,6 @@ import { ptBR } from "date-fns/locale";
 import AgendamentoEditModal from "@/components/agendamento/AgendamentoEditModal";
 import { AgendamentoItem } from "@/components/agendamento/types";
 import { PrintingActions } from "./components/PrintingActions";
-import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
-import { CalculosModal } from "./components/CalculosModal";
 
 const SeparacaoPedidos = () => {
   const { 
@@ -35,7 +33,6 @@ const SeparacaoPedidos = () => {
 
   const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
-  const [calculosModalAberto, setCalculosModalAberto] = useState(false);
 
   useEffect(() => {
     carregarPedidos();
@@ -46,7 +43,6 @@ const SeparacaoPedidos = () => {
   };
 
   const handleEditarPedido = (pedido: any) => {
-    // Converter o pedido da expedição para o formato AgendamentoItem
     const agendamentoFormatado: AgendamentoItem = {
       cliente: {
         id: pedido.cliente_id,
@@ -89,7 +85,6 @@ const SeparacaoPedidos = () => {
   };
 
   const handleSalvarAgendamento = (agendamentoAtualizado: AgendamentoItem) => {
-    // Recarregar pedidos após edição
     carregarPedidos();
     setModalEditarAberto(false);
     setPedidoEditando(null);
@@ -128,9 +123,6 @@ const SeparacaoPedidos = () => {
 
   return (
     <div className="space-y-6">
-      {/* Resumo de Quantidades de Produtos */}
-      <ResumoQuantidadeProdutos pedidos={pedidosFiltrados} />
-      
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-xl font-semibold">Separação de Pedidos</h2>
@@ -139,15 +131,6 @@ const SeparacaoPedidos = () => {
           </Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            onClick={() => setCalculosModalAberto(true)} 
-            size="sm"
-            variant="outline"
-            className="flex items-center gap-1"
-          >
-            <Calculator className="h-4 w-4" />
-            Cálculos
-          </Button>
           <PrintingActions
             activeSubTab="todos"
             pedidosPadrao={pedidosFiltrados.filter(p => p.tipo_pedido === 'Padrão')}
@@ -233,12 +216,6 @@ const SeparacaoPedidos = () => {
         open={modalEditarAberto}
         onOpenChange={setModalEditarAberto}
         onSalvar={handleSalvarAgendamento}
-      />
-
-      {/* Modal de Cálculos */}
-      <CalculosModal
-        open={calculosModalAberto}
-        onOpenChange={setCalculosModalAberto}
       />
     </div>
   );
