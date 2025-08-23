@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Cliente } from "@/types";
 import { useClienteStore } from "@/hooks/useClienteStore";
-import { useExportacao } from "@/hooks/useExportacao";
 import { CheckSquare, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -33,13 +32,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-interface ClienteExportacao extends Cliente {
-  statusConfirmacao: string;
-  dataReposicao: Date;
-  tipoPedido?: string;
-  observacoes?: string;
-}
-
 interface ClientesBulkActionsProps {
   selectedClienteIds: string[];
   onClearSelection: () => void;
@@ -61,8 +53,123 @@ export default function ClientesBulkActions({
   const [isExporting, setIsExporting] = useState(false);
   
   const { removerCliente, clientes, atualizarCliente } = useClienteStore();
-  const { exportarCSV } = useExportacao();
-  
+
+  // Função para normalizar telefone para E164
+  const normalizarTelefone = (telefone: string): { e164: string; original: string } => {
+    if (!telefone) return { e164: '', original: '' };
+    
+    const original = telefone.trim();
+    let limpo = telefone.replace(/\D/g, '');
+    
+    // Se começar com 55 (Brasil) e tem 13 dígitos, já está no formato correto
+    if (limpo.startsWith('55') && limpo.length === 13) {
+      return { e164: `+${limpo}`, original };
+    }
+    
+    // Se tem 11 dígitos (celular brasileiro sem código país)
+    if (limpo.length === 11 && limpo.startsWith('9')) {
+      return { e164: `+55${limpo}`, original };
+    }
+    
+    // Se tem 10 dígitos (fixo brasileiro sem código país)
+    if (limpo.length === 10) {
+      return { e164: `+55${limpo}`, original };
+    }
+    
+    // Se não conseguir normalizar, deixa E164 vazio
+    return { e164: '', original };
+  };
+
+  // Função para inferir tipo de documento
+  const inferirTipoDocumento = (doc: string): string => {
+    if (!doc) return '';
+    const limpo = doc.replace(/\D/g, '');
+    if (limpo.length === 11) return 'CPF';
+    if (limpo.length === 14) return 'CNPJ';
+    return 'Outro';
+  };
+
+  // Função para formatar documento
+  const formatarDocumento = (doc: string): string => {
+    if (!doc) return '';
+    const limpo = doc.replace(/\D/g, '');
+    
+    if (limpo.length === 11) {
+      // CPF: 000.000.000-00
+      return limpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    }
+    
+    if (limpo.length === 14) {
+      // CNPJ: 00.000.000/0000-00
+      return limpo.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
+    
+    return doc;
+  };
+
+  // Função para quebrar endereço em componentes
+  const quebrarEndereco = (endereco: string) => {
+    if (!endereco) {
+      return {
+        logradouro: '',
+        numero: '',
+        complemento: '',
+        bairro: '',
+        cidade: '',
+        uf: '',
+        cep: ''
+      };
+    }
+
+    // Parsing básico do endereço - pode ser melhorado com regex mais sofisticada
+    const partes = endereco.split(',').map(p => p.trim());
+    
+    return {
+      logradouro: partes[0] || '',
+      numero: '',
+      complemento: '',
+      bairro: partes[1] || '',
+      cidade: partes[2] || '',
+      uf: '',
+      cep: ''
+    };
+  };
+
+  // Função para serializar janelas de entrega
+  const serializarJanelasEntrega = (janelas: any): string => {
+    if (!janelas || typeof janelas !== 'object') return '';
+    
+    const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+    const janelasAtivas = [];
+    
+    for (let i = 0; i < diasSemana.length; i++) {
+      const dia = diasSemana[i].toLowerCase();
+      if (janelas[dia] === true) {
+        janelasAtivas.push(diasSemana[i]);
+      }
+    }
+    
+    return janelasAtivas.join('|');
+  };
+
+  // Função para serializar categorias habilitadas
+  const serializarCategorias = (categorias: any): string => {
+    if (!categorias || !Array.isArray(categorias)) return '';
+    
+    // Assumindo que categorias é um array de IDs ou objetos
+    // Precisa mapear IDs para nomes reais das categorias
+    return categorias.map(cat => 
+      typeof cat === 'object' ? cat.nome || cat.id : cat
+    ).join('|');
+  };
+
+  // Função para serializar precificação
+  const serializarPrecificacao = (cliente: Cliente): string => {
+    // Esta função precisaria acessar dados de precificação por categoria
+    // Por enquanto retorna vazio, mas deveria consultar precos_categoria_cliente
+    return '';
+  };
+
   const handleDelete = () => {
     setIsDeleteDialogOpen(false);
     setIsConfirmDeleteDialogOpen(true);
@@ -123,80 +230,100 @@ export default function ClientesBulkActions({
     setIsExporting(true);
     
     try {
-      // Filtrar clientes selecionados
       const clientesSelecionados = clientes.filter(cliente => 
         selectedClienteIds.includes(cliente.id)
       );
 
-      // Criar um CSV customizado com todas as informações do cliente
+      // Cabeçalho exato conforme especificação
       const headers = [
+        'Cliente_ID',
         'Nome',
-        'CNPJ/CPF',
-        'Status Cliente',
-        'Endereço de Entrega',
-        'Link Google Maps',
-        'Nome do Contato',
-        'Telefone do Contato',
-        'Email do Contato',
-        'Instruções de Entrega',
-        'Representante ID',
-        'Rota de Entrega ID',
-        'Categoria Estabelecimento ID',
-        'Forma de Pagamento',
-        'Tipo de Cobrança',
-        'Tipo de Logística',
-        'Quantidade Padrão',
-        'Periodicidade Padrão (dias)',
-        'Giro Médio Semanal',
-        'Meta Giro Semanal',
-        'Próxima Data Reposição',
-        'Última Data Reposição Efetiva',
-        'Status Agendamento',
-        'Categorias Habilitadas',
-        'Janelas de Entrega',
-        'Emite Nota Fiscal',
-        'Contabilizar Giro Médio',
-        'Ativo',
-        'Observações',
-        'Data de Criação',
-        'Data de Atualização'
+        'Documento_Tipo',
+        'Documento_Numero',
+        'Documento_Formatado',
+        'Endereco_Logradouro',
+        'Endereco_Numero',
+        'Endereco_Complemento',
+        'Endereco_Bairro',
+        'Endereco_Cidade',
+        'Endereco_UF',
+        'Endereco_CEP',
+        'Link_Google_Maps',
+        'Representante',
+        'Rota_Entrega',
+        'Categoria_Principal',
+        'Tipo_Logistica',
+        'Quantidade_Padrao',
+        'Periodicidade_Dias',
+        'Status_Cliente',
+        'Tipo_Cobranca',
+        'Forma_Pagamento',
+        'Emite_Nota_Fiscal',
+        'Contabilizar_Giro_Medio',
+        'Janelas_Entrega',
+        'Instrucao_Entrega',
+        'Categorias_Habilitadas',
+        'Precificacao',
+        'Contato_Principal_Nome',
+        'Contato_Principal_Telefone_E164',
+        'Contato_Principal_Telefone_Original',
+        'Contato_Principal_Email',
+        'Contatos_Extras_JSON',
+        'Observacoes',
+        'Data_Criacao',
+        'Data_Atualizacao'
       ];
 
-      const csvContent = [
-        headers.join(','),
-        ...clientesSelecionados.map(cliente => [
+      const linhas = clientesSelecionados.map(cliente => {
+        const endereco = quebrarEndereco(cliente.enderecoEntrega || '');
+        const telefoneNormalizado = normalizarTelefone(cliente.contatoTelefone || '');
+        const docLimpo = cliente.cnpjCpf ? cliente.cnpjCpf.replace(/\D/g, '') : '';
+        
+        return [
+          `"${cliente.id}"`,
           `"${cliente.nome || ''}"`,
-          `"${cliente.cnpjCpf || ''}"`,
-          `"${cliente.statusCliente || ''}"`,
-          `"${cliente.enderecoEntrega || ''}"`,
+          `"${inferirTipoDocumento(cliente.cnpjCpf || '')}"`,
+          `"${docLimpo}"`,
+          `"${formatarDocumento(cliente.cnpjCpf || '')}"`,
+          `"${endereco.logradouro}"`,
+          `"${endereco.numero}"`,
+          `"${endereco.complemento}"`,
+          `"${endereco.bairro}"`,
+          `"${endereco.cidade}"`,
+          `"${endereco.uf}"`,
+          `"${endereco.cep}"`,
           `"${cliente.linkGoogleMaps || ''}"`,
-          `"${cliente.contatoNome || ''}"`,
-          `"${cliente.contatoTelefone || ''}"`,
-          `"${cliente.contatoEmail || ''}"`,
-          `"${cliente.instrucoesEntrega || ''}"`,
           `"${cliente.representanteId || ''}"`,
           `"${cliente.rotaEntregaId || ''}"`,
           `"${cliente.categoriaEstabelecimentoId || ''}"`,
-          `"${cliente.formaPagamento || ''}"`,
-          `"${cliente.tipoCobranca || ''}"`,
           `"${cliente.tipoLogistica || ''}"`,
           `"${cliente.quantidadePadrao || 0}"`,
           `"${cliente.periodicidadePadrao || 0}"`,
-          `"${cliente.giroMedioSemanal || 0}"`,
-          `"${cliente.metaGiroSemanal || 0}"`,
-          `"${cliente.proximaDataReposicao || ''}"`,
-          `"${cliente.ultimaDataReposicaoEfetiva || ''}"`,
-          `"${cliente.statusAgendamento || ''}"`,
-          `"${JSON.stringify(cliente.categoriasHabilitadas || [])}"`,
-          `"${JSON.stringify(cliente.janelasEntrega || {})}"`,
-          `"${cliente.emiteNotaFiscal ? 'Sim' : 'Não'}"`,
-          `"${cliente.contabilizarGiroMedio ? 'Sim' : 'Não'}"`,
-          `"${cliente.ativo ? 'Sim' : 'Não'}"`,
+          `"${cliente.statusCliente || ''}"`,
+          `"${cliente.tipoCobranca || ''}"`,
+          `"${cliente.formaPagamento || ''}"`,
+          `"${cliente.emiteNotaFiscal ? 'true' : 'false'}"`,
+          `"${cliente.contabilizarGiroMedio ? 'true' : 'false'}"`,
+          `"${serializarJanelasEntrega(cliente.janelasEntrega)}"`,
+          `"${cliente.instrucoesEntrega || ''}"`,
+          `"${serializarCategorias(cliente.categoriasHabilitadas)}"`,
+          `"${serializarPrecificacao(cliente)}"`,
+          `"${cliente.contatoNome || ''}"`,
+          `"${telefoneNormalizado.e164}"`,
+          `"${telefoneNormalizado.original}"`,
+          `"${cliente.contatoEmail || ''}"`,
+          `""`, // Contatos_Extras_JSON - vazio por enquanto
           `"${cliente.observacoes || ''}"`,
           `"${cliente.dataCadastro || ''}"`,
           `"${new Date().toISOString()}"`
-        ].join(','))
-      ].join('\n');
+        ].join(',');
+      });
+
+      const csvContent = [headers.join(','), ...linhas].join('\n');
+      
+      // Criar arquivo com nome padronizado
+      const hoje = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      const nomeArquivo = `clientes_export_unico_${hoje}.csv`;
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
@@ -204,14 +331,26 @@ export default function ClientesBulkActions({
       if (link.download !== undefined) {
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
-        link.setAttribute('download', `clientes_completo_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', nomeArquivo);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
       }
       
-      toast.success(`${selectedClienteIds.length} clientes exportados com sucesso!`);
+      // Opcional: gerar arquivo de validação
+      const validacao = {
+        totalClientes: clientesSelecionados.length,
+        clientesComTelefoneNormalizado: clientesSelecionados.filter(c => 
+          normalizarTelefone(c.contatoTelefone || '').e164
+        ).length,
+        clientesComDocumento: clientesSelecionados.filter(c => c.cnpjCpf).length,
+        dataExportacao: new Date().toISOString()
+      };
+      
+      console.log('Validação da exportação:', validacao);
+      
+      toast.success(`${selectedClienteIds.length} clientes exportados com sucesso em ${nomeArquivo}!`);
     } catch (error) {
       console.error('Erro ao exportar clientes:', error);
       toast.error('Erro ao exportar clientes. Tente novamente.');
