@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, RefreshCw } from 'lucide-react';
-import { useProdutoStore } from '@/hooks/useProdutoStore';
+import { useSupabaseProdutos } from '@/hooks/useSupabaseProdutos';
 import { useClienteStore } from '@/hooks/useClienteStore';
 
 interface ProdutoQuantidade {
@@ -26,7 +26,7 @@ export default function ProdutoQuantidadeSelector({
   clienteId,
   quantidadeTotal 
 }: ProdutoQuantidadeSelectorProps) {
-  const { produtos, carregarProdutos } = useProdutoStore();
+  const { produtos, carregarProdutos } = useSupabaseProdutos();
   const { getClientePorId } = useClienteStore();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -37,7 +37,7 @@ export default function ProdutoQuantidadeSelector({
     if (!cliente?.categoriasHabilitadas || cliente.categoriasHabilitadas.length === 0) {
       return true;
     }
-    return cliente.categoriasHabilitadas.includes(produto.categoriaId);
+    return cliente.categoriasHabilitadas.includes(produto.categoria_id || 0);
   });
 
   // Filtrar produtos que ainda não foram adicionados
