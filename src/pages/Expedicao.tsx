@@ -2,7 +2,6 @@
 import { useEffect } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ResumoExpedicao from "@/components/expedicao/ResumoExpedicao";
 import SeparacaoPedidos from "@/components/expedicao/SeparacaoPedidos";
 import { Despacho } from "@/components/expedicao/Despacho";
 import { HistoricoEntregas } from "@/components/expedicao/HistoricoEntregas";
@@ -53,7 +52,6 @@ export default function Expedicao() {
     });
     recarregarDados(); // Recarrega os dados ao trocar de aba
   };
-  
   const handleEntregasTabChange = (newValue: string) => {
     setEntregasTab(newValue);
 
@@ -65,22 +63,15 @@ export default function Expedicao() {
     });
     recarregarDados(); // Recarrega os dados ao trocar sub-abas
   };
-  
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <PageHeader title="Expedição" description="Gerenciamento de separação de pedidos e despacho de entregas" />
       
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="separacao">Separação de Pedidos</TabsTrigger>
           <TabsTrigger value="despacho">Despacho de Pedidos</TabsTrigger>
           <TabsTrigger value="historico">Histórico de Entregas</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="resumo" className="space-y-4" forceMount={activeTab === "resumo" ? true : undefined}>
-          {activeTab === "resumo" && <ResumoExpedicao />}
-        </TabsContent>
         
         <TabsContent value="separacao" className="space-y-4" forceMount={activeTab === "separacao" ? true : undefined}>
           {activeTab === "separacao" && <SeparacaoPedidos />}
@@ -120,6 +111,5 @@ export default function Expedicao() {
           {activeTab === "historico" && <HistoricoEntregas />}
         </TabsContent>
       </Tabs>
-    </div>
-  );
+    </div>;
 }
