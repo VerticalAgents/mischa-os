@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, PackagePlus } from 'lucide-react';
 import { useSupabaseProdutos } from '@/hooks/useSupabaseProdutos';
 import { useClienteStore } from '@/hooks/useClienteStore';
 
@@ -58,6 +57,14 @@ export default function ProdutoQuantidadeSelector({
     onChange([...value, { produto: '', quantidade: 0 }]);
   };
 
+  const adicionarTodosProdutos = () => {
+    const novosProdutos = produtosDisponiveis.map(produto => ({
+      produto: produto.nome,
+      quantidade: 0
+    }));
+    onChange([...value, ...novosProdutos]);
+  };
+
   const removerProduto = (index: number) => {
     onChange(value.filter((_, i) => i !== index));
   };
@@ -88,6 +95,16 @@ export default function ProdutoQuantidadeSelector({
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Atualizar Lista
+          </Button>
+          <Button 
+            type="button" 
+            onClick={adicionarTodosProdutos} 
+            size="sm"
+            variant="outline"
+            disabled={produtosDisponiveis.length === 0}
+          >
+            <PackagePlus className="h-4 w-4 mr-2" />
+            Adicionar Todos
           </Button>
           <Button 
             type="button" 
