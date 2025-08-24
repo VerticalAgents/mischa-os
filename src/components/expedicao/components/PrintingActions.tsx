@@ -84,16 +84,24 @@ export const PrintingActions = ({
     
     listaAtual.forEach(pedido => {
       const produtos = pedido.itens_personalizados || [];
-      const produtosParaExibir = produtos.length > 0 ? produtos : [
+      
+      // Filtrar produtos com quantidade maior que 0
+      const produtosFiltrados = produtos.filter((item: any) => {
+        const quantidade = item.quantidade || item.quantidade_sabor || 0;
+        return quantidade > 0;
+      });
+      
+      const produtosParaExibir = produtosFiltrados.length > 0 ? produtosFiltrados : [
         { nome: "Distribuição Padrão", quantidade: pedido.quantidade_total }
       ];
       
       let produtosHtml = '<div class="produtos-lista">';
       produtosParaExibir.forEach((item: any) => {
+        const quantidade = item.quantidade || item.quantidade_sabor || 0;
         produtosHtml += `
           <div class="produto-item">
             <span class="produto-nome">${item.nome || item.produto || item.sabor || 'Produto'}</span>
-            <span class="produto-qtd">${item.quantidade || item.quantidade_sabor || 0}</span>
+            <span class="produto-qtd">${quantidade}</span>
           </div>
         `;
       });
@@ -201,16 +209,24 @@ export const PrintingActions = ({
     
     listaAtual.forEach(pedido => {
       const produtos = pedido.itens_personalizados || [];
-      const produtosParaExibir = produtos.length > 0 ? produtos : [
+      
+      // Filtrar produtos com quantidade maior que 0
+      const produtosFiltrados = produtos.filter((item: any) => {
+        const quantidade = item.quantidade || item.quantidade_sabor || 0;
+        return quantidade > 0;
+      });
+      
+      const produtosParaExibir = produtosFiltrados.length > 0 ? produtosFiltrados : [
         { nome: "Distribuição Padrão", quantidade: pedido.quantidade_total }
       ];
       
       let produtosHtml = '';
       produtosParaExibir.forEach((item: any) => {
+        const quantidade = item.quantidade || item.quantidade_sabor || 0;
         produtosHtml += `
           <div class="produto-linha">
             <span>${(item.nome || item.produto || item.sabor || 'Produto').substring(0, 25)}</span>
-            <span>${item.quantidade || item.quantidade_sabor || 0}</span>
+            <span>${quantidade}</span>
           </div>
         `;
       });
