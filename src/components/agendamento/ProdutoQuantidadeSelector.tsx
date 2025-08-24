@@ -5,7 +5,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, RefreshCw, PackagePlus } from 'lucide-react';
 import { useSupabaseProdutos } from '@/hooks/useSupabaseProdutos';
-import { useSupabaseProporoesPadrao } from '@/hooks/useSupabaseProporoesPadrao';
 import { useClienteStore } from '@/hooks/useClienteStore';
 
 interface ProdutoQuantidade {
@@ -27,7 +26,6 @@ export default function ProdutoQuantidadeSelector({
   quantidadeTotal 
 }: ProdutoQuantidadeSelectorProps) {
   const { produtos, carregarProdutos } = useSupabaseProdutos();
-  const { proporcoes } = useSupabaseProporoesPadrao();
   const { getClientePorId } = useClienteStore();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -41,20 +39,8 @@ export default function ProdutoQuantidadeSelector({
     return cliente.categoriasHabilitadas.includes(produto.categoria_id || 0);
   });
 
-  // Ordenar produtos filtrados conforme a ordem definida nas proporções
-  const produtosOrdenados = [...produtosFiltrados].sort((a, b) => {
-    const ordemA = proporcoes.find(p => p.produto_id === a.id)?.ordem || 999;
-    const ordemB = proporcoes.find(p => p.produto_id === b.id)?.ordem || 999;
-    
-    if (ordemA !== ordemB) {
-      return ordemA - ordemB;
-    }
-    
-    return a.nome.localeCompare(b.nome);
-  });
-
   // Filtrar produtos que ainda não foram adicionados
-  const produtosDisponiveis = produtosOrdenados.filter(produto => {
+  const produtosDisponiveis = produtosFiltrados.filter(produto => {
     return !value.some(item => item.produto === produto.nome);
   });
 
@@ -72,7 +58,6 @@ export default function ProdutoQuantidadeSelector({
   };
 
   const adicionarTodosProdutos = () => {
-    // Usar a ordem definida nas proporções
     const novosProdutos = produtosDisponiveis.map(produto => ({
       produto: produto.nome,
       quantidade: 0
@@ -93,32 +78,6 @@ export default function ProdutoQuantidadeSelector({
     }
     onChange(novosProdutos);
   };
-
-  // Função para ordenar os produtos existentes no value
-  const ordenarProdutosExistentes = () => {
-    const produtosOrdenadosValue = [...value].sort((a, b) => {
-      const produtoA = produtosOrdenados.find(p => p.nome === a.produto);
-      const produtoB = produtosOrdenados.find(p => p.nome === b.produto);
-      
-      const ordemA = proporcoes.find(p => p.produto_id === produtoA?.id)?.ordem || 999;
-      const ordemB = proporcoes.find(p => p.produto_id === produtoB?.id)?.ordem || 999;
-      
-      if (ordemA !== ordemB) {
-        return ordemA - ordemB;
-      }
-      
-      return a.produto.localeCompare(b.produto);
-    });
-    
-    onChange(produtosOrdenadosValue);
-  };
-
-  // Ordenar automaticamente quando os produtos ou proporções mudarem
-  useEffect(() => {
-    if (value.length > 0 && proporcoes.length > 0) {
-      ordenarProdutosExistentes();
-    }
-  }, [proporcoes]);
 
   const somaQuantidades = value.reduce((soma, produto) => soma + produto.quantidade, 0);
 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -7,7 +8,6 @@ export interface ProporcaoPadrao {
   produto_id: string;
   produto_nome: string;
   percentual: number;
-  ordem: number;
   ativo: boolean;
 }
 
@@ -45,7 +45,7 @@ export const useSupabaseProporoesPadrao = () => {
       // Buscar proporções existentes
       const { data: proporcoesExistentes, error: proporcoesError } = await supabase
         .from('proporcoes_padrao')
-        .select('id, produto_id, percentual, ordem, ativo')
+        .select('id, produto_id, percentual, ativo')
         .eq('ativo', true);
 
       if (proporcoesError) {
@@ -66,17 +66,8 @@ export const useSupabaseProporoesPadrao = () => {
           produto_id: produto.id,
           produto_nome: produto.nome,
           percentual: proporcaoExistente?.percentual ? Number(proporcaoExistente.percentual) : 0,
-          ordem: proporcaoExistente?.ordem || 999,
           ativo: proporcaoExistente?.ativo || true
         };
-      });
-
-      // Ordenar por ordem e depois por nome
-      proporcoesFormatadas.sort((a, b) => {
-        if (a.ordem !== b.ordem) {
-          return a.ordem - b.ordem;
-        }
-        return a.produto_nome.localeCompare(b.produto_nome);
       });
 
       setProporcoes(proporcoesFormatadas);
@@ -89,33 +80,6 @@ export const useSupabaseProporoesPadrao = () => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const atualizarOrdem = async (produtoId: string, novaOrdem: number) => {
-    try {
-      const { error } = await supabase
-        .from('proporcoes_padrao')
-        .upsert({
-          produto_id: produtoId,
-          ordem: novaOrdem,
-          ativo: true
-        });
-
-      if (error) {
-        console.error('Erro ao atualizar ordem:', error);
-        toast({
-          title: "Erro ao atualizar ordem",
-          description: error.message,
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Erro ao atualizar ordem:', error);
-      return false;
     }
   };
 
@@ -146,7 +110,7 @@ export const useSupabaseProporoesPadrao = () => {
     }
   };
 
-  const salvarTodasProporcoesComOrdem = async (novasProporcoes: { produto_id: string; percentual: number; ordem: number }[]) => {
+  const salvarTodasProporcoes = async (novasProporcoes: { produto_id: string; percentual: number }[]) => {
     try {
       // Verificar se soma é 100%
       const total = novasProporcoes.reduce((sum, p) => sum + p.percentual, 0);
@@ -169,7 +133,6 @@ export const useSupabaseProporoesPadrao = () => {
             .from('proporcoes_padrao')
             .update({
               percentual: proporcao.percentual,
-              ordem: proporcao.ordem,
               ativo: true
             })
             .eq('id', proporcaoExistente.id);
@@ -185,7 +148,6 @@ export const useSupabaseProporoesPadrao = () => {
             .insert({
               produto_id: proporcao.produto_id,
               percentual: proporcao.percentual,
-              ordem: proporcao.ordem,
               ativo: true
             });
 
@@ -290,8 +252,8 @@ export const useSupabaseProporoesPadrao = () => {
     proporcoes,
     loading,
     carregarProporcoes,
-    atualizarOrdem,
-    salvarTodasProporcoesComOrdem,
+    atualizarProporcao,
+    salvarTodasProporcoes,
     obterProporcoesParaPedido
   };
 };
