@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,15 +6,22 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
-
 export default function ProporcoesTab() {
-  const { proporcoes, loading, salvarTodasProporcoes } = useSupabaseProporoesPadrao();
-  const [percentuais, setPercentuais] = useState<{[produtoId: string]: string}>({});
+  const {
+    proporcoes,
+    loading,
+    salvarTodasProporcoes
+  } = useSupabaseProporoesPadrao();
+  const [percentuais, setPercentuais] = useState<{
+    [produtoId: string]: string;
+  }>({});
   const [salvando, setSalvando] = useState(false);
 
   // Sincronizar percentuais quando as proporções são carregadas
   useEffect(() => {
-    const novosPercentuais: {[produtoId: string]: string} = {};
+    const novosPercentuais: {
+      [produtoId: string]: string;
+    } = {};
     proporcoes.forEach(proporcao => {
       novosPercentuais[proporcao.produto_id] = String(proporcao.percentual);
     });
@@ -27,13 +33,12 @@ export default function ProporcoesTab() {
     const num = parseFloat(valor) || 0;
     return sum + num;
   }, 0);
-
   const handlePercentualChange = (produtoId: string, valor: string) => {
     // Permitir campo vazio ou números válidos
     if (valor === '' || /^\d*\.?\d*$/.test(valor)) {
       const num = parseFloat(valor);
       // Validar se está no range válido (0-100)
-      if (valor === '' || (num >= 0 && num <= 100)) {
+      if (valor === '' || num >= 0 && num <= 100) {
         setPercentuais(prev => ({
           ...prev,
           [produtoId]: valor
@@ -41,22 +46,21 @@ export default function ProporcoesTab() {
       }
     }
   };
-
   const zerarProduto = (produtoId: string) => {
     setPercentuais(prev => ({
       ...prev,
       [produtoId]: '0'
     }));
   };
-
   const limparTodos = () => {
-    const novosPercentuais: {[produtoId: string]: string} = {};
+    const novosPercentuais: {
+      [produtoId: string]: string;
+    } = {};
     proporcoes.forEach(proporcao => {
       novosPercentuais[proporcao.produto_id] = '0';
     });
     setPercentuais(novosPercentuais);
   };
-
   const salvarConfiguracoes = async () => {
     setSalvando(true);
     try {
@@ -64,7 +68,6 @@ export default function ProporcoesTab() {
         produto_id: proporcao.produto_id,
         percentual: parseFloat(percentuais[proporcao.produto_id] || '0')
       }));
-
       const sucesso = await salvarTodasProporcoes(novasProporcoes);
       if (sucesso) {
         console.log('✅ Proporções salvas com sucesso');
@@ -73,42 +76,32 @@ export default function ProporcoesTab() {
       setSalvando(false);
     }
   };
-
   const totalValido = Math.abs(totalPercentual - 100) < 0.01;
-
   if (loading) {
-    return (
-      <Card>
+    return <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-center">
             <div className="text-muted-foreground">Carregando produtos...</div>
           </div>
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Configuração de Proporção Padrão</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground text-left">
             Defina a composição percentual padrão dos produtos utilizados em pedidos do tipo "Padrão".
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {proporcoes.length === 0 ? (
-            <Alert>
+          {proporcoes.length === 0 ? <Alert>
               <AlertDescription>
                 Nenhum produto ativo encontrado. Cadastre produtos em "Estoque &gt; Produtos Acabados" primeiro.
               </AlertDescription>
-            </Alert>
-          ) : (
-            <>
+            </Alert> : <>
               <div className="grid gap-4">
-                {proporcoes.map((proporcao) => (
-                  <div key={proporcao.produto_id} className="flex items-center gap-4">
+                {proporcoes.map(proporcao => <div key={proporcao.produto_id} className="flex items-center gap-4">
                     <div className="flex-1">
                       <Label htmlFor={`produto-${proporcao.produto_id}`} className="text-sm font-medium">
                         {proporcao.produto_nome}
@@ -117,30 +110,17 @@ export default function ProporcoesTab() {
                     <div className="flex items-center gap-2">
                       <div className="w-24">
                         <div className="relative">
-                          <Input
-                            id={`produto-${proporcao.produto_id}`}
-                            type="text"
-                            value={percentuais[proporcao.produto_id] || ''}
-                            onChange={(e) => handlePercentualChange(proporcao.produto_id, e.target.value)}
-                            placeholder="0"
-                            className="text-center pr-8"
-                          />
+                          <Input id={`produto-${proporcao.produto_id}`} type="text" value={percentuais[proporcao.produto_id] || ''} onChange={e => handlePercentualChange(proporcao.produto_id, e.target.value)} placeholder="0" className="text-center pr-8" />
                           <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
                             %
                           </span>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => zerarProduto(proporcao.produto_id)}
-                        disabled={percentuais[proporcao.produto_id] === '0'}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => zerarProduto(proporcao.produto_id)} disabled={percentuais[proporcao.produto_id] === '0'}>
                         Zerar
                       </Button>
                     </div>
-                  </div>
-                ))}
+                  </div>)}
               </div>
 
               <Separator />
@@ -148,58 +128,36 @@ export default function ProporcoesTab() {
               <div className="flex items-center justify-between">
                 <div className="text-sm">
                   <span className="font-medium">Total atual: </span>
-                  <span className={`font-bold ${
-                    totalValido ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <span className={`font-bold ${totalValido ? 'text-green-600' : 'text-red-600'}`}>
                     {totalPercentual.toFixed(1)}%
                   </span>
-                  {totalValido && (
-                    <span className="ml-2 text-green-600">✅</span>
-                  )}
-                  {!totalValido && (
-                    <span className="ml-2 text-red-600">⚠️</span>
-                  )}
+                  {totalValido && <span className="ml-2 text-green-600">✅</span>}
+                  {!totalValido && <span className="ml-2 text-red-600">⚠️</span>}
                 </div>
                 
                 <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={limparTodos}
-                    disabled={salvando}
-                  >
+                  <Button variant="outline" onClick={limparTodos} disabled={salvando}>
                     Limpar Tudo
                   </Button>
-                  <Button 
-                    onClick={salvarConfiguracoes}
-                    disabled={salvando || !totalValido}
-                  >
+                  <Button onClick={salvarConfiguracoes} disabled={salvando || !totalValido}>
                     {salvando ? "Salvando..." : "Salvar Configurações"}
                   </Button>
                 </div>
               </div>
 
-              {!totalValido && (
-                <Alert variant="destructive">
+              {!totalValido && <Alert variant="destructive">
                   <AlertDescription>
-                    {totalPercentual > 100 
-                      ? `O total está ${(totalPercentual - 100).toFixed(1)}% acima de 100%. Reduza os percentuais para salvar.`
-                      : `Faltam ${(100 - totalPercentual).toFixed(1)}% para completar 100%. Continue editando até atingir exatamente 100%.`
-                    }
+                    {totalPercentual > 100 ? `O total está ${(totalPercentual - 100).toFixed(1)}% acima de 100%. Reduza os percentuais para salvar.` : `Faltam ${(100 - totalPercentual).toFixed(1)}% para completar 100%. Continue editando até atingir exatamente 100%.`}
                   </AlertDescription>
-                </Alert>
-              )}
+                </Alert>}
 
-              {totalValido && (
-                <Alert>
+              {totalValido && <Alert>
                   <AlertDescription>
                     ✅ Proporções configuradas corretamente! Clique em "Salvar Configurações" para confirmar.
                   </AlertDescription>
-                </Alert>
-              )}
-            </>
-          )}
+                </Alert>}
+            </>}
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 }
