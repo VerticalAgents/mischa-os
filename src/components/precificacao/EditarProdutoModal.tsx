@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -25,13 +26,13 @@ interface EditarProdutoModalProps {
   onSuccess: () => void;
 }
 
-interface ComponenteProduto {
+interface ComponenteProdutoEnriquecido {
   id: string;
   tipo: 'receita' | 'insumo';
   item_id: string;
   quantidade: number;
-  nome?: string;
-  custo_unitario?: number;
+  nome: string;
+  custo_unitario: number;
 }
 
 export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess }: EditarProdutoModalProps) {
@@ -43,7 +44,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   const [precoVenda, setPrecoVenda] = useState<number | undefined>();
   const [categoriaId, setCategoriaId] = useState<number | undefined>();
   const [subcategoriaId, setSubcategoriaId] = useState<number | undefined>();
-  const [componentes, setComponentes] = useState<ComponenteProduto[]>([]);
+  const [componentes, setComponentes] = useState<ComponenteProdutoEnriquecido[]>([]);
   const [novoComponenteTipo, setNovoComponenteTipo] = useState<'receita' | 'insumo'>('receita');
   const [novoComponenteItemId, setNovoComponenteItemId] = useState("");
   const [novoComponenteQuantidade, setNovoComponenteQuantidade] = useState<number>(1);
@@ -87,22 +88,43 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
       setCategoriaId(produto.categoria_id || undefined);
       setSubcategoriaId(produto.subcategoria_id || undefined);
       
-      // Fix the components mapping to match ComponenteProduto interface
-      const componentesFormatados = (produto.componentes || []).map(comp => ({
-        id: comp.id,
-        tipo: comp.tipo,
-        item_id: comp.id, // Use comp.id as item_id since that's what we have
-        quantidade: comp.quantidade,
-        nome: comp.nome_item, // Map nome_item to nome
-        custo_unitario: comp.custo_item // Map custo_item to custo_unitario
-      }));
-      setComponentes(componentesFormatados);
+      // Enriquecer componentes com nomes dos itens
+      const componentesEnriquecidos = (produto.componentes || []).map(comp => {
+        let nome = '';
+        let custo_unitario = 0;
+
+        if (comp.tipo === 'receita') {
+          const receita = receitas.find(r => r.id === comp.item_id);
+          nome = receita?.nome || `Receita ${comp.item_id}`;
+          // Calcular custo da receita baseado nos insumos
+          if (receita?.itens) {
+            custo_unitario = receita.itens.reduce((total, item) => {
+              const insumo = insumos.find(i => i.id === item.insumo_id);
+              return total + (item.quantidade * (insumo?.custo_medio || 0));
+            }, 0);
+          }
+        } else {
+          const insumo = insumos.find(i => i.id === comp.item_id);
+          nome = insumo?.nome || `Insumo ${comp.item_id}`;
+          custo_unitario = insumo?.custo_medio || 0;
+        }
+
+        return {
+          id: comp.id,
+          tipo: comp.tipo,
+          item_id: comp.item_id,
+          quantidade: comp.quantidade,
+          nome,
+          custo_unitario
+        };
+      });
+      setComponentes(componentesEnriquecidos);
       
       setNovoComponenteTipo('receita');
       setNovoComponenteItemId("");
       setNovoComponenteQuantidade(1);
     }
-  }, [isOpen, produto]);
+  }, [isOpen, produto, receitas, insumos]);
 
   const resetForm = () => {
     setNome("");
@@ -136,6 +158,10 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
 
     setLoading(true);
     try {
+      const custoTotal = calcularCustoTotal();
+      const custoUnitario = calcularCustoUnitario();
+      const margemLucro = calcularMargemLucro();
+
       await atualizarProduto(produto.id, {
         nome,
         descricao,
@@ -145,6 +171,9 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
         preco_venda: precoVenda,
         categoria_id: categoriaId,
         subcategoria_id: subcategoriaId,
+        custo_total: custoTotal,
+        custo_unitario: custoUnitario,
+        margem_lucro: margemLucro,
       });
 
       toast({
@@ -222,7 +251,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   };
 
   const calcularCustoTotal = () => {
-    return componentes.reduce((total, comp) => total + (comp.custo_unitario || 0) * comp.quantidade, 0);
+    return componentes.reduce((total, comp) => total + (comp.custo_unitario * comp.quantidade), 0);
   };
 
   const calcularCustoUnitario = () => {
@@ -242,273 +271,277 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Editar Produto: {produto.nome}</DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="dados" className="flex-1">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
-            <TabsTrigger value="componentes">Componentes</TabsTrigger>
-          </TabsList>
+        <div className="flex-1 overflow-hidden">
+          <Tabs defaultValue="dados" className="h-full flex flex-col">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
+              <TabsTrigger value="componentes">Componentes</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="dados" className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome *</Label>
-                <Input
-                  id="nome"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  placeholder="Nome do produto"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="unidades">Unidades/Produção</Label>
-                <Input
-                  id="unidades"
-                  type="number"
-                  min="1"
-                  value={unidadesProducao}
-                  onChange={(e) => setUnidadesProducao(parseInt(e.target.value) || 1)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="descricao">Descrição</Label>
-              <Textarea
-                id="descricao"
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                placeholder="Descrição do produto"
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="categoria">Categoria</Label>
-                <Select value={categoriaId?.toString()} onValueChange={(value) => setCategoriaId(parseInt(value))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categorias.map(categoria => (
-                      <SelectItem key={categoria.id} value={categoria.id.toString()}>
-                        {categoria.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="subcategoria">Subcategoria</Label>
-                <Select 
-                  value={subcategoriaId?.toString()} 
-                  onValueChange={(value) => setSubcategoriaId(parseInt(value))}
-                  disabled={!categoriaId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={categoriaId ? "Selecione uma subcategoria" : "Selecione uma categoria primeiro"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {subcategoriasFiltradas.map(subcategoria => (
-                      <SelectItem key={subcategoria.id} value={subcategoria.id.toString()}>
-                        {subcategoria.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="peso">Peso Unitário (g)</Label>
-                <Input
-                  id="peso"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={pesoUnitario || ""}
-                  onChange={(e) => setPesoUnitario(parseFloat(e.target.value) || undefined)}
-                  placeholder="0.0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="preco">Preço de Venda (R$)</Label>
-                <Input
-                  id="preco"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={precoVenda || ""}
-                  onChange={(e) => setPrecoVenda(parseFloat(e.target.value) || undefined)}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="ativo"
-                checked={ativo}
-                onCheckedChange={setAtivo}
-              />
-              <Label htmlFor="ativo">Produto ativo</Label>
-            </div>
-
-            {/* Resumo de custos */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Resumo de Custos</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label className="text-sm text-muted-foreground">Custo Total</Label>
-                  <div className="text-lg font-semibold">R$ {calcularCustoTotal().toFixed(2)}</div>
-                </div>
-                <div>
-                  <Label className="text-sm text-muted-foreground">Custo Unitário</Label>
-                  <div className="text-lg font-semibold">R$ {calcularCustoUnitario().toFixed(2)}</div>
-                </div>
-                <div>
-                  <Label className="text-sm text-muted-foreground">Margem de Lucro</Label>
-                  <div className="text-lg font-semibold">
-                    <Badge variant={calcularMargemLucro() > 20 ? "default" : calcularMargemLucro() > 10 ? "secondary" : "destructive"}>
-                      {calcularMargemLucro().toFixed(1)}%
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="componentes" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Adicionar Componente</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-4 gap-4">
+            <div className="flex-1 overflow-auto">
+              <TabsContent value="dados" className="space-y-4 mt-4 px-1">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Tipo</Label>
-                    <Select value={novoComponenteTipo} onValueChange={(value: 'receita' | 'insumo') => setNovoComponenteTipo(value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="receita">Receita</SelectItem>
-                        <SelectItem value="insumo">Insumo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Item</Label>
-                    <Select value={novoComponenteItemId} onValueChange={setNovoComponenteItemId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {novoComponenteTipo === 'receita' 
-                          ? receitas.map(receita => (
-                              <SelectItem key={receita.id} value={receita.id}>
-                                {receita.nome}
-                              </SelectItem>
-                            ))
-                          : insumos.map(insumo => (
-                              <SelectItem key={insumo.id} value={insumo.id}>
-                                {insumo.nome}
-                              </SelectItem>
-                            ))
-                        }
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Quantidade</Label>
+                    <Label htmlFor="nome">Nome *</Label>
                     <Input
-                      type="number"
-                      step="0.001"
-                      min="0"
-                      value={novoComponenteQuantidade}
-                      onChange={(e) => setNovoComponenteQuantidade(parseFloat(e.target.value) || 0)}
+                      id="nome"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      placeholder="Nome do produto"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label>&nbsp;</Label>
-                    <Button onClick={handleAdicionarComponente} className="w-full">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar
-                    </Button>
+                    <Label htmlFor="unidades">Unidades/Produção</Label>
+                    <Input
+                      id="unidades"
+                      type="number"
+                      min="1"
+                      value={unidadesProducao}
+                      onChange={(e) => setUnidadesProducao(parseInt(e.target.value) || 1)}
+                    />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Componentes Atuais</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {componentes.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-8">
-                    Nenhum componente adicionado
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Nome</TableHead>
-                          <TableHead>Quantidade</TableHead>
-                          <TableHead>Custo Unit.</TableHead>
-                          <TableHead>Custo Total</TableHead>
-                          <TableHead></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {componentes.map((componente) => (
-                          <TableRow key={componente.id}>
-                            <TableCell>
-                              <Badge variant={componente.tipo === 'receita' ? 'default' : 'secondary'}>
-                                {componente.tipo}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{componente.nome}</TableCell>
-                            <TableCell>{componente.quantidade}</TableCell>
-                            <TableCell>R$ {(componente.custo_unitario || 0).toFixed(2)}</TableCell>
-                            <TableCell>R$ {((componente.custo_unitario || 0) * componente.quantidade).toFixed(2)}</TableCell>
-                            <TableCell>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRemoverComponente(componente.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
+                <div className="space-y-2">
+                  <Label htmlFor="descricao">Descrição</Label>
+                  <Textarea
+                    id="descricao"
+                    value={descricao}
+                    onChange={(e) => setDescricao(e.target.value)}
+                    placeholder="Descrição do produto"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="categoria">Categoria</Label>
+                    <Select value={categoriaId?.toString()} onValueChange={(value) => setCategoriaId(parseInt(value))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categorias.map(categoria => (
+                          <SelectItem key={categoria.id} value={categoria.id.toString()}>
+                            {categoria.nome}
+                          </SelectItem>
                         ))}
-                      </TableBody>
-                    </Table>
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
 
-        <DialogFooter>
+                  <div className="space-y-2">
+                    <Label htmlFor="subcategoria">Subcategoria</Label>
+                    <Select 
+                      value={subcategoriaId?.toString() || ""} 
+                      onValueChange={(value) => setSubcategoriaId(value ? parseInt(value) : undefined)}
+                      disabled={!categoriaId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={categoriaId ? "Selecione uma subcategoria" : "Selecione uma categoria primeiro"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subcategoriasFiltradas.map(subcategoria => (
+                          <SelectItem key={subcategoria.id} value={subcategoria.id.toString()}>
+                            {subcategoria.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="peso">Peso Unitário (g)</Label>
+                    <Input
+                      id="peso"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={pesoUnitario || ""}
+                      onChange={(e) => setPesoUnitario(parseFloat(e.target.value) || undefined)}
+                      placeholder="0.0"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="preco">Preço de Venda (R$)</Label>
+                    <Input
+                      id="preco"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={precoVenda || ""}
+                      onChange={(e) => setPrecoVenda(parseFloat(e.target.value) || undefined)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="ativo"
+                    checked={ativo}
+                    onCheckedChange={setAtivo}
+                  />
+                  <Label htmlFor="ativo">Produto ativo</Label>
+                </div>
+
+                {/* Resumo de custos */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Resumo de Custos</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Custo Total</Label>
+                      <div className="text-lg font-semibold">R$ {calcularCustoTotal().toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Custo Unitário</Label>
+                      <div className="text-lg font-semibold">R$ {calcularCustoUnitario().toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Margem de Lucro</Label>
+                      <div className="text-lg font-semibold">
+                        <Badge variant={calcularMargemLucro() > 20 ? "default" : calcularMargemLucro() > 10 ? "secondary" : "destructive"}>
+                          {calcularMargemLucro().toFixed(1)}%
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="componentes" className="space-y-4 mt-4 px-1">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Adicionar Componente</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="space-y-2">
+                        <Label>Tipo</Label>
+                        <Select value={novoComponenteTipo} onValueChange={(value: 'receita' | 'insumo') => setNovoComponenteTipo(value)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="receita">Receita</SelectItem>
+                            <SelectItem value="insumo">Insumo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Item</Label>
+                        <Select value={novoComponenteItemId} onValueChange={setNovoComponenteItemId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {novoComponenteTipo === 'receita' 
+                              ? receitas.map(receita => (
+                                  <SelectItem key={receita.id} value={receita.id}>
+                                    {receita.nome}
+                                  </SelectItem>
+                                ))
+                              : insumos.map(insumo => (
+                                  <SelectItem key={insumo.id} value={insumo.id}>
+                                    {insumo.nome}
+                                  </SelectItem>
+                                ))
+                            }
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Quantidade</Label>
+                        <Input
+                          type="number"
+                          step="0.001"
+                          min="0"
+                          value={novoComponenteQuantidade}
+                          onChange={(e) => setNovoComponenteQuantidade(parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>&nbsp;</Label>
+                        <Button onClick={handleAdicionarComponente} className="w-full">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Adicionar
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Componentes Atuais</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {componentes.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-8">
+                        Nenhum componente adicionado
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Tipo</TableHead>
+                              <TableHead>Nome</TableHead>
+                              <TableHead>Quantidade</TableHead>
+                              <TableHead>Custo Unit.</TableHead>
+                              <TableHead>Custo Total</TableHead>
+                              <TableHead></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {componentes.map((componente) => (
+                              <TableRow key={componente.id}>
+                                <TableCell>
+                                  <Badge variant={componente.tipo === 'receita' ? 'default' : 'secondary'}>
+                                    {componente.tipo}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{componente.nome}</TableCell>
+                                <TableCell>{componente.quantidade}</TableCell>
+                                <TableCell>R$ {componente.custo_unitario.toFixed(2)}</TableCell>
+                                <TableCell>R$ {(componente.custo_unitario * componente.quantidade).toFixed(2)}</TableCell>
+                                <TableCell>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleRemoverComponente(componente.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+
+        <DialogFooter className="border-t pt-4 mt-4 flex-shrink-0">
           <Button variant="outline" onClick={handleClose} disabled={loading}>
             Cancelar
           </Button>
