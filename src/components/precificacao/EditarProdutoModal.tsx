@@ -26,7 +26,8 @@ interface EditarProdutoModalProps {
   onSuccess: () => void;
 }
 
-interface ComponenteProdutoEnriquecido {
+// Interface local para os componentes com dados enriquecidos
+interface ComponenteEnriquecido {
   id: string;
   tipo: 'receita' | 'insumo';
   item_id: string;
@@ -44,14 +45,14 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   const [precoVenda, setPrecoVenda] = useState<number | undefined>();
   const [categoriaId, setCategoriaId] = useState<number | undefined>();
   const [subcategoriaId, setSubcategoriaId] = useState<number | undefined>();
-  const [componentes, setComponentes] = useState<ComponenteProdutoEnriquecido[]>([]);
+  const [componentes, setComponentes] = useState<ComponenteEnriquecido[]>([]);
   const [novoComponenteTipo, setNovoComponenteTipo] = useState<'receita' | 'insumo'>('receita');
   const [novoComponenteItemId, setNovoComponenteItemId] = useState("");
   const [novoComponenteQuantidade, setNovoComponenteQuantidade] = useState<number>(1);
   const [loading, setLoading] = useState(false);
 
   const { toast } = useToast();
-  const { atualizarProduto, removerComponenteProduto, adicionarComponenteProduto } = useSupabaseProdutos();
+  const { atualizarProduto, removerComponenteProduto, adicionarComponenteProduto, carregarProdutoCompleto } = useSupabaseProdutos();
   const { categorias } = useSupabaseCategoriasProduto();
   const { subcategorias, carregarSubcategorias } = useSupabaseSubcategoriasProduto();
   const { receitas } = useSupabaseReceitas();
@@ -77,54 +78,69 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     }
   }, [categoriaId, subcategoriasFiltradas, subcategoriaId]);
 
+  // Carregar dados do produto e componentes
   useEffect(() => {
-    if (isOpen && produto) {
-      setNome(produto.nome);
-      setDescricao(produto.descricao || "");
-      setAtivo(produto.ativo);
-      setUnidadesProducao(produto.unidades_producao);
-      setPesoUnitario(produto.peso_unitario || undefined);
-      setPrecoVenda(produto.preco_venda || undefined);
-      setCategoriaId(produto.categoria_id || undefined);
-      setSubcategoriaId(produto.subcategoria_id || undefined);
-      
-      // Enriquecer componentes com nomes dos itens
-      const componentesEnriquecidos = (produto.componentes || []).map(comp => {
-        let nome = '';
-        let custo_unitario = 0;
+    const carregarDadosProduto = async () => {
+      if (isOpen && produto) {
+        setNome(produto.nome);
+        setDescricao(produto.descricao || "");
+        setAtivo(produto.ativo);
+        setUnidadesProducao(produto.unidades_producao);
+        setPesoUnitario(produto.peso_unitario || undefined);
+        setPrecoVenda(produto.preco_venda || undefined);
+        setCategoriaId(produto.categoria_id || undefined);
+        setSubcategoriaId(produto.subcategoria_id || undefined);
+        
+        // Carregar produto completo com componentes
+        const produtoCompleto = await carregarProdutoCompleto(produto.id);
+        
+        if (produtoCompleto?.componentes) {
+          // Enriquecer componentes com nomes dos itens
+          const componentesEnriquecidos = produtoCompleto.componentes.map(comp => {
+            let nome = '';
+            let custo_unitario = 0;
+            let item_id = '';
 
-        if (comp.tipo === 'receita') {
-          const receita = receitas.find(r => r.id === comp.item_id);
-          nome = receita?.nome || `Receita ${comp.item_id}`;
-          // Calcular custo da receita baseado nos insumos
-          if (receita?.itens) {
-            custo_unitario = receita.itens.reduce((total, item) => {
-              const insumo = insumos.find(i => i.id === item.insumo_id);
-              return total + (item.quantidade * (insumo?.custo_medio || 0));
-            }, 0);
-          }
+            if (comp.tipo === 'receita') {
+              const receita = receitas.find(r => r.id === comp.nome_item); // Assuming nome_item contains the actual ID
+              nome = receita?.nome || `Receita ${comp.nome_item}`;
+              item_id = receita?.id || comp.nome_item || '';
+              // Calcular custo da receita baseado nos insumos
+              if (receita?.itens) {
+                custo_unitario = receita.itens.reduce((total, item) => {
+                  const insumo = insumos.find(i => i.id === item.insumo_id);
+                  return total + (item.quantidade * (insumo?.custo_medio || 0));
+                }, 0);
+              }
+            } else {
+              const insumo = insumos.find(i => i.id === comp.nome_item); // Assuming nome_item contains the actual ID
+              nome = insumo?.nome || `Insumo ${comp.nome_item}`;
+              item_id = insumo?.id || comp.nome_item || '';
+              custo_unitario = insumo?.custo_medio || 0;
+            }
+
+            return {
+              id: comp.id,
+              tipo: comp.tipo,
+              item_id,
+              quantidade: comp.quantidade,
+              nome,
+              custo_unitario
+            };
+          });
+          setComponentes(componentesEnriquecidos);
         } else {
-          const insumo = insumos.find(i => i.id === comp.item_id);
-          nome = insumo?.nome || `Insumo ${comp.item_id}`;
-          custo_unitario = insumo?.custo_medio || 0;
+          setComponentes([]);
         }
+        
+        setNovoComponenteTipo('receita');
+        setNovoComponenteItemId("");
+        setNovoComponenteQuantidade(1);
+      }
+    };
 
-        return {
-          id: comp.id,
-          tipo: comp.tipo,
-          item_id: comp.item_id,
-          quantidade: comp.quantidade,
-          nome,
-          custo_unitario
-        };
-      });
-      setComponentes(componentesEnriquecidos);
-      
-      setNovoComponenteTipo('receita');
-      setNovoComponenteItemId("");
-      setNovoComponenteQuantidade(1);
-    }
-  }, [isOpen, produto, receitas, insumos]);
+    carregarDadosProduto();
+  }, [isOpen, produto, receitas, insumos, carregarProdutoCompleto]);
 
   const resetForm = () => {
     setNome("");
@@ -271,20 +287,20 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Editar Produto: {produto.nome}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden min-h-0">
           <Tabs defaultValue="dados" className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
               <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
               <TabsTrigger value="componentes">Componentes</TabsTrigger>
             </TabsList>
 
-            <div className="flex-1 overflow-auto">
-              <TabsContent value="dados" className="space-y-4 mt-4 px-1">
+            <div className="flex-1 overflow-auto min-h-0">
+              <TabsContent value="dados" className="space-y-4 mt-4 px-1 h-full">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="nome">Nome *</Label>
@@ -420,7 +436,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                 </Card>
               </TabsContent>
 
-              <TabsContent value="componentes" className="space-y-4 mt-4 px-1">
+              <TabsContent value="componentes" className="space-y-4 mt-4 px-1 h-full">
                 <Card>
                   <CardHeader>
                     <CardTitle>Adicionar Componente</CardTitle>
@@ -541,7 +557,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
           </Tabs>
         </div>
 
-        <DialogFooter className="border-t pt-4 mt-4 flex-shrink-0">
+        <DialogFooter className="border-t pt-4 flex-shrink-0">
           <Button variant="outline" onClick={handleClose} disabled={loading}>
             Cancelar
           </Button>
