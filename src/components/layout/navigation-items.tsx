@@ -4,7 +4,7 @@ import {
   BarChart3, Users, Tag, Clipboard, 
   ShoppingBag, Settings, Layers, Truck, FileText,
   Cpu, PackageCheck, DollarSign, LineChart, Receipt,
-  BarChart, Building, HelpingHand, UserCircle, TrendingUp, Calculator, Home
+  BarChart, Building, HelpingHand, UserCircle, TrendingUp, Calculator, Home, BookOpen
 } from "lucide-react";
 
 export type MenuItem = {
@@ -108,6 +108,11 @@ export const menuGroups: MenuGroup[] = [
     title: "Sistema",
     variant: "system",
     items: [
+      {
+        label: "Manual",
+        path: "/manual",
+        icon: <BookOpen className="h-4 w-4" />,
+      },
       {
         label: "Configurações",
         path: "/configuracoes",

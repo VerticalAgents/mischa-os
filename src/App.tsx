@@ -9,6 +9,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import AppLayout from '@/components/layout/AppLayout';
 import Index from '@/pages/Index';
 import Home from '@/pages/Home';
+import Manual from '@/pages/Manual';
 import Clientes from '@/pages/Clientes';
 import Agendamento from '@/pages/Agendamento';
 import Expedicao from '@/pages/Expedicao';
@@ -62,6 +63,8 @@ function App() {
                       <AppLayout>
                         <Routes>
                           <Route path="/home" element={<Home />} />
+                          <Route path="/manual" element={<Manual />} />
+                          <Route path="/manual/:sectionId" element={<Manual />} />
                           <Route path="/clientes" element={<Clientes />} />
                           <Route path="/agendamento" element={<Agendamento />} />
                           <Route path="/expedicao" element={<Expedicao />} />
