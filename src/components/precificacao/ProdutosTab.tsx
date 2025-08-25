@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,32 +10,48 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useSupabaseProdutos, ProdutoCompleto } from "@/hooks/useSupabaseProdutos";
+import { useOptimizedProdutoData, ProdutoOptimizado } from "@/hooks/useOptimizedProdutoData";
+import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useSupabaseSubcategoriasProduto } from "@/hooks/useSupabaseSubcategoriasProduto";
-import { useRendimentosReceitaProduto } from "@/hooks/useRendimentosReceitaProduto";
+import { ProdutoTableRow } from "./ProdutoTableRow";
 import EditarProdutoModal from "./EditarProdutoModal";
 import CriarProdutoModal from "./CriarProdutoModal";
-import { Edit, Plus, Search, Trash2, Copy } from "lucide-react";
+import { Plus, Search, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ProdutosTab() {
-  const { produtos, loading, carregarProdutos, carregarProdutoCompleto, removerProduto, duplicarProduto } = useSupabaseProdutos();
+  const { 
+    produtos: produtosOtimizados, 
+    loading: loadingOtimizado, 
+    recarregar,
+    invalidateCache,
+    isCacheValid 
+  } = useOptimizedProdutoData();
+  
+  const { 
+    carregarProdutoCompleto, 
+    removerProduto, 
+    duplicarProduto 
+  } = useSupabaseProdutos();
+  
   const { categorias } = useSupabaseCategoriasProduto();
   const { subcategorias } = useSupabaseSubcategoriasProduto();
-  const { rendimentos } = useRendimentosReceitaProduto();
+  
   const [filtro, setFiltro] = useState("");
-  const [produtoSelecionado, setProdutoSelecionado] = useState<ProdutoCompleto | null>(null);
+  const [produtoSelecionado, setProdutoSelecionado] = useState<any>(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
   const [modalCriarAberto, setModalCriarAberto] = useState(false);
-  const [loadingProdutoCompleto, setLoadingProdutoCompleto] = useState(false);
+  const [loadingAction, setLoadingAction] = useState(false);
   const { toast } = useToast();
 
-  const produtosFiltrados = produtos.filter(produto =>
-    produto.nome.toLowerCase().includes(filtro.toLowerCase())
-  );
+  const produtosFiltrados = useMemo(() => {
+    if (!filtro) return produtosOtimizados;
+    return produtosOtimizados.filter(produto =>
+      produto.nome.toLowerCase().includes(filtro.toLowerCase())
+    );
+  }, [produtosOtimizados, filtro]);
 
   const getNomeCategoria = (categoriaId?: number) => {
     if (!categoriaId) return "Sem categoria";
@@ -48,37 +65,8 @@ export default function ProdutosTab() {
     return subcategoria?.nome || "";
   };
 
-  // Função para calcular custo unitário real baseado nos componentes
-  const calcularCustoUnitarioReal = async (produto: any) => {
-    try {
-      const produtoCompleto = await carregarProdutoCompleto(produto.id);
-      if (!produtoCompleto || !produtoCompleto.componentes || produtoCompleto.componentes.length === 0) {
-        return produto.custo_unitario || 0;
-      }
-
-      // Calcular custo total dos componentes
-      const custoTotalComponentes = produtoCompleto.componentes.reduce((total, comp) => total + comp.custo_item, 0);
-
-      // Buscar rendimento específico para o produto
-      const rendimentoEspecifico = rendimentos.find(r => r.produto_id === produto.id);
-      const rendimento = rendimentoEspecifico ? rendimentoEspecifico.rendimento : produto.unidades_producao;
-
-      // Calcular custo unitário real
-      return rendimento > 0 ? custoTotalComponentes / rendimento : custoTotalComponentes;
-    } catch (error) {
-      console.error('Erro ao calcular custo unitário real:', error);
-      return produto.custo_unitario || 0;
-    }
-  };
-
-  // Função para calcular margem real
-  const calcularMargemReal = (custoUnitarioReal: number, precoVenda: number) => {
-    if (!precoVenda || precoVenda <= 0) return 0;
-    return ((precoVenda - custoUnitarioReal) / precoVenda) * 100;
-  };
-
-  const handleEditarProduto = async (produto: any) => {
-    setLoadingProdutoCompleto(true);
+  const handleEditarProduto = async (produto: ProdutoOptimizado) => {
+    setLoadingAction(true);
     try {
       const produtoCompleto = await carregarProdutoCompleto(produto.id);
       if (produtoCompleto) {
@@ -99,35 +87,52 @@ export default function ProdutosTab() {
         variant: "destructive",
       });
     } finally {
-      setLoadingProdutoCompleto(false);
+      setLoadingAction(false);
     }
   };
 
   const handleRemoverProduto = async (produtoId: string) => {
     if (confirm("Tem certeza que deseja remover este produto?")) {
-      await removerProduto(produtoId);
+      setLoadingAction(true);
+      try {
+        const sucesso = await removerProduto(produtoId);
+        if (sucesso) {
+          invalidateCache(); // Invalidar cache para recarregar dados
+          recarregar(); // Recarregar dados otimizados
+        }
+      } finally {
+        setLoadingAction(false);
+      }
     }
   };
 
-  const handleDuplicarProduto = async (produto: any) => {
+  const handleDuplicarProduto = async (produto: ProdutoOptimizado) => {
+    setLoadingAction(true);
     try {
-      await duplicarProduto(produto);
-      toast({
-        title: "Produto duplicado",
-        description: "Produto duplicado com sucesso como ativo",
-      });
-      carregarProdutos();
+      const resultado = await duplicarProduto(produto);
+      if (resultado) {
+        toast({
+          title: "Produto duplicado",
+          description: "Produto duplicado com sucesso como ativo",
+        });
+        invalidateCache();
+        recarregar();
+      }
     } catch (error) {
       toast({
         title: "Erro ao duplicar",
         description: "Não foi possível duplicar o produto",
         variant: "destructive",
       });
+    } finally {
+      setLoadingAction(false);
     }
   };
 
   const handleModalSuccess = () => {
-    carregarProdutos();
+    invalidateCache();
+    recarregar();
+    
     // Recarregar o produto selecionado se o modal estiver aberto
     if (produtoSelecionado && modalEditarAberto) {
       carregarProdutoCompleto(produtoSelecionado.id).then(produtoAtualizado => {
@@ -138,40 +143,9 @@ export default function ProdutosTab() {
     }
   };
 
-  // Componente para exibir custo unitário calculado
-  const CustoUnitarioCell = ({ produto }: { produto: any }) => {
-    const [custoReal, setCustoReal] = useState<number | null>(null);
-
-    useEffect(() => {
-      calcularCustoUnitarioReal(produto).then(setCustoReal);
-    }, [produto.id]);
-
-    return (
-      <span>
-        R$ {custoReal !== null ? custoReal.toFixed(2) : produto.custo_unitario.toFixed(2)}
-      </span>
-    );
-  };
-
-  // Componente para exibir margem calculada
-  const MargemCell = ({ produto }: { produto: any }) => {
-    const [custoReal, setCustoReal] = useState<number | null>(null);
-
-    useEffect(() => {
-      calcularCustoUnitarioReal(produto).then(setCustoReal);
-    }, [produto.id]);
-
-    const margemReal = custoReal !== null && produto.preco_venda 
-      ? calcularMargemReal(custoReal, produto.preco_venda)
-      : produto.margem_lucro;
-
-    return (
-      <Badge
-        variant={margemReal > 20 ? "default" : margemReal > 10 ? "secondary" : "destructive"}
-      >
-        {margemReal.toFixed(1)}%
-      </Badge>
-    );
+  const handleRefresh = () => {
+    invalidateCache();
+    recarregar();
   };
 
   return (
@@ -179,11 +153,30 @@ export default function ProdutosTab() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Produtos Finais</CardTitle>
-            <Button onClick={() => setModalCriarAberto(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Produto
-            </Button>
+            <div className="flex items-center gap-4">
+              <CardTitle>Produtos Finais</CardTitle>
+              {isCacheValid && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  Dados em cache
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={loadingOtimizado}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${loadingOtimizado ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+              <Button onClick={() => setModalCriarAberto(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Produto
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -199,7 +192,35 @@ export default function ProdutosTab() {
               />
             </div>
 
-            {/* Tabela de Produtos - Agora responsiva */}
+            {/* Métricas rápidas */}
+            {!loadingOtimizado && produtosOtimizados.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary">{produtosOtimizados.length}</div>
+                  <div className="text-sm text-muted-foreground">Total de Produtos</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {produtosOtimizados.filter(p => p.ativo).length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Ativos</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {produtosOtimizados.filter(p => p.componentes_count > 0).length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Com Componentes</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {produtosOtimizados.filter(p => p.margem_real < 10).length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Margem Baixa</div>
+                </div>
+              </div>
+            )}
+
+            {/* Tabela de Produtos - Agora otimizada */}
             <div className="w-full overflow-x-auto">
               <div className="rounded-md border min-w-full">
                 <Table>
@@ -216,78 +237,33 @@ export default function ProdutosTab() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading ? (
+                    {loadingOtimizado ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center">
-                          Carregando produtos...
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <div className="flex items-center justify-center gap-2">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            Carregando produtos otimizado...
+                          </div>
                         </TableCell>
                       </TableRow>
                     ) : produtosFiltrados.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center">
-                          Nenhum produto encontrado
+                        <TableCell colSpan={8} className="text-center py-8">
+                          {filtro ? "Nenhum produto encontrado com o filtro aplicado" : "Nenhum produto encontrado"}
                         </TableCell>
                       </TableRow>
                     ) : (
                       produtosFiltrados.map((produto) => (
-                        <TableRow key={produto.id}>
-                          <TableCell className="font-medium">{produto.nome}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {getNomeCategoria(produto.categoria_id)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {getNomeSubcategoria(produto.subcategoria_id) ? (
-                              <Badge variant="secondary">
-                                {getNomeSubcategoria(produto.subcategoria_id)}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <CustoUnitarioCell produto={produto} />
-                          </TableCell>
-                          <TableCell>
-                            {produto.preco_venda ? `R$ ${produto.preco_venda.toFixed(2)}` : "-"}
-                          </TableCell>
-                          <TableCell>
-                            <MargemCell produto={produto} />
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={produto.ativo ? "default" : "secondary"}>
-                              {produto.ativo ? "Ativo" : "Inativo"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDuplicarProduto(produto)}
-                                title="Duplicar produto"
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditarProduto(produto)}
-                                disabled={loadingProdutoCompleto}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRemoverProduto(produto.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                        <ProdutoTableRow
+                          key={produto.id}
+                          produto={produto}
+                          getNomeCategoria={getNomeCategoria}
+                          getNomeSubcategoria={getNomeSubcategoria}
+                          onEditar={handleEditarProduto}
+                          onDuplicar={handleDuplicarProduto}
+                          onRemover={handleRemoverProduto}
+                          isLoadingAction={loadingAction}
+                        />
                       ))
                     )}
                   </TableBody>
@@ -313,7 +289,7 @@ export default function ProdutosTab() {
       <CriarProdutoModal
         isOpen={modalCriarAberto}
         onClose={() => setModalCriarAberto(false)}
-        onSuccess={carregarProdutos}
+        onSuccess={handleModalSuccess}
       />
     </div>
   );
