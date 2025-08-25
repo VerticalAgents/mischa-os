@@ -60,10 +60,6 @@ export default function InsumosSupabaseTab() {
     setIsEditModalOpen(false);
   };
 
-  const handleModalSuccess = () => {
-    carregarInsumos();
-  };
-
   // Filtrar insumos
   const insumosFiltrados = searchTerm
     ? insumos.filter(insumo =>
@@ -74,7 +70,7 @@ export default function InsumosSupabaseTab() {
   // Calcular métricas
   const metricas = {
     totalInsumos: insumos.length,
-    insumosAtivos: insumos.filter(i => i.ativo).length,
+    insumosComEstoque: insumos.filter(i => (i.estoque_atual || 0) > 0).length,
     custoMedio: insumos.length > 0 
       ? insumos.reduce((sum, i) => sum + (i.custo_medio || 0), 0) / insumos.length 
       : 0,
@@ -113,17 +109,6 @@ export default function InsumosSupabaseTab() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Filtro */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Filtrar insumos..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
             {/* Métricas rápidas */}
             {!loading && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -135,8 +120,8 @@ export default function InsumosSupabaseTab() {
                 </Card>
                 <Card>
                   <CardContent className="p-4">
-                    <div className="text-2xl font-bold text-green-600">{metricas.insumosAtivos}</div>
-                    <p className="text-xs text-muted-foreground">Insumos Ativos</p>
+                    <div className="text-2xl font-bold text-green-600">{metricas.insumosComEstoque}</div>
+                    <p className="text-xs text-muted-foreground">Com Estoque</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -158,6 +143,17 @@ export default function InsumosSupabaseTab() {
               </div>
             )}
 
+            {/* Filtro */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Filtrar insumos..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
             {/* Tabela de Insumos */}
             <div className="w-full overflow-x-auto">
               <div className="rounded-md border min-w-full">
@@ -165,11 +161,11 @@ export default function InsumosSupabaseTab() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="min-w-[150px]">Nome</TableHead>
-                      <TableHead className="min-w-[100px]">Tipo</TableHead>
-                      <TableHead className="min-w-[120px]">Volume Bruto (g)</TableHead>
+                      <TableHead className="min-w-[100px]">Categoria</TableHead>
+                      <TableHead className="min-w-[120px]">Volume Bruto</TableHead>
                       <TableHead className="min-w-[120px]">Custo Médio (R$)</TableHead>
                       <TableHead className="min-w-[120px]">Custo/g (R$)</TableHead>
-                      <TableHead className="min-w-[80px]">Status</TableHead>
+                      <TableHead className="min-w-[80px]">Estoque</TableHead>
                       <TableHead className="text-right min-w-[120px]">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -194,16 +190,16 @@ export default function InsumosSupabaseTab() {
                         <TableRow key={insumo.id}>
                           <TableCell className="font-medium">{insumo.nome}</TableCell>
                           <TableCell>
-                            <Badge variant="outline">{insumo.tipo}</Badge>
+                            <Badge variant="outline">{insumo.categoria}</Badge>
                           </TableCell>
-                          <TableCell>{insumo.volume_bruto}g</TableCell>
+                          <TableCell>{insumo.volume_bruto}{insumo.unidade_medida}</TableCell>
                           <TableCell>R$ {(insumo.custo_medio || 0).toFixed(2)}</TableCell>
                           <TableCell>
-                            R$ {calcularCustoUnitario(insumo.custo_medio || 0, insumo.volume_bruto || 1).toFixed(4)}
+                            R$ {calcularCustoUnitario(insumo).toFixed(4)}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={insumo.ativo ? "default" : "secondary"}>
-                              {insumo.ativo ? "Ativo" : "Inativo"}
+                            <Badge variant={(insumo.estoque_atual || 0) > 0 ? "default" : "secondary"}>
+                              {insumo.estoque_atual || 0}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
@@ -240,7 +236,6 @@ export default function InsumosSupabaseTab() {
         insumo={editandoInsumo}
         isOpen={isEditModalOpen}
         onClose={fecharEdicaoInsumo}
-        onSuccess={handleModalSuccess}
       />
     </div>
   );

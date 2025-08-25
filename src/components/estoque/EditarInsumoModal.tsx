@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,20 +11,40 @@ import { InsumoSupabase } from "@/hooks/useSupabaseInsumos";
 interface EditarInsumoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  insumo: InsumoSupabase;
+  insumo: InsumoSupabase | null;
 }
 
 export default function EditarInsumoModal({ isOpen, onClose, insumo }: EditarInsumoModalProps) {
   const { atualizarInsumo } = useSupabaseInsumos();
   
-  const [nome, setNome] = useState(insumo.nome);
-  const [categoria, setCategoria] = useState(insumo.categoria);
-  const [volumeBruto, setVolumeBruto] = useState(insumo.volume_bruto.toString());
-  const [unidadeMedida, setUnidadeMedida] = useState(insumo.unidade_medida);
-  const [custoMedio, setCustoMedio] = useState(insumo.custo_medio.toString());
+  const [nome, setNome] = useState("");
+  const [categoria, setCategoria] = useState<"Matéria Prima" | "Embalagem" | "Outros">("Matéria Prima");
+  const [volumeBruto, setVolumeBruto] = useState("");
+  const [unidadeMedida, setUnidadeMedida] = useState<"g" | "kg" | "ml" | "l" | "un" | "pct">("g");
+  const [custoMedio, setCustoMedio] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Reset form when insumo changes
+  useEffect(() => {
+    if (insumo) {
+      setNome(insumo.nome || "");
+      setCategoria(insumo.categoria || "Matéria Prima");
+      setVolumeBruto(insumo.volume_bruto?.toString() || "");
+      setUnidadeMedida(insumo.unidade_medida || "g");
+      setCustoMedio(insumo.custo_medio?.toString() || "");
+    } else {
+      // Reset to default values when no insumo
+      setNome("");
+      setCategoria("Matéria Prima");
+      setVolumeBruto("");
+      setUnidadeMedida("g");
+      setCustoMedio("");
+    }
+  }, [insumo]);
+
   const handleSalvar = async () => {
+    if (!insumo) return;
+    
     setLoading(true);
     try {
       const sucesso = await atualizarInsumo(insumo.id, {
@@ -52,6 +72,11 @@ export default function EditarInsumoModal({ isOpen, onClose, insumo }: EditarIns
   const handleUnidadeChange = (value: string) => {
     setUnidadeMedida(value as "g" | "kg" | "ml" | "l" | "un" | "pct");
   };
+
+  // Don't render if no insumo is provided
+  if (!insumo) {
+    return null;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
