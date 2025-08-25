@@ -222,10 +222,10 @@ const processarProdutosOtimizado = async (data: {
   
   // Calcular custos das receitas uma vez
   receitas.forEach(receita => {
-    const itensReceita = itensReceitaData.filter(item => item.receita_id === receita.id);
+    const itensReceitaFiltrados = itensReceita.filter(item => item.receita_id === receita.id);
     
-    if (itensReceita.length > 0) {
-      const custoTotalReceita = itensReceita.reduce((total, item) => {
+    if (itensReceitaFiltrados.length > 0) {
+      const custoTotalReceita = itensReceitaFiltrados.reduce((total, item) => {
         const insumo = insumosMap.get(item.insumo_id);
         if (insumo) {
           const custoUnitarioInsumo = (insumo.custo_medio || 0) / (insumo.volume_bruto || 1);
@@ -234,7 +234,7 @@ const processarProdutosOtimizado = async (data: {
         return total;
       }, 0);
       
-      const pesoRealReceita = itensReceita.reduce((total, item) => total + item.quantidade, 0);
+      const pesoRealReceita = itensReceitaFiltrados.reduce((total, item) => total + item.quantidade, 0);
       const custoPorGrama = pesoRealReceita > 0 ? custoTotalReceita / pesoRealReceita : 0;
       
       custosReceitasMap.set(receita.id, custoPorGrama);
