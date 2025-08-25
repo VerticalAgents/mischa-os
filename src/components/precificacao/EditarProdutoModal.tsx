@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,10 +37,11 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   const [componentes, setComponentes] = useState<ComponenteProduto[]>([]);
   const [novoComponenteTipo, setNovoComponenteTipo] = useState<'receita' | 'insumo'>('receita');
   const [novoComponenteItemId, setNovoComponenteItemId] = useState("");
-  const [novoComponenteQuantidade, setNovoComponenteQuantidade] = useState<number>(1);
+  const [novoComponenteQuantidade, setNovoComponenteQuantidade] = useState<number>(100);
   const [loading, setLoading] = useState(false);
   const [editingComponenteId, setEditingComponenteId] = useState<string | null>(null);
   const [editingQuantidade, setEditingQuantidade] = useState<number>(0);
+  const [modalReady, setModalReady] = useState(false);
 
   const { toast } = useToast();
   const { atualizarProduto, removerComponenteProduto, adicionarComponenteProduto, carregarProdutoCompleto } = useSupabaseProdutos();
@@ -49,8 +50,56 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   const { receitas } = useSupabaseReceitas();
   const { insumos } = useSupabaseInsumos();
 
+  // Memoizar dados para evitar re-renderizações
+  const receitasOptions = useMemo(() => receitas, [receitas]);
+  const insumosOptions = useMemo(() => insumos, [insumos]);
+
   // Filtrar subcategorias pela categoria selecionada usando a função do hook
-  const subcategoriasFiltradas = categoriaId ? getSubcategoriasPorCategoria(categoriaId) : [];
+  const subcategoriasFiltradas = useMemo(() => {
+    return categoriaId ? getSubcategoriasPorCategoria(categoriaId) : [];
+  }, [categoriaId, getSubcategoriasPorCategoria]);
+
+  // Callback estável para carregamento do produto
+  const carregarDadosModal = useCallback(async () => {
+    if (!produto || !isOpen) return;
+
+    console.log('🔄 Carregando dados do produto no modal:', produto);
+    
+    setModalReady(false);
+    setNome(produto.nome);
+    setDescricao(produto.descricao || "");
+    setAtivo(produto.ativo);
+    setUnidadesProducao(produto.unidades_producao);
+    setPesoUnitario(produto.peso_unitario || undefined);
+    setPrecoVenda(produto.preco_venda || undefined);
+    setCategoriaId(produto.categoria_id || undefined);
+    setSubcategoriaId(produto.subcategoria_id || undefined);
+    
+    // Carregar produto completo com componentes
+    try {
+      const produtoCompleto = await carregarProdutoCompleto(produto.id);
+      
+      if (produtoCompleto?.componentes) {
+        setComponentes(produtoCompleto.componentes);
+      } else {
+        setComponentes([]);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados do produto:', error);
+      setComponentes([]);
+    }
+    
+    // Reset form do novo componente
+    setNovoComponenteTipo('receita');
+    setNovoComponenteItemId("");
+    setNovoComponenteQuantidade(100);
+    setEditingComponenteId(null);
+    
+    // Pequeno delay para garantir que o modal está pronto
+    setTimeout(() => {
+      setModalReady(true);
+    }, 100);
+  }, [produto, isOpen, carregarProdutoCompleto]);
 
   // Resetar subcategoria quando categoria mudar
   useEffect(() => {
@@ -62,38 +111,14 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     }
   }, [categoriaId, subcategoriasFiltradas, subcategoriaId]);
 
-  // Carregar dados do produto e componentes
+  // Carregar dados quando o modal abrir
   useEffect(() => {
-    const carregarDadosProduto = async () => {
-      if (isOpen && produto) {
-        console.log('Carregando dados do produto:', produto);
-        setNome(produto.nome);
-        setDescricao(produto.descricao || "");
-        setAtivo(produto.ativo);
-        setUnidadesProducao(produto.unidades_producao);
-        setPesoUnitario(produto.peso_unitario || undefined);
-        setPrecoVenda(produto.preco_venda || undefined);
-        setCategoriaId(produto.categoria_id || undefined);
-        setSubcategoriaId(produto.subcategoria_id || undefined);
-        
-        // Carregar produto completo com componentes
-        const produtoCompleto = await carregarProdutoCompleto(produto.id);
-        
-        if (produtoCompleto?.componentes) {
-          // Os componentes já vêm com nomes e custos corretos do hook
-          setComponentes(produtoCompleto.componentes);
-        } else {
-          setComponentes([]);
-        }
-        
-        setNovoComponenteTipo('receita');
-        setNovoComponenteItemId("");
-        setNovoComponenteQuantidade(1);
-      }
-    };
-
-    carregarDadosProduto();
-  }, [isOpen, produto, carregarProdutoCompleto]);
+    if (isOpen && produto) {
+      carregarDadosModal();
+    } else if (!isOpen) {
+      setModalReady(false);
+    }
+  }, [isOpen, produto, carregarDadosModal]);
 
   const resetForm = () => {
     setNome("");
@@ -107,14 +132,32 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     setComponentes([]);
     setNovoComponenteTipo('receita');
     setNovoComponenteItemId("");
-    setNovoComponenteQuantidade(1);
+    setNovoComponenteQuantidade(100);
     setEditingComponenteId(null);
+    setModalReady(false);
   };
 
   const handleClose = () => {
     resetForm();
     onClose();
   };
+
+  // Handler estável para mudança de tipo de componente
+  const handleTipoChange = useCallback((value: 'receita' | 'insumo') => {
+    console.log('🔄 Mudando tipo para:', value);
+    setNovoComponenteTipo(value);
+    setNovoComponenteItemId("");
+    setNovoComponenteQuantidade(value === 'receita' ? 100 : 1);
+  }, []);
+
+  // Handler estável para seleção de item
+  const handleItemChange = useCallback((value: string) => {
+    console.log('🔄 Selecionando item:', value);
+    // Pequeno delay para evitar conflitos
+    setTimeout(() => {
+      setNovoComponenteItemId(value);
+    }, 50);
+  }, []);
 
   const handleSalvar = async () => {
     if (!produto || !nome.trim()) {
@@ -471,17 +514,15 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                       <div className="space-y-2">
                         <Label>Tipo</Label>
                         <Select 
+                          key={`tipo-${modalReady}`}
                           value={novoComponenteTipo} 
-                          onValueChange={(value: 'receita' | 'insumo') => {
-                            setNovoComponenteTipo(value);
-                            setNovoComponenteItemId("");
-                            setNovoComponenteQuantidade(value === 'receita' ? 100 : 1);
-                          }}
+                          onValueChange={handleTipoChange}
+                          disabled={!modalReady}
                         >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-[100]">
                             <SelectItem value="receita">Receita</SelectItem>
                             <SelectItem value="insumo">Insumo</SelectItem>
                           </SelectContent>
@@ -491,20 +532,22 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                       <div className="space-y-2">
                         <Label>Item</Label>
                         <Select 
+                          key={`item-${novoComponenteTipo}-${modalReady}`}
                           value={novoComponenteItemId} 
-                          onValueChange={setNovoComponenteItemId}
+                          onValueChange={handleItemChange}
+                          disabled={!modalReady}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione..." />
+                            <SelectValue placeholder={modalReady ? "Selecione..." : "Carregando..."} />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-[100] max-h-60">
                             {novoComponenteTipo === 'receita' 
-                              ? receitas.map(receita => (
+                              ? receitasOptions.map(receita => (
                                   <SelectItem key={receita.id} value={receita.id}>
-                                    {receita.nome}
+                                    {receita.nome} (Rend: {receita.rendimento}g)
                                   </SelectItem>
                                 ))
-                              : insumos.map(insumo => (
+                              : insumosOptions.map(insumo => (
                                   <SelectItem key={insumo.id} value={insumo.id}>
                                     {insumo.nome}
                                   </SelectItem>
@@ -524,6 +567,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                           min="0"
                           value={novoComponenteQuantidade}
                           onChange={(e) => setNovoComponenteQuantidade(parseFloat(e.target.value) || 0)}
+                          disabled={!modalReady}
                         />
                       </div>
 
@@ -532,7 +576,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                         <Button 
                           onClick={handleAdicionarComponente} 
                           className="w-full"
-                          disabled={!novoComponenteItemId || novoComponenteQuantidade <= 0}
+                          disabled={!modalReady || !novoComponenteItemId || novoComponenteQuantidade <= 0}
                         >
                           <Plus className="h-4 w-4 mr-2" />
                           Adicionar
