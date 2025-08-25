@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -54,19 +53,12 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   const { toast } = useToast();
   const { atualizarProduto, removerComponenteProduto, adicionarComponenteProduto, carregarProdutoCompleto } = useSupabaseProdutos();
   const { categorias } = useSupabaseCategoriasProduto();
-  const { subcategorias, carregarSubcategorias } = useSupabaseSubcategoriasProduto();
+  const { subcategorias, getSubcategoriasPorCategoria } = useSupabaseSubcategoriasProduto();
   const { receitas } = useSupabaseReceitas();
   const { insumos } = useSupabaseInsumos();
 
-  // Carregar subcategorias quando a categoria mudar
-  useEffect(() => {
-    if (categoriaId) {
-      carregarSubcategorias();
-    }
-  }, [categoriaId, carregarSubcategorias]);
-
-  // Filtrar subcategorias pela categoria selecionada
-  const subcategoriasFiltradas = subcategorias.filter(sub => sub.categoria_id === categoriaId);
+  // Filtrar subcategorias pela categoria selecionada usando a função do hook
+  const subcategoriasFiltradas = categoriaId ? getSubcategoriasPorCategoria(categoriaId) : [];
 
   // Resetar subcategoria quando categoria mudar
   useEffect(() => {
@@ -82,6 +74,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   useEffect(() => {
     const carregarDadosProduto = async () => {
       if (isOpen && produto) {
+        console.log('Carregando dados do produto:', produto);
         setNome(produto.nome);
         setDescricao(produto.descricao || "");
         setAtivo(produto.ativo);
@@ -102,7 +95,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
             let item_id = '';
 
             if (comp.tipo === 'receita') {
-              const receita = receitas.find(r => r.id === comp.nome_item); // Assuming nome_item contains the actual ID
+              const receita = receitas.find(r => r.id === comp.nome_item);
               nome = receita?.nome || `Receita ${comp.nome_item}`;
               item_id = receita?.id || comp.nome_item || '';
               // Calcular custo da receita baseado nos insumos
@@ -113,7 +106,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                 }, 0);
               }
             } else {
-              const insumo = insumos.find(i => i.id === comp.nome_item); // Assuming nome_item contains the actual ID
+              const insumo = insumos.find(i => i.id === comp.nome_item);
               nome = insumo?.nome || `Insumo ${comp.nome_item}`;
               item_id = insumo?.id || comp.nome_item || '';
               custo_unitario = insumo?.custo_medio || 0;
@@ -338,7 +331,17 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="categoria">Categoria</Label>
-                    <Select value={categoriaId?.toString()} onValueChange={(value) => setCategoriaId(parseInt(value))}>
+                    <Select 
+                      value={categoriaId?.toString() || ""} 
+                      onValueChange={(value) => {
+                        const newCategoriaId = value ? parseInt(value) : undefined;
+                        setCategoriaId(newCategoriaId);
+                        // Reset subcategoria when category changes
+                        if (newCategoriaId !== categoriaId) {
+                          setSubcategoriaId(undefined);
+                        }
+                      }}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione uma categoria" />
                       </SelectTrigger>
@@ -357,10 +360,16 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                     <Select 
                       value={subcategoriaId?.toString() || ""} 
                       onValueChange={(value) => setSubcategoriaId(value ? parseInt(value) : undefined)}
-                      disabled={!categoriaId}
+                      disabled={!categoriaId || subcategoriasFiltradas.length === 0}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={categoriaId ? "Selecione uma subcategoria" : "Selecione uma categoria primeiro"} />
+                        <SelectValue placeholder={
+                          !categoriaId 
+                            ? "Selecione uma categoria primeiro" 
+                            : subcategoriasFiltradas.length === 0 
+                              ? "Nenhuma subcategoria disponível" 
+                              : "Selecione uma subcategoria"
+                        } />
                       </SelectTrigger>
                       <SelectContent>
                         {subcategoriasFiltradas.map(subcategoria => (
