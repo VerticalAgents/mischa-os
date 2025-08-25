@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import { useExpedicaoStore } from './useExpedicaoStore';
 import { useConfirmacaoReposicaoStore } from './useConfirmacaoReposicaoStore';
@@ -10,7 +11,7 @@ export const useDashboardMetrics = () => {
   const { pedidos } = useExpedicaoStore();
   const { clientesParaConfirmacao } = useConfirmacaoReposicaoStore();
   const { produtos: produtosEstoque } = useEstoqueProdutos();
-  const { historico } = useSupabaseHistoricoProducao();
+  const { historico, loading: loadingHistorico } = useSupabaseHistoricoProducao();
   const { agendamentos } = useAgendamentoClienteStore();
 
   // Agendamentos para hoje - separando por status
@@ -89,7 +90,7 @@ export const useDashboardMetrics = () => {
     };
   }, [pedidos]);
 
-  // Confirmações semanais - CORRIGIDO para usar agendamentos com status "Previsto"
+  // Confirmações semanais - agendamentos com status "Previsto" da semana atual
   const confirmacoesPendentesSemanais = useMemo(() => {
     const hoje = new Date();
     const inicioSemana = startOfWeek(hoje, { weekStartsOn: 1 }); // Segunda-feira
@@ -126,12 +127,49 @@ export const useDashboardMetrics = () => {
     };
   }, [agendamentos]);
 
-  // Produção do dia - CORRIGIDO para usar dados reais do histórico
+  // Fase 2 e 3: Produção do dia com loading state e logs aprimorados
   const producaoDia = useMemo(() => {
+    // Evitar cálculos enquanto ainda está carregando
+    if (loadingHistorico) {
+      console.log('Dashboard Metrics - Produção hoje: ainda carregando...');
+      return {
+        registros: 0,
+        confirmados: 0,
+        pendentes: 0,
+        totalFormas: 0,
+        totalUnidades: 0
+      };
+    }
+
     const hoje = format(new Date(), 'yyyy-MM-dd');
+    
+    console.log('Dashboard Metrics - Debug Produção:', {
+      hoje_formatado: hoje,
+      total_historico: historico.length,
+      sample_dates: historico.slice(0, 3).map(h => ({
+        id: h.id,
+        data_producao: h.data_producao,
+        data_formatada: format(new Date(h.data_producao), 'yyyy-MM-dd'),
+        produto: h.produto_nome,
+        status: h.status
+      }))
+    });
+
     const producaoHoje = historico.filter(h => {
       const dataProducao = format(new Date(h.data_producao), 'yyyy-MM-dd');
-      return dataProducao === hoje;
+      const ehHoje = dataProducao === hoje;
+      
+      if (ehHoje) {
+        console.log('Dashboard Metrics - Registro encontrado para hoje:', {
+          id: h.id,
+          produto: h.produto_nome,
+          formas: h.formas_producidas,
+          unidades: h.unidades_calculadas,
+          status: h.status
+        });
+      }
+      
+      return ehHoje;
     });
     
     const confirmados = producaoHoje.filter(h => h.status === 'Confirmado');
@@ -139,17 +177,20 @@ export const useDashboardMetrics = () => {
     const totalFormas = producaoHoje.reduce((sum, h) => sum + h.formas_producidas, 0);
     const totalUnidades = producaoHoje.reduce((sum, h) => sum + h.unidades_calculadas, 0);
     
-    console.log('Dashboard Metrics - Produção hoje:', {
+    console.log('Dashboard Metrics - Produção hoje (RESULTADO FINAL):', {
       registros_hoje: producaoHoje.length,
       confirmados: confirmados.length,
       pendentes: pendentes.length,
       total_formas: totalFormas,
       total_unidades: totalUnidades,
+      loading_historico: loadingHistorico,
       detalhes: producaoHoje.map(h => ({
+        id: h.id,
         produto: h.produto_nome,
         status: h.status,
         formas: h.formas_producidas,
-        unidades: h.unidades_calculadas
+        unidades: h.unidades_calculadas,
+        data_producao: h.data_producao
       }))
     });
     
@@ -160,7 +201,7 @@ export const useDashboardMetrics = () => {
       totalFormas,
       totalUnidades
     };
-  }, [historico]);
+  }, [historico, loadingHistorico]);
 
   return {
     agendamentosHoje,

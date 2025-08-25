@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,11 +8,19 @@ import CriticalAlertsSection from '@/components/dashboard/CriticalAlertsSection'
 import ManualCard from '@/components/manual/ManualCard';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
 import { useAgendamentoClienteStore } from '@/hooks/useAgendamentoClienteStore';
+import { useSupabaseHistoricoProducao } from '@/hooks/useSupabaseHistoricoProducao';
 import { useEffect } from 'react';
 import { BarChart3, Users, Calendar, Truck, Settings, CheckCircle, Factory, Tag, PackageCheck, ShoppingBag, DollarSign, Cpu, ChevronRight, Clock, Package, UserCheck, Cog, Send } from 'lucide-react';
 
 export default function Home() {
   const navigate = useNavigate();
+  
+  // Garantir que os agendamentos estejam carregados
+  const { carregarTodosAgendamentos, agendamentos } = useAgendamentoClienteStore();
+  
+  // Garantir que o histórico de produção esteja carregado
+  const { historico, loading: loadingHistorico, carregarHistorico } = useSupabaseHistoricoProducao();
+  
   const {
     agendamentosHoje,
     separacaoPedidos,
@@ -19,15 +28,30 @@ export default function Home() {
     confirmacoesPendentesSemanais,
     producaoDia
   } = useDashboardMetrics();
-  
-  // Garantir que os agendamentos estejam carregados
-  const { carregarTodosAgendamentos, agendamentos } = useAgendamentoClienteStore();
-  
+
   useEffect(() => {
     if (agendamentos.length === 0) {
       carregarTodosAgendamentos();
     }
   }, [carregarTodosAgendamentos, agendamentos.length]);
+
+  // Fase 1: Garantir carregamento dos dados de produção
+  useEffect(() => {
+    if (historico.length === 0 && !loadingHistorico) {
+      console.log('Home: Forçando carregamento do histórico de produção...');
+      carregarHistorico();
+    }
+  }, [historico.length, loadingHistorico, carregarHistorico]);
+
+  // Log de debug para verificar estado dos dados
+  useEffect(() => {
+    console.log('Home - Estado dos dados:', {
+      historico_length: historico.length,
+      loading_historico: loadingHistorico,
+      producao_dia: producaoDia,
+      data_atual: new Date().toISOString()
+    });
+  }, [historico, loadingHistorico, producaoDia]);
 
   const quickActions = [
     {
@@ -185,11 +209,19 @@ export default function Home() {
           onClick={() => navigate('/agendamento?tab=confirmacao')}
         />
         
+        {/* Fase 4: Card de Produção com loading state e dados corretos */}
         <DashboardMetricsCard
           title="Produção Hoje"
-          value={producaoDia.registros}
-          subtitle={producaoDia.registros > 0 ? `${producaoDia.totalFormas} formas, ${producaoDia.totalUnidades} unidades` : "Nenhum registro hoje"}
+          value={loadingHistorico ? "..." : producaoDia.registros}
+          subtitle={
+            loadingHistorico 
+              ? "Carregando..." 
+              : producaoDia.registros > 0 
+                ? `${producaoDia.totalFormas} formas, ${producaoDia.totalUnidades} unidades` 
+                : "Nenhum registro hoje"
+          }
           icon={<Cog className="h-6 w-6" />}
+          loading={loadingHistorico}
           severity={producaoDia.pendentes > 0 ? 'warning' : producaoDia.registros > 0 ? 'success' : 'info'}
           onClick={() => navigate('/pcp?tab=historico')}
         />
