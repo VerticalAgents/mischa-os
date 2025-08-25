@@ -88,16 +88,19 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
         const produtoCompleto = await carregarProdutoCompleto(produto.id);
         
         if (produtoCompleto?.componentes) {
-          // Enriquecer componentes com nomes dos itens
+          // Enriquecer componentes com nomes dos itens usando o item_id correto
           const componentesEnriquecidos = produtoCompleto.componentes.map(comp => {
             let nome = '';
             let custo_unitario = 0;
             let item_id = '';
 
             if (comp.tipo === 'receita') {
-              const receita = receitas.find(r => r.id === comp.nome_item);
-              nome = receita?.nome || `Receita ${comp.nome_item}`;
-              item_id = receita?.id || comp.nome_item || '';
+              // Usar o item_id como referência para buscar a receita
+              const itemIdFromComp = comp.nome_item || ''; // nome_item pode conter o ID
+              const receita = receitas.find(r => r.id === itemIdFromComp);
+              nome = receita?.nome || `Receita não encontrada`;
+              item_id = receita?.id || itemIdFromComp;
+              
               // Calcular custo da receita baseado nos insumos
               if (receita?.itens) {
                 custo_unitario = receita.itens.reduce((total, item) => {
@@ -106,9 +109,11 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                 }, 0);
               }
             } else {
-              const insumo = insumos.find(i => i.id === comp.nome_item);
-              nome = insumo?.nome || `Insumo ${comp.nome_item}`;
-              item_id = insumo?.id || comp.nome_item || '';
+              // Usar o item_id como referência para buscar o insumo  
+              const itemIdFromComp = comp.nome_item || ''; // nome_item pode conter o ID
+              const insumo = insumos.find(i => i.id === itemIdFromComp);
+              nome = insumo?.nome || `Insumo não encontrado`;
+              item_id = insumo?.id || itemIdFromComp;
               custo_unitario = insumo?.custo_medio || 0;
             }
 
