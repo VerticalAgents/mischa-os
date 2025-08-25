@@ -55,7 +55,11 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   const insumosOptions = useMemo(() => insumos, [insumos]);
 
   const subcategoriasFiltradas = useMemo(() => {
-    return categoriaId ? getSubcategoriasPorCategoria(categoriaId) : [];
+    if (!categoriaId) return [];
+    console.log('🔄 Filtrando subcategorias para categoria:', categoriaId);
+    const subcategoriasCategoria = getSubcategoriasPorCategoria(categoriaId);
+    console.log('📋 Subcategorias encontradas:', subcategoriasCategoria);
+    return subcategoriasCategoria;
   }, [categoriaId, getSubcategoriasPorCategoria]);
 
   useEffect(() => {
@@ -98,6 +102,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     if (categoriaId && subcategoriaId) {
       const subcategoriaValida = subcategoriasFiltradas.find(sub => sub.id === subcategoriaId);
       if (!subcategoriaValida) {
+        console.log('⚠️ Subcategoria não válida para categoria selecionada, limpando...');
         setSubcategoriaId(undefined);
       }
     }
@@ -135,6 +140,14 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     console.log('🔄 Selecionando item:', value);
     setNovoComponenteItemId(value);
   }, []);
+
+  const handleCategoriaChange = (value: string) => {
+    const newCategoriaId = value ? parseInt(value) : undefined;
+    console.log('🔄 Mudando categoria para:', newCategoriaId);
+    setCategoriaId(newCategoriaId);
+    // Limpar subcategoria ao mudar categoria
+    setSubcategoriaId(undefined);
+  };
 
   const handleSalvar = async () => {
     if (!produto || !nome.trim()) {
@@ -377,13 +390,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                     <Label htmlFor="categoria">Categoria</Label>
                     <Select 
                       value={categoriaId?.toString() || ""} 
-                      onValueChange={(value) => {
-                        const newCategoriaId = value ? parseInt(value) : undefined;
-                        setCategoriaId(newCategoriaId);
-                        if (newCategoriaId !== categoriaId) {
-                          setSubcategoriaId(undefined);
-                        }
-                      }}
+                      onValueChange={handleCategoriaChange}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione uma categoria" />
@@ -422,6 +429,11 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                         ))}
                       </SelectContent>
                     </Select>
+                    {categoriaId && subcategoriasFiltradas.length > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        Subcategorias disponíveis: {subcategoriasFiltradas.map(sub => sub.nome).join(', ')}
+                      </div>
+                    )}
                   </div>
                 </div>
 
