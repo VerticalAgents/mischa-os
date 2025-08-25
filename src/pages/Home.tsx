@@ -160,6 +160,34 @@ export default function Home() {
     }
   ];
 
+  // Funções auxiliares para pluralização
+  const pluralize = (count: number, singular: string, plural: string) => {
+    return count === 1 ? singular : plural;
+  };
+
+  // Formatação das legendas dos cards
+  const getAgendamentosLegenda = () => {
+    const { agendados, previstos } = agendamentosHoje;
+    return `${agendados} ${pluralize(agendados, 'agendado', 'agendados')}, ${previstos} ${pluralize(previstos, 'previsto', 'previstos')}`;
+  };
+
+  const getSeparacaoLegenda = () => {
+    const { separados } = separacaoPedidos;
+    return `${separados} já ${pluralize(separados, 'separado', 'separados')}`;
+  };
+
+  const getConfirmacoesLegenda = () => {
+    const { criticos } = confirmacoesPendentesSemanais;
+    return criticos > 0 
+      ? `${criticos} ${pluralize(criticos, 'atraso crítico', 'atrasos críticos')}`
+      : 'Sem atrasos críticos';
+  };
+
+  const getProducaoLegenda = () => {
+    const { totalFormas, totalUnidades } = producaoDia;
+    return `${totalFormas} ${pluralize(totalFormas, 'forma', 'formas')}, ${totalUnidades} ${pluralize(totalUnidades, 'unidade', 'unidades')}`;
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -173,53 +201,52 @@ export default function Home() {
       {/* Dashboard Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <DashboardMetricsCard
-          title="Agendamentos Hoje"
+          title="Agendamentos • Hoje"
           value={agendamentosHoje.total}
-          subtitle={`${agendamentosHoje.agendados} agendados, ${agendamentosHoje.previstos} previstos`}
-          icon={<Calendar className="h-6 w-6" />}
+          subtitle={getAgendamentosLegenda()}
+          icon={<Calendar className="h-5 w-5" />}
           severity={agendamentosHoje.previstos > 0 ? 'warning' : agendamentosHoje.total > 0 ? 'success' : 'info'}
           onClick={() => navigate('/agendamento')}
         />
         
         <DashboardMetricsCard
-          title="Separação Hoje"
-          value={separacaoPedidos.aguardando}
-          subtitle={`${separacaoPedidos.separados} já separados`}
-          icon={<Package className="h-6 w-6" />}
+          title="Separação • Hoje"
+          value={separacaoPedidos.separados}
+          subtitle={getSeparacaoLegenda()}
+          icon={<Package className="h-5 w-5" />}
           severity={separacaoPedidos.aguardando > 5 ? 'warning' : 'info'}
           onClick={() => navigate('/expedicao')}
         />
         
         <DashboardMetricsCard
-          title="Pedidos Despachados"
+          title="Pedidos • Despachados"
           value={pedidosDespachados.total}
           subtitle="Entregas realizadas hoje"
-          icon={<Send className="h-6 w-6" />}
+          icon={<Send className="h-5 w-5" />}
           severity={pedidosDespachados.total > 0 ? 'success' : 'info'}
           onClick={() => navigate('/expedicao')}
         />
         
         <DashboardMetricsCard
-          title="Confirmações da Semana"
+          title="Confirmações • da Semana"
           value={confirmacoesPendentesSemanais.total}
-          subtitle={confirmacoesPendentesSemanais.criticos > 0 ? `${confirmacoesPendentesSemanais.criticos} críticas (>48h)` : "Sem atrasos críticos"}
-          icon={<UserCheck className="h-6 w-6" />}
+          subtitle={getConfirmacoesLegenda()}
+          icon={<UserCheck className="h-5 w-5" />}
           severity={confirmacoesPendentesSemanais.criticos > 0 ? 'danger' : confirmacoesPendentesSemanais.total > 0 ? 'warning' : 'success'}
           onClick={() => navigate('/agendamento?tab=confirmacao')}
         />
         
-        {/* Fase 4: Card de Produção com loading state e dados corretos */}
         <DashboardMetricsCard
-          title="Produção Hoje"
+          title="Produção • Hoje"
           value={loadingHistorico ? "..." : producaoDia.registros}
           subtitle={
             loadingHistorico 
               ? "Carregando..." 
               : producaoDia.registros > 0 
-                ? `${producaoDia.totalFormas} formas, ${producaoDia.totalUnidades} unidades` 
+                ? getProducaoLegenda()
                 : "Nenhum registro hoje"
           }
-          icon={<Cog className="h-6 w-6" />}
+          icon={<Cog className="h-5 w-5" />}
           loading={loadingHistorico}
           severity={producaoDia.pendentes > 0 ? 'warning' : producaoDia.registros > 0 ? 'success' : 'info'}
           onClick={() => navigate('/pcp?tab=historico')}
