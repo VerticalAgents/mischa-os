@@ -8,14 +8,15 @@ import ManualCard from '@/components/manual/ManualCard';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
 import { useAgendamentoClienteStore } from '@/hooks/useAgendamentoClienteStore';
 import { useEffect } from 'react';
-import { BarChart3, Users, Calendar, Truck, Settings, CheckCircle, Factory, Tag, PackageCheck, ShoppingBag, DollarSign, Cpu, ChevronRight, Clock, Package, UserCheck, Cog } from 'lucide-react';
+import { BarChart3, Users, Calendar, Truck, Settings, CheckCircle, Factory, Tag, PackageCheck, ShoppingBag, DollarSign, Cpu, ChevronRight, Clock, Package, UserCheck, Cog, Send } from 'lucide-react';
 
 export default function Home() {
   const navigate = useNavigate();
   const {
-    agendamentosCriticos,
+    agendamentosHoje,
     separacaoPedidos,
-    confirmacoesPendentes,
+    pedidosDespachados,
+    confirmacoesPendentesSemanais,
     producaoDia
   } = useDashboardMetrics();
   
@@ -35,8 +36,8 @@ export default function Home() {
       icon: Calendar,
       onClick: () => navigate('/agendamento'),
       color: "bg-blue-500 hover:bg-blue-600",
-      badge: agendamentosCriticos.atrasados > 0 ? "Crítico" : undefined,
-      badgeColor: "bg-red-500"
+      badge: agendamentosHoje.previstos > 0 ? "Pendente" : undefined,
+      badgeColor: "bg-amber-500"
     },
     {
       title: "Confirmação de Reposição",
@@ -44,7 +45,7 @@ export default function Home() {
       icon: CheckCircle,
       onClick: () => navigate('/agendamento?tab=confirmacao'),
       color: "bg-green-500 hover:bg-green-600",
-      badge: confirmacoesPendentes.criticos > 0 ? "Urgente" : undefined,
+      badge: confirmacoesPendentesSemanais.criticos > 0 ? "Urgente" : undefined,
       badgeColor: "bg-orange-500"
     },
     {
@@ -147,18 +148,18 @@ export default function Home() {
       </div>
 
       {/* Dashboard Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <DashboardMetricsCard
           title="Agendamentos Hoje"
-          value={agendamentosCriticos.total}
-          subtitle={agendamentosCriticos.atrasados > 0 ? `${agendamentosCriticos.atrasados} em atraso` : "Tudo em dia"}
+          value={agendamentosHoje.total}
+          subtitle={`${agendamentosHoje.agendados} agendados, ${agendamentosHoje.previstos} previstos`}
           icon={<Calendar className="h-6 w-6" />}
-          severity={agendamentosCriticos.atrasados > 0 ? 'danger' : agendamentosCriticos.total > 0 ? 'success' : 'info'}
+          severity={agendamentosHoje.previstos > 0 ? 'warning' : agendamentosHoje.total > 0 ? 'success' : 'info'}
           onClick={() => navigate('/agendamento')}
         />
         
         <DashboardMetricsCard
-          title="Separação de Pedidos"
+          title="Separação Hoje"
           value={separacaoPedidos.aguardando}
           subtitle={`${separacaoPedidos.separados} já separados`}
           icon={<Package className="h-6 w-6" />}
@@ -167,20 +168,29 @@ export default function Home() {
         />
         
         <DashboardMetricsCard
-          title="Confirmações Pendentes"
-          value={confirmacoesPendentes.total}
-          subtitle={confirmacoesPendentes.criticos > 0 ? `${confirmacoesPendentes.criticos} críticas (>48h)` : "Sem atrasos"}
+          title="Pedidos Despachados"
+          value={pedidosDespachados.total}
+          subtitle="Entregas realizadas hoje"
+          icon={<Send className="h-6 w-6" />}
+          severity={pedidosDespachados.total > 0 ? 'success' : 'info'}
+          onClick={() => navigate('/expedicao')}
+        />
+        
+        <DashboardMetricsCard
+          title="Confirmações da Semana"
+          value={confirmacoesPendentesSemanais.total}
+          subtitle={confirmacoesPendentesSemanais.criticos > 0 ? `${confirmacoesPendentesSemanais.criticos} críticas (>48h)` : "Sem atrasos críticos"}
           icon={<UserCheck className="h-6 w-6" />}
-          severity={confirmacoesPendentes.criticos > 0 ? 'danger' : confirmacoesPendentes.total > 0 ? 'warning' : 'success'}
+          severity={confirmacoesPendentesSemanais.criticos > 0 ? 'danger' : confirmacoesPendentesSemanais.total > 0 ? 'warning' : 'success'}
           onClick={() => navigate('/agendamento?tab=confirmacao')}
         />
         
         <DashboardMetricsCard
           title="Produção Hoje"
-          value={producaoDia.totalUnidades}
+          value={producaoDia.registros}
           subtitle={`${producaoDia.confirmados} confirmados, ${producaoDia.pendentes} pendentes`}
           icon={<Cog className="h-6 w-6" />}
-          severity={producaoDia.pendentes > 0 ? 'warning' : 'success'}
+          severity={producaoDia.pendentes > 0 ? 'warning' : producaoDia.registros > 0 ? 'success' : 'info'}
           onClick={() => navigate('/pcp')}
         />
       </div>
