@@ -133,8 +133,10 @@ export const useSupabaseProdutos = () => {
                   return total + (item.quantidade * custoUnitarioInsumo);
                 }, 0);
                 
-                // CORREÇÃO: Custo por grama da receita
-                custo_item = receita.rendimento > 0 ? custoTotalReceita / receita.rendimento : 0;
+                // NOVO CÁLCULO: Custo total baseado na quantidade usada no produto
+                // Fórmula: (custo_total_receita ÷ peso_total_receita) × quantidade_usada
+                const custoPorGrama = receita.rendimento > 0 ? custoTotalReceita / receita.rendimento : 0;
+                custo_item = custoPorGrama * comp.quantidade;
               }
             } else {
               nome_item = 'Receita não encontrada';
@@ -149,8 +151,9 @@ export const useSupabaseProdutos = () => {
 
             if (insumo) {
               nome_item = insumo.nome;
-              // CORREÇÃO: Custo unitário real do insumo
-              custo_item = insumo.volume_bruto > 0 ? (insumo.custo_medio || 0) / insumo.volume_bruto : (insumo.custo_medio || 0);
+              // Para insumos: custo unitário × quantidade
+              const custoUnitarioInsumo = insumo.volume_bruto > 0 ? (insumo.custo_medio || 0) / insumo.volume_bruto : (insumo.custo_medio || 0);
+              custo_item = custoUnitarioInsumo * comp.quantidade;
             } else {
               nome_item = 'Insumo não encontrado';
             }

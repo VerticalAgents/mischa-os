@@ -640,7 +640,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                                 <TableCell>
                                   {componente.tipo === 'receita' ? '-' : `R$ ${componente.custo_item.toFixed(2)}`}
                                 </TableCell>
-                                <TableCell>R$ {(componente.custo_item * componente.quantidade).toFixed(2)}</TableCell>
+                                <TableCell>R$ {componente.custo_item.toFixed(2)}</TableCell>
                                 <TableCell>
                                   <Button
                                     variant="outline"
