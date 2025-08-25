@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -118,21 +117,23 @@ export const useSupabaseProdutos = () => {
             if (receita) {
               nome_item = receita.nome;
               
-              // Calcular custo da receita baseado nos insumos
+              // Calcular custo total da receita baseado nos insumos
               const { data: itensReceita } = await supabase
                 .from('itens_receita')
                 .select(`
                   quantidade,
-                  insumos!inner(custo_medio)
+                  insumos!inner(custo_medio, volume_bruto)
                 `)
                 .eq('receita_id', comp.item_id);
 
               if (itensReceita) {
                 const custoTotalReceita = itensReceita.reduce((total, item) => {
-                  return total + (item.quantidade * (item.insumos.custo_medio || 0));
+                  // Para insumos na receita, usar custo_medio / volume_bruto * quantidade
+                  const custoUnitarioInsumo = (item.insumos.custo_medio || 0) / (item.insumos.volume_bruto || 1);
+                  return total + (item.quantidade * custoUnitarioInsumo);
                 }, 0);
                 
-                // CORREÇÃO: Dividir pelo rendimento para obter o custo unitário correto
+                // CORREÇÃO: Custo por grama da receita
                 custo_item = receita.rendimento > 0 ? custoTotalReceita / receita.rendimento : 0;
               }
             } else {
@@ -142,13 +143,14 @@ export const useSupabaseProdutos = () => {
             // Buscar dados do insumo
             const { data: insumo } = await supabase
               .from('insumos')
-              .select('nome, custo_medio')
+              .select('nome, custo_medio, volume_bruto')
               .eq('id', comp.item_id)
               .single();
 
             if (insumo) {
               nome_item = insumo.nome;
-              custo_item = insumo.custo_medio || 0;
+              // CORREÇÃO: Custo unitário real do insumo
+              custo_item = insumo.volume_bruto > 0 ? (insumo.custo_medio || 0) / insumo.volume_bruto : (insumo.custo_medio || 0);
             } else {
               nome_item = 'Insumo não encontrado';
             }
