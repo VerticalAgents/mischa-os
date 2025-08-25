@@ -291,7 +291,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   };
 
   const calcularCustoTotal = () => {
-    return componentes.reduce((total, comp) => total + (comp.custo_item * comp.quantidade), 0);
+    return componentes.reduce((total, comp) => total + comp.custo_item, 0);
   };
 
   const calcularCustoUnitario = () => {
