@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -638,7 +637,9 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                                     </div>
                                   )}
                                 </TableCell>
-                                <TableCell>R$ {componente.custo_item.toFixed(2)}</TableCell>
+                                <TableCell>
+                                  {componente.tipo === 'receita' ? '-' : `R$ ${componente.custo_item.toFixed(2)}`}
+                                </TableCell>
                                 <TableCell>R$ {(componente.custo_item * componente.quantidade).toFixed(2)}</TableCell>
                                 <TableCell>
                                   <Button
