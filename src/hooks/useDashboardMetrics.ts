@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import { useExpedicaoStore } from './useExpedicaoStore';
 import { useConfirmacaoReposicaoStore } from './useConfirmacaoReposicaoStore';
@@ -137,16 +136,19 @@ export const useDashboardMetrics = () => {
     
     const confirmados = producaoHoje.filter(h => h.status === 'Confirmado');
     const pendentes = producaoHoje.filter(h => h.status === 'Registrado');
+    const totalFormas = producaoHoje.reduce((sum, h) => sum + h.formas_producidas, 0);
     const totalUnidades = producaoHoje.reduce((sum, h) => sum + h.unidades_calculadas, 0);
     
     console.log('Dashboard Metrics - Produção hoje:', {
       registros_hoje: producaoHoje.length,
       confirmados: confirmados.length,
       pendentes: pendentes.length,
+      total_formas: totalFormas,
       total_unidades: totalUnidades,
       detalhes: producaoHoje.map(h => ({
         produto: h.produto_nome,
         status: h.status,
+        formas: h.formas_producidas,
         unidades: h.unidades_calculadas
       }))
     });
@@ -155,6 +157,7 @@ export const useDashboardMetrics = () => {
       registros: producaoHoje.length,
       confirmados: confirmados.length,
       pendentes: pendentes.length,
+      totalFormas,
       totalUnidades
     };
   }, [historico]);

@@ -188,10 +188,10 @@ export default function Home() {
         <DashboardMetricsCard
           title="Produção Hoje"
           value={producaoDia.registros}
-          subtitle={`${producaoDia.confirmados} confirmados, ${producaoDia.pendentes} pendentes`}
+          subtitle={producaoDia.registros > 0 ? `${producaoDia.totalFormas} formas, ${producaoDia.totalUnidades} unidades` : "Nenhum registro hoje"}
           icon={<Cog className="h-6 w-6" />}
           severity={producaoDia.pendentes > 0 ? 'warning' : producaoDia.registros > 0 ? 'success' : 'info'}
-          onClick={() => navigate('/pcp')}
+          onClick={() => navigate('/pcp?tab=historico')}
         />
       </div>
 
