@@ -36,25 +36,62 @@ export interface ComponenteDetalhado {
   custo_item: number;
 }
 
+export interface ProdutoCompleto extends ProdutoOptimizado {
+  componentes?: ComponenteDetalhado[];
+}
+
 interface CacheData {
   produtos: ProdutoOptimizado[];
   timestamp: number;
   ttl: number; // 5 minutos
 }
 
+interface Metricas {
+  totalProdutos: number;
+  produtosAtivos: number;
+  custoMedio: number;
+  margemMedia: number;
+}
+
 export const useOptimizedProdutoData = () => {
   const [produtos, setProdutos] = useState<ProdutoOptimizado[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [cache, setCache] = useState<CacheData | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const isoCacheValid = useMemo(() => {
+  const isCacheValid = useMemo(() => {
     if (!cache) return false;
     return Date.now() - cache.timestamp < cache.ttl;
   }, [cache]);
 
+  // Filtrar produtos com base no termo de busca
+  const produtosFiltrados = useMemo(() => {
+    if (!searchTerm) return produtos;
+    
+    return produtos.filter(produto =>
+      produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (produto.descricao && produto.descricao.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [produtos, searchTerm]);
+
+  // Calcular métricas
+  const metricas = useMemo((): Metricas => {
+    return {
+      totalProdutos: produtos.length,
+      produtosAtivos: produtos.filter(p => p.ativo).length,
+      custoMedio: produtos.length > 0 
+        ? produtos.reduce((sum, p) => sum + p.custo_unitario_calculado, 0) / produtos.length 
+        : 0,
+      margemMedia: produtos.length > 0 
+        ? produtos.reduce((sum, p) => sum + p.margem_real, 0) / produtos.length 
+        : 0
+    };
+  }, [produtos]);
+
   const carregarProdutosOtimizado = async (forceReload = false) => {
     // Usar cache se válido e não forçar reload
-    if (isoCacheValid && !forceReload && cache) {
+    if (isCacheValid && !forceReload && cache) {
       console.log('📦 Usando dados do cache');
       setProdutos(cache.produtos);
       setLoading(false);
@@ -168,13 +205,103 @@ export const useOptimizedProdutoData = () => {
     }
   };
 
+  const refresh = async () => {
+    setRefreshing(true);
+    await carregarProdutosOtimizado(true);
+    setRefreshing(false);
+  };
+
   const invalidateCache = () => {
     console.log('🗑️ Cache invalidado');
     setCache(null);
   };
 
-  const recarregar = () => {
-    carregarProdutosOtimizado(true);
+  const removerProduto = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('produtos_finais')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Erro ao remover produto:', error);
+        toast({
+          title: "Erro ao remover produto",
+          description: error.message,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      toast({
+        title: "Produto removido",
+        description: "Produto removido com sucesso",
+      });
+
+      await refresh();
+      return true;
+    } catch (error) {
+      console.error('Erro ao remover produto:', error);
+      toast({
+        title: "Erro ao remover produto",
+        description: "Ocorreu um erro inesperado",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
+  const duplicarProduto = async (produto: ProdutoOptimizado) => {
+    try {
+      const novoProduto = {
+        nome: `${produto.nome} (Cópia)`,
+        descricao: produto.descricao,
+        categoria_id: produto.categoria_id,
+        subcategoria_id: produto.subcategoria_id,
+        unidades_producao: produto.unidades_producao,
+        peso_unitario: produto.peso_unitario,
+        preco_venda: produto.preco_venda,
+        ativo: true,
+        estoque_atual: produto.estoque_atual || 0,
+        estoque_minimo: produto.estoque_minimo,
+        estoque_ideal: produto.estoque_ideal,
+        custo_total: produto.custo_total,
+        custo_unitario: produto.custo_unitario,
+        margem_lucro: produto.margem_lucro
+      };
+
+      const { data, error } = await supabase
+        .from('produtos_finais')
+        .insert(novoProduto)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao duplicar produto:', error);
+        toast({
+          title: "Erro ao duplicar produto",
+          description: error.message,
+          variant: "destructive"
+        });
+        return null;
+      }
+
+      toast({
+        title: "Produto duplicado",
+        description: "Produto duplicado com sucesso",
+      });
+
+      await refresh();
+      return data;
+    } catch (error) {
+      console.error('Erro ao duplicar produto:', error);
+      toast({
+        title: "Erro ao duplicar produto",
+        description: "Ocorreu um erro inesperado",
+        variant: "destructive"
+      });
+      return null;
+    }
   };
 
   useEffect(() => {
@@ -182,12 +309,18 @@ export const useOptimizedProdutoData = () => {
   }, []);
 
   return {
-    produtos,
+    produtos: produtosFiltrados,
     loading,
+    refreshing,
+    isCacheValid,
+    metricas,
+    searchTerm,
+    setSearchTerm,
     carregarProdutos: carregarProdutosOtimizado,
-    recarregar,
-    invalidateCache,
-    isCacheValid: isoCacheValid
+    refresh,
+    removerProduto,
+    duplicarProduto,
+    invalidateCache
   };
 };
 

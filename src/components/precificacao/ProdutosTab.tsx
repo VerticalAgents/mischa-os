@@ -1,6 +1,8 @@
 
 import { useState, useMemo } from "react";
-import { useOptimizedProdutoData, ProdutoCompleto } from "@/hooks/useOptimizedProdutoData";
+import { useOptimizedProdutoData, ProdutoOptimizado } from "@/hooks/useOptimizedProdutoData";
+import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
+import { useSupabaseSubcategoriasProduto } from "@/hooks/useSupabaseSubcategoriasProduto";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -37,20 +39,41 @@ export default function ProdutosTab() {
     refresh
   } = useOptimizedProdutoData();
   
-  const [editandoProduto, setEditandoProduto] = useState<ProdutoCompleto | null>(null);
+  const { categorias } = useSupabaseCategoriasProduto();
+  const { subcategorias } = useSupabaseSubcategoriasProduto();
+  
+  const [editandoProduto, setEditandoProduto] = useState<ProdutoOptimizado | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isLoadingAction, setIsLoadingAction] = useState(false);
+
+  // Funções para buscar nomes de categoria e subcategoria
+  const getNomeCategoria = (categoriaId?: number) => {
+    if (!categoriaId) return "Sem categoria";
+    const categoria = categorias.find(cat => cat.id === categoriaId);
+    return categoria?.nome || "Categoria não encontrada";
+  };
+
+  const getNomeSubcategoria = (subcategoriaId?: number) => {
+    if (!subcategoriaId) return "";
+    const subcategoria = subcategorias.find(sub => sub.id === subcategoriaId);
+    return subcategoria?.nome || "";
+  };
 
   // Handlers otimizados
   const handleRemoverProduto = async (id: string) => {
+    setIsLoadingAction(true);
     await removerProduto(id);
+    setIsLoadingAction(false);
   };
 
-  const handleDuplicarProduto = async (produto: ProdutoCompleto) => {
+  const handleDuplicarProduto = async (produto: ProdutoOptimizado) => {
+    setIsLoadingAction(true);
     await duplicarProduto(produto);
+    setIsLoadingAction(false);
   };
 
-  const abrirEdicaoProduto = (produto: ProdutoCompleto) => {
+  const abrirEdicaoProduto = (produto: ProdutoOptimizado) => {
     setEditandoProduto(produto);
     setIsEditModalOpen(true);
   };
@@ -81,7 +104,7 @@ export default function ProdutosTab() {
     if (loading) {
       return (
         <TableRow>
-          <TableCell colSpan={7} className="text-center py-8">
+          <TableCell colSpan={8} className="text-center py-8">
             <div className="flex items-center justify-center gap-2">
               <RefreshCw className="h-4 w-4 animate-spin" />
               Carregando produtos...
@@ -94,7 +117,7 @@ export default function ProdutosTab() {
     if (produtos.length === 0 && !searchTerm) {
       return (
         <TableRow>
-          <TableCell colSpan={7} className="text-center py-8">
+          <TableCell colSpan={8} className="text-center py-8">
             Nenhum produto cadastrado
           </TableCell>
         </TableRow>
@@ -104,7 +127,7 @@ export default function ProdutosTab() {
     if (produtos.length === 0 && searchTerm) {
       return (
         <TableRow>
-          <TableCell colSpan={7} className="text-center py-8">
+          <TableCell colSpan={8} className="text-center py-8">
             Nenhum produto encontrado para "{searchTerm}"
           </TableCell>
         </TableRow>
@@ -115,12 +138,15 @@ export default function ProdutosTab() {
       <ProdutoTableRow
         key={produto.id}
         produto={produto}
-        onEdit={abrirEdicaoProduto}
-        onRemove={handleRemoverProduto}
-        onDuplicate={handleDuplicarProduto}
+        getNomeCategoria={getNomeCategoria}
+        getNomeSubcategoria={getNomeSubcategoria}
+        onEditar={abrirEdicaoProduto}
+        onRemover={handleRemoverProduto}
+        onDuplicar={handleDuplicarProduto}
+        isLoadingAction={isLoadingAction}
       />
     ));
-  }, [produtos, loading, searchTerm]);
+  }, [produtos, loading, searchTerm, isLoadingAction]);
 
   return (
     <div className="space-y-6">
@@ -195,7 +221,7 @@ export default function ProdutosTab() {
                 <Card>
                   <CardContent className="p-4">
                     <div className="text-2xl font-bold text-purple-600">
-                      R$ {metricas.margemMedia.toFixed(1)}%
+                      {metricas.margemMedia.toFixed(1)}%
                     </div>
                     <p className="text-xs text-muted-foreground">Margem Média</p>
                   </CardContent>
@@ -211,10 +237,11 @@ export default function ProdutosTab() {
                     <TableRow>
                       <TableHead className="min-w-[150px]">Nome</TableHead>
                       <TableHead className="min-w-[100px]">Categoria</TableHead>
-                      <TableHead className="min-w-[120px]">Peso Líquido (g)</TableHead>
-                      <TableHead className="min-w-[120px]">Custo Total (R$)</TableHead>
-                      <TableHead className="min-w-[120px]">Preço Sugerido (R$)</TableHead>
+                      <TableHead className="min-w-[120px]">Subcategoria</TableHead>
+                      <TableHead className="min-w-[120px]">Custo Unitário (R$)</TableHead>
+                      <TableHead className="min-w-[120px]">Preço Venda (R$)</TableHead>
                       <TableHead className="min-w-[100px]">Margem (%)</TableHead>
+                      <TableHead className="min-w-[80px]">Status</TableHead>
                       <TableHead className="text-right min-w-[120px]">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
