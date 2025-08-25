@@ -76,14 +76,14 @@ export default function DashboardMetricsCard({
   return (
     <Card 
       className={cn(
-        "group border border-border/60 bg-card backdrop-blur-sm hover:shadow-lg hover:shadow-black/5 hover:border-border/80 transition-all duration-300",
+        "group border border-border/60 bg-card backdrop-blur-sm hover:shadow-xl hover:shadow-black/5 hover:border-border/80 transition-all duration-300",
         getSeverityColors(),
-        onClick && "cursor-pointer hover:scale-[1.01] hover:-translate-y-0.5"
+        onClick && "cursor-pointer hover:scale-[1.02] hover:-translate-y-0.5"
       )}
       onClick={onClick}
     >
       <CardContent className="p-6">
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-4 min-w-0">
           {/* Ícone com fundo colorido */}
           <div className={cn(
             "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-all duration-300 shadow-sm",
@@ -94,15 +94,15 @@ export default function DashboardMetricsCard({
             </div>
           </div>
           
-          {/* Conteúdo de texto */}
-          <div className="flex-1 min-w-0 text-left">
-            <p className="text-sm font-medium text-muted-foreground mb-1 truncate">{title}</p>
-            <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors mb-1">{value}</h3>
+          {/* Conteúdo de texto - sem limitações de largura */}
+          <div className="flex-1 text-left min-w-0">
+            <p className="text-sm font-medium text-muted-foreground mb-1 text-left">{title}</p>
+            <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors mb-1 text-left">{value}</h3>
             {subtitle && (
-              <p className="text-xs text-muted-foreground leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis">{subtitle}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed text-left break-words">{subtitle}</p>
             )}
             {trend && (
-              <div className="flex items-center mt-2">
+              <div className="flex items-center mt-2 text-left">
                 <span 
                   className={cn(
                     "text-xs font-medium",
