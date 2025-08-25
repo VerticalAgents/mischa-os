@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +6,8 @@ import DashboardMetricsCard from '@/components/dashboard/DashboardMetricsCard';
 import CriticalAlertsSection from '@/components/dashboard/CriticalAlertsSection';
 import ManualCard from '@/components/manual/ManualCard';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
+import { useAgendamentoClienteStore } from '@/hooks/useAgendamentoClienteStore';
+import { useEffect } from 'react';
 import { BarChart3, Users, Calendar, Truck, Settings, CheckCircle, Factory, Tag, PackageCheck, ShoppingBag, DollarSign, Cpu, ChevronRight, Clock, Package, UserCheck, Cog } from 'lucide-react';
 
 export default function Home() {
@@ -17,6 +18,15 @@ export default function Home() {
     confirmacoesPendentes,
     producaoDia
   } = useDashboardMetrics();
+  
+  // Garantir que os agendamentos estejam carregados
+  const { carregarTodosAgendamentos, agendamentos } = useAgendamentoClienteStore();
+  
+  useEffect(() => {
+    if (agendamentos.length === 0) {
+      carregarTodosAgendamentos();
+    }
+  }, [carregarTodosAgendamentos, agendamentos.length]);
 
   const quickActions = [
     {
@@ -143,7 +153,7 @@ export default function Home() {
           value={agendamentosCriticos.total}
           subtitle={agendamentosCriticos.atrasados > 0 ? `${agendamentosCriticos.atrasados} em atraso` : "Tudo em dia"}
           icon={<Calendar className="h-6 w-6" />}
-          severity={agendamentosCriticos.atrasados > 0 ? 'danger' : 'success'}
+          severity={agendamentosCriticos.atrasados > 0 ? 'danger' : agendamentosCriticos.total > 0 ? 'success' : 'info'}
           onClick={() => navigate('/agendamento')}
         />
         

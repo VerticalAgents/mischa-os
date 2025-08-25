@@ -4,32 +4,48 @@ import { useExpedicaoStore } from './useExpedicaoStore';
 import { useConfirmacaoReposicaoStore } from './useConfirmacaoReposicaoStore';
 import { useEstoqueProdutos } from './useEstoqueProdutos';
 import { useSupabaseHistoricoProducao } from './useSupabaseHistoricoProducao';
-import { format, isToday, isBefore, startOfDay } from 'date-fns';
+import { useAgendamentoClienteStore } from './useAgendamentoClienteStore';
+import { format, isToday, isBefore, startOfDay, isSameDay } from 'date-fns';
 
 export const useDashboardMetrics = () => {
   const { pedidos } = useExpedicaoStore();
   const { clientesParaConfirmacao } = useConfirmacaoReposicaoStore();
   const { produtos: produtosEstoque } = useEstoqueProdutos();
   const { historico } = useSupabaseHistoricoProducao();
+  const { agendamentos } = useAgendamentoClienteStore();
 
-  // Agendamentos críticos
+  // Agendamentos críticos - CORRIGIDO para usar dados reais de agendamentos
   const agendamentosCriticos = useMemo(() => {
-    const hoje = startOfDay(new Date());
-    const pedidosHoje = pedidos.filter(pedido => {
-      const dataEntrega = new Date(pedido.data_prevista_entrega);
-      return isToday(dataEntrega) || isBefore(dataEntrega, hoje);
+    const hoje = new Date();
+    
+    // Filtrar agendamentos para hoje
+    const agendamentosHoje = agendamentos.filter(agendamento => {
+      const dataAgendamento = new Date(agendamento.dataReposicao);
+      return isSameDay(dataAgendamento, hoje);
     });
     
-    const atrasados = pedidosHoje.filter(pedido => 
-      isBefore(new Date(pedido.data_prevista_entrega), hoje)
-    );
+    // Contar agendamentos atrasados (data anterior a hoje)
+    const agendamentosAtrasados = agendamentos.filter(agendamento => {
+      const dataAgendamento = new Date(agendamento.dataReposicao);
+      return isBefore(dataAgendamento, startOfDay(hoje));
+    });
+
+    console.log('Dashboard Metrics - Agendamentos calculados:', {
+      total_hoje: agendamentosHoje.length,
+      atrasados: agendamentosAtrasados.length,
+      agendamentos_hoje_detalhes: agendamentosHoje.map(a => ({
+        cliente: a.cliente.nome,
+        status: a.statusAgendamento,
+        data: a.dataReposicao
+      }))
+    });
 
     return {
-      total: pedidosHoje.length,
-      atrasados: atrasados.length,
-      percentualAtraso: pedidosHoje.length > 0 ? (atrasados.length / pedidosHoje.length) * 100 : 0
+      total: agendamentosHoje.length,
+      atrasados: agendamentosAtrasados.length,
+      percentualAtraso: agendamentosHoje.length > 0 ? (agendamentosAtrasados.length / agendamentosHoje.length) * 100 : 0
     };
-  }, [pedidos]);
+  }, [agendamentos]);
 
   // Separação de pedidos
   const separacaoPedidos = useMemo(() => {
