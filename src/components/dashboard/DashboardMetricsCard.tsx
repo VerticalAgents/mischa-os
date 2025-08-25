@@ -71,12 +71,8 @@ export default function DashboardMetricsCard({
       >
         <CardContent className="p-4">
           <div className="flex flex-col gap-3 min-w-0">
-            <div className="flex items-start gap-3">
-              <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <Skeleton className="h-4 w-32 mb-2" />
-              </div>
-            </div>
+            <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0 mb-2" />
+            <Skeleton className="h-6 w-24 mb-2" />
             <Skeleton className="h-10 w-16" />
             <Skeleton className="h-4 w-full" />
           </div>
@@ -98,8 +94,8 @@ export default function DashboardMetricsCard({
     >
       <CardContent className="p-4">
         <div className="flex flex-col gap-3 min-w-0 text-left">
-          {/* Header: Ícone + Título */}
-          <div className="flex items-start gap-3 min-w-0">
+          {/* Ícone */}
+          <div className="flex items-start justify-between">
             <div className={cn(
               "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-all duration-300 shadow-sm",
               getIconColors()
@@ -108,17 +104,18 @@ export default function DashboardMetricsCard({
                 {icon}
               </div>
             </div>
-            
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-medium text-muted-foreground truncate">
-                {title}
-              </h3>
-            </div>
 
             {/* Seta de navegação se clicável */}
             {onClick && (
               <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
             )}
+          </div>
+
+          {/* Título principal em negrito abaixo do ícone */}
+          <div className="text-left">
+            <h3 className="text-lg font-bold text-foreground truncate group-hover:text-primary transition-colors">
+              {title.split(' • ')[0]}
+            </h3>
           </div>
 
           {/* Número Principal */}
@@ -133,7 +130,7 @@ export default function DashboardMetricsCard({
 
           {/* Legenda */}
           {subtitle && (
-            <p className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+            <p className="text-sm text-muted-foreground break-words">
               {subtitle}
             </p>
           )}
