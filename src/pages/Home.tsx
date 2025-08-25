@@ -164,8 +164,8 @@ export default function Home() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-foreground mb-2">Bem-vindo ao MischaOS</h1>
+      <div className="text-left">
+        <h1 className="text-4xl font-bold text-foreground mb-2 text-left">Bem-vindo ao MischaOS</h1>
         <p className="text-lg text-muted-foreground text-left">
           Central de comando para sua confeitaria
         </p>
@@ -234,28 +234,28 @@ export default function Home() {
       <div>
         <div className="flex items-center gap-2 mb-4">
           <Clock className="h-5 w-5 text-blue-500" />
-          <h2 className="text-2xl font-semibold">Ações Prioritárias</h2>
+          <h2 className="text-2xl font-semibold text-left">Ações Prioritárias</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {quickActions.map((action, index) => (
-            <Card key={index} className="hover:shadow-lg transition-all duration-200 cursor-pointer group" onClick={action.onClick}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className={`w-12 h-12 rounded-lg ${action.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+            <Card key={index} className="hover:shadow-lg transition-all duration-200 cursor-pointer group hover:scale-105 border border-border/50" onClick={action.onClick}>
+              <CardHeader className="pb-3 text-left">
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`w-12 h-12 rounded-lg ${action.color} flex items-center justify-center group-hover:scale-110 transition-transform shadow-md`}>
                     <action.icon className="h-6 w-6 text-white" />
                   </div>
                   {action.badge && (
-                    <Badge className={`${action.badgeColor} text-white text-xs`}>
+                    <Badge className={`${action.badgeColor} text-white text-xs font-medium`}>
                       {action.badge}
                     </Badge>
                   )}
                 </div>
-                <CardTitle className="text-lg">{action.title}</CardTitle>
-                <CardDescription className="text-sm">{action.description}</CardDescription>
+                <CardTitle className="text-lg text-left font-semibold text-foreground">{action.title}</CardTitle>
+                <CardDescription className="text-sm text-left text-muted-foreground leading-relaxed">{action.description}</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="flex items-center justify-between text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                  <span>Acessar</span>
+                  <span className="font-medium text-left">Acessar</span>
                   <ChevronRight className="h-4 w-4" />
                 </div>
               </CardContent>
@@ -266,23 +266,25 @@ export default function Home() {
 
       {/* Analytics e Relatórios */}
       <div>
-        <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+        <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-left">
           <BarChart3 className="h-5 w-5 text-green-500" />
           Analytics e Relatórios
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {analyticsActions.map((action, index) => (
-            <Card key={index} className="hover:shadow-lg transition-all duration-200 cursor-pointer group" onClick={action.onClick}>
-              <CardHeader className="pb-3">
-                <div className={`w-12 h-12 rounded-lg ${action.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                  <action.icon className="h-6 w-6 text-white" />
+            <Card key={index} className="hover:shadow-lg transition-all duration-200 cursor-pointer group hover:scale-105 border border-border/50" onClick={action.onClick}>
+              <CardHeader className="pb-3 text-left">
+                <div className="mb-3">
+                  <div className={`w-12 h-12 rounded-lg ${action.color} flex items-center justify-center group-hover:scale-110 transition-transform shadow-md`}>
+                    <action.icon className="h-6 w-6 text-white" />
+                  </div>
                 </div>
-                <CardTitle className="text-lg">{action.title}</CardTitle>
-                <CardDescription className="text-sm">{action.description}</CardDescription>
+                <CardTitle className="text-lg text-left font-semibold text-foreground">{action.title}</CardTitle>
+                <CardDescription className="text-sm text-left text-muted-foreground leading-relaxed">{action.description}</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="flex items-center justify-between text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                  <span>Acessar</span>
+                  <span className="font-medium text-left">Acessar</span>
                   <ChevronRight className="h-4 w-4" />
                 </div>
               </CardContent>
@@ -293,23 +295,25 @@ export default function Home() {
 
       {/* Gestão */}
       <div>
-        <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+        <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-left">
           <Users className="h-5 w-5 text-blue-500" />
           Gestão
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {managementActions.map((action, index) => (
-            <Card key={index} className="hover:shadow-lg transition-all duration-200 cursor-pointer group" onClick={action.onClick}>
-              <CardHeader className="pb-3">
-                <div className={`w-12 h-12 rounded-lg ${action.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                  <action.icon className="h-6 w-6 text-white" />
+            <Card key={index} className="hover:shadow-lg transition-all duration-200 cursor-pointer group hover:scale-105 border border-border/50" onClick={action.onClick}>
+              <CardHeader className="pb-3 text-left">
+                <div className="mb-3">
+                  <div className={`w-12 h-12 rounded-lg ${action.color} flex items-center justify-center group-hover:scale-110 transition-transform shadow-md`}>
+                    <action.icon className="h-6 w-6 text-white" />
+                  </div>
                 </div>
-                <CardTitle className="text-lg">{action.title}</CardTitle>
-                <CardDescription className="text-sm">{action.description}</CardDescription>
+                <CardTitle className="text-lg text-left font-semibold text-foreground">{action.title}</CardTitle>
+                <CardDescription className="text-sm text-left text-muted-foreground leading-relaxed">{action.description}</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="flex items-center justify-between text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                  <span>Acessar</span>
+                  <span className="font-medium text-left">Acessar</span>
                   <ChevronRight className="h-4 w-4" />
                 </div>
               </CardContent>
@@ -320,7 +324,7 @@ export default function Home() {
 
       {/* Sistema */}
       <div>
-        <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+        <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2 text-left">
           <Settings className="h-5 w-5 text-gray-500" />
           Sistema
         </h2>
@@ -330,17 +334,19 @@ export default function Home() {
           
           {/* Regular system action cards */}
           {systemActions.filter(action => !action.isCustomCard).map((action, index) => (
-            <Card key={index} className="hover:shadow-lg transition-all duration-200 cursor-pointer group" onClick={action.onClick}>
-              <CardHeader className="pb-3">
-                <div className={`w-12 h-12 rounded-lg ${action.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                  <action.icon className="h-6 w-6 text-white" />
+            <Card key={index} className="hover:shadow-lg transition-all duration-200 cursor-pointer group hover:scale-105 border border-border/50" onClick={action.onClick}>
+              <CardHeader className="pb-3 text-left">
+                <div className="mb-3">
+                  <div className={`w-12 h-12 rounded-lg ${action.color} flex items-center justify-center group-hover:scale-110 transition-transform shadow-md`}>
+                    <action.icon className="h-6 w-6 text-white" />
+                  </div>
                 </div>
-                <CardTitle className="text-lg">{action.title}</CardTitle>
-                <CardDescription className="text-sm">{action.description}</CardDescription>
+                <CardTitle className="text-lg text-left font-semibold text-foreground">{action.title}</CardTitle>
+                <CardDescription className="text-sm text-left text-muted-foreground leading-relaxed">{action.description}</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="flex items-center justify-between text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                  <span>Acessar</span>
+                  <span className="font-medium text-left">Acessar</span>
                   <ChevronRight className="h-4 w-4" />
                 </div>
               </CardContent>
