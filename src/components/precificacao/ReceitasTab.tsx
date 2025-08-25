@@ -84,7 +84,7 @@ export default function ReceitasTab() {
         <TableRow>
           <TableCell colSpan={6} className="text-center py-8">
             <div className="flex items-center justify-center gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+              <RefreshCw className="h-4 w-4 animate-spin" />
               Carregando receitas...
             </div>
           </TableCell>
@@ -125,85 +125,74 @@ export default function ReceitasTab() {
 
   return (
     <div className="space-y-6">
-      {/* Header com botão de atualizar e indicador de cache */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Receitas Base</h2>
-          <p className="text-muted-foreground">
-            Gerencie as receitas base do sistema
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {isCacheValid && (
-            <div className="flex items-center gap-2 text-sm text-green-600">
-              <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-              Dados em cache
-            </div>
-          )}
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Atualizando...' : 'Atualizar'}
-          </Button>
-        </div>
-      </div>
-
-      {/* Cards de Métricas */}
-      <ReceitasMetricasCards metricas={metricas} loading={loading} />
-
-      {/* Filtro de busca */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Buscar receitas..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Button onClick={abrirCriacaoReceita} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Adicionar Receita
-        </Button>
-      </div>
-
-      {/* Lista de receitas */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Receitas Cadastradas</CardTitle>
-              <CardDescription>
-                {searchTerm ? (
-                  <>Mostrando {receitas.length} receita{receitas.length !== 1 ? 's' : ''} para "{searchTerm}"</>
-                ) : (
-                  <>Lista de todas as receitas base ({metricas.totalReceitas} receitas)</>
-                )}
-              </CardDescription>
+            <div className="flex items-center gap-4">
+              <CardTitle>Receitas Base</CardTitle>
+              {isCacheValid && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  Dados em cache
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+              <Button onClick={abrirCriacaoReceita}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Receita
+              </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Rendimento</TableHead>
-                <TableHead>Peso Total (g)</TableHead>
-                <TableHead className="text-right">Custo Total (R$)</TableHead>
-                <TableHead className="text-right">Custo Unitário (R$)</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {receitasRows}
-            </TableBody>
-          </Table>
+          <div className="space-y-4">
+            {/* Filtro */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Filtrar receitas..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Métricas rápidas */}
+            {!loading && (
+              <ReceitasMetricasCards metricas={metricas} loading={loading} />
+            )}
+
+            {/* Tabela de Receitas */}
+            <div className="w-full overflow-x-auto">
+              <div className="rounded-md border min-w-full">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[150px]">Nome</TableHead>
+                      <TableHead className="min-w-[100px]">Rendimento</TableHead>
+                      <TableHead className="min-w-[120px]">Peso Total (g)</TableHead>
+                      <TableHead className="min-w-[120px]">Custo Total (R$)</TableHead>
+                      <TableHead className="min-w-[120px]">Custo Unitário (R$)</TableHead>
+                      <TableHead className="text-right min-w-[120px]">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {receitasRows}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
