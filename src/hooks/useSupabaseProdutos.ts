@@ -128,9 +128,12 @@ export const useSupabaseProdutos = () => {
                 .eq('receita_id', comp.item_id);
 
               if (itensReceita) {
-                custo_item = itensReceita.reduce((total, item) => {
+                const custoTotalReceita = itensReceita.reduce((total, item) => {
                   return total + (item.quantidade * (item.insumos.custo_medio || 0));
                 }, 0);
+                
+                // CORREÇÃO: Dividir pelo rendimento para obter o custo unitário correto
+                custo_item = receita.rendimento > 0 ? custoTotalReceita / receita.rendimento : 0;
               }
             } else {
               nome_item = 'Receita não encontrada';
