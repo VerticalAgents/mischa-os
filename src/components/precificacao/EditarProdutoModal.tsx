@@ -17,6 +17,7 @@ import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProdu
 import { useSupabaseSubcategoriasProduto } from "@/hooks/useSupabaseSubcategoriasProduto";
 import { useSupabaseReceitas } from "@/hooks/useSupabaseReceitas";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
+import { useRendimentosReceitaProduto } from "@/hooks/useRendimentosReceitaProduto";
 
 interface EditarProdutoModalProps {
   produto: ProdutoCompleto | null;
@@ -48,17 +49,15 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   const { subcategorias, getSubcategoriasPorCategoria } = useSupabaseSubcategoriasProduto();
   const { receitas } = useSupabaseReceitas();
   const { insumos } = useSupabaseInsumos();
+  const { obterRendimentoPorProduto } = useRendimentosReceitaProduto();
 
-  // Memoizar dados para evitar re-renderizações
   const receitasOptions = useMemo(() => receitas, [receitas]);
   const insumosOptions = useMemo(() => insumos, [insumos]);
 
-  // Filtrar subcategorias pela categoria selecionada usando a função do hook
   const subcategoriasFiltradas = useMemo(() => {
     return categoriaId ? getSubcategoriasPorCategoria(categoriaId) : [];
   }, [categoriaId, getSubcategoriasPorCategoria]);
 
-  // Carregar dados do produto apenas quando o modal abrir
   useEffect(() => {
     if (!produto || !isOpen) return;
 
@@ -73,7 +72,6 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     setCategoriaId(produto.categoria_id || undefined);
     setSubcategoriaId(produto.subcategoria_id || undefined);
     
-    // Carregar componentes do produto
     const carregarComponentes = async () => {
       try {
         const produtoCompleto = await carregarProdutoCompleto(produto.id);
@@ -90,14 +88,12 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
 
     carregarComponentes();
     
-    // Reset form do novo componente
     setNovoComponenteTipo('receita');
     setNovoComponenteItemId("");
     setNovoComponenteQuantidade(100);
     setEditingComponenteId(null);
-  }, [produto, isOpen]); // Removido carregarProdutoCompleto das dependências
+  }, [produto, isOpen]);
 
-  // Resetar subcategoria quando categoria mudar
   useEffect(() => {
     if (categoriaId && subcategoriaId) {
       const subcategoriaValida = subcategoriasFiltradas.find(sub => sub.id === subcategoriaId);
@@ -128,7 +124,6 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     onClose();
   };
 
-  // Handler estável para mudança de tipo de componente
   const handleTipoChange = useCallback((value: 'receita' | 'insumo') => {
     console.log('🔄 Mudando tipo para:', value);
     setNovoComponenteTipo(value);
@@ -136,7 +131,6 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     setNovoComponenteQuantidade(value === 'receita' ? 100 : 1);
   }, []);
 
-  // Handler estável para seleção de item
   const handleItemChange = useCallback((value: string) => {
     console.log('🔄 Selecionando item:', value);
     setNovoComponenteItemId(value);
@@ -209,7 +203,6 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
         description: "Componente adicionado com sucesso",
       });
 
-      // Recarregar produto completo para atualizar a lista de componentes
       const produtoCompleto = await carregarProdutoCompleto(produto.id);
       if (produtoCompleto?.componentes) {
         setComponentes(produtoCompleto.componentes);
@@ -239,7 +232,6 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
           description: "Componente removido com sucesso",
         });
 
-        // Recarregar produto completo para atualizar a lista de componentes
         const produtoCompleto = await carregarProdutoCompleto(produto.id);
         if (produtoCompleto?.componentes) {
           setComponentes(produtoCompleto.componentes);
@@ -264,17 +256,13 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     if (!produto || !editingComponenteId || editingQuantidade <= 0) return;
 
     try {
-      // Primeiro remove o componente atual
       await removerComponenteProduto(editingComponenteId);
       
-      // Encontra o componente sendo editado para pegar seus dados
       const componenteEditando = componentes.find(c => c.id === editingComponenteId);
       if (!componenteEditando) return;
 
-      // Adiciona novamente com a nova quantidade
       await adicionarComponenteProduto(produto.id, componenteEditando.item_id, componenteEditando.tipo, editingQuantidade);
 
-      // Recarregar produto completo
       const produtoCompleto = await carregarProdutoCompleto(produto.id);
       if (produtoCompleto?.componentes) {
         setComponentes(produtoCompleto.componentes);
@@ -307,7 +295,20 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   };
 
   const calcularCustoUnitario = () => {
+    if (!produto) return 0;
+    
     const custoTotal = calcularCustoTotal();
+    
+    // Buscar o rendimento específico do produto na aba rendimentos
+    const rendimentoProduto = obterRendimentoPorProduto(produto.id);
+    
+    if (rendimentoProduto && rendimentoProduto.rendimento > 0) {
+      console.log(`🔍 Usando rendimento específico para produto ${produto.nome}: ${rendimentoProduto.rendimento} unidades`);
+      return custoTotal / rendimentoProduto.rendimento;
+    }
+    
+    // Fallback para unidades_producao se não houver rendimento específico
+    console.log(`⚠️ Rendimento específico não encontrado para produto ${produto.nome}, usando unidades_producao: ${unidadesProducao}`);
     return unidadesProducao > 0 ? custoTotal / unidadesProducao : 0;
   };
 
@@ -461,7 +462,6 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                   <Label htmlFor="ativo">Produto ativo</Label>
                 </div>
 
-                {/* Resumo de custos */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Resumo de Custos</CardTitle>
@@ -474,6 +474,11 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                     <div>
                       <Label className="text-sm text-muted-foreground">Custo Unitário</Label>
                       <div className="text-lg font-semibold">R$ {calcularCustoUnitario().toFixed(2)}</div>
+                      {produto && obterRendimentoPorProduto(produto.id) && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Baseado em {obterRendimentoPorProduto(produto.id)?.rendimento} unidades (rendimento)
+                        </div>
+                      )}
                     </div>
                     <div>
                       <Label className="text-sm text-muted-foreground">Margem de Lucro</Label>
