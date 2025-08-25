@@ -1,8 +1,8 @@
 
 import { useState, useMemo } from "react";
 import { useOptimizedReceitasData, ReceitaCompleta } from "@/hooks/useOptimizedReceitasData";
-import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -18,8 +18,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw, Search } from "lucide-react";
 import { ReceitaTableRow } from "./ReceitaTableRow";
+import { ReceitasMetricasCards } from "./ReceitasMetricasCards";
 import EditarReceitaModal from "./EditarReceitaModal";
 import CriarReceitaModal from "./CriarReceitaModal";
 
@@ -27,12 +28,15 @@ export default function ReceitasTab() {
   const { 
     receitas, 
     loading, 
+    refreshing,
+    isCacheValid,
+    metricas,
+    searchTerm,
+    setSearchTerm,
     removerReceita, 
     duplicarReceita,
     refresh
   } = useOptimizedReceitasData();
-  
-  const { insumos } = useSupabaseInsumos();
   
   const [editandoReceita, setEditandoReceita] = useState<ReceitaCompleta | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -69,6 +73,10 @@ export default function ReceitasTab() {
     refresh();
   };
 
+  const handleRefresh = () => {
+    refresh();
+  };
+
   // Memoizar as linhas da tabela para evitar re-renders desnecessários
   const receitasRows = useMemo(() => {
     if (loading) {
@@ -84,11 +92,21 @@ export default function ReceitasTab() {
       );
     }
 
-    if (receitas.length === 0) {
+    if (receitas.length === 0 && !searchTerm) {
       return (
         <TableRow>
           <TableCell colSpan={6} className="text-center py-8">
             Nenhuma receita cadastrada
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    if (receitas.length === 0 && searchTerm) {
+      return (
+        <TableRow>
+          <TableCell colSpan={6} className="text-center py-8">
+            Nenhuma receita encontrada para "{searchTerm}"
           </TableCell>
         </TableRow>
       );
@@ -103,24 +121,71 @@ export default function ReceitasTab() {
         onDuplicate={handleDuplicarReceita}
       />
     ));
-  }, [receitas, loading]);
+  }, [receitas, loading, searchTerm]);
 
   return (
     <div className="space-y-6">
+      {/* Header com botão de atualizar e indicador de cache */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Receitas Base</h2>
+          <p className="text-muted-foreground">
+            Gerencie as receitas base do sistema
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {isCacheValid && (
+            <div className="flex items-center gap-2 text-sm text-green-600">
+              <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+              Dados em cache
+            </div>
+          )}
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Atualizando...' : 'Atualizar'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Cards de Métricas */}
+      <ReceitasMetricasCards metricas={metricas} loading={loading} />
+
+      {/* Filtro de busca */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Buscar receitas..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button onClick={abrirCriacaoReceita} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Adicionar Receita
+        </Button>
+      </div>
+
       {/* Lista de receitas */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Receitas Base Cadastradas</CardTitle>
+              <CardTitle>Receitas Cadastradas</CardTitle>
               <CardDescription>
-                Lista de todas as receitas base do sistema ({receitas.length} receitas)
+                {searchTerm ? (
+                  <>Mostrando {receitas.length} receita{receitas.length !== 1 ? 's' : ''} para "{searchTerm}"</>
+                ) : (
+                  <>Lista de todas as receitas base ({metricas.totalReceitas} receitas)</>
+                )}
               </CardDescription>
             </div>
-            <Button onClick={abrirCriacaoReceita}>
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar Receita
-            </Button>
           </div>
         </CardHeader>
         <CardContent>

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -28,14 +28,63 @@ export interface ReceitaInput {
   unidade_rendimento: string;
 }
 
+interface CacheState {
+  data: ReceitaCompleta[];
+  timestamp: number;
+}
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 export const useOptimizedReceitasData = () => {
   const [receitas, setReceitas] = useState<ReceitaCompleta[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState(Date.now());
+  const [refreshing, setRefreshing] = useState(false);
+  const [cache, setCache] = useState<CacheState | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const carregarReceitas = async () => {
+  // Verificar se cache é válido
+  const isCacheValid = useMemo(() => {
+    if (!cache) return false;
+    const now = Date.now();
+    return (now - cache.timestamp) < CACHE_DURATION;
+  }, [cache]);
+
+  // Filtrar receitas por termo de busca
+  const receitasFiltradas = useMemo(() => {
+    if (!searchTerm.trim()) return receitas;
+    
+    return receitas.filter(receita =>
+      receita.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [receitas, searchTerm]);
+
+  // Métricas calculadas
+  const metricas = useMemo(() => {
+    const totalReceitas = receitas.length;
+    const receitasAtivas = receitas.filter(r => r.itens.length > 0).length;
+    const receitasVazias = receitas.filter(r => r.itens.length === 0).length;
+    const receitasCustoAlto = receitas.filter(r => r.custo_total > 50).length;
+
+    return {
+      totalReceitas,
+      receitasAtivas,
+      receitasVazias,
+      receitasCustoAlto
+    };
+  }, [receitas]);
+
+  const carregarReceitas = async (forceRefresh = false) => {
     try {
-      setLoading(true);
+      // Se cache válido e não é refresh forçado, usar cache
+      if (isCacheValid && !forceRefresh && cache) {
+        console.log('📦 Usando dados do cache para receitas');
+        setReceitas(cache.data);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(!cache); // Só mostrar loading se não tem cache
+      setRefreshing(forceRefresh);
       
       console.log('🔄 Carregando dados otimizados das receitas...');
       
@@ -52,7 +101,9 @@ export const useOptimizedReceitasData = () => {
 
       if (!receitasData || receitasData.length === 0) {
         console.log('ℹ️ Nenhuma receita encontrada');
-        setReceitas([]);
+        const emptyResult: ReceitaCompleta[] = [];
+        setReceitas(emptyResult);
+        setCache({ data: emptyResult, timestamp: Date.now() });
         return;
       }
 
@@ -125,7 +176,14 @@ export const useOptimizedReceitasData = () => {
       });
 
       console.log('✅ Receitas processadas com sucesso');
+      
+      // Atualizar estado e cache
       setReceitas(receitasCompletas);
+      setCache({ 
+        data: receitasCompletas, 
+        timestamp: Date.now() 
+      });
+      
     } catch (error) {
       console.error('❌ Erro ao carregar receitas:', error);
       toast({
@@ -135,7 +193,16 @@ export const useOptimizedReceitasData = () => {
       });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const invalidateCache = () => {
+    setCache(null);
+  };
+
+  const refresh = async () => {
+    await carregarReceitas(true);
   };
 
   const adicionarItemReceita = async (receitaId: string, insumoId: string, quantidade: number) => {
@@ -163,8 +230,9 @@ export const useOptimizedReceitasData = () => {
         description: "Item adicionado à receita com sucesso"
       });
 
-      // Recarregar dados otimizados
-      await carregarReceitas();
+      // Invalidar cache e recarregar
+      invalidateCache();
+      await carregarReceitas(true);
       return true;
     } catch (error) {
       console.error('Erro ao adicionar item à receita:', error);
@@ -199,8 +267,9 @@ export const useOptimizedReceitasData = () => {
         description: "Item removido da receita com sucesso"
       });
 
-      // Recarregar dados otimizados
-      await carregarReceitas();
+      // Invalidar cache e recarregar
+      invalidateCache();
+      await carregarReceitas(true);
       return true;
     } catch (error) {
       console.error('Erro ao remover item da receita:', error);
@@ -262,8 +331,9 @@ export const useOptimizedReceitasData = () => {
         description: `${novaReceita.nome} foi criada com sucesso`
       });
 
-      // Recarregar dados otimizados
-      await carregarReceitas();
+      // Invalidar cache e recarregar
+      invalidateCache();
+      await carregarReceitas(true);
       return receitaCriada;
     } catch (error) {
       console.error('Erro ao duplicar receita:', error);
@@ -309,8 +379,9 @@ export const useOptimizedReceitasData = () => {
         description: "Receita removida com sucesso"
       });
 
-      // Recarregar dados otimizados
-      await carregarReceitas();
+      // Invalidar cache e recarregar
+      invalidateCache();
+      await carregarReceitas(true);
       return true;
     } catch (error) {
       console.error('Erro ao remover receita:', error);
@@ -323,23 +394,24 @@ export const useOptimizedReceitasData = () => {
     }
   };
 
-  // Função para forçar recarregamento (para usar nos modals)
-  const refresh = () => {
-    setLastUpdate(Date.now());
-  };
-
   useEffect(() => {
     carregarReceitas();
-  }, [lastUpdate]);
+  }, []);
 
   return {
-    receitas,
+    receitas: receitasFiltradas,
     loading,
+    refreshing,
+    isCacheValid,
+    metricas,
+    searchTerm,
+    setSearchTerm,
     carregarReceitas,
+    refresh,
     duplicarReceita,
     removerReceita,
     adicionarItemReceita,
     removerItemReceita,
-    refresh
+    invalidateCache
   };
 };
