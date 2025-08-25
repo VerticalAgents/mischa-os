@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, Info } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseProdutos, ProdutoCompleto, ComponenteProduto } from "@/hooks/useSupabaseProdutos";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
@@ -182,7 +182,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
 
       onSuccess();
       setNovoComponenteItemId("");
-      setNovoComponenteQuantidade(novoComponenteTipo === 'receita' ? 100 : 1); // Default 100g para receitas
+      setNovoComponenteQuantidade(1);
     } catch (error) {
       console.error('Erro ao adicionar componente:', error);
       toast({
@@ -232,29 +232,6 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
       return ((precoVenda - custoUnit) / precoVenda) * 100;
     }
     return 0;
-  };
-
-  // Função para obter rendimento de uma receita
-  const getRendimentoReceita = (receitaId: string): number => {
-    const receita = receitas.find(r => r.id === receitaId);
-    return receita?.rendimento || 0;
-  };
-
-  // Função para calcular custo estimado antes de adicionar
-  const calcularCustoEstimado = (): number => {
-    if (!novoComponenteItemId || novoComponenteQuantidade <= 0) return 0;
-
-    if (novoComponenteTipo === 'receita') {
-      const receita = receitas.find(r => r.id === novoComponenteItemId);
-      if (!receita) return 0;
-      
-      // Simulação do cálculo que será feito no backend
-      // Para estimativa, assumimos um custo médio por grama
-      return (novoComponenteQuantidade * 0.05); // Estimativa básica
-    } else {
-      const insumo = insumos.find(i => i.id === novoComponenteItemId);
-      return insumo ? (insumo.custo_medio || 0) * novoComponenteQuantidade : 0;
-    }
   };
 
   if (!produto) return null;
@@ -435,14 +412,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                     <div className="grid grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Tipo</Label>
-                        <Select 
-                          value={novoComponenteTipo} 
-                          onValueChange={(value: 'receita' | 'insumo') => {
-                            setNovoComponenteTipo(value);
-                            setNovoComponenteItemId("");
-                            setNovoComponenteQuantidade(value === 'receita' ? 100 : 1);
-                          }}
-                        >
+                        <Select value={novoComponenteTipo} onValueChange={(value: 'receita' | 'insumo') => setNovoComponenteTipo(value)}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -463,7 +433,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                             {novoComponenteTipo === 'receita' 
                               ? receitas.map(receita => (
                                   <SelectItem key={receita.id} value={receita.id}>
-                                    {receita.nome} ({receita.rendimento}g)
+                                    {receita.nome}
                                   </SelectItem>
                                 ))
                               : insumos.map(insumo => (
@@ -477,23 +447,14 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                       </div>
 
                       <div className="space-y-2">
-                        <Label>
-                          Quantidade {novoComponenteTipo === 'receita' ? '(g)' : '(un.)'}
-                        </Label>
+                        <Label>Quantidade</Label>
                         <Input
                           type="number"
-                          step={novoComponenteTipo === 'receita' ? "1" : "0.001"}
+                          step="0.001"
                           min="0"
                           value={novoComponenteQuantidade}
                           onChange={(e) => setNovoComponenteQuantidade(parseFloat(e.target.value) || 0)}
-                          placeholder={novoComponenteTipo === 'receita' ? "100" : "1"}
                         />
-                        {novoComponenteTipo === 'receita' && novoComponenteItemId && (
-                          <div className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Info className="h-3 w-3" />
-                            Rendimento: {getRendimentoReceita(novoComponenteItemId)}g
-                          </div>
-                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -502,11 +463,6 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                           <Plus className="h-4 w-4 mr-2" />
                           Adicionar
                         </Button>
-                        {novoComponenteItemId && novoComponenteQuantidade > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            Custo estimado: R$ {calcularCustoEstimado().toFixed(2)}
-                          </div>
-                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -543,13 +499,8 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                                   </Badge>
                                 </TableCell>
                                 <TableCell>{componente.nome_item}</TableCell>
-                                <TableCell>
-                                  {componente.quantidade} {componente.tipo === 'receita' ? 'g' : 'un.'}
-                                </TableCell>
-                                <TableCell>
-                                  R$ {componente.custo_item.toFixed(4)}
-                                  {componente.tipo === 'receita' && <span className="text-xs text-muted-foreground">/g</span>}
-                                </TableCell>
+                                <TableCell>{componente.quantidade}</TableCell>
+                                <TableCell>R$ {componente.custo_item.toFixed(2)}</TableCell>
                                 <TableCell>R$ {(componente.custo_item * componente.quantidade).toFixed(2)}</TableCell>
                                 <TableCell>
                                   <Button
