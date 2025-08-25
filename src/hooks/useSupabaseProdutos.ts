@@ -133,10 +133,25 @@ export const useSupabaseProdutos = () => {
                   return total + (item.quantidade * custoUnitarioInsumo);
                 }, 0);
                 
-                // NOVO CÁLCULO: Custo total baseado na quantidade usada no produto
-                // Fórmula: (custo_total_receita ÷ peso_total_receita) × quantidade_usada
-                const custoPorGrama = receita.rendimento > 0 ? custoTotalReceita / receita.rendimento : 0;
-                custo_item = custoPorGrama * comp.quantidade;
+                // Calcular o peso real da receita (soma de todos os insumos)
+                const pesoRealReceita = itensReceita.reduce((total, item) => total + item.quantidade, 0);
+                
+                console.log(`🔍 Receita ${receita.nome}:`);
+                console.log(`   Custo total: R$ ${custoTotalReceita.toFixed(2)}`);
+                console.log(`   Peso real: ${pesoRealReceita}g`);
+                console.log(`   Rendimento cadastrado: ${receita.rendimento}g`);
+                console.log(`   Quantidade usada no produto: ${comp.quantidade}g`);
+                
+                // CORREÇÃO: Usar o peso real da receita (soma dos insumos) ao invés do rendimento
+                if (pesoRealReceita > 0) {
+                  const custoPorGrama = custoTotalReceita / pesoRealReceita;
+                  custo_item = custoPorGrama * comp.quantidade;
+                  console.log(`   Custo por grama: R$ ${custoPorGrama.toFixed(4)}`);
+                  console.log(`   Custo calculado: R$ ${custo_item.toFixed(2)}`);
+                } else {
+                  custo_item = 0;
+                  console.log(`   ⚠️ Peso real da receita é 0, usando custo 0`);
+                }
               }
             } else {
               nome_item = 'Receita não encontrada';
