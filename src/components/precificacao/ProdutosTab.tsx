@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSupabaseProdutos, ProdutoCompleto } from "@/hooks/useSupabaseProdutos";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useSupabaseSubcategoriasProduto } from "@/hooks/useSupabaseSubcategoriasProduto";
+import { useRendimentosReceitaProduto } from "@/hooks/useRendimentosReceitaProduto";
 import EditarProdutoModal from "./EditarProdutoModal";
 import CriarProdutoModal from "./CriarProdutoModal";
 import { Edit, Plus, Search, Trash2, Copy } from "lucide-react";
@@ -23,6 +25,7 @@ export default function ProdutosTab() {
   const { produtos, loading, carregarProdutos, carregarProdutoCompleto, removerProduto, duplicarProduto } = useSupabaseProdutos();
   const { categorias } = useSupabaseCategoriasProduto();
   const { subcategorias } = useSupabaseSubcategoriasProduto();
+  const { rendimentos } = useRendimentosReceitaProduto();
   const [filtro, setFiltro] = useState("");
   const [produtoSelecionado, setProdutoSelecionado] = useState<ProdutoCompleto | null>(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
@@ -44,6 +47,35 @@ export default function ProdutosTab() {
     if (!subcategoriaId) return "";
     const subcategoria = subcategorias.find(sub => sub.id === subcategoriaId);
     return subcategoria?.nome || "";
+  };
+
+  // Função para calcular custo unitário real baseado nos componentes
+  const calcularCustoUnitarioReal = async (produto: any) => {
+    try {
+      const produtoCompleto = await carregarProdutoCompleto(produto.id);
+      if (!produtoCompleto || !produtoCompleto.componentes || produtoCompleto.componentes.length === 0) {
+        return produto.custo_unitario || 0;
+      }
+
+      // Calcular custo total dos componentes
+      const custoTotalComponentes = produtoCompleto.componentes.reduce((total, comp) => total + comp.custo_item, 0);
+
+      // Buscar rendimento específico para o produto
+      const rendimentoEspecifico = rendimentos.find(r => r.produto_id === produto.id);
+      const rendimento = rendimentoEspecifico ? rendimentoEspecifico.rendimento : produto.unidades_producao;
+
+      // Calcular custo unitário real
+      return rendimento > 0 ? custoTotalComponentes / rendimento : custoTotalComponentes;
+    } catch (error) {
+      console.error('Erro ao calcular custo unitário real:', error);
+      return produto.custo_unitario || 0;
+    }
+  };
+
+  // Função para calcular margem real
+  const calcularMargemReal = (custoUnitarioReal: number, precoVenda: number) => {
+    if (!precoVenda || precoVenda <= 0) return 0;
+    return ((precoVenda - custoUnitarioReal) / precoVenda) * 100;
   };
 
   const handleEditarProduto = async (produto: any) => {
@@ -107,6 +139,42 @@ export default function ProdutosTab() {
     }
   };
 
+  // Componente para exibir custo unitário calculado
+  const CustoUnitarioCell = ({ produto }: { produto: any }) => {
+    const [custoReal, setCustoReal] = useState<number | null>(null);
+
+    useState(() => {
+      calcularCustoUnitarioReal(produto).then(setCustoReal);
+    }, [produto.id]);
+
+    return (
+      <span>
+        R$ {custoReal !== null ? custoReal.toFixed(2) : produto.custo_unitario.toFixed(2)}
+      </span>
+    );
+  };
+
+  // Componente para exibir margem calculada
+  const MargemCell = ({ produto }: { produto: any }) => {
+    const [custoReal, setCustoReal] = useState<number | null>(null);
+
+    useState(() => {
+      calcularCustoUnitarioReal(produto).then(setCustoReal);
+    }, [produto.id]);
+
+    const margemReal = custoReal !== null && produto.preco_venda 
+      ? calcularMargemReal(custoReal, produto.preco_venda)
+      : produto.margem_lucro;
+
+    return (
+      <Badge
+        variant={margemReal > 20 ? "default" : margemReal > 10 ? "secondary" : "destructive"}
+      >
+        {margemReal.toFixed(1)}%
+      </Badge>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -141,7 +209,6 @@ export default function ProdutosTab() {
                       <TableHead className="min-w-[150px]">Nome</TableHead>
                       <TableHead className="min-w-[120px]">Categoria</TableHead>
                       <TableHead className="min-w-[120px]">Subcategoria</TableHead>
-                      <TableHead className="min-w-[100px]">Unidades/Produção</TableHead>
                       <TableHead className="min-w-[100px]">Custo Unitário</TableHead>
                       <TableHead className="min-w-[100px]">Preço Venda</TableHead>
                       <TableHead className="min-w-[80px]">Margem</TableHead>
@@ -152,13 +219,13 @@ export default function ProdutosTab() {
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center">
+                        <TableCell colSpan={8} className="text-center">
                           Carregando produtos...
                         </TableCell>
                       </TableRow>
                     ) : produtosFiltrados.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center">
+                        <TableCell colSpan={8} className="text-center">
                           Nenhum produto encontrado
                         </TableCell>
                       </TableRow>
@@ -180,17 +247,14 @@ export default function ProdutosTab() {
                               <span className="text-muted-foreground text-sm">-</span>
                             )}
                           </TableCell>
-                          <TableCell>{produto.unidades_producao}</TableCell>
-                          <TableCell>R$ {produto.custo_unitario.toFixed(2)}</TableCell>
+                          <TableCell>
+                            <CustoUnitarioCell produto={produto} />
+                          </TableCell>
                           <TableCell>
                             {produto.preco_venda ? `R$ ${produto.preco_venda.toFixed(2)}` : "-"}
                           </TableCell>
                           <TableCell>
-                            <Badge
-                              variant={produto.margem_lucro > 20 ? "default" : produto.margem_lucro > 10 ? "secondary" : "destructive"}
-                            >
-                              {produto.margem_lucro.toFixed(1)}%
-                            </Badge>
+                            <MargemCell produto={produto} />
                           </TableCell>
                           <TableCell>
                             <Badge variant={produto.ativo ? "default" : "secondary"}>
