@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,6 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   const [loading, setLoading] = useState(false);
   const [editingComponenteId, setEditingComponenteId] = useState<string | null>(null);
   const [editingQuantidade, setEditingQuantidade] = useState<number>(0);
-  const [modalReady, setModalReady] = useState(false);
 
   const { toast } = useToast();
   const { atualizarProduto, removerComponenteProduto, adicionarComponenteProduto, carregarProdutoCompleto } = useSupabaseProdutos();
@@ -59,13 +59,12 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     return categoriaId ? getSubcategoriasPorCategoria(categoriaId) : [];
   }, [categoriaId, getSubcategoriasPorCategoria]);
 
-  // Callback estável para carregamento do produto
-  const carregarDadosModal = useCallback(async () => {
+  // Carregar dados do produto apenas quando o modal abrir
+  useEffect(() => {
     if (!produto || !isOpen) return;
 
     console.log('🔄 Carregando dados do produto no modal:', produto);
     
-    setModalReady(false);
     setNome(produto.nome);
     setDescricao(produto.descricao || "");
     setAtivo(produto.ativo);
@@ -75,31 +74,29 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     setCategoriaId(produto.categoria_id || undefined);
     setSubcategoriaId(produto.subcategoria_id || undefined);
     
-    // Carregar produto completo com componentes
-    try {
-      const produtoCompleto = await carregarProdutoCompleto(produto.id);
-      
-      if (produtoCompleto?.componentes) {
-        setComponentes(produtoCompleto.componentes);
-      } else {
+    // Carregar componentes do produto
+    const carregarComponentes = async () => {
+      try {
+        const produtoCompleto = await carregarProdutoCompleto(produto.id);
+        if (produtoCompleto?.componentes) {
+          setComponentes(produtoCompleto.componentes);
+        } else {
+          setComponentes([]);
+        }
+      } catch (error) {
+        console.error('❌ Erro ao carregar componentes:', error);
         setComponentes([]);
       }
-    } catch (error) {
-      console.error('❌ Erro ao carregar dados do produto:', error);
-      setComponentes([]);
-    }
+    };
+
+    carregarComponentes();
     
     // Reset form do novo componente
     setNovoComponenteTipo('receita');
     setNovoComponenteItemId("");
     setNovoComponenteQuantidade(100);
     setEditingComponenteId(null);
-    
-    // Pequeno delay para garantir que o modal está pronto
-    setTimeout(() => {
-      setModalReady(true);
-    }, 100);
-  }, [produto, isOpen, carregarProdutoCompleto]);
+  }, [produto, isOpen]); // Removido carregarProdutoCompleto das dependências
 
   // Resetar subcategoria quando categoria mudar
   useEffect(() => {
@@ -110,15 +107,6 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
       }
     }
   }, [categoriaId, subcategoriasFiltradas, subcategoriaId]);
-
-  // Carregar dados quando o modal abrir
-  useEffect(() => {
-    if (isOpen && produto) {
-      carregarDadosModal();
-    } else if (!isOpen) {
-      setModalReady(false);
-    }
-  }, [isOpen, produto, carregarDadosModal]);
 
   const resetForm = () => {
     setNome("");
@@ -134,7 +122,6 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     setNovoComponenteItemId("");
     setNovoComponenteQuantidade(100);
     setEditingComponenteId(null);
-    setModalReady(false);
   };
 
   const handleClose = () => {
@@ -153,10 +140,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   // Handler estável para seleção de item
   const handleItemChange = useCallback((value: string) => {
     console.log('🔄 Selecionando item:', value);
-    // Pequeno delay para evitar conflitos
-    setTimeout(() => {
-      setNovoComponenteItemId(value);
-    }, 50);
+    setNovoComponenteItemId(value);
   }, []);
 
   const handleSalvar = async () => {
@@ -514,10 +498,8 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                       <div className="space-y-2">
                         <Label>Tipo</Label>
                         <Select 
-                          key={`tipo-${modalReady}`}
                           value={novoComponenteTipo} 
                           onValueChange={handleTipoChange}
-                          disabled={!modalReady}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -532,13 +514,11 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                       <div className="space-y-2">
                         <Label>Item</Label>
                         <Select 
-                          key={`item-${novoComponenteTipo}-${modalReady}`}
                           value={novoComponenteItemId} 
                           onValueChange={handleItemChange}
-                          disabled={!modalReady}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder={modalReady ? "Selecione..." : "Carregando..."} />
+                            <SelectValue placeholder="Selecione..." />
                           </SelectTrigger>
                           <SelectContent className="z-[100] max-h-60">
                             {novoComponenteTipo === 'receita' 
@@ -567,7 +547,6 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                           min="0"
                           value={novoComponenteQuantidade}
                           onChange={(e) => setNovoComponenteQuantidade(parseFloat(e.target.value) || 0)}
-                          disabled={!modalReady}
                         />
                       </div>
 
@@ -576,7 +555,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                         <Button 
                           onClick={handleAdicionarComponente} 
                           className="w-full"
-                          disabled={!modalReady || !novoComponenteItemId || novoComponenteQuantidade <= 0}
+                          disabled={!novoComponenteItemId || novoComponenteQuantidade <= 0}
                         >
                           <Plus className="h-4 w-4 mr-2" />
                           Adicionar
