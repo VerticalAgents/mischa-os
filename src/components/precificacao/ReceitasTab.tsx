@@ -129,7 +129,10 @@ export default function ReceitasTab() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <CardTitle>Receitas Base</CardTitle>
+              <div>
+                <CardTitle>Receitas Base</CardTitle>
+                <CardDescription>Gerenciamento completo de receitas e seus custos</CardDescription>
+              </div>
               {isCacheValid && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>

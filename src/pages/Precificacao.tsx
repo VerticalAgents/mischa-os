@@ -2,7 +2,6 @@
 import { useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import InsumosSupabaseTab from "@/components/precificacao/InsumosSupabaseTab";
 import ReceitasTab from "@/components/precificacao/ReceitasTab";
 import ProdutosTab from "@/components/precificacao/ProdutosTab";
@@ -33,21 +32,15 @@ export default function Precificacao() {
           </TabsContent>
           
           <TabsContent value="receitas">
-            <CollapsibleSection title="Receitas Base" defaultOpen={true}>
-              <ReceitasTab />
-            </CollapsibleSection>
+            <ReceitasTab />
           </TabsContent>
           
           <TabsContent value="produtos">
-            <CollapsibleSection title="Produtos" defaultOpen={true}>
-              <ProdutosTab />
-            </CollapsibleSection>
+            <ProdutosTab />
           </TabsContent>
           
           <TabsContent value="rendimentos">
-            <CollapsibleSection title="Rendimento de Receitas por Produto" defaultOpen={true}>
-              <RendimentoReceitasProdutos />
-            </CollapsibleSection>
+            <RendimentoReceitasProdutos />
           </TabsContent>
         </Tabs>
       </div>
