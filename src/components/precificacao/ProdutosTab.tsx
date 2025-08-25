@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -143,7 +142,7 @@ export default function ProdutosTab() {
   const CustoUnitarioCell = ({ produto }: { produto: any }) => {
     const [custoReal, setCustoReal] = useState<number | null>(null);
 
-    useState(() => {
+    useEffect(() => {
       calcularCustoUnitarioReal(produto).then(setCustoReal);
     }, [produto.id]);
 
@@ -158,7 +157,7 @@ export default function ProdutosTab() {
   const MargemCell = ({ produto }: { produto: any }) => {
     const [custoReal, setCustoReal] = useState<number | null>(null);
 
-    useState(() => {
+    useEffect(() => {
       calcularCustoUnitarioReal(produto).then(setCustoReal);
     }, [produto.id]);
 
