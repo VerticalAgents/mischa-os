@@ -90,33 +90,42 @@ export const useDashboardMetrics = () => {
     };
   }, [pedidos]);
 
-  // Confirmações pendentes - ALTERADO PARA ESCOPO SEMANAL
+  // Confirmações semanais - CORRIGIDO para usar agendamentos com status "Previsto"
   const confirmacoesPendentesSemanais = useMemo(() => {
     const hoje = new Date();
     const inicioSemana = startOfWeek(hoje, { weekStartsOn: 1 }); // Segunda-feira
     const fimSemana = endOfWeek(hoje, { weekStartsOn: 1 }); // Domingo
     
-    // Filtrar confirmações da semana atual
-    const confirmacoesSemana = clientesParaConfirmacao.filter(cliente => {
-      const dataReposicao = new Date(cliente.data_proxima_reposicao);
-      return isWithinInterval(dataReposicao, { start: inicioSemana, end: fimSemana });
+    // Filtrar agendamentos da semana atual com status "Previsto" (aguardando confirmação)
+    const agendamentosPrevistosSemana = agendamentos.filter(agendamento => {
+      const dataReposicao = new Date(agendamento.dataReposicao);
+      return isWithinInterval(dataReposicao, { start: inicioSemana, end: fimSemana }) 
+             && agendamento.statusAgendamento === 'Previsto';
     });
     
-    const aguardando = confirmacoesSemana.filter(c => c.status_contato === 'aguardando_retorno');
-    const criticos = aguardando.filter(c => c.em_atraso);
+    // Verificar quais estão em atraso (data já passou)
+    const agora = new Date();
+    const emAtraso = agendamentosPrevistosSemana.filter(agendamento => {
+      const dataReposicao = new Date(agendamento.dataReposicao);
+      return isBefore(dataReposicao, agora);
+    });
     
-    console.log('Dashboard Metrics - Confirmações semanais:', {
-      semana_total: confirmacoesSemana.length,
-      aguardando: aguardando.length,
-      criticos: criticos.length
+    console.log('Dashboard Metrics - Confirmações semanais (Previstos):', {
+      semana_total_previstos: agendamentosPrevistosSemana.length,
+      em_atraso: emAtraso.length,
+      detalhes: agendamentosPrevistosSemana.map(a => ({
+        cliente: a.cliente.nome,
+        data: a.dataReposicao,
+        status: a.statusAgendamento
+      }))
     });
     
     return {
-      total: aguardando.length,
-      criticos: criticos.length,
-      percentualCritico: aguardando.length > 0 ? (criticos.length / aguardando.length) * 100 : 0
+      total: agendamentosPrevistosSemana.length,
+      criticos: emAtraso.length,
+      percentualCritico: agendamentosPrevistosSemana.length > 0 ? (emAtraso.length / agendamentosPrevistosSemana.length) * 100 : 0
     };
-  }, [clientesParaConfirmacao]);
+  }, [agendamentos]);
 
   // Produção do dia - CORRIGIDO para usar dados reais do histórico
   const producaoDia = useMemo(() => {
