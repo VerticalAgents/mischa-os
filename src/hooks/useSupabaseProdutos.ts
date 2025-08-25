@@ -26,9 +26,10 @@ export interface ProdutoSupabase {
 export interface ComponenteProduto {
   id: string;
   tipo: 'receita' | 'insumo';
+  item_id: string;
   quantidade: number;
-  nome_item?: string;
-  custo_item?: number;
+  nome_item: string;
+  custo_item: number;
 }
 
 export interface ProdutoCompleto extends ProdutoSupabase {
@@ -83,29 +84,87 @@ export const useSupabaseProdutos = () => {
         return null;
       }
 
-      // Load components separately with proper error handling
+      // Carregar componentes com joins para buscar os nomes reais
       const { data: componentes, error: componentesError } = await supabase
         .from('componentes_produto')
-        .select('id, tipo, quantidade, item_id')
+        .select(`
+          id,
+          tipo,
+          quantidade,
+          item_id
+        `)
         .eq('produto_id', produtoId);
 
       if (componentesError) {
         console.error('Erro ao carregar componentes:', componentesError);
       }
 
-      // For now, we'll use a simplified approach for components
-      // You may need to implement separate queries to get the names based on tipo and item_id
-      const componentesFormatados = componentes?.map(comp => ({
-        id: comp.id,
-        tipo: comp.tipo as 'receita' | 'insumo',
-        quantidade: comp.quantidade,
-        nome_item: `Item ${comp.item_id}`, // Simplified - you may want to fetch actual names
-        custo_item: 0 // Will be calculated based on actual costs
-      })) || [];
+      // Processar componentes e buscar nomes/custos
+      const componentesCompletos: ComponenteProduto[] = [];
+      
+      if (componentes) {
+        for (const comp of componentes) {
+          let nome_item = '';
+          let custo_item = 0;
+
+          if (comp.tipo === 'receita') {
+            // Buscar dados da receita
+            const { data: receita } = await supabase
+              .from('receitas_base')
+              .select('nome, rendimento')
+              .eq('id', comp.item_id)
+              .single();
+
+            if (receita) {
+              nome_item = receita.nome;
+              
+              // Calcular custo da receita baseado nos insumos
+              const { data: itensReceita } = await supabase
+                .from('itens_receita')
+                .select(`
+                  quantidade,
+                  insumos!inner(custo_medio)
+                `)
+                .eq('receita_id', comp.item_id);
+
+              if (itensReceita) {
+                custo_item = itensReceita.reduce((total, item) => {
+                  return total + (item.quantidade * (item.insumos.custo_medio || 0));
+                }, 0);
+              }
+            } else {
+              nome_item = 'Receita não encontrada';
+            }
+          } else {
+            // Buscar dados do insumo
+            const { data: insumo } = await supabase
+              .from('insumos')
+              .select('nome, custo_medio')
+              .eq('id', comp.item_id)
+              .single();
+
+            if (insumo) {
+              nome_item = insumo.nome;
+              custo_item = insumo.custo_medio || 0;
+            } else {
+              nome_item = 'Insumo não encontrado';
+            }
+          }
+
+          componentesCompletos.push({
+            id: comp.id,
+            tipo: comp.tipo as 'receita' | 'insumo',
+            item_id: comp.item_id,
+            quantidade: comp.quantidade,
+            nome_item,
+            custo_item
+          });
+        }
+      }
 
       return {
         ...produto,
-        componentes: componentesFormatados
+        componentes: componentesCompletos
       };
     } catch (error) {
       console.error('Erro ao carregar produto completo:', error);

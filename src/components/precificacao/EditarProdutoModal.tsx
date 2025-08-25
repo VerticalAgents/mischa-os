@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useSupabaseProdutos, ProdutoCompleto } from "@/hooks/useSupabaseProdutos";
+import { useSupabaseProdutos, ProdutoCompleto, ComponenteProduto } from "@/hooks/useSupabaseProdutos";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useSupabaseSubcategoriasProduto } from "@/hooks/useSupabaseSubcategoriasProduto";
 import { useSupabaseReceitas } from "@/hooks/useSupabaseReceitas";
@@ -25,16 +25,6 @@ interface EditarProdutoModalProps {
   onSuccess: () => void;
 }
 
-// Interface local para os componentes com dados enriquecidos
-interface ComponenteEnriquecido {
-  id: string;
-  tipo: 'receita' | 'insumo';
-  item_id: string;
-  quantidade: number;
-  nome: string;
-  custo_unitario: number;
-}
-
 export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess }: EditarProdutoModalProps) {
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -44,7 +34,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   const [precoVenda, setPrecoVenda] = useState<number | undefined>();
   const [categoriaId, setCategoriaId] = useState<number | undefined>();
   const [subcategoriaId, setSubcategoriaId] = useState<number | undefined>();
-  const [componentes, setComponentes] = useState<ComponenteEnriquecido[]>([]);
+  const [componentes, setComponentes] = useState<ComponenteProduto[]>([]);
   const [novoComponenteTipo, setNovoComponenteTipo] = useState<'receita' | 'insumo'>('receita');
   const [novoComponenteItemId, setNovoComponenteItemId] = useState("");
   const [novoComponenteQuantidade, setNovoComponenteQuantidade] = useState<number>(1);
@@ -88,45 +78,8 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
         const produtoCompleto = await carregarProdutoCompleto(produto.id);
         
         if (produtoCompleto?.componentes) {
-          // Enriquecer componentes com nomes dos itens usando o item_id correto
-          const componentesEnriquecidos = produtoCompleto.componentes.map(comp => {
-            let nome = '';
-            let custo_unitario = 0;
-            let item_id = '';
-
-            if (comp.tipo === 'receita') {
-              // Usar o item_id como referência para buscar a receita
-              const itemIdFromComp = comp.nome_item || ''; // nome_item pode conter o ID
-              const receita = receitas.find(r => r.id === itemIdFromComp);
-              nome = receita?.nome || `Receita não encontrada`;
-              item_id = receita?.id || itemIdFromComp;
-              
-              // Calcular custo da receita baseado nos insumos
-              if (receita?.itens) {
-                custo_unitario = receita.itens.reduce((total, item) => {
-                  const insumo = insumos.find(i => i.id === item.insumo_id);
-                  return total + (item.quantidade * (insumo?.custo_medio || 0));
-                }, 0);
-              }
-            } else {
-              // Usar o item_id como referência para buscar o insumo  
-              const itemIdFromComp = comp.nome_item || ''; // nome_item pode conter o ID
-              const insumo = insumos.find(i => i.id === itemIdFromComp);
-              nome = insumo?.nome || `Insumo não encontrado`;
-              item_id = insumo?.id || itemIdFromComp;
-              custo_unitario = insumo?.custo_medio || 0;
-            }
-
-            return {
-              id: comp.id,
-              tipo: comp.tipo,
-              item_id,
-              quantidade: comp.quantidade,
-              nome,
-              custo_unitario
-            };
-          });
-          setComponentes(componentesEnriquecidos);
+          // Os componentes já vêm com nomes e custos corretos do hook
+          setComponentes(produtoCompleto.componentes);
         } else {
           setComponentes([]);
         }
@@ -138,7 +91,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     };
 
     carregarDadosProduto();
-  }, [isOpen, produto, receitas, insumos, carregarProdutoCompleto]);
+  }, [isOpen, produto, carregarProdutoCompleto]);
 
   const resetForm = () => {
     setNome("");
@@ -265,7 +218,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   };
 
   const calcularCustoTotal = () => {
-    return componentes.reduce((total, comp) => total + (comp.custo_unitario * comp.quantidade), 0);
+    return componentes.reduce((total, comp) => total + (comp.custo_item * comp.quantidade), 0);
   };
 
   const calcularCustoUnitario = () => {
@@ -545,10 +498,10 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                                     {componente.tipo}
                                   </Badge>
                                 </TableCell>
-                                <TableCell>{componente.nome}</TableCell>
+                                <TableCell>{componente.nome_item}</TableCell>
                                 <TableCell>{componente.quantidade}</TableCell>
-                                <TableCell>R$ {componente.custo_unitario.toFixed(2)}</TableCell>
-                                <TableCell>R$ {(componente.custo_unitario * componente.quantidade).toFixed(2)}</TableCell>
+                                <TableCell>R$ {componente.custo_item.toFixed(2)}</TableCell>
+                                <TableCell>R$ {(componente.custo_item * componente.quantidade).toFixed(2)}</TableCell>
                                 <TableCell>
                                   <Button
                                     variant="outline"
