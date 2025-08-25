@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,7 +39,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
-import { useSupabaseReceitas, ReceitaCompleta } from "@/hooks/useSupabaseReceitas";
+import { ReceitaCompleta, useOptimizedReceitasData } from "@/hooks/useOptimizedReceitasData";
 import { Plus, Trash2, Edit, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -71,7 +72,7 @@ export default function EditarReceitaModal({
   onSuccess,
 }: EditarReceitaModalProps) {
   const { insumos } = useSupabaseInsumos();
-  const { adicionarItemReceita, removerItemReceita } = useSupabaseReceitas();
+  const { adicionarItemReceita, removerItemReceita } = useOptimizedReceitasData();
   const [isAdicionandoItem, setIsAdicionandoItem] = useState(false);
   const [editandoItem, setEditandoItem] = useState<string | null>(null);
   const [quantidadeEdicao, setQuantidadeEdicao] = useState<number>(0);
@@ -104,6 +105,11 @@ export default function EditarReceitaModal({
       });
     }
   }, [receita, receitaForm]);
+
+  // Criar mapa de insumos para acesso otimizado O(1)
+  const insumosMap = useMemo(() => {
+    return new Map(insumos.map(insumo => [insumo.id, insumo]));
+  }, [insumos]);
 
   const onSubmitReceita = async (values: EditarReceitaFormValues) => {
     if (!receita) return;
@@ -181,8 +187,6 @@ export default function EditarReceitaModal({
     }
 
     try {
-      console.log('Atualizando item:', itemId, 'Nova quantidade:', quantidadeEdicao);
-      
       const { error } = await supabase
         .from('itens_receita')
         .update({ quantidade: quantidadeEdicao })
@@ -197,8 +201,6 @@ export default function EditarReceitaModal({
         });
         return;
       }
-
-      console.log('Quantidade atualizada com sucesso');
       
       toast({
         title: "Quantidade atualizada",
@@ -218,8 +220,9 @@ export default function EditarReceitaModal({
     }
   };
 
+  // Função otimizada para obter informações do insumo
   const getInsumoInfo = (insumoId: string) => {
-    const insumo = insumos.find(i => i.id === insumoId);
+    const insumo = insumosMap.get(insumoId);
     return {
       nome: insumo?.nome || "Insumo não encontrado",
       unidade_medida: insumo?.unidade_medida || "",
@@ -228,19 +231,31 @@ export default function EditarReceitaModal({
     };
   };
 
-  // Função para calcular o custo unitário correto
+  // Função para calcular o custo unitário correto (já otimizada)
   const calcularCustoUnitario = (insumoId: string) => {
     const insumoInfo = getInsumoInfo(insumoId);
-    // Custo unitário = custo do pacote ÷ volume bruto do pacote
     return insumoInfo.volume_bruto > 0 ? insumoInfo.custo_medio / insumoInfo.volume_bruto : 0;
   };
 
-  // Função para calcular o custo do item na receita
+  // Função para calcular o custo do item na receita (já otimizada)
   const calcularCustoItem = (insumoId: string, quantidade: number) => {
     const custoUnitario = calcularCustoUnitario(insumoId);
-    // Custo do item = quantidade utilizada × custo unitário
     return custoUnitario * quantidade;
   };
+
+  // Calcular custos atualizados da receita com memoização
+  const custoAtualizado = useMemo(() => {
+    if (!receita) return { custoTotal: 0, custoUnitario: 0 };
+
+    const custoTotal = receita.itens.reduce((total, item) => {
+      const quantidade = editandoItem === item.id ? quantidadeEdicao : item.quantidade;
+      return total + calcularCustoItem(item.insumo_id, quantidade);
+    }, 0);
+
+    const custoUnitario = receita.rendimento > 0 ? custoTotal / receita.rendimento : 0;
+
+    return { custoTotal, custoUnitario };
+  }, [receita, editandoItem, quantidadeEdicao, insumosMap]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -412,7 +427,7 @@ export default function EditarReceitaModal({
               </Form>
             )}
 
-            {/* Tabela de ingredientes */}
+            {/* Tabela de ingredientes otimizada */}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -501,26 +516,20 @@ export default function EditarReceitaModal({
               </TableBody>
             </Table>
 
-            {/* Resumo de custos */}
+            {/* Resumo de custos otimizado */}
             {receita && receita.itens.length > 0 && (
               <div className="mt-4 p-4 bg-muted rounded-lg">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="font-medium">Custo Total da Receita:</span>
                     <div className="text-lg font-semibold">
-                      R$ {receita.itens.reduce((total, item) => {
-                        const quantidade = editandoItem === item.id ? quantidadeEdicao : item.quantidade;
-                        return total + calcularCustoItem(item.insumo_id, quantidade);
-                      }, 0).toFixed(2)}
+                      R$ {custoAtualizado.custoTotal.toFixed(2)}
                     </div>
                   </div>
                   <div>
                     <span className="font-medium">Custo por {receita.unidade_rendimento}:</span>
                     <div className="text-lg font-semibold">
-                      R$ {receita.rendimento > 0 ? (receita.itens.reduce((total, item) => {
-                        const quantidade = editandoItem === item.id ? quantidadeEdicao : item.quantidade;
-                        return total + calcularCustoItem(item.insumo_id, quantidade);
-                      }, 0) / receita.rendimento).toFixed(2) : '0.00'}
+                      R$ {custoAtualizado.custoUnitario.toFixed(2)}
                     </div>
                   </div>
                 </div>

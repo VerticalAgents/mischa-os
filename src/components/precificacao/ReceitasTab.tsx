@@ -1,6 +1,6 @@
 
-import { useState, useEffect } from "react";
-import { useSupabaseReceitas, ReceitaCompleta } from "@/hooks/useSupabaseReceitas";
+import { useState, useMemo } from "react";
+import { useOptimizedReceitasData, ReceitaCompleta } from "@/hooks/useOptimizedReceitasData";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,24 +18,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit, Trash2, Copy, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+import { ReceitaTableRow } from "./ReceitaTableRow";
 import EditarReceitaModal from "./EditarReceitaModal";
 import CriarReceitaModal from "./CriarReceitaModal";
 
 export default function ReceitasTab() {
-  const { receitas, loading, carregarReceitas, removerReceita, duplicarReceita } = useSupabaseReceitas();
+  const { 
+    receitas, 
+    loading, 
+    removerReceita, 
+    duplicarReceita,
+    refresh
+  } = useOptimizedReceitasData();
+  
   const { insumos } = useSupabaseInsumos();
+  
   const [editandoReceita, setEditandoReceita] = useState<ReceitaCompleta | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  // Handlers otimizados
   const handleRemoverReceita = async (id: string) => {
-    if (confirm("Tem certeza que deseja remover esta receita?")) {
-      const success = await removerReceita(id);
-      if (success) {
-        carregarReceitas();
-      }
-    }
+    await removerReceita(id);
   };
 
   const handleDuplicarReceita = async (receita: ReceitaCompleta) => {
@@ -60,31 +65,45 @@ export default function ReceitasTab() {
     setIsCreateModalOpen(false);
   };
 
-  // Função para calcular o custo unitário correto de um insumo
-  const calcularCustoUnitarioInsumo = (insumoId: string) => {
-    const insumo = insumos.find(i => i.id === insumoId);
-    if (!insumo) return 0;
-    return insumo.volume_bruto > 0 ? insumo.custo_medio / insumo.volume_bruto : 0;
+  const handleModalSuccess = () => {
+    refresh();
   };
 
-  // Função para calcular o custo total correto de uma receita
-  const calcularCustoTotalReceita = (receita: ReceitaCompleta) => {
-    return receita.itens.reduce((total, item) => {
-      const custoUnitario = calcularCustoUnitarioInsumo(item.insumo_id);
-      return total + (custoUnitario * item.quantidade);
-    }, 0);
-  };
+  // Memoizar as linhas da tabela para evitar re-renders desnecessários
+  const receitasRows = useMemo(() => {
+    if (loading) {
+      return (
+        <TableRow>
+          <TableCell colSpan={6} className="text-center py-8">
+            <div className="flex items-center justify-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+              Carregando receitas...
+            </div>
+          </TableCell>
+        </TableRow>
+      );
+    }
 
-  // Função para calcular o custo unitário da receita
-  const calcularCustoUnitarioReceita = (receita: ReceitaCompleta) => {
-    const custoTotal = calcularCustoTotalReceita(receita);
-    return receita.rendimento > 0 ? custoTotal / receita.rendimento : 0;
-  };
+    if (receitas.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={6} className="text-center py-8">
+            Nenhuma receita cadastrada
+          </TableCell>
+        </TableRow>
+      );
+    }
 
-  // Função para calcular o peso total da receita
-  const calcularPesoTotalReceita = (receita: ReceitaCompleta) => {
-    return receita.itens.reduce((total, item) => total + item.quantidade, 0);
-  };
+    return receitas.map((receita) => (
+      <ReceitaTableRow
+        key={receita.id}
+        receita={receita}
+        onEdit={abrirEdicaoReceita}
+        onRemove={handleRemoverReceita}
+        onDuplicate={handleDuplicarReceita}
+      />
+    ));
+  }, [receitas, loading]);
 
   return (
     <div className="space-y-6">
@@ -95,7 +114,7 @@ export default function ReceitasTab() {
             <div>
               <CardTitle>Receitas Base Cadastradas</CardTitle>
               <CardDescription>
-                Lista de todas as receitas base do sistema
+                Lista de todas as receitas base do sistema ({receitas.length} receitas)
               </CardDescription>
             </div>
             <Button onClick={abrirCriacaoReceita}>
@@ -117,67 +136,7 @@ export default function ReceitasTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    Carregando receitas...
-                  </TableCell>
-                </TableRow>
-              ) : receitas.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    Nenhuma receita cadastrada
-                  </TableCell>
-                </TableRow>
-              ) : (
-                receitas.map((receita) => {
-                  const custoTotal = calcularCustoTotalReceita(receita);
-                  const custoUnitario = calcularCustoUnitarioReceita(receita);
-                  const pesoTotal = calcularPesoTotalReceita(receita);
-                  
-                  return (
-                    <TableRow key={receita.id}>
-                      <TableCell className="font-medium">{receita.nome}</TableCell>
-                      <TableCell>
-                        {receita.rendimento} {receita.unidade_rendimento}
-                      </TableCell>
-                      <TableCell>{pesoTotal.toFixed(2)}g</TableCell>
-                      <TableCell className="text-right">
-                        R$ {custoTotal.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        R$ {custoUnitario.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDuplicarReceita(receita)}
-                            title="Duplicar receita"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => abrirEdicaoReceita(receita)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRemoverReceita(receita.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
+              {receitasRows}
             </TableBody>
           </Table>
         </CardContent>
@@ -187,7 +146,7 @@ export default function ReceitasTab() {
       <CriarReceitaModal
         isOpen={isCreateModalOpen}
         onClose={fecharCriacaoReceita}
-        onSuccess={carregarReceitas}
+        onSuccess={handleModalSuccess}
       />
 
       {/* Modal de Edição */}
@@ -195,7 +154,7 @@ export default function ReceitasTab() {
         receita={editandoReceita}
         isOpen={isEditModalOpen}
         onClose={fecharEdicaoReceita}
-        onSuccess={carregarReceitas}
+        onSuccess={handleModalSuccess}
       />
     </div>
   );

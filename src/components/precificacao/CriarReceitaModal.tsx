@@ -1,6 +1,5 @@
 
 import { useState } from "react";
-import { useSupabaseReceitas, ReceitaInput } from "@/hooks/useSupabaseReceitas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +21,13 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+
+interface ReceitaInput {
+  nome: string;
+  descricao?: string;
+  rendimento: number;
+  unidade_rendimento: string;
+}
 
 interface CriarReceitaModalProps {
   isOpen: boolean;
