@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Edit2, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabaseProdutos, ProdutoCompleto, ComponenteProduto } from "@/hooks/useSupabaseProdutos";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
@@ -39,6 +39,8 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
   const [novoComponenteItemId, setNovoComponenteItemId] = useState("");
   const [novoComponenteQuantidade, setNovoComponenteQuantidade] = useState<number>(1);
   const [loading, setLoading] = useState(false);
+  const [editingComponenteId, setEditingComponenteId] = useState<string | null>(null);
+  const [editingQuantidade, setEditingQuantidade] = useState<number>(0);
 
   const { toast } = useToast();
   const { atualizarProduto, removerComponenteProduto, adicionarComponenteProduto, carregarProdutoCompleto } = useSupabaseProdutos();
@@ -106,6 +108,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
     setNovoComponenteTipo('receita');
     setNovoComponenteItemId("");
     setNovoComponenteQuantidade(1);
+    setEditingComponenteId(null);
   };
 
   const handleClose = () => {
@@ -180,9 +183,14 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
         description: "Componente adicionado com sucesso",
       });
 
-      onSuccess();
+      // Recarregar produto completo para atualizar a lista de componentes
+      const produtoCompleto = await carregarProdutoCompleto(produto.id);
+      if (produtoCompleto?.componentes) {
+        setComponentes(produtoCompleto.componentes);
+      }
+
       setNovoComponenteItemId("");
-      setNovoComponenteQuantidade(1);
+      setNovoComponenteQuantidade(novoComponenteTipo === 'receita' ? 100 : 1);
     } catch (error) {
       console.error('Erro ao adicionar componente:', error);
       toast({
@@ -205,7 +213,11 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
           description: "Componente removido com sucesso",
         });
 
-        onSuccess();
+        // Recarregar produto completo para atualizar a lista de componentes
+        const produtoCompleto = await carregarProdutoCompleto(produto.id);
+        if (produtoCompleto?.componentes) {
+          setComponentes(produtoCompleto.componentes);
+        }
       } catch (error) {
         console.error('Erro ao remover componente:', error);
         toast({
@@ -215,6 +227,53 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
         });
       }
     }
+  };
+
+  const handleEditarQuantidade = (componenteId: string, quantidadeAtual: number) => {
+    setEditingComponenteId(componenteId);
+    setEditingQuantidade(quantidadeAtual);
+  };
+
+  const handleSalvarQuantidade = async () => {
+    if (!produto || !editingComponenteId || editingQuantidade <= 0) return;
+
+    try {
+      // Primeiro remove o componente atual
+      await removerComponenteProduto(editingComponenteId);
+      
+      // Encontra o componente sendo editado para pegar seus dados
+      const componenteEditando = componentes.find(c => c.id === editingComponenteId);
+      if (!componenteEditando) return;
+
+      // Adiciona novamente com a nova quantidade
+      await adicionarComponenteProduto(produto.id, componenteEditando.item_id, componenteEditando.tipo, editingQuantidade);
+
+      // Recarregar produto completo
+      const produtoCompleto = await carregarProdutoCompleto(produto.id);
+      if (produtoCompleto?.componentes) {
+        setComponentes(produtoCompleto.componentes);
+      }
+
+      setEditingComponenteId(null);
+      setEditingQuantidade(0);
+
+      toast({
+        title: "Quantidade atualizada",
+        description: "Quantidade do componente atualizada com sucesso",
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar quantidade:', error);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar a quantidade",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancelarEdicao = () => {
+    setEditingComponenteId(null);
+    setEditingQuantidade(0);
   };
 
   const calcularCustoTotal = () => {
@@ -294,7 +353,6 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                       onValueChange={(value) => {
                         const newCategoriaId = value ? parseInt(value) : undefined;
                         setCategoriaId(newCategoriaId);
-                        // Reset subcategoria when category changes
                         if (newCategoriaId !== categoriaId) {
                           setSubcategoriaId(undefined);
                         }
@@ -412,7 +470,14 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                     <div className="grid grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Tipo</Label>
-                        <Select value={novoComponenteTipo} onValueChange={(value: 'receita' | 'insumo') => setNovoComponenteTipo(value)}>
+                        <Select 
+                          value={novoComponenteTipo} 
+                          onValueChange={(value: 'receita' | 'insumo') => {
+                            setNovoComponenteTipo(value);
+                            setNovoComponenteItemId("");
+                            setNovoComponenteQuantidade(value === 'receita' ? 100 : 1);
+                          }}
+                        >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -425,7 +490,10 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
 
                       <div className="space-y-2">
                         <Label>Item</Label>
-                        <Select value={novoComponenteItemId} onValueChange={setNovoComponenteItemId}>
+                        <Select 
+                          value={novoComponenteItemId} 
+                          onValueChange={setNovoComponenteItemId}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione..." />
                           </SelectTrigger>
@@ -447,10 +515,12 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Quantidade</Label>
+                        <Label>
+                          Quantidade {novoComponenteTipo === 'receita' ? '(g)' : '(un)'}
+                        </Label>
                         <Input
                           type="number"
-                          step="0.001"
+                          step={novoComponenteTipo === 'receita' ? "1" : "0.001"}
                           min="0"
                           value={novoComponenteQuantidade}
                           onChange={(e) => setNovoComponenteQuantidade(parseFloat(e.target.value) || 0)}
@@ -459,7 +529,11 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
 
                       <div className="space-y-2">
                         <Label>&nbsp;</Label>
-                        <Button onClick={handleAdicionarComponente} className="w-full">
+                        <Button 
+                          onClick={handleAdicionarComponente} 
+                          className="w-full"
+                          disabled={!novoComponenteItemId || novoComponenteQuantidade <= 0}
+                        >
                           <Plus className="h-4 w-4 mr-2" />
                           Adicionar
                         </Button>
@@ -487,7 +561,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                               <TableHead>Quantidade</TableHead>
                               <TableHead>Custo Unit.</TableHead>
                               <TableHead>Custo Total</TableHead>
-                              <TableHead></TableHead>
+                              <TableHead>Ações</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -499,7 +573,48 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                                   </Badge>
                                 </TableCell>
                                 <TableCell>{componente.nome_item}</TableCell>
-                                <TableCell>{componente.quantidade}</TableCell>
+                                <TableCell>
+                                  {editingComponenteId === componente.id ? (
+                                    <div className="flex items-center gap-2">
+                                      <Input
+                                        type="number"
+                                        step={componente.tipo === 'receita' ? "1" : "0.001"}
+                                        min="0"
+                                        value={editingQuantidade}
+                                        onChange={(e) => setEditingQuantidade(parseFloat(e.target.value) || 0)}
+                                        className="w-20"
+                                      />
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={handleSalvarQuantidade}
+                                        disabled={editingQuantidade <= 0}
+                                      >
+                                        <Check className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={handleCancelarEdicao}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2">
+                                      <span>
+                                        {componente.quantidade} {componente.tipo === 'receita' ? 'g' : 'un'}
+                                      </span>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => handleEditarQuantidade(componente.id, componente.quantidade)}
+                                      >
+                                        <Edit2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                </TableCell>
                                 <TableCell>R$ {componente.custo_item.toFixed(2)}</TableCell>
                                 <TableCell>R$ {(componente.custo_item * componente.quantidade).toFixed(2)}</TableCell>
                                 <TableCell>
@@ -507,6 +622,7 @@ export default function EditarProdutoModal({ produto, isOpen, onClose, onSuccess
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleRemoverComponente(componente.id)}
+                                    disabled={editingComponenteId === componente.id}
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
