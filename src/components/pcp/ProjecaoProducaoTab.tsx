@@ -10,7 +10,6 @@ import { format } from "date-fns";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useAuditoriaPCPData } from "@/hooks/useAuditoriaPCPData";
-
 interface ProjecaoItem {
   idProduto: string;
   nomeProduto: string;
@@ -20,17 +19,19 @@ interface ProjecaoItem {
   formasNecessarias: number;
   sobraEstimada: number;
 }
-
 type TipoAgendamento = 'agendados' | 'agendados-previstos';
-
 export default function ProjecaoProducaoTab() {
   const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dataFim, setDataFim] = useState(format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [tipoAgendamento, setTipoAgendamento] = useState<TipoAgendamento>('agendados');
   const [projecaoItens, setProjecaoItens] = useState<ProjecaoItem[]>([]);
-
-  const { dadosAuditoria, produtosAtivos, loading, processarDadosAuditoria, dadosCarregados } = useAuditoriaPCPData();
-
+  const {
+    dadosAuditoria,
+    produtosAtivos,
+    loading,
+    processarDadosAuditoria,
+    dadosCarregados
+  } = useAuditoriaPCPData();
   const capacidadeForma = 40; // Capacidade fixa de 40 unidades por forma
 
   // Processar dados de auditoria quando filtros mudarem
@@ -39,9 +40,12 @@ export default function ProjecaoProducaoTab() {
       processarDadosAuditoria(dataInicio, dataFim, '', 'todos');
     }
   }, [dataInicio, dataFim, processarDadosAuditoria, dadosCarregados]);
-
-  const { carregarTodosAgendamentos } = useAgendamentoClienteStore();
-  const { produtos } = useSupabaseProdutos();
+  const {
+    carregarTodosAgendamentos
+  } = useAgendamentoClienteStore();
+  const {
+    produtos
+  } = useSupabaseProdutos();
 
   // Carregar agendamentos ao montar o componente
   useEffect(() => {
@@ -57,7 +61,6 @@ export default function ProjecaoProducaoTab() {
   useEffect(() => {
     calcularProjecaoFromAuditoria();
   }, [dadosAuditoria, tipoAgendamento, produtos]);
-
   const calcularProjecaoFromAuditoria = () => {
     console.log('🧮 Calculando projeção baseada nos dados da auditoria...');
 
@@ -69,7 +72,6 @@ export default function ProjecaoProducaoTab() {
         return item.statusAgendamento === 'Agendado' || item.statusAgendamento === 'Previsto';
       }
     });
-
     console.log('📊 Dados filtrados por status do agendamento:', dadosFiltrados.length);
 
     // Obter estoque (manual se houver, senão automático)
@@ -78,9 +80,8 @@ export default function ProjecaoProducaoTab() {
 
     // Calcular necessidades totais por produto
     console.log('🔄 Calculando necessidades totais por produto...');
-    
     const necessidadesTotais: Record<string, number> = {};
-    
+
     // Inicializar todos os produtos ativos com 0
     produtosAtivos.forEach(produto => {
       necessidadesTotais[produto.nome] = 0;
@@ -89,7 +90,6 @@ export default function ProjecaoProducaoTab() {
     // Somar quantidades de todos os agendamentos filtrados
     dadosFiltrados.forEach(item => {
       console.log(`📦 Processando agendamento: ${item.clienteNome}`, item.quantidadesPorProduto);
-      
       Object.keys(item.quantidadesPorProduto).forEach(nomeProduto => {
         const quantidade = item.quantidadesPorProduto[nomeProduto] || 0;
         if (quantidade > 0) {
@@ -100,48 +100,37 @@ export default function ProjecaoProducaoTab() {
         }
       });
     });
-
     console.log('📊 Necessidades totais finais por produto:', necessidadesTotais);
 
     // Calcular projeção para cada produto que tem necessidade > 0
     const projecao: ProjecaoItem[] = [];
-
     Object.keys(necessidadesTotais).forEach(nomeProduto => {
       const unidadesNecessarias = necessidadesTotais[nomeProduto];
-      
       if (unidadesNecessarias > 0) {
         // Encontrar o produto correspondente
         const produto = produtos.find(p => p.nome === nomeProduto && p.ativo);
-        
         if (produto) {
-          const estoqueDisponivel = estoqueManual[produto.id] !== undefined 
-            ? estoqueManual[produto.id] 
-            : produto.estoque_atual || 0;
-          
+          const estoqueDisponivel = estoqueManual[produto.id] !== undefined ? estoqueManual[produto.id] : produto.estoque_atual || 0;
           const unidadesProduzir = Math.max(0, unidadesNecessarias - estoqueDisponivel);
-          
           let formasNecessarias = 0;
           let sobraEstimada = 0;
-
           if (unidadesProduzir > 0) {
             if (nomeProduto === "Mini Brownie Tradicional") {
               // CORREÇÃO: Cálculo específico para Mini Brownie Tradicional
               // Cada pacote de Mini Brownie precisa de 0,74 formas de Brownie Tradicional
               formasNecessarias = Math.ceil(unidadesProduzir * 0.74);
-              
+
               // Para sobra: cada forma produz aproximadamente 1.35 pacotes (1/0.74)
               const pacotesProduzidos = formasNecessarias / 0.74;
               sobraEstimada = Math.max(0, pacotesProduzidos - unidadesProduzir);
-              
               console.log(`🧮 Mini Brownie Tradicional: ${unidadesProduzir} pacotes = ${formasNecessarias} formas (0,74 formas/pacote)`);
             } else {
               formasNecessarias = Math.ceil(unidadesProduzir / capacidadeForma);
-              sobraEstimada = (formasNecessarias * capacidadeForma) - unidadesProduzir;
+              sobraEstimada = formasNecessarias * capacidadeForma - unidadesProduzir;
             }
           } else {
             sobraEstimada = Math.max(0, estoqueDisponivel - unidadesNecessarias);
           }
-
           console.log(`🧮 Cálculo para ${nomeProduto}:`, {
             unidadesNecessarias,
             estoqueDisponivel,
@@ -149,7 +138,6 @@ export default function ProjecaoProducaoTab() {
             formasNecessarias,
             sobraEstimada
           });
-
           projecao.push({
             idProduto: produto.id,
             nomeProduto: produto.nome,
@@ -162,16 +150,10 @@ export default function ProjecaoProducaoTab() {
         }
       }
     });
-
     console.log('✅ Projeção final com todos os produtos:', projecao);
     setProjecaoItens(projecao);
   };
-
-  const totalFormas = useMemo(() => 
-    projecaoItens.reduce((sum, item) => sum + item.formasNecessarias, 0), 
-    [projecaoItens]
-  );
-
+  const totalFormas = useMemo(() => projecaoItens.reduce((sum, item) => sum + item.formasNecessarias, 0), [projecaoItens]);
   const exportarDados = (formato: 'pdf' | 'excel') => {
     const dados = projecaoItens.map(item => ({
       'Produto': item.nomeProduto,
@@ -181,14 +163,11 @@ export default function ProjecaoProducaoTab() {
       'Formas Necessárias': item.formasNecessarias,
       'Sobra Estimada': item.sobraEstimada
     }));
-
     if (formato === 'excel') {
-      const csvContent = [
-        Object.keys(dados[0] || {}).join(','),
-        ...dados.map(row => Object.values(row).join(','))
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const csvContent = [Object.keys(dados[0] || {}).join(','), ...dados.map(row => Object.values(row).join(','))].join('\n');
+      const blob = new Blob([csvContent], {
+        type: 'text/csv'
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -196,20 +175,15 @@ export default function ProjecaoProducaoTab() {
       a.click();
     }
   };
-
   if (!dadosCarregados || loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
+    return <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         <span className="ml-4 text-lg">
           {!dadosCarregados ? 'Inicializando sistema...' : 'Carregando projeção de produção...'}
         </span>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Controles de filtro */}
       <Card>
         <CardHeader>
@@ -226,35 +200,17 @@ export default function ProjecaoProducaoTab() {
           <div className="flex flex-wrap items-end gap-4">
             <div className="flex-1 min-w-[150px]">
               <Label htmlFor="data-inicio">Data Início</Label>
-              <Input
-                id="data-inicio"
-                type="date"
-                value={dataInicio}
-                onChange={(e) => setDataInicio(e.target.value)}
-              />
+              <Input id="data-inicio" type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
             </div>
             <div className="flex-1 min-w-[150px]">
               <Label htmlFor="data-fim">Data Fim</Label>
-              <Input
-                id="data-fim"
-                type="date"
-                value={dataFim}
-                onChange={(e) => setDataFim(e.target.value)}
-              />
+              <Input id="data-fim" type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} />
             </div>
             <div className="flex gap-2">
-              <Button
-                variant={tipoAgendamento === 'agendados' ? 'default' : 'outline'}
-                onClick={() => setTipoAgendamento('agendados')}
-                size="sm"
-              >
+              <Button variant={tipoAgendamento === 'agendados' ? 'default' : 'outline'} onClick={() => setTipoAgendamento('agendados')} size="sm">
                 Apenas Agendados
               </Button>
-              <Button
-                variant={tipoAgendamento === 'agendados-previstos' ? 'default' : 'outline'}
-                onClick={() => setTipoAgendamento('agendados-previstos')}
-                size="sm"
-              >
+              <Button variant={tipoAgendamento === 'agendados-previstos' ? 'default' : 'outline'} onClick={() => setTipoAgendamento('agendados-previstos')} size="sm">
                 Agendados + Previstos
               </Button>
             </div>
@@ -276,12 +232,12 @@ export default function ProjecaoProducaoTab() {
             Produtos ativos: {produtos.filter(p => p.ativo).length} | 
             Agendamentos na auditoria: {dadosAuditoria.length} |
             Considerados para cálculo: {dadosAuditoria.filter(item => {
-              if (tipoAgendamento === 'agendados') {
-                return item.statusAgendamento === 'Agendado';
-              } else {
-                return item.statusAgendamento === 'Agendado' || item.statusAgendamento === 'Previsto';
-              }
-            }).length}
+            if (tipoAgendamento === 'agendados') {
+              return item.statusAgendamento === 'Agendado';
+            } else {
+              return item.statusAgendamento === 'Agendado' || item.statusAgendamento === 'Previsto';
+            }
+          }).length}
           </div>
         </CardContent>
       </Card>
@@ -292,23 +248,11 @@ export default function ProjecaoProducaoTab() {
           <div className="flex items-center justify-between">
             <CardTitle>Necessidade de Produção</CardTitle>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => exportarDados('excel')}
-                className="flex items-center gap-2"
-                disabled={loading}
-              >
+              <Button variant="outline" size="sm" onClick={() => exportarDados('excel')} className="flex items-center gap-2" disabled={loading}>
                 <Download className="h-4 w-4" />
                 Excel
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => exportarDados('pdf')}
-                className="flex items-center gap-2"
-                disabled={loading}
-              >
+              <Button variant="outline" size="sm" onClick={() => exportarDados('pdf')} className="flex items-center gap-2" disabled={loading}>
                 <Download className="h-4 w-4" />
                 PDF
               </Button>
@@ -329,17 +273,13 @@ export default function ProjecaoProducaoTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {projecaoItens.length > 0 ? (
-                  projecaoItens.map((item) => (
-                    <TableRow key={item.idProduto}>
+                {projecaoItens.length > 0 ? projecaoItens.map(item => <TableRow key={item.idProduto}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           {item.nomeProduto}
-                          {item.nomeProduto === "Mini Brownie Tradicional" && (
-                            <Badge variant="outline" className="text-xs">
+                          {item.nomeProduto === "Mini Brownie Tradicional" && <Badge variant="outline" className="text-xs">
                               0,74 formas/pacote
-                            </Badge>
-                          )}
+                            </Badge>}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">{item.unidadesNecessarias}</TableCell>
@@ -357,43 +297,33 @@ export default function ProjecaoProducaoTab() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
-                        {item.nomeProduto === "Mini Brownie Tradicional" ? 
-                          `${item.sobraEstimada.toFixed(1)} pacotes` : 
-                          `${item.sobraEstimada} unidades`
-                        }
+                        {item.nomeProduto === "Mini Brownie Tradicional" ? `${item.sobraEstimada.toFixed(1)} pacotes` : `${item.sobraEstimada} unidades`}
                       </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
+                    </TableRow>) : <TableRow>
                     <TableCell colSpan={6} className="text-center py-6">
                       <div className="flex items-center justify-center gap-2 text-muted-foreground">
                         <Calculator className="h-4 w-4" />
                         Nenhuma necessidade de produção identificada com os filtros aplicados
                       </div>
                     </TableCell>
-                  </TableRow>
-                )}
+                  </TableRow>}
               </TableBody>
             </Table>
           </div>
 
           {/* Resumo */}
-          {projecaoItens.length > 0 && (
-            <div className="mt-4 p-4 bg-muted rounded-lg">
+          {projecaoItens.length > 0 && <div className="mt-4 p-4 bg-muted rounded-lg">
               <div className="flex items-center justify-between">
                 <span className="font-medium">Total de formas necessárias:</span>
                 <Badge variant="default" className="text-lg px-3 py-1">
                   {totalFormas} formas
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1 text-left">
                 Baseado em {capacidadeForma} unidades por forma (exceto Mini Brownie Tradicional: 0,74 formas/pacote)
               </p>
-            </div>
-          )}
+            </div>}
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 }
