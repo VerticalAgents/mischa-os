@@ -1,7 +1,5 @@
-
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Printer, FileText } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
@@ -269,58 +267,26 @@ export const PrintingActions = ({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {/* Card Lista de Separação */}
-      <Card className="group cursor-pointer border border-border/60 bg-card/50 backdrop-blur-sm hover:shadow-xl hover:shadow-black/5 hover:border-border/80 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1" 
-            onClick={imprimirListaSeparacao}>
-        <CardHeader className="pb-4">
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-14 h-14 rounded-xl bg-blue-500 hover:bg-blue-600 flex items-center justify-center group-hover:scale-110 transition-all duration-300 shadow-lg shadow-black/10">
-              <Printer className="h-7 w-7 text-white" />
-            </div>
-          </div>
-          <div className="text-left space-y-2">
-            <CardTitle className="text-lg font-bold text-foreground group-hover:text-primary transition-colors text-left">
-              Lista de Separação
-            </CardTitle>
-            <CardDescription className="text-sm text-muted-foreground leading-relaxed font-medium text-left">
-              Imprime lista organizada para separação de pedidos
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="flex items-center justify-between text-sm group-hover:text-primary transition-colors">
-            <span className="font-semibold text-left">Imprimir Lista</span>
-            <Printer className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </CardContent>
-      </Card>
+    <div className="flex items-center gap-2">
+      <Button 
+        onClick={imprimirListaSeparacao}
+        size="sm"
+        variant="outline"
+        className="flex items-center gap-2"
+      >
+        <Printer className="h-4 w-4" />
+        Lista de Separação
+      </Button>
 
-      {/* Card Etiquetas */}
-      <Card className="group cursor-pointer border border-border/60 bg-card/50 backdrop-blur-sm hover:shadow-xl hover:shadow-black/5 hover:border-border/80 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1" 
-            onClick={imprimirEtiquetas}>
-        <CardHeader className="pb-4">
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-14 h-14 rounded-xl bg-green-500 hover:bg-green-600 flex items-center justify-center group-hover:scale-110 transition-all duration-300 shadow-lg shadow-black/10">
-              <FileText className="h-7 w-7 text-white" />
-            </div>
-          </div>
-          <div className="text-left space-y-2">
-            <CardTitle className="text-lg font-bold text-foreground group-hover:text-primary transition-colors text-left">
-              Etiquetas de Pedidos
-            </CardTitle>
-            <CardDescription className="text-sm text-muted-foreground leading-relaxed font-medium text-left">
-              Gera etiquetas individuais para cada pedido
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="flex items-center justify-between text-sm group-hover:text-primary transition-colors">
-            <span className="font-semibold text-left">Imprimir Etiquetas</span>
-            <FileText className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </CardContent>
-      </Card>
+      <Button 
+        onClick={imprimirEtiquetas}
+        size="sm"
+        variant="outline"
+        className="flex items-center gap-2"
+      >
+        <FileText className="h-4 w-4" />
+        Etiquetas
+      </Button>
       
       {/* IFrame invisível para impressão */}
       <iframe ref={printFrameRef} style={{ display: 'none' }} />
