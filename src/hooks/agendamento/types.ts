@@ -8,6 +8,7 @@ export interface AgendamentoCliente {
   quantidade_total: number;
   itens_personalizados?: { produto: string; quantidade: number }[];
   substatus_pedido?: string;
+  contatar_cliente?: boolean;
   created_at?: Date;
   updated_at?: Date;
 }

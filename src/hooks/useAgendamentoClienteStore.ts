@@ -22,7 +22,12 @@ export const useAgendamentoClienteStore = create<AgendamentoClienteStore>()(
         return get().carregarAgendamentoPorCliente(clienteId);
       },
 
-      limparErro: () => set((state: any) => ({ ...state, error: null }))
+      limparErro: () => set((state: any) => ({ ...state, error: null })),
+
+      // Nova ação para atualizar contatar_cliente
+      atualizarContatarCliente: async (clienteId: string, contatar: boolean) => {
+        return get().atualizarContatarCliente(clienteId, contatar);
+      }
     }),
     { name: 'agendamento-cliente-store' }
   )

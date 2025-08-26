@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { AgendamentoCliente } from './types';
@@ -95,7 +94,8 @@ export const createAgendamentoActions = (
           tipo: agendamento.tipo_pedido,
           itens_personalizados: agendamento.itens_personalizados,
           quantidade_total: agendamento.quantidade_total,
-          data_proxima_reposicao: agendamento.data_proxima_reposicao
+          data_proxima_reposicao: agendamento.data_proxima_reposicao,
+          contatar_cliente: agendamento.contatar_cliente
         });
       }
       
@@ -206,6 +206,56 @@ export const createAgendamentoActions = (
     
     if (!agendamentoExistente) {
       await get().salvarAgendamento(clienteId, dadosIniciais);
+    }
+  },
+
+  atualizarContatarCliente: async (clienteId: string, contatar: boolean) => {
+    try {
+      console.log('useAgendamentoClienteStore: Atualizando contatar_cliente para cliente:', clienteId, contatar);
+      
+      // Verificar se o agendamento existe
+      const agendamentoExistente = await get().carregarAgendamentoPorCliente(clienteId);
+      
+      if (!agendamentoExistente) {
+        // Criar agendamento básico se não existir
+        await get().criarAgendamentoSeNaoExiste(clienteId, {
+          contatar_cliente: contatar,
+          status_agendamento: 'Agendar',
+          tipo_pedido: 'Padrão',
+          quantidade_total: 0
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('agendamentos_clientes')
+        .update({ 
+          contatar_cliente: contatar,
+          updated_at: new Date().toISOString()
+        })
+        .eq('cliente_id', clienteId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('useAgendamentoClienteStore: Erro ao atualizar contatar_cliente:', error);
+        throw error;
+      }
+
+      console.log('✅ contatar_cliente atualizado com sucesso:', data);
+      
+      // Atualizar cache
+      const novoCache = new Map(get().agendamentosCompletos);
+      novoCache.set(clienteId, convertDbRowToAgendamento(data));
+      set((state: any) => ({ ...state, agendamentosCompletos: novoCache }));
+      
+      // Recarregar todos os agendamentos para atualizar a lista
+      await get().carregarTodosAgendamentos();
+
+    } catch (error) {
+      console.error('useAgendamentoClienteStore: Erro ao atualizar contatar_cliente:', error);
+      toast.error('Erro ao atualizar status de contato');
+      throw error;
     }
   }
 });

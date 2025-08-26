@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
+import ContatarClienteCheckbox from "./ContatarClienteCheckbox";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
@@ -142,10 +143,11 @@ export default function TodosAgendamentos() {
           data_proxima_reposicao: agendamentoAtual.data_proxima_reposicao,
           quantidade_total: agendamentoAtual.quantidade_total,
           tipo_pedido: agendamentoAtual.tipo_pedido,
-          itens_personalizados: agendamentoAtual.itens_personalizados
+          itens_personalizados: agendamentoAtual.itens_personalizados,
+          contatar_cliente: false // Desmarcar ao confirmar
         });
 
-        console.log('✅ Agendamento confirmado (Previsto → Agendado)');
+        console.log('✅ Agendamento confirmado (Previsto → Agendado) e checkbox desmarcado');
       }
       
       await carregarTodosAgendamentos();
@@ -212,6 +214,7 @@ export default function TodosAgendamentos() {
             <TableHead className="text-left">Data Reposição</TableHead>
             <TableHead className="text-left">Status</TableHead>
             <TableHead className="text-left">Tipo</TableHead>
+            <TableHead className="text-left">Contatar</TableHead>
             <TableHead className="text-left">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -236,6 +239,13 @@ export default function TodosAgendamentos() {
               </TableCell>
               <TableCell className="text-left">
                 <TipoPedidoBadge tipo={agendamento.pedido?.tipoPedido || 'Padrão'} />
+              </TableCell>
+              <TableCell className="text-left">
+                <ContatarClienteCheckbox 
+                  clienteId={agendamento.cliente.id.toString()}
+                  initialValue={agendamento.contatar_cliente || false}
+                  disabled={agendamento.isPedidoUnico}
+                />
               </TableCell>
               <TableCell className="text-left">
                 <div className="flex gap-2">
