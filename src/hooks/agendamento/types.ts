@@ -8,7 +8,6 @@ export interface AgendamentoCliente {
   quantidade_total: number;
   itens_personalizados?: { produto: string; quantidade: number }[];
   substatus_pedido?: string;
-  contatar_cliente?: boolean;
   created_at?: Date;
   updated_at?: Date;
 }
@@ -25,6 +24,5 @@ export interface AgendamentoClienteStore {
   obterAgendamento: (clienteId: string) => Promise<AgendamentoCliente | null>;
   salvarAgendamento: (clienteId: string, dadosAgendamento: Partial<AgendamentoCliente>) => Promise<void>;
   criarAgendamentoSeNaoExiste: (clienteId: string, dadosIniciais: Partial<AgendamentoCliente>) => Promise<void>;
-  atualizarContatarCliente: (clienteId: string, contatar: boolean) => Promise<void>;
   limparErro: () => void;
 }
