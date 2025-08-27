@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import AppLayout from '@/components/layout/AppLayout';
+import { RouteGuard } from '@/components/navigation/RouteGuard';
 import Index from '@/pages/Index';
 import Home from '@/pages/Home';
 import Manual from '@/pages/Manual';
@@ -52,9 +53,10 @@ function App() {
       <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
         <Router>
           <AuthProvider>
-            <SidebarProvider>
-              <div className="min-h-screen w-full">
-                <Routes>
+            <RouteGuard>
+              <SidebarProvider>
+                <div className="min-h-screen w-full">
+                  <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<AuthPage />} />
                   <Route path="/login" element={<LoginPage />} />
@@ -233,10 +235,11 @@ function App() {
                       </AppLayout>
                     </ProtectedRoute>
                   } />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </div>
-            </SidebarProvider>
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </div>
+              </SidebarProvider>
+            </RouteGuard>
             <Toaster />
           </AuthProvider>
         </Router>

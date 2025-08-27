@@ -5,6 +5,7 @@ import MobileHeader from "@/components/layout/MobileHeader";
 import MobileMenuOverlay from "@/components/layout/MobileMenuOverlay";
 import { SessionNavBar } from "@/components/ui/sidebar-next";
 import TopHeader from "@/components/layout/TopHeader";
+import { RouteStateManager } from "@/components/common/RouteStateManager";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -28,6 +29,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen flex w-full bg-background">
+      {/* Gerenciador de estado de rotas */}
+      <RouteStateManager />
+      
       {/* Nova sidebar com animações fluidas */}
       <SessionNavBar />
 

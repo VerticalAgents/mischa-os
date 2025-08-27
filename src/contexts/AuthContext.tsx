@@ -222,7 +222,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             }, session.user.id);
           }, 0);
 
-          navigate('/home', { replace: true });
+          // REMOVIDO: navigate('/home', { replace: true }); 
+          // O redirecionamento será feito pelo Index.tsx
           toast.success("Login realizado com sucesso");
         }
 
@@ -249,6 +250,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             }, 0);
           }
 
+          // Limpar rota salva no logout
+          localStorage.removeItem('lastVisitedRoute');
           navigate('/login');
           toast.info("Você foi desconectado");
         }

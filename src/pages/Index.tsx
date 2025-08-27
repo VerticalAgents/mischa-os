@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -7,35 +7,45 @@ export default function Index() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const hasRedirectedRef = useRef(false);
 
   useEffect(() => {
-    // Só executa lógica de redirecionamento se não está carregando
-    if (!loading) {
-      if (user) {
-        // Usuário logado - só redireciona se estiver na rota raiz
-        if (location.pathname === '/') {
-          // Verificar se há uma rota salva válida
-          const savedRoute = localStorage.getItem('lastVisitedRoute');
-          
-          if (savedRoute && 
-              savedRoute !== '/' && 
-              savedRoute !== '/home' && 
-              !savedRoute.startsWith('/auth') &&
-              !savedRoute.startsWith('/login')) {
-            console.log('🔄 Restaurando rota salva:', savedRoute);
-            navigate(savedRoute, { replace: true });
-          } else {
-            // Se não há rota salva válida, vai para home
-            navigate('/home', { replace: true });
-          }
+    // Previne múltiplos redirecionamentos
+    if (hasRedirectedRef.current || loading) return;
+
+    const currentPath = location.pathname + location.search + location.hash;
+
+    if (user) {
+      // Usuário logado
+      if (currentPath === '/') {
+        // Só redireciona se estiver na rota raiz
+        const savedRoute = localStorage.getItem('lastVisitedRoute');
+        
+        if (savedRoute && isValidRoute(savedRoute)) {
+          console.log('🔄 Index: Restaurando rota salva:', savedRoute);
+          hasRedirectedRef.current = true;
+          navigate(savedRoute, { replace: true });
+          return;
         }
-        // Se já está em uma rota específica (não '/'), não faz nada - MANTÉM a rota atual
-      } else {
-        // Usuário não logado - sempre vai para auth
-        navigate('/auth', { replace: true });
+        
+        // Se não há rota salva válida, vai para home
+        console.log('🏠 Index: Indo para home');
+        hasRedirectedRef.current = true;
+        navigate('/home', { replace: true });
       }
+      // Se já está em uma rota específica, NÃO faz nada - mantém a rota atual
+    } else {
+      // Usuário não logado - sempre vai para auth
+      console.log('🔐 Index: Usuário não logado, indo para auth');
+      hasRedirectedRef.current = true;
+      navigate('/auth', { replace: true });
     }
-  }, [user, loading, navigate, location.pathname]);
+  }, [user, loading, navigate, location.pathname, location.search, location.hash]);
+
+  // Reset do flag quando a rota muda
+  useEffect(() => {
+    hasRedirectedRef.current = false;
+  }, [location.pathname]);
 
   // Mostrar loading apenas enquanto verifica autenticação
   if (loading) {
@@ -51,3 +61,15 @@ export default function Index() {
 
   return null;
 }
+
+// Função para validar se uma rota é válida para restauração
+const isValidRoute = (route: string): boolean => {
+  if (!route) return false;
+  
+  // Rotas que não devem ser restauradas
+  const excludedRoutes = ['/', '/home', '/auth', '/login'];
+  
+  return !excludedRoutes.includes(route) && 
+         !route.startsWith('/auth') && 
+         !route.startsWith('/login');
+};
