@@ -1,34 +1,16 @@
 
-import { useState, memo, Suspense } from "react";
+import { useState, memo, Suspense, lazy } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOptimizedRepresentantesData } from "@/hooks/useOptimizedRepresentantesData";
-import RepresentantesIndicadores from "@/components/gestao-comercial/RepresentantesIndicadores";
+import RepresentantesIndicadoresOptimized from "@/components/gestao-comercial/RepresentantesIndicadoresOptimized";
 import RepresentantesCharts from "@/components/gestao-comercial/RepresentantesCharts";
 
 // Lazy load heavy components
-const SortableClientesTable = memo(({ 
-  clientes, 
-  titulo, 
-  showDeliveryStats = false 
-}: { 
-  clientes: any[]; 
-  titulo: string; 
-  showDeliveryStats?: boolean;
-}) => {
-  // This would be moved to a separate file in a real implementation
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-left">{titulo}</h3>
-      <div className="text-center py-8 text-muted-foreground">
-        {clientes.length === 0 ? "Nenhum cliente encontrado nesta categoria" : `${clientes.length} clientes`}
-      </div>
-    </div>
-  );
-});
+const SortableClientesTable = lazy(() => import("@/components/common/SortableClientesTable"));
 
 const LoadingSkeleton = memo(() => (
   <div className="space-y-6">
@@ -120,7 +102,7 @@ export default function RepresentantesOptimized({ isActive }: RepresentantesOpti
       </Card>
 
       {/* Indicators */}
-      <RepresentantesIndicadores 
+      <RepresentantesIndicadoresOptimized 
         data={{
           totalClientes: data.clientesDoRepresentante.length,
           clientesAtivos: data.clientesAtivos.length,
@@ -175,46 +157,58 @@ export default function RepresentantesOptimized({ isActive }: RepresentantesOpti
             </TabsList>
 
             <TabsContent value="ativos" className="space-y-4">
-              <SortableClientesTable 
-                clientes={data.clientesAtivos} 
-                titulo="Clientes Ativos"
-              />
+              <Suspense fallback={<LoadingSkeleton />}>
+                <SortableClientesTable 
+                  clientes={data.clientesAtivos} 
+                  titulo="Clientes Ativos"
+                />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="em-analise" className="space-y-4">
-              <SortableClientesTable 
-                clientes={data.clientesEmAnalise} 
-                titulo="Clientes em Análise"
-                showDeliveryStats={true}
-              />
+              <Suspense fallback={<LoadingSkeleton />}>
+                <SortableClientesTable 
+                  clientes={data.clientesEmAnalise} 
+                  titulo="Clientes em Análise"
+                  showDeliveryStats={true}
+                />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="pipeline" className="space-y-4">
-              <SortableClientesTable 
-                clientes={data.clientesAtivar} 
-                titulo="Pipeline de Leads"
-              />
+              <Suspense fallback={<LoadingSkeleton />}>
+                <SortableClientesTable 
+                  clientes={data.clientesAtivar} 
+                  titulo="Pipeline de Leads"
+                />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="standby" className="space-y-4">
-              <SortableClientesTable 
-                clientes={data.clientesStandby} 
-                titulo="Clientes em Standby"
-              />
+              <Suspense fallback={<LoadingSkeleton />}>
+                <SortableClientesTable 
+                  clientes={data.clientesStandby} 
+                  titulo="Clientes em Standby"
+                />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="inativos" className="space-y-4">
-              <SortableClientesTable 
-                clientes={data.clientesInativos} 
-                titulo="Clientes Inativos"
-              />
+              <Suspense fallback={<LoadingSkeleton />}>
+                <SortableClientesTable 
+                  clientes={data.clientesInativos} 
+                  titulo="Clientes Inativos"
+                />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="todos" className="space-y-4">
-              <SortableClientesTable 
-                clientes={data.clientesDoRepresentante} 
-                titulo="Todos os Clientes"
-              />
+              <Suspense fallback={<LoadingSkeleton />}>
+                <SortableClientesTable 
+                  clientes={data.clientesDoRepresentante} 
+                  titulo="Todos os Clientes"
+                />
+              </Suspense>
             </TabsContent>
           </Tabs>
         </CardContent>

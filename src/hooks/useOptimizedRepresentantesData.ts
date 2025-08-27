@@ -1,5 +1,5 @@
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { useSupabaseRepresentantes } from '@/hooks/useSupabaseRepresentantes';
@@ -12,76 +12,81 @@ export const useOptimizedRepresentantesData = (representanteSelecionado: string,
   const { representantes, loading: representantesLoading } = useSupabaseRepresentantes();
   const { registros } = useHistoricoEntregasStore();
 
+  // Memoized calculations for better performance
+  const filteredClientes = useMemo(() => {
+    return representanteSelecionado === "todos" 
+      ? clientes 
+      : clientes.filter(cliente => cliente.representanteId?.toString() === representanteSelecionado);
+  }, [clientes, representanteSelecionado]);
+
+  const categorizedClientes = useMemo(() => {
+    return {
+      ativos: filteredClientes.filter(c => c.statusCliente === 'Ativo'),
+      emAnalise: filteredClientes.filter(c => c.statusCliente === 'Em análise'),
+      ativar: filteredClientes.filter(c => c.statusCliente === 'A ativar'),
+      inativos: filteredClientes.filter(c => c.statusCliente === 'Inativo'),
+      standby: filteredClientes.filter(c => c.statusCliente === 'Standby')
+    };
+  }, [filteredClientes]);
+
   // Use React Query for better caching and loading states
-  const { data: optimizedData, isLoading, error } = useQuery({
+  const { data: optimizedData, isLoading, error, refetch } = useQuery({
     queryKey: ['representantes-data', representanteSelecionado, clientes.length, registros.length],
-    queryFn: async () => {
+    queryFn: useCallback(async () => {
       if (!isActive || !clientes.length) return null;
 
-      // Load initial data if needed
-      if (clientes.length === 0) {
-        await carregarClientes();
-      }
-
-      const clientesDoRepresentante = representanteSelecionado === "todos" 
-        ? clientes 
-        : clientes.filter(cliente => cliente.representanteId?.toString() === representanteSelecionado);
-
-      // Optimize status calculations with memoization
-      const clientesAtivos = clientesDoRepresentante.filter(c => c.statusCliente === 'Ativo');
-      const clientesEmAnalise = clientesDoRepresentante.filter(c => c.statusCliente === 'Em análise');
-      const clientesAtivar = clientesDoRepresentante.filter(c => c.statusCliente === 'A ativar');
-      const clientesInativos = clientesDoRepresentante.filter(c => c.statusCliente === 'Inativo');
-      const clientesStandby = clientesDoRepresentante.filter(c => c.statusCliente === 'Standby');
-
-      // Optimize giro calculations
-      const giroTotalReal = clientesAtivos.reduce((sum, c) => {
+      // Optimized giro calculations with early return
+      const giroTotalReal = categorizedClientes.ativos.reduce((sum, c) => {
         return sum + calcularGiroSemanalHistoricoSync(c.id, registros);
       }, 0);
 
-      const giroMedioPorPDV = clientesAtivos.length > 0 
-        ? Math.round(giroTotalReal / clientesAtivos.length)
+      const giroMedioPorPDV = categorizedClientes.ativos.length > 0 
+        ? Math.round(giroTotalReal / categorizedClientes.ativos.length)
         : 0;
 
-      const taxaConversao = clientesDoRepresentante.length > 0 
-        ? (clientesAtivos.length / clientesDoRepresentante.length) * 100 
+      const taxaConversao = filteredClientes.length > 0 
+        ? (categorizedClientes.ativos.length / filteredClientes.length) * 100 
         : 0;
 
-      // Optimize chart data generation
+      // Optimize chart data generation with semantic colors
       const dadosStatusPie = [
-        { name: 'Ativos', value: clientesAtivos.length, color: '#22c55e' },
-        { name: 'Em análise', value: clientesEmAnalise.length, color: '#3b82f6' },
-        { name: 'A ativar', value: clientesAtivar.length, color: '#f59e0b' },
-        { name: 'Standby', value: clientesStandby.length, color: '#6b7280' },
-        { name: 'Inativos', value: clientesInativos.length, color: '#ef4444' }
+        { name: 'Ativos', value: categorizedClientes.ativos.length, color: 'hsl(var(--chart-1))' },
+        { name: 'Em análise', value: categorizedClientes.emAnalise.length, color: 'hsl(var(--chart-2))' },
+        { name: 'A ativar', value: categorizedClientes.ativar.length, color: 'hsl(var(--chart-3))' },
+        { name: 'Standby', value: categorizedClientes.standby.length, color: 'hsl(var(--chart-4))' },
+        { name: 'Inativos', value: categorizedClientes.inativos.length, color: 'hsl(var(--chart-5))' }
       ].filter(item => item.value > 0);
 
-      const dadosGiroBar = clientesAtivos
-        .slice(0, 10)
+      // Improved bar chart with better performance
+      const dadosGiroBar = categorizedClientes.ativos
         .map(cliente => ({
           nome: cliente.nome.substring(0, 15) + (cliente.nome.length > 15 ? '...' : ''),
-          giro: calcularGiroSemanalHistoricoSync(cliente.id, registros)
+          giro: calcularGiroSemanalHistoricoSync(cliente.id, registros),
+          clienteId: cliente.id
         }))
-        .sort((a, b) => b.giro - a.giro);
+        .sort((a, b) => b.giro - a.giro)
+        .slice(0, 10);
 
       return {
-        clientesDoRepresentante,
-        clientesAtivos,
-        clientesEmAnalise,
-        clientesAtivar,
-        clientesInativos,
-        clientesStandby,
+        clientesDoRepresentante: filteredClientes,
+        clientesAtivos: categorizedClientes.ativos,
+        clientesEmAnalise: categorizedClientes.emAnalise,
+        clientesAtivar: categorizedClientes.ativar,
+        clientesInativos: categorizedClientes.inativos,
+        clientesStandby: categorizedClientes.standby,
         giroTotalReal,
         giroMedioPorPDV,
         taxaConversao,
         dadosStatusPie,
         dadosGiroBar
       };
-    },
+    }, [isActive, clientes, categorizedClientes, filteredClientes, registros]),
     enabled: isActive && !clientesLoading && !representantesLoading,
-    staleTime: 2 * 60 * 1000, // 2 minutes cache
-    gcTime: 5 * 60 * 1000, // 5 minutes garbage collection
-    refetchOnWindowFocus: false
+    staleTime: 3 * 60 * 1000, // 3 minutes cache
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
+    refetchOnWindowFocus: false,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000)
   });
 
   const representanteNome = useMemo(() => {
@@ -107,6 +112,7 @@ export const useOptimizedRepresentantesData = (representanteSelecionado: string,
     representanteNome,
     isLoading: isLoading || clientesLoading || representantesLoading,
     error,
-    representantes
+    representantes,
+    refetch
   };
 };
