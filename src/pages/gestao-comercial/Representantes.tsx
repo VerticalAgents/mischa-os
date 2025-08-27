@@ -28,7 +28,7 @@ import { Cliente } from "@/types";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { calcularGiroSemanalHistoricoSync } from "@/utils/giroCalculations";
 
-type SortField = 'nome' | 'giro' | 'status' | 'achievement' | 'entregas' | 'dias';
+type SortField = 'nome' | 'giro' | 'status' | 'achievement' | 'entregas' | 'dias' | 'ultimaEntrega';
 type SortDirection = 'asc' | 'desc';
 
 interface SortConfig {
@@ -435,15 +435,18 @@ function SortableClientesTable({
     const entregas = registros.filter(h => h.cliente_id === clienteId && h.tipo === 'entrega');
     const totalEntregas = entregas.length;
     
-    if (totalEntregas === 0) return { count: 0, daysSinceFirst: 0, canActivate: false };
+    if (totalEntregas === 0) return { count: 0, daysSinceFirst: 0, daysSinceLastDelivery: null, canActivate: false };
     
     const primeiraEntrega = new Date(Math.min(...entregas.map(e => new Date(e.data).getTime())));
+    const ultimaEntrega = new Date(Math.max(...entregas.map(e => new Date(e.data).getTime())));
     const hoje = new Date();
     const daysSinceFirst = Math.floor((hoje.getTime() - primeiraEntrega.getTime()) / (1000 * 60 * 60 * 24));
+    const daysSinceLastDelivery = Math.floor((hoje.getTime() - ultimaEntrega.getTime()) / (1000 * 60 * 60 * 24));
     
     return {
       count: totalEntregas,
       daysSinceFirst,
+      daysSinceLastDelivery,
       canActivate: totalEntregas >= 4
     };
   }, [registros]);
@@ -480,6 +483,12 @@ function SortableClientesTable({
         case 'dias':
           aValue = getDeliveryStats(a.id).daysSinceFirst;
           bValue = getDeliveryStats(b.id).daysSinceFirst;
+          break;
+        case 'ultimaEntrega':
+          const statsA = getDeliveryStats(a.id);
+          const statsB = getDeliveryStats(b.id);
+          aValue = statsA.daysSinceLastDelivery ?? 999999; // Clientes sem entregas vão para o final
+          bValue = statsB.daysSinceLastDelivery ?? 999999;
           break;
         default:
           aValue = a.nome;
@@ -554,6 +563,11 @@ function SortableClientesTable({
                 Achievement {getSortIcon('achievement')}
               </Button>
             </TableHead>
+            <TableHead className="text-left">
+              <Button variant="ghost" onClick={() => handleSort('ultimaEntrega')} className="h-auto p-0 font-medium justify-start">
+                Ultima Entrega {getSortIcon('ultimaEntrega')}
+              </Button>
+            </TableHead>
             {showDeliveryStats && (
               <>
                 <TableHead className="text-left">
@@ -621,6 +635,20 @@ function SortableClientesTable({
                 </TableCell>
                 <TableCell className="text-left font-mono">
                   {achievement.toFixed(1)}%
+                </TableCell>
+                <TableCell className="text-left">
+                  {(() => {
+                    const stats = getDeliveryStats(cliente.id);
+                    return stats.daysSinceLastDelivery !== null ? (
+                      <span className="text-sm">
+                        {stats.daysSinceLastDelivery === 0 ? 'Hoje' : 
+                         stats.daysSinceLastDelivery === 1 ? '1 dia' : 
+                         `${stats.daysSinceLastDelivery} dias`}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">Sem entregas</span>
+                    );
+                  })()}
                 </TableCell>
                 {showDeliveryStats && deliveryStats && (
                   <>
