@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,16 +12,15 @@ import { HistoricoEditModal } from "../expedicao/HistoricoEditModal";
 import { HistoricoDetalhesModal } from "../expedicao/HistoricoDetalhesModal";
 import { HistoricoTable } from "../expedicao/HistoricoTable";
 import { Cliente } from "@/types";
-
 interface HistoricoEntregasClienteProps {
   cliente: Cliente;
 }
-
-export const HistoricoEntregasCliente = ({ cliente }: HistoricoEntregasClienteProps) => {
+export const HistoricoEntregasCliente = ({
+  cliente
+}: HistoricoEntregasClienteProps) => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [detalhesModalOpen, setDetalhesModalOpen] = useState(false);
   const [registroSelecionado, setRegistroSelecionado] = useState<any>(null);
-  
   const {
     registros,
     isLoading,
@@ -34,37 +32,29 @@ export const HistoricoEntregasCliente = ({ cliente }: HistoricoEntregasClientePr
     resetFiltros,
     getRegistrosFiltrados
   } = useHistoricoEntregasStore();
-
   useEffect(() => {
     carregarHistorico(cliente.id);
   }, [cliente.id]);
-
   const registrosFiltrados = getRegistrosFiltrados();
-  
   const totalEntregas = registrosFiltrados.filter(r => r.tipo === 'entrega').length;
   const totalRetornos = registrosFiltrados.filter(r => r.tipo === 'retorno').length;
-
   const handleEditarRegistro = (registro: any) => {
     setRegistroSelecionado(registro);
     setEditModalOpen(true);
   };
-
   const handleVerDetalhes = (registro: any) => {
     setRegistroSelecionado(registro);
     setDetalhesModalOpen(true);
   };
-
   const handleResetFiltros = () => {
     resetFiltros();
     carregarHistorico(cliente.id);
   };
-
-  return (
-    <Card className="p-6">
+  return <Card className="p-6">
       <div className="space-y-6">
         <div>
           <h3 className="text-xl font-semibold mb-2">Histórico de Entregas do Cliente</h3>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-left">
             Visualize todas as entregas e retornos confirmados para {cliente.nome}.
           </p>
         </div>
@@ -74,12 +64,7 @@ export const HistoricoEntregasCliente = ({ cliente }: HistoricoEntregasClientePr
           <div className="flex items-center gap-4">
             <Calendar className="h-5 w-5 text-muted-foreground" />
             <span className="font-medium">Filtros de Período</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleResetFiltros}
-              className="ml-auto"
-            >
+            <Button variant="outline" size="sm" onClick={handleResetFiltros} className="ml-auto">
               <RotateCcw className="h-4 w-4 mr-2" />
               Restaurar Padrão (2 meses)
             </Button>
@@ -88,21 +73,11 @@ export const HistoricoEntregasCliente = ({ cliente }: HistoricoEntregasClientePr
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="dataInicio">Data Início</Label>
-              <Input
-                id="dataInicio"
-                type="date"
-                value={format(filtros.dataInicio, 'yyyy-MM-dd')}
-                onChange={(e) => setFiltroDataInicio(new Date(e.target.value))}
-              />
+              <Input id="dataInicio" type="date" value={format(filtros.dataInicio, 'yyyy-MM-dd')} onChange={e => setFiltroDataInicio(new Date(e.target.value))} />
             </div>
             <div>
               <Label htmlFor="dataFim">Data Fim</Label>
-              <Input
-                id="dataFim"
-                type="date"
-                value={format(filtros.dataFim, 'yyyy-MM-dd')}
-                onChange={(e) => setFiltroDataFim(new Date(e.target.value))}
-              />
+              <Input id="dataFim" type="date" value={format(filtros.dataFim, 'yyyy-MM-dd')} onChange={e => setFiltroDataFim(new Date(e.target.value))} />
             </div>
           </div>
         </div>
@@ -124,11 +99,7 @@ export const HistoricoEntregasCliente = ({ cliente }: HistoricoEntregasClientePr
         </div>
 
         {/* Tabs por tipo */}
-        <Tabs 
-          value={filtros.tipo} 
-          onValueChange={(value) => setFiltroTipo(value as any)}
-          className="w-full"
-        >
+        <Tabs value={filtros.tipo} onValueChange={value => setFiltroTipo(value as any)} className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="todos">
               Todos ({registrosFiltrados.length})
@@ -144,48 +115,21 @@ export const HistoricoEntregasCliente = ({ cliente }: HistoricoEntregasClientePr
           </TabsList>
           
           <TabsContent value="todos">
-            <HistoricoTable 
-              registros={registrosFiltrados}
-              onEditarRegistro={handleEditarRegistro}
-              onVerDetalhes={handleVerDetalhes}
-              isLoading={isLoading}
-              showClienteColumn={false}
-            />
+            <HistoricoTable registros={registrosFiltrados} onEditarRegistro={handleEditarRegistro} onVerDetalhes={handleVerDetalhes} isLoading={isLoading} showClienteColumn={false} />
           </TabsContent>
           
           <TabsContent value="entrega">
-            <HistoricoTable 
-              registros={registrosFiltrados}
-              onEditarRegistro={handleEditarRegistro}
-              onVerDetalhes={handleVerDetalhes}
-              isLoading={isLoading}
-              showClienteColumn={false}
-            />
+            <HistoricoTable registros={registrosFiltrados} onEditarRegistro={handleEditarRegistro} onVerDetalhes={handleVerDetalhes} isLoading={isLoading} showClienteColumn={false} />
           </TabsContent>
           
           <TabsContent value="retorno">
-            <HistoricoTable 
-              registros={registrosFiltrados}
-              onEditarRegistro={handleEditarRegistro}
-              onVerDetalhes={handleVerDetalhes}
-              isLoading={isLoading}
-              showClienteColumn={false}
-            />
+            <HistoricoTable registros={registrosFiltrados} onEditarRegistro={handleEditarRegistro} onVerDetalhes={handleVerDetalhes} isLoading={isLoading} showClienteColumn={false} />
           </TabsContent>
         </Tabs>
       </div>
 
-      <HistoricoEditModal
-        open={editModalOpen}
-        onOpenChange={setEditModalOpen}
-        registro={registroSelecionado}
-      />
+      <HistoricoEditModal open={editModalOpen} onOpenChange={setEditModalOpen} registro={registroSelecionado} />
 
-      <HistoricoDetalhesModal
-        open={detalhesModalOpen}
-        onOpenChange={setDetalhesModalOpen}
-        registro={registroSelecionado}
-      />
-    </Card>
-  );
+      <HistoricoDetalhesModal open={detalhesModalOpen} onOpenChange={setDetalhesModalOpen} registro={registroSelecionado} />
+    </Card>;
 };
