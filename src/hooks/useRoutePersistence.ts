@@ -4,20 +4,28 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 const ROUTE_STORAGE_KEY = 'lastVisitedRoute';
 
+// Lista de rotas que não devem ser salvas
+const EXCLUDED_ROUTES = ['/auth', '/login', '/', '/home'];
+
+const shouldSaveRoute = (path: string): boolean => {
+  return !EXCLUDED_ROUTES.includes(path) && !path.startsWith('/auth');
+};
+
+const shouldRestoreRoute = (route: string): boolean => {
+  return route && 
+         !EXCLUDED_ROUTES.includes(route) && 
+         !route.startsWith('/auth');
+};
+
 export const useRoutePersistence = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Salva a rota atual sempre que ela muda (exceto rotas de auth)
+  // Salva a rota atual sempre que ela muda (exceto rotas excluídas)
   useEffect(() => {
     const currentPath = location.pathname + location.search + location.hash;
     
-    // Não salvar rotas de autenticação, root vazia ou rotas inválidas
-    if (currentPath !== '/auth' && 
-        currentPath !== '/login' && 
-        currentPath !== '/' && 
-        currentPath !== '/home' &&
-        !currentPath.startsWith('/auth')) {
+    if (shouldSaveRoute(currentPath)) {
       console.log('🔄 Salvando rota atual:', currentPath);
       localStorage.setItem(ROUTE_STORAGE_KEY, currentPath);
     }
@@ -30,14 +38,10 @@ export const useRoutePersistence = () => {
     
     console.log('🔍 Verificando rota salva:', { savedRoute, currentPath });
     
-    // Se existe uma rota salva e é diferente da atual
+    // Se existe uma rota salva válida e é diferente da atual
     if (savedRoute && 
         savedRoute !== currentPath && 
-        savedRoute !== '/auth' && 
-        savedRoute !== '/login' && 
-        savedRoute !== '/' &&
-        savedRoute !== '/home' &&
-        !savedRoute.startsWith('/auth')) {
+        shouldRestoreRoute(savedRoute)) {
       
       console.log('🚀 Restaurando rota para:', savedRoute);
       navigate(savedRoute, { replace: true });
