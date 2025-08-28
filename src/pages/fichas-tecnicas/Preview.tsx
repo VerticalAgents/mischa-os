@@ -48,12 +48,13 @@ export default function FichaPreview(){
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Stat label="Receita" value={meta.receita_nome} />
             <Stat label="Multiplicador" value={`${meta.multiplicador}×`} />
-            <Stat label="Peso total da massa (g)" value={base.total_g} />
-            <Stat label="Peso total de toppings (g)" value={toppings.total_g} />
+            <Stat label="Massa total (sem topping) — g" value={base.total_g} />
+            <Stat label="Peso total de toppings — g" value={toppings.total_g} />
           </div>
           <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Stat label="Peso total (com topping) — g" value={base.total_g + toppings.total_g} />
             <Stat label="Nº de formas" value={meta.forms_count} />
-            <Stat label="Massa por forma (g)" value={base.per_form_g ?? "—"} />
+            <Stat label="Massa por forma (sem topping) — g" value={meta.forms_count > 0 ? Math.round(base.total_g / meta.forms_count) : "—"} />
             <Stat label="Obs." value={observacoes ? "Veja abaixo" : "—"} />
           </div>
         </header>
