@@ -90,11 +90,39 @@ const PAGAMENTO_CORRECTIONS = {
   'cash': 'Dinheiro'
 };
 
-// Valores válidos para validação
-const VALID_STATUS = ['Ativo', 'Inativo', 'Em análise', 'A ativar', 'Standby'];
-const VALID_LOGISTICA = ['Própria', 'Terceirizada'];
-const VALID_COBRANCA = ['À vista', 'Parcelado', 'A prazo'];
-const VALID_PAGAMENTO = ['Boleto', 'Cartão de crédito', 'Cartão de débito', 'PIX', 'Transferência', 'Cheque', 'Dinheiro'];
+// Valores válidos para validação - ATUALIZADOS PARA FORMATO CANÔNICO
+const VALID_STATUS = ['ATIVO', 'INATIVO', 'EM_ANALISE', 'A_ATIVAR', 'STANDBY'];
+const VALID_LOGISTICA = ['PROPRIA', 'TERCEIRIZADA'];
+const VALID_COBRANCA = ['A_VISTA', 'PARCELADO', 'A_PRAZO'];
+const VALID_PAGAMENTO = ['BOLETO', 'PIX', 'DINHEIRO', 'CARTAO_CREDITO', 'CARTAO_DEBITO'];
+
+// Mapear valores antigos para novos valores canônicos
+const STATUS_TO_CANONICAL = {
+  'Ativo': 'ATIVO',
+  'Inativo': 'INATIVO', 
+  'Em análise': 'EM_ANALISE',
+  'A ativar': 'A_ATIVAR',
+  'Standby': 'STANDBY'
+};
+
+const LOGISTICA_TO_CANONICAL = {
+  'Própria': 'PROPRIA',
+  'Terceirizada': 'TERCEIRIZADA'
+};
+
+const COBRANCA_TO_CANONICAL = {
+  'À vista': 'A_VISTA',
+  'Parcelado': 'PARCELADO',
+  'A prazo': 'A_PRAZO'
+};
+
+const PAGAMENTO_TO_CANONICAL = {
+  'Boleto': 'BOLETO',
+  'PIX': 'PIX',
+  'Dinheiro': 'DINHEIRO',
+  'Cartão de crédito': 'CARTAO_CREDITO',
+  'Cartão de débito': 'CARTAO_DEBITO'
+};
 
 // Helpers para transformação segura de dados
 const intOrNull = (v: any): number | null => {
@@ -256,81 +284,94 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     sanitized.observacoes = sanitized.observacoes.toString().trim();
   }
 
-  // 2. Corrigir e validar status_cliente
+  // 2. Corrigir e validar status_cliente - CONVERTER PARA CANÔNICO
+  let canonicalStatus = 'ATIVO';
   if (sanitized.statusCliente) {
     const originalStatus = sanitized.statusCliente;
     const statusKey = originalStatus.toLowerCase();
 
+    // Primeiro, tentar corrigir tokens problemáticos
     if (STATUS_CORRECTIONS[statusKey]) {
-      sanitized.statusCliente = STATUS_CORRECTIONS[statusKey];
-      corrections.push(`Status: ${originalStatus} → ${sanitized.statusCliente}`);
-    }
-
-    if (!VALID_STATUS.includes(sanitized.statusCliente)) {
-      sanitized.statusCliente = 'Ativo';
-      errors.push(`Status inválido "${originalStatus}", usando padrão "Ativo"`);
+      canonicalStatus = STATUS_TO_CANONICAL[STATUS_CORRECTIONS[statusKey]] || 'ATIVO';
+      corrections.push(`Status corrigido: ${originalStatus} → ${canonicalStatus}`);
+    } else if (STATUS_TO_CANONICAL[originalStatus]) {
+      canonicalStatus = STATUS_TO_CANONICAL[originalStatus];
+      corrections.push(`Status canonizado: ${originalStatus} → ${canonicalStatus}`);
+    } else if (VALID_STATUS.includes(originalStatus as any)) {
+      canonicalStatus = originalStatus as any;
+    } else {
+      canonicalStatus = 'ATIVO';
+      errors.push(`Status inválido "${originalStatus}", usando padrão "ATIVO"`);
       isValid = false;
     }
-  } else {
-    sanitized.statusCliente = 'Ativo';
   }
+  sanitized.statusCliente = canonicalStatus as any;
 
-  // 3. Corrigir e validar tipo_logistica
+  // 3. Corrigir e validar tipo_logistica - CONVERTER PARA CANÔNICO
+  let canonicalLogistica = 'PROPRIA';
   if (sanitized.tipoLogistica) {
     const originalLogistica = sanitized.tipoLogistica;
     const logisticaKey = originalLogistica.toLowerCase();
 
     if (LOGISTICA_CORRECTIONS[logisticaKey]) {
-      sanitized.tipoLogistica = LOGISTICA_CORRECTIONS[logisticaKey];
-      corrections.push(`Logística: ${originalLogistica} → ${sanitized.tipoLogistica}`);
-    }
-
-    if (!VALID_LOGISTICA.includes(sanitized.tipoLogistica)) {
-      sanitized.tipoLogistica = 'Própria';
-      errors.push(`Logística inválida "${originalLogistica}", usando padrão "Própria"`);
+      canonicalLogistica = LOGISTICA_TO_CANONICAL[LOGISTICA_CORRECTIONS[logisticaKey]] || 'PROPRIA';
+      corrections.push(`Logística corrigida: ${originalLogistica} → ${canonicalLogistica}`);
+    } else if (LOGISTICA_TO_CANONICAL[originalLogistica]) {
+      canonicalLogistica = LOGISTICA_TO_CANONICAL[originalLogistica];
+      corrections.push(`Logística canonizada: ${originalLogistica} → ${canonicalLogistica}`);
+    } else if (VALID_LOGISTICA.includes(originalLogistica as any)) {
+      canonicalLogistica = originalLogistica as any;
+    } else {
+      canonicalLogistica = 'PROPRIA';
+      errors.push(`Logística inválida "${originalLogistica}", usando padrão "PROPRIA"`);
       isValid = false;
     }
-  } else {
-    sanitized.tipoLogistica = 'Própria';
   }
+  sanitized.tipoLogistica = canonicalLogistica as any;
 
-  // 4. Corrigir e validar tipo_cobranca
+  // 4. Corrigir e validar tipo_cobranca - CONVERTER PARA CANÔNICO
+  let canonicalCobranca = 'A_VISTA';
   if (sanitized.tipoCobranca) {
     const originalCobranca = sanitized.tipoCobranca;
     const cobrancaKey = originalCobranca.toLowerCase();
 
     if (COBRANCA_CORRECTIONS[cobrancaKey]) {
-      sanitized.tipoCobranca = COBRANCA_CORRECTIONS[cobrancaKey];
-      corrections.push(`Cobrança: ${originalCobranca} → ${sanitized.tipoCobranca}`);
-    }
-
-    if (!VALID_COBRANCA.includes(sanitized.tipoCobranca)) {
-      sanitized.tipoCobranca = 'À vista';
-      errors.push(`Cobrança inválida "${originalCobranca}", usando padrão "À vista"`);
+      canonicalCobranca = COBRANCA_TO_CANONICAL[COBRANCA_CORRECTIONS[cobrancaKey]] || 'A_VISTA';
+      corrections.push(`Cobrança corrigida: ${originalCobranca} → ${canonicalCobranca}`);
+    } else if (COBRANCA_TO_CANONICAL[originalCobranca]) {
+      canonicalCobranca = COBRANCA_TO_CANONICAL[originalCobranca];
+      corrections.push(`Cobrança canonizada: ${originalCobranca} → ${canonicalCobranca}`);
+    } else if (VALID_COBRANCA.includes(originalCobranca as any)) {
+      canonicalCobranca = originalCobranca as any;
+    } else {
+      canonicalCobranca = 'A_VISTA';
+      errors.push(`Cobrança inválida "${originalCobranca}", usando padrão "A_VISTA"`);
       isValid = false;
     }
-  } else {
-    sanitized.tipoCobranca = 'À vista';
   }
+  sanitized.tipoCobranca = canonicalCobranca as any;
 
-  // 5. Corrigir e validar forma_pagamento
+  // 5. Corrigir e validar forma_pagamento - CONVERTER PARA CANÔNICO
+  let canonicalPagamento = 'BOLETO';
   if (sanitized.formaPagamento) {
     const originalPagamento = sanitized.formaPagamento;
     const pagamentoKey = originalPagamento.toLowerCase();
 
     if (PAGAMENTO_CORRECTIONS[pagamentoKey]) {
-      sanitized.formaPagamento = PAGAMENTO_CORRECTIONS[pagamentoKey];
-      corrections.push(`Pagamento: ${originalPagamento} → ${sanitized.formaPagamento}`);
-    }
-
-    if (!VALID_PAGAMENTO.includes(sanitized.formaPagamento)) {
-      sanitized.formaPagamento = 'Boleto';
-      errors.push(`Pagamento inválido "${originalPagamento}", usando padrão "Boleto"`);
+      canonicalPagamento = PAGAMENTO_TO_CANONICAL[PAGAMENTO_CORRECTIONS[pagamentoKey]] || 'BOLETO';
+      corrections.push(`Pagamento corrigido: ${originalPagamento} → ${canonicalPagamento}`);
+    } else if (PAGAMENTO_TO_CANONICAL[originalPagamento]) {
+      canonicalPagamento = PAGAMENTO_TO_CANONICAL[originalPagamento];
+      corrections.push(`Pagamento canonizado: ${originalPagamento} → ${canonicalPagamento}`);
+    } else if (VALID_PAGAMENTO.includes(originalPagamento as any)) {
+      canonicalPagamento = originalPagamento as any;
+    } else {
+      canonicalPagamento = 'BOLETO';
+      errors.push(`Pagamento inválido "${originalPagamento}", usando padrão "BOLETO"`);
       isValid = false;
     }
-  } else {
-    sanitized.formaPagamento = 'Boleto';
   }
+  sanitized.formaPagamento = canonicalPagamento as any;
 
   // 6. Sanitizar arrays e valores numéricos - COM VALIDAÇÃO RIGOROSA
   console.log('🔍 Valores originais antes da sanitização de arrays:', {
