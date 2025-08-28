@@ -220,13 +220,18 @@ export type Database = {
           categoria_estabelecimento_id: number | null
           categorias_habilitadas: Json | null
           cnpj_cpf: string | null
+          cnpj_cpf_encrypted: string | null
           contabilizar_giro_medio: boolean | null
           contato_email: string | null
+          contato_email_encrypted: string | null
           contato_nome: string | null
+          contato_nome_encrypted: string | null
           contato_telefone: string | null
+          contato_telefone_encrypted: string | null
           created_at: string
           emite_nota_fiscal: boolean | null
           endereco_entrega: string | null
+          endereco_entrega_encrypted: string | null
           forma_pagamento: string | null
           giro_medio_semanal: number | null
           id: string
@@ -253,13 +258,18 @@ export type Database = {
           categoria_estabelecimento_id?: number | null
           categorias_habilitadas?: Json | null
           cnpj_cpf?: string | null
+          cnpj_cpf_encrypted?: string | null
           contabilizar_giro_medio?: boolean | null
           contato_email?: string | null
+          contato_email_encrypted?: string | null
           contato_nome?: string | null
+          contato_nome_encrypted?: string | null
           contato_telefone?: string | null
+          contato_telefone_encrypted?: string | null
           created_at?: string
           emite_nota_fiscal?: boolean | null
           endereco_entrega?: string | null
+          endereco_entrega_encrypted?: string | null
           forma_pagamento?: string | null
           giro_medio_semanal?: number | null
           id?: string
@@ -286,13 +296,18 @@ export type Database = {
           categoria_estabelecimento_id?: number | null
           categorias_habilitadas?: Json | null
           cnpj_cpf?: string | null
+          cnpj_cpf_encrypted?: string | null
           contabilizar_giro_medio?: boolean | null
           contato_email?: string | null
+          contato_email_encrypted?: string | null
           contato_nome?: string | null
+          contato_nome_encrypted?: string | null
           contato_telefone?: string | null
+          contato_telefone_encrypted?: string | null
           created_at?: string
           emite_nota_fiscal?: boolean | null
           endereco_entrega?: string | null
+          endereco_entrega_encrypted?: string | null
           forma_pagamento?: string | null
           giro_medio_semanal?: number | null
           id?: string
@@ -1541,6 +1556,31 @@ export type Database = {
           quantidade: number
         }[]
       }
+      decrypt_sensitive_data: {
+        Args: { encrypted_data: string }
+        Returns: string
+      }
+      encrypt_sensitive_data: {
+        Args: { data: string }
+        Returns: string
+      }
+      get_cliente_secure: {
+        Args: { cliente_id: string }
+        Returns: {
+          ativo: boolean
+          categoria_estabelecimento_id: number
+          cnpj_cpf: string
+          contato_email: string
+          contato_nome: string
+          contato_telefone: string
+          endereco_entrega: string
+          id: string
+          nome: string
+          representante_id: number
+          rota_entrega_id: number
+          status_cliente: string
+        }[]
+      }
       get_clientes_basic_info: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1558,6 +1598,27 @@ export type Database = {
           rota_entrega_id: number
           status_cliente: string
           ultima_data_reposicao_efetiva: string
+          updated_at: string
+        }[]
+      }
+      get_clientes_secure: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          ativo: boolean
+          categoria_estabelecimento_id: number
+          cnpj_cpf: string
+          contato_email: string
+          contato_nome: string
+          contato_telefone: string
+          created_at: string
+          endereco_entrega: string
+          giro_medio_semanal: number
+          id: string
+          meta_giro_semanal: number
+          nome: string
+          representante_id: number
+          rota_entrega_id: number
+          status_cliente: string
           updated_at: string
         }[]
       }
