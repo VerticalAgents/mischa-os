@@ -384,14 +384,6 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     errors.push('Nome é obrigatório');
     isValid = false;
   }
-  if (!sanitized.enderecoEntrega || sanitized.enderecoEntrega === '') {
-    errors.push('Endereço de entrega é obrigatório');
-    isValid = false;
-  }
-  if (!sanitized.linkGoogleMaps || sanitized.linkGoogleMaps === '') {
-    errors.push('Link do Google Maps é obrigatório');
-    isValid = false;
-  }
 
   // 9. Transformar para formato do banco de dados com validação extra
   console.log('🔄 Transformando para formato do banco:', {
