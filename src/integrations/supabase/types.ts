@@ -1692,6 +1692,10 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_dados_analise_giro: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown[]
+      }
       get_request_ip: {
         Args: Record<PropertyKey, never>
         Returns: unknown
