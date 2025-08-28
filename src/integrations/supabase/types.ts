@@ -1700,10 +1700,6 @@ export type Database = {
           total_custos_variaveis: number
         }[]
       }
-      get_dados_analise_giro: {
-        Args: Record<PropertyKey, never>
-        Returns: unknown[]
-      }
       get_feature_flag: {
         Args: { flag_name: string }
         Returns: boolean
