@@ -148,6 +148,18 @@ export default function ClienteFormDialog({
     
     console.log('ClienteFormDialog: Dados do formulário antes da validação:', formData);
     
+    // Validação contra valores traduzidos automaticamente
+    const validStatuses = ['Ativo', 'Inativo', 'Em análise', 'A ativar', 'Standby'];
+    if (formData.statusCliente && !validStatuses.includes(formData.statusCliente)) {
+      console.error('Status inválido detectado no formulário:', formData.statusCliente);
+      toast({
+        title: "Erro de tradução automática",
+        description: `Status "${formData.statusCliente}" é inválido. Selecione um status válido da lista.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Validação dos campos obrigatórios
     if (!formData.nome || formData.nome.trim() === '') {
       console.log('ClienteFormDialog: Erro - Nome vazio:', formData.nome);
@@ -409,15 +421,15 @@ export default function ClienteFormDialog({
                 <div className="space-y-2">
                   <Label htmlFor="statusCliente">Status</Label>
                   <Select value={formData.statusCliente || 'Ativo'} onValueChange={(value: StatusCliente) => handleInputChange('statusCliente', value)}>
-                    <SelectTrigger>
+                    <SelectTrigger translate="no" data-translate="no">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Ativo">Ativo</SelectItem>
-                      <SelectItem value="Inativo">Inativo</SelectItem>
-                      <SelectItem value="Em análise">Em análise</SelectItem>
-                      <SelectItem value="A ativar">A ativar</SelectItem>
-                      <SelectItem value="Standby">Standby</SelectItem>
+                    <SelectContent translate="no" data-translate="no">
+                      <SelectItem value="Ativo" translate="no">Ativo</SelectItem>
+                      <SelectItem value="Inativo" translate="no">Inativo</SelectItem>
+                      <SelectItem value="Em análise" translate="no">Em análise</SelectItem>
+                      <SelectItem value="A ativar" translate="no">A ativar</SelectItem>
+                      <SelectItem value="Standby" translate="no">Standby</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

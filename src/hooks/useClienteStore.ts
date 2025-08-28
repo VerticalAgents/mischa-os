@@ -39,6 +39,44 @@ const STATUS_DB = {
   'Standby': 'Standby' 
 };
 
+// Mapeamento reverso para valores traduzidos comuns
+const INVALID_TRANSLATED_VALUES = {
+  'customer_deleted': 'Inativo',
+  'active': 'Ativo', 
+  'inactive': 'Inativo',
+  'under_review': 'Em análise',
+  'to_activate': 'A ativar',
+  'standby': 'Standby',
+  'pending': 'Em análise',
+  'analyzing': 'Em análise'
+};
+
+// Validar e corrigir status de cliente
+function validateAndFixStatus(status: any): string {
+  if (!status || typeof status !== 'string') {
+    console.warn('Status inválido detectado:', status, '- usando fallback "Ativo"');
+    return 'Ativo';
+  }
+  
+  const trimmedStatus = status.trim();
+  
+  // Verificar se é um valor válido
+  if (STATUS_DB[trimmedStatus]) {
+    return trimmedStatus;
+  }
+  
+  // Verificar se é um valor traduzido conhecido
+  if (INVALID_TRANSLATED_VALUES[trimmedStatus.toLowerCase()]) {
+    const correctedStatus = INVALID_TRANSLATED_VALUES[trimmedStatus.toLowerCase()];
+    console.warn(`Status traduzido detectado: "${trimmedStatus}" -> "${correctedStatus}"`);
+    return correctedStatus;
+  }
+  
+  // Se chegou aqui, é um valor completamente inválido
+  console.error(`Status completamente inválido detectado: "${trimmedStatus}" - usando fallback "Ativo"`);
+  return 'Ativo';
+}
+
 export function transformClienteToDbRow(c: any) {
   const valid = {
     nome: c?.nome?.trim() || '',
@@ -57,7 +95,7 @@ export function transformClienteToDbRow(c: any) {
     giro_medio_semanal: numOrNull(c?.giroMedioSemanal) ?? 0,
     janelas_entrega: arrJson(c?.janelasEntrega),
     categorias_habilitadas: arrNum(c?.categoriasHabilitadas),
-    status_cliente: STATUS_DB[c?.statusCliente ?? 'Ativo'] ?? 'Ativo',
+    status_cliente: validateAndFixStatus(c?.statusCliente),
     ultima_data_reposicao_efetiva: c?.ultimaDataReposicaoEfetiva?.toISOString?.() || null,
     proxima_data_reposicao: c?.proximaDataReposicao?.toISOString?.() || null,
     ativo: boolOr(c?.ativo, true),
