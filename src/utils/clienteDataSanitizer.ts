@@ -5,20 +5,54 @@ interface SanitizationResult {
   corrections: string[];
   isValid: boolean;
   errors: string[];
+  detectedTokens?: { field: string, tokens: string[] }[];
+  originalData?: any;
+  diff?: {
+    before: any;
+    after: any;
+  };
 }
+
+// TOKENS PROBLEMÁTICOS - Lista abrangente de traduções automáticas detectadas
+const PROBLEMATIC_TOKENS = [
+  'customer_deleted', 'client_deleted', 'customer_inactive', 'customer_active',
+  'customer_analysis', 'customer_pending', 'customer_standby', 'customer_activate',
+  'client_inactive', 'client_active', 'client_analysis', 'client_pending',
+  'user_deleted', 'user_inactive', 'user_active', 'deleted_customer',
+  'inactive_customer', 'active_customer', 'pending_customer', 'standby_customer',
+  'under_analysis', 'to_activate', 'activate', 'analysis', 'analyzing',
+  'third_party', 'third-party', 'outsourced', 'bank_slip', 'credit_card',
+  'debit_card', 'cash', 'installments', 'sight', 'prepaid', 'deferred'
+];
 
 // Mapeamentos de correção para valores traduzidos
 const STATUS_CORRECTIONS = {
   'customer_deleted': 'Inativo',
+  'customer_inactive': 'Inativo',
+  'customer_active': 'Ativo',
+  'customer_analysis': 'Em análise',
+  'customer_pending': 'Em análise',
+  'customer_standby': 'Standby',
+  'customer_activate': 'A ativar',
+  'client_deleted': 'Inativo',
+  'client_inactive': 'Inativo',
+  'client_active': 'Ativo',
+  'client_analysis': 'Em análise',
+  'client_pending': 'Em análise',
+  'user_deleted': 'Inativo',
+  'user_inactive': 'Inativo',
+  'user_active': 'Ativo',
+  'deleted_customer': 'Inativo',
+  'inactive_customer': 'Inativo',
+  'active_customer': 'Ativo',
+  'pending_customer': 'Em análise',
+  'standby_customer': 'Standby',
   'inactive': 'Inativo', 
   'active': 'Ativo',
   'under_analysis': 'Em análise',
   'to_activate': 'A ativar',
   'standby': 'Standby',
   'deleted': 'Inativo',
-  'client_deleted': 'Inativo',
-  'customer_inactive': 'Inativo',
-  'customer_active': 'Ativo',
   'analysis': 'Em análise',
   'activate': 'A ativar',
   'pending': 'Em análise',
@@ -91,6 +125,73 @@ const arrNum = (v: any): number[] => {
   return v.map((x) => Number(x)).filter(Number.isFinite);
 };
 
+// Função para detectar tokens problemáticos em qualquer campo string
+const detectProblematicTokens = (value: any): string[] => {
+  if (!value || typeof value !== 'string') return [];
+  
+  const lowerValue = value.toLowerCase();
+  return PROBLEMATIC_TOKENS.filter(token => 
+    lowerValue.includes(token.toLowerCase())
+  );
+};
+
+// Função de limpeza agressiva para campos corrompidos
+const cleanCorruptedField = (value: any, fieldName: string): { cleaned: any, wasCorrupted: boolean, tokens: string[] } => {
+  const tokens = detectProblematicTokens(value);
+  const wasCorrupted = tokens.length > 0;
+  
+  if (wasCorrupted) {
+    console.warn(`🧹 Campo ${fieldName} contém tokens problemáticos:`, tokens);
+    
+    // Reset para valor seguro baseado no tipo de campo
+    const safeDefaults = {
+      'statusCliente': 'Ativo',
+      'tipoLogistica': 'Própria', 
+      'tipoCobranca': 'À vista',
+      'formaPagamento': 'Boleto',
+      'nome': '',
+      'enderecoEntrega': '',
+      'linkGoogleMaps': '',
+      'contatoNome': '',
+      'contatoTelefone': '',
+      'contatoEmail': '',
+      'instrucoesEntrega': '',
+      'observacoes': ''
+    };
+    
+    return {
+      cleaned: safeDefaults[fieldName] || '',
+      wasCorrupted: true,
+      tokens
+    };
+  }
+  
+  return {
+    cleaned: value,
+    wasCorrupted: false, 
+    tokens: []
+  };
+};
+
+// Função de reset completo para casos extremos
+export function createSafeClienteDefaults(): Partial<Cliente> {
+  return {
+    statusCliente: 'Ativo',
+    tipoLogistica: 'Própria',
+    tipoCobranca: 'À vista', 
+    formaPagamento: 'Boleto',
+    categoriasHabilitadas: [],
+    janelasEntrega: [],
+    quantidadePadrao: 0,
+    periodicidadePadrao: 7,
+    metaGiroSemanal: 0,
+    giroMedioSemanal: 0,
+    ativo: true,
+    contabilizarGiroMedio: true,
+    emiteNotaFiscal: true
+  };
+}
+
 /**
  * Sanitiza e valida dados de cliente antes do envio ao banco
  */
@@ -98,11 +199,33 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
   const corrections: string[] = [];
   const errors: string[] = [];
   let isValid = true;
+  const detectedTokens: { field: string, tokens: string[] }[] = [];
 
   console.log('🔧 Sanitizando dados do cliente:', data);
+  console.log('🔍 PAYLOAD ORIGINAL (antes da sanitização):', JSON.stringify(data, null, 2));
 
   // Criar cópia dos dados para sanitização
   const sanitized = { ...data };
+  
+  // 0. INTERCEPTAÇÃO AGRESSIVA - Verificar tokens problemáticos em TODOS os campos
+  const allFields = [
+    'nome', 'cnpjCpf', 'enderecoEntrega', 'linkGoogleMaps', 'contatoNome',
+    'contatoTelefone', 'contatoEmail', 'instrucoesEntrega', 'observacoes',
+    'statusCliente', 'tipoLogistica', 'tipoCobranca', 'formaPagamento'
+  ];
+  
+  allFields.forEach(field => {
+    if (sanitized[field]) {
+      const { cleaned, wasCorrupted, tokens } = cleanCorruptedField(sanitized[field], field);
+      
+      if (wasCorrupted) {
+        detectedTokens.push({ field, tokens });
+        sanitized[field] = cleaned;
+        corrections.push(`🧹 Campo ${field}: Tokens problemáticos removidos [${tokens.join(', ')}]`);
+        console.warn(`🚨 INTERCEPTADO: Campo ${field} continha tokens problemáticos:`, tokens);
+      }
+    }
+  });
 
   // 1. Sanitizar campos de texto básicos
   if (sanitized.nome) {
@@ -320,18 +443,29 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     updated_at: new Date().toISOString(),
   };
 
-  console.log('✅ Payload final para o banco de dados:', {
-    nome: dbData.nome,
+  // LOG DETALHADO DO PAYLOAD FINAL
+  console.log('📊 DIFF SANITIZAÇÃO - ANTES vs DEPOIS:');
+  console.log('ANTES:', {
+    statusCliente: data.statusCliente,
+    tipoLogistica: data.tipoLogistica, 
+    tipoCobranca: data.tipoCobranca,
+    formaPagamento: data.formaPagamento,
+    categoriasHabilitadas: data.categoriasHabilitadas,
+    janelasEntrega: data.janelasEntrega
+  });
+  console.log('DEPOIS:', {
     status_cliente: dbData.status_cliente,
     tipo_logistica: dbData.tipo_logistica,
     tipo_cobranca: dbData.tipo_cobranca,
     forma_pagamento: dbData.forma_pagamento,
     categorias_habilitadas: dbData.categorias_habilitadas,
-    janelas_entrega: dbData.janelas_entrega,
-    corrections: corrections.length,
-    errors: errors.length,
-    isValid
+    janelas_entrega: dbData.janelas_entrega
   });
+
+  console.log('✅ PAYLOAD FINAL PARA SUPABASE:', JSON.stringify(dbData, null, 2));
+  console.log('📋 CORREÇÕES APLICADAS:', corrections);
+  console.log('❌ ERROS DETECTADOS:', errors);
+  console.log('🚨 TOKENS PROBLEMÁTICOS ENCONTRADOS:', detectedTokens);
 
   // Validação final dos campos JSONB
   try {
@@ -348,6 +482,22 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     data: dbData,
     corrections,
     isValid,
-    errors
+    errors,
+    detectedTokens, // Adicionar tokens detectados ao retorno
+    originalData: data, // Manter dados originais para comparação
+    diff: {
+      before: {
+        statusCliente: data.statusCliente,
+        tipoLogistica: data.tipoLogistica,
+        tipoCobranca: data.tipoCobranca,
+        formaPagamento: data.formaPagamento
+      },
+      after: {
+        status_cliente: dbData.status_cliente,
+        tipo_logistica: dbData.tipo_logistica,
+        tipo_cobranca: dbData.tipo_cobranca,
+        forma_pagamento: dbData.forma_pagamento
+      }
+    }
   };
 }

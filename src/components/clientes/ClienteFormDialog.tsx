@@ -33,6 +33,7 @@ import CategoriasProdutoSelector from "./CategoriasProdutoSelector";
 import PrecificacaoPorCategoria from "./PrecificacaoPorCategoria";
 import { useErrorDetail } from '@/hooks/useErrorDetail';
 import { ErrorDetailDialog } from '@/components/common/ErrorDetailDialog';
+import { ClienteResetDialog } from './ClienteResetDialog';
 
 interface ClienteFormDialogProps {
   open: boolean;
@@ -85,6 +86,7 @@ export default function ClienteFormDialog({
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
 
   useEffect(() => {
     if (cliente && open) {
@@ -204,6 +206,15 @@ export default function ClienteFormDialog({
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleReset = (safeData: Partial<Cliente>) => {
+    console.log('🔄 APLICANDO RESET DE SEGURANÇA:', safeData);
+    setFormData(safeData);
+    toast({
+      title: "Reset aplicado",
+      description: "Agora você pode salvar sem erros."
+    });
   };
 
   const clienteTemp: Cliente = {
@@ -583,6 +594,14 @@ export default function ClienteFormDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
+            <Button 
+              type="button"
+              variant="secondary" 
+              onClick={() => setShowResetDialog(true)}
+              className="bg-warning hover:bg-warning/90"
+            >
+              Reset Seguro
+            </Button>
             <Button type="submit" disabled={loading || isSaving}>
               <Save className="h-4 w-4 mr-2" />
               {cliente ? 'Atualizar' : 'Cadastrar'}
@@ -596,6 +615,13 @@ export default function ClienteFormDialog({
         onOpenChange={hideErrorDetail}
         error={errorDetail?.error}
         context={errorDetail?.context}
+      />
+      
+      <ClienteResetDialog
+        open={showResetDialog}
+        onOpenChange={setShowResetDialog}
+        onReset={handleReset}
+        clienteAtual={cliente}
       />
     </Dialog>
   );

@@ -42,19 +42,22 @@ export function ErrorDetailDialog({ open, onOpenChange, error, context }: ErrorD
         return {
           title: "Erro de Sintaxe JSON",
           description: "Os dados enviados para o banco não estão em formato JSON válido",
-          problem: "O sistema está tentando salvar dados JSON malformados na tabela 'clientes', especificamente nos campos 'categorias_habilitadas' ou 'janelas_entrega'",
-          expected: "Estes campos devem conter arrays JSON válidos, como: [] ou [1,2,3]. O sistema deve validar e corrigir automaticamente dados malformados antes do envio",
+          problem: "O sistema detectou dados JSON malformados, possivelmente causados por tradução automática do navegador que converteu valores válidos em tokens como 'customer_deleted', 'client_inactive', etc. Estes tokens não são valores válidos para os campos do sistema.",
+          expected: "Os campos devem conter apenas valores válidos em português: 'Ativo', 'Inativo', 'Própria', 'Terceirizada', 'Boleto', etc. O sistema deve interceptar e corrigir automaticamente tokens traduzidos antes do envio ao banco.",
           causes: [
-            "Campos como 'categorias_habilitadas' ou 'janelas_entrega' contêm dados malformados",
-            "Caracteres especiais não escapados corretamente",
-            "Arrays ou objetos JSON incompletos ou corrompidos",
-            "Tradução automática do navegador alterando valores JSON"
+            "🌐 Tradução automática do navegador convertendo valores válidos em tokens ingleses",
+            "📝 Campos como 'status_cliente' recebendo 'customer_deleted' ao invés de 'Inativo'",
+            "🔄 Cache do navegador contendo dados corrompidos de sessões anteriores",
+            "⚡ JavaScript sendo executado antes da tradução automática terminar",
+            "🚨 Tokens problemáticos: customer_deleted, client_inactive, user_active, etc."
           ],
           solutions: [
-            "Verificar se todos os campos JSON são arrays válidos: []",
-            "Limpar dados de formulário antes do envio",
-            "Desabilitar tradução automática do navegador",
-            "Reiniciar o formulário com dados limpos"
+            "🛡️ Usar o botão 'Reset Seguro' para limpar todos os campos problemáticos",
+            "🌐 Desabilitar tradução automática: Chrome > Configurações > Idiomas > Nunca traduzir",
+            "🔄 Limpar cache do navegador (Ctrl+Shift+Delete)",
+            "📝 Recarregar a página e preencher o formulário novamente",
+            "⚠️ Se persistir, usar modo anônimo/privado do navegador",
+            "🔧 O sistema agora detecta e corrige automaticamente estes tokens"
           ]
         };
       case 'AUTH_ERROR':

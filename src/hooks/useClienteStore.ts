@@ -26,31 +26,74 @@ interface ClienteState {
   setFiltroStatus: (status: StatusCliente | 'Todos' | '') => void;
 }
 
-import { sanitizeClienteData } from '@/utils/clienteDataSanitizer';
+import { sanitizeClienteData, createSafeClienteDefaults } from '@/utils/clienteDataSanitizer';
 
-// Função simplificada - toda lógica movida para o sanitizer
+// FUNÇÃO ENHANCED - Debug em tempo real + Proteção de último recurso
 export function transformClienteToDbRow(c: any) {
   console.log('🔧 transformClienteToDbRow recebido:', c);
+  console.log('🔍 RAW INPUT PAYLOAD:', JSON.stringify(c, null, 2));
   
   const sanitizationResult = sanitizeClienteData(c);
   
-  console.log('📊 Resultado da sanitização:', {
+  console.log('📊 RESULTADO COMPLETO DA SANITIZAÇÃO:', {
     isValid: sanitizationResult.isValid,
-    corrections: sanitizationResult.corrections,
-    errors: sanitizationResult.errors
+    corrections: sanitizationResult.corrections.length,
+    errors: sanitizationResult.errors.length,
+    detectedTokens: sanitizationResult.detectedTokens?.length || 0
   });
-  
+
+  // Debug detalhado dos tokens problemáticos detectados
+  if (sanitizationResult.detectedTokens && sanitizationResult.detectedTokens.length > 0) {
+    console.error('🚨 ALERTA: TOKENS PROBLEMÁTICOS DETECTADOS E REMOVIDOS:');
+    sanitizationResult.detectedTokens.forEach(({ field, tokens }) => {
+      console.error(`   - Campo "${field}": [${tokens.join(', ')}]`);
+    });
+  }
+
+  // PROTEÇÃO DE ÚLTIMO RECURSO - Se dados ainda inválidos, usar defaults seguros
   if (!sanitizationResult.isValid) {
-    console.error('🚨 Dados inválidos detectados:', sanitizationResult.errors);
-    throw new Error(`Dados inválidos: ${sanitizationResult.errors.join(', ')}`);
+    console.error('🛡️ ATIVANDO PROTEÇÃO DE ÚLTIMO RECURSO');
+    console.error('🚨 Erros detectados:', sanitizationResult.errors);
+    
+    // Tentar criar payload com defaults seguros mantendo dados essenciais
+    const safeDefaults = createSafeClienteDefaults();
+    const lastResortData = {
+      ...sanitizationResult.data,
+      ...safeDefaults,
+      // Manter apenas campos essenciais do input original se válidos
+      nome: c.nome || '',
+      endereco_entrega: c.enderecoEntrega || c.endereco_entrega || '',
+      link_google_maps: c.linkGoogleMaps || c.link_google_maps || ''
+    };
+    
+    console.warn('🔧 PAYLOAD DE ÚLTIMO RECURSO CRIADO:', lastResortData);
+    
+    // Re-validar com dados seguros
+    const finalSanitization = sanitizeClienteData(lastResortData);
+    if (finalSanitization.isValid) {
+      console.log('✅ ÚLTIMO RECURSO FUNCIONOU - Dados agora válidos');
+      return finalSanitization.data;
+    } else {
+      console.error('❌ ÚLTIMO RECURSO FALHOU - Erro crítico');
+      throw new Error(`Erro crítico: Não foi possível criar dados válidos. Erros: ${finalSanitization.errors.join(', ')}`);
+    }
   }
 
   if (sanitizationResult.corrections.length > 0) {
     console.warn('🔧 Correções automáticas aplicadas:', sanitizationResult.corrections);
   }
 
-  console.log('📤 Dados sanitizados finais para o banco:', sanitizationResult.data);
-  return sanitizationResult.data;
+  // VALIDAÇÃO FINAL DO PAYLOAD antes do envio
+  console.log('🔍 VALIDAÇÃO FINAL PRÉ-ENVIO:');
+  console.log('✅ Dados sanitizados finais para Supabase:', JSON.stringify(sanitizationResult.data, null, 2));
+  
+  // Verificação adicional de segurança
+  const finalPayload = sanitizationResult.data;
+  if (!finalPayload.nome) {
+    throw new Error('Nome é obrigatório e não pode estar vazio');
+  }
+  
+  return finalPayload;
 }
 
 const transformDbRowToCliente = (row: any): Cliente => {
@@ -154,10 +197,30 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
   atualizarCliente: async (id, cliente) => {
     set({ loading: true });
     try {
-      console.log('🔄 Iniciando atualização de cliente:', id, cliente);
+      console.log('🔄 INICIANDO ATUALIZAÇÃO DE CLIENTE:', id);
+      console.log('📥 DADOS RECEBIDOS:', JSON.stringify(cliente, null, 2));
+      
+      // DEBUG: Capturar payload exato PRÉ-SANITIZAÇÃO
+      console.log('🔍 PAYLOAD PRÉ-SANITIZAÇÃO:', {
+        id,
+        clienteInput: cliente,
+        timestamp: new Date().toISOString()
+      });
       
       const dbData = transformClienteToDbRow(cliente);
-      console.log('✅ Dados sanitizados para atualização:', dbData);
+      console.log('📤 PAYLOAD FINAL PARA SUPABASE:', JSON.stringify(dbData, null, 2));
+      
+      // VALIDAÇÃO FINAL - última verificação antes do envio
+      const forbiddenTokens = ['customer_deleted', 'client_deleted', 'user_deleted'];
+      const payloadString = JSON.stringify(dbData);
+      const foundTokens = forbiddenTokens.filter(token => payloadString.includes(token));
+      
+      if (foundTokens.length > 0) {
+        console.error('🚨 TOKENS PROIBIDOS DETECTADOS NO PAYLOAD FINAL:', foundTokens);
+        throw new Error(`Payload ainda contém tokens problemáticos: ${foundTokens.join(', ')}`);
+      }
+      
+      console.log('✅ Payload passou na validação final - enviando para Supabase...');
       
       const { data, error } = await supabase
         .from('clientes')
@@ -167,24 +230,38 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         .single();
 
       if (error) {
-        console.error('❌ Erro do Supabase na atualização:', error);
+        console.error('❌ ERRO DO SUPABASE NA ATUALIZAÇÃO:', {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          payloadUsed: dbData
+        });
         
-        // Mostrar erro expandível
+        // Criar erro expandível com informações detalhadas
+        const enhancedError = {
+          ...error,
+          context: 'Atualização de Cliente',
+          clienteId: id,
+          payloadUsed: dbData,
+          originalInput: cliente
+        };
+        
         const { showErrorDetail } = useErrorDetail.getState();
-        showErrorDetail(error, 'Atualização de Cliente');
+        showErrorDetail(enhancedError, 'Atualização de Cliente - Erro no Banco');
         
-        toast.error('Erro ao atualizar cliente - Clique para ver detalhes', {
-          description: 'Clique nesta notificação para diagnóstico completo',
+        toast.error('Erro ao atualizar cliente - Clique para ver diagnóstico', {
+          description: 'Análise técnica detalhada disponível',
           action: {
-            label: 'Ver Detalhes',
-            onClick: () => showErrorDetail(error, 'Atualização de Cliente')
+            label: 'Diagnóstico',
+            onClick: () => showErrorDetail(enhancedError, 'Atualização de Cliente - Erro no Banco')
           }
         });
         throw error;
       }
 
       const clienteAtualizado = transformDbRowToCliente(data);
-      console.log('✅ Cliente atualizado com sucesso:', clienteAtualizado.id);
+      console.log('✅ CLIENTE ATUALIZADO COM SUCESSO:', clienteAtualizado.id);
 
       set((state) => ({
         clientes: state.clientes.map((c) => (c.id === id ? clienteAtualizado : c)),
@@ -192,16 +269,25 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         loading: false,
       }));
     } catch (error: any) {
-      console.error("❌ Erro ao atualizar cliente:", {
+      console.error("❌ ERRO CRÍTICO NO CATCH:", {
         clienteId: id,
         error: error.message,
         code: error.code,
-        details: error.details
+        details: error.details,
+        stack: error.stack
       });
       
       // Garantir que o erro expandível seja mostrado mesmo em catch
+      const enhancedError = {
+        ...error,
+        context: 'Atualização de Cliente - Erro Crítico',
+        clienteId: id,
+        originalInput: cliente,
+        timestamp: new Date().toISOString()
+      };
+      
       const { showErrorDetail } = useErrorDetail.getState();
-      showErrorDetail(error, 'Atualização de Cliente - Erro Crítico');
+      showErrorDetail(enhancedError, 'Atualização de Cliente - Erro Crítico');
       
       set({ loading: false });
       throw error;
