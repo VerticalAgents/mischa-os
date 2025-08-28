@@ -1704,6 +1704,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: unknown[]
       }
+      get_feature_flag: {
+        Args: { flag_name: string }
+        Returns: boolean
+      }
       get_pedidos_summary: {
         Args: Record<PropertyKey, never>
         Returns: {
