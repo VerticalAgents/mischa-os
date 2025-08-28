@@ -1,0 +1,137 @@
+// JSON validation and sanitization utilities
+export interface ValidationResult<T> {
+  isValid: boolean;
+  data: T;
+  error?: string;
+}
+
+/**
+ * Safely parses JSON data with fallback to default value
+ */
+export function safeParseJSON<T>(value: any, defaultValue: T): ValidationResult<T> {
+  // If already the correct type, return as is
+  if (Array.isArray(value) && Array.isArray(defaultValue)) {
+    return { isValid: true, data: value as T };
+  }
+  
+  if (typeof value === 'object' && value !== null && !Array.isArray(value) && typeof defaultValue === 'object') {
+    return { isValid: true, data: value as T };
+  }
+
+  // If null or undefined, return default
+  if (value === null || value === undefined) {
+    return { isValid: true, data: defaultValue };
+  }
+
+  // If string, try to parse
+  if (typeof value === 'string') {
+    if (value.trim() === '') {
+      return { isValid: true, data: defaultValue };
+    }
+    
+    try {
+      const parsed = JSON.parse(value);
+      return { isValid: true, data: parsed as T };
+    } catch (error) {
+      console.warn(`Failed to parse JSON: "${value}". Using default value.`, error);
+      return { 
+        isValid: false, 
+        data: defaultValue, 
+        error: `Invalid JSON: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      };
+    }
+  }
+
+  // For any other type, return default
+  return { isValid: true, data: defaultValue };
+}
+
+/**
+ * Safely stringifies data for database storage
+ */
+export function safeStringifyJSON(value: any): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  // If already a string, validate it's proper JSON
+  if (typeof value === 'string') {
+    try {
+      JSON.parse(value);
+      return value;
+    } catch (error) {
+      console.warn(`Invalid JSON string: "${value}". Converting to null.`, error);
+      return null;
+    }
+  }
+
+  // For arrays and objects, stringify
+  if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+    try {
+      return JSON.stringify(value);
+    } catch (error) {
+      console.error(`Failed to stringify JSON:`, value, error);
+      return null;
+    }
+  }
+
+  // For primitive types, return null
+  return null;
+}
+
+/**
+ * Validates and sanitizes janelas_entrega field
+ */
+export function validateJanelasEntrega(value: any): ValidationResult<any[]> {
+  return safeParseJSON(value, []);
+}
+
+/**
+ * Validates and sanitizes categorias_habilitadas field
+ */
+export function validateCategoriasHabilitadas(value: any): ValidationResult<number[]> {
+  const result = safeParseJSON(value, []);
+  
+  // Additional validation for array of numbers
+  if (result.isValid && Array.isArray(result.data)) {
+    const isValidArray = result.data.every(item => typeof item === 'number' || (typeof item === 'string' && !isNaN(Number(item))));
+    if (!isValidArray) {
+      console.warn('categorias_habilitadas contains invalid values, using empty array');
+      return { isValid: false, data: [], error: 'Array contains non-numeric values' };
+    }
+    
+    // Convert string numbers to actual numbers
+    const sanitizedData = result.data.map(item => typeof item === 'string' ? Number(item) : item);
+    return { isValid: true, data: sanitizedData };
+  }
+  
+  return result;
+}
+
+/**
+ * Comprehensive data validation for cliente fields
+ */
+export function validateClienteData(data: any): { isValid: boolean; errors: string[]; sanitizedData: any } {
+  const errors: string[] = [];
+  const sanitizedData = { ...data };
+
+  // Validate janelas_entrega
+  const janelasResult = validateJanelasEntrega(data.janelas_entrega);
+  if (!janelasResult.isValid && janelasResult.error) {
+    errors.push(`janelas_entrega: ${janelasResult.error}`);
+  }
+  sanitizedData.janelas_entrega = janelasResult.data;
+
+  // Validate categorias_habilitadas
+  const categoriasResult = validateCategoriasHabilitadas(data.categorias_habilitadas);
+  if (!categoriasResult.isValid && categoriasResult.error) {
+    errors.push(`categorias_habilitadas: ${categoriasResult.error}`);
+  }
+  sanitizedData.categorias_habilitadas = categoriasResult.data;
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    sanitizedData
+  };
+}
