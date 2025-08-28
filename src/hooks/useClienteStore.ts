@@ -271,6 +271,22 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
       const dbData = transformClienteToDbRow(cliente);
       
       console.log('useClienteStore: Payload sanitizado para atualização:', dbData);
+      console.log('useClienteStore: Tipos específicos dos campos JSONB antes do update:', {
+        janelas_entrega: {
+          value: dbData.janelas_entrega,
+          type: typeof dbData.janelas_entrega,
+          isArray: Array.isArray(dbData.janelas_entrega),
+          length: Array.isArray(dbData.janelas_entrega) ? dbData.janelas_entrega.length : 'N/A',
+          stringified: JSON.stringify(dbData.janelas_entrega)
+        },
+        categorias_habilitadas: {
+          value: dbData.categorias_habilitadas,
+          type: typeof dbData.categorias_habilitadas,
+          isArray: Array.isArray(dbData.categorias_habilitadas),
+          length: Array.isArray(dbData.categorias_habilitadas) ? dbData.categorias_habilitadas.length : 'N/A',
+          stringified: JSON.stringify(dbData.categorias_habilitadas)
+        }
+      });
       
       const { data, error } = await supabase
         .from('clientes')
