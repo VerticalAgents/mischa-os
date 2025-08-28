@@ -2,8 +2,12 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-type AnyScaled = any; // simplificado para V1
-type Payload = { base: any; k: number; scaled: AnyScaled };
+type Payload = {
+  meta: { receita_id: string | number; receita_nome: string; multiplicador: number; forms_count: number };
+  base: { per_form_g?: number; total_g: number; ingredientes: any[] };
+  toppings: { total_g: number; ingredientes: any[] };
+  observacoes?: string | null;
+};
 
 export default function FichaPreview(){
   const [data, setData] = useState<Payload | null>(null);
@@ -19,54 +23,98 @@ export default function FichaPreview(){
 
   if(!data) return <div className="p-6">Carregando…</div>;
 
-  const { base, k, scaled } = data;
+  const { meta, base, toppings, observacoes } = data;
 
   return (
     <div className="p-6 print:p-0">
-      <div className="flex items-center justify-between mb-4 print:hidden">
-        <h1 className="text-xl font-semibold">Ficha técnica — {base.nome} ({k}×)</h1>
-        <div className="flex gap-2">
-          <Button onClick={() => window.print()}>Imprimir</Button>
-          <Button variant="outline" onClick={() => window.close()}>Fechar</Button>
+      <style>{`
+        @page { size: A4; margin: 12mm; }
+        @media print {
+          .no-print { display: none !important; }
+          .page { box-shadow: none !important; border: none !important; margin: 0 !important; }
+        }
+      `}</style>
+
+      <div className="page mx-auto max-w-[800px] bg-white">
+        <div className="flex items-center justify-between mb-4 no-print">
+          <h1 className="text-xl font-semibold">Ficha técnica — {meta.receita_nome} (×{meta.multiplicador})</h1>
+          <div className="flex gap-2">
+            <Button onClick={() => window.print()}>Imprimir</Button>
+            <Button variant="outline" onClick={() => window.close()}>Fechar</Button>
+          </div>
         </div>
+
+        <header className="mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Stat label="Receita" value={meta.receita_nome} />
+            <Stat label="Multiplicador" value={`${meta.multiplicador}×`} />
+            <Stat label="Peso total da massa (g)" value={base.total_g} />
+            <Stat label="Peso total de toppings (g)" value={toppings.total_g} />
+          </div>
+          <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Stat label="Nº de formas" value={meta.forms_count} />
+            <Stat label="Massa por forma (g)" value={base.per_form_g ?? "—"} />
+            <Stat label="Obs." value={observacoes ? "Veja abaixo" : "—"} />
+          </div>
+        </header>
+
+        <section className="mb-4">
+          <h2 className="text-base font-semibold mb-2">Massa (batedeira) — ingredientes escalados</h2>
+          <table className="w-full text-sm border border-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left p-2">Ingrediente</th>
+                <th className="text-center p-2">Unid</th>
+                <th className="text-right p-2">Qtd base</th>
+                <th className="text-right p-2">Qtd total (×{meta.multiplicador})</th>
+              </tr>
+            </thead>
+            <tbody>
+              {base.ingredientes.map((ing: any) => (
+                <tr key={ing.id} className="border-t">
+                  <td className="p-2">{ing.nome}</td>
+                  <td className="p-2 text-center">{ing.unidade}</td>
+                  <td className="p-2 text-right">{ing.quantidade}</td>
+                  <td className="p-2 text-right">{ing.qtd_total}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        <section className="mb-4">
+          <h2 className="text-base font-semibold mb-2">Toppings — por forma e total</h2>
+          <table className="w-full text-sm border border-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left p-2">Ingrediente</th>
+                <th className="text-center p-2">Unid</th>
+                <th className="text-right p-2">Peso por forma (g)</th>
+                <th className="text-right p-2">Nº formas</th>
+                <th className="text-right p-2">Peso total topping (g)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {toppings.ingredientes.map((ing: any) => (
+                <tr key={ing.id} className="border-t">
+                  <td className="p-2">{ing.nome}</td>
+                  <td className="p-2 text-center">{ing.unidade}</td>
+                  <td className="p-2 text-right">{ing.per_form_g ?? "—"}</td>
+                  <td className="p-2 text-right">{meta.forms_count}</td>
+                  <td className="p-2 text-right">{ing.total_g ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        {observacoes && (
+          <section className="mt-4">
+            <div className="text-sm font-medium mb-1">Observações</div>
+            <div className="text-sm whitespace-pre-wrap">{observacoes}</div>
+          </section>
+        )}
       </div>
-
-      <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="Rendimento (un)" value={scaled.rendimento_unidades_escalado} />
-        <Stat label="Peso total (g)" value={scaled.peso_total_g_escalado} />
-        <Stat label="Custo total (R$)" value={scaled.custo_total_escalado.toFixed(2)} />
-        <Stat label="Multiplicador" value={`${k}×`} />
-      </div>
-
-      <table className="w-full text-sm border border-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="text-left p-2">Insumo</th>
-            <th className="text-right p-2">Qtd base</th>
-            <th className="text-right p-2">Qtd {k}×</th>
-            <th className="text-right p-2">Unid</th>
-            <th className="text-right p-2">Custo {k}× (R$)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {scaled.ingredientes.map((ing:any) => (
-            <tr key={ing.id} className="border-t">
-              <td className="p-2">{ing.nome}</td>
-              <td className="p-2 text-right">{ing.quantidade}</td>
-              <td className="p-2 text-right">{ing.quantidade_escalada}</td>
-              <td className="p-2 text-right">{ing.unidade}</td>
-              <td className="p-2 text-right">{ing.custo_total_escalado != null ? ing.custo_total_escalado.toFixed(2) : "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {base.observacoes && (
-        <div className="mt-4 text-sm">
-          <div className="font-medium mb-1">Observações</div>
-          <div className="whitespace-pre-wrap">{base.observacoes}</div>
-        </div>
-      )}
     </div>
   );
 }
