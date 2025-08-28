@@ -93,7 +93,7 @@ const PAGAMENTO_CORRECTIONS = {
 // Valores válidos para validação - ATUALIZADOS PARA FORMATO CANÔNICO
 const VALID_STATUS = ['ATIVO', 'INATIVO', 'EM_ANALISE', 'A_ATIVAR', 'STANDBY'];
 const VALID_LOGISTICA = ['PROPRIA', 'TERCEIRIZADA'];
-const VALID_COBRANCA = ['A_VISTA', 'PARCELADO', 'A_PRAZO'];
+const VALID_COBRANCA = ['A_VISTA', 'PARCELADO', 'A_PRAZO', 'CONSIGNADO'];
 const VALID_PAGAMENTO = ['BOLETO', 'PIX', 'DINHEIRO', 'CARTAO_CREDITO', 'CARTAO_DEBITO'];
 
 // Mapear valores antigos para novos valores canônicos
@@ -113,7 +113,8 @@ const LOGISTICA_TO_CANONICAL = {
 const COBRANCA_TO_CANONICAL = {
   'À vista': 'A_VISTA',
   'Parcelado': 'PARCELADO',
-  'A prazo': 'A_PRAZO'
+  'A prazo': 'A_PRAZO',
+  'Consignado': 'CONSIGNADO'
 };
 
 const PAGAMENTO_TO_CANONICAL = {

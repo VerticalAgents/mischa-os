@@ -111,6 +111,35 @@ const transformDbRowToCliente = (row: any): Cliente => {
     return [];
   };
 
+  // Mapeamentos reversos: Canônico → UI
+  const canonicalToUiStatus = {
+    'ATIVO': 'Ativo',
+    'INATIVO': 'Inativo', 
+    'EM_ANALISE': 'Em análise',
+    'A_ATIVAR': 'A ativar',
+    'STANDBY': 'Standby'
+  };
+
+  const canonicalToUiLogistica = {
+    'PROPRIA': 'Própria',
+    'TERCEIRIZADA': 'Terceirizada'
+  };
+
+  const canonicalToUiCobranca = {
+    'A_VISTA': 'À vista',
+    'PARCELADO': 'Parcelado',
+    'A_PRAZO': 'A prazo',
+    'CONSIGNADO': 'Consignado'
+  };
+
+  const canonicalToUiPagamento = {
+    'BOLETO': 'Boleto',
+    'PIX': 'PIX',
+    'DINHEIRO': 'Dinheiro',
+    'CARTAO_CREDITO': 'Cartão de crédito',
+    'CARTAO_DEBITO': 'Cartão de débito'
+  };
+
   return {
     id: row.id,
     nome: row.nome || '',
@@ -129,7 +158,7 @@ const transformDbRowToCliente = (row: any): Cliente => {
     giroMedioSemanal: row.giro_medio_semanal || 0,
     janelasEntrega: safeParseJsonb(row.janelas_entrega),
     categoriasHabilitadas: safeParseJsonb(row.categorias_habilitadas),
-    statusCliente: row.status_cliente || 'Ativo',
+    statusCliente: canonicalToUiStatus[row.status_cliente] || row.status_cliente || 'Ativo',
     ultimaDataReposicaoEfetiva: row.ultima_data_reposicao_efetiva ? new Date(row.ultima_data_reposicao_efetiva) : null,
     proximaDataReposicao: row.proxima_data_reposicao ? new Date(row.proxima_data_reposicao) : null,
     ativo: row.ativo !== false,
@@ -137,9 +166,9 @@ const transformDbRowToCliente = (row: any): Cliente => {
     emiteNotaFiscal: row.emite_nota_fiscal !== false,
     instrucoesEntrega: row.instrucoes_entrega || '',
     observacoes: row.observacoes || '',
-    tipoLogistica: row.tipo_logistica || 'Própria',
-    tipoCobranca: row.tipo_cobranca || 'À vista',
-    formaPagamento: row.forma_pagamento || 'Boleto',
+    tipoLogistica: canonicalToUiLogistica[row.tipo_logistica] || row.tipo_logistica || 'Própria',
+    tipoCobranca: canonicalToUiCobranca[row.tipo_cobranca] || row.tipo_cobranca || 'À vista',
+    formaPagamento: canonicalToUiPagamento[row.forma_pagamento] || row.forma_pagamento || 'Boleto',
     dataCadastro: row.created_at ? new Date(row.created_at) : new Date(),
     statusAgendamento: row.status_agendamento,
     categoriaId: row.categoria_id || 1,
