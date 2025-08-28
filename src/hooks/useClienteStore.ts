@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { Cliente, StatusCliente } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { calcularGiroSemanalPadrao, calcularMetaGiroSemanal } from '@/utils/giroCalculations';
-// Removed complex JSON validation - using direct array handling
 
 interface ClienteState {
   clientes: Cliente[];
@@ -25,181 +24,109 @@ interface ClienteState {
   setFiltroStatus: (status: StatusCliente | 'Todos' | '') => void;
 }
 
-// Helper function to transform database row to Cliente interface
-const transformDbRowToCliente = (row: any): Cliente => {
-  try {
-    // Simplified approach: trust Supabase JSONB fields directly
-    console.log(`[DEBUG] transformDbRowToCliente - Input row ${row.id}:`, {
-      janelas_entrega: row.janelas_entrega,
-      categorias_habilitadas: row.categorias_habilitadas,
-      janelas_type: typeof row.janelas_entrega,
-      categorias_type: typeof row.categorias_habilitadas
-    });
+// Helpers para transformação segura de dados
+const intOrNull = (v: any) => v === undefined || v === null || v === '' || Number.isNaN(Number(v)) ? null : parseInt(String(v), 10);
+const numOrNull = (v: any) => v === undefined || v === null || v === '' || Number.isNaN(Number(v)) ? null : Number(v);
+const boolOr = (v: any, fallback = false) => typeof v === 'boolean' ? v : v === 'true' ? true : v === 'false' ? false : fallback;
+const arrJson = (v: any) => Array.isArray(v) ? v : [];
+const arrNum = (v: any) => Array.isArray(v) ? v.map((x) => Number(x)).filter(Number.isFinite) : [];
 
-    const result = {
-      id: row.id,
-      nome: row.nome || '',
-      cnpjCpf: row.cnpj_cpf || '',
-      enderecoEntrega: row.endereco_entrega || '',
-      linkGoogleMaps: row.link_google_maps || '',
-      contatoNome: row.contato_nome || '',
-      contatoTelefone: row.contato_telefone || '',
-      contatoEmail: row.contato_email || '',
-      quantidadePadrao: row.quantidade_padrao || 0,
-      periodicidadePadrao: row.periodicidade_padrao || 7,
-      statusCliente: row.status_cliente || 'Ativo',
-      dataCadastro: new Date(row.created_at),
-      metaGiroSemanal: row.meta_giro_semanal || 0,
-      ultimaDataReposicaoEfetiva: row.ultima_data_reposicao_efetiva ? new Date(row.ultima_data_reposicao_efetiva) : undefined,
-      statusAgendamento: row.status_agendamento,
-      proximaDataReposicao: row.proxima_data_reposicao ? new Date(row.proxima_data_reposicao) : undefined,
-      ativo: row.ativo ?? true,
-      giroMedioSemanal: row.giro_medio_semanal || 0,
-      janelasEntrega: Array.isArray(row.janelas_entrega) ? row.janelas_entrega : [],
-      representanteId: row.representante_id,
-      rotaEntregaId: row.rota_entrega_id,
-      categoriaEstabelecimentoId: row.categoria_estabelecimento_id,
-      instrucoesEntrega: row.instrucoes_entrega || '',
-      contabilizarGiroMedio: row.contabilizar_giro_medio ?? true,
-      tipoLogistica: row.tipo_logistica || 'Própria',
-      emiteNotaFiscal: row.emite_nota_fiscal ?? true,
-      tipoCobranca: row.tipo_cobranca || 'À vista',
-      formaPagamento: row.forma_pagamento || 'Boleto',
-      observacoes: row.observacoes || '',
-      categoriaId: row.categoria_id || 1,
-      subcategoriaId: row.subcategoria_id || 1,
-      categoriasHabilitadas: Array.isArray(row.categorias_habilitadas) ? row.categorias_habilitadas : []
-    };
-
-    console.log(`[DEBUG] transformDbRowToCliente - Output for ${row.id}:`, {
-      janelasEntrega: result.janelasEntrega,
-      categoriasHabilitadas: result.categoriasHabilitadas
-    });
-
-    return result;
-  } catch (error) {
-    console.error(`Error transforming database row for cliente ${row.id}:`, error);
-    // Return a safe fallback version with empty arrays for JSON fields
-    return {
-      id: row.id,
-      nome: row.nome || '',
-      cnpjCpf: row.cnpj_cpf || '',
-      enderecoEntrega: row.endereco_entrega || '',
-      linkGoogleMaps: row.link_google_maps || '',
-      contatoNome: row.contato_nome || '',
-      contatoTelefone: row.contato_telefone || '',
-      contatoEmail: row.contato_email || '',
-      quantidadePadrao: row.quantidade_padrao || 0,
-      periodicidadePadrao: row.periodicidade_padrao || 7,
-      statusCliente: row.status_cliente || 'Ativo',
-      dataCadastro: new Date(row.created_at),
-      metaGiroSemanal: row.meta_giro_semanal || 0,
-      ultimaDataReposicaoEfetiva: row.ultima_data_reposicao_efetiva ? new Date(row.ultima_data_reposicao_efetiva) : undefined,
-      statusAgendamento: row.status_agendamento,
-      proximaDataReposicao: row.proxima_data_reposicao ? new Date(row.proxima_data_reposicao) : undefined,
-      ativo: row.ativo ?? true,
-      giroMedioSemanal: row.giro_medio_semanal || 0,
-      janelasEntrega: [], // Safe fallback
-      representanteId: row.representante_id,
-      rotaEntregaId: row.rota_entrega_id,
-      categoriaEstabelecimentoId: row.categoria_estabelecimento_id,
-      instrucoesEntrega: row.instrucoes_entrega || '',
-      contabilizarGiroMedio: row.contabilizar_giro_medio ?? true,
-      tipoLogistica: row.tipo_logistica || 'Própria',
-      emiteNotaFiscal: row.emite_nota_fiscal ?? true,
-      tipoCobranca: row.tipo_cobranca || 'À vista',
-      formaPagamento: row.forma_pagamento || 'Boleto',
-      observacoes: row.observacoes || '',
-      categoriaId: row.categoria_id || 1,
-      subcategoriaId: row.subcategoria_id || 1,
-      categoriasHabilitadas: [] // Safe fallback
-    };
-  }
+const STATUS_DB = { 
+  'Ativo': 'Ativo', 
+  'Inativo': 'Inativo', 
+  'Em análise': 'Em análise', 
+  'A ativar': 'A ativar', 
+  'Standby': 'Standby' 
 };
 
-// Helper function to transform Cliente to database row format (sanitized)
-const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
-  try {
-    console.log(`[DEBUG] transformClienteToDbRow - Input cliente:`, {
-      id: cliente.id,
-      janelasEntrega: cliente.janelasEntrega,
-      categoriasHabilitadas: cliente.categoriasHabilitadas,
-      janelas_type: typeof cliente.janelasEntrega,
-      categorias_type: typeof cliente.categoriasHabilitadas
-    });
+export function transformClienteToDbRow(c: any) {
+  const valid = {
+    nome: c?.nome?.trim(),
+    cnpj_cpf: c?.cnpjCpf?.trim(),
+    endereco_entrega: c?.enderecoEntrega?.trim(),
+    link_google_maps: c?.linkGoogleMaps?.trim(),
+    contato_nome: c?.contatoNome?.trim(),
+    contato_telefone: c?.contatoTelefone?.trim(),
+    contato_email: c?.contatoEmail?.trim(),
+    representante_id: intOrNull(c?.representanteId),
+    rota_entrega_id: intOrNull(c?.rotaEntregaId),
+    categoria_estabelecimento_id: intOrNull(c?.categoriaEstabelecimentoId),
+    quantidade_padrao: intOrNull(c?.quantidadePadrao) ?? 0,
+    periodicidade_padrao: intOrNull(c?.periodicidadePadrao) ?? 7,
+    meta_giro_semanal: numOrNull(c?.metaGiroSemanal) ?? 0,
+    giro_medio_semanal: numOrNull(c?.giroMedioSemanal) ?? 0,
+    janelas_entrega: arrJson(c?.janelasEntrega),
+    categorias_habilitadas: arrNum(c?.categoriasHabilitadas),
+    status_cliente: STATUS_DB[c?.statusCliente ?? 'Ativo'] ?? 'Ativo',
+    ultima_data_reposicao_efetiva: c?.ultimaDataReposicaoEfetiva?.toISOString?.(),
+    proxima_data_reposicao: c?.proximaDataReposicao?.toISOString?.(),
+    ativo: boolOr(c?.ativo, true),
+    contabilizar_giro_medio: boolOr(c?.contabilizarGiroMedio, true),
+    emite_nota_fiscal: boolOr(c?.emiteNotaFiscal, true),
+    instrucoes_entrega: c?.instrucoesEntrega?.trim(),
+    observacoes: c?.observacoes?.trim(),
+    tipo_logistica: c?.tipoLogistica?.trim(),
+    tipo_cobranca: c?.tipoCobranca?.trim(),
+    forma_pagamento: c?.formaPagamento?.trim(),
+    updated_at: new Date().toISOString(),
+  };
+  
+  const out: Record<string, any> = {};
+  Object.entries(valid).forEach(([k, v]) => { 
+    if (v !== undefined && v !== null) out[k] = v; 
+  });
+  return out;
+}
 
-    const quantidadePadrao = cliente.quantidadePadrao || 0;
-    const periodicidadePadrao = cliente.periodicidadePadrao || 7;
-    
-    // Calcular giro médio semanal se não foi fornecido ou é zero
-    let giroMedioSemanalCalculado = cliente.giroMedioSemanal;
-    if (!giroMedioSemanalCalculado || giroMedioSemanalCalculado === 0) {
-      giroMedioSemanalCalculado = calcularGiroSemanalPadrao(quantidadePadrao, periodicidadePadrao);
-    }
-    
-    // Calcular meta de giro semanal se não foi fornecida ou é zero
-    let metaGiroSemanalCalculada = cliente.metaGiroSemanal;
-    if (!metaGiroSemanalCalculada || metaGiroSemanalCalculada === 0) {
-      metaGiroSemanalCalculada = calcularMetaGiroSemanal(quantidadePadrao, periodicidadePadrao);
-    }
-
-    // Prepare arrays directly for JSONB fields (no validation/transformation)
-    const janelasEntregaData = Array.isArray(cliente.janelasEntrega) ? cliente.janelasEntrega : [];
-    const categoriasHabilitadasData = Array.isArray(cliente.categoriasHabilitadas) ? cliente.categoriasHabilitadas : [];
-
-    // Lista de campos válidos na tabela clientes do Supabase
-    const validFields = {
-      nome: cliente.nome,
-      cnpj_cpf: cliente.cnpjCpf,
-      endereco_entrega: cliente.enderecoEntrega,
-      link_google_maps: cliente.linkGoogleMaps,
-      contato_nome: cliente.contatoNome,
-      contato_telefone: cliente.contatoTelefone,
-      contato_email: cliente.contatoEmail,
-      quantidade_padrao: cliente.quantidadePadrao,
-      periodicidade_padrao: cliente.periodicidadePadrao,
-      status_cliente: cliente.statusCliente,
-      meta_giro_semanal: metaGiroSemanalCalculada,
-      ultima_data_reposicao_efetiva: cliente.ultimaDataReposicaoEfetiva?.toISOString(),
-      status_agendamento: cliente.statusAgendamento,
-      proxima_data_reposicao: cliente.proximaDataReposicao?.toISOString(),
-      ativo: cliente.ativo,
-      giro_medio_semanal: giroMedioSemanalCalculado,
-      janelas_entrega: janelasEntregaData,
-      representante_id: cliente.representanteId,
-      rota_entrega_id: cliente.rotaEntregaId,
-      categoria_estabelecimento_id: cliente.categoriaEstabelecimentoId,
-      instrucoes_entrega: cliente.instrucoesEntrega,
-      contabilizar_giro_medio: cliente.contabilizarGiroMedio,
-      tipo_logistica: cliente.tipoLogistica,
-      emite_nota_fiscal: cliente.emiteNotaFiscal,
-      tipo_cobranca: cliente.tipoCobranca,
-      forma_pagamento: cliente.formaPagamento,
-      observacoes: cliente.observacoes,
-      categorias_habilitadas: categoriasHabilitadasData,
-      updated_at: new Date().toISOString()
-    };
-
-    // Remove campos undefined/null para evitar problemas no Supabase
-    const sanitizedFields: any = {};
-    Object.entries(validFields).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        sanitizedFields[key] = value;
+const transformDbRowToCliente = (row: any): Cliente => {
+  const safeParseJsonb = (value: any) => {
+    if (value === null || value === undefined) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
       }
-    });
+    }
+    return [];
+  };
 
-    console.log(`[DEBUG] transformClienteToDbRow - Final output:`, {
-      janelas_entrega: sanitizedFields.janelas_entrega,
-      categorias_habilitadas: sanitizedFields.categorias_habilitadas,
-      janelas_output_type: typeof sanitizedFields.janelas_entrega,
-      categorias_output_type: typeof sanitizedFields.categorias_habilitadas
-    });
-
-    return sanitizedFields;
-  } catch (error) {
-    console.error('Error in transformClienteToDbRow:', error);
-    throw new Error(`Falha na preparação dos dados: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-  }
+  return {
+    id: row.id,
+    nome: row.nome || '',
+    cnpjCpf: row.cnpj_cpf || '',
+    enderecoEntrega: row.endereco_entrega || '',
+    linkGoogleMaps: row.link_google_maps || '',
+    contatoNome: row.contato_nome || '',
+    contatoTelefone: row.contato_telefone || '',
+    contatoEmail: row.contato_email || '',
+    representanteId: row.representante_id || null,
+    rotaEntregaId: row.rota_entrega_id || null,
+    categoriaEstabelecimentoId: row.categoria_estabelecimento_id || null,
+    quantidadePadrao: row.quantidade_padrao || 0,
+    periodicidadePadrao: row.periodicidade_padrao || 7,
+    metaGiroSemanal: row.meta_giro_semanal || 0,
+    giroMedioSemanal: row.giro_medio_semanal || 0,
+    janelasEntrega: safeParseJsonb(row.janelas_entrega),
+    categoriasHabilitadas: safeParseJsonb(row.categorias_habilitadas),
+    statusCliente: row.status_cliente || 'Ativo',
+    ultimaDataReposicaoEfetiva: row.ultima_data_reposicao_efetiva ? new Date(row.ultima_data_reposicao_efetiva) : null,
+    proximaDataReposicao: row.proxima_data_reposicao ? new Date(row.proxima_data_reposicao) : null,
+    ativo: row.ativo !== false,
+    contabilizarGiroMedio: row.contabilizar_giro_medio !== false,
+    emiteNotaFiscal: row.emite_nota_fiscal !== false,
+    instrucoesEntrega: row.instrucoes_entrega || '',
+    observacoes: row.observacoes || '',
+    tipoLogistica: row.tipo_logistica || 'Própria',
+    tipoCobranca: row.tipo_cobranca || 'À vista',
+    formaPagamento: row.forma_pagamento || 'Boleto',
+    dataCadastro: row.created_at ? new Date(row.created_at) : new Date(),
+    statusAgendamento: row.status_agendamento,
+    categoriaId: row.categoria_id || 1,
+    subcategoriaId: row.subcategoria_id || 1,
+  };
 };
 
 export const useClienteStore = create<ClienteState>((set, get) => ({
@@ -215,30 +142,17 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
     try {
       const dbData = transformClienteToDbRow(cliente);
       
-      console.log('useClienteStore: Payload sanitizado para inserção (com cálculos automáticos):', dbData);
+      console.log('useClienteStore: Payload sanitizado para adição:', dbData);
 
       const { data, error } = await supabase
         .from('clientes')
-        .insert([
-          {
-            ...dbData,
-            created_at: new Date().toISOString(),
-          },
-        ])
+        .insert(dbData)
         .select()
         .single();
 
       if (error) {
-        console.error('useClienteStore: Erro do Supabase ao inserir cliente:', {
-          message: error.message,
-          code: error.code,
-          hint: error.hint,
-          details: error.details
-        });
         throw error;
       }
-
-      console.log('useClienteStore: Cliente inserido com sucesso:', data);
 
       const novoCliente = transformDbRowToCliente(data);
 
@@ -249,44 +163,34 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
 
       return novoCliente;
     } catch (error: any) {
-      console.error("useClienteStore: Erro ao adicionar cliente:", error);
+      const dbDataForLog = typeof dbData !== 'undefined' ? dbData : {};
+      console.error("Erro detalhado ao adicionar cliente:", {
+        payloadSanitizado: dbDataForLog,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorDetails: error.details,
+        errorHint: error.hint
+      });
+      
       set({ loading: false });
+      
+      if (error.code === '22P02') {
+        throw new Error(`Erro de formato de dados: ${error.details || error.message}`);
+      }
+      
+      if (error.code === '42883') {
+        throw new Error('Erro na configuração do banco de dados. Contate o administrador.');
+      }
+      
       throw error;
     }
   },
   atualizarCliente: async (id, cliente) => {
     set({ loading: true });
     try {
-      console.log('useClienteStore: Iniciando atualização do cliente:', id);
-      console.log('useClienteStore: Dados originais do cliente:', cliente);
-
-      // Simple type checking before transformation
-      console.log('useClienteStore: Dados para atualização - tipos:', {
-        janelasEntrega: typeof cliente.janelasEntrega,
-        categoriasHabilitadas: typeof cliente.categoriasHabilitadas,
-        janelasIsArray: Array.isArray(cliente.janelasEntrega),
-        categoriasIsArray: Array.isArray(cliente.categoriasHabilitadas)
-      });
-
       const dbData = transformClienteToDbRow(cliente);
       
       console.log('useClienteStore: Payload sanitizado para atualização:', dbData);
-      console.log('useClienteStore: Tipos específicos dos campos JSONB antes do update:', {
-        janelas_entrega: {
-          value: dbData.janelas_entrega,
-          type: typeof dbData.janelas_entrega,
-          isArray: Array.isArray(dbData.janelas_entrega),
-          length: Array.isArray(dbData.janelas_entrega) ? dbData.janelas_entrega.length : 'N/A',
-          stringified: JSON.stringify(dbData.janelas_entrega)
-        },
-        categorias_habilitadas: {
-          value: dbData.categorias_habilitadas,
-          type: typeof dbData.categorias_habilitadas,
-          isArray: Array.isArray(dbData.categorias_habilitadas),
-          length: Array.isArray(dbData.categorias_habilitadas) ? dbData.categorias_habilitadas.length : 'N/A',
-          stringified: JSON.stringify(dbData.categorias_habilitadas)
-        }
-      });
       
       const { data, error } = await supabase
         .from('clientes')
@@ -296,24 +200,8 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         .single();
 
       if (error) {
-        console.error('useClienteStore: Erro do Supabase ao atualizar cliente:', {
-          message: error.message,
-          code: error.code,
-          hint: error.hint,
-          details: error.details,
-          clienteId: id,
-          payloadUsado: dbData
-        });
-        
-        // Provide user-friendly error message
-        if (error.code === '22P02') {
-          throw new Error('Erro de formatação de dados. Os dados foram corrigidos automaticamente. Tente novamente.');
-        }
-        
         throw error;
       }
-
-      console.log('useClienteStore: Cliente atualizado com sucesso:', data);
 
       const clienteAtualizado = transformDbRowToCliente(data);
 
@@ -323,12 +211,24 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         loading: false,
       }));
     } catch (error: any) {
-      console.error("useClienteStore: Erro ao atualizar cliente:", error);
+      const dbDataForLog = typeof dbData !== 'undefined' ? dbData : {};
+      console.error("Erro detalhado ao atualizar cliente:", {
+        clienteId: id,
+        payloadSanitizado: dbDataForLog,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorDetails: error.details,
+        errorHint: error.hint
+      });
+      
       set({ loading: false });
       
-      // Enhanced error handling with recovery suggestion
-      if (error.message?.includes('22P02') || error.message?.includes('invalid input syntax for type json')) {
-        throw new Error('Erro nos dados do cliente. Verifique os campos de janelas de entrega e categorias habilitadas.');
+      if (error.code === '22P02') {
+        throw new Error(`Erro de formato de dados: ${error.details || error.message}`);
+      }
+      
+      if (error.code === '42883') {
+        throw new Error('Erro na configuração do banco de dados. Contate o administrador.');
       }
       
       throw error;
@@ -355,7 +255,6 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
     }
   },
   removerCliente: async (id) => {
-    // Alias for excluirCliente to maintain compatibility
     return get().excluirCliente(id);
   },
   carregarClientes: async () => {
@@ -372,7 +271,6 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
       const clientesTransformados = data.map(transformDbRowToCliente);
 
       set((state) => {
-        // Sync clienteAtual if it exists
         const clienteAtualAtualizado = state.clienteAtual 
           ? clientesTransformados.find(c => c.id === state.clienteAtual?.id) || state.clienteAtual
           : null;
@@ -395,16 +293,14 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         throw new Error('Cliente não encontrado');
       }
 
-      // Criar novo cliente com as mesmas configurações, mas dados básicos em branco
       const novoClienteData: Omit<Cliente, 'id' | 'dataCadastro'> = {
-        nome: '', // Em branco
-        cnpjCpf: '', // Em branco
-        enderecoEntrega: '', // Em branco
-        linkGoogleMaps: '', // Em branco
-        contatoNome: '', // Em branco
-        contatoTelefone: '', // Em branco
-        contatoEmail: '', // Em branco
-        // Manter todas as outras configurações
+        nome: '',
+        cnpjCpf: '',
+        enderecoEntrega: '',
+        linkGoogleMaps: '',
+        contatoNome: '',
+        contatoTelefone: '',
+        contatoEmail: '',
         quantidadePadrao: clienteOriginal.quantidadePadrao,
         periodicidadePadrao: clienteOriginal.periodicidadePadrao,
         statusCliente: clienteOriginal.statusCliente,
@@ -431,7 +327,6 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
 
       const novoCliente = await get().adicionarCliente(novoClienteData);
       
-      console.log('Cliente duplicado com sucesso:', novoCliente);
       return novoCliente;
     } catch (error) {
       console.error('Erro ao duplicar cliente:', error);
@@ -439,32 +334,36 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
     }
   },
   selecionarCliente: (id: string | null) => {
-    const cliente = id ? get().clientes.find(c => c.id === id) : null;
-    set({ clienteAtual: cliente || null });
+    set((state) => ({
+      clienteAtual: id ? state.clientes.find((c) => c.id === id) || null : null,
+    }));
   },
   getClientePorId: (id: string) => {
-    return get().clientes.find(c => c.id === id);
+    return get().clientes.find((cliente) => cliente.id === id);
   },
   getClientesFiltrados: () => {
     const { clientes, filtros } = get();
-    return clientes.filter(cliente => {
-      const matchTermo = !filtros.termo || 
+    return clientes.filter((cliente) => {
+      const matchesTermo = !filtros.termo || 
         cliente.nome.toLowerCase().includes(filtros.termo.toLowerCase()) ||
-        (cliente.cnpjCpf && cliente.cnpjCpf.toLowerCase().includes(filtros.termo.toLowerCase()));
-      
-      const matchStatus = !filtros.status || filtros.status === 'Todos' || cliente.statusCliente === filtros.status;
-      
-      return matchTermo && matchStatus;
+        cliente.cnpjCpf.includes(filtros.termo) ||
+        cliente.enderecoEntrega.toLowerCase().includes(filtros.termo.toLowerCase());
+
+      const matchesStatus = !filtros.status || 
+        filtros.status === 'Todos' || 
+        cliente.statusCliente === filtros.status;
+
+      return matchesTermo && matchesStatus;
     });
   },
   setFiltroTermo: (termo: string) => {
     set((state) => ({
-      filtros: { ...state.filtros, termo }
+      filtros: { ...state.filtros, termo },
     }));
   },
   setFiltroStatus: (status: StatusCliente | 'Todos' | '') => {
     set((state) => ({
-      filtros: { ...state.filtros, status }
+      filtros: { ...state.filtros, status },
     }));
   },
 }));
