@@ -1700,6 +1700,10 @@ export type Database = {
           total_custos_variaveis: number
         }[]
       }
+      get_dados_analise_giro: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown[]
+      }
       get_pedidos_summary: {
         Args: Record<PropertyKey, never>
         Returns: {
