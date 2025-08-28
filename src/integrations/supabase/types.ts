@@ -1672,6 +1672,26 @@ export type Database = {
           quantidade: number
         }[]
       }
+      get_clientes_basic_info: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          ativo: boolean
+          categoria_estabelecimento_id: number
+          created_at: string
+          giro_medio_semanal: number
+          id: string
+          meta_giro_semanal: number
+          nome: string
+          periodicidade_padrao: number
+          proxima_data_reposicao: string
+          quantidade_padrao: number
+          representante_id: number
+          rota_entrega_id: number
+          status_cliente: string
+          ultima_data_reposicao_efetiva: string
+          updated_at: string
+        }[]
+      }
       get_request_ip: {
         Args: Record<PropertyKey, never>
         Returns: unknown
