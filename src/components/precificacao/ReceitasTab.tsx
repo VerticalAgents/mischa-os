@@ -23,6 +23,7 @@ import { ReceitaTableRow } from "./ReceitaTableRow";
 import { ReceitasMetricasCards } from "./ReceitasMetricasCards";
 import EditarReceitaModal from "./EditarReceitaModal";
 import CriarReceitaModal from "./CriarReceitaModal";
+import { GenerateFichaTecnicaDialog } from "@/components/fichas/GenerateFichaTecnicaDialog";
 
 export default function ReceitasTab() {
   const { 
@@ -150,6 +151,23 @@ export default function ReceitasTab() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 Atualizar
               </Button>
+              <GenerateFichaTecnicaDialog 
+                receitas={receitas?.map(r => ({
+                  id: r.id,
+                  nome: r.nome,
+                  rendimento_unidades: r.rendimento,
+                  peso_total_g: r.peso_total,
+                  custo_total: r.custo_total,
+                  ingredientes: r.itens?.map(item => ({
+                    id: item.id,
+                    nome: item.nome_insumo,
+                    unidade: 'g', // assuming grams for now
+                    quantidade: item.quantidade,
+                    custo_total: item.custo_item
+                  })) || [],
+                  observacoes: r.descricao
+                })) || []} 
+              />
               <Button onClick={abrirCriacaoReceita}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Receita

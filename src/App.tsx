@@ -36,6 +36,7 @@ import Custos from '@/pages/financeiro/Custos';
 import AuthPage from '@/pages/auth/AuthPage';
 import LoginPage from '@/pages/auth/LoginPage';
 import NotFound from '@/pages/NotFound';
+import FichaPreview from '@/pages/fichas-tecnicas/Preview';
 import './App.css';
 
 const queryClient = new QueryClient({
@@ -228,14 +229,15 @@ function App() {
                       </AppLayout>
                     </ProtectedRoute>
                   } />
-                  <Route path="/custos" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Custos />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                    <Route path="*" element={<NotFound />} />
+                   <Route path="/custos" element={
+                     <ProtectedRoute>
+                       <AppLayout>
+                         <Custos />
+                       </AppLayout>
+                     </ProtectedRoute>
+                   } />
+                   <Route path="/fichas-tecnicas/preview" element={<FichaPreview />} />
+                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </div>
               </SidebarProvider>
