@@ -1692,9 +1692,24 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_custos_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          num_categorias_custos: number
+          total_custos_fixos: number
+          total_custos_variaveis: number
+        }[]
+      }
       get_dados_analise_giro: {
         Args: Record<PropertyKey, never>
         Returns: unknown[]
+      }
+      get_pedidos_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_pedidos_mes: number
+          valor_medio_pedido: number
+        }[]
       }
       get_request_ip: {
         Args: Record<PropertyKey, never>
