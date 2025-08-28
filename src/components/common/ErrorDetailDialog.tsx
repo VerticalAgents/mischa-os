@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, Code, Database, Bug } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, Code, Database, Bug, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 
 interface ErrorDetailDialogProps {
   open: boolean;
@@ -14,6 +16,7 @@ interface ErrorDetailDialogProps {
 }
 
 export function ErrorDetailDialog({ open, onOpenChange, error, context }: ErrorDetailDialogProps) {
+  const [copied, setCopied] = useState(false);
   const getErrorType = (error: any) => {
     if (error?.message?.includes('invalid input syntax for type json')) {
       return 'JSON_SYNTAX_ERROR';
@@ -39,6 +42,8 @@ export function ErrorDetailDialog({ open, onOpenChange, error, context }: ErrorD
         return {
           title: "Erro de Sintaxe JSON",
           description: "Os dados enviados para o banco não estão em formato JSON válido",
+          problem: "O sistema está tentando salvar dados JSON malformados na tabela 'clientes', especificamente nos campos 'categorias_habilitadas' ou 'janelas_entrega'",
+          expected: "Estes campos devem conter arrays JSON válidos, como: [] ou [1,2,3]. O sistema deve validar e corrigir automaticamente dados malformados antes do envio",
           causes: [
             "Campos como 'categorias_habilitadas' ou 'janelas_entrega' contêm dados malformados",
             "Caracteres especiais não escapados corretamente",
@@ -56,6 +61,8 @@ export function ErrorDetailDialog({ open, onOpenChange, error, context }: ErrorD
         return {
           title: "Erro de Autenticação",
           description: "Sua sessão expirou ou não tem permissões suficientes",
+          problem: "O token de autenticação JWT expirou ou é inválido, impedindo o acesso ao banco de dados",
+          expected: "O sistema deve automaticamente renovar tokens expirados ou redirecionar para login quando necessário",
           causes: [
             "Token JWT expirado",
             "Sessão inválida ou corrompida",
@@ -71,6 +78,8 @@ export function ErrorDetailDialog({ open, onOpenChange, error, context }: ErrorD
         return {
           title: "Dados Duplicados",
           description: "Tentativa de criar registro com dados já existentes",
+          problem: "O sistema está tentando inserir dados que violam restrições de unicidade no banco",
+          expected: "O sistema deve verificar dados existentes antes da inserção e oferecer opção de atualizar ao invés de criar",
           causes: [
             "Email ou CNPJ/CPF já cadastrado",
             "Nome do cliente já existe",
@@ -86,6 +95,8 @@ export function ErrorDetailDialog({ open, onOpenChange, error, context }: ErrorD
         return {
           title: "Erro Desconhecido",
           description: "Erro não categorizado detectado",
+          problem: "Ocorreu um erro inesperado que não se enquadra nas categorias conhecidas",
+          expected: "O sistema deve capturar e categorizar todos os tipos de erro possíveis",
           causes: ["Erro interno do sistema", "Problema de conectividade", "Dados inválidos"],
           solutions: ["Tentar novamente", "Verificar conexão", "Contatar suporte técnico"]
         };
@@ -95,13 +106,100 @@ export function ErrorDetailDialog({ open, onOpenChange, error, context }: ErrorD
   const errorType = getErrorType(error);
   const explanation = getErrorExplanation(errorType);
 
+  const generateMarkdownReport = () => {
+    const timestamp = new Date().toLocaleString('pt-BR');
+    
+    return `# Relatório de Erro - Diagnóstico Técnico
+
+**Data/Hora:** ${timestamp}
+**Contexto:** ${context || 'Não especificado'}
+**Tipo de Erro:** ${errorType}
+
+## 📋 Resumo do Problema
+
+**${explanation.title}**
+
+${explanation.description}
+
+## 🚨 Problema Encontrado
+
+${explanation.problem}
+
+## ✅ Resultado Esperado
+
+${explanation.expected}
+
+## 🔍 Possíveis Causas
+
+${explanation.causes.map((cause, index) => `${index + 1}. ${cause}`).join('\n')}
+
+## 🛠️ Soluções Sugeridas
+
+${explanation.solutions.map((solution, index) => `${index + 1}. ${solution}`).join('\n')}
+
+## 🔧 Detalhes Técnicos
+
+**Mensagem de erro:**
+\`\`\`
+${error?.message || 'Mensagem não disponível'}
+\`\`\`
+
+${error?.code ? `**Código do erro:** ${error.code}` : ''}
+
+${error?.details ? `**Detalhes adicionais:**
+\`\`\`
+${error.details}
+\`\`\`` : ''}
+
+---
+*Relatório gerado automaticamente pelo sistema de diagnóstico*`;
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      const markdownReport = generateMarkdownReport();
+      await navigator.clipboard.writeText(markdownReport);
+      setCopied(true);
+      toast.success('Relatório copiado para a área de transferência!', {
+        description: 'O relatório completo em formato Markdown foi copiado.'
+      });
+      
+      // Reset do ícone após 2 segundos
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast.error('Erro ao copiar relatório', {
+        description: 'Não foi possível copiar para a área de transferência.'
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
-            Detalhes do Erro - Diagnóstico Técnico
+          <DialogTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Detalhes do Erro - Diagnóstico Técnico
+            </div>
+            <Button
+              onClick={copyToClipboard}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4 text-green-600" />
+                  Copiado!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  Copiar Relatório
+                </>
+              )}
+            </Button>
           </DialogTitle>
         </DialogHeader>
         
@@ -121,6 +219,31 @@ export function ErrorDetailDialog({ open, onOpenChange, error, context }: ErrorD
                 </div>
               </AlertDescription>
             </Alert>
+
+            {/* Problema vs Esperado */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2 text-destructive">
+                  <Bug className="h-4 w-4" />
+                  🚨 Problema Encontrado
+                </h3>
+                <div className="bg-destructive/5 border border-destructive/20 p-4 rounded-lg">
+                  <p className="text-sm">{explanation.problem}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2 text-green-600">
+                  <Code className="h-4 w-4" />
+                  ✅ Resultado Esperado
+                </h3>
+                <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+                  <p className="text-sm">{explanation.expected}</p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
 
             {/* Possíveis Causas */}
             <div className="space-y-3">
