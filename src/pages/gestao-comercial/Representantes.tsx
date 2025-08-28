@@ -43,17 +43,37 @@ export default function Representantes() {
   const [representanteSelecionado, setRepresentanteSelecionado] = useState<string>("todos");
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   
-  // Load giro data efficiently with caching
-  const { 
-    dadosConsolidados: dadosGiro, 
-    isLoading: giroLoading 
-  } = useGiroAnalysisConsolidated({});
-
   // Function to calculate real weekly turnover based on last 28 days deliveries
   const calcularGiroRealSemanal = useCallback((clienteId: string): number => {
     // **MUDANÇA: Usar função centralizada unificada**
     return calcularGiroSemanalHistoricoSync(clienteId, registros);
   }, [registros]);
+
+  // Load giro data efficiently with caching and fallback
+  const { 
+    dadosConsolidados: dadosGiro, 
+    isLoading: giroLoading,
+    error: giroError
+  } = useGiroAnalysisConsolidated({});
+
+  // Fallback para quando não há dados de giro consolidados
+  const dadosGiroFallback = useMemo(() => {
+    if (dadosGiro && dadosGiro.length > 0) return dadosGiro;
+    
+    // Criar dados básicos a partir dos clientes existentes
+    return clientes.map(cliente => ({
+      cliente_id: cliente.id,
+      cliente_nome: cliente.nome,
+      status_cliente: cliente.statusCliente,
+      representante_nome: representantes.find(r => r.id === cliente.representanteId)?.nome || null,
+      giro_semanal_calculado: calcularGiroRealSemanal(cliente.id),
+      achievement_meta: cliente.metaGiroSemanal > 0 ? 
+        (calcularGiroRealSemanal(cliente.id) / cliente.metaGiroSemanal * 100) : 0,
+      semaforo_performance: cliente.metaGiroSemanal > 0 ?
+        (calcularGiroRealSemanal(cliente.id) >= cliente.metaGiroSemanal ? 'verde' :
+         calcularGiroRealSemanal(cliente.id) >= cliente.metaGiroSemanal * 0.8 ? 'amarelo' : 'vermelho') : 'vermelho'
+    }));
+  }, [dadosGiro, clientes, representantes, calcularGiroRealSemanal]);
 
   // Initial data loading
   useEffect(() => {
@@ -80,7 +100,7 @@ export default function Representantes() {
 
   // Optimize data calculations with useMemo
   const calculatedData = useMemo(() => {
-    if (!clientes.length || !dadosGiro.length) {
+    if (!clientes.length) {
       return {
         clientesDoRepresentante: [],
         clientesAtivos: [],
@@ -154,7 +174,7 @@ export default function Representantes() {
       dadosStatusPie,
       dadosGiroBar
     };
-  }, [clientes, dadosGiro, representanteSelecionado, calcularGiroRealSemanal]);
+  }, [clientes, dadosGiroFallback, representanteSelecionado, calcularGiroRealSemanal]);
 
   const representanteNome = useMemo(() => {
     if (representanteSelecionado === "todos") return "Todos os Representantes";
@@ -352,7 +372,7 @@ export default function Representantes() {
               <SortableClientesTable 
                 clientes={calculatedData.clientesAtivos} 
                 titulo="Clientes Ativos" 
-                dadosGiro={dadosGiro} 
+                dadosGiro={dadosGiroFallback} 
                 calcularGiroRealSemanal={calcularGiroRealSemanal}
                 showDeliveryStats={false}
               />
@@ -362,7 +382,7 @@ export default function Representantes() {
               <SortableClientesTable 
                 clientes={calculatedData.clientesEmAnalise} 
                 titulo="Clientes em Análise" 
-                dadosGiro={dadosGiro} 
+                dadosGiro={dadosGiroFallback} 
                 calcularGiroRealSemanal={calcularGiroRealSemanal}
                 showDeliveryStats={true}
               />
@@ -372,7 +392,7 @@ export default function Representantes() {
               <SortableClientesTable 
                 clientes={calculatedData.clientesAtivar} 
                 titulo="Pipeline de Leads" 
-                dadosGiro={dadosGiro} 
+                dadosGiro={dadosGiroFallback} 
                 calcularGiroRealSemanal={calcularGiroRealSemanal}
                 showDeliveryStats={false}
               />
@@ -382,7 +402,7 @@ export default function Representantes() {
               <SortableClientesTable 
                 clientes={calculatedData.clientesStandby} 
                 titulo="Clientes em Standby" 
-                dadosGiro={dadosGiro} 
+                dadosGiro={dadosGiroFallback} 
                 calcularGiroRealSemanal={calcularGiroRealSemanal}
                 showDeliveryStats={false}
               />
@@ -392,7 +412,7 @@ export default function Representantes() {
               <SortableClientesTable 
                 clientes={calculatedData.clientesInativos} 
                 titulo="Clientes Inativos" 
-                dadosGiro={dadosGiro} 
+                dadosGiro={dadosGiroFallback} 
                 calcularGiroRealSemanal={calcularGiroRealSemanal}
                 showDeliveryStats={false}
               />
@@ -402,7 +422,7 @@ export default function Representantes() {
               <SortableClientesTable 
                 clientes={calculatedData.clientesDoRepresentante} 
                 titulo="Todos os Clientes" 
-                dadosGiro={dadosGiro} 
+                dadosGiro={dadosGiroFallback} 
                 calcularGiroRealSemanal={calcularGiroRealSemanal}
                 showDeliveryStats={false}
               />
