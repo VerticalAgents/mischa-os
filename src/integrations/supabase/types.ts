@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -17,6 +17,7 @@ export type Database = {
       agendamentos_clientes: {
         Row: {
           cliente_id: string
+          contatar_cliente: boolean | null
           created_at: string
           data_proxima_reposicao: string | null
           id: string
@@ -29,6 +30,7 @@ export type Database = {
         }
         Insert: {
           cliente_id: string
+          contatar_cliente?: boolean | null
           created_at?: string
           data_proxima_reposicao?: string | null
           id?: string
@@ -41,6 +43,7 @@ export type Database = {
         }
         Update: {
           cliente_id?: string
+          contatar_cliente?: boolean | null
           created_at?: string
           data_proxima_reposicao?: string | null
           id?: string
@@ -1636,20 +1639,20 @@ export type Database = {
       check_cliente_status_consistency: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          nome: string
           ativo: boolean
-          status_cliente: string
+          id: string
           inconsistencia: string
+          nome: string
+          status_cliente: string
         }[]
       }
       check_rate_limit: {
         Args: {
-          p_ip_address: unknown
-          p_email?: string
           p_attempt_type?: string
-          p_time_window?: unknown
+          p_email?: string
+          p_ip_address: unknown
           p_max_attempts?: number
+          p_time_window?: unknown
         }
         Returns: boolean
       }
@@ -1679,8 +1682,8 @@ export type Database = {
       }
       has_role: {
         Args: {
-          user_id: string
           required_role: Database["public"]["Enums"]["app_role"]
+          user_id: string
         }
         Returns: boolean
       }
