@@ -47,30 +47,34 @@ export function safeParseJSON<T>(value: any, defaultValue: T): ValidationResult<
 }
 
 /**
- * Safely stringifies data for database storage
+ * Safely prepares data for Supabase JSONB storage
+ * Returns the value directly for JSONB fields (no stringification needed)
  */
-export function safeStringifyJSON(value: any): string | null {
+export function safeStringifyJSON(value: any): any {
   if (value === null || value === undefined) {
     return null;
   }
 
-  // If already a string, validate it's proper JSON
-  if (typeof value === 'string') {
-    try {
-      JSON.parse(value);
-      return value;
-    } catch (error) {
-      console.warn(`Invalid JSON string: "${value}". Converting to null.`, error);
-      return null;
-    }
+  // For JSONB fields in Supabase, return arrays and objects directly
+  if (Array.isArray(value)) {
+    return value;
   }
 
-  // For arrays and objects, stringify
-  if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+  if (typeof value === 'object' && value !== null) {
+    return value;
+  }
+
+  // If it's a string that looks like JSON, try to parse it back to object/array
+  if (typeof value === 'string') {
+    if (value.trim() === '') {
+      return null;
+    }
+    
     try {
-      return JSON.stringify(value);
+      const parsed = JSON.parse(value);
+      return parsed; // Return the parsed object/array directly
     } catch (error) {
-      console.error(`Failed to stringify JSON:`, value, error);
+      console.warn(`Invalid JSON string: "${value}". Converting to null.`, error);
       return null;
     }
   }
@@ -83,7 +87,14 @@ export function safeStringifyJSON(value: any): string | null {
  * Validates and sanitizes janelas_entrega field
  */
 export function validateJanelasEntrega(value: any): ValidationResult<any[]> {
-  return safeParseJSON(value, []);
+  const result = safeParseJSON(value, []);
+  
+  // Return the array as-is to maintain type compatibility
+  if (result.isValid && Array.isArray(result.data)) {
+    return { isValid: true, data: result.data };
+  }
+  
+  return { isValid: true, data: [] };
 }
 
 /**

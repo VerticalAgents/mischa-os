@@ -148,9 +148,9 @@ const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
       metaGiroSemanalCalculada = calcularMetaGiroSemanal(quantidadePadrao, periodicidadePadrao);
     }
 
-    // Safely stringify JSON fields
-    const janelasEntregaString = safeStringifyJSON(validation.sanitizedData.janelas_entrega);
-    const categoriasHabilitadasString = safeStringifyJSON(validation.sanitizedData.categorias_habilitadas);
+    // Prepare JSON fields for JSONB storage (pass arrays directly)
+    const janelasEntregaData = validation.sanitizedData.janelas_entrega || [];
+    const categoriasHabilitadasData = validation.sanitizedData.categorias_habilitadas || [];
 
     // Lista de campos válidos na tabela clientes do Supabase
     const validFields = {
@@ -170,7 +170,7 @@ const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
       proxima_data_reposicao: cliente.proximaDataReposicao?.toISOString(),
       ativo: cliente.ativo,
       giro_medio_semanal: giroMedioSemanalCalculado,
-      janelas_entrega: janelasEntregaString,
+      janelas_entrega: janelasEntregaData,
       representante_id: cliente.representanteId,
       rota_entrega_id: cliente.rotaEntregaId,
       categoria_estabelecimento_id: cliente.categoriaEstabelecimentoId,
@@ -181,7 +181,7 @@ const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
       tipo_cobranca: cliente.tipoCobranca,
       forma_pagamento: cliente.formaPagamento,
       observacoes: cliente.observacoes,
-      categorias_habilitadas: categoriasHabilitadasString,
+      categorias_habilitadas: categoriasHabilitadasData,
       updated_at: new Date().toISOString()
     };
 
