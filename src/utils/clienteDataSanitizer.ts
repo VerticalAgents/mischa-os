@@ -209,9 +209,40 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     sanitized.formaPagamento = 'Boleto';
   }
 
-  // 6. Sanitizar arrays e valores numéricos
-  sanitized.categoriasHabilitadas = arrNum(sanitized.categoriasHabilitadas);
-  sanitized.janelasEntrega = arrJson(sanitized.janelasEntrega);
+  // 6. Sanitizar arrays e valores numéricos - COM VALIDAÇÃO RIGOROSA
+  console.log('🔍 Valores originais antes da sanitização de arrays:', {
+    categoriasHabilitadas: sanitized.categoriasHabilitadas,
+    janelasEntrega: sanitized.janelasEntrega
+  });
+
+  // Garantir que categorias_habilitadas é sempre um array válido de números
+  if (sanitized.categoriasHabilitadas === null || sanitized.categoriasHabilitadas === undefined) {
+    sanitized.categoriasHabilitadas = [];
+  } else if (!Array.isArray(sanitized.categoriasHabilitadas)) {
+    console.warn('🚨 categoriasHabilitadas não é array:', sanitized.categoriasHabilitadas);
+    sanitized.categoriasHabilitadas = [];
+  } else {
+    // Filtrar apenas números válidos
+    sanitized.categoriasHabilitadas = sanitized.categoriasHabilitadas
+      .map(item => {
+        const num = Number(item);
+        return Number.isFinite(num) ? num : null;
+      })
+      .filter(item => item !== null);
+  }
+
+  // Garantir que janelas_entrega é sempre um array válido
+  if (sanitized.janelasEntrega === null || sanitized.janelasEntrega === undefined) {
+    sanitized.janelasEntrega = [];
+  } else if (!Array.isArray(sanitized.janelasEntrega)) {
+    console.warn('🚨 janelasEntrega não é array:', sanitized.janelasEntrega);
+    sanitized.janelasEntrega = [];
+  }
+
+  console.log('✅ Valores sanitizados de arrays:', {
+    categoriasHabilitadas: sanitized.categoriasHabilitadas,
+    janelasEntrega: sanitized.janelasEntrega
+  });
   sanitized.quantidadePadrao = intOrNull(sanitized.quantidadePadrao) ?? 0;
   sanitized.periodicidadePadrao = intOrNull(sanitized.periodicidadePadrao) ?? 7;
   sanitized.metaGiroSemanal = numOrNull(sanitized.metaGiroSemanal) ?? 0;
@@ -239,7 +270,25 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     isValid = false;
   }
 
-  // 9. Transformar para formato do banco de dados
+  // 9. Transformar para formato do banco de dados com validação extra
+  console.log('🔄 Transformando para formato do banco:', {
+    categoriasHabilitadas: sanitized.categoriasHabilitadas,
+    janelasEntrega: sanitized.janelasEntrega
+  });
+
+  // Garantir que arrays estão no formato correto para JSONB
+  const categoriasSeguras = Array.isArray(sanitized.categoriasHabilitadas) 
+    ? sanitized.categoriasHabilitadas 
+    : [];
+  
+  const janelasSeguras = Array.isArray(sanitized.janelasEntrega) 
+    ? sanitized.janelasEntrega 
+    : [];
+
+  console.log('🛡️ Arrays seguros para JSONB:', {
+    categoriasSeguras,
+    janelasSeguras
+  });
   const dbData = {
     nome: sanitized.nome || '',
     cnpj_cpf: sanitized.cnpjCpf || null,
@@ -255,8 +304,8 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     periodicidade_padrao: sanitized.periodicidadePadrao,
     meta_giro_semanal: sanitized.metaGiroSemanal,
     giro_medio_semanal: sanitized.giroMedioSemanal,
-    janelas_entrega: sanitized.janelasEntrega,
-    categorias_habilitadas: sanitized.categoriasHabilitadas,
+    janelas_entrega: janelasSeguras,
+    categorias_habilitadas: categoriasSeguras,
     status_cliente: sanitized.statusCliente,
     ultima_data_reposicao_efetiva: sanitized.ultimaDataReposicaoEfetiva?.toISOString?.() || null,
     proxima_data_reposicao: sanitized.proximaDataReposicao?.toISOString?.() || null,
@@ -271,12 +320,29 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     updated_at: new Date().toISOString(),
   };
 
-  console.log('✅ Dados sanitizados:', {
+  console.log('✅ Payload final para o banco de dados:', {
+    nome: dbData.nome,
+    status_cliente: dbData.status_cliente,
+    tipo_logistica: dbData.tipo_logistica,
+    tipo_cobranca: dbData.tipo_cobranca,
+    forma_pagamento: dbData.forma_pagamento,
+    categorias_habilitadas: dbData.categorias_habilitadas,
+    janelas_entrega: dbData.janelas_entrega,
     corrections: corrections.length,
     errors: errors.length,
-    isValid,
-    dbData
+    isValid
   });
+
+  // Validação final dos campos JSONB
+  try {
+    JSON.stringify(dbData.categorias_habilitadas);
+    JSON.stringify(dbData.janelas_entrega);
+    console.log('✅ Validação JSON passou para ambos os arrays');
+  } catch (jsonError) {
+    console.error('❌ Erro na validação JSON:', jsonError);
+    errors.push('Erro na validação de dados JSON');
+    isValid = false;
+  }
 
   return {
     data: dbData,

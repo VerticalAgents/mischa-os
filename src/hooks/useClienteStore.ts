@@ -28,7 +28,15 @@ import { sanitizeClienteData } from '@/utils/clienteDataSanitizer';
 
 // Função simplificada - toda lógica movida para o sanitizer
 export function transformClienteToDbRow(c: any) {
+  console.log('🔧 transformClienteToDbRow recebido:', c);
+  
   const sanitizationResult = sanitizeClienteData(c);
+  
+  console.log('📊 Resultado da sanitização:', {
+    isValid: sanitizationResult.isValid,
+    corrections: sanitizationResult.corrections,
+    errors: sanitizationResult.errors
+  });
   
   if (!sanitizationResult.isValid) {
     console.error('🚨 Dados inválidos detectados:', sanitizationResult.errors);
@@ -39,6 +47,7 @@ export function transformClienteToDbRow(c: any) {
     console.warn('🔧 Correções automáticas aplicadas:', sanitizationResult.corrections);
   }
 
+  console.log('📤 Dados sanitizados finais para o banco:', sanitizationResult.data);
   return sanitizationResult.data;
 }
 
