@@ -62,6 +62,13 @@ export type Database = {
             referencedRelation: "clientes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "agendamentos_clientes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
+          },
         ]
       }
       audit_logs: {
@@ -365,6 +372,13 @@ export type Database = {
             referencedRelation: "clientes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "clientes_categorias_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
+          },
         ]
       }
       componentes_produto: {
@@ -660,6 +674,13 @@ export type Database = {
             referencedRelation: "clientes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "historico_giro_semanal_consolidado_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
+          },
         ]
       }
       historico_producao: {
@@ -942,6 +963,13 @@ export type Database = {
             referencedRelation: "clientes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pedidos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
+          },
         ]
       }
       precos_categoria_cliente: {
@@ -983,6 +1011,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clientes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "precos_categoria_cliente_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
           },
         ]
       }
@@ -1517,7 +1552,37 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      dados_analise_giro_materialized: {
+        Row: {
+          achievement_meta: number | null
+          categoria_estabelecimento_nome: string | null
+          categorias_habilitadas: Json | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          cnpj_cpf: string | null
+          contato_email: string | null
+          contato_nome: string | null
+          contato_telefone: string | null
+          created_at: string | null
+          data_consolidacao: string | null
+          desvio_padrao_giro: number | null
+          endereco_entrega: string | null
+          faturamento_semanal_previsto: number | null
+          giro_medio_historico: number | null
+          giro_semanal_calculado: number | null
+          giro_ultima_semana: number | null
+          meta_giro_semanal: number | null
+          periodicidade_padrao: number | null
+          quantidade_padrao: number | null
+          representante_nome: string | null
+          rota_entrega_nome: string | null
+          semaforo_performance: string | null
+          status_cliente: string | null
+          updated_at: string | null
+          variacao_percentual: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       check_cliente_status_consistency: {
