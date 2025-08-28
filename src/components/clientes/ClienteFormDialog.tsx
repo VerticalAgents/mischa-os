@@ -148,13 +148,116 @@ export default function ClienteFormDialog({
     
     console.log('ClienteFormDialog: Dados do formulário antes da validação:', formData);
     
-    // Validação contra valores traduzidos automaticamente
+    // Função para corrigir valores traduzidos automaticamente
+    const corrigirValoresAutotraduzidos = (dados: any) => {
+      const correcoesStatus = {
+        'customer_deleted': 'Inativo',
+        'inactive': 'Inativo', 
+        'active': 'Ativo',
+        'under_analysis': 'Em análise',
+        'to_activate': 'A ativar',
+        'standby': 'Standby',
+        'deleted': 'Inativo',
+        'client_deleted': 'Inativo',
+        'customer_inactive': 'Inativo',
+        'customer_active': 'Ativo',
+        'analysis': 'Em análise',
+        'activate': 'A ativar'
+      };
+
+      const correcoesLogistica = {
+        'own': 'Própria',
+        'third_party': 'Terceirizada',
+        'outsourced': 'Terceirizada',
+        'third-party': 'Terceirizada',
+        'self': 'Própria',
+        'internal': 'Própria'
+      };
+
+      const correcoesCobranca = {
+        'cash': 'À vista',
+        'installments': 'Parcelado',
+        'term': 'A prazo',
+        'sight': 'À vista'
+      };
+
+      const correcoesPagamento = {
+        'ticket': 'Boleto',
+        'slip': 'Boleto',
+        'bank_slip': 'Boleto',
+        'credit_card': 'Cartão de crédito',
+        'debit_card': 'Cartão de débito',
+        'pix': 'PIX',
+        'transfer': 'Transferência',
+        'check': 'Cheque'
+      };
+
+      const dadosCorrigidos = { ...dados };
+      let correcaoAplicada = false;
+
+      // Corrigir status
+      if (dados.statusCliente && correcoesStatus[dados.statusCliente]) {
+        console.warn(`Status traduzido detectado: ${dados.statusCliente} → ${correcoesStatus[dados.statusCliente]}`);
+        dadosCorrigidos.statusCliente = correcoesStatus[dados.statusCliente];
+        correcaoAplicada = true;
+      }
+
+      // Corrigir tipo_logistica
+      if (dados.tipoLogistica && correcoesLogistica[dados.tipoLogistica]) {
+        console.warn(`Logística traduzida detectada: ${dados.tipoLogistica} → ${correcoesLogistica[dados.tipoLogistica]}`);
+        dadosCorrigidos.tipoLogistica = correcoesLogistica[dados.tipoLogistica];
+        correcaoAplicada = true;
+      }
+
+      // Corrigir tipo_cobranca
+      if (dados.tipoCobranca && correcoesCobranca[dados.tipoCobranca]) {
+        console.warn(`Cobrança traduzida detectada: ${dados.tipoCobranca} → ${correcoesCobranca[dados.tipoCobranca]}`);
+        dadosCorrigidos.tipoCobranca = correcoesCobranca[dados.tipoCobranca];
+        correcaoAplicada = true;
+      }
+
+      // Corrigir forma_pagamento
+      if (dados.formaPagamento && correcoesPagamento[dados.formaPagamento]) {
+        console.warn(`Pagamento traduzido detectado: ${dados.formaPagamento} → ${correcoesPagamento[dados.formaPagamento]}`);
+        dadosCorrigidos.formaPagamento = correcoesPagamento[dados.formaPagamento];
+        correcaoAplicada = true;
+      }
+
+      if (correcaoAplicada) {
+        toast({
+          title: "Correção automática aplicada",
+          description: "Valores traduzidos foram corrigidos automaticamente",
+          variant: "default"
+        });
+      }
+
+      return dadosCorrigidos;
+    };
+
+    // Aplicar correções automáticas
+    const dadosCorrigidos = corrigirValoresAutotraduzidos(formData);
+
+    // Atualizar o estado com os dados corrigidos
+    setFormData(dadosCorrigidos);
+
+    // Validação final dos campos após correção
     const validStatuses = ['Ativo', 'Inativo', 'Em análise', 'A ativar', 'Standby'];
-    if (formData.statusCliente && !validStatuses.includes(formData.statusCliente)) {
-      console.error('Status inválido detectado no formulário:', formData.statusCliente);
+    if (dadosCorrigidos.statusCliente && !validStatuses.includes(dadosCorrigidos.statusCliente)) {
+      console.error('Status inválido após correção:', dadosCorrigidos.statusCliente, 'Original:', formData.statusCliente);
       toast({
-        title: "Erro de tradução automática",
-        description: `Status "${formData.statusCliente}" é inválido. Selecione um status válido da lista.`,
+        title: "Erro de validação",
+        description: `Status "${dadosCorrigidos.statusCliente}" não é válido. Reselecione o status.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const validLogisticas = ['Própria', 'Terceirizada'];
+    if (dadosCorrigidos.tipoLogistica && !validLogisticas.includes(dadosCorrigidos.tipoLogistica)) {
+      console.error('Logística inválida após correção:', dadosCorrigidos.tipoLogistica, 'Original:', formData.tipoLogistica);
+      toast({
+        title: "Erro de validação",
+        description: `Tipo de logística "${dadosCorrigidos.tipoLogistica}" não é válido. Reselecione o tipo.`,
         variant: "destructive"
       });
       return;
@@ -500,24 +603,24 @@ export default function ClienteFormDialog({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
-                  <Select 
-                    value={formData.tipoLogistica || 'Própria'} 
-                    onValueChange={(value) => handleInputChange('tipoLogistica', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tiposLogistica.map((tipo) => (
-                        <SelectItem key={tipo.id} value={tipo.nome}>
-                          {tipo.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
+                   <Select 
+                     value={formData.tipoLogistica || 'Própria'} 
+                     onValueChange={(value) => handleInputChange('tipoLogistica', value)}
+                   >
+                     <SelectTrigger translate="no" data-translate="no" data-no-translate="true">
+                       <SelectValue />
+                     </SelectTrigger>
+                     <SelectContent translate="no" data-translate="no" data-no-translate="true">
+                       {tiposLogistica.map((tipo) => (
+                         <SelectItem key={tipo.id} value={tipo.nome} translate="no" data-translate="no">
+                           {tipo.nome}
+                         </SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
               </div>
 
               <div className="space-y-2">
@@ -547,42 +650,42 @@ export default function ClienteFormDialog({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="tipoCobranca">Tipo de Cobrança</Label>
-                  <Select 
-                    value={formData.tipoCobranca || 'À vista'} 
-                    onValueChange={(value) => handleInputChange('tipoCobranca', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tiposCobranca.map((tipo) => (
-                        <SelectItem key={tipo.id} value={tipo.nome}>
-                          {tipo.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="formaPagamento">Forma de Pagamento</Label>
-                  <Select 
-                    value={formData.formaPagamento || 'Boleto'} 
-                    onValueChange={(value) => handleInputChange('formaPagamento', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {formasPagamento.map((forma) => (
-                        <SelectItem key={forma.id} value={forma.nome}>
-                          {forma.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="tipoCobranca">Tipo de Cobrança</Label>
+                   <Select 
+                     value={formData.tipoCobranca || 'À vista'} 
+                     onValueChange={(value) => handleInputChange('tipoCobranca', value)}
+                   >
+                     <SelectTrigger translate="no" data-translate="no" data-no-translate="true">
+                       <SelectValue />
+                     </SelectTrigger>
+                     <SelectContent translate="no" data-translate="no" data-no-translate="true">
+                       {tiposCobranca.map((tipo) => (
+                         <SelectItem key={tipo.id} value={tipo.nome} translate="no" data-translate="no">
+                           {tipo.nome}
+                         </SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="formaPagamento">Forma de Pagamento</Label>
+                   <Select 
+                     value={formData.formaPagamento || 'Boleto'} 
+                     onValueChange={(value) => handleInputChange('formaPagamento', value)}
+                   >
+                     <SelectTrigger translate="no" data-translate="no" data-no-translate="true">
+                       <SelectValue />
+                     </SelectTrigger>
+                     <SelectContent translate="no" data-translate="no" data-no-translate="true">
+                       {formasPagamento.map((forma) => (
+                         <SelectItem key={forma.id} value={forma.nome} translate="no" data-translate="no">
+                           {forma.nome}
+                         </SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="emiteNotaFiscal">Emite Nota Fiscal</Label>
                   <Select 
