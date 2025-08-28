@@ -24,92 +24,22 @@ interface ClienteState {
   setFiltroStatus: (status: StatusCliente | 'Todos' | '') => void;
 }
 
-// Helpers para transformação segura de dados
-const intOrNull = (v: any) => v === undefined || v === null || v === '' || Number.isNaN(Number(v)) ? null : parseInt(String(v), 10);
-const numOrNull = (v: any) => v === undefined || v === null || v === '' || Number.isNaN(Number(v)) ? null : Number(v);
-const boolOr = (v: any, fallback = false) => typeof v === 'boolean' ? v : v === 'true' ? true : v === 'false' ? false : fallback;
-const arrJson = (v: any) => Array.isArray(v) ? v : [];
-const arrNum = (v: any) => Array.isArray(v) ? v.map((x) => Number(x)).filter(Number.isFinite) : [];
+import { sanitizeClienteData } from '@/utils/clienteDataSanitizer';
 
-const STATUS_DB = { 
-  'Ativo': 'Ativo', 
-  'Inativo': 'Inativo', 
-  'Em análise': 'Em análise', 
-  'A ativar': 'A ativar', 
-  'Standby': 'Standby' 
-};
-
-// Mapeamento reverso para valores traduzidos comuns
-const INVALID_TRANSLATED_VALUES = {
-  'customer_deleted': 'Inativo',
-  'active': 'Ativo', 
-  'inactive': 'Inativo',
-  'under_review': 'Em análise',
-  'to_activate': 'A ativar',
-  'standby': 'Standby',
-  'pending': 'Em análise',
-  'analyzing': 'Em análise'
-};
-
-// Validar e corrigir status de cliente
-function validateAndFixStatus(status: any): string {
-  if (!status || typeof status !== 'string') {
-    console.warn('Status inválido detectado:', status, '- usando fallback "Ativo"');
-    return 'Ativo';
-  }
-  
-  const trimmedStatus = status.trim();
-  
-  // Verificar se é um valor válido
-  if (STATUS_DB[trimmedStatus]) {
-    return trimmedStatus;
-  }
-  
-  // Verificar se é um valor traduzido conhecido
-  if (INVALID_TRANSLATED_VALUES[trimmedStatus.toLowerCase()]) {
-    const correctedStatus = INVALID_TRANSLATED_VALUES[trimmedStatus.toLowerCase()];
-    console.warn(`Status traduzido detectado: "${trimmedStatus}" -> "${correctedStatus}"`);
-    return correctedStatus;
-  }
-  
-  // Se chegou aqui, é um valor completamente inválido
-  console.error(`Status completamente inválido detectado: "${trimmedStatus}" - usando fallback "Ativo"`);
-  return 'Ativo';
-}
-
+// Função simplificada - toda lógica movida para o sanitizer
 export function transformClienteToDbRow(c: any) {
-  const valid = {
-    nome: c?.nome?.trim() || '',
-    cnpj_cpf: c?.cnpjCpf?.trim() || null,
-    endereco_entrega: c?.enderecoEntrega?.trim() || null,
-    link_google_maps: c?.linkGoogleMaps?.trim() || null,
-    contato_nome: c?.contatoNome?.trim() || null,
-    contato_telefone: c?.contatoTelefone?.trim() || null,
-    contato_email: c?.contatoEmail?.trim() || null,
-    representante_id: intOrNull(c?.representanteId),
-    rota_entrega_id: intOrNull(c?.rotaEntregaId),
-    categoria_estabelecimento_id: intOrNull(c?.categoriaEstabelecimentoId),
-    quantidade_padrao: intOrNull(c?.quantidadePadrao) ?? 0,
-    periodicidade_padrao: intOrNull(c?.periodicidadePadrao) ?? 7,
-    meta_giro_semanal: numOrNull(c?.metaGiroSemanal) ?? 0,
-    giro_medio_semanal: numOrNull(c?.giroMedioSemanal) ?? 0,
-    janelas_entrega: arrJson(c?.janelasEntrega),
-    categorias_habilitadas: arrNum(c?.categoriasHabilitadas),
-    status_cliente: validateAndFixStatus(c?.statusCliente),
-    ultima_data_reposicao_efetiva: c?.ultimaDataReposicaoEfetiva?.toISOString?.() || null,
-    proxima_data_reposicao: c?.proximaDataReposicao?.toISOString?.() || null,
-    ativo: boolOr(c?.ativo, true),
-    contabilizar_giro_medio: boolOr(c?.contabilizarGiroMedio, true),
-    emite_nota_fiscal: boolOr(c?.emiteNotaFiscal, true),
-    instrucoes_entrega: c?.instrucoesEntrega?.trim() || null,
-    observacoes: c?.observacoes?.trim() || null,
-    tipo_logistica: c?.tipoLogistica?.trim() || 'Própria',
-    tipo_cobranca: c?.tipoCobranca?.trim() || 'À vista',
-    forma_pagamento: c?.formaPagamento?.trim() || 'Boleto',
-    updated_at: new Date().toISOString(),
-  };
+  const sanitizationResult = sanitizeClienteData(c);
   
-  return valid;
+  if (!sanitizationResult.isValid) {
+    console.error('🚨 Dados inválidos detectados:', sanitizationResult.errors);
+    throw new Error(`Dados inválidos: ${sanitizationResult.errors.join(', ')}`);
+  }
+
+  if (sanitizationResult.corrections.length > 0) {
+    console.warn('🔧 Correções automáticas aplicadas:', sanitizationResult.corrections);
+  }
+
+  return sanitizationResult.data;
 }
 
 const transformDbRowToCliente = (row: any): Cliente => {
@@ -173,23 +103,25 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
   },
   adicionarCliente: async (cliente) => {
     set({ loading: true });
-    let dbData: any = {};
     try {
-      dbData = transformClienteToDbRow(cliente);
+      console.log('🚀 Iniciando adição de cliente:', cliente);
       
-      console.log('useClienteStore: Payload sanitizado para adição:', dbData);
+      const dbData = transformClienteToDbRow(cliente);
+      console.log('✅ Dados sanitizados para inserção:', dbData);
 
       const { data, error } = await supabase
         .from('clientes')
-        .insert(dbData as any)
+        .insert(dbData)
         .select()
         .single();
 
       if (error) {
+        console.error('❌ Erro do Supabase:', error);
         throw error;
       }
 
       const novoCliente = transformDbRowToCliente(data);
+      console.log('✅ Cliente criado com sucesso:', novoCliente.id);
 
       set((state) => ({
         clientes: [...state.clientes, novoCliente],
@@ -198,47 +130,38 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
 
       return novoCliente;
     } catch (error: any) {
-      console.error("Erro detalhado ao adicionar cliente:", {
-        payloadSanitizado: dbData,
-        errorCode: error.code,
-        errorMessage: error.message,
-        errorDetails: error.details,
-        errorHint: error.hint
+      console.error("❌ Erro ao adicionar cliente:", {
+        error: error.message,
+        code: error.code,
+        details: error.details
       });
       
       set({ loading: false });
-      
-      if (error.code === '22P02') {
-        throw new Error(`Erro de formato de dados: ${error.details || error.message}`);
-      }
-      
-      if (error.code === '42883') {
-        throw new Error('Erro na configuração do banco de dados. Contate o administrador.');
-      }
-      
       throw error;
     }
   },
   atualizarCliente: async (id, cliente) => {
     set({ loading: true });
-    let dbData: any = {};
     try {
-      dbData = transformClienteToDbRow(cliente);
+      console.log('🔄 Iniciando atualização de cliente:', id, cliente);
       
-      console.log('useClienteStore: Payload sanitizado para atualização:', dbData);
+      const dbData = transformClienteToDbRow(cliente);
+      console.log('✅ Dados sanitizados para atualização:', dbData);
       
       const { data, error } = await supabase
         .from('clientes')
-        .update(dbData as any)
+        .update(dbData)
         .eq('id', id)
         .select()
         .single();
 
       if (error) {
+        console.error('❌ Erro do Supabase na atualização:', error);
         throw error;
       }
 
       const clienteAtualizado = transformDbRowToCliente(data);
+      console.log('✅ Cliente atualizado com sucesso:', clienteAtualizado.id);
 
       set((state) => ({
         clientes: state.clientes.map((c) => (c.id === id ? clienteAtualizado : c)),
@@ -246,25 +169,14 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         loading: false,
       }));
     } catch (error: any) {
-      console.error("Erro detalhado ao atualizar cliente:", {
+      console.error("❌ Erro ao atualizar cliente:", {
         clienteId: id,
-        payloadSanitizado: dbData,
-        errorCode: error.code,
-        errorMessage: error.message,
-        errorDetails: error.details,
-        errorHint: error.hint
+        error: error.message,
+        code: error.code,
+        details: error.details
       });
       
       set({ loading: false });
-      
-      if (error.code === '22P02') {
-        throw new Error(`Erro de formato de dados: ${error.details || error.message}`);
-      }
-      
-      if (error.code === '42883') {
-        throw new Error('Erro na configuração do banco de dados. Contate o administrador.');
-      }
-      
       throw error;
     }
   },

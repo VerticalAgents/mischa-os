@@ -146,163 +146,14 @@ export default function ClienteFormDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('ClienteFormDialog: Dados do formulário antes da validação:', formData);
-    
-    // Função para corrigir valores traduzidos automaticamente
-    const corrigirValoresAutotraduzidos = (dados: any) => {
-      const correcoesStatus = {
-        'customer_deleted': 'Inativo',
-        'inactive': 'Inativo', 
-        'active': 'Ativo',
-        'under_analysis': 'Em análise',
-        'to_activate': 'A ativar',
-        'standby': 'Standby',
-        'deleted': 'Inativo',
-        'client_deleted': 'Inativo',
-        'customer_inactive': 'Inativo',
-        'customer_active': 'Ativo',
-        'analysis': 'Em análise',
-        'activate': 'A ativar'
-      };
-
-      const correcoesLogistica = {
-        'own': 'Própria',
-        'third_party': 'Terceirizada',
-        'outsourced': 'Terceirizada',
-        'third-party': 'Terceirizada',
-        'self': 'Própria',
-        'internal': 'Própria'
-      };
-
-      const correcoesCobranca = {
-        'cash': 'À vista',
-        'installments': 'Parcelado',
-        'term': 'A prazo',
-        'sight': 'À vista'
-      };
-
-      const correcoesPagamento = {
-        'ticket': 'Boleto',
-        'slip': 'Boleto',
-        'bank_slip': 'Boleto',
-        'credit_card': 'Cartão de crédito',
-        'debit_card': 'Cartão de débito',
-        'pix': 'PIX',
-        'transfer': 'Transferência',
-        'check': 'Cheque'
-      };
-
-      const dadosCorrigidos = { ...dados };
-      let correcaoAplicada = false;
-
-      // Corrigir status
-      if (dados.statusCliente && correcoesStatus[dados.statusCliente]) {
-        console.warn(`Status traduzido detectado: ${dados.statusCliente} → ${correcoesStatus[dados.statusCliente]}`);
-        dadosCorrigidos.statusCliente = correcoesStatus[dados.statusCliente];
-        correcaoAplicada = true;
-      }
-
-      // Corrigir tipo_logistica
-      if (dados.tipoLogistica && correcoesLogistica[dados.tipoLogistica]) {
-        console.warn(`Logística traduzida detectada: ${dados.tipoLogistica} → ${correcoesLogistica[dados.tipoLogistica]}`);
-        dadosCorrigidos.tipoLogistica = correcoesLogistica[dados.tipoLogistica];
-        correcaoAplicada = true;
-      }
-
-      // Corrigir tipo_cobranca
-      if (dados.tipoCobranca && correcoesCobranca[dados.tipoCobranca]) {
-        console.warn(`Cobrança traduzida detectada: ${dados.tipoCobranca} → ${correcoesCobranca[dados.tipoCobranca]}`);
-        dadosCorrigidos.tipoCobranca = correcoesCobranca[dados.tipoCobranca];
-        correcaoAplicada = true;
-      }
-
-      // Corrigir forma_pagamento
-      if (dados.formaPagamento && correcoesPagamento[dados.formaPagamento]) {
-        console.warn(`Pagamento traduzido detectado: ${dados.formaPagamento} → ${correcoesPagamento[dados.formaPagamento]}`);
-        dadosCorrigidos.formaPagamento = correcoesPagamento[dados.formaPagamento];
-        correcaoAplicada = true;
-      }
-
-      if (correcaoAplicada) {
-        toast({
-          title: "Correção automática aplicada",
-          description: "Valores traduzidos foram corrigidos automaticamente",
-          variant: "default"
-        });
-      }
-
-      return dadosCorrigidos;
-    };
-
-    // Aplicar correções automáticas
-    const dadosCorrigidos = corrigirValoresAutotraduzidos(formData);
-
-    // Atualizar o estado com os dados corrigidos
-    setFormData(dadosCorrigidos);
-
-    // Validação final dos campos após correção
-    const validStatuses = ['Ativo', 'Inativo', 'Em análise', 'A ativar', 'Standby'];
-    if (dadosCorrigidos.statusCliente && !validStatuses.includes(dadosCorrigidos.statusCliente)) {
-      console.error('Status inválido após correção:', dadosCorrigidos.statusCliente, 'Original:', formData.statusCliente);
-      toast({
-        title: "Erro de validação",
-        description: `Status "${dadosCorrigidos.statusCliente}" não é válido. Reselecione o status.`,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const validLogisticas = ['Própria', 'Terceirizada'];
-    if (dadosCorrigidos.tipoLogistica && !validLogisticas.includes(dadosCorrigidos.tipoLogistica)) {
-      console.error('Logística inválida após correção:', dadosCorrigidos.tipoLogistica, 'Original:', formData.tipoLogistica);
-      toast({
-        title: "Erro de validação",
-        description: `Tipo de logística "${dadosCorrigidos.tipoLogistica}" não é válido. Reselecione o tipo.`,
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Validação dos campos obrigatórios
-    if (!formData.nome || formData.nome.trim() === '') {
-      console.log('ClienteFormDialog: Erro - Nome vazio:', formData.nome);
-      toast({
-        title: "Erro",
-        description: "Nome do cliente é obrigatório",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.enderecoEntrega || formData.enderecoEntrega.trim() === '') {
-      console.log('ClienteFormDialog: Erro - Endereço vazio:', formData.enderecoEntrega);
-      toast({
-        title: "Erro",
-        description: "Endereço de entrega é obrigatório",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.linkGoogleMaps || formData.linkGoogleMaps.trim() === '') {
-      console.log('ClienteFormDialog: Erro - Link Google Maps vazio:', formData.linkGoogleMaps);
-      toast({
-        title: "Erro",
-        description: "Link do Google Maps é obrigatório",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    console.log('ClienteFormDialog: Validação passou, iniciando salvamento');
+    console.log('📝 Iniciando submissão do formulário:', formData);
     setIsSaving(true);
 
     try {
-      console.log('ClienteFormDialog: Iniciando salvamento do cliente:', formData);
-
       let clienteId: string;
 
       if (cliente) {
+        console.log('🔄 Atualizando cliente existente:', cliente.id);
         await atualizarCliente(cliente.id, formData);
         clienteId = cliente.id;
         
@@ -311,6 +162,7 @@ export default function ClienteFormDialog({
           description: "Dados do cliente foram salvos com sucesso"
         });
       } else {
+        console.log('➕ Criando novo cliente');
         const novoCliente = await adicionarCliente(formData as Omit<Cliente, 'id' | 'dataCadastro'>);
         clienteId = novoCliente.id;
         
@@ -323,11 +175,10 @@ export default function ClienteFormDialog({
       // Salvar categorias de forma não-bloqueante
       if (formData.categoriasHabilitadas && formData.categoriasHabilitadas.length > 0) {
         try {
-          console.log('ClienteFormDialog: Salvando categorias do cliente:', formData.categoriasHabilitadas);
+          console.log('📂 Salvando categorias do cliente:', formData.categoriasHabilitadas);
           await salvarCategoriasCliente(clienteId, formData.categoriasHabilitadas);
-          console.log('ClienteFormDialog: Categorias salvas com sucesso');
         } catch (categoriaError) {
-          console.error('ClienteFormDialog: Erro ao salvar categorias (não-bloqueante):', categoriaError);
+          console.error('⚠️ Erro ao salvar categorias (não-bloqueante):', categoriaError);
           toast({
             title: "Aviso",
             description: "Cliente salvo, mas houve um problema ao salvar as categorias. Tente editá-las novamente.",
@@ -340,26 +191,11 @@ export default function ClienteFormDialog({
       onOpenChange(false);
 
     } catch (error: any) {
-      console.error('ClienteFormDialog: Erro ao salvar cliente:', error);
-      
-      // Mostrar detalhes específicos do erro do Supabase
-      let errorMessage = "Não foi possível salvar os dados do cliente.";
-      
-      if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      if (error.hint) {
-        errorMessage += ` Dica: ${error.hint}`;
-      }
-      
-      if (error.code) {
-        errorMessage += ` (Código: ${error.code})`;
-      }
+      console.error('❌ Erro ao salvar cliente:', error);
       
       toast({
         title: "Erro ao salvar",
-        description: errorMessage,
+        description: error.message || "Não foi possível salvar os dados do cliente.",
         variant: "destructive"
       });
     } finally {
