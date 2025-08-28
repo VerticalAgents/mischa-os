@@ -28,14 +28,19 @@ export default function FichaPreview(){
   return (
     <div className="p-6 print:p-0">
       <style>{`
-        @page { size: A4; margin: 12mm; }
+        @page { size: A4 portrait; margin: 12mm; }
         @media print {
+          html, body { width: 210mm; height: 297mm; }
           .no-print { display: none !important; }
           .page { box-shadow: none !important; border: none !important; margin: 0 !important; }
+          .print-area { max-width: 186mm; }
+          .no-break { break-inside: avoid; }
+          .header-cards * { line-height: 1.1; }
+          .fit-a4 { transform: scale(0.95); transform-origin: top left; }
         }
       `}</style>
 
-      <div className="page mx-auto max-w-[800px] bg-white">
+      <div className="page mx-auto max-w-[186mm] print:max-w-[186mm] bg-white">
         <div className="flex items-center justify-between mb-4 no-print">
           <h1 className="text-xl font-semibold">Ficha técnica — {meta.receita_nome} (×{meta.multiplicador})</h1>
           <div className="flex gap-2">
@@ -44,18 +49,15 @@ export default function FichaPreview(){
           </div>
         </div>
 
-        <header className="mb-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Stat label="Receita" value={meta.receita_nome} />
-            <Stat label="Multiplicador" value={`${meta.multiplicador}×`} />
-            <Stat label="Massa total (sem topping) — g" value={base.total_g} />
-            <Stat label="Peso total de toppings — g" value={toppings.total_g} />
-          </div>
-          <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Stat label="Peso total (com topping) — g" value={base.total_g + toppings.total_g} />
-            <Stat label="Nº de formas" value={meta.forms_count} />
-            <Stat label="Massa por forma (sem topping) — g" value={meta.forms_count > 0 ? Math.round(base.total_g / meta.forms_count) : "—"} />
-            <Stat label="Obs." value={observacoes ? "Veja abaixo" : "—"} />
+        <header className="mb-4 print-area header-cards no-break fit-a4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 print:grid-cols-4 gap-2">
+            <CompactStat label="Receita" value={meta.receita_nome} />
+            <CompactStat label="Multiplicador" value={`${meta.multiplicador}×`} />
+            <CompactStat label="Massa total (sem topping) — g" value={base.total_g} />
+            <CompactStat label="Peso total de toppings — g" value={toppings.total_g} />
+            <CompactStat label="Peso total (com topping) — g" value={base.total_g + toppings.total_g} />
+            <CompactStat label="Nº de formas" value={meta.forms_count} />
+            <CompactStat label="Massa por forma (sem topping) — g" value={meta.forms_count > 0 ? Math.round(base.total_g / meta.forms_count) : "—"} />
           </div>
         </header>
 
@@ -120,11 +122,11 @@ export default function FichaPreview(){
   );
 }
 
-function Stat({label, value}:{label:string; value:string|number}){
+function CompactStat({label, value}:{label:string; value:string|number}){
   return (
-    <div className="rounded-xl border p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="text-lg font-semibold">{value}</div>
+    <div className="rounded-lg border p-2 min-h-0 shrink-0">
+      <div className="text-[11px] font-medium tracking-wide uppercase text-neutral-500">{label}</div>
+      <div className="text-base sm:text-lg font-semibold leading-tight">{String(value)}</div>
     </div>
   );
 }
