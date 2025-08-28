@@ -34,6 +34,16 @@ import PrecificacaoPorCategoria from "./PrecificacaoPorCategoria";
 import { useErrorDetail } from '@/hooks/useErrorDetail';
 import { ErrorDetailDialog } from '@/components/common/ErrorDetailDialog';
 import { ClienteResetDialog } from './ClienteResetDialog';
+import { 
+  STATUS_CLIENTE_LABELS, 
+  TIPO_LOGISTICA_LABELS, 
+  TIPO_COBRANCA_LABELS, 
+  FORMA_PAGAMENTO_LABELS,
+  type StatusClienteType,
+  type TipoLogisticaType,
+  type TipoCobrancaType,
+  type FormaPagamentoType 
+} from '@/types/cliente-dto';
 
 interface ClienteFormDialogProps {
   open: boolean;
@@ -251,7 +261,12 @@ export default function ClienteFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto notranslate" 
+        translate="no" 
+        data-translate="no"
+        lang="pt"
+      >
         <DialogHeader>
           <DialogTitle>
             {cliente ? 'Editar Cliente' : 'Novo Cliente'}
@@ -261,7 +276,7 @@ export default function ClienteFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 notranslate" translate="no">`
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Dados Básicos</CardTitle>
@@ -448,22 +463,23 @@ export default function ClienteFormDialog({
                   </Select>
                 </div>
                  <div className="space-y-2">
-                   <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
-                   <Select 
-                     value={formData.tipoLogistica || 'Própria'} 
-                     onValueChange={(value) => handleInputChange('tipoLogistica', value)}
-                   >
-                     <SelectTrigger translate="no" data-translate="no" data-no-translate="true">
-                       <SelectValue />
-                     </SelectTrigger>
-                     <SelectContent translate="no" data-translate="no" data-no-translate="true">
-                       {tiposLogistica.map((tipo) => (
-                         <SelectItem key={tipo.id} value={tipo.nome} translate="no" data-translate="no">
-                           {tipo.nome}
-                         </SelectItem>
-                       ))}
-                     </SelectContent>
-                   </Select>
+                  <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
+                  <Select 
+                    value={formData.tipoLogistica || 'PROPRIA'} 
+                    onValueChange={(value) => handleInputChange('tipoLogistica', value as TipoLogisticaType)}
+                  >
+                    <SelectTrigger className="notranslate" translate="no" data-translate="no">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="notranslate" translate="no" data-translate="no">
+                      <SelectItem value="PROPRIA" className="notranslate" translate="no">
+                        {TIPO_LOGISTICA_LABELS.PROPRIA}
+                      </SelectItem>
+                      <SelectItem value="TERCEIRIZADA" className="notranslate" translate="no">
+                        {TIPO_LOGISTICA_LABELS.TERCEIRIZADA}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                  </div>
               </div>
 
@@ -497,36 +513,50 @@ export default function ClienteFormDialog({
                  <div className="space-y-2">
                    <Label htmlFor="tipoCobranca">Tipo de Cobrança</Label>
                    <Select 
-                     value={formData.tipoCobranca || 'À vista'} 
-                     onValueChange={(value) => handleInputChange('tipoCobranca', value)}
+                     value={formData.tipoCobranca || 'A_VISTA'} 
+                     onValueChange={(value) => handleInputChange('tipoCobranca', value as TipoCobrancaType)}
                    >
-                     <SelectTrigger translate="no" data-translate="no" data-no-translate="true">
+                     <SelectTrigger className="notranslate" translate="no" data-translate="no">
                        <SelectValue />
                      </SelectTrigger>
-                     <SelectContent translate="no" data-translate="no" data-no-translate="true">
-                       {tiposCobranca.map((tipo) => (
-                         <SelectItem key={tipo.id} value={tipo.nome} translate="no" data-translate="no">
-                           {tipo.nome}
-                         </SelectItem>
-                       ))}
+                     <SelectContent className="notranslate" translate="no" data-translate="no">
+                       <SelectItem value="A_VISTA" className="notranslate" translate="no">
+                         {TIPO_COBRANCA_LABELS.A_VISTA}
+                       </SelectItem>
+                       <SelectItem value="PARCELADO" className="notranslate" translate="no">
+                         {TIPO_COBRANCA_LABELS.PARCELADO}
+                       </SelectItem>
+                       <SelectItem value="A_PRAZO" className="notranslate" translate="no">
+                         {TIPO_COBRANCA_LABELS.A_PRAZO}
+                       </SelectItem>
                      </SelectContent>
                    </Select>
                  </div>
                  <div className="space-y-2">
                    <Label htmlFor="formaPagamento">Forma de Pagamento</Label>
                    <Select 
-                     value={formData.formaPagamento || 'Boleto'} 
-                     onValueChange={(value) => handleInputChange('formaPagamento', value)}
+                     value={formData.formaPagamento || 'BOLETO'} 
+                     onValueChange={(value) => handleInputChange('formaPagamento', value as FormaPagamentoType)}
                    >
-                     <SelectTrigger translate="no" data-translate="no" data-no-translate="true">
+                     <SelectTrigger className="notranslate" translate="no" data-translate="no">
                        <SelectValue />
                      </SelectTrigger>
-                     <SelectContent translate="no" data-translate="no" data-no-translate="true">
-                       {formasPagamento.map((forma) => (
-                         <SelectItem key={forma.id} value={forma.nome} translate="no" data-translate="no">
-                           {forma.nome}
-                         </SelectItem>
-                       ))}
+                     <SelectContent className="notranslate" translate="no" data-translate="no">
+                       <SelectItem value="BOLETO" className="notranslate" translate="no">
+                         {FORMA_PAGAMENTO_LABELS.BOLETO}
+                       </SelectItem>
+                       <SelectItem value="PIX" className="notranslate" translate="no">
+                         {FORMA_PAGAMENTO_LABELS.PIX}
+                       </SelectItem>
+                       <SelectItem value="DINHEIRO" className="notranslate" translate="no">
+                         {FORMA_PAGAMENTO_LABELS.DINHEIRO}
+                       </SelectItem>
+                       <SelectItem value="CARTAO_CREDITO" className="notranslate" translate="no">
+                         {FORMA_PAGAMENTO_LABELS.CARTAO_CREDITO}
+                       </SelectItem>
+                       <SelectItem value="CARTAO_DEBITO" className="notranslate" translate="no">
+                         {FORMA_PAGAMENTO_LABELS.CARTAO_DEBITO}
+                       </SelectItem>
                      </SelectContent>
                    </Select>
                  </div>
