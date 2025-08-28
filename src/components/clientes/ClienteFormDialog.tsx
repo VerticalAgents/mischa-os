@@ -31,6 +31,8 @@ import { toast } from "@/hooks/use-toast";
 import DiasSemanaPicker from "./DiasSemanaPicker";
 import CategoriasProdutoSelector from "./CategoriasProdutoSelector";
 import PrecificacaoPorCategoria from "./PrecificacaoPorCategoria";
+import { useErrorDetail } from '@/hooks/useErrorDetail';
+import { ErrorDetailDialog } from '@/components/common/ErrorDetailDialog';
 
 interface ClienteFormDialogProps {
   open: boolean;
@@ -55,6 +57,7 @@ export default function ClienteFormDialog({
   const { formasPagamento } = useSupabaseFormasPagamento();
   const { salvarPrecos } = useSupabasePrecosCategoriaCliente();
   const { salvarCategoriasCliente } = useClientesCategorias();
+  const { isOpen: isErrorDetailOpen, errorDetail, hideErrorDetail } = useErrorDetail();
 
   const [formData, setFormData] = useState<Partial<Cliente>>({
     nome: '',
@@ -587,6 +590,13 @@ export default function ClienteFormDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+      
+      <ErrorDetailDialog
+        open={isErrorDetailOpen}
+        onOpenChange={hideErrorDetail}
+        error={errorDetail?.error}
+        context={errorDetail?.context}
+      />
     </Dialog>
   );
 }

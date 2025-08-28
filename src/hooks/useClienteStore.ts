@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { Cliente, StatusCliente } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { calcularGiroSemanalPadrao, calcularMetaGiroSemanal } from '@/utils/giroCalculations';
+import { useErrorDetail } from '@/hooks/useErrorDetail';
+import { toast } from 'sonner';
 
 interface ClienteState {
   clientes: Cliente[];
@@ -166,6 +168,18 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
 
       if (error) {
         console.error('❌ Erro do Supabase na atualização:', error);
+        
+        // Mostrar erro expandível
+        const { showErrorDetail } = useErrorDetail.getState();
+        showErrorDetail(error, 'Atualização de Cliente');
+        
+        toast.error('Erro ao atualizar cliente - Clique para ver detalhes', {
+          description: 'Clique nesta notificação para diagnóstico completo',
+          action: {
+            label: 'Ver Detalhes',
+            onClick: () => showErrorDetail(error, 'Atualização de Cliente')
+          }
+        });
         throw error;
       }
 
@@ -184,6 +198,10 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         code: error.code,
         details: error.details
       });
+      
+      // Garantir que o erro expandível seja mostrado mesmo em catch
+      const { showErrorDetail } = useErrorDetail.getState();
+      showErrorDetail(error, 'Atualização de Cliente - Erro Crítico');
       
       set({ loading: false });
       throw error;
