@@ -2,12 +2,7 @@ import { create } from 'zustand';
 import { Cliente, StatusCliente } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { calcularGiroSemanalPadrao, calcularMetaGiroSemanal } from '@/utils/giroCalculations';
-import { 
-  validateJanelasEntrega, 
-  validateCategoriasHabilitadas, 
-  safeStringifyJSON, 
-  validateClienteData 
-} from '@/utils/jsonValidation';
+// Removed complex JSON validation - using direct array handling
 
 interface ClienteState {
   clientes: Cliente[];
@@ -33,19 +28,15 @@ interface ClienteState {
 // Helper function to transform database row to Cliente interface
 const transformDbRowToCliente = (row: any): Cliente => {
   try {
-    // Validate and parse JSON fields with robust error handling
-    const janelasResult = validateJanelasEntrega(row.janelas_entrega);
-    const categoriasResult = validateCategoriasHabilitadas(row.categorias_habilitadas);
+    // Simplified approach: trust Supabase JSONB fields directly
+    console.log(`[DEBUG] transformDbRowToCliente - Input row ${row.id}:`, {
+      janelas_entrega: row.janelas_entrega,
+      categorias_habilitadas: row.categorias_habilitadas,
+      janelas_type: typeof row.janelas_entrega,
+      categorias_type: typeof row.categorias_habilitadas
+    });
 
-    if (!janelasResult.isValid) {
-      console.warn(`Cliente ${row.id}: janelas_entrega validation failed:`, janelasResult.error);
-    }
-    
-    if (!categoriasResult.isValid) {
-      console.warn(`Cliente ${row.id}: categorias_habilitadas validation failed:`, categoriasResult.error);
-    }
-
-    return {
+    const result = {
       id: row.id,
       nome: row.nome || '',
       cnpjCpf: row.cnpj_cpf || '',
@@ -64,7 +55,7 @@ const transformDbRowToCliente = (row: any): Cliente => {
       proximaDataReposicao: row.proxima_data_reposicao ? new Date(row.proxima_data_reposicao) : undefined,
       ativo: row.ativo ?? true,
       giroMedioSemanal: row.giro_medio_semanal || 0,
-      janelasEntrega: janelasResult.data,
+      janelasEntrega: Array.isArray(row.janelas_entrega) ? row.janelas_entrega : [],
       representanteId: row.representante_id,
       rotaEntregaId: row.rota_entrega_id,
       categoriaEstabelecimentoId: row.categoria_estabelecimento_id,
@@ -77,8 +68,15 @@ const transformDbRowToCliente = (row: any): Cliente => {
       observacoes: row.observacoes || '',
       categoriaId: row.categoria_id || 1,
       subcategoriaId: row.subcategoria_id || 1,
-      categoriasHabilitadas: categoriasResult.data
+      categoriasHabilitadas: Array.isArray(row.categorias_habilitadas) ? row.categorias_habilitadas : []
     };
+
+    console.log(`[DEBUG] transformDbRowToCliente - Output for ${row.id}:`, {
+      janelasEntrega: result.janelasEntrega,
+      categoriasHabilitadas: result.categoriasHabilitadas
+    });
+
+    return result;
   } catch (error) {
     console.error(`Error transforming database row for cliente ${row.id}:`, error);
     // Return a safe fallback version with empty arrays for JSON fields
@@ -122,17 +120,14 @@ const transformDbRowToCliente = (row: any): Cliente => {
 // Helper function to transform Cliente to database row format (sanitized)
 const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
   try {
-    // Validate all cliente data before transformation
-    const validation = validateClienteData({
-      janelas_entrega: cliente.janelasEntrega,
-      categorias_habilitadas: cliente.categoriasHabilitadas
+    console.log(`[DEBUG] transformClienteToDbRow - Input cliente:`, {
+      id: cliente.id,
+      janelasEntrega: cliente.janelasEntrega,
+      categoriasHabilitadas: cliente.categoriasHabilitadas,
+      janelas_type: typeof cliente.janelasEntrega,
+      categorias_type: typeof cliente.categoriasHabilitadas
     });
 
-    if (!validation.isValid) {
-      console.warn('Cliente data validation warnings:', validation.errors);
-    }
-
-    // Calcular giroMedioSemanal e metaGiroSemanal automaticamente se não foram fornecidos
     const quantidadePadrao = cliente.quantidadePadrao || 0;
     const periodicidadePadrao = cliente.periodicidadePadrao || 7;
     
@@ -148,9 +143,9 @@ const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
       metaGiroSemanalCalculada = calcularMetaGiroSemanal(quantidadePadrao, periodicidadePadrao);
     }
 
-    // Prepare JSON fields for JSONB storage (pass arrays directly)
-    const janelasEntregaData = validation.sanitizedData.janelas_entrega || [];
-    const categoriasHabilitadasData = validation.sanitizedData.categorias_habilitadas || [];
+    // Prepare arrays directly for JSONB fields (no validation/transformation)
+    const janelasEntregaData = Array.isArray(cliente.janelasEntrega) ? cliente.janelasEntrega : [];
+    const categoriasHabilitadasData = Array.isArray(cliente.categoriasHabilitadas) ? cliente.categoriasHabilitadas : [];
 
     // Lista de campos válidos na tabela clientes do Supabase
     const validFields = {
@@ -193,9 +188,11 @@ const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
       }
     });
 
-    console.log('Campos sanitizados para banco:', {
+    console.log(`[DEBUG] transformClienteToDbRow - Final output:`, {
       janelas_entrega: sanitizedFields.janelas_entrega,
-      categorias_habilitadas: sanitizedFields.categorias_habilitadas
+      categorias_habilitadas: sanitizedFields.categorias_habilitadas,
+      janelas_output_type: typeof sanitizedFields.janelas_entrega,
+      categorias_output_type: typeof sanitizedFields.categorias_habilitadas
     });
 
     return sanitizedFields;
@@ -263,15 +260,13 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
       console.log('useClienteStore: Iniciando atualização do cliente:', id);
       console.log('useClienteStore: Dados originais do cliente:', cliente);
 
-      // Pre-validate data before transformation
-      const preValidation = validateClienteData({
-        janelas_entrega: cliente.janelasEntrega,
-        categorias_habilitadas: cliente.categoriasHabilitadas
+      // Simple type checking before transformation
+      console.log('useClienteStore: Dados para atualização - tipos:', {
+        janelasEntrega: typeof cliente.janelasEntrega,
+        categoriasHabilitadas: typeof cliente.categoriasHabilitadas,
+        janelasIsArray: Array.isArray(cliente.janelasEntrega),
+        categoriasIsArray: Array.isArray(cliente.categoriasHabilitadas)
       });
-
-      if (!preValidation.isValid) {
-        console.warn('useClienteStore: Avisos de validação:', preValidation.errors);
-      }
 
       const dbData = transformClienteToDbRow(cliente);
       
