@@ -45,7 +45,7 @@ const transformDbRowToCliente = (row: any): Cliente => {
     proximaDataReposicao: row.proxima_data_reposicao ? new Date(row.proxima_data_reposicao) : undefined,
     ativo: row.ativo ?? true,
     giroMedioSemanal: row.giro_medio_semanal || 0,
-    janelasEntrega: row.janelas_entrega || [],
+    janelasEntrega: row.janelas_entrega ? (typeof row.janelas_entrega === 'string' ? JSON.parse(row.janelas_entrega) : row.janelas_entrega) : [],
     representanteId: row.representante_id,
     rotaEntregaId: row.rota_entrega_id,
     categoriaEstabelecimentoId: row.categoria_estabelecimento_id,
@@ -58,7 +58,7 @@ const transformDbRowToCliente = (row: any): Cliente => {
     observacoes: row.observacoes || '',
     categoriaId: row.categoria_id || 1,
     subcategoriaId: row.subcategoria_id || 1,
-    categoriasHabilitadas: row.categorias_habilitadas || []
+    categoriasHabilitadas: row.categorias_habilitadas ? (typeof row.categorias_habilitadas === 'string' ? JSON.parse(row.categorias_habilitadas) : row.categorias_habilitadas) : []
   };
 };
 
@@ -98,7 +98,7 @@ const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
     proxima_data_reposicao: cliente.proximaDataReposicao?.toISOString(),
     ativo: cliente.ativo,
     giro_medio_semanal: giroMedioSemanalCalculado,
-    janelas_entrega: cliente.janelasEntrega,
+    janelas_entrega: cliente.janelasEntrega ? JSON.stringify(cliente.janelasEntrega) : null,
     representante_id: cliente.representanteId,
     rota_entrega_id: cliente.rotaEntregaId,
     categoria_estabelecimento_id: cliente.categoriaEstabelecimentoId,
@@ -109,7 +109,7 @@ const transformClienteToDbRow = (cliente: Partial<Cliente>) => {
     tipo_cobranca: cliente.tipoCobranca,
     forma_pagamento: cliente.formaPagamento,
     observacoes: cliente.observacoes,
-    categorias_habilitadas: cliente.categoriasHabilitadas,
+    categorias_habilitadas: cliente.categoriasHabilitadas ? JSON.stringify(cliente.categoriasHabilitadas) : null,
     updated_at: new Date().toISOString()
   };
 
