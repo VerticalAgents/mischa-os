@@ -290,28 +290,22 @@ export default function ClienteFormDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="enderecoEntrega">
-                  Endereço de Entrega <span className="text-red-500">*</span>
-                </Label>
+                <Label htmlFor="enderecoEntrega">Endereço de Entrega</Label>
                 <Input
                   id="enderecoEntrega"
                   value={formData.enderecoEntrega || ''}
                   onChange={(e) => handleInputChange('enderecoEntrega', e.target.value)}
-                  required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="linkGoogleMaps">
-                  Link do Google Maps <span className="text-red-500">*</span>
-                </Label>
+                <Label htmlFor="linkGoogleMaps">Link do Google Maps</Label>
                 <Input
                   id="linkGoogleMaps"
                   type="url"
                   placeholder="https://maps.app.goo.gl/wTpwoh5LT8hDRPke6"
                   value={formData.linkGoogleMaps || ''}
                   onChange={(e) => handleInputChange('linkGoogleMaps', e.target.value)}
-                  required
                 />
               </div>
 
