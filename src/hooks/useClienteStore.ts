@@ -41,13 +41,13 @@ const STATUS_DB = {
 
 export function transformClienteToDbRow(c: any) {
   const valid = {
-    nome: c?.nome?.trim(),
-    cnpj_cpf: c?.cnpjCpf?.trim(),
-    endereco_entrega: c?.enderecoEntrega?.trim(),
-    link_google_maps: c?.linkGoogleMaps?.trim(),
-    contato_nome: c?.contatoNome?.trim(),
-    contato_telefone: c?.contatoTelefone?.trim(),
-    contato_email: c?.contatoEmail?.trim(),
+    nome: c?.nome?.trim() || '',
+    cnpj_cpf: c?.cnpjCpf?.trim() || null,
+    endereco_entrega: c?.enderecoEntrega?.trim() || null,
+    link_google_maps: c?.linkGoogleMaps?.trim() || null,
+    contato_nome: c?.contatoNome?.trim() || null,
+    contato_telefone: c?.contatoTelefone?.trim() || null,
+    contato_email: c?.contatoEmail?.trim() || null,
     representante_id: intOrNull(c?.representanteId),
     rota_entrega_id: intOrNull(c?.rotaEntregaId),
     categoria_estabelecimento_id: intOrNull(c?.categoriaEstabelecimentoId),
@@ -58,24 +58,20 @@ export function transformClienteToDbRow(c: any) {
     janelas_entrega: arrJson(c?.janelasEntrega),
     categorias_habilitadas: arrNum(c?.categoriasHabilitadas),
     status_cliente: STATUS_DB[c?.statusCliente ?? 'Ativo'] ?? 'Ativo',
-    ultima_data_reposicao_efetiva: c?.ultimaDataReposicaoEfetiva?.toISOString?.(),
-    proxima_data_reposicao: c?.proximaDataReposicao?.toISOString?.(),
+    ultima_data_reposicao_efetiva: c?.ultimaDataReposicaoEfetiva?.toISOString?.() || null,
+    proxima_data_reposicao: c?.proximaDataReposicao?.toISOString?.() || null,
     ativo: boolOr(c?.ativo, true),
     contabilizar_giro_medio: boolOr(c?.contabilizarGiroMedio, true),
     emite_nota_fiscal: boolOr(c?.emiteNotaFiscal, true),
-    instrucoes_entrega: c?.instrucoesEntrega?.trim(),
-    observacoes: c?.observacoes?.trim(),
-    tipo_logistica: c?.tipoLogistica?.trim(),
-    tipo_cobranca: c?.tipoCobranca?.trim(),
-    forma_pagamento: c?.formaPagamento?.trim(),
+    instrucoes_entrega: c?.instrucoesEntrega?.trim() || null,
+    observacoes: c?.observacoes?.trim() || null,
+    tipo_logistica: c?.tipoLogistica?.trim() || 'Própria',
+    tipo_cobranca: c?.tipoCobranca?.trim() || 'À vista',
+    forma_pagamento: c?.formaPagamento?.trim() || 'Boleto',
     updated_at: new Date().toISOString(),
   };
   
-  const out: Record<string, any> = {};
-  Object.entries(valid).forEach(([k, v]) => { 
-    if (v !== undefined && v !== null) out[k] = v; 
-  });
-  return out;
+  return valid;
 }
 
 const transformDbRowToCliente = (row: any): Cliente => {
@@ -139,14 +135,15 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
   },
   adicionarCliente: async (cliente) => {
     set({ loading: true });
+    let dbData: any = {};
     try {
-      const dbData = transformClienteToDbRow(cliente);
+      dbData = transformClienteToDbRow(cliente);
       
       console.log('useClienteStore: Payload sanitizado para adição:', dbData);
 
       const { data, error } = await supabase
         .from('clientes')
-        .insert(dbData)
+        .insert(dbData as any)
         .select()
         .single();
 
@@ -163,9 +160,8 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
 
       return novoCliente;
     } catch (error: any) {
-      const dbDataForLog = typeof dbData !== 'undefined' ? dbData : {};
       console.error("Erro detalhado ao adicionar cliente:", {
-        payloadSanitizado: dbDataForLog,
+        payloadSanitizado: dbData,
         errorCode: error.code,
         errorMessage: error.message,
         errorDetails: error.details,
@@ -187,14 +183,15 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
   },
   atualizarCliente: async (id, cliente) => {
     set({ loading: true });
+    let dbData: any = {};
     try {
-      const dbData = transformClienteToDbRow(cliente);
+      dbData = transformClienteToDbRow(cliente);
       
       console.log('useClienteStore: Payload sanitizado para atualização:', dbData);
       
       const { data, error } = await supabase
         .from('clientes')
-        .update(dbData)
+        .update(dbData as any)
         .eq('id', id)
         .select()
         .single();
@@ -211,10 +208,9 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         loading: false,
       }));
     } catch (error: any) {
-      const dbDataForLog = typeof dbData !== 'undefined' ? dbData : {};
       console.error("Erro detalhado ao atualizar cliente:", {
         clienteId: id,
-        payloadSanitizado: dbDataForLog,
+        payloadSanitizado: dbData,
         errorCode: error.code,
         errorMessage: error.message,
         errorDetails: error.details,
