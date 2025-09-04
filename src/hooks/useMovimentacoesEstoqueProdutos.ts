@@ -127,19 +127,26 @@ export const useMovimentacoesEstoqueProdutos = () => {
 
       let quantidadeSeparada = 0;
 
-      // Para cada agendamento separado, verificar se contém o produto
+      // Para cada agendamento separado, usar a função compute_entrega_itens_v2 para calcular
       for (const agendamento of agendamentos || []) {
-        if (agendamento.tipo_pedido === 'Alterado' && Array.isArray(agendamento.itens_personalizados)) {
-          // Para pedidos alterados, usar itens personalizados
-          const item = agendamento.itens_personalizados.find((item: any) => item.produto === produtoId);
-          if (item && typeof item === 'object' && 'quantidade' in item) {
-            quantidadeSeparada += (item as any).quantidade || 0;
+        try {
+          const { data: itensEntrega, error: errorItens } = await supabase.rpc('compute_entrega_itens_v2', {
+            p_agendamento_id: agendamento.id
+          });
+
+          if (errorItens) {
+            console.error('Erro ao calcular itens de entrega:', errorItens);
+            continue;
           }
-        } else {
-          // Para pedidos padrão, assumir que usa a quantidade total
-          // Aqui seria necessário buscar informações do produto padrão do cliente
-          // Por simplicidade, vamos assumir que a quantidade_total se refere ao produto específico
-          // Esta lógica pode ser refinada baseada na estrutura real dos dados
+
+          // Buscar o item específico do produto
+          const itemProduto = itensEntrega?.find((item: any) => item.produto_id === produtoId);
+          if (itemProduto) {
+            quantidadeSeparada += itemProduto.quantidade || 0;
+          }
+        } catch (err) {
+          console.error('Erro ao processar agendamento:', agendamento.id, err);
+          continue;
         }
       }
 
