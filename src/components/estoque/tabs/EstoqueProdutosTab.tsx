@@ -19,9 +19,10 @@ export default function EstoqueProdutosTab() {
   const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao, obterSaldoProduto } = useMovimentacoesEstoqueProdutos();
   const { getPedidosParaSeparacao, getPedidosParaDespacho } = useExpedicaoStore();
   
-  // Obter pedidos separados e despachados
-  const pedidosSeparados = getPedidosParaSeparacao().filter(p => p.substatus_pedido === 'Separado');
-  const pedidosDespachados = getPedidosParaDespacho().filter(p => p.substatus_pedido === 'Despachado');
+  // Obter todos os pedidos para calcular quantidades separadas
+  const todosPedidos = [...getPedidosParaSeparacao(), ...getPedidosParaDespacho()];
+  const pedidosSeparados = todosPedidos.filter(p => p.substatus_pedido === 'Separado');
+  const pedidosDespachados = todosPedidos.filter(p => p.substatus_pedido === 'Despachado');
   
   // Usar o hook para calcular quantidades separadas
   const { quantidadesPorProduto } = useQuantidadesSeparadas(pedidosSeparados, pedidosDespachados);
