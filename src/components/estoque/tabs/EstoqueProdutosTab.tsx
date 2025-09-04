@@ -14,10 +14,11 @@ import HistoricoMovimentacoes from "../HistoricoMovimentacoes";
 
 export default function EstoqueProdutosTab() {
   const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
-  const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao, obterSaldoProduto } = useMovimentacoesEstoqueProdutos();
+  const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao, obterSaldoProduto, obterQuantidadeSeparada } = useMovimentacoesEstoqueProdutos();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [saldos, setSaldos] = useState<Record<string, number>>({});
+  const [quantidadesSeparadas, setQuantidadesSeparadas] = useState<Record<string, number>>({});
   const [modalMovimentacao, setModalMovimentacao] = useState(false);
   const [modalBaixa, setModalBaixa] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState<{id: string, nome: string} | null>(null);
@@ -26,11 +27,17 @@ export default function EstoqueProdutosTab() {
   // Carregar saldos dos produtos
   const carregarSaldos = async () => {
     const novosSaldos: Record<string, number> = {};
+    const novasQuantidadesSeparadas: Record<string, number> = {};
+    
     for (const produto of produtos) {
       const saldo = await obterSaldoProduto(produto.id);
+      const separada = await obterQuantidadeSeparada(produto.id);
       novosSaldos[produto.id] = saldo;
+      novasQuantidadesSeparadas[produto.id] = separada;
     }
+    
     setSaldos(novosSaldos);
+    setQuantidadesSeparadas(novasQuantidadesSeparadas);
   };
 
   useEffect(() => {
@@ -123,6 +130,7 @@ export default function EstoqueProdutosTab() {
               <TableRow>
                 <TableHead>Produto</TableHead>
                 <TableHead className="text-center">Saldo Atual</TableHead>
+                <TableHead className="text-center">Saldo Real</TableHead>
                 <TableHead className="text-center">Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -130,14 +138,16 @@ export default function EstoqueProdutosTab() {
             <TableBody>
               {produtosFiltrados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-4">
+                  <TableCell colSpan={5} className="text-center py-4">
                     {searchTerm ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
                   </TableCell>
                 </TableRow>
               ) : (
                 produtosFiltrados.map((produto) => {
                   const saldo = saldos[produto.id] || 0;
-                  const status = getStatusEstoque(saldo);
+                  const quantidadeSeparada = quantidadesSeparadas[produto.id] || 0;
+                  const saldoReal = saldo - quantidadeSeparada;
+                  const status = getStatusEstoque(saldoReal);
                   
                   return (
                     <TableRow key={produto.id}>
@@ -150,7 +160,15 @@ export default function EstoqueProdutosTab() {
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className="font-mono font-semibold">{saldo.toFixed(3)}</span>
+                        <span className="font-mono font-semibold">{saldo.toFixed(0)}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="font-mono font-semibold">{saldoReal.toFixed(0)}</span>
+                        {quantidadeSeparada > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            (-{quantidadeSeparada.toFixed(0)} separado)
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant={status.variant}>{status.label}</Badge>
@@ -169,7 +187,7 @@ export default function EstoqueProdutosTab() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleModalBaixa(produto)}
-                            disabled={saldo <= 0}
+                            disabled={saldoReal <= 0}
                             title="Baixa de estoque"
                           >
                             <TrendingDown className="h-3 w-3" />
