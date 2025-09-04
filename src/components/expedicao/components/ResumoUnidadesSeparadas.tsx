@@ -1,9 +1,7 @@
-
 import React from "react";
 import { Card } from "@/components/ui/card";
-import { useProporoesPadrao } from "@/hooks/useProporoesPadrao";
-import { useEstoqueProdutos } from "@/hooks/useEstoqueProdutos";
 import { Package, Loader2 } from "lucide-react";
+import { useQuantidadesSeparadas } from "@/hooks/useQuantidadesSeparadas";
 
 interface ResumoUnidadesSeparadasProps {
   pedidosSeparados: any[];
@@ -11,77 +9,13 @@ interface ResumoUnidadesSeparadasProps {
 }
 
 export const ResumoUnidadesSeparadas = ({ pedidosSeparados, pedidosDespachados }: ResumoUnidadesSeparadasProps) => {
-  const { calcularQuantidadesPorProporcao } = useProporoesPadrao();
-  const { produtos, loading: loadingEstoque, obterProdutoPorNome } = useEstoqueProdutos();
-  
-  // Combinar todos os pedidos (separados + despachados)
-  const todosPedidos = [...pedidosSeparados, ...pedidosDespachados];
-  
-  // Calcular quantidades por produto
-  const calcularQuantidadesTotais = async () => {
-    const quantidadesPorProduto: { [nome: string]: number } = {};
-    
-    for (const pedido of todosPedidos) {
-      if (pedido.tipo_pedido === 'Alterado' && pedido.itens_personalizados?.length > 0) {
-        // Pedido alterado - usar itens personalizados
-        pedido.itens_personalizados.forEach((item: any) => {
-          const nomeProduto = item.produto || item.nome || 'Produto desconhecido';
-          quantidadesPorProduto[nomeProduto] = (quantidadesPorProduto[nomeProduto] || 0) + item.quantidade;
-        });
-      } else {
-        // Pedido padrão - usar proporções cadastradas
-        try {
-          const quantidadesProporcao = await calcularQuantidadesPorProporcao(pedido.quantidade_total);
-          quantidadesProporcao.forEach(item => {
-            quantidadesPorProduto[item.produto] = (quantidadesPorProduto[item.produto] || 0) + item.quantidade;
-          });
-        } catch (error) {
-          console.warn('Erro ao calcular proporções para pedido:', pedido.id, error);
-          
-          // Fallback: distribuir igualmente entre produtos ativos
-          const produtosAtivos = produtos.filter(p => p.ativo);
-          if (produtosAtivos.length > 0) {
-            const quantidadePorProduto = Math.floor(pedido.quantidade_total / produtosAtivos.length);
-            const resto = pedido.quantidade_total % produtosAtivos.length;
-            
-            produtosAtivos.forEach((produto, index) => {
-              const quantidade = quantidadePorProduto + (index < resto ? 1 : 0);
-              quantidadesPorProduto[produto.nome] = (quantidadesPorProduto[produto.nome] || 0) + quantidade;
-            });
-          }
-        }
-      }
-    }
-    
-    return quantidadesPorProduto;
-  };
+  const { quantidadesPorProduto, calculando } = useQuantidadesSeparadas(pedidosSeparados, pedidosDespachados);
 
-  const [quantidadesTotais, setQuantidadesTotais] = React.useState<{ [nome: string]: number }>({});
-  const [calculando, setCalculando] = React.useState(true);
-  
-  React.useEffect(() => {
-    const carregarQuantidades = async () => {
-      if (loadingEstoque) return; // Aguardar estoque carregar
-      
-      setCalculando(true);
-      try {
-        const quantidades = await calcularQuantidadesTotais();
-        setQuantidadesTotais(quantidades);
-      } catch (error) {
-        console.error('Erro ao calcular quantidades:', error);
-      } finally {
-        setCalculando(false);
-      }
-    };
-    
-    carregarQuantidades();
-  }, [pedidosSeparados, pedidosDespachados, loadingEstoque, produtos]);
-
-  const totalGeral = Object.values(quantidadesTotais).reduce((sum, qty) => sum + qty, 0);
-  const produtosComQuantidade = Object.entries(quantidadesTotais).filter(([_, qty]) => qty > 0);
+  const totalGeral = Object.values(quantidadesPorProduto).reduce((sum, qty) => sum + qty, 0);
+  const produtosComQuantidade = Object.entries(quantidadesPorProduto).filter(([_, qty]) => qty > 0);
 
   // Loading state
-  if (loadingEstoque || calculando) {
+  if (calculando) {
     return (
       <Card className="p-4 mb-4">
         <div className="flex items-center gap-2 mb-3">

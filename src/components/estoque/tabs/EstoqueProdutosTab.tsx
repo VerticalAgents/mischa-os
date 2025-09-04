@@ -8,17 +8,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Minus, TrendingDown, BarChart3, Search } from "lucide-react";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import { useMovimentacoesEstoqueProdutos } from "@/hooks/useMovimentacoesEstoqueProdutos";
+import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
+import { useQuantidadesSeparadas } from "@/hooks/useQuantidadesSeparadas";
 import MovimentacaoEstoqueModal from "../MovimentacaoEstoqueModal";
 import BaixaEstoqueModal from "../BaixaEstoqueModal";
 import HistoricoMovimentacoes from "../HistoricoMovimentacoes";
 
 export default function EstoqueProdutosTab() {
   const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
-  const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao, obterSaldoProduto, obterQuantidadeSeparada } = useMovimentacoesEstoqueProdutos();
+  const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao, obterSaldoProduto } = useMovimentacoesEstoqueProdutos();
+  const { getPedidosParaSeparacao, getPedidosParaDespacho } = useExpedicaoStore();
+  
+  // Obter pedidos separados e despachados
+  const pedidosSeparados = getPedidosParaSeparacao().filter(p => p.substatus_pedido === 'Separado');
+  const pedidosDespachados = getPedidosParaDespacho().filter(p => p.substatus_pedido === 'Despachado');
+  
+  // Usar o hook para calcular quantidades separadas
+  const { quantidadesPorProduto } = useQuantidadesSeparadas(pedidosSeparados, pedidosDespachados);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [saldos, setSaldos] = useState<Record<string, number>>({});
-  const [quantidadesSeparadas, setQuantidadesSeparadas] = useState<Record<string, number>>({});
   const [modalMovimentacao, setModalMovimentacao] = useState(false);
   const [modalBaixa, setModalBaixa] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState<{id: string, nome: string} | null>(null);
@@ -27,17 +36,18 @@ export default function EstoqueProdutosTab() {
   // Carregar saldos dos produtos
   const carregarSaldos = async () => {
     const novosSaldos: Record<string, number> = {};
-    const novasQuantidadesSeparadas: Record<string, number> = {};
-    
+
     for (const produto of produtos) {
-      const saldo = await obterSaldoProduto(produto.id);
-      const separada = await obterQuantidadeSeparada(produto.id);
-      novosSaldos[produto.id] = saldo;
-      novasQuantidadesSeparadas[produto.id] = separada;
+      try {
+        const saldo = await obterSaldoProduto(produto.id);
+        novosSaldos[produto.id] = saldo;
+      } catch (error) {
+        console.error(`Erro ao obter saldo do produto ${produto.nome}:`, error);
+        novosSaldos[produto.id] = 0;
+      }
     }
-    
+
     setSaldos(novosSaldos);
-    setQuantidadesSeparadas(novasQuantidadesSeparadas);
   };
 
   useEffect(() => {
@@ -145,7 +155,7 @@ export default function EstoqueProdutosTab() {
               ) : (
                 produtosFiltrados.map((produto) => {
                   const saldo = saldos[produto.id] || 0;
-                  const quantidadeSeparada = quantidadesSeparadas[produto.id] || 0;
+                  const quantidadeSeparada = quantidadesPorProduto[produto.nome] || 0;
                   const saldoReal = saldo - quantidadeSeparada;
                   const status = getStatusEstoque(saldoReal);
                   
