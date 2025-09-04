@@ -3,10 +3,16 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { MovTipo, asMovTipo, MovimentacaoEstoqueProduto } from '@/types/estoque';
+import { useProporoesPadrao } from './useProporoesPadrao';
+import { useEstoqueProdutos } from './useEstoqueProdutos';
 
 export const useMovimentacoesEstoqueProdutos = () => {
   const [movimentacoes, setMovimentacoes] = useState<MovimentacaoEstoqueProduto[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Mover os hooks para o nível do componente
+  const { calcularQuantidadesPorProporcao } = useProporoesPadrao();
+  const { produtos } = useEstoqueProdutos();
 
   const carregarMovimentacoes = async (produtoId?: string) => {
     setLoading(true);
@@ -114,7 +120,7 @@ export const useMovimentacoesEstoqueProdutos = () => {
 
   const obterQuantidadeSeparada = async (produtoId: string): Promise<number> => {
     try {
-      // Buscar todos os agendamentos com status "Separado"
+      // Buscar apenas os agendamentos com status "Separado" (não incluir despachados)
       const { data: agendamentos, error } = await supabase
         .from('agendamentos_clientes')
         .select('*')
@@ -125,28 +131,48 @@ export const useMovimentacoesEstoqueProdutos = () => {
         return 0;
       }
 
+      // Encontrar o produto pelo ID para obter o nome
+      const produto = produtos.find(p => p.id === produtoId);
+      if (!produto) {
+        console.warn('Produto não encontrado:', produtoId);
+        return 0;
+      }
+      
+      const nomeProduto = produto.nome;
       let quantidadeSeparada = 0;
 
-      // Para cada agendamento separado, usar a função compute_entrega_itens_v2 para calcular
+      // Usar a mesma lógica do ResumoUnidadesSeparadas
       for (const agendamento of agendamentos || []) {
-        try {
-          const { data: itensEntrega, error: errorItens } = await supabase.rpc('compute_entrega_itens_v2', {
-            p_agendamento_id: agendamento.id
-          });
-
-          if (errorItens) {
-            console.error('Erro ao calcular itens de entrega:', errorItens);
-            continue;
+        if (agendamento.tipo_pedido === 'Alterado' && Array.isArray(agendamento.itens_personalizados) && agendamento.itens_personalizados.length > 0) {
+          // Pedido alterado - usar itens personalizados
+          const item = (agendamento.itens_personalizados as any[]).find((item: any) => item.produto === produtoId || item.produto === nomeProduto);
+          if (item) {
+            quantidadeSeparada += item.quantidade || 0;
           }
-
-          // Buscar o item específico do produto
-          const itemProduto = itensEntrega?.find((item: any) => item.produto_id === produtoId);
-          if (itemProduto) {
-            quantidadeSeparada += itemProduto.quantidade || 0;
+        } else {
+          // Pedido padrão - usar proporções cadastradas
+          try {
+            const quantidadesProporcao = await calcularQuantidadesPorProporcao(agendamento.quantidade_total);
+            const itemProduto = quantidadesProporcao.find(item => item.produto === nomeProduto);
+            if (itemProduto) {
+              quantidadeSeparada += itemProduto.quantidade || 0;
+            }
+          } catch (error) {
+            console.warn('Erro ao calcular proporções para pedido:', agendamento.id, error);
+            
+            // Fallback: distribuir igualmente entre produtos ativos
+            const produtosAtivos = produtos.filter(p => p.ativo);
+            if (produtosAtivos.length > 0) {
+              const quantidadePorProduto = Math.floor(agendamento.quantidade_total / produtosAtivos.length);
+              const resto = agendamento.quantidade_total % produtosAtivos.length;
+              
+              const indexProduto = produtosAtivos.findIndex(p => p.nome === nomeProduto);
+              if (indexProduto !== -1) {
+                const quantidade = quantidadePorProduto + (indexProduto < resto ? 1 : 0);
+                quantidadeSeparada += quantidade;
+              }
+            }
           }
-        } catch (err) {
-          console.error('Erro ao processar agendamento:', agendamento.id, err);
-          continue;
         }
       }
 
