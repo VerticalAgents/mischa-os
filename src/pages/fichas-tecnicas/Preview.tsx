@@ -51,6 +51,9 @@ export default function FichaPreview(){
           .no-break { break-inside: avoid; }
           .header-cards * { line-height: 1.1; }
           .fit-a4 { transform: scale(0.95); transform-origin: top left; }
+          .hover\\:scale-\\[1\\.02\\] { transform: none !important; }
+          .shadow-sm { box-shadow: none !important; }
+          .bg-gradient-to-br { background: #f8fafc !important; }
         }
       `}</style>
 
@@ -63,15 +66,15 @@ export default function FichaPreview(){
           </div>
         </div>
 
-        <header className="mb-4 print-area header-cards no-break fit-a4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 print:grid-cols-4 gap-2">
-            <CompactStat label="Receita" value={meta.receita_nome} />
-            <CompactStat label="Multiplicador" value={`${meta.multiplicador}×`} />
-            <CompactStat label="Massa total (sem topping) — g" value={base.total_g} />
-            <CompactStat label="Peso total de toppings — g" value={toppings.total_g} />
-            <CompactStat label="Peso total (com topping) — g" value={base.total_g + toppings.total_g} />
-            <CompactStat label="Nº de formas" value={meta.forms_count} />
-            <CompactStat label="Massa por forma (sem topping) — g" value={meta.forms_count > 0 ? Math.round(base.total_g / meta.forms_count) : "—"} />
+        <header className="mb-6 print-area header-cards no-break fit-a4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 print:grid-cols-4 gap-3">
+            <CompactStat label="Receita" value={meta.receita_nome} type="primary" />
+            <CompactStat label="Multiplicador" value={`${meta.multiplicador}×`} type="accent" />
+            <CompactStat label="Massa total (sem topping)" value={`${base.total_g}g`} type="info" />
+            <CompactStat label="Peso total de toppings" value={`${toppings.total_g}g`} type="warning" />
+            <CompactStat label="Peso total (com topping)" value={`${base.total_g + toppings.total_g}g`} type="success" />
+            <CompactStat label="Nº de formas" value={meta.forms_count} type="default" />
+            <CompactStat label="Massa por forma (sem topping)" value={meta.forms_count > 0 ? `${Math.round(base.total_g / meta.forms_count)}g` : "—"} type="secondary" />
           </div>
         </header>
 
@@ -136,11 +139,68 @@ export default function FichaPreview(){
   );
 }
 
-function CompactStat({label, value}:{label:string; value:string|number}){
+function CompactStat({label, value, type = 'default'}:{label:string; value:string|number; type?: 'default' | 'primary' | 'accent' | 'info' | 'warning' | 'success' | 'secondary'}){
+  const getCardStyles = () => {
+    switch(type) {
+      case 'primary':
+        return 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-sm';
+      case 'accent':
+        return 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-sm';
+      case 'info':
+        return 'bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200 shadow-sm';
+      case 'warning':
+        return 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 shadow-sm';
+      case 'success':
+        return 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 shadow-sm';
+      case 'secondary':
+        return 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 shadow-sm';
+      default:
+        return 'bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200 shadow-sm';
+    }
+  };
+
+  const getLabelStyles = () => {
+    switch(type) {
+      case 'primary':
+        return 'text-blue-600';
+      case 'accent':
+        return 'text-purple-600';
+      case 'info':
+        return 'text-cyan-600';
+      case 'warning':
+        return 'text-amber-600';
+      case 'success':
+        return 'text-emerald-600';
+      case 'secondary':
+        return 'text-gray-600';
+      default:
+        return 'text-slate-600';
+    }
+  };
+
+  const getValueStyles = () => {
+    switch(type) {
+      case 'primary':
+        return 'text-blue-900';
+      case 'accent':
+        return 'text-purple-900';
+      case 'info':
+        return 'text-cyan-900';
+      case 'warning':
+        return 'text-amber-900';
+      case 'success':
+        return 'text-emerald-900';
+      case 'secondary':
+        return 'text-gray-900';
+      default:
+        return 'text-slate-900';
+    }
+  };
+
   return (
-    <div className="rounded-lg border p-2 min-h-0 shrink-0">
-      <div className="text-[11px] font-medium tracking-wide uppercase text-neutral-500">{label}</div>
-      <div className="text-base sm:text-lg font-semibold leading-tight">{String(value)}</div>
+    <div className={`rounded-xl border-2 p-3 min-h-0 shrink-0 transition-all hover:scale-[1.02] ${getCardStyles()}`}>
+      <div className={`text-xs font-semibold tracking-wide uppercase mb-1 ${getLabelStyles()}`}>{label}</div>
+      <div className={`text-lg sm:text-xl font-bold leading-tight ${getValueStyles()}`}>{String(value)}</div>
     </div>
   );
 }
