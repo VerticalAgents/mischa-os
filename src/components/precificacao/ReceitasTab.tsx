@@ -161,7 +161,7 @@ export default function ReceitasTab() {
                   ingredientes: r.itens?.map(item => ({
                     id: item.id,
                     nome: item.nome_insumo,
-                    unidade: 'g', // assuming grams for now
+                    unidade: item.unidade_medida,
                     quantidade: item.quantidade,
                     custo_total: item.custo_item
                   })) || [],

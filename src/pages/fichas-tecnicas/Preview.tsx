@@ -15,9 +15,23 @@ export default function FichaPreview(){
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const key = params.get("key");
+    console.log('🔍 [DEBUG] Buscando dados da ficha técnica com key:', key);
     if(key){
       const raw = sessionStorage.getItem(key);
-      if(raw) setData(JSON.parse(raw));
+      console.log('📦 [DEBUG] Dados encontrados no sessionStorage:', raw);
+      if(raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          console.log('✅ [DEBUG] Dados parseados com sucesso:', parsed);
+          setData(parsed);
+        } catch (e) {
+          console.error('❌ [DEBUG] Erro ao parsear dados:', e);
+        }
+      } else {
+        console.warn('⚠️ [DEBUG] Nenhum dado encontrado no sessionStorage para a key:', key);
+      }
+    } else {
+      console.warn('⚠️ [DEBUG] Nenhuma key fornecida na URL');
     }
   }, []);
 

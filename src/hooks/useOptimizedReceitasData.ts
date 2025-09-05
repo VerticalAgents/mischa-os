@@ -18,6 +18,7 @@ export interface ReceitaCompleta {
     nome_insumo: string;
     quantidade: number;
     custo_item: number;
+    unidade_medida: string;
   }[];
 }
 
@@ -118,7 +119,8 @@ export const useOptimizedReceitasData = () => {
           insumos (
             nome,
             custo_medio,
-            volume_bruto
+            volume_bruto,
+            unidade_medida
           )
         `);
 
@@ -158,7 +160,8 @@ export const useOptimizedReceitasData = () => {
             insumo_id: item.insumo_id,
             nome_insumo: insumo?.nome || 'Insumo não encontrado',
             quantidade: Number(item.quantidade),
-            custo_item: custoItem
+            custo_item: custoItem,
+            unidade_medida: insumo?.unidade_medida || 'g'
           };
         });
 
