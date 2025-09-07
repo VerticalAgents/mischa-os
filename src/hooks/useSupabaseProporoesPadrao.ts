@@ -178,19 +178,49 @@ export const useSupabaseProporoesPadrao = () => {
 
   const obterProporcoesParaPedido = async (quantidadeTotal: number) => {
     try {
-      const { data, error } = await supabase
+      // Primeiro buscar proporções ativas
+      const { data: proporcoes, error: propError } = await supabase
         .from('proporcoes_padrao')
-        .select(`
-          produto_id,
-          percentual,
-          produtos_finais!inner(nome)
-        `)
+        .select('produto_id, percentual')
         .eq('ativo', true)
-        .eq('produtos_finais.ativo', true)
         .gt('percentual', 0);
 
-      if (error) {
-        console.error('Erro ao obter proporções para pedido:', error);
+      if (propError) {
+        console.error('Erro ao obter proporções:', propError);
+        return [];
+      }
+
+      if (!proporcoes || proporcoes.length === 0) {
+        return [];
+      }
+
+      // Buscar produtos separadamente para evitar problemas de join
+      const produtoIds = proporcoes.map(p => p.produto_id);
+      const { data: produtos, error: prodError } = await supabase
+        .from('produtos_finais')
+        .select('id, nome')
+        .in('id', produtoIds)
+        .eq('ativo', true);
+
+      if (prodError) {
+        console.error('Erro ao obter produtos:', prodError);
+        return [];
+      }
+
+      // Combinar dados manualmente
+      const data = proporcoes
+        .map(prop => {
+          const produto = produtos?.find(p => p.id === prop.produto_id);
+          return produto ? {
+            produto_id: prop.produto_id,
+            percentual: prop.percentual,
+            produtos_finais: { nome: produto.nome }
+          } : null;
+        })
+        .filter(Boolean);
+
+      if (propError) {
+        console.error('Erro ao obter proporções para pedido:', propError);
         return [];
       }
 

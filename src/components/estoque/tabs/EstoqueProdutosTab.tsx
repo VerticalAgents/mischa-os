@@ -5,57 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Minus, TrendingDown, BarChart3, Search } from "lucide-react";
-import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
+import { Plus, Minus, TrendingDown, BarChart3, Search, Settings } from "lucide-react";
+import { useEstoqueComExpedicao } from "@/hooks/useEstoqueComExpedicao";
 import { useMovimentacoesEstoqueProdutos } from "@/hooks/useMovimentacoesEstoqueProdutos";
-import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
-import { useQuantidadesSeparadas } from "@/hooks/useQuantidadesSeparadas";
 import MovimentacaoEstoqueModal from "../MovimentacaoEstoqueModal";
 import BaixaEstoqueModal from "../BaixaEstoqueModal";
 import HistoricoMovimentacoes from "../HistoricoMovimentacoes";
+import CalculoEstoqueModal from "../CalculoEstoqueModal";
 
 export default function EstoqueProdutosTab() {
-  const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
-  const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao, obterSaldoProduto } = useMovimentacoesEstoqueProdutos();
-  const { getPedidosParaSeparacao, getPedidosParaDespacho } = useExpedicaoStore();
-  
-  // Obter todos os pedidos para calcular quantidades separadas
-  const todosPedidos = [...getPedidosParaSeparacao(), ...getPedidosParaDespacho()];
-  const pedidosSeparados = todosPedidos.filter(p => p.substatus_pedido === 'Separado');
-  const pedidosDespachados = todosPedidos.filter(p => p.substatus_pedido === 'Despachado');
-  
-  // Usar o hook para calcular quantidades separadas
-  const { quantidadesPorProduto } = useQuantidadesSeparadas(pedidosSeparados, pedidosDespachados);
+  const { produtos, loading, carregarSaldos } = useEstoqueComExpedicao();
+  const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao } = useMovimentacoesEstoqueProdutos();
   
   const [searchTerm, setSearchTerm] = useState("");
-  const [saldos, setSaldos] = useState<Record<string, number>>({});
   const [modalMovimentacao, setModalMovimentacao] = useState(false);
   const [modalBaixa, setModalBaixa] = useState(false);
+  const [modalCalculos, setModalCalculos] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState<{id: string, nome: string} | null>(null);
   const [showHistorico, setShowHistorico] = useState<string | null>(null);
-
-  // Carregar saldos dos produtos
-  const carregarSaldos = async () => {
-    const novosSaldos: Record<string, number> = {};
-
-    for (const produto of produtos) {
-      try {
-        const saldo = await obterSaldoProduto(produto.id);
-        novosSaldos[produto.id] = saldo;
-      } catch (error) {
-        console.error(`Erro ao obter saldo do produto ${produto.nome}:`, error);
-        novosSaldos[produto.id] = 0;
-      }
-    }
-
-    setSaldos(novosSaldos);
-  };
-
-  useEffect(() => {
-    if (produtos.length > 0) {
-      carregarSaldos();
-    }
-  }, [produtos]);
 
   // Filtrar produtos
   const produtosFiltrados = produtos.filter(produto =>
@@ -105,11 +72,11 @@ export default function EstoqueProdutosTab() {
     ? movimentacoes.filter(mov => mov.produto_id === showHistorico)
     : [];
 
-  if (loadingProdutos) {
+  if (loading) {
     return (
       <Card>
         <CardContent className="p-6">
-          <div className="text-center">Carregando produtos...</div>
+          <div className="text-center">Carregando dados de estoque...</div>
         </CardContent>
       </Card>
     );
@@ -133,7 +100,18 @@ export default function EstoqueProdutosTab() {
       {/* Tabela de produtos */}
       <Card>
         <CardHeader>
-          <CardTitle>Controle de Estoque - Produtos</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Controle de Estoque - Produtos</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setModalCalculos(true)}
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Cálculo de Estoque
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -155,31 +133,18 @@ export default function EstoqueProdutosTab() {
                 </TableRow>
               ) : (
                 produtosFiltrados.map((produto) => {
-                  const saldo = saldos[produto.id] || 0;
-                  const quantidadeSeparada = quantidadesPorProduto[produto.nome] || 0;
-                  const saldoReal = saldo - quantidadeSeparada;
-                  const status = getStatusEstoque(saldoReal);
+                  const status = getStatusEstoque(produto.saldoReal);
                   
                   return (
                     <TableRow key={produto.id}>
                       <TableCell>
-                        <div>
-                          <div className="font-medium">{produto.nome}</div>
-                          {produto.descricao && (
-                            <div className="text-sm text-muted-foreground">{produto.descricao}</div>
-                          )}
-                        </div>
+                        <div className="font-medium">{produto.nome}</div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className="font-mono font-semibold">{saldo.toFixed(0)}</span>
+                        <span className="font-mono font-semibold">{produto.saldoAtual}</span>
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className="font-mono font-semibold">{saldoReal.toFixed(0)}</span>
-                        {quantidadeSeparada > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            (-{quantidadeSeparada.toFixed(0)} separado)
-                          </div>
-                        )}
+                        <span className="font-mono font-semibold">{produto.saldoReal}</span>
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant={status.variant}>{status.label}</Badge>
@@ -198,7 +163,7 @@ export default function EstoqueProdutosTab() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleModalBaixa(produto)}
-                            disabled={saldoReal <= 0}
+                            disabled={produto.saldoReal <= 0}
                             title="Baixa de estoque"
                           >
                             <TrendingDown className="h-3 w-3" />
@@ -259,11 +224,17 @@ export default function EstoqueProdutosTab() {
             itemId={produtoSelecionado.id}
             itemNome={produtoSelecionado.nome}
             tipoItem="produto"
-            saldoAtual={saldos[produtoSelecionado.id] || 0}
+            saldoAtual={produtos.find(p => p.id === produtoSelecionado.id)?.saldoAtual || 0}
             onSuccess={handleCloseModal}
           />
         </>
       )}
+
+      {/* Modal de Cálculo */}
+      <CalculoEstoqueModal
+        isOpen={modalCalculos}
+        onClose={() => setModalCalculos(false)}
+      />
     </div>
   );
 }
