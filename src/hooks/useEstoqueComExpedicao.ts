@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSupabaseProdutos } from './useSupabaseProdutos';
 import { useMovimentacoesEstoqueProdutos } from './useMovimentacoesEstoqueProdutos';
 import { useExpedicaoStore } from './useExpedicaoStore';
@@ -23,10 +23,22 @@ export const useEstoqueComExpedicao = () => {
   const [loadingSaldos, setLoadingSaldos] = useState(false);
   const [dadosCarregados, setDadosCarregados] = useState(false);
 
-  // Obter todos os pedidos para calcular quantidades separadas e despachadas
-  const todosPedidos = [...getPedidosParaSeparacao(), ...getPedidosParaDespacho()];
-  const pedidosSeparados = todosPedidos.filter(p => p.substatus_pedido === 'Separado');
-  const pedidosDespachados = todosPedidos.filter(p => p.substatus_pedido === 'Despachado');
+  // Memoizar arrays para evitar re-renders desnecessários
+  const todosPedidos = useMemo(() => {
+    const pedidosSeparacao = getPedidosParaSeparacao();
+    const pedidosDespacho = getPedidosParaDespacho();
+    return [...pedidosSeparacao, ...pedidosDespacho];
+  }, [getPedidosParaSeparacao, getPedidosParaDespacho]);
+
+  const pedidosSeparados = useMemo(() => 
+    todosPedidos.filter(p => p.substatus_pedido === 'Separado'), 
+    [todosPedidos]
+  );
+  
+  const pedidosDespachados = useMemo(() => 
+    todosPedidos.filter(p => p.substatus_pedido === 'Despachado'), 
+    [todosPedidos]
+  );
   
   // Usar o hook para calcular quantidades separadas e despachadas
   const { quantidadesSeparadas, quantidadesDespachadas, calculando } = useQuantidadesExpedicao(
@@ -34,13 +46,16 @@ export const useEstoqueComExpedicao = () => {
     pedidosDespachados
   );
 
+  // Memoizar carregarPedidos para evitar dependência circular
+  const carregarPedidosMemo = useCallback(carregarPedidos, []);
+
   // Carregar dados de expedição se não estiverem disponíveis
   useEffect(() => {
     const inicializarDados = async () => {
       if (todosPedidos.length === 0 && !dadosCarregados) {
         console.log('🔄 Carregando dados de expedição para cálculo de estoque...');
         try {
-          await carregarPedidos();
+          await carregarPedidosMemo();
           setDadosCarregados(true);
         } catch (error) {
           console.error('Erro ao carregar dados de expedição:', error);
@@ -49,10 +64,10 @@ export const useEstoqueComExpedicao = () => {
     };
 
     inicializarDados();
-  }, [todosPedidos.length, dadosCarregados, carregarPedidos]);
+  }, [todosPedidos.length, dadosCarregados, carregarPedidosMemo]);
 
-  // Carregar saldos dos produtos
-  const carregarSaldos = async () => {
+  // Memoizar função de carregar saldos
+  const carregarSaldos = useCallback(async () => {
     if (produtos.length === 0) return;
 
     setLoadingSaldos(true);
@@ -81,7 +96,7 @@ export const useEstoqueComExpedicao = () => {
     } finally {
       setLoadingSaldos(false);
     }
-  };
+  }, [produtos, obterSaldoProduto]);
 
   useEffect(() => {
     if (produtos.length > 0) {

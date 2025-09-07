@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -176,8 +176,10 @@ export const useSupabaseProporoesPadrao = () => {
     }
   };
 
-  const obterProporcoesParaPedido = async (quantidadeTotal: number) => {
+  const obterProporcoesParaPedido = useCallback(async (quantidadeTotal: number) => {
     try {
+      console.log('🔍 Obtendo proporções para pedido com quantidade total:', quantidadeTotal);
+      
       // Primeiro buscar proporções ativas
       const { data: proporcoes, error: propError } = await supabase
         .from('proporcoes_padrao')
@@ -187,10 +189,12 @@ export const useSupabaseProporoesPadrao = () => {
 
       if (propError) {
         console.error('Erro ao obter proporções:', propError);
+        // Fallback silencioso para evitar loops
         return [];
       }
 
       if (!proporcoes || proporcoes.length === 0) {
+        console.warn('⚠️ Nenhuma proporção ativa encontrada');
         return [];
       }
 
@@ -218,11 +222,6 @@ export const useSupabaseProporoesPadrao = () => {
           } : null;
         })
         .filter(Boolean);
-
-      if (propError) {
-        console.error('Erro ao obter proporções para pedido:', propError);
-        return [];
-      }
 
       // Verificar se as proporções somam 100%
       const totalProporcoes = data?.reduce((sum, p) => sum + Number(p.percentual), 0) || 0;
@@ -270,9 +269,10 @@ export const useSupabaseProporoesPadrao = () => {
         })) || [];
     } catch (error) {
       console.error('Erro ao obter proporções para pedido:', error);
+      // Retornar array vazio ao invés de throw para evitar quebrar o fluxo
       return [];
     }
-  };
+  }, []);
 
   useEffect(() => {
     carregarProporcoes();

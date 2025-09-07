@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useProporoesPadrao } from './useProporoesPadrao';
 import { useEstoqueProdutos } from './useEstoqueProdutos';
 
@@ -15,7 +15,12 @@ export const useQuantidadesExpedicao = (pedidosSeparados: any[], pedidosDespacha
   const [quantidadesDespachadas, setQuantidadesDespachadas] = useState<{ [nome: string]: number }>({});
   const [calculando, setCalculando] = useState(true);
 
-  const calcularQuantidadesPorPedidos = async (pedidos: any[]) => {
+  // Memoizar arrays para evitar re-renders
+  const pedidosSeparadosMemo = useMemo(() => pedidosSeparados || [], [pedidosSeparados]);
+  const pedidosDespachadosMemo = useMemo(() => pedidosDespachados || [], [pedidosDespachados]);
+
+  // Memoizar função de cálculo para evitar recálculos desnecessários
+  const calcularQuantidadesPorPedidos = useCallback(async (pedidos: any[]) => {
     const quantidadesPorProduto: { [nome: string]: number } = {};
     
     for (const pedido of pedidos) {
@@ -51,33 +56,42 @@ export const useQuantidadesExpedicao = (pedidosSeparados: any[], pedidosDespacha
     }
     
     return quantidadesPorProduto;
-  };
+  }, [produtos, calcularQuantidadesPorProporcao]);
+
+  // Memoizar função de carregamento
+  const carregarQuantidades = useCallback(async () => {
+    if (produtos.length === 0) return;
+    
+    setCalculando(true);
+    try {
+      console.log('🔄 Calculando quantidades separadas e despachadas...');
+      console.log('📊 Pedidos separados:', pedidosSeparadosMemo.length);
+      console.log('📊 Pedidos despachados:', pedidosDespachadosMemo.length);
+
+      // Calcular separadamente para cada status
+      const [separadas, despachadas] = await Promise.all([
+        calcularQuantidadesPorPedidos(pedidosSeparadosMemo),
+        calcularQuantidadesPorPedidos(pedidosDespachadosMemo)
+      ]);
+      
+      setQuantidadesSeparadas(separadas);
+      setQuantidadesDespachadas(despachadas);
+      
+      console.log('✅ Quantidades calculadas:');
+      console.log('📦 Separadas:', separadas);
+      console.log('🚚 Despachadas:', despachadas);
+    } catch (error) {
+      console.error('Erro ao calcular quantidades da expedição:', error);
+      setQuantidadesSeparadas({});
+      setQuantidadesDespachadas({});
+    } finally {
+      setCalculando(false);
+    }
+  }, [produtos, pedidosSeparadosMemo, pedidosDespachadosMemo, calcularQuantidadesPorPedidos]);
 
   useEffect(() => {
-    const carregarQuantidades = async () => {
-      if (produtos.length === 0) return;
-      
-      setCalculando(true);
-      try {
-        // Calcular separadamente para cada status
-        const [separadas, despachadas] = await Promise.all([
-          calcularQuantidadesPorPedidos(pedidosSeparados),
-          calcularQuantidadesPorPedidos(pedidosDespachados)
-        ]);
-        
-        setQuantidadesSeparadas(separadas);
-        setQuantidadesDespachadas(despachadas);
-      } catch (error) {
-        console.error('Erro ao calcular quantidades da expedição:', error);
-        setQuantidadesSeparadas({});
-        setQuantidadesDespachadas({});
-      } finally {
-        setCalculando(false);
-      }
-    };
-
     carregarQuantidades();
-  }, [pedidosSeparados, pedidosDespachados, produtos]);
+  }, [carregarQuantidades]);
 
   return {
     quantidadesSeparadas,
