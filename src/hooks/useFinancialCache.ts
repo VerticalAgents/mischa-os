@@ -6,15 +6,15 @@ export interface FinancialCacheData {
   faturamentoMensal: number;
   faturamentoSemanal: number;
   precosDetalhados: any[];
-  totalCustosFixos: number;
-  totalCustosVariaveis: number;
-  totalCustoInsumos: number;
-  lucroOperacional: number;
-  margemBruta: number;
-  margemOperacional: number;
-  pontoEquilibrio: number;
-  ticketMedio: number;
   lastUpdated: Date;
+  totalCustosFixos?: number;
+  totalCustosVariaveis?: number;
+  totalCustoInsumos?: number;
+  lucroOperacional?: number;
+  margemBruta?: number;
+  margemOperacional?: number;
+  pontoEquilibrio?: number;
+  ticketMedio?: number;
 }
 
 export const FINANCIAL_CACHE_KEY = 'financial-data';

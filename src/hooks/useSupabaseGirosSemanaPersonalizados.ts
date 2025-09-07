@@ -137,11 +137,26 @@ export function useSupabaseGirosSemanaPersonalizados() {
     carregarGiros();
   }, []);
 
+  const carregarTodosGiros = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('giros_semanais_personalizados')
+        .select('*');
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Erro ao carregar todos os giros:', error);
+      return [];
+    }
+  };
+
   return {
     giros,
     isLoading,
     carregarGiros,
     carregarGirosPorCliente,
+    carregarTodosGiros,
     obterGiroPersonalizado,
     salvarGiroPersonalizado,
     removerGiroPersonalizado

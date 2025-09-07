@@ -159,11 +159,33 @@ export const useSupabasePrecosCategoriaCliente = () => {
     }
   };
 
+  const carregarTodosPrecos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('precos_categoria_cliente')
+        .select('*');
+
+      if (error) {
+        if (error.message.includes('relation') && error.message.includes('does not exist')) {
+          console.log('useSupabasePrecosCategoriaCliente: Tabela não existe, retornando array vazio');
+          return [];
+        }
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Erro ao carregar todos os preços:', error);
+      return [];
+    }
+  };
+
   return {
     precos,
     loading,
     error,
     carregarPrecosPorCliente,
+    carregarTodosPrecos,
     salvarPrecos
   };
 };

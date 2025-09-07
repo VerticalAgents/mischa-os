@@ -1,22 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Calculator, TrendingUp, Users, DollarSign, Package, Truck } from 'lucide-react';
 import PageHeader from '@/components/common/PageHeader';
 import BreadcrumbNavigation from '@/components/common/Breadcrumb';
-import { useFaturamentoPrevisto } from '@/hooks/useFaturamentoPrevisto';
+import { useOptimizedFinancialProjection } from '@/hooks/useOptimizedFinancialProjection';
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { useSupabaseCategoriasProduto } from '@/hooks/useSupabaseCategoriasProduto';
 import { useSupabaseGirosSemanaPersonalizados } from '@/hooks/useSupabaseGirosSemanaPersonalizados';
 import GiroInlineEditor from '@/components/gestao-financeira/GiroInlineEditor';
 import ResumoGeralTab from '@/components/gestao-financeira/ResumoGeralTab';
-import FaturamentoTable from '@/components/gestao-financeira/FaturamentoTable';
-import CustosTable from '@/components/gestao-financeira/CustosTable';
-import ResultadosTable from '@/components/gestao-financeira/ResultadosTable';
+import LazyTabs from '@/components/gestao-financeira/LazyTabs';
 
 export default function ProjecaoResultadosPDV() {
-  const { precosDetalhados, isLoading, recalcular, faturamentoMensal, faturamentoSemanal } = useFaturamentoPrevisto();
+  const { precosDetalhados, isLoading, recalcular, faturamentoMensal, faturamentoSemanal } = useOptimizedFinancialProjection();
   const { clientes } = useClienteStore();
   const { categorias } = useSupabaseCategoriasProduto();
   const { obterGiroPersonalizado } = useSupabaseGirosSemanaPersonalizados();
@@ -73,7 +71,7 @@ export default function ProjecaoResultadosPDV() {
   }, [precosDetalhados]);
 
   // Calcular métricas gerais
-  const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo').length;
+  const clientesAtivos = clientes?.filter(c => c.statusCliente === 'Ativo').length || 0;
   const totalFaturamentoMensal = precosDetalhados?.reduce((sum, item) => sum + (item.faturamentoSemanal * 4), 0) || 0;
 
   // Agrupar dados por categoria para análise
@@ -120,7 +118,7 @@ export default function ProjecaoResultadosPDV() {
         <div className="flex justify-center items-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Carregando projeções...</p>
+            <p className="mt-4 text-muted-foreground">Carregando projeções otimizadas...</p>
           </div>
         </div>
       </div>
@@ -206,36 +204,12 @@ export default function ProjecaoResultadosPDV() {
         </TabsList>
 
         <TabsContent value="detalhada" className="space-y-4">
-          <Tabs defaultValue="faturamento" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="faturamento">Faturamento</TabsTrigger>
-              <TabsTrigger value="custos">Custos</TabsTrigger>
-              <TabsTrigger value="resultados">Resultados</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="faturamento" className="space-y-4">
-              <FaturamentoTable
-                precosDetalhados={precosDetalhados || []}
-                verificarSeGiroPersonalizado={verificarSeGiroPersonalizado}
-                handleGiroAtualizado={handleGiroAtualizado}
-                isCategoriaRevenda={isCategoriaRevenda}
-              />
-            </TabsContent>
-
-            <TabsContent value="custos" className="space-y-4">
-              <CustosTable
-                precosDetalhados={precosDetalhados || []}
-                isCategoriaRevenda={isCategoriaRevenda}
-              />
-            </TabsContent>
-
-            <TabsContent value="resultados" className="space-y-4">
-              <ResultadosTable
-                precosDetalhados={precosDetalhados || []}
-                isCategoriaRevenda={isCategoriaRevenda}
-              />
-            </TabsContent>
-          </Tabs>
+          <LazyTabs
+            precosDetalhados={precosDetalhados || []}
+            verificarSeGiroPersonalizado={verificarSeGiroPersonalizado}
+            handleGiroAtualizado={handleGiroAtualizado}
+            isCategoriaRevenda={isCategoriaRevenda}
+          />
         </TabsContent>
 
         <TabsContent value="categoria" className="space-y-4">
@@ -267,7 +241,7 @@ export default function ProjecaoResultadosPDV() {
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Participação:</span>
                     <span className="font-semibold">
-                      {((categoria.faturamentoMensal / totalFaturamentoMensal) * 100).toFixed(1)}%
+                      {totalFaturamentoMensal > 0 ? ((categoria.faturamentoMensal / totalFaturamentoMensal) * 100).toFixed(1) : '0.0'}%
                     </span>
                   </div>
                 </CardContent>
