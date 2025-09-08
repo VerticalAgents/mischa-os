@@ -236,7 +236,11 @@ function App() {
                        </AppLayout>
                      </ProtectedRoute>
                    } />
-                   <Route path="/fichas-tecnicas/preview" element={<FichaPreview />} />
+                   <Route path="/fichas-tecnicas/preview" element={
+                     <ProtectedRoute>
+                       <FichaPreview />
+                     </ProtectedRoute>
+                   } />
                      <Route path="*" element={<NotFound />} />
                   </Routes>
                 </div>

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Payload = {
   meta: { receita_id: string | number; receita_nome: string; multiplicador: number; forms_count: number };
@@ -11,31 +12,130 @@ type Payload = {
 
 export default function FichaPreview(){
   const [data, setData] = useState<Payload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Função segura para impressão
+  const handleSecurePrint = () => {
+    console.log('🖨️ [DEBUG] Iniciando impressão segura...');
+    
+    // Verificar se os dados estão carregados
+    if (!data) {
+      console.warn('⚠️ [DEBUG] Dados não carregados ainda - cancelando impressão');
+      return;
+    }
+
+    try {
+      // Dar um timeout para garantir que o DOM está pronto
+      setTimeout(() => {
+        if (window.print) {
+          console.log('✅ [DEBUG] Executando window.print()');
+          window.print();
+        } else {
+          console.error('❌ [DEBUG] window.print não está disponível');
+          alert('Função de impressão não está disponível neste navegador');
+        }
+      }, 100);
+    } catch (printError) {
+      console.error('❌ [DEBUG] Erro durante impressão:', printError);
+      alert('Erro ao tentar imprimir. Tente novamente.');
+    }
+  };
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const key = params.get("key");
-    console.log('🔍 [DEBUG] Buscando dados da ficha técnica com key:', key);
-    if(key){
-      const raw = sessionStorage.getItem(key);
-      console.log('📦 [DEBUG] Dados encontrados no sessionStorage:', raw);
-      if(raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          console.log('✅ [DEBUG] Dados parseados com sucesso:', parsed);
-          setData(parsed);
-        } catch (e) {
-          console.error('❌ [DEBUG] Erro ao parsear dados:', e);
+    const loadData = async () => {
+      try {
+        console.log('🔍 [DEBUG] Iniciando carregamento da ficha técnica...');
+        setLoading(true);
+        setError(null);
+
+        const params = new URLSearchParams(window.location.search);
+        const key = params.get("key");
+        console.log('🔍 [DEBUG] Key da URL:', key);
+
+        if (!key) {
+          throw new Error('Chave da ficha técnica não encontrada na URL');
         }
-      } else {
-        console.warn('⚠️ [DEBUG] Nenhum dado encontrado no sessionStorage para a key:', key);
+
+        const raw = sessionStorage.getItem(key);
+        console.log('📦 [DEBUG] Dados do sessionStorage:', raw ? 'Encontrados' : 'Não encontrados');
+
+        if (!raw) {
+          throw new Error('Dados da ficha técnica não encontrados. A sessão pode ter expirado.');
+        }
+
+        const parsed = JSON.parse(raw);
+        console.log('✅ [DEBUG] Dados parseados com sucesso:', parsed);
+
+        // Validar estrutura básica dos dados
+        if (!parsed.meta || !parsed.base || !parsed.toppings) {
+          throw new Error('Estrutura de dados inválida');
+        }
+
+        setData(parsed);
+        
+        // Limpar dados antigos do sessionStorage (opcional - manter por 1 hora)
+        const dataAge = Date.now() - (parsed.timestamp || 0);
+        if (dataAge > 3600000) { // 1 hora
+          console.log('🧹 [DEBUG] Limpando dados antigos do sessionStorage');
+          sessionStorage.removeItem(key);
+        }
+
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido ao carregar ficha técnica';
+        console.error('❌ [DEBUG] Erro ao carregar dados:', errorMessage);
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
       }
-    } else {
-      console.warn('⚠️ [DEBUG] Nenhuma key fornecida na URL');
-    }
+    };
+
+    loadData();
   }, []);
 
-  if(!data) return <div className="p-6">Carregando…</div>;
+  // Loading state com skeleton
+  if (loading) {
+    return (
+      <div className="p-6 print:p-0">
+        <div className="page mx-auto max-w-[186mm] print:max-w-[186mm] bg-white">
+          <div className="flex items-center justify-between mb-4">
+            <Skeleton className="h-6 w-80" />
+            <div className="flex gap-2">
+              <Skeleton className="h-9 w-20" />
+              <Skeleton className="h-9 w-20" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            {Array.from({length: 7}).map((_, i) => (
+              <Skeleton key={i} className="h-20 rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-40 w-full mb-4" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="p-6 print:p-0">
+        <div className="page mx-auto max-w-[186mm] print:max-w-[186mm] bg-white">
+          <div className="text-center py-12">
+            <h1 className="text-xl font-semibold text-red-600 mb-4">Erro ao carregar ficha técnica</h1>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
+              <Button variant="outline" onClick={() => window.close()}>Fechar</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return null;
 
   const { meta, base, toppings, observacoes } = data;
 
@@ -61,7 +161,7 @@ export default function FichaPreview(){
         <div className="flex items-center justify-between mb-4 no-print">
           <h1 className="text-xl font-semibold">Ficha técnica — {meta.receita_nome} (×{meta.multiplicador})</h1>
           <div className="flex gap-2">
-            <Button onClick={() => window.print()}>Imprimir</Button>
+            <Button onClick={handleSecurePrint}>Imprimir</Button>
             <Button variant="outline" onClick={() => window.close()}>Fechar</Button>
           </div>
         </div>

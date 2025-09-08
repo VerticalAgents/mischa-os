@@ -59,22 +59,57 @@ export function GenerateFichaTecnicaDialog({ receitas }: Props) {
 
   function handleGenerate() {
     if (!selected) { alert("Selecione uma receita."); return; }
-    const toppingIds = new Set<string>();
-    const perFormOverrides: Record<string, number> = {};
-    Object.entries(toppingMap).forEach(([id, cfg]) => {
-      if (cfg.checked) {
-        toppingIds.add(id);
-        if (typeof cfg.perFormG === "number" && cfg.perFormG >= 0) {
-          perFormOverrides[id] = cfg.perFormG;
+    
+    try {
+      console.log('🚀 [DEBUG] Iniciando geração de ficha técnica...');
+      
+      const toppingIds = new Set<string>();
+      const perFormOverrides: Record<string, number> = {};
+      Object.entries(toppingMap).forEach(([id, cfg]) => {
+        if (cfg.checked) {
+          toppingIds.add(id);
+          if (typeof cfg.perFormG === "number" && cfg.perFormG >= 0) {
+            perFormOverrides[id] = cfg.perFormG;
+          }
         }
-      }
-    });
+      });
 
-    const payload = scaleWithToppings(selected, k, toppingIds, perFormOverrides);
-    const payloadKey = `ficha_${Date.now()}`;
-    sessionStorage.setItem(payloadKey, JSON.stringify(payload));
-    window.open(`/fichas-tecnicas/preview?key=${encodeURIComponent(payloadKey)}`, "_blank");
-    setOpen(false);
+      console.log('📊 [DEBUG] Configurações dos toppings:', { toppingIds: Array.from(toppingIds), perFormOverrides });
+
+      const payload = scaleWithToppings(selected, k, toppingIds, perFormOverrides);
+      
+      // Adicionar timestamp para controle de TTL
+      const enrichedPayload = {
+        ...payload,
+        timestamp: Date.now(),
+        generated_at: new Date().toISOString()
+      };
+
+      // Gerar chave única com UUID-like
+      const payloadKey = `ficha_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      console.log('💾 [DEBUG] Salvando payload no sessionStorage com key:', payloadKey);
+      console.log('📦 [DEBUG] Payload completo:', enrichedPayload);
+      
+      sessionStorage.setItem(payloadKey, JSON.stringify(enrichedPayload));
+
+      // Verificar se foi salvo corretamente
+      const verificacao = sessionStorage.getItem(payloadKey);
+      if (!verificacao) {
+        throw new Error('Falha ao salvar dados no navegador');
+      }
+
+      console.log('✅ [DEBUG] Dados salvos com sucesso, abrindo preview...');
+      const previewUrl = `/fichas-tecnicas/preview?key=${encodeURIComponent(payloadKey)}`;
+      console.log('🔗 [DEBUG] URL do preview:', previewUrl);
+
+      window.open(previewUrl, "_blank");
+      setOpen(false);
+      
+    } catch (error) {
+      console.error('❌ [DEBUG] Erro ao gerar ficha técnica:', error);
+      alert(`Erro ao gerar ficha técnica: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
   }
 
   return (
