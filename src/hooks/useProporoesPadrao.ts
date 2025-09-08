@@ -1,4 +1,5 @@
 
+import { useCallback, useMemo } from 'react';
 import { useSupabaseProporoesPadrao } from "./useSupabaseProporoesPadrao";
 
 interface ProporcoesConfig {
@@ -21,13 +22,35 @@ export const useProporoesPadrao = () => {
     return config;
   };
 
-  const calcularQuantidadesPorProporcao = async (quantidadeTotal: number): Promise<ProdutoQuantidade[]> => {
-    const resultados = await obterProporcoesParaPedido(quantidadeTotal);
-    return resultados.map(item => ({
-      produto: item.produto_nome,
-      quantidade: item.quantidade
-    }));
-  };
+  // Cache local para reduzir chamadas ao Supabase
+  const cacheLocal = useMemo(() => new Map<number, ProdutoQuantidade[]>(), []);
+  
+  const calcularQuantidadesPorProporcao = useCallback(async (quantidadeTotal: number): Promise<ProdutoQuantidade[]> => {
+    // Verificar cache local primeiro
+    if (cacheLocal.has(quantidadeTotal)) {
+      return cacheLocal.get(quantidadeTotal)!;
+    }
+    
+    try {
+      const resultados = await obterProporcoesParaPedido(quantidadeTotal);
+      const produtosQuantidade = resultados.map(item => ({
+        produto: item.produto_nome,
+        quantidade: item.quantidade
+      }));
+      
+      // Armazenar no cache com limite de 10 entradas
+      if (cacheLocal.size >= 10) {
+        const firstKey = cacheLocal.keys().next().value;
+        cacheLocal.delete(firstKey);
+      }
+      cacheLocal.set(quantidadeTotal, produtosQuantidade);
+      
+      return produtosQuantidade;
+    } catch (error) {
+      console.warn('Erro ao calcular proporções:', error);
+      return [];
+    }
+  }, [obterProporcoesParaPedido, cacheLocal]);
 
   const temProporcoesConfiguradas = (): boolean => {
     const totalProporcoes = proporcoes.reduce((sum, p) => sum + p.percentual, 0);

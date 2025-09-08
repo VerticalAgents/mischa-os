@@ -42,12 +42,22 @@ interface ExpedicaoStore {
   confirmarEntregaEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
   confirmarRetornoEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
   
-  // Getters
-  getPedidosParaSeparacao: () => PedidoExpedicao[];
-  getPedidosParaDespacho: () => PedidoExpedicao[];
-  getPedidosProximoDia: () => PedidoExpedicao[];
-  getPedidosAtrasados: () => PedidoExpedicao[];
-  getPedidosSeparadosAntecipados: () => PedidoExpedicao[];
+      // Getters estabilizados
+      getPedidosParaSeparacao: () => PedidoExpedicao[];
+      getPedidosParaDespacho: () => PedidoExpedicao[];
+      getPedidosProximoDia: () => PedidoExpedicao[];
+      getPedidosAtrasados: () => PedidoExpedicao[];
+      getPedidosSeparadosAntecipados: () => PedidoExpedicao[];
+      
+      // Cache para evitar recalculos
+      _cachePedidos: {
+        separacao: PedidoExpedicao[];
+        despacho: PedidoExpedicao[];
+        proximoDia: PedidoExpedicao[];
+        atrasados: PedidoExpedicao[];
+        separadosAntecipados: PedidoExpedicao[];
+        lastUpdate: number;
+      };
 }
 
 const getProximoDiaUtil = (data: Date): Date => {
@@ -78,6 +88,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       pedidos: [],
       isLoading: false,
       ultimaAtualizacao: null,
+      _cachePedidos: {
+        separacao: [],
+        despacho: [],
+        proximoDia: [],
+        atrasados: [],
+        separadosAntecipados: [],
+        lastUpdate: 0
+      },
       
       atualizarDataReferencia: async () => {
         console.log('🔄 Atualizando data de referência para hoje...');
@@ -163,7 +181,15 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           console.log('✅ Pedidos formatados para expedição:', pedidosFormatados.length);
           set({ 
             pedidos: pedidosFormatados,
-            ultimaAtualizacao: new Date()
+            ultimaAtualizacao: new Date(),
+            _cachePedidos: {
+              separacao: [],
+              despacho: [],
+              proximoDia: [],
+              atrasados: [],
+              separadosAntecipados: [],
+              lastUpdate: 0
+            }
           });
           
         } catch (error) {
@@ -713,10 +739,18 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
       },
 
       getPedidosParaSeparacao: () => {
+        const state = get();
+        const now = Date.now();
+        
+        // Cache por 30 segundos para evitar recálculos desnecessários
+        if (now - state._cachePedidos.lastUpdate < 30000 && state._cachePedidos.separacao.length >= 0) {
+          return state._cachePedidos.separacao;
+        }
+        
         const hoje = new Date();
         const hojeFormatado = format(hoje, 'yyyy-MM-dd');
         
-        return get().pedidos.filter(p => {
+        const resultado = state.pedidos.filter(p => {
           const dataEntrega = parseDataSegura(p.data_prevista_entrega);
           const dataEntregaFormatada = format(dataEntrega, 'yyyy-MM-dd');
           
@@ -724,13 +758,32 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                  (!p.substatus_pedido || p.substatus_pedido === 'Agendado') &&
                  dataEntregaFormatada === hojeFormatado;
         });
+        
+        // Atualizar cache
+        set(prevState => ({
+          _cachePedidos: {
+            ...prevState._cachePedidos,
+            separacao: resultado,
+            lastUpdate: now
+          }
+        }));
+        
+        return resultado;
       },
 
       getPedidosParaDespacho: () => {
+        const state = get();
+        const now = Date.now();
+        
+        // Cache por 30 segundos
+        if (now - state._cachePedidos.lastUpdate < 30000 && state._cachePedidos.despacho.length >= 0) {
+          return state._cachePedidos.despacho;
+        }
+        
         const hoje = new Date();
         const hojeFormatado = format(hoje, 'yyyy-MM-dd');
         
-        return get().pedidos.filter(p => {
+        const resultado = state.pedidos.filter(p => {
           const dataEntrega = parseDataSegura(p.data_prevista_entrega);
           const dataEntregaFormatada = format(dataEntrega, 'yyyy-MM-dd');
           
@@ -738,26 +791,61 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                  (p.substatus_pedido === 'Separado' || p.substatus_pedido === 'Despachado') &&
                  dataEntregaFormatada === hojeFormatado;
         });
+        
+        // Atualizar cache
+        set(prevState => ({
+          _cachePedidos: {
+            ...prevState._cachePedidos,
+            despacho: resultado,
+            lastUpdate: now
+          }
+        }));
+        
+        return resultado;
       },
 
       getPedidosProximoDia: () => {
+        const state = get();
+        const now = Date.now();
+        
+        if (now - state._cachePedidos.lastUpdate < 30000 && state._cachePedidos.proximoDia.length >= 0) {
+          return state._cachePedidos.proximoDia;
+        }
+        
         const hoje = new Date();
         const proximoDiaUtil = getProximoDiaUtil(hoje);
         const proximoDiaStr = format(proximoDiaUtil, 'yyyy-MM-dd');
         
-        return get().pedidos.filter(p => {
+        const resultado = state.pedidos.filter(p => {
           const dataEntrega = parseDataSegura(p.data_prevista_entrega);
           const dataEntregaFormatada = format(dataEntrega, 'yyyy-MM-dd');
           
           return p.status_agendamento === 'Agendado' &&
                  dataEntregaFormatada === proximoDiaStr;
         });
+        
+        set(prevState => ({
+          _cachePedidos: {
+            ...prevState._cachePedidos,
+            proximoDia: resultado,
+            lastUpdate: now
+          }
+        }));
+        
+        return resultado;
       },
 
       getPedidosAtrasados: () => {
+        const state = get();
+        const now = Date.now();
+        
+        if (now - state._cachePedidos.lastUpdate < 30000 && state._cachePedidos.atrasados.length >= 0) {
+          return state._cachePedidos.atrasados;
+        }
+        
         const hoje = startOfDay(new Date());
         
-        return get().pedidos.filter(p => {
+        const resultado = state.pedidos.filter(p => {
           const dataEntrega = parseDataSegura(p.data_prevista_entrega);
           const dataEntregaComparacao = startOfDay(dataEntrega);
           
@@ -766,12 +854,29 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                  p.substatus_pedido !== 'Entregue' && 
                  p.substatus_pedido !== 'Retorno';
         });
+        
+        set(prevState => ({
+          _cachePedidos: {
+            ...prevState._cachePedidos,
+            atrasados: resultado,
+            lastUpdate: now
+          }
+        }));
+        
+        return resultado;
       },
 
       getPedidosSeparadosAntecipados: () => {
+        const state = get();
+        const now = Date.now();
+        
+        if (now - state._cachePedidos.lastUpdate < 30000 && state._cachePedidos.separadosAntecipados.length >= 0) {
+          return state._cachePedidos.separadosAntecipados;
+        }
+        
         const hoje = startOfDay(new Date());
         
-        return get().pedidos.filter(p => {
+        const resultado = state.pedidos.filter(p => {
           const dataEntrega = parseDataSegura(p.data_prevista_entrega);
           const dataEntregaComparacao = startOfDay(dataEntrega);
           
@@ -779,6 +884,16 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                  p.substatus_pedido === 'Separado' &&
                  dataEntregaComparacao > hoje;
         });
+        
+        set(prevState => ({
+          _cachePedidos: {
+            ...prevState._cachePedidos,
+            separadosAntecipados: resultado,
+            lastUpdate: now
+          }
+        }));
+        
+        return resultado;
       }
     }),
     { name: 'expedicao-store' }

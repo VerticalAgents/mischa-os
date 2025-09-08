@@ -23,21 +23,19 @@ export const useEstoqueComExpedicao = () => {
   const [loadingSaldos, setLoadingSaldos] = useState(false);
   const [dadosCarregados, setDadosCarregados] = useState(false);
 
-  // Memoizar arrays para evitar re-renders desnecessários
-  const todosPedidos = useMemo(() => {
-    const pedidosSeparacao = getPedidosParaSeparacao();
-    const pedidosDespacho = getPedidosParaDespacho();
-    return [...pedidosSeparacao, ...pedidosDespacho];
-  }, [getPedidosParaSeparacao, getPedidosParaDespacho]);
+  // Estabilizar getters para evitar re-renders infinitos
+  const pedidosSeparacao = useMemo(() => getPedidosParaSeparacao(), [getPedidosParaSeparacao]);
+  const pedidosDespacho = useMemo(() => getPedidosParaDespacho(), [getPedidosParaDespacho]);
+  const todosPedidos = useMemo(() => [...pedidosSeparacao, ...pedidosDespacho], [pedidosSeparacao, pedidosDespacho]);
 
   const pedidosSeparados = useMemo(() => 
-    todosPedidos.filter(p => p.substatus_pedido === 'Separado'), 
-    [todosPedidos]
+    pedidosSeparacao.filter(p => p.substatus_pedido === 'Separado'), 
+    [pedidosSeparacao]
   );
   
   const pedidosDespachados = useMemo(() => 
-    todosPedidos.filter(p => p.substatus_pedido === 'Despachado'), 
-    [todosPedidos]
+    pedidosDespacho.filter(p => p.substatus_pedido === 'Despachado'), 
+    [pedidosDespacho]
   );
   
   // Usar o hook para calcular quantidades separadas e despachadas
@@ -98,11 +96,12 @@ export const useEstoqueComExpedicao = () => {
     }
   }, [produtos, obterSaldoProduto]);
 
+  // Carregar saldos apenas na inicialização, não a cada mudança de produtos
   useEffect(() => {
-    if (produtos.length > 0) {
+    if (produtos.length > 0 && Object.keys(saldos).length === 0) {
       carregarSaldos();
     }
-  }, [produtos]);
+  }, [produtos.length > 0 && Object.keys(saldos).length === 0]);
 
   // Transformar dados em formato final
   const produtosComEstoque: ProdutoComEstoqueDetalhado[] = produtos.map(produto => {

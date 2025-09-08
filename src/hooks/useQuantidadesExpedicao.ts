@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useProporoesPadrao } from './useProporoesPadrao';
 import { useEstoqueProdutos } from './useEstoqueProdutos';
+import { useQuantidadesCache } from './useQuantidadesCache';
 
 export interface QuantidadesExpedicao {
   quantidadesSeparadas: { [nome: string]: number };
@@ -11,11 +12,19 @@ export interface QuantidadesExpedicao {
 export const useQuantidadesExpedicao = (pedidosSeparados: any[], pedidosDespachados: any[]) => {
   const { calcularQuantidadesPorProporcao } = useProporoesPadrao();
   const { produtos } = useEstoqueProdutos();
+  const { getFromCache, setToCache } = useQuantidadesCache();
   const [quantidadesSeparadas, setQuantidadesSeparadas] = useState<{ [nome: string]: number }>({});
   const [quantidadesDespachadas, setQuantidadesDespachadas] = useState<{ [nome: string]: number }>({});
   const [calculando, setCalculando] = useState(true);
 
-  // Memoizar arrays para evitar re-renders
+  // Criar chave de cache estável baseada no conteúdo dos pedidos
+  const cacheKey = useMemo(() => {
+    const separadosIds = pedidosSeparados?.map(p => `${p.id}-${p.quantidade_total}-${p.tipo_pedido}`).sort().join('|') || '';
+    const despachadosIds = pedidosDespachados?.map(p => `${p.id}-${p.quantidade_total}-${p.tipo_pedido}`).sort().join('|') || '';
+    return `quantidades-${separadosIds}-${despachadosIds}`;
+  }, [pedidosSeparados, pedidosDespachados]);
+
+  // Memoizar arrays para evitar re-renders desnecessários
   const pedidosSeparadosMemo = useMemo(() => pedidosSeparados || [], [pedidosSeparados]);
   const pedidosDespachadosMemo = useMemo(() => pedidosDespachados || [], [pedidosDespachados]);
 
@@ -58,9 +67,19 @@ export const useQuantidadesExpedicao = (pedidosSeparados: any[], pedidosDespacha
     return quantidadesPorProduto;
   }, [produtos, calcularQuantidadesPorProporcao]);
 
-  // Memoizar função de carregamento
+  // Memoizar função de carregamento com cache
   const carregarQuantidades = useCallback(async () => {
     if (produtos.length === 0) return;
+    
+    // Verificar cache primeiro
+    const cached = getFromCache(cacheKey);
+    if (cached) {
+      console.log('✅ Usando quantidades do cache');
+      setQuantidadesSeparadas(cached.separadas);
+      setQuantidadesDespachadas(cached.despachadas);
+      setCalculando(false);
+      return;
+    }
     
     setCalculando(true);
     try {
@@ -74,10 +93,13 @@ export const useQuantidadesExpedicao = (pedidosSeparados: any[], pedidosDespacha
         calcularQuantidadesPorPedidos(pedidosDespachadosMemo)
       ]);
       
+      // Salvar no cache
+      setToCache(cacheKey, { separadas, despachadas });
+      
       setQuantidadesSeparadas(separadas);
       setQuantidadesDespachadas(despachadas);
       
-      console.log('✅ Quantidades calculadas:');
+      console.log('✅ Quantidades calculadas e armazenadas no cache:');
       console.log('📦 Separadas:', separadas);
       console.log('🚚 Despachadas:', despachadas);
     } catch (error) {
@@ -87,11 +109,16 @@ export const useQuantidadesExpedicao = (pedidosSeparados: any[], pedidosDespacha
     } finally {
       setCalculando(false);
     }
-  }, [produtos, pedidosSeparadosMemo, pedidosDespachadosMemo, calcularQuantidadesPorPedidos]);
+  }, [produtos.length, cacheKey, pedidosSeparadosMemo, pedidosDespachadosMemo, calcularQuantidadesPorPedidos, getFromCache, setToCache]);
 
+  // Debounce para evitar cálculos excessivos
   useEffect(() => {
-    carregarQuantidades();
-  }, [carregarQuantidades]);
+    const timer = setTimeout(() => {
+      carregarQuantidades();
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [cacheKey]);
 
   return {
     quantidadesSeparadas,
