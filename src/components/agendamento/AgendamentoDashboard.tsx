@@ -2,10 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight } from "lucide-react";
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks } from "date-fns";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -32,7 +30,6 @@ export default function AgendamentoDashboard() {
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
   const [selectedAgendamento, setSelectedAgendamento] = useState<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [clientesContatados, setClientesContatados] = useState<Set<string>>(new Set());
   const [semanaAtual, setSemanaAtual] = useState<Date>(new Date());
 
   useEffect(() => {
@@ -139,23 +136,15 @@ export default function AgendamentoDashboard() {
     if (!diaSelecionado) return [];
     const agendamentosFiltered = agendamentos.filter(agendamento => isSameDay(new Date(agendamento.dataReposicao), diaSelecionado));
 
-    // Ordenar: Agendados primeiro, depois Previstos contatados, depois Previstos não contatados
+    // Ordenar: Agendados primeiro, depois Previstos
     return agendamentosFiltered.sort((a, b) => {
       // Primeiro critério: status (Agendado > Previsto)
       if (a.statusAgendamento === "Agendado" && b.statusAgendamento === "Previsto") return -1;
       if (a.statusAgendamento === "Previsto" && b.statusAgendamento === "Agendado") return 1;
       
-      // Se ambos são Previstos, ordenar por contato (contatados primeiro)
-      if (a.statusAgendamento === "Previsto" && b.statusAgendamento === "Previsto") {
-        const aContatado = clientesContatados.has(a.cliente.id);
-        const bContatado = clientesContatados.has(b.cliente.id);
-        if (aContatado && !bContatado) return -1;
-        if (!aContatado && bContatado) return 1;
-      }
-      
       return 0;
     });
-  }, [agendamentos, diaSelecionado, clientesContatados]);
+  }, [agendamentos, diaSelecionado]);
 
   const coresPieChart = ['#10B981', '#F59E0B', '#EF4444'];
 
@@ -226,17 +215,6 @@ export default function AgendamentoDashboard() {
     }
   };
 
-  const handleContatoChange = (clienteId: string, contatado: boolean) => {
-    setClientesContatados(prev => {
-      const newSet = new Set(prev);
-      if (contatado) {
-        newSet.add(clienteId);
-      } else {
-        newSet.delete(clienteId);
-      }
-      return newSet;
-    });
-  };
 
   const ehSemanaAtual = useMemo(() => {
     const hoje = new Date();
@@ -423,7 +401,6 @@ export default function AgendamentoDashboard() {
                   const QuantidadeAtualizada = ({ agendamento }: { agendamento: any }) => {
                     const [quantidade, setQuantidade] = useState(agendamento.cliente.quantidadePadrao);
                     const [tipoPedido, setTipoPedido] = useState('Padrão');
-                    const clienteContatado = clientesContatados.has(agendamento.cliente.id);
                     
                     useEffect(() => {
                       const buscarDados = async () => {
@@ -440,13 +417,20 @@ export default function AgendamentoDashboard() {
                       buscarDados();
                     }, [agendamento.cliente.id]);
 
-                    // Determinar a cor de fundo baseada no status e contato
+                    // Calcular dias desde última entrega
+                    const diasDesdeUltimaEntrega = agendamento.cliente.ultimaDataReposicaoEfetiva 
+                      ? differenceInDays(new Date(), new Date(agendamento.cliente.ultimaDataReposicaoEfetiva))
+                      : null;
+
+                    const periodicidade = agendamento.cliente.periodicidadePadrao || 7;
+
+                    // Determinar a cor de fundo baseada no status
                     const getBackgroundColor = () => {
                       if (agendamento.statusAgendamento === "Agendado") {
                         return "bg-green-50";
                       }
                       if (agendamento.statusAgendamento === "Previsto") {
-                        return clienteContatado ? "bg-yellow-100" : "bg-yellow-50";
+                        return "bg-yellow-50";
                       }
                       return "bg-gray-50";
                     };
@@ -458,20 +442,16 @@ export default function AgendamentoDashboard() {
                           <div className="text-sm text-muted-foreground text-left">
                             Quantidade: {quantidade} unidades
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
                           {agendamento.statusAgendamento === "Previsto" && (
-                            <div className="flex items-center gap-2">
-                              <Checkbox
-                                id={`contato-${agendamento.cliente.id}`}
-                                checked={clienteContatado}
-                                onCheckedChange={(checked) => handleContatoChange(agendamento.cliente.id, checked as boolean)}
-                              />
-                              <Label htmlFor={`contato-${agendamento.cliente.id}`} className="text-xs text-muted-foreground">
-                                {clienteContatado ? "Cliente contatado" : "Contatar cliente"}
-                              </Label>
+                            <div className="text-xs text-muted-foreground text-left mt-1">
+                              {diasDesdeUltimaEntrega !== null 
+                                ? `${diasDesdeUltimaEntrega} dias desde última entrega` 
+                                : 'Primeira entrega'
+                              } • Periodicidade: {periodicidade} dias
                             </div>
                           )}
+                        </div>
+                        <div className="flex items-center gap-2">
                           <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
                           <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
                             {agendamento.statusAgendamento}
