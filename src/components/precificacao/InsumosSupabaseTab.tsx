@@ -21,6 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, RefreshCw, Search, Edit, Trash2 } from "lucide-react";
 import EditarInsumoModal from "@/components/estoque/EditarInsumoModal";
+import AdicionarInsumoModal from "@/components/precificacao/AdicionarInsumoModal";
 
 export default function InsumosSupabaseTab() {
   const { 
@@ -36,6 +37,7 @@ export default function InsumosSupabaseTab() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editandoInsumo, setEditandoInsumo] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -58,6 +60,14 @@ export default function InsumosSupabaseTab() {
   const fecharEdicaoInsumo = () => {
     setEditandoInsumo(null);
     setIsEditModalOpen(false);
+  };
+
+  const handleNovoInsumo = () => {
+    setIsAddModalOpen(true);
+  };
+
+  const fecharAdicaoInsumo = () => {
+    setIsAddModalOpen(false);
   };
 
   // Filtrar insumos
@@ -100,7 +110,7 @@ export default function InsumosSupabaseTab() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 Atualizar
               </Button>
-              <Button onClick={() => console.log('Novo insumo')}>
+              <Button onClick={handleNovoInsumo}>
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Insumo
               </Button>
@@ -236,6 +246,12 @@ export default function InsumosSupabaseTab() {
         insumo={editandoInsumo}
         isOpen={isEditModalOpen}
         onClose={fecharEdicaoInsumo}
+      />
+
+      {/* Modal de Adição */}
+      <AdicionarInsumoModal
+        isOpen={isAddModalOpen}
+        onClose={fecharAdicaoInsumo}
       />
     </div>
   );
