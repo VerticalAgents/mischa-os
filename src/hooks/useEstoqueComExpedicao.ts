@@ -101,7 +101,7 @@ export const useEstoqueComExpedicao = () => {
     if (produtos.length > 0 && Object.keys(saldos).length === 0) {
       carregarSaldos();
     }
-  }, [produtos.length > 0 && Object.keys(saldos).length === 0]);
+  }, [produtos.length, Object.keys(saldos).length, carregarSaldos]);
 
   // Transformar dados em formato final
   const produtosComEstoque: ProdutoComEstoqueDetalhado[] = produtos.map(produto => {
