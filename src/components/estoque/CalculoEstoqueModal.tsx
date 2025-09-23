@@ -3,6 +3,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useEstoqueComExpedicao } from "@/hooks/useEstoqueComExpedicao";
+import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
+import { useQuantidadesExpedicao } from "@/hooks/useQuantidadesExpedicao";
+import { useMemo } from "react";
 
 interface CalculoEstoqueModalProps {
   isOpen: boolean;
@@ -11,6 +14,27 @@ interface CalculoEstoqueModalProps {
 
 export default function CalculoEstoqueModal({ isOpen, onClose }: CalculoEstoqueModalProps) {
   const { produtos, loading } = useEstoqueComExpedicao();
+  const { getPedidosParaSeparacao, getPedidosParaDespacho } = useExpedicaoStore();
+
+  // Obter os pedidos para calcular as quantidades corretamente
+  const pedidosSeparacao = useMemo(() => getPedidosParaSeparacao(), [getPedidosParaSeparacao]);
+  const pedidosDespacho = useMemo(() => getPedidosParaDespacho(), [getPedidosParaDespacho]);
+  
+  const pedidosSeparados = useMemo(() => 
+    pedidosSeparacao.filter(p => p.substatus_pedido === 'Separado'), 
+    [pedidosSeparacao]
+  );
+  
+  const pedidosDespachados = useMemo(() => 
+    pedidosDespacho.filter(p => p.substatus_pedido === 'Despachado'), 
+    [pedidosDespacho]
+  );
+
+  // Usar o mesmo hook que funciona no ResumoUnidadesSeparadas
+  const { quantidadesSeparadas, quantidadesDespachadas } = useQuantidadesExpedicao(
+    pedidosSeparados, 
+    pedidosDespachados
+  );
 
   const getStatusEstoque = (saldoReal: number) => {
     if (saldoReal <= 0) return { variant: "destructive" as const, label: "Sem estoque" };
@@ -19,11 +43,27 @@ export default function CalculoEstoqueModal({ isOpen, onClose }: CalculoEstoqueM
     return { variant: "default" as const, label: "Alto" };
   };
 
+  // Calcular totais usando as quantidades corretas do hook de expedição
   const produtosAtivos = produtos.filter(p => p.ativo);
   const totalSaldoAtual = produtosAtivos.reduce((sum, p) => sum + p.saldoAtual, 0);
-  const totalSeparado = produtosAtivos.reduce((sum, p) => sum + p.quantidadeSeparada, 0);
-  const totalDespachado = produtosAtivos.reduce((sum, p) => sum + p.quantidadeDespachada, 0);
-  const totalSaldoReal = produtosAtivos.reduce((sum, p) => sum + p.saldoReal, 0);
+  const totalSeparado = Object.values(quantidadesSeparadas).reduce((sum, qty) => sum + qty, 0);
+  const totalDespachado = Object.values(quantidadesDespachadas).reduce((sum, qty) => sum + qty, 0);
+  
+  // Calcular saldo real correto usando os dados de expedição
+  const produtosComCalculoCorreto = produtosAtivos.map(produto => {
+    const quantidadeSeparada = quantidadesSeparadas[produto.nome] || 0;
+    const quantidadeDespachada = quantidadesDespachadas[produto.nome] || 0;
+    const saldoReal = produto.saldoAtual - quantidadeSeparada - quantidadeDespachada;
+    
+    return {
+      ...produto,
+      quantidadeSeparada,
+      quantidadeDespachada,
+      saldoReal
+    };
+  });
+  
+  const totalSaldoReal = produtosComCalculoCorreto.reduce((sum, p) => sum + p.saldoReal, 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -94,14 +134,14 @@ export default function CalculoEstoqueModal({ isOpen, onClose }: CalculoEstoqueM
                       Carregando dados...
                     </TableCell>
                   </TableRow>
-                ) : produtosAtivos.length === 0 ? (
+                ) : produtosComCalculoCorreto.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8">
                       Nenhum produto ativo encontrado
                     </TableCell>
                   </TableRow>
                 ) : (
-                  produtosAtivos.map((produto) => {
+                  produtosComCalculoCorreto.map((produto) => {
                     const status = getStatusEstoque(produto.saldoReal);
                     
                     return (
