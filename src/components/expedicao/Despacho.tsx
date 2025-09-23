@@ -138,6 +138,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
   const handleRetornarParaSeparacao = async (pedidoId: string) => {
     await retornarParaSeparacao(pedidoId);
+    await carregarPedidos();
   };
 
   const handleOrganizarEntregas = () => {
@@ -269,10 +270,20 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 showDespachoActions={tipoFiltro !== "antecipada"}
                 showReagendarButton={tipoFiltro === "atrasadas" && pedido.substatus_pedido === 'Agendado'}
                 showRetornarParaSeparacaoButton={tipoFiltro === "antecipada"}
-                onConfirmarDespacho={() => confirmarDespacho(String(pedido.id))}
+                onConfirmarDespacho={async () => {
+                  await confirmarDespacho(String(pedido.id));
+                  // Forçar atualização da UI após confirmar despacho
+                  await carregarPedidos();
+                }}
                 onConfirmarEntrega={(observacao) => handleConfirmarEntregaIndividual(String(pedido.id), observacao)}
-                onConfirmarRetorno={(observacao) => confirmarRetorno(String(pedido.id), observacao)}
-                onRetornarParaSeparacao={() => handleRetornarParaSeparacao(String(pedido.id))}
+                onConfirmarRetorno={async (observacao) => {
+                  await confirmarRetorno(String(pedido.id), observacao);
+                  await carregarPedidos();
+                }}
+                onRetornarParaSeparacao={async () => {
+                  await handleRetornarParaSeparacao(String(pedido.id));
+                  await carregarPedidos();
+                }}
               />
             ))}
           </div>
