@@ -11,8 +11,8 @@ interface QuantidadesCache {
   despachadas: Record<string, number>;
 }
 
-// Cache TTL de 2 minutos
-const CACHE_TTL = 2 * 60 * 1000;
+// Cache TTL aumentado para 5 minutos para maior estabilidade
+const CACHE_TTL = 5 * 60 * 1000;
 
 export const useQuantidadesCache = () => {
   const [cache, setCache] = useState<Map<string, CacheItem<QuantidadesCache>>>(new Map());
@@ -52,22 +52,28 @@ export const useQuantidadesCache = () => {
   }, []);
 
   const clearCache = useCallback(() => {
+    console.log('🗑️ Limpando cache de quantidades');
     setCache(new Map());
   }, []);
 
-  // Limpar cache expirado a cada minuto
+  // Limpar cache expirado a cada 2 minutos para reduzir overhead
   useEffect(() => {
     const interval = setInterval(() => {
       setCache(prev => {
         const newCache = new Map(prev);
+        let removedCount = 0;
         for (const [key, item] of newCache.entries()) {
           if (isExpired(item)) {
             newCache.delete(key);
+            removedCount++;
           }
+        }
+        if (removedCount > 0) {
+          console.log(`🧹 Cache: removidos ${removedCount} itens expirados`);
         }
         return newCache;
       });
-    }, 60000);
+    }, 120000); // 2 minutos
 
     return () => clearInterval(interval);
   }, [isExpired]);

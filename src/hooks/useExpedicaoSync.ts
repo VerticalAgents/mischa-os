@@ -23,12 +23,12 @@ export const useExpedicaoSync = () => {
       console.log('🚀 Carregamento inicial da expedição');
       hasInitialLoad.current = true;
       
-      // Timeout simples para evitar conflitos
+      // Timeout aumentado para evitar conflitos com otimizações
       const timeoutId = setTimeout(() => {
         carregarPedidos().catch(error => {
           console.error('Erro no carregamento inicial:', error);
         });
-      }, 1000);
+      }, 500);
 
       return () => clearTimeout(timeoutId);
     }

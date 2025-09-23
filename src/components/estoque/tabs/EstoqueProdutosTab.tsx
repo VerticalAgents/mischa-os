@@ -14,7 +14,7 @@ import HistoricoMovimentacoes from "../HistoricoMovimentacoes";
 import CalculoEstoqueModal from "../CalculoEstoqueModal";
 
 export default function EstoqueProdutosTab() {
-  const { produtos, loading, carregarSaldos } = useEstoqueComExpedicao();
+  const { produtos, loading, timeoutError, carregarSaldos, forcarRecarregamento } = useEstoqueComExpedicao();
   const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao } = useMovimentacoesEstoqueProdutos();
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -71,6 +71,25 @@ export default function EstoqueProdutosTab() {
   const movimentacoesProdutoSelecionado = showHistorico 
     ? movimentacoes.filter(mov => mov.produto_id === showHistorico)
     : [];
+
+  if (timeoutError) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="text-destructive">⚠️</div>
+            <div className="text-center">
+              <p className="text-destructive font-medium">Erro no carregamento</p>
+              <p className="text-sm text-muted-foreground">O carregamento demorou mais que o esperado</p>
+            </div>
+            <Button onClick={forcarRecarregamento} variant="outline">
+              Tentar Novamente
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (

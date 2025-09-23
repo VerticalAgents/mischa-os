@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useProporoesPadrao } from './useProporoesPadrao';
 import { useEstoqueProdutos } from './useEstoqueProdutos';
 import { useQuantidadesCache } from './useQuantidadesCache';
@@ -16,6 +16,9 @@ export const useQuantidadesExpedicao = (pedidosSeparados: any[], pedidosDespacha
   const [quantidadesSeparadas, setQuantidadesSeparadas] = useState<{ [nome: string]: number }>({});
   const [quantidadesDespachadas, setQuantidadesDespachadas] = useState<{ [nome: string]: number }>({});
   const [calculando, setCalculando] = useState(true);
+  
+  // Ref para evitar execução paralela
+  const isCalculatingRef = useRef(false);
 
   // Criar chave de cache estável baseada no conteúdo dos pedidos
   const cacheKey = useMemo(() => {
@@ -67,9 +70,9 @@ export const useQuantidadesExpedicao = (pedidosSeparados: any[], pedidosDespacha
     return quantidadesPorProduto;
   }, [produtos, calcularQuantidadesPorProporcao]);
 
-  // Memoizar função de carregamento com cache
+  // Memoizar função de carregamento com cache e proteções
   const carregarQuantidades = useCallback(async () => {
-    if (produtos.length === 0) return;
+    if (produtos.length === 0 || isCalculatingRef.current) return;
     
     // Verificar cache primeiro
     const cached = getFromCache(cacheKey);
@@ -81,16 +84,31 @@ export const useQuantidadesExpedicao = (pedidosSeparados: any[], pedidosDespacha
       return;
     }
     
+    isCalculatingRef.current = true;
     setCalculando(true);
+    
     try {
       console.log('🔄 Calculando quantidades separadas e despachadas...');
       console.log('📊 Pedidos separados:', pedidosSeparadosMemo.length);
       console.log('📊 Pedidos despachados:', pedidosDespachadosMemo.length);
 
-      // Calcular separadamente para cada status
-      const [separadas, despachadas] = await Promise.all([
-        calcularQuantidadesPorPedidos(pedidosSeparadosMemo),
-        calcularQuantidadesPorPedidos(pedidosDespachadosMemo)
+      // Verificações de segurança
+      if (!Array.isArray(pedidosSeparadosMemo) || !Array.isArray(pedidosDespachadosMemo)) {
+        console.warn('⚠️ Dados de pedidos inválidos');
+        setQuantidadesSeparadas({});
+        setQuantidadesDespachadas({});
+        return;
+      }
+
+      // Calcular separadamente para cada status com timeout
+      const [separadas, despachadas] = await Promise.race([
+        Promise.all([
+          calcularQuantidadesPorPedidos(pedidosSeparadosMemo),
+          calcularQuantidadesPorPedidos(pedidosDespachadosMemo)
+        ]),
+        new Promise<[{[nome: string]: number}, {[nome: string]: number}]>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout no cálculo')), 10000)
+        )
       ]);
       
       // Salvar no cache
@@ -103,22 +121,23 @@ export const useQuantidadesExpedicao = (pedidosSeparados: any[], pedidosDespacha
       console.log('📦 Separadas:', separadas);
       console.log('🚚 Despachadas:', despachadas);
     } catch (error) {
-      console.error('Erro ao calcular quantidades da expedição:', error);
+      console.error('❌ Erro ao calcular quantidades da expedição:', error);
       setQuantidadesSeparadas({});
       setQuantidadesDespachadas({});
     } finally {
       setCalculando(false);
+      isCalculatingRef.current = false;
     }
   }, [produtos.length, cacheKey, pedidosSeparadosMemo, pedidosDespachadosMemo, calcularQuantidadesPorPedidos, getFromCache, setToCache]);
 
-  // Debounce para evitar cálculos excessivos
+  // Debounce para evitar cálculos excessivos (aumentado para 300ms)
   useEffect(() => {
     const timer = setTimeout(() => {
       carregarQuantidades();
-    }, 100);
+    }, 300);
     
     return () => clearTimeout(timer);
-  }, [cacheKey]);
+  }, [cacheKey, carregarQuantidades]);
 
   return {
     quantidadesSeparadas,
