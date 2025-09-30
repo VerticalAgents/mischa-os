@@ -385,7 +385,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
       }
 
       const novoClienteData: Omit<Cliente, 'id' | 'dataCadastro'> = {
-        nome: '',
+        nome: `${clienteOriginal.nome} (Cópia)`,
         cnpjCpf: '',
         enderecoEntrega: '',
         linkGoogleMaps: '',
