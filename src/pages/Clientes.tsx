@@ -30,6 +30,7 @@ export default function Clientes() {
     carregarClientes,
     setFiltroTermo,
     setFiltroStatus,
+    setFiltroRepresentante,
     getClientesFiltrados,
     clienteAtual,
     selecionarCliente,
@@ -229,6 +230,7 @@ export default function Clientes() {
         filtros={filtros}
         setFiltroTermo={setFiltroTermo}
         setFiltroStatus={setFiltroStatus}
+        setFiltroRepresentante={setFiltroRepresentante}
         visibleColumns={visibleColumns}
         setVisibleColumns={setVisibleColumns}
         columnOptions={columnOptions}

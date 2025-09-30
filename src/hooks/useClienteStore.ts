@@ -12,6 +12,7 @@ interface ClienteState {
   filtros: {
     termo: string;
     status: StatusCliente | 'Todos' | '';
+    representanteId: number | 'Todos' | null;
   };
   adicionarCliente: (cliente: Omit<Cliente, 'id' | 'dataCadastro'>) => Promise<Cliente>;
   atualizarCliente: (id: string, cliente: Partial<Cliente>) => Promise<void>;
@@ -24,6 +25,7 @@ interface ClienteState {
   getClientesFiltrados: () => Cliente[];
   setFiltroTermo: (termo: string) => void;
   setFiltroStatus: (status: StatusCliente | 'Todos' | '') => void;
+  setFiltroRepresentante: (representanteId: number | 'Todos' | null) => void;
 }
 
 import { sanitizeClienteData, createSafeClienteDefaults } from '@/utils/clienteDataSanitizer';
@@ -183,6 +185,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
   filtros: {
     termo: '',
     status: '',
+    representanteId: null,
   },
   adicionarCliente: async (cliente) => {
     set({ loading: true });
@@ -441,7 +444,11 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         filtros.status === 'Todos' || 
         cliente.statusCliente === filtros.status;
 
-      return matchesTermo && matchesStatus;
+      const matchesRepresentante = !filtros.representanteId || 
+        filtros.representanteId === 'Todos' || 
+        cliente.representanteId === filtros.representanteId;
+
+      return matchesTermo && matchesStatus && matchesRepresentante;
     });
   },
   setFiltroTermo: (termo: string) => {
@@ -452,6 +459,11 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
   setFiltroStatus: (status: StatusCliente | 'Todos' | '') => {
     set((state) => ({
       filtros: { ...state.filtros, status },
+    }));
+  },
+  setFiltroRepresentante: (representanteId: number | 'Todos' | null) => {
+    set((state) => ({
+      filtros: { ...state.filtros, representanteId },
     }));
   },
 }));

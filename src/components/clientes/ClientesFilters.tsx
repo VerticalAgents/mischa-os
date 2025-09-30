@@ -1,5 +1,3 @@
-
-import { useState } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,6 +5,7 @@ import { StatusCliente } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 
 // Define the available columns for the table
 export interface ColumnOption {
@@ -19,9 +18,11 @@ interface ClientesFiltersProps {
   filtros: {
     termo: string;
     status: StatusCliente | 'Todos' | '';
+    representanteId: number | 'Todos' | null;
   };
   setFiltroTermo: (termo: string) => void;
   setFiltroStatus: (status: StatusCliente | 'Todos' | '') => void;
+  setFiltroRepresentante: (representanteId: number | 'Todos' | null) => void;
   visibleColumns: string[];
   setVisibleColumns: React.Dispatch<React.SetStateAction<string[]>>;
   columnOptions: ColumnOption[];
@@ -31,10 +32,13 @@ export default function ClientesFilters({
   filtros,
   setFiltroTermo,
   setFiltroStatus,
+  setFiltroRepresentante,
   visibleColumns,
   setVisibleColumns,
   columnOptions
 }: ClientesFiltersProps) {
+  const { representantes } = useSupabaseRepresentantes();
+
   // Toggle column visibility
   const toggleColumn = (columnId: string, isVisible: boolean) => {
     if (!isVisible) {
@@ -66,6 +70,21 @@ export default function ClientesFilters({
         <option value="Inativo">Inativo</option>
         <option value="A ativar">A ativar</option>
         <option value="Standby">Standby</option>
+      </select>
+      <select 
+        className="h-10 rounded-md border border-input bg-background px-3 py-2 min-w-[180px]" 
+        value={filtros.representanteId === null ? '' : filtros.representanteId} 
+        onChange={e => {
+          const value = e.target.value;
+          setFiltroRepresentante(value === '' ? null : value === 'Todos' ? 'Todos' : Number(value));
+        }}
+      >
+        <option value="">Todos os representantes</option>
+        {representantes.filter(r => r.ativo).map(rep => (
+          <option key={rep.id} value={rep.id}>
+            {rep.nome}
+          </option>
+        ))}
       </select>
       <Popover>
         <PopoverTrigger asChild>
