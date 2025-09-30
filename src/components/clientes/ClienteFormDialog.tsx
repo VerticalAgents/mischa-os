@@ -461,19 +461,18 @@ export default function ClienteFormDialog({
                  <div className="space-y-2">
                   <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
                   <Select 
-                    value={formData.tipoLogistica || 'PROPRIA'} 
-                    onValueChange={(value) => handleInputChange('tipoLogistica', value as TipoLogisticaType)}
+                    value={formData.tipoLogistica || 'Própria'} 
+                    onValueChange={(value) => handleInputChange('tipoLogistica', value)}
                   >
                     <SelectTrigger className="notranslate" translate="no" data-translate="no">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="notranslate" translate="no" data-translate="no">
-                      <SelectItem value="PROPRIA" className="notranslate" translate="no">
-                        {TIPO_LOGISTICA_LABELS.PROPRIA}
-                      </SelectItem>
-                      <SelectItem value="TERCEIRIZADA" className="notranslate" translate="no">
-                        {TIPO_LOGISTICA_LABELS.TERCEIRIZADA}
-                      </SelectItem>
+                      {tiposLogistica.filter(tipo => tipo.ativo).map((tipo) => (
+                        <SelectItem key={tipo.id} value={tipo.nome} className="notranslate" translate="no">
+                          {tipo.nome}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                  </div>
