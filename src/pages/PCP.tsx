@@ -7,6 +7,7 @@ import { Layers } from "lucide-react";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
 
 // Import components
+import HistoricoAnalytics from "@/components/pcp/HistoricoAnalytics";
 import ProjecaoProducaoTab from "@/components/pcp/ProjecaoProducaoTab";
 import NecessidadeDiariaTab from "@/components/pcp/NecessidadeDiariaTab";
 import ProducaoAgendadaTab from "@/components/pcp/ProducaoAgendadaTab";
@@ -51,10 +52,11 @@ export default function PCP() {
       
       <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
         <TabsList className="w-full justify-start">
+          <TabsTrigger value="historico">Histórico</TabsTrigger>
           <TabsTrigger value="projecao-producao">Projeção de Produção</TabsTrigger>
           <TabsTrigger value="necessidade-diaria">Necessidade Diária</TabsTrigger>
           <TabsTrigger value="producao-agendada">Produção Agendada</TabsTrigger>
-          <TabsTrigger value="historico">Histórico</TabsTrigger>
+          <TabsTrigger value="registro">Registro</TabsTrigger>
           <TabsTrigger value="auditoria-pcp">Auditoria PCP</TabsTrigger>
         </TabsList>
         
@@ -71,7 +73,11 @@ export default function PCP() {
         </TabsContent>
 
         <TabsContent value="historico" className="space-y-6 mt-6">
-          {activeTab === "historico" && <HistoricoProducao />}
+          {activeTab === "historico" && <HistoricoAnalytics />}
+        </TabsContent>
+
+        <TabsContent value="registro" className="space-y-6 mt-6">
+          {activeTab === "registro" && <HistoricoProducao />}
         </TabsContent>
 
         <TabsContent value="auditoria-pcp" className="space-y-6 mt-6">

@@ -173,7 +173,7 @@ export default function HistoricoProducao() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Histórico de Produção
+              Registros de Produção
             </CardTitle>
           </div>
           <Button onClick={handleNovoRegistro} className="flex items-center gap-2">
