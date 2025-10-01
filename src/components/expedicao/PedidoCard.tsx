@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import TipoPedidoBadge from "./TipoPedidoBadge";
 import ProdutoNomeDisplay from "./ProdutoNomeDisplay";
 import ProdutosList from "./ProdutosList";
@@ -56,6 +59,7 @@ const PedidoCard = ({
   const navigate = useNavigate();
   const [observacaoEntrega, setObservacaoEntrega] = useState("");
   const [observacaoRetorno, setObservacaoRetorno] = useState("");
+  const [dataEntrega, setDataEntrega] = useState<Date>(new Date());
   const [dialogEntregaAberto, setDialogEntregaAberto] = useState(false);
   const [dialogRetornoAberto, setDialogRetornoAberto] = useState(false);
   const {
@@ -65,10 +69,11 @@ const PedidoCard = ({
 
   const handleConfirmarEntrega = async () => {
     try {
-      const sucesso = await confirmarEntrega(pedido, observacaoEntrega);
+      const sucesso = await confirmarEntrega(pedido, observacaoEntrega, dataEntrega);
       if (sucesso) {
         setDialogEntregaAberto(false);
         setObservacaoEntrega("");
+        setDataEntrega(new Date()); // Reset para data atual
         // Chamar callback se existir para atualizar o estado do componente pai
         if (onConfirmarEntrega) {
           onConfirmarEntrega(observacaoEntrega);
@@ -242,6 +247,37 @@ const PedidoCard = ({
                           <li>Registrar no histórico de entregas</li>
                           <li>Reagendar automaticamente para próxima entrega</li>
                         </ul>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Data da Entrega:
+                          </label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal",
+                                  !dataEntrega && "text-muted-foreground"
+                                )}
+                              >
+                                <Calendar className="mr-2 h-4 w-4" />
+                                {dataEntrega ? format(dataEntrega, "dd/MM/yyyy", { locale: ptBR }) : "Selecione uma data"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <CalendarComponent
+                                mode="single"
+                                selected={dataEntrega}
+                                onSelect={(date) => date && setDataEntrega(date)}
+                                disabled={(date) => date > new Date()}
+                                initialFocus
+                                className="pointer-events-auto"
+                                locale={ptBR}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                         
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">

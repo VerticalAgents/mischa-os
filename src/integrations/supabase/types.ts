@@ -1738,7 +1738,13 @@ export type Database = {
         Returns: undefined
       }
       process_entrega_safe: {
-        Args: { p_agendamento_id: string; p_observacao?: string }
+        Args:
+          | {
+              p_agendamento_id: string
+              p_data_entrega?: string
+              p_observacao?: string
+            }
+          | { p_agendamento_id: string; p_observacao?: string }
         Returns: undefined
       }
       refresh_dados_analise_giro: {

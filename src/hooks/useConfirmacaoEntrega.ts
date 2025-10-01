@@ -105,7 +105,7 @@ export const useConfirmacaoEntrega = () => {
     return produtosInsuficientes;
   };
 
-  const confirmarEntrega = async (pedido: PedidoEntrega, observacao?: string): Promise<boolean> => {
+  const confirmarEntrega = async (pedido: PedidoEntrega, observacao?: string, dataEntrega?: Date): Promise<boolean> => {
     setLoading(true);
     try {
       console.log('🚚 Iniciando confirmação de entrega:', pedido.id);
@@ -139,7 +139,8 @@ export const useConfirmacaoEntrega = () => {
       // 3) Execução atômica no banco (baixa, histórico e reagendamento)
       const { error: procError } = await supabase.rpc('process_entrega_safe', {
         p_agendamento_id: pedido.id,
-        p_observacao: observacao || null
+        p_observacao: observacao || null,
+        p_data_entrega: dataEntrega ? dataEntrega.toISOString() : null
       });
 
       if (procError) {
