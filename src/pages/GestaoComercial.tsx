@@ -20,25 +20,30 @@ export default function GestaoComercial() {
   // Sincronização com a URL
   const tabFromUrl = searchParams.get('tab');
   
-  // Sincronizar com URL ao montar
+  // Sincronizar com URL ao montar (apenas reagir a mudanças na URL)
   useEffect(() => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
-    } else if (!tabFromUrl) {
+    } else if (!tabFromUrl && activeTab) {
       // Se não há tab na URL, usar a do store e atualizar a URL
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.set('tab', activeTab);
-      setSearchParams(newSearchParams, { replace: true });
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.set('tab', activeTab);
+        return newParams;
+      }, { replace: true });
     }
-  }, [tabFromUrl, activeTab, setActiveTab, searchParams, setSearchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabFromUrl]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     
-    // Atualizar URL sem reload
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set('tab', value);
-    setSearchParams(newSearchParams, { replace: true });
+    // Atualizar URL sem reload preservando outros parâmetros
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('tab', value);
+      return newParams;
+    }, { replace: true });
   };
 
   return (

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./button";
 import { useThemeStore } from "@/lib/theme";
+import { Link } from "react-router-dom";
 
 // Interface definitions
 interface SidebarContextType {
@@ -136,12 +137,12 @@ export const SidebarHeader = ({
   
   return (
     <div className={cn("flex h-14 items-center border-b px-6", className)}>
-      <a href="/" className={cn("flex items-center", showFullContent ? "space-x-2" : "justify-center w-full")}>
+      <Link to="/" className={cn("flex items-center", showFullContent ? "space-x-2" : "justify-center w-full")}>
         <img src={currentLogoSrc} alt="Logo" className="h-8 w-8" />
         {showFullContent && (
           <span className="font-bold text-lg text-sidebar-foreground">{title}</span>
         )}
-      </a>
+      </Link>
     </div>
   );
 };

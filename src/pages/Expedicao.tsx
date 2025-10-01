@@ -31,38 +31,43 @@ export default function Expedicao() {
     recarregarDados
   } = useExpedicaoSync();
 
-  // Sincronizar com URL ao montar
+  // Sincronizar com URL ao montar (apenas reagir a mudanças na URL)
   useEffect(() => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabFromUrl]);
+
+  useEffect(() => {
     if (entregasTabFromUrl && entregasTabFromUrl !== entregasTab) {
       setEntregasTab(entregasTabFromUrl);
     }
-  }, [tabFromUrl, entregasTabFromUrl, activeTab, entregasTab, setActiveTab, setEntregasTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entregasTabFromUrl]);
 
   // Garantir que ao trocar de aba os dados estejam atualizados
   const handleTabChange = (newValue: string) => {
     setActiveTab(newValue);
 
-    // Atualizar URL sem reload
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set('tab', newValue);
-    setSearchParams(newSearchParams, {
-      replace: true
-    });
+    // Atualizar URL sem reload preservando outros parâmetros
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('tab', newValue);
+      return newParams;
+    }, { replace: true });
     recarregarDados(); // Recarrega os dados ao trocar de aba
   };
 
   const handleEntregasTabChange = (newValue: string) => {
     setEntregasTab(newValue);
 
-    // Atualizar URL sem reload
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set('entregas', newValue);
-    setSearchParams(newSearchParams, {
-      replace: true
-    });
+    // Atualizar URL sem reload preservando outros parâmetros
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('entregas', newValue);
+      return newParams;
+    }, { replace: true });
     recarregarDados(); // Recarrega os dados ao trocar sub-abas
   };
 

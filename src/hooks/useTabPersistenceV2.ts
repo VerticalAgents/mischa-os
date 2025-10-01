@@ -26,10 +26,13 @@ export const useTabPersistenceV2 = (defaultTab: string, urlParamName = 'tab') =>
       localStorage.setItem(tabKey, tabFromUrl);
     } else if (!tabFromUrl && activeTab !== defaultTab) {
       // Se não há tab na URL mas temos uma salva, atualizar URL
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.set(urlParamName, activeTab);
-      setSearchParams(newSearchParams, { replace: true });
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.set(urlParamName, activeTab);
+        return newParams;
+      }, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const changeTab = useCallback((newTab: string) => {
@@ -37,21 +40,25 @@ export const useTabPersistenceV2 = (defaultTab: string, urlParamName = 'tab') =>
     setActiveTab(newTab);
     localStorage.setItem(tabKey, newTab);
     
-    // Atualizar URL sem reload
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set(urlParamName, newTab);
-    setSearchParams(newSearchParams, { replace: true });
-  }, [tabKey, pathname, searchParams, setSearchParams, urlParamName]);
+    // Atualizar URL sem reload preservando outros parâmetros
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set(urlParamName, newTab);
+      return newParams;
+    }, { replace: true });
+  }, [tabKey, pathname, setSearchParams, urlParamName]);
 
   const clearTabPersistence = useCallback(() => {
     localStorage.removeItem(tabKey);
     setActiveTab(defaultTab);
     
-    // Remover da URL também
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.delete(urlParamName);
-    setSearchParams(newSearchParams, { replace: true });
-  }, [tabKey, defaultTab, searchParams, setSearchParams, urlParamName]);
+    // Remover da URL também preservando outros parâmetros
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.delete(urlParamName);
+      return newParams;
+    }, { replace: true });
+  }, [tabKey, defaultTab, setSearchParams, urlParamName]);
 
   return {
     activeTab,

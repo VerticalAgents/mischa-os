@@ -134,14 +134,22 @@ export default function Clientes() {
     console.log('Clientes: Selecionando cliente via tabela:', id);
     selecionarCliente(id);
     // Update URL to reflect the selection
-    setSearchParams({ clienteId: id });
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('clienteId', id);
+      return newParams;
+    });
   };
   
   const handleBackToList = () => {
     console.log('Clientes: Voltando para a lista');
     selecionarCliente(null);
     // Clear URL parameters when user voluntarily goes back to the list
-    setSearchParams({});
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.delete('clienteId');
+      return newParams;
+    });
     setRefreshTrigger(prev => prev + 1);
   };
 

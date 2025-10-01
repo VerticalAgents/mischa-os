@@ -19,29 +19,34 @@ export const useGestaoComercialTabs = (): TabState => {
   const [activeTab, setActiveTabState] = useState<ValidTab>('representantes');
   const [loadedTabs, setLoadedTabs] = useState<Set<ValidTab>>(new Set(['representantes']));
 
-  // Sync with URL on mount
+  // Sync with URL on mount (apenas reagir a mudanças na URL)
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') as ValidTab;
     if (tabFromUrl && VALID_TABS.includes(tabFromUrl)) {
       setActiveTabState(tabFromUrl);
       setLoadedTabs(prev => new Set([...prev, tabFromUrl]));
     } else if (!searchParams.get('tab')) {
-      // Set default tab in URL
-      const newSearchParams = new URLSearchParams(searchParams);
-      newSearchParams.set('tab', 'representantes');
-      setSearchParams(newSearchParams, { replace: true });
+      // Set default tab in URL preservando outros parâmetros
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.set('tab', 'representantes');
+        return newParams;
+      }, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.get('tab')]);
 
   const setActiveTab = useCallback((tab: ValidTab) => {
     setActiveTabState(tab);
     setLoadedTabs(prev => new Set([...prev, tab]));
     
-    // Update URL
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set('tab', tab);
-    setSearchParams(newSearchParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+    // Update URL preservando outros parâmetros
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('tab', tab);
+      return newParams;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const markTabAsLoaded = useCallback((tab: ValidTab) => {
     setLoadedTabs(prev => new Set([...prev, tab]));
