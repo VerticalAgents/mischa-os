@@ -64,6 +64,11 @@ export default function AgendamentoDashboard() {
 
   const agendamentosFiltrados = useMemo(() => {
     if (representanteFiltro === "todos") return agendamentos;
+    if (representanteFiltro === "sem_representante") {
+      return agendamentos.filter(agendamento => 
+        !agendamento.cliente.representanteId
+      );
+    }
     return agendamentos.filter(agendamento => 
       agendamento.cliente.representanteId?.toString() === representanteFiltro
     );
@@ -84,7 +89,10 @@ export default function AgendamentoDashboard() {
     const confirmados = agendamentosSemana.filter(a => a.statusAgendamento === "Agendado");
     const clientesComAgendamento = new Set(agendamentosFiltrados.map(a => a.cliente.id));
     const clientesSemAgendamento = clientes.filter(c => {
-      const clienteNoFiltro = representanteFiltro === "todos" || c.representanteId?.toString() === representanteFiltro;
+      const clienteNoFiltro = 
+        representanteFiltro === "todos" || 
+        (representanteFiltro === "sem_representante" && !c.representanteId) ||
+        c.representanteId?.toString() === representanteFiltro;
       return c.ativo && clienteNoFiltro && !clientesComAgendamento.has(c.id);
     });
     return {
@@ -282,6 +290,7 @@ export default function AgendamentoDashboard() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos os representantes</SelectItem>
+            <SelectItem value="sem_representante">Sem representante</SelectItem>
             {representantes.filter(r => r.ativo).map((rep) => (
               <SelectItem key={rep.id} value={rep.id.toString()}>
                 {rep.nome}
