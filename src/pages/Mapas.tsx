@@ -40,7 +40,7 @@ const Mapas = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedRepresentantes, setSelectedRepresentantes] = useState<number[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string[]>(['ATIVO', 'EM_ANALISE']);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const { toast } = useToast();
   const markers = useRef<mapboxgl.Marker[]>([]);
