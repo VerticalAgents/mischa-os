@@ -576,14 +576,22 @@ export const RotaEntrega = () => {
   };
 
   const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
+    // Se não houver destino válido, não faz nada
+    if (!result.destination) {
+      return;
+    }
+
+    const sourceIndex = result.source.index;
+    const destIndex = result.destination.index;
+
+    // Se a posição não mudou, não faz nada
+    if (sourceIndex === destIndex) {
+      return;
+    }
 
     const items = Array.from(rotaOtimizada);
     
     // Não permitir mover a fábrica (primeiro item) ou destino final (último item se existir)
-    const sourceIndex = result.source.index;
-    const destIndex = result.destination.index;
-    
     const isFactoryOrFinal = (index: number) => {
       return items[index].isFactory || items[index].isFinal;
     };
@@ -702,70 +710,79 @@ export const RotaEntrega = () => {
                 Arraste os blocos para reorganizar a ordem das entregas
               </p>
               <DragDropContext onDragEnd={handleDragEnd}>
-                <Droppable droppableId="route-list">
-                  {(provided) => (
+                <Droppable droppableId="route-delivery-list">
+                  {(provided, snapshot) => (
                     <div
                       {...provided.droppableProps}
                       ref={provided.innerRef}
-                      className="space-y-2 max-h-[200px] overflow-y-auto"
+                      className={cn(
+                        "space-y-2 max-h-[200px] overflow-y-auto",
+                        snapshot.isDraggingOver && "bg-muted/50 rounded-lg"
+                      )}
                     >
-                      {rotaOtimizada.map((point, index) => (
-                        <Draggable
-                          key={`${point.cliente?.id || index}-${index}`}
-                          draggableId={`${point.cliente?.id || index}-${index}`}
-                          index={index}
-                          isDragDisabled={point.isFactory || point.isFinal}
-                        >
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              className={cn(
-                                "flex items-center gap-3 p-2 bg-background rounded border transition-colors",
-                                snapshot.isDragging && "shadow-lg ring-2 ring-primary",
-                                (point.isFactory || point.isFinal) && "opacity-60"
-                              )}
-                            >
-                              {!point.isFactory && !point.isFinal && (
-                                <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
-                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                              )}
-                              {point.isFactory ? (
-                                <>
-                                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm">
-                                    🏭
-                                  </div>
-                                  <div>
-                                    <p className="font-medium text-sm">Ponto de Partida</p>
-                                    <p className="text-xs text-muted-foreground">Mischa's Bakery</p>
-                                  </div>
-                                </>
-                              ) : point.isFinal ? (
-                                <>
-                                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm">
-                                    🏁
-                                  </div>
-                                  <div>
-                                    <p className="font-medium text-sm">Destino Final</p>
-                                    <p className="text-xs text-muted-foreground">{enderecoFinal}</p>
-                                  </div>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">
-                                    {index}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-sm truncate">{point.cliente?.nome}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{point.cliente?.endereco_entrega}</p>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
+                      {rotaOtimizada.map((point, index) => {
+                        const uniqueId = point.cliente?.id 
+                          ? `route-${point.cliente.id}-${index}` 
+                          : `route-point-${index}`;
+                        
+                        return (
+                          <Draggable
+                            key={uniqueId}
+                            draggableId={uniqueId}
+                            index={index}
+                            isDragDisabled={point.isFactory || point.isFinal}
+                          >
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={cn(
+                                  "flex items-center gap-3 p-2 bg-background rounded border transition-all",
+                                  snapshot.isDragging && "shadow-lg ring-2 ring-primary scale-105",
+                                  (point.isFactory || point.isFinal) && "opacity-60 cursor-not-allowed",
+                                  !point.isFactory && !point.isFinal && "cursor-grab active:cursor-grabbing hover:border-primary/50"
+                                )}
+                              >
+                                {!point.isFactory && !point.isFinal && (
+                                  <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                )}
+                                {point.isFactory ? (
+                                  <>
+                                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm">
+                                      🏭
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-sm">Ponto de Partida</p>
+                                      <p className="text-xs text-muted-foreground">Mischa's Bakery</p>
+                                    </div>
+                                  </>
+                                ) : point.isFinal ? (
+                                  <>
+                                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm">
+                                      🏁
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-sm">Destino Final</p>
+                                      <p className="text-xs text-muted-foreground">{enderecoFinal}</p>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">
+                                      {index}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-sm truncate">{point.cliente?.nome}</p>
+                                      <p className="text-xs text-muted-foreground truncate">{point.cliente?.endereco_entrega}</p>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </Draggable>
+                        );
+                      })}
                       {provided.placeholder}
                     </div>
                   )}
