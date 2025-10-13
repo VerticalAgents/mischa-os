@@ -12,6 +12,7 @@ import Index from '@/pages/Index';
 import Home from '@/pages/Home';
 import Manual from '@/pages/Manual';
 import Clientes from '@/pages/Clientes';
+import Mapas from '@/pages/Mapas';
 import Agendamento from '@/pages/Agendamento';
 import Expedicao from '@/pages/Expedicao';
 import Estoque from '@/pages/Estoque';
@@ -86,6 +87,13 @@ function App() {
                     <ProtectedRoute>
                       <AppLayout>
                         <Clientes />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/mapas" element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <Mapas />
                       </AppLayout>
                     </ProtectedRoute>
                   } />
