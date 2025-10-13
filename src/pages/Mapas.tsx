@@ -4,9 +4,11 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { MapPin, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+// Token público do Mapbox
+const MAPBOX_TOKEN = 'pk.eyJ1IjoibHVjY2FtaWxsZXRvIiwiYSI6ImNtZ3Bkc2txZTJiNHQya29qN2N0azZqbGwifQ.l_osvQeh-cxxof4ndAQ6jA';
 
 interface Cliente {
   id: string;
@@ -23,8 +25,6 @@ const Mapas = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [filteredClientes, setFilteredClientes] = useState<Cliente[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [mapboxToken, setMapboxToken] = useState('');
-  const [tokenSaved, setTokenSaved] = useState(false);
   const { toast } = useToast();
   const markers = useRef<mapboxgl.Marker[]>([]);
 
@@ -67,18 +67,11 @@ const Mapas = () => {
     }
   };
 
-  const saveToken = () => {
-    if (!mapboxToken.trim()) {
-      toast({
-        title: 'Atenção',
-        description: 'Por favor, insira um token válido.',
-        variant: 'destructive',
-      });
-      return;
+  useEffect(() => {
+    if (clientes.length > 0 && mapContainer.current && !map.current) {
+      initializeMap();
     }
-    setTokenSaved(true);
-    initializeMap();
-  };
+  }, [clientes]);
 
   const extractCoordinatesFromGoogleMaps = (link: string): [number, number] | null => {
     try {
@@ -108,7 +101,7 @@ const Mapas = () => {
   const geocodeAddress = async (address: string): Promise<[number, number] | null> => {
     try {
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${mapboxToken}&country=BR&limit=1`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${MAPBOX_TOKEN}&country=BR&limit=1`
       );
       const data = await response.json();
       
@@ -122,9 +115,9 @@ const Mapas = () => {
   };
 
   const initializeMap = async () => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapContainer.current) return;
 
-    mapboxgl.accessToken = mapboxToken;
+    mapboxgl.accessToken = MAPBOX_TOKEN;
 
     // Centralizar no Brasil
     map.current = new mapboxgl.Map({
@@ -208,54 +201,10 @@ const Mapas = () => {
   };
 
   useEffect(() => {
-    if (tokenSaved && filteredClientes.length > 0) {
+    if (filteredClientes.length > 0 && map.current) {
       addMarkersToMap();
     }
-  }, [filteredClientes, tokenSaved]);
-
-  if (!tokenSaved) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <MapPin className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Mapas de Clientes</h1>
-        </div>
-
-        <Card className="p-6 max-w-2xl mx-auto mt-12">
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-xl font-semibold mb-2">Configure o Mapbox Token</h2>
-              <p className="text-sm text-muted-foreground mb-4">
-                Para visualizar o mapa de clientes, você precisa inserir seu token público do Mapbox.
-                Obtenha seu token em{' '}
-                <a 
-                  href="https://account.mapbox.com/access-tokens/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  mapbox.com
-                </a>
-              </p>
-            </div>
-            
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="Cole seu token Mapbox aqui..."
-                value={mapboxToken}
-                onChange={(e) => setMapboxToken(e.target.value)}
-                className="flex-1"
-              />
-              <Button onClick={saveToken}>
-                Salvar
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+  }, [filteredClientes]);
 
   return (
     <div className="container mx-auto p-6">
