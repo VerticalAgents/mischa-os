@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
+import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AgendamentoDashboard() {
   const {
@@ -26,11 +28,13 @@ export default function AgendamentoDashboard() {
   const {
     toast
   } = useToast();
+  const { representantes } = useSupabaseRepresentantes();
   const [isLoading, setIsLoading] = useState(false);
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
   const [selectedAgendamento, setSelectedAgendamento] = useState<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [semanaAtual, setSemanaAtual] = useState<Date>(new Date());
+  const [representanteFiltro, setRepresentanteFiltro] = useState<string>("todos");
 
   useEffect(() => {
     const loadData = async () => {
@@ -58,6 +62,13 @@ export default function AgendamentoDashboard() {
     setSemanaAtual(new Date());
   };
 
+  const agendamentosFiltrados = useMemo(() => {
+    if (representanteFiltro === "todos") return agendamentos;
+    return agendamentos.filter(agendamento => 
+      agendamento.cliente.representanteId?.toString() === representanteFiltro
+    );
+  }, [agendamentos, representanteFiltro]);
+
   const indicadoresSemana = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, {
       weekStartsOn: 1
@@ -65,14 +76,17 @@ export default function AgendamentoDashboard() {
     const fimSemana = endOfWeek(semanaAtual, {
       weekStartsOn: 1
     });
-    const agendamentosSemana = agendamentos.filter(agendamento => {
+    const agendamentosSemana = agendamentosFiltrados.filter(agendamento => {
       const dataAgendamento = new Date(agendamento.dataReposicao);
       return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana;
     });
     const previstos = agendamentosSemana.filter(a => a.statusAgendamento === "Previsto");
     const confirmados = agendamentosSemana.filter(a => a.statusAgendamento === "Agendado");
-    const clientesComAgendamento = new Set(agendamentos.map(a => a.cliente.id));
-    const clientesSemAgendamento = clientes.filter(c => c.ativo && !clientesComAgendamento.has(c.id));
+    const clientesComAgendamento = new Set(agendamentosFiltrados.map(a => a.cliente.id));
+    const clientesSemAgendamento = clientes.filter(c => {
+      const clienteNoFiltro = representanteFiltro === "todos" || c.representanteId?.toString() === representanteFiltro;
+      return c.ativo && clienteNoFiltro && !clientesComAgendamento.has(c.id);
+    });
     return {
       totalSemana: agendamentosSemana.length,
       previstos: previstos.length,
@@ -80,12 +94,12 @@ export default function AgendamentoDashboard() {
       pendentes: clientesSemAgendamento.length,
       taxaConfirmacao: agendamentosSemana.length > 0 ? confirmados.length / agendamentosSemana.length * 100 : 0
     };
-  }, [agendamentos, clientes, semanaAtual]);
+  }, [agendamentosFiltrados, clientes, semanaAtual, representanteFiltro]);
 
   const dadosGraficoStatus = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
     const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
-    const agendamentosSemana = agendamentos.filter(agendamento => {
+    const agendamentosSemana = agendamentosFiltrados.filter(agendamento => {
       const dataAgendamento = new Date(agendamento.dataReposicao);
       return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana;
     });
@@ -99,7 +113,7 @@ export default function AgendamentoDashboard() {
       status,
       quantidade: count
     }));
-  }, [agendamentos, semanaAtual]);
+  }, [agendamentosFiltrados, semanaAtual]);
 
   const dadosGraficoSemanal = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, {
@@ -113,7 +127,7 @@ export default function AgendamentoDashboard() {
       end: fimSemana
     });
     return diasSemana.map(dia => {
-      const agendamentosDia = agendamentos.filter(agendamento => isSameDay(new Date(agendamento.dataReposicao), dia));
+      const agendamentosDia = agendamentosFiltrados.filter(agendamento => isSameDay(new Date(agendamento.dataReposicao), dia));
       const previstos = agendamentosDia.filter(a => a.statusAgendamento === "Previsto").length;
       const confirmados = agendamentosDia.filter(a => a.statusAgendamento === "Agendado").length;
       return {
@@ -130,11 +144,11 @@ export default function AgendamentoDashboard() {
         dataCompleta: dia
       };
     });
-  }, [agendamentos, semanaAtual]);
+  }, [agendamentosFiltrados, semanaAtual]);
 
   const agendamentosDiaSelecionado = useMemo(() => {
     if (!diaSelecionado) return [];
-    const agendamentosFiltered = agendamentos.filter(agendamento => isSameDay(new Date(agendamento.dataReposicao), diaSelecionado));
+    const agendamentosFiltered = agendamentosFiltrados.filter(agendamento => isSameDay(new Date(agendamento.dataReposicao), diaSelecionado));
 
     // Ordenar: Agendados primeiro, depois Previstos
     return agendamentosFiltered.sort((a, b) => {
@@ -144,7 +158,7 @@ export default function AgendamentoDashboard() {
       
       return 0;
     });
-  }, [agendamentos, diaSelecionado]);
+  }, [agendamentosFiltrados, diaSelecionado]);
 
   const coresPieChart = ['#10B981', '#F59E0B', '#EF4444'];
 
@@ -261,6 +275,20 @@ export default function AgendamentoDashboard() {
           Próxima Semana
           <ChevronRight className="h-4 w-4" />
         </Button>
+
+        <Select value={representanteFiltro} onValueChange={setRepresentanteFiltro}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Filtrar por representante" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os representantes</SelectItem>
+            {representantes.filter(r => r.ativo).map((rep) => (
+              <SelectItem key={rep.id} value={rep.id.toString()}>
+                {rep.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Cards de Indicadores */}
