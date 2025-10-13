@@ -4,7 +4,8 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { MapPin, Search } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MapPin, Search, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Token público do Mapbox
@@ -20,14 +21,26 @@ interface Cliente {
   link_google_maps?: string;
   contato_telefone?: string;
   status_cliente?: string;
+  representante_id?: number;
+  representante?: {
+    nome: string;
+  };
+}
+
+interface Representante {
+  id: number;
+  nome: string;
 }
 
 const Mapas = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [representantes, setRepresentantes] = useState<Representante[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [selectedRepresentante, setSelectedRepresentante] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const { toast } = useToast();
   const markers = useRef<mapboxgl.Marker[]>([]);
@@ -35,6 +48,7 @@ const Mapas = () => {
 
   useEffect(() => {
     fetchClientes();
+    fetchRepresentantes();
     getUserLocation();
   }, []);
 
@@ -48,20 +62,39 @@ const Mapas = () => {
 
   // Filtragem memoizada
   const filteredClientes = useMemo(() => {
-    if (!debouncedSearchTerm) return clientes;
+    let filtered = clientes;
     
-    const term = debouncedSearchTerm.toLowerCase();
-    return clientes.filter(cliente => 
-      cliente.nome.toLowerCase().includes(term) ||
-      cliente.endereco_entrega?.toLowerCase().includes(term)
-    );
-  }, [debouncedSearchTerm, clientes]);
+    // Filter by representante
+    if (selectedRepresentante !== 'all') {
+      filtered = filtered.filter(cliente => 
+        cliente.representante_id?.toString() === selectedRepresentante
+      );
+    }
+    
+    // Filter by status
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(cliente => 
+        cliente.status_cliente === selectedStatus
+      );
+    }
+    
+    // Filter by search term
+    if (debouncedSearchTerm) {
+      const term = debouncedSearchTerm.toLowerCase();
+      filtered = filtered.filter(cliente => 
+        cliente.nome.toLowerCase().includes(term) ||
+        cliente.endereco_entrega?.toLowerCase().includes(term)
+      );
+    }
+    
+    return filtered;
+  }, [debouncedSearchTerm, clientes, selectedRepresentante, selectedStatus]);
 
   const fetchClientes = async () => {
     try {
       const { data, error } = await supabase
         .from('clientes')
-        .select('id, nome, endereco_entrega, link_google_maps, contato_telefone, status_cliente')
+        .select('id, nome, endereco_entrega, link_google_maps, contato_telefone, status_cliente, representante_id, representantes(nome)')
         .eq('ativo', true)
         .not('endereco_entrega', 'is', null)
         .neq('endereco_entrega', '');
@@ -75,6 +108,20 @@ const Mapas = () => {
         description: 'Não foi possível carregar os clientes.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const fetchRepresentantes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('representantes')
+        .select('id, nome')
+        .order('nome');
+
+      if (error) throw error;
+      setRepresentantes(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar representantes:', error);
     }
   };
 
@@ -215,9 +262,11 @@ const Mapas = () => {
     }
 
     const statusColors: Record<string, string> = {
-      'Ativo': '#10b981',
-      'Inativo': '#ef4444',
-      'Pendente': '#f59e0b',
+      'ATIVO': '#10b981',      // Verde
+      'INATIVO': '#ef4444',    // Vermelho
+      'STANDBY': '#a855f7',    // Roxo
+      'EM_ANALISE': '#3b82f6', // Azul
+      'A_ATIVAR': '#eab308',   // Amarelo
     };
 
     clientesWithCoords.forEach(({ cliente, coords }) => {
@@ -231,14 +280,14 @@ const Mapas = () => {
       el.style.cursor = 'pointer';
       el.style.border = '2px solid white';
       el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-      el.style.backgroundColor = statusColors[cliente.status_cliente || 'Ativo'] || '#3b82f6';
+      el.style.backgroundColor = statusColors[cliente.status_cliente || 'ATIVO'] || '#3b82f6';
 
       const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
         <div style="padding: 8px; min-width: 200px;">
           <h3 style="font-weight: bold; margin-bottom: 4px;">${cliente.nome}</h3>
           <p style="font-size: 12px; margin-bottom: 4px;">${cliente.endereco_entrega}</p>
           ${cliente.contato_telefone ? `<p style="font-size: 12px;">Tel: ${cliente.contato_telefone}</p>` : ''}
-          <p style="font-size: 11px; color: #666; margin-top: 4px;">Status: ${cliente.status_cliente || 'Ativo'}</p>
+          <p style="font-size: 11px; color: #666; margin-top: 4px;">Status: ${cliente.status_cliente?.replace('_', ' ') || 'ATIVO'}</p>
         </div>
       `);
 
@@ -277,27 +326,86 @@ const Mapas = () => {
           <h1 className="text-3xl font-bold">Mapas de Clientes</h1>
         </div>
         
+        <span className="text-sm text-muted-foreground">
+          {filteredClientes.length} cliente(s)
+        </span>
+      </div>
+
+      <div className="flex items-center gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <div className="relative w-64">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Buscar cliente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <span className="text-sm text-muted-foreground">
-            {filteredClientes.length} cliente(s)
-          </span>
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Filtros:</span>
+        </div>
+        
+        <Select value={selectedRepresentante} onValueChange={setSelectedRepresentante}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Representante" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os representantes</SelectItem>
+            {representantes.map((rep) => (
+              <SelectItem key={rep.id} value={rep.id.toString()}>
+                {rep.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os status</SelectItem>
+            <SelectItem value="ATIVO">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+                Ativo
+              </div>
+            </SelectItem>
+            <SelectItem value="INATIVO">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                Inativo
+              </div>
+            </SelectItem>
+            <SelectItem value="STANDBY">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-purple-500" />
+                Standby
+              </div>
+            </SelectItem>
+            <SelectItem value="EM_ANALISE">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-500" />
+                Em análise
+              </div>
+            </SelectItem>
+            <SelectItem value="A_ATIVAR">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                A ativar
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Buscar cliente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
         </div>
       </div>
 
       <Card className="overflow-hidden">
         <div 
           ref={mapContainer} 
-          className="w-full h-[calc(100vh-200px)]"
+          className="w-full h-[calc(100vh-280px)]"
         />
       </Card>
     </div>
