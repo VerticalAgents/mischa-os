@@ -262,7 +262,7 @@ export default function AgendamentoDashboard() {
     // Título
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('Resumo de Agendamentos', 105, 20, { align: 'center' });
+    doc.text('Resumo de Agendamentos', 20, 20);
     
     // Informações do representante e período
     doc.setFontSize(11);
