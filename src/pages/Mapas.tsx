@@ -561,11 +561,43 @@ const Mapas = () => {
         </div>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden relative">
         <div 
           ref={mapContainer} 
           className="w-full h-[calc(100vh-280px)]"
         />
+        
+        {colorMode === 'representante' && representantes.length > 0 && (
+          <div className="absolute bottom-4 left-4 bg-background/95 backdrop-blur-sm border rounded-lg p-3 shadow-lg max-h-[300px] overflow-y-auto">
+            <h3 className="text-sm font-semibold mb-2">Legenda - Representantes</h3>
+            <div className="space-y-1.5">
+              {representantes.map((rep, index) => {
+                const representanteColors = [
+                  '#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#a855f7',
+                  '#ec4899', '#14b8a6', '#8b5cf6', '#f97316', '#06b6d4',
+                ];
+                const color = representanteColors[index % representanteColors.length];
+                
+                return (
+                  <div key={rep.id} className="flex items-center gap-2">
+                    <div 
+                      className="w-4 h-4 rounded-full border-2 border-white shadow-sm flex-shrink-0"
+                      style={{ backgroundColor: color }}
+                    />
+                    <span className="text-xs">{rep.nome}</span>
+                  </div>
+                );
+              })}
+              <div className="flex items-center gap-2 pt-1 border-t">
+                <div 
+                  className="w-4 h-4 rounded-full border-2 border-white shadow-sm flex-shrink-0"
+                  style={{ backgroundColor: '#9ca3af' }}
+                />
+                <span className="text-xs text-muted-foreground">Sem representante</span>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );
