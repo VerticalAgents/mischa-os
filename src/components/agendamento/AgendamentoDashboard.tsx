@@ -327,30 +327,38 @@ export default function AgendamentoDashboard() {
           
           // Status badge
           doc.setFont('helvetica', 'bold');
+          // Status badge
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
           doc.setTextColor(statusCor[0], statusCor[1], statusCor[2]);
-          doc.text(status === "Agendado" ? "✓" : "○", 22, yPosition);
+          const statusTexto = status === "Agendado" ? "[CONFIRMADO]" : "[PREVISTO]";
+          doc.text(statusTexto, 22, yPosition);
           
           // Nome do cliente
           doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
           doc.setTextColor(0, 0, 0);
-          doc.text(agendamento.cliente.nome.substring(0, 40), 28, yPosition);
+          doc.text(agendamento.cliente.nome.substring(0, 40), 60, yPosition);
           
           yPosition += 5;
           
-          // Informações adicionais
+          // Quantidade
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(8);
-          doc.setTextColor(100, 100, 100);
+          doc.setTextColor(60, 60, 60);
+          if ((agendamento as any).quantidadeTotal) {
+            doc.text(`Quantidade: ${(agendamento as any).quantidadeTotal} unidades`, 28, yPosition);
+            yPosition += 4;
+          }
           
+          // Informações de contato
+          doc.setTextColor(100, 100, 100);
           const info = [];
           if (agendamento.cliente.contatoNome) {
             info.push(`Contato: ${agendamento.cliente.contatoNome}`);
           }
           if (agendamento.cliente.contatoTelefone) {
             info.push(`Tel: ${agendamento.cliente.contatoTelefone}`);
-          }
-          if ((agendamento as any).quantidadeTotal) {
-            info.push(`Qtd: ${(agendamento as any).quantidadeTotal}`);
           }
           if ((agendamento as any).tipoPedido && (agendamento as any).tipoPedido !== 'Padrão') {
             info.push(`Tipo: ${(agendamento as any).tipoPedido}`);
