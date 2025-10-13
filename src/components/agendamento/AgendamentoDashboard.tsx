@@ -330,13 +330,13 @@ export default function AgendamentoDashboard() {
           doc.setFontSize(9);
           doc.setTextColor(statusCor[0], statusCor[1], statusCor[2]);
           const statusTexto = status === "Agendado" ? "[CONFIRMADO]" : "[PREVISTO]";
-          doc.text(statusTexto, 28, yPosition, { align: 'left' });
+          doc.text(statusTexto, 28, yPosition);
           
           // Nome do cliente
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(10);
           doc.setTextColor(0, 0, 0);
-          doc.text(agendamento.cliente.nome.substring(0, 40), 70, yPosition, { align: 'left' });
+          doc.text(agendamento.cliente.nome.substring(0, 40), 70, yPosition);
           
           yPosition += 6;
           
@@ -344,8 +344,8 @@ export default function AgendamentoDashboard() {
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(9);
           doc.setTextColor(60, 60, 60);
-          if ((agendamento as any).quantidadeTotal) {
-            doc.text(`Quantidade: ${(agendamento as any).quantidadeTotal} unidades`, 28, yPosition, { align: 'left' });
+          if (agendamento.pedido?.totalPedidoUnidades) {
+            doc.text(`Quantidade: ${agendamento.pedido.totalPedidoUnidades} unidades`, 28, yPosition);
             yPosition += 5;
           }
           
@@ -353,26 +353,27 @@ export default function AgendamentoDashboard() {
           doc.setFontSize(8);
           doc.setTextColor(100, 100, 100);
           if (agendamento.cliente.contatoNome) {
-            doc.text(`Contato: ${agendamento.cliente.contatoNome}`, 28, yPosition, { align: 'left' });
+            doc.text(`Contato: ${agendamento.cliente.contatoNome}`, 28, yPosition);
             yPosition += 4;
           }
           
-          // Endereço e telefone
-          const detalhes = [];
+          // Endereço
           if (agendamento.cliente.enderecoEntrega) {
-            detalhes.push(`Endereço: ${agendamento.cliente.enderecoEntrega.substring(0, 60)}`);
-          }
-          if (agendamento.cliente.contatoTelefone) {
-            detalhes.push(`Tel: ${agendamento.cliente.contatoTelefone}`);
-          }
-          if ((agendamento as any).tipoPedido && (agendamento as any).tipoPedido !== 'Padrão') {
-            detalhes.push(`Tipo: ${(agendamento as any).tipoPedido}`);
+            doc.text(`Endereço: ${agendamento.cliente.enderecoEntrega.substring(0, 60)}`, 28, yPosition);
+            yPosition += 4;
           }
           
-          detalhes.forEach(detalhe => {
-            doc.text(detalhe, 28, yPosition, { align: 'left' });
+          // Telefone
+          if (agendamento.cliente.contatoTelefone) {
+            doc.text(`Tel: ${agendamento.cliente.contatoTelefone}`, 28, yPosition);
             yPosition += 4;
-          });
+          }
+          
+          // Tipo de pedido
+          if (agendamento.pedido?.tipoPedido && agendamento.pedido.tipoPedido !== 'Padrão') {
+            doc.text(`Tipo: ${agendamento.pedido.tipoPedido}`, 28, yPosition);
+            yPosition += 4;
+          }
           
           // Linha separadora entre agendamentos
           doc.setDrawColor(220, 220, 220);
