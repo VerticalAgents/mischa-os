@@ -327,52 +327,52 @@ export default function AgendamentoDashboard() {
           
           // Status badge
           doc.setFont('helvetica', 'bold');
-          // Status badge
-          doc.setFont('helvetica', 'bold');
           doc.setFontSize(9);
           doc.setTextColor(statusCor[0], statusCor[1], statusCor[2]);
           const statusTexto = status === "Agendado" ? "[CONFIRMADO]" : "[PREVISTO]";
-          doc.text(statusTexto, 22, yPosition);
+          doc.text(statusTexto, 28, yPosition, { align: 'left' });
           
           // Nome do cliente
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(10);
           doc.setTextColor(0, 0, 0);
-          doc.text(agendamento.cliente.nome.substring(0, 40), 60, yPosition);
+          doc.text(agendamento.cliente.nome.substring(0, 40), 70, yPosition, { align: 'left' });
           
-          yPosition += 5;
+          yPosition += 6;
           
           // Quantidade
           doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8);
+          doc.setFontSize(9);
           doc.setTextColor(60, 60, 60);
           if ((agendamento as any).quantidadeTotal) {
-            doc.text(`Quantidade: ${(agendamento as any).quantidadeTotal} unidades`, 28, yPosition);
+            doc.text(`Quantidade: ${(agendamento as any).quantidadeTotal} unidades`, 28, yPosition, { align: 'left' });
+            yPosition += 5;
+          }
+          
+          // Nome do contato
+          doc.setFontSize(8);
+          doc.setTextColor(100, 100, 100);
+          if (agendamento.cliente.contatoNome) {
+            doc.text(`Contato: ${agendamento.cliente.contatoNome}`, 28, yPosition, { align: 'left' });
             yPosition += 4;
           }
           
-          // Informações de contato
-          doc.setTextColor(100, 100, 100);
-          const info = [];
-          if (agendamento.cliente.contatoNome) {
-            info.push(`Contato: ${agendamento.cliente.contatoNome}`);
+          // Endereço e telefone
+          const detalhes = [];
+          if (agendamento.cliente.enderecoEntrega) {
+            detalhes.push(`Endereço: ${agendamento.cliente.enderecoEntrega.substring(0, 60)}`);
           }
           if (agendamento.cliente.contatoTelefone) {
-            info.push(`Tel: ${agendamento.cliente.contatoTelefone}`);
+            detalhes.push(`Tel: ${agendamento.cliente.contatoTelefone}`);
           }
           if ((agendamento as any).tipoPedido && (agendamento as any).tipoPedido !== 'Padrão') {
-            info.push(`Tipo: ${(agendamento as any).tipoPedido}`);
+            detalhes.push(`Tipo: ${(agendamento as any).tipoPedido}`);
           }
           
-          if (info.length > 0) {
-            doc.text(info.join(' | '), 28, yPosition);
+          detalhes.forEach(detalhe => {
+            doc.text(detalhe, 28, yPosition, { align: 'left' });
             yPosition += 4;
-          }
-          
-          if (agendamento.cliente.enderecoEntrega) {
-            doc.text(`Endereço: ${agendamento.cliente.enderecoEntrega.substring(0, 70)}`, 28, yPosition);
-            yPosition += 4;
-          }
+          });
           
           // Linha separadora entre agendamentos
           doc.setDrawColor(220, 220, 220);
