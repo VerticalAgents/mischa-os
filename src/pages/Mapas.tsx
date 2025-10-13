@@ -4,8 +4,11 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MapPin, Search, Filter } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { MapPin, Search, Filter, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Token público do Mapbox
@@ -36,8 +39,8 @@ const Mapas = () => {
   const [representantes, setRepresentantes] = useState<Representante[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [selectedRepresentante, setSelectedRepresentante] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedRepresentantes, setSelectedRepresentantes] = useState<number[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const { toast } = useToast();
   const markers = useRef<mapboxgl.Marker[]>([]);
@@ -61,17 +64,17 @@ const Mapas = () => {
   const filteredClientes = useMemo(() => {
     let filtered = clientes;
     
-    // Filter by representante
-    if (selectedRepresentante !== 'all') {
+    // Filter by representantes
+    if (selectedRepresentantes.length > 0) {
       filtered = filtered.filter(cliente => 
-        cliente.representante_id?.toString() === selectedRepresentante
+        cliente.representante_id && selectedRepresentantes.includes(cliente.representante_id)
       );
     }
     
     // Filter by status
-    if (selectedStatus !== 'all') {
+    if (selectedStatus.length > 0) {
       filtered = filtered.filter(cliente => 
-        cliente.status_cliente === selectedStatus
+        cliente.status_cliente && selectedStatus.includes(cliente.status_cliente)
       );
     }
     
@@ -85,7 +88,7 @@ const Mapas = () => {
     }
     
     return filtered;
-  }, [debouncedSearchTerm, clientes, selectedRepresentante, selectedStatus]);
+  }, [debouncedSearchTerm, clientes, selectedRepresentantes, selectedStatus]);
 
   const fetchClientes = async () => {
     try {
@@ -334,58 +337,167 @@ const Mapas = () => {
           <span className="text-sm font-medium">Filtros:</span>
         </div>
         
-        <Select value={selectedRepresentante} onValueChange={setSelectedRepresentante}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Representante" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os representantes</SelectItem>
-            {representantes.map((rep) => (
-              <SelectItem key={rep.id} value={rep.id.toString()}>
-                {rep.nome}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-48 justify-between">
+              Representantes
+              {selectedRepresentantes.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {selectedRepresentantes.length}
+                </Badge>
+              )}
+              <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-3">
+            <div className="space-y-2">
+              {representantes.map((rep) => (
+                <div key={rep.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`rep-${rep.id}`}
+                    checked={selectedRepresentantes.includes(rep.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedRepresentantes([...selectedRepresentantes, rep.id]);
+                      } else {
+                        setSelectedRepresentantes(selectedRepresentantes.filter(id => id !== rep.id));
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor={`rep-${rep.id}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {rep.nome}
+                  </label>
+                </div>
+              ))}
+              {selectedRepresentantes.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full mt-2"
+                  onClick={() => setSelectedRepresentantes([])}
+                >
+                  Limpar
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
 
-        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
-            <SelectItem value="ATIVO">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-500" />
-                Ativo
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-48 justify-between">
+              Status
+              {selectedStatus.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {selectedStatus.length}
+                </Badge>
+              )}
+              <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-3">
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="status-ativo"
+                  checked={selectedStatus.includes('ATIVO')}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedStatus([...selectedStatus, 'ATIVO']);
+                    } else {
+                      setSelectedStatus(selectedStatus.filter(s => s !== 'ATIVO'));
+                    }
+                  }}
+                />
+                <label htmlFor="status-ativo" className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-green-500" />
+                  Ativo
+                </label>
               </div>
-            </SelectItem>
-            <SelectItem value="INATIVO">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500" />
-                Inativo
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="status-inativo"
+                  checked={selectedStatus.includes('INATIVO')}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedStatus([...selectedStatus, 'INATIVO']);
+                    } else {
+                      setSelectedStatus(selectedStatus.filter(s => s !== 'INATIVO'));
+                    }
+                  }}
+                />
+                <label htmlFor="status-inativo" className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500" />
+                  Inativo
+                </label>
               </div>
-            </SelectItem>
-            <SelectItem value="STANDBY">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-purple-500" />
-                Standby
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="status-standby"
+                  checked={selectedStatus.includes('STANDBY')}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedStatus([...selectedStatus, 'STANDBY']);
+                    } else {
+                      setSelectedStatus(selectedStatus.filter(s => s !== 'STANDBY'));
+                    }
+                  }}
+                />
+                <label htmlFor="status-standby" className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-purple-500" />
+                  Standby
+                </label>
               </div>
-            </SelectItem>
-            <SelectItem value="EM_ANALISE">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-500" />
-                Em análise
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="status-analise"
+                  checked={selectedStatus.includes('EM_ANALISE')}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedStatus([...selectedStatus, 'EM_ANALISE']);
+                    } else {
+                      setSelectedStatus(selectedStatus.filter(s => s !== 'EM_ANALISE'));
+                    }
+                  }}
+                />
+                <label htmlFor="status-analise" className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-blue-500" />
+                  Em análise
+                </label>
               </div>
-            </SelectItem>
-            <SelectItem value="A_ATIVAR">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                A ativar
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="status-ativar"
+                  checked={selectedStatus.includes('A_ATIVAR')}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedStatus([...selectedStatus, 'A_ATIVAR']);
+                    } else {
+                      setSelectedStatus(selectedStatus.filter(s => s !== 'A_ATIVAR'));
+                    }
+                  }}
+                />
+                <label htmlFor="status-ativar" className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                  A ativar
+                </label>
               </div>
-            </SelectItem>
-          </SelectContent>
-        </Select>
+              {selectedStatus.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full mt-2"
+                  onClick={() => setSelectedStatus([])}
+                >
+                  Limpar
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
