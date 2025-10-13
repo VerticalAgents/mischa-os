@@ -8,6 +8,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { MapPin, Search, Filter, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -41,6 +43,7 @@ const Mapas = () => {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedRepresentantes, setSelectedRepresentantes] = useState<number[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>(['ATIVO', 'EM_ANALISE']);
+  const [colorMode, setColorMode] = useState<'status' | 'representante'>('status');
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const { toast } = useToast();
   const markers = useRef<mapboxgl.Marker[]>([]);
@@ -269,6 +272,26 @@ const Mapas = () => {
       'A_ATIVAR': '#eab308',   // Amarelo
     };
 
+    // Cores distintas para representantes
+    const representanteColors = [
+      '#ef4444', // Vermelho
+      '#3b82f6', // Azul
+      '#10b981', // Verde
+      '#f59e0b', // Laranja
+      '#a855f7', // Roxo
+      '#ec4899', // Rosa
+      '#14b8a6', // Teal
+      '#8b5cf6', // Violeta
+      '#f97316', // Laranja escuro
+      '#06b6d4', // Ciano
+    ];
+
+    const getRepresentanteColor = (representanteId: number | undefined): string => {
+      if (!representanteId) return '#9ca3af'; // Cinza para sem representante
+      const index = representantes.findIndex(r => r.id === representanteId);
+      return representanteColors[index % representanteColors.length];
+    };
+
     clientesWithCoords.forEach(({ cliente, coords }) => {
       if (!map.current) return;
 
@@ -280,7 +303,13 @@ const Mapas = () => {
       el.style.cursor = 'pointer';
       el.style.border = '2px solid white';
       el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-      el.style.backgroundColor = statusColors[cliente.status_cliente || 'ATIVO'] || '#3b82f6';
+      
+      // Define cor baseado no modo selecionado
+      if (colorMode === 'representante') {
+        el.style.backgroundColor = getRepresentanteColor(cliente.representante_id);
+      } else {
+        el.style.backgroundColor = statusColors[cliente.status_cliente || 'ATIVO'] || '#3b82f6';
+      }
 
       const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
         <div style="padding: 8px; min-width: 200px;">
@@ -316,7 +345,7 @@ const Mapas = () => {
     if (filteredClientes.length > 0 && map.current) {
       addMarkersToMap();
     }
-  }, [filteredClientes]);
+  }, [filteredClientes, colorMode, representantes]);
 
   return (
     <div className="container mx-auto p-6">
@@ -326,9 +355,30 @@ const Mapas = () => {
           <h1 className="text-3xl font-bold">Mapas de Clientes</h1>
         </div>
         
-        <span className="text-sm text-muted-foreground">
-          {filteredClientes.length} cliente(s)
-        </span>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <Label htmlFor="color-mode" className="text-sm font-medium">
+              Colorir por:
+            </Label>
+            <div className="flex items-center gap-2">
+              <span className={`text-sm ${colorMode === 'status' ? 'font-medium' : 'text-muted-foreground'}`}>
+                Status
+              </span>
+              <Switch
+                id="color-mode"
+                checked={colorMode === 'representante'}
+                onCheckedChange={(checked) => setColorMode(checked ? 'representante' : 'status')}
+              />
+              <span className={`text-sm ${colorMode === 'representante' ? 'font-medium' : 'text-muted-foreground'}`}>
+                Representante
+              </span>
+            </div>
+          </div>
+          
+          <span className="text-sm text-muted-foreground">
+            {filteredClientes.length} cliente(s)
+          </span>
+        </div>
       </div>
 
       <div className="flex items-center gap-3 mb-4">
