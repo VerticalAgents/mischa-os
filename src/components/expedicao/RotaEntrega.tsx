@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 
 const MAPBOX_TOKEN = 'pk.eyJ1IjoibHVjY2FtaWxsZXRvIiwiYSI6ImNtZ3Bkc2txZTJiNHQya29qN2N0azZqbGwifQ.l_osvQeh-cxxof4ndAQ6jA';
 const FACTORY_ADDRESS = 'R. Cel. Paulino Teixeira, 35 - Rio Branco, Porto Alegre - RS, 90420-160';
+const CLUSTER_RADIUS_KM = 3; // Raio para agrupar pontos próximos (3km)
 
 const geocodeCache = new Map<string, [number, number] | null>();
 
@@ -34,6 +35,109 @@ interface RoutePoint {
   isFactory?: boolean;
   isFinal?: boolean;
 }
+
+// Calcular distância entre duas coordenadas usando fórmula de Haversine
+const calculateDistance = (coord1: [number, number], coord2: [number, number]): number => {
+  const R = 6371; // Raio da Terra em km
+  const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
+  const dLon = (coord2[0] - coord1[0]) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(coord1[1] * Math.PI / 180) * Math.cos(coord2[1] * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
+// Clusterizar pontos próximos
+const clusterizePoints = (
+  points: Array<{ cliente: Cliente; coords: [number, number] }>,
+  radiusKm: number
+): Array<Array<{ cliente: Cliente; coords: [number, number] }>> => {
+  const clusters: Array<Array<{ cliente: Cliente; coords: [number, number] }>> = [];
+  const visited = new Set<number>();
+
+  points.forEach((point, index) => {
+    if (visited.has(index)) return;
+
+    const cluster: Array<{ cliente: Cliente; coords: [number, number] }> = [point];
+    visited.add(index);
+
+    points.forEach((otherPoint, otherIndex) => {
+      if (visited.has(otherIndex)) return;
+      
+      const distance = calculateDistance(point.coords, otherPoint.coords);
+      if (distance <= radiusKm) {
+        cluster.push(otherPoint);
+        visited.add(otherIndex);
+      }
+    });
+
+    clusters.push(cluster);
+  });
+
+  return clusters;
+};
+
+// Ordenar clusters por distância da origem
+const sortClustersByDistance = (
+  clusters: Array<Array<{ cliente: Cliente; coords: [number, number] }>>,
+  origin: [number, number]
+): Array<Array<{ cliente: Cliente; coords: [number, number] }>> => {
+  return clusters.sort((a, b) => {
+    const distA = calculateDistance(origin, a[0].coords);
+    const distB = calculateDistance(origin, b[0].coords);
+    return distA - distB;
+  });
+};
+
+// Otimizar rota usando Mapbox para cada cluster
+const optimizeClusterRoute = async (
+  cluster: Array<{ cliente: Cliente; coords: [number, number] }>,
+  startPoint: [number, number],
+  endPoint?: [number, number]
+): Promise<Array<{ cliente: Cliente; coords: [number, number] }>> => {
+  if (cluster.length <= 1) return cluster;
+
+  try {
+    const coordinates = [
+      startPoint,
+      ...cluster.map(c => c.coords),
+      ...(endPoint ? [endPoint] : [])
+    ];
+
+    const coordsString = coordinates.map(c => `${c[0]},${c[1]}`).join(';');
+    const response = await fetch(
+      `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coordsString}?` +
+      `source=first${endPoint ? '&destination=last' : ''}&` +
+      `roundtrip=false&access_token=${MAPBOX_TOKEN}`
+    );
+
+    const data = await response.json();
+
+    if (data.code !== 'Ok') {
+      return cluster;
+    }
+
+    const waypoints = data.waypoints;
+    const optimized: Array<{ cliente: Cliente; coords: [number, number] }> = [];
+
+    waypoints.forEach((wp: any, index: number) => {
+      if (index === 0) return; // Pular primeiro (startPoint)
+      if (endPoint && index === waypoints.length - 1) return; // Pular último se for endPoint
+      
+      const waypointIndex = wp.waypoint_index - 1;
+      if (waypointIndex >= 0 && waypointIndex < cluster.length) {
+        optimized.push(cluster[waypointIndex]);
+      }
+    });
+
+    return optimized;
+  } catch (error) {
+    console.error('Erro ao otimizar cluster:', error);
+    return cluster;
+  }
+};
 
 export const RotaEntrega = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -355,13 +459,13 @@ export const RotaEntrega = () => {
     setIsCalculatingRoute(true);
 
     try {
-      // Geocodificar endereço da fábrica
+      // STEP 1: Geocodificar endereço da fábrica (origem fixa)
       const factoryCoords = await geocodeAddress(FACTORY_ADDRESS);
       if (!factoryCoords) {
         throw new Error('Não foi possível localizar o endereço da fábrica');
       }
 
-      // Obter coordenadas dos clientes
+      // STEP 2: Obter coordenadas dos clientes
       const clienteCoords: Array<{ cliente: Cliente; coords: [number, number] }> = [];
       for (const cliente of clientes) {
         let coords: [number, number] | null = null;
@@ -379,7 +483,11 @@ export const RotaEntrega = () => {
         }
       }
 
-      // Obter coordenadas do endereço final se fornecido
+      if (clienteCoords.length === 0) {
+        throw new Error('Nenhum cliente com endereço válido encontrado');
+      }
+
+      // STEP 3: Obter coordenadas do endereço final (destino)
       let finalCoords: [number, number] | null = null;
       if (enderecoFinal.trim()) {
         finalCoords = await geocodeAddress(enderecoFinal);
@@ -391,51 +499,52 @@ export const RotaEntrega = () => {
         }
       }
 
-      // Preparar coordenadas para a API de otimização
-      const coordinates = [
-        factoryCoords,
-        ...clienteCoords.map(c => c.coords),
-        ...(finalCoords ? [finalCoords] : [])
-      ];
+      // STEP 4: Clusterizar pontos próximos (raio de 3km)
+      console.log('🔍 Iniciando clusterização de pontos...');
+      const clusters = clusterizePoints(clienteCoords, CLUSTER_RADIUS_KM);
+      console.log(`📊 Criados ${clusters.length} clusters de entrega`);
 
-      // Chamar API de Optimization do Mapbox
-      const coordsString = coordinates.map(c => `${c[0]},${c[1]}`).join(';');
-      const response = await fetch(
-        `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coordsString}?` +
-        `source=first&destination=${finalCoords ? 'last' : 'any'}&` +
-        `roundtrip=${!finalCoords}&access_token=${MAPBOX_TOKEN}`
-      );
+      // STEP 5: Ordenar clusters por distância da origem (fábrica)
+      const sortedClusters = sortClustersByDistance(clusters, factoryCoords);
+      console.log('📍 Clusters ordenados por distância da fábrica');
 
-      const data = await response.json();
-
-      if (data.code !== 'Ok') {
-        throw new Error('Erro ao calcular rota otimizada');
-      }
-
-      // Construir ordem de paradas
-      const waypoints = data.waypoints;
+      // STEP 6: Otimizar rota dentro de cada cluster
       const routePoints: RoutePoint[] = [];
-
-      // Adicionar fábrica
+      let allCoordinates: [number, number][] = [factoryCoords];
+      
+      // Adicionar ponto de partida (fábrica)
       routePoints.push({
         coordinates: factoryCoords,
         isFactory: true,
       });
 
-      // Adicionar clientes na ordem otimizada
-      waypoints.forEach((wp: any, index: number) => {
-        if (index === 0) return; // Pular primeiro (fábrica)
-        if (finalCoords && index === waypoints.length - 1) return; // Pular último se for endereço final
+      let currentPosition = factoryCoords;
+
+      // Processar cada cluster em ordem
+      for (let i = 0; i < sortedClusters.length; i++) {
+        const cluster = sortedClusters[i];
+        const isLastCluster = i === sortedClusters.length - 1;
         
-        const waypointIndex = wp.waypoint_index - 1; // Ajustar índice
-        if (waypointIndex >= 0 && waypointIndex < clienteCoords.length) {
-          const clienteData = clienteCoords[waypointIndex];
+        // Para o último cluster, considerar o endereço final se fornecido
+        const endPoint = isLastCluster && finalCoords ? finalCoords : undefined;
+        
+        console.log(`🔧 Otimizando cluster ${i + 1}/${sortedClusters.length} com ${cluster.length} pontos`);
+        const optimizedCluster = await optimizeClusterRoute(cluster, currentPosition, endPoint);
+        
+        // Adicionar pontos do cluster otimizado à rota
+        optimizedCluster.forEach(point => {
           routePoints.push({
-            coordinates: clienteData.coords,
-            cliente: clienteData.cliente,
+            coordinates: point.coords,
+            cliente: point.cliente,
           });
+          allCoordinates.push(point.coords);
+        });
+
+        // Atualizar posição atual para o último ponto do cluster
+        if (optimizedCluster.length > 0) {
+          currentPosition = optimizedCluster[optimizedCluster.length - 1].coords;
         }
-      });
+      }
 
       // Adicionar destino final se houver
       if (finalCoords) {
@@ -443,15 +552,14 @@ export const RotaEntrega = () => {
           coordinates: finalCoords,
           isFinal: true,
         });
+        allCoordinates.push(finalCoords);
       }
 
       setRotaOtimizada(routePoints);
 
-      // Desenhar rota no mapa
-      if (map.current) {
-        const route = data.trips[0];
-        
-        // Remover rota anterior se existir
+      // STEP 7: Desenhar rota final no mapa usando Mapbox Directions API
+      if (map.current && allCoordinates.length >= 2) {
+        // Limpar camadas anteriores
         if (map.current.getLayer('route')) {
           map.current.removeLayer('route');
         }
@@ -459,42 +567,87 @@ export const RotaEntrega = () => {
           map.current.removeSource('route');
         }
 
-        // Adicionar nova rota
-        map.current.addSource('route', {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: route.geometry,
-          },
-        });
+        // Criar rota completa conectando todos os pontos
+        const coordsString = allCoordinates.map(c => `${c[0]},${c[1]}`).join(';');
+        
+        // Limitar a 25 coordenadas por vez (limite da API do Mapbox)
+        const maxCoords = 25;
+        if (allCoordinates.length <= maxCoords) {
+          const routeResponse = await fetch(
+            `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsString}?` +
+            `geometries=geojson&access_token=${MAPBOX_TOKEN}`
+          );
 
-        map.current.addLayer({
-          id: 'route',
-          type: 'line',
-          source: 'route',
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round',
-          },
-          paint: {
-            'line-color': '#3b82f6',
-            'line-width': 4,
-            'line-opacity': 0.8,
-          },
-        });
+          const routeData = await routeResponse.json();
+
+          if (routeData.routes && routeData.routes.length > 0) {
+            map.current.addSource('route', {
+              type: 'geojson',
+              data: {
+                type: 'Feature',
+                properties: {},
+                geometry: routeData.routes[0].geometry,
+              },
+            });
+
+            map.current.addLayer({
+              id: 'route',
+              type: 'line',
+              source: 'route',
+              layout: {
+                'line-join': 'round',
+                'line-cap': 'round',
+              },
+              paint: {
+                'line-color': '#3b82f6',
+                'line-width': 4,
+                'line-opacity': 0.8,
+              },
+            });
+          }
+        } else {
+          // Para rotas muito grandes, desenhar segmentos
+          console.log('⚠️ Rota muito grande, desenhando em segmentos');
+          // Desenhar linha simples conectando os pontos
+          map.current.addSource('route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: allCoordinates,
+              },
+            },
+          });
+
+          map.current.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round',
+            },
+            paint: {
+              'line-color': '#3b82f6',
+              'line-width': 4,
+              'line-opacity': 0.6,
+            },
+          });
+        }
       }
 
       toast({
-        title: 'Rota calculada!',
-        description: `Rota otimizada com ${routePoints.length - (finalCoords ? 2 : 1)} paradas.`,
+        title: 'Rota otimizada criada!',
+        description: `${sortedClusters.length} zona(s) de entrega • ${routePoints.length - (finalCoords ? 2 : 1)} parada(s)`,
       });
 
     } catch (error) {
       console.error('Erro ao calcular rota:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível calcular a rota otimizada.',
+        description: error instanceof Error ? error.message : 'Não foi possível calcular a rota otimizada.',
         variant: 'destructive',
       });
     } finally {
