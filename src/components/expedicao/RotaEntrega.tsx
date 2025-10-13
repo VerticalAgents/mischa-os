@@ -8,11 +8,12 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CalendarIcon, MapPin, Route } from 'lucide-react';
+import { CalendarIcon, MapPin, Route, GripVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
 const MAPBOX_TOKEN = 'pk.eyJ1IjoibHVjY2FtaWxsZXRvIiwiYSI6ImNtZ3Bkc2txZTJiNHQya29qN2N0azZqbGwifQ.l_osvQeh-cxxof4ndAQ6jA';
 const FACTORY_ADDRESS = 'R. Cel. Paulino Teixeira, 35 - Rio Branco, Porto Alegre - RS, 90420-160';
@@ -557,87 +558,6 @@ export const RotaEntrega = () => {
 
       setRotaOtimizada(routePoints);
 
-      // STEP 7: Desenhar rota final no mapa usando Mapbox Directions API
-      if (map.current && allCoordinates.length >= 2) {
-        // Limpar camadas anteriores
-        if (map.current.getLayer('route')) {
-          map.current.removeLayer('route');
-        }
-        if (map.current.getSource('route')) {
-          map.current.removeSource('route');
-        }
-
-        // Criar rota completa conectando todos os pontos
-        const coordsString = allCoordinates.map(c => `${c[0]},${c[1]}`).join(';');
-        
-        // Limitar a 25 coordenadas por vez (limite da API do Mapbox)
-        const maxCoords = 25;
-        if (allCoordinates.length <= maxCoords) {
-          const routeResponse = await fetch(
-            `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsString}?` +
-            `geometries=geojson&access_token=${MAPBOX_TOKEN}`
-          );
-
-          const routeData = await routeResponse.json();
-
-          if (routeData.routes && routeData.routes.length > 0) {
-            map.current.addSource('route', {
-              type: 'geojson',
-              data: {
-                type: 'Feature',
-                properties: {},
-                geometry: routeData.routes[0].geometry,
-              },
-            });
-
-            map.current.addLayer({
-              id: 'route',
-              type: 'line',
-              source: 'route',
-              layout: {
-                'line-join': 'round',
-                'line-cap': 'round',
-              },
-              paint: {
-                'line-color': '#3b82f6',
-                'line-width': 4,
-                'line-opacity': 0.8,
-              },
-            });
-          }
-        } else {
-          // Para rotas muito grandes, desenhar segmentos
-          console.log('⚠️ Rota muito grande, desenhando em segmentos');
-          // Desenhar linha simples conectando os pontos
-          map.current.addSource('route', {
-            type: 'geojson',
-            data: {
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'LineString',
-                coordinates: allCoordinates,
-              },
-            },
-          });
-
-          map.current.addLayer({
-            id: 'route',
-            type: 'line',
-            source: 'route',
-            layout: {
-              'line-join': 'round',
-              'line-cap': 'round',
-            },
-            paint: {
-              'line-color': '#3b82f6',
-              'line-width': 4,
-              'line-opacity': 0.6,
-            },
-          });
-        }
-      }
-
       toast({
         title: 'Rota otimizada criada!',
         description: `${sortedClusters.length} zona(s) de entrega • ${routePoints.length - (finalCoords ? 2 : 1)} parada(s)`,
@@ -653,6 +573,39 @@ export const RotaEntrega = () => {
     } finally {
       setIsCalculatingRoute(false);
     }
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+
+    const items = Array.from(rotaOtimizada);
+    
+    // Não permitir mover a fábrica (primeiro item) ou destino final (último item se existir)
+    const sourceIndex = result.source.index;
+    const destIndex = result.destination.index;
+    
+    const isFactoryOrFinal = (index: number) => {
+      return items[index].isFactory || items[index].isFinal;
+    };
+    
+    if (isFactoryOrFinal(sourceIndex) || isFactoryOrFinal(destIndex)) {
+      toast({
+        title: 'Não permitido',
+        description: 'Não é possível mover o ponto de partida ou destino final.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const [reorderedItem] = items.splice(sourceIndex, 1);
+    items.splice(destIndex, 0, reorderedItem);
+
+    setRotaOtimizada(items);
+    
+    toast({
+      title: 'Ordem atualizada',
+      description: 'A rota foi reorganizada manualmente.',
+    });
   };
 
   useEffect(() => {
@@ -745,46 +698,79 @@ export const RotaEntrega = () => {
                 <Route className="h-4 w-4" />
                 Ordem de Entregas ({rotaOtimizada.length} paradas)
               </h3>
-              <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                {rotaOtimizada.map((point, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-center gap-3 p-2 bg-background rounded border"
-                  >
-                    {point.isFactory ? (
-                      <>
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm">
-                          🏭
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">Ponto de Partida</p>
-                          <p className="text-xs text-muted-foreground">Mischa's Bakery</p>
-                        </div>
-                      </>
-                    ) : point.isFinal ? (
-                      <>
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm">
-                          🏁
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">Destino Final</p>
-                          <p className="text-xs text-muted-foreground">{enderecoFinal}</p>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">
-                          {index}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{point.cliente?.nome}</p>
-                          <p className="text-xs text-muted-foreground truncate">{point.cliente?.endereco_entrega}</p>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Arraste os blocos para reorganizar a ordem das entregas
+              </p>
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <Droppable droppableId="route-list">
+                  {(provided) => (
+                    <div
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className="space-y-2 max-h-[200px] overflow-y-auto"
+                    >
+                      {rotaOtimizada.map((point, index) => (
+                        <Draggable
+                          key={`${point.cliente?.id || index}-${index}`}
+                          draggableId={`${point.cliente?.id || index}-${index}`}
+                          index={index}
+                          isDragDisabled={point.isFactory || point.isFinal}
+                        >
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={cn(
+                                "flex items-center gap-3 p-2 bg-background rounded border transition-colors",
+                                snapshot.isDragging && "shadow-lg ring-2 ring-primary",
+                                (point.isFactory || point.isFinal) && "opacity-60"
+                              )}
+                            >
+                              {!point.isFactory && !point.isFinal && (
+                                <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
+                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              )}
+                              {point.isFactory ? (
+                                <>
+                                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm">
+                                    🏭
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-sm">Ponto de Partida</p>
+                                    <p className="text-xs text-muted-foreground">Mischa's Bakery</p>
+                                  </div>
+                                </>
+                              ) : point.isFinal ? (
+                                <>
+                                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm">
+                                    🏁
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-sm">Destino Final</p>
+                                    <p className="text-xs text-muted-foreground">{enderecoFinal}</p>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">
+                                    {index}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-sm truncate">{point.cliente?.nome}</p>
+                                    <p className="text-xs text-muted-foreground truncate">{point.cliente?.endereco_entrega}</p>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
             </div>
           )}
         </div>
