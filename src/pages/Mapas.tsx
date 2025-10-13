@@ -22,9 +22,6 @@ interface Cliente {
   contato_telefone?: string;
   status_cliente?: string;
   representante_id?: number;
-  representante?: {
-    nome: string;
-  };
 }
 
 interface Representante {
@@ -94,7 +91,7 @@ const Mapas = () => {
     try {
       const { data, error } = await supabase
         .from('clientes')
-        .select('id, nome, endereco_entrega, link_google_maps, contato_telefone, status_cliente, representante_id, representantes(nome)')
+        .select('id, nome, endereco_entrega, link_google_maps, contato_telefone, status_cliente, representante_id')
         .eq('ativo', true)
         .not('endereco_entrega', 'is', null)
         .neq('endereco_entrega', '');
