@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 
 // Token público do Mapbox
 const MAPBOX_TOKEN = 'pk.eyJ1IjoibHVjY2FtaWxsZXRvIiwiYSI6ImNtZ3Bkc2txZTJiNHQya29qN2N0azZqbGwifQ.l_osvQeh-cxxof4ndAQ6jA';
+
+// Cache de coordenadas em memória
+const geocodeCache = new Map<string, [number, number] | null>();
 
 interface Cliente {
   id: string;
@@ -23,27 +26,36 @@ const Mapas = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [filteredClientes, setFilteredClientes] = useState<Cliente[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const { toast } = useToast();
   const markers = useRef<mapboxgl.Marker[]>([]);
+  const isAddingMarkers = useRef(false);
 
   useEffect(() => {
     fetchClientes();
+    getUserLocation();
   }, []);
 
+  // Debounce do search term
   useEffect(() => {
-    if (searchTerm) {
-      setFilteredClientes(
-        clientes.filter(cliente => 
-          cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          cliente.endereco_entrega?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      );
-    } else {
-      setFilteredClientes(clientes);
-    }
-  }, [searchTerm, clientes]);
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Filtragem memoizada
+  const filteredClientes = useMemo(() => {
+    if (!debouncedSearchTerm) return clientes;
+    
+    const term = debouncedSearchTerm.toLowerCase();
+    return clientes.filter(cliente => 
+      cliente.nome.toLowerCase().includes(term) ||
+      cliente.endereco_entrega?.toLowerCase().includes(term)
+    );
+  }, [debouncedSearchTerm, clientes]);
 
   const fetchClientes = async () => {
     try {
@@ -56,7 +68,6 @@ const Mapas = () => {
 
       if (error) throw error;
       setClientes(data || []);
-      setFilteredClientes(data || []);
     } catch (error) {
       console.error('Erro ao buscar clientes:', error);
       toast({
@@ -98,7 +109,25 @@ const Mapas = () => {
     return null;
   };
 
+  const getUserLocation = () => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation([position.coords.longitude, position.coords.latitude]);
+        },
+        (error) => {
+          console.log('Não foi possível obter localização:', error);
+        }
+      );
+    }
+  };
+
   const geocodeAddress = async (address: string): Promise<[number, number] | null> => {
+    // Verificar cache primeiro
+    if (geocodeCache.has(address)) {
+      return geocodeCache.get(address)!;
+    }
+
     try {
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${MAPBOX_TOKEN}&country=BR&limit=1`
@@ -106,98 +135,132 @@ const Mapas = () => {
       const data = await response.json();
       
       if (data.features && data.features.length > 0) {
-        return data.features[0].center as [number, number];
+        const coords = data.features[0].center as [number, number];
+        geocodeCache.set(address, coords);
+        return coords;
       }
     } catch (error) {
       console.error('Erro ao geocodificar endereço:', error);
     }
+    
+    geocodeCache.set(address, null);
     return null;
   };
 
-  const initializeMap = async () => {
+  const initializeMap = () => {
     if (!mapContainer.current) return;
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
 
-    // Centralizar no Brasil
+    // Usar localização do usuário ou centralizar em Porto Alegre
+    const center: [number, number] = userLocation || [-51.2177, -30.0346];
+    const zoom = userLocation ? 12 : 10;
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
-      center: [-51.2177, -30.0346], // Porto Alegre, RS
-      zoom: 10,
+      center,
+      zoom,
     });
 
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-
-    // Adicionar marcadores para cada cliente
-    await addMarkersToMap();
+    
+    // Adicionar marcadores após o mapa carregar
+    map.current.on('load', () => {
+      addMarkersToMap();
+    });
   };
 
   const addMarkersToMap = async () => {
-    if (!map.current) return;
+    if (!map.current || isAddingMarkers.current) return;
+    
+    isAddingMarkers.current = true;
 
     // Limpar marcadores existentes
     markers.current.forEach(marker => marker.remove());
     markers.current = [];
 
-    for (const cliente of filteredClientes) {
-      let coordinates: [number, number] | null = null;
+    // Processar clientes em lotes para não travar
+    const batchSize = 10;
+    const clientesWithCoords: Array<{ cliente: Cliente; coords: [number, number] }> = [];
 
-      // Primeiro tenta extrair do link do Google Maps
-      if (cliente.link_google_maps) {
-        coordinates = extractCoordinatesFromGoogleMaps(cliente.link_google_maps);
-      }
+    for (let i = 0; i < filteredClientes.length; i += batchSize) {
+      const batch = filteredClientes.slice(i, i + batchSize);
+      
+      const results = await Promise.all(
+        batch.map(async (cliente) => {
+          let coordinates: [number, number] | null = null;
 
-      // Se não conseguiu, tenta geocodificar o endereço
-      if (!coordinates && cliente.endereco_entrega) {
-        coordinates = await geocodeAddress(cliente.endereco_entrega);
-      }
+          // Primeiro tenta extrair do link do Google Maps
+          if (cliente.link_google_maps) {
+            coordinates = extractCoordinatesFromGoogleMaps(cliente.link_google_maps);
+          }
 
-      if (coordinates && map.current) {
-        const el = document.createElement('div');
-        el.className = 'custom-marker';
-        el.style.width = '30px';
-        el.style.height = '30px';
-        el.style.borderRadius = '50%';
-        el.style.cursor = 'pointer';
-        el.style.border = '2px solid white';
-        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-        
-        // Cor baseada no status
-        const statusColors: Record<string, string> = {
-          'Ativo': '#10b981',
-          'Inativo': '#ef4444',
-          'Pendente': '#f59e0b',
-        };
-        el.style.backgroundColor = statusColors[cliente.status_cliente || 'Ativo'] || '#3b82f6';
+          // Se não conseguiu, tenta geocodificar o endereço
+          if (!coordinates && cliente.endereco_entrega) {
+            coordinates = await geocodeAddress(cliente.endereco_entrega);
+          }
 
-        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-          <div style="padding: 8px; min-width: 200px;">
-            <h3 style="font-weight: bold; margin-bottom: 4px;">${cliente.nome}</h3>
-            <p style="font-size: 12px; margin-bottom: 4px;">${cliente.endereco_entrega}</p>
-            ${cliente.contato_telefone ? `<p style="font-size: 12px;">Tel: ${cliente.contato_telefone}</p>` : ''}
-            <p style="font-size: 11px; color: #666; margin-top: 4px;">Status: ${cliente.status_cliente || 'Ativo'}</p>
-          </div>
-        `);
+          return coordinates ? { cliente, coords: coordinates } : null;
+        })
+      );
 
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat(coordinates)
-          .setPopup(popup)
-          .addTo(map.current);
-
-        markers.current.push(marker);
-      }
+      clientesWithCoords.push(...results.filter(Boolean) as Array<{ cliente: Cliente; coords: [number, number] }>);
     }
 
+    // Adicionar todos os marcadores de uma vez
+    if (!map.current) {
+      isAddingMarkers.current = false;
+      return;
+    }
+
+    const statusColors: Record<string, string> = {
+      'Ativo': '#10b981',
+      'Inativo': '#ef4444',
+      'Pendente': '#f59e0b',
+    };
+
+    clientesWithCoords.forEach(({ cliente, coords }) => {
+      if (!map.current) return;
+
+      const el = document.createElement('div');
+      el.className = 'custom-marker';
+      el.style.width = '30px';
+      el.style.height = '30px';
+      el.style.borderRadius = '50%';
+      el.style.cursor = 'pointer';
+      el.style.border = '2px solid white';
+      el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+      el.style.backgroundColor = statusColors[cliente.status_cliente || 'Ativo'] || '#3b82f6';
+
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+        <div style="padding: 8px; min-width: 200px;">
+          <h3 style="font-weight: bold; margin-bottom: 4px;">${cliente.nome}</h3>
+          <p style="font-size: 12px; margin-bottom: 4px;">${cliente.endereco_entrega}</p>
+          ${cliente.contato_telefone ? `<p style="font-size: 12px;">Tel: ${cliente.contato_telefone}</p>` : ''}
+          <p style="font-size: 11px; color: #666; margin-top: 4px;">Status: ${cliente.status_cliente || 'Ativo'}</p>
+        </div>
+      `);
+
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat(coords)
+        .setPopup(popup)
+        .addTo(map.current);
+
+      markers.current.push(marker);
+    });
+
     // Ajustar zoom para mostrar todos os marcadores
-    if (markers.current.length > 0) {
+    if (markers.current.length > 0 && map.current) {
       const bounds = new mapboxgl.LngLatBounds();
       markers.current.forEach(marker => {
         const lngLat = marker.getLngLat();
         bounds.extend([lngLat.lng, lngLat.lat]);
       });
-      map.current?.fitBounds(bounds, { padding: 50, maxZoom: 15 });
+      map.current.fitBounds(bounds, { padding: 50, maxZoom: 15 });
     }
+
+    isAddingMarkers.current = false;
   };
 
   useEffect(() => {
