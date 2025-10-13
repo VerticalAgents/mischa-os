@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
@@ -13,6 +13,7 @@ import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import jsPDF from 'jspdf';
 
 export default function AgendamentoDashboard() {
   const {
@@ -247,6 +248,156 @@ export default function AgendamentoDashboard() {
     return isSameDay(inicioSemanaAtual, inicioSemanaVisualizacao);
   }, [semanaAtual]);
 
+  const exportarPDFRepresentante = () => {
+    const doc = new jsPDF();
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    
+    // Filtrar agendamentos da semana
+    const agendamentosSemana = agendamentosFiltrados.filter(agendamento => {
+      const dataAgendamento = new Date(agendamento.dataReposicao);
+      return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana;
+    });
+
+    // Título
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumo de Agendamentos', 105, 20, { align: 'center' });
+    
+    // Informações do representante e período
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    const nomeRepresentante = representanteFiltro === "todos" 
+      ? "Todos os representantes" 
+      : representanteFiltro === "sem_representante"
+      ? "Sem representante"
+      : representantes.find(r => r.id.toString() === representanteFiltro)?.nome || "Representante";
+    
+    doc.text(`Representante: ${nomeRepresentante}`, 20, 35);
+    doc.text(`Período: ${format(inicioSemana, 'dd/MM/yyyy')} - ${format(fimSemana, 'dd/MM/yyyy')}`, 20, 42);
+    doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 20, 49);
+
+    // Resumo geral
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumo Geral', 20, 60);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total de agendamentos: ${agendamentosSemana.length}`, 20, 68);
+    doc.text(`Confirmados: ${indicadoresSemana.confirmados}`, 20, 75);
+    doc.text(`Previstos: ${indicadoresSemana.previstos}`, 20, 82);
+    doc.text(`Taxa de confirmação: ${indicadoresSemana.taxaConfirmacao.toFixed(1)}%`, 20, 89);
+
+    // Linha separadora
+    doc.line(20, 95, 190, 95);
+
+    // Lista de agendamentos por dia
+    let yPosition = 105;
+    const diasSemana = eachDayOfInterval({ start: inicioSemana, end: fimSemana });
+    
+    diasSemana.forEach((dia) => {
+      const agendamentosDia = agendamentosSemana.filter(agendamento => 
+        isSameDay(new Date(agendamento.dataReposicao), dia)
+      );
+
+      if (agendamentosDia.length > 0) {
+        // Verificar se precisa de nova página
+        if (yPosition > 250) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        // Cabeçalho do dia
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${format(dia, "EEEE, dd 'de' MMMM", { locale: ptBR })}`, 20, yPosition);
+        yPosition += 8;
+
+        // Agendamentos do dia
+        doc.setFontSize(9);
+        agendamentosDia.forEach((agendamento) => {
+          if (yPosition > 270) {
+            doc.addPage();
+            yPosition = 20;
+          }
+
+          const status = agendamento.statusAgendamento;
+          const statusCor: [number, number, number] = status === "Agendado" ? [16, 185, 129] : [245, 158, 11];
+          
+          // Status badge
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(statusCor[0], statusCor[1], statusCor[2]);
+          doc.text(status === "Agendado" ? "✓" : "○", 22, yPosition);
+          
+          // Nome do cliente
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(0, 0, 0);
+          doc.text(agendamento.cliente.nome.substring(0, 40), 28, yPosition);
+          
+          yPosition += 5;
+          
+          // Informações adicionais
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.setTextColor(100, 100, 100);
+          
+          const info = [];
+          if (agendamento.cliente.contatoNome) {
+            info.push(`Contato: ${agendamento.cliente.contatoNome}`);
+          }
+          if (agendamento.cliente.contatoTelefone) {
+            info.push(`Tel: ${agendamento.cliente.contatoTelefone}`);
+          }
+          if ((agendamento as any).quantidadeTotal) {
+            info.push(`Qtd: ${(agendamento as any).quantidadeTotal}`);
+          }
+          if ((agendamento as any).tipoPedido && (agendamento as any).tipoPedido !== 'Padrão') {
+            info.push(`Tipo: ${(agendamento as any).tipoPedido}`);
+          }
+          
+          if (info.length > 0) {
+            doc.text(info.join(' | '), 28, yPosition);
+            yPosition += 4;
+          }
+          
+          if (agendamento.cliente.enderecoEntrega) {
+            doc.text(`Endereço: ${agendamento.cliente.enderecoEntrega.substring(0, 70)}`, 28, yPosition);
+            yPosition += 4;
+          }
+          
+          // Linha separadora entre agendamentos
+          doc.setDrawColor(220, 220, 220);
+          doc.line(28, yPosition, 190, yPosition);
+          yPosition += 6;
+          
+          doc.setFontSize(9);
+          doc.setTextColor(0, 0, 0);
+        });
+
+        yPosition += 3;
+      }
+    });
+
+    // Rodapé em todas as páginas
+    const totalPaginas = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPaginas; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Página ${i} de ${totalPaginas}`, 105, 285, { align: 'center' });
+    }
+
+    // Salvar arquivo
+    const nomeArquivo = `agendamentos_${nomeRepresentante.replace(/\s+/g, '_')}_${format(inicioSemana, 'ddMMyyyy')}.pdf`;
+    doc.save(nomeArquivo);
+
+    toast({
+      title: "PDF Exportado",
+      description: "O resumo de agendamentos foi exportado com sucesso."
+    });
+  };
+
   return <div className="space-y-6">
       {/* Navegação de Semanas */}
       <div className="flex items-center justify-center gap-4 mb-4">
@@ -300,6 +451,16 @@ export default function AgendamentoDashboard() {
             ))}
           </SelectContent>
         </Select>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={exportarPDFRepresentante}
+          className="flex items-center gap-2"
+        >
+          <FileDown className="h-4 w-4" />
+          Exportar PDF
+        </Button>
       </div>
 
       {/* Cards de Indicadores */}
