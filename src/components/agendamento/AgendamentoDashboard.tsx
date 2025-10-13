@@ -117,9 +117,11 @@ export default function AgendamentoDashboard() {
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
+    
     return Object.entries(contadores).map(([status, count]) => ({
       status,
-      quantidade: count
+      quantidade: count,
+      cor: status === "Previsto" ? "#F59E0B" : status === "Agendado" ? "#10B981" : "#EF4444"
     }));
   }, [agendamentosFiltrados, semanaAtual]);
 
@@ -168,7 +170,7 @@ export default function AgendamentoDashboard() {
     });
   }, [agendamentosFiltrados, diaSelecionado]);
 
-  const coresPieChart = ['#10B981', '#F59E0B', '#EF4444'];
+  
 
   const handleDiaClick = (dataCompleta: Date) => {
     setDiaSelecionado(dataCompleta);
@@ -358,12 +360,12 @@ export default function AgendamentoDashboard() {
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                 <PieChart>
                   <Pie data={dadosGraficoStatus} cx="50%" cy="50%" labelLine={false} label={({
                   status,
                   quantidade
                 }) => `${status}: ${quantidade}`} outerRadius={80} fill="#8884d8" dataKey="quantidade">
-                    {dadosGraficoStatus.map((entry, index) => <Cell key={`cell-${index}`} fill={coresPieChart[index % coresPieChart.length]} />)}
+                    {dadosGraficoStatus.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
                   </Pie>
                   <Tooltip />
                 </PieChart>
