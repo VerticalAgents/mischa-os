@@ -14,6 +14,7 @@ interface PedidoExpedicao {
   cliente_endereco?: string;
   cliente_telefone?: string;
   link_google_maps?: string;
+  representante_id?: number;
   data_prevista_entrega: Date;
   quantidade_total: number;
   tipo_pedido: string;
@@ -128,7 +129,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           try {
             const { data: clientesComLink, error: clientesError } = await supabase
               .from('clientes')
-              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps');
+              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id');
 
             if (clientesError) {
               console.warn('Coluna link_google_maps não encontrada, carregando sem ela:', clientesError);
@@ -136,7 +137,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               // Fallback: carregar sem a coluna link_google_maps
               const { data: clientesSemLink, error: fallbackError } = await supabase
                 .from('clientes')
-                .select('id, nome, endereco_entrega, contato_telefone');
+                .select('id, nome, endereco_entrega, contato_telefone, representante_id');
 
               if (fallbackError) {
                 throw fallbackError;
@@ -168,6 +169,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               cliente_endereco: cliente?.endereco_entrega,
               cliente_telefone: cliente?.contato_telefone,
               link_google_maps: cliente?.link_google_maps,
+              representante_id: cliente?.representante_id,
               data_prevista_entrega: dataPrevisao,
               quantidade_total: agendamento.quantidade_total || 0,
               tipo_pedido: agendamento.tipo_pedido || 'Padrão',

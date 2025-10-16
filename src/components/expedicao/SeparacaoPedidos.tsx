@@ -13,6 +13,7 @@ import AgendamentoEditModal from "@/components/agendamento/AgendamentoEditModal"
 import { AgendamentoItem } from "@/components/agendamento/types";
 import { PrintingActions } from "./components/PrintingActions";
 import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
+import { RepresentantesFilter } from "./components/RepresentantesFilter";
 
 const SeparacaoPedidos = () => {
   const { 
@@ -27,9 +28,11 @@ const SeparacaoPedidos = () => {
     filtroTexto,
     filtroTipoPedido,
     filtroData,
+    filtroRepresentantes,
     setFiltroTexto,
     setFiltroTipoPedido,
-    setFiltroData
+    setFiltroData,
+    setFiltroRepresentantes
   } = useExpedicaoUiStore();
 
   const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
@@ -108,7 +111,10 @@ const SeparacaoPedidos = () => {
     const matchData = !filtroData || 
       format(pedido.data_prevista_entrega, "yyyy-MM-dd") === filtroData;
 
-    return matchTexto && matchTipoPedido && matchData;
+    const matchRepresentante = filtroRepresentantes.length === 0 ||
+      (pedido.representante_id && filtroRepresentantes.includes(pedido.representante_id));
+
+    return matchTexto && matchTipoPedido && matchData && matchRepresentante;
   });
 
   if (isLoading) {
@@ -151,7 +157,7 @@ const SeparacaoPedidos = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg">
         <div className="relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
           <Input
@@ -179,6 +185,11 @@ const SeparacaoPedidos = () => {
           value={filtroData}
           onChange={(e) => setFiltroData(e.target.value)}
           placeholder="Filtrar por data"
+        />
+
+        <RepresentantesFilter
+          selectedIds={filtroRepresentantes}
+          onSelectionChange={setFiltroRepresentantes}
         />
 
         <div className="flex items-center gap-2">

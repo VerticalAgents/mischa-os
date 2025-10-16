@@ -9,6 +9,8 @@ import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
 import { DebugInfo } from "./components/DebugInfo";
 import { DespachoFilters } from "./components/DespachoFilters";
 import { ResumoStatusCard } from "./components/ResumoStatusCard";
+import { RepresentantesFilter } from "./components/RepresentantesFilter";
+import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
 import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
 import { OrganizadorEntregas } from "./OrganizadorEntregas";
@@ -49,6 +51,11 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   const [organizadorAberto, setOrganizadorAberto] = useState(false);
   const [filtroTexto, setFiltroTexto] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("todos");
+  
+  const {
+    filtroRepresentantes,
+    setFiltroRepresentantes
+  } = useExpedicaoUiStore();
 
   // Usar hook de sincronização
   useExpedicaoSync();
@@ -84,8 +91,15 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
       );
     }
 
+    // Filtro por representante
+    if (filtroRepresentantes.length > 0) {
+      pedidosFiltrados = pedidosFiltrados.filter(pedido =>
+        pedido.representante_id && filtroRepresentantes.includes(pedido.representante_id)
+      );
+    }
+
     return pedidosFiltrados;
-  }, [pedidosBase, filtroTexto, filtroTipo]);
+  }, [pedidosBase, filtroTexto, filtroTipo, filtroRepresentantes]);
 
   // Verificar quantos pedidos estão despachados
   const pedidosDespachados = pedidosFiltrados.filter(p => p.substatus_pedido === 'Despachado');
@@ -192,8 +206,10 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
         filtroTexto={filtroTexto}
         filtroTipo={filtroTipo}
         totalPedidos={pedidosFiltrados.length}
+        filtroRepresentantes={filtroRepresentantes}
         onFiltroTextoChange={setFiltroTexto}
         onFiltroTipoChange={setFiltroTipo}
+        onFiltroRepresentantesChange={setFiltroRepresentantes}
       />
       
       <Card className="p-4">
