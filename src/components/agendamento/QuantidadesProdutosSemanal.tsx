@@ -133,22 +133,26 @@ export default function QuantidadesProdutosSemanal({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Package className="h-5 w-5 text-primary" />
-          Produtos Necessários
-        </CardTitle>
-        <CardDescription className="text-left">
-          Quantidades para pedidos {incluirPrevistos ? "confirmados e previstos" : "confirmados"}
-        </CardDescription>
-        <div className="flex items-center space-x-2 mt-3">
-          <Switch
-            id="incluir-previstos"
-            checked={incluirPrevistos}
-            onCheckedChange={setIncluirPrevistos}
-          />
-          <Label htmlFor="incluir-previstos" className="text-sm cursor-pointer">
-            Incluir previstos
-          </Label>
+        <div className="flex items-start justify-between">
+          <div className="space-y-1.5">
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              Produtos Necessários
+            </CardTitle>
+            <CardDescription className="text-left">
+              Quantidades para pedidos {incluirPrevistos ? "confirmados e previstos" : "confirmados"}
+            </CardDescription>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="incluir-previstos" className="text-sm cursor-pointer whitespace-nowrap">
+              Incluir previstos
+            </Label>
+            <Switch
+              id="incluir-previstos"
+              checked={incluirPrevistos}
+              onCheckedChange={setIncluirPrevistos}
+            />
+          </div>
         </div>
       </CardHeader>
       <CardContent>
