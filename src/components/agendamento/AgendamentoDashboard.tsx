@@ -15,6 +15,7 @@ import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import jsPDF from 'jspdf';
 import QuantidadesProdutosSemanal from "./QuantidadesProdutosSemanal";
+import EntregasRealizadasSemanal from "./EntregasRealizadasSemanal";
 
 export default function AgendamentoDashboard() {
   const {
@@ -525,6 +526,9 @@ export default function AgendamentoDashboard() {
         agendamentosFiltrados={agendamentosFiltrados} 
         semanaAtual={semanaAtual} 
       />
+
+      {/* Entregas Realizadas da Semana */}
+      <EntregasRealizadasSemanal semanaAtual={semanaAtual} />
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
