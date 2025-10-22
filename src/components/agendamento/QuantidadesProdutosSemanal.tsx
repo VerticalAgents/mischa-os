@@ -3,7 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Package, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Package, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, endOfWeek } from "date-fns";
 
@@ -25,6 +27,7 @@ export default function QuantidadesProdutosSemanal({
   const [incluirPrevistos, setIncluirPrevistos] = useState(false);
   const [quantidadesPorProduto, setQuantidadesPorProduto] = useState<Record<string, ProdutoQuantidade>>({});
   const [loading, setLoading] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   // Filtrar agendamentos da semana com base no toggle
   const agendamentosSemana = useMemo(() => {
@@ -175,24 +178,37 @@ export default function QuantidadesProdutosSemanal({
               </Badge>
             </div>
 
-            {/* Produtos Individuais */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground mb-3">Detalhes por Produto</p>
-              {produtosOrdenados.map((produto) => (
-                <div 
-                  key={produto.produto_id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Package className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{produto.produto_nome}</span>
+            {/* Produtos Individuais - Collapsible */}
+            <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-muted-foreground">Detalhes por Produto</p>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    {isDetailsOpen ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+              <CollapsibleContent className="space-y-2">
+                {produtosOrdenados.map((produto) => (
+                  <div 
+                    key={produto.produto_id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{produto.produto_nome}</span>
+                    </div>
+                    <Badge variant="secondary" className="text-base px-3 py-1">
+                      {produto.quantidade}
+                    </Badge>
                   </div>
-                  <Badge variant="secondary" className="text-base px-3 py-1">
-                    {produto.quantidade}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         )}
       </CardContent>
