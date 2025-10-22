@@ -16,6 +16,51 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
+// Componente de Tooltip memoizado
+const CustomTooltip = memo(({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const isProjecao = data.isProjecao;
+    const giroTotal = data['Giro Real'];
+    const mediaHistorica = data['Média Histórica'];
+    const diffVsMedia = mediaHistorica > 0 
+      ? ((giroTotal / mediaHistorica - 1) * 100).toFixed(1)
+      : '0';
+    
+    return (
+      <div className="bg-card border-2 rounded-lg p-3 shadow-lg min-w-[200px]">
+        <p className="font-semibold mb-1">
+          {data.periodoInicio}
+        </p>
+        {isProjecao && (
+          <Badge variant="secondary" className="text-xs mb-2">
+            Projeção
+          </Badge>
+        )}
+        
+        <div className="space-y-1.5 text-sm mt-2">
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Giro Total:</span>
+            <span className="font-bold">{giroTotal}</span>
+          </div>
+          
+          <div className="border-t pt-1.5 mt-1.5 flex justify-between gap-4">
+            <span className="text-muted-foreground">Média Histórica:</span>
+            <span className="font-semibold">{mediaHistorica}</span>
+          </div>
+          
+          <div className="text-xs pt-1 text-muted-foreground">
+            {parseFloat(diffVsMedia) >= 0 ? '+' : ''}{diffVsMedia}% vs média
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+});
+
+CustomTooltip.displayName = 'CustomTooltip';
+
 export function GiroDashboardGeral() {
   const { dados, loading, error } = useGiroDashboardGeral();
 
@@ -116,48 +161,6 @@ export function GiroDashboardGeral() {
     if (tipo === 'queda') return 'bg-red-600 text-white';
     return 'bg-muted text-muted-foreground';
   }, []);
-
-  const CustomTooltip = useMemo(() => memo(({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      const isProjecao = data.isProjecao;
-      const giroTotal = data['Giro Real'];
-      const mediaHistorica = data['Média Histórica'];
-      const diffVsMedia = mediaHistorica > 0 
-        ? ((giroTotal / mediaHistorica - 1) * 100).toFixed(1)
-        : '0';
-      
-      return (
-        <div className="bg-card border-2 rounded-lg p-3 shadow-lg min-w-[200px]">
-          <p className="font-semibold mb-1">
-            {data.periodoInicio}
-          </p>
-          {isProjecao && (
-            <Badge variant="secondary" className="text-xs mb-2">
-              Projeção
-            </Badge>
-          )}
-          
-          <div className="space-y-1.5 text-sm mt-2">
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">Giro Total:</span>
-              <span className="font-bold">{giroTotal}</span>
-            </div>
-            
-            <div className="border-t pt-1.5 mt-1.5 flex justify-between gap-4">
-              <span className="text-muted-foreground">Média Histórica:</span>
-              <span className="font-semibold">{mediaHistorica}</span>
-            </div>
-            
-            <div className="text-xs pt-1 text-muted-foreground">
-              {parseFloat(diffVsMedia) >= 0 ? '+' : ''}{diffVsMedia}% vs média
-            </div>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  }), []);
 
   return (
     <div className="space-y-6">
