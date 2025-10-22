@@ -93,19 +93,15 @@ export function GiroDashboardGeral() {
   } = dados;
 
   // Preparar dados para o gráfico
-  const chartData = historicoSemanas.map((sem, index) => {
-    const isUltimaSemana = index === historicoSemanas.length - 1;
-    const temAgendado = sem.giroAgendado && sem.giroAgendado > 0;
-    
-    return {
-      semana: sem.semana,
-      'Giro Real': sem.giroReal,
-      'Giro Agendado': isUltimaSemana && temAgendado ? sem.giroAgendado : null,
-      'Giro Total Projetado': isUltimaSemana && temAgendado ? sem.giroReal + (sem.giroAgendado || 0) : null,
-      'Média Histórica': Math.round(mediaGeral),
-      isProjecao: isUltimaSemana && temAgendado
-    };
-  });
+  const chartData = historicoSemanas.map((sem) => ({
+    semana: sem.semana,
+    periodoInicio: sem.periodoInicio,
+    periodoFim: sem.periodoFim,
+    'Giro Real': sem.giroReal + (sem.giroAgendado || 0), // Total = real + agendado
+    'Giro Agendado': sem.giroAgendado || null,
+    'Média Histórica': Math.round(mediaGeral),
+    isProjecao: sem.isProjecao || false
+  }));
 
   const getTendenciaIcon = (tipo: string) => {
     if (tipo === 'crescimento') return <TrendingUp className="h-4 w-4" />;
@@ -123,58 +119,44 @@ export function GiroDashboardGeral() {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const isProjecao = data.isProjecao;
+      const giroTotal = data['Giro Real'] + (data['Giro Agendado'] || 0);
+      const mediaHistorica = data['Média Histórica'];
+      const diffVsMedia = mediaHistorica > 0 
+        ? ((giroTotal / mediaHistorica - 1) * 100).toFixed(1)
+        : '0';
       
       return (
-        <div className="bg-card border-2 rounded-lg p-3 shadow-lg">
-          <p className="font-semibold mb-2 flex items-center gap-2">
-            {data.semana}
-            {isProjecao && (
-              <Badge variant="secondary" className="text-xs">
-                Projeção
-              </Badge>
-            )}
+        <div className="bg-card border-2 rounded-lg p-3 shadow-lg min-w-[200px]">
+          <p className="font-semibold mb-1">
+            {data.periodoInicio}
           </p>
+          {isProjecao && (
+            <Badge variant="secondary" className="text-xs mb-2">
+              Projeção
+            </Badge>
+          )}
           
-          <div className="space-y-1 text-sm">
+          <div className="space-y-1.5 text-sm mt-2">
             <div className="flex justify-between gap-4">
-              <span className="text-primary font-medium">Giro Real:</span>
+              <span className="text-muted-foreground">Giro Real:</span>
               <span className="font-bold">{data['Giro Real']}</span>
             </div>
             
-            {isProjecao && data['Giro Agendado'] && data['Giro Agendado'] > 0 && (
-              <>
-                <div className="flex justify-between gap-4">
-                  <span style={{ color: 'hsl(var(--purple-600))' }}>+ Agendado:</span>
-                  <span className="font-bold" style={{ color: 'hsl(var(--purple-600))' }}>
-                    {data['Giro Agendado']}
-                  </span>
-                </div>
-                <div className="border-t pt-1 mt-1 flex justify-between gap-4">
-                  <span style={{ color: 'hsl(var(--purple-700))' }} className="font-medium">
-                    Total Projetado:
-                  </span>
-                  <span className="font-bold" style={{ color: 'hsl(var(--purple-700))' }}>
-                    {data['Giro Total Projetado']}
-                  </span>
-                </div>
-              </>
-            )}
-            
-            <div className="border-t pt-1 mt-2 flex justify-between gap-4 text-muted-foreground">
-              <span>Média Histórica:</span>
-              <span className="font-semibold">{data['Média Histórica']}</span>
-            </div>
-            
-            {data['Giro Real'] > 0 && (
-              <div className="text-xs pt-1">
-                <span className={data['Giro Real'] >= data['Média Histórica'] ? 'text-green-600' : 'text-red-600'}>
-                  {data['Giro Real'] >= data['Média Histórica'] ? '↑' : '↓'}
-                  {' '}
-                  {Math.abs(((data['Giro Real'] / data['Média Histórica']) - 1) * 100).toFixed(1)}%
-                  {' '}vs média
-                </span>
+            {isProjecao && data['Giro Agendado'] > 0 && (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">+ Agendado:</span>
+                <span className="font-semibold">{data['Giro Agendado']}</span>
               </div>
             )}
+            
+            <div className="border-t pt-1.5 mt-1.5 flex justify-between gap-4">
+              <span className="text-muted-foreground">Média Histórica:</span>
+              <span className="font-semibold">{mediaHistorica}</span>
+            </div>
+            
+            <div className="text-xs pt-1 text-muted-foreground">
+              {parseFloat(diffVsMedia) >= 0 ? '+' : ''}{diffVsMedia}% vs média
+            </div>
           </div>
         </div>
       );
@@ -377,22 +359,23 @@ export function GiroDashboardGeral() {
                 iconType="line"
               />
               
-              {/* Área para giro agendado (apenas última semana) */}
-              <Area
+              {/* Linha de média histórica (horizontal) */}
+              <Line
                 type="monotone"
-                dataKey="Giro Agendado"
-                fill="url(#colorAgendado)"
-                stroke="none"
-                stackId="1"
-                connectNulls={false}
+                dataKey="Média Histórica"
+                stroke="hsl(var(--muted-foreground))"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={false}
+                name="Média Histórica"
               />
               
-              {/* Linha principal - Giro Real */}
+              {/* Linha principal conectando os pontos */}
               <Line
                 type="monotone"
                 dataKey="Giro Real"
                 stroke="hsl(var(--primary))"
-                strokeWidth={3}
+                strokeWidth={2.5}
                 dot={(props: any) => {
                   const { cx, cy, payload } = props;
                   if (payload.isProjecao) {
@@ -403,35 +386,23 @@ export function GiroDashboardGeral() {
                         r={5} 
                         fill="hsl(var(--primary))" 
                         strokeWidth={2} 
-                        stroke="#fff" 
-                        strokeDasharray="3 3" 
+                        stroke="hsl(var(--background))"
                       />
                     );
                   }
-                  return <circle cx={cx} cy={cy} r={4} fill="hsl(var(--primary))" />;
+                  return (
+                    <circle 
+                      cx={cx} 
+                      cy={cy} 
+                      r={4} 
+                      fill="hsl(var(--primary))" 
+                      stroke="hsl(var(--background))" 
+                      strokeWidth={2}
+                    />
+                  );
                 }}
+                name="Giro Real"
                 activeDot={{ r: 6 }}
-              />
-              
-              {/* Linha pontilhada de projeção total */}
-              <Line
-                type="monotone"
-                dataKey="Giro Total Projetado"
-                stroke="hsl(var(--purple-600))"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
-                connectNulls
-              />
-              
-              {/* Linha de média histórica */}
-              <Line
-                type="monotone"
-                dataKey="Média Histórica"
-                stroke="hsl(var(--muted-foreground))"
-                strokeWidth={2}
-                strokeDasharray="3 3"
-                dot={false}
               />
               
               {/* Gradientes */}

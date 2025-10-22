@@ -5,6 +5,8 @@ import { ptBR } from 'date-fns/locale';
 
 interface HistoricoSemana {
   semana: string;
+  periodoInicio: string;
+  periodoFim: string;
   giroReal: number;
   giroAgendado?: number;
   isProjecao?: boolean;
@@ -43,9 +45,9 @@ export const useGiroDashboardGeral = () => {
         setLoading(true);
         setError(null);
 
-        // Calcular últimas 11 semanas (EXCLUINDO a semana atual)
+        // Calcular últimas 11 semanas + semana atual (12 semanas no total)
         const hoje = new Date();
-        const semanas = Array.from({ length: 11 }, (_, i) => {
+        const semanas = Array.from({ length: 12 }, (_, i) => {
           const inicio = startOfWeek(subWeeks(hoje, 11 - i), { locale: ptBR });
           const fim = endOfWeek(inicio, { locale: ptBR });
           return {
@@ -76,20 +78,40 @@ export const useGiroDashboardGeral = () => {
           girosPorSemana.set(chaveSemana, atual + (h.quantidade || 0));
         });
 
-        // Processar dados históricos das 11 semanas
-        const historicoSemanas: HistoricoSemana[] = semanas.map((sem) => {
+        // Buscar agendamentos da semana atual
+        const semanaAtual = semanas[semanas.length - 1];
+        const { data: agendamentosData, error: agendamentosError } = await supabase
+          .from('agendamentos_clientes')
+          .select('quantidade_total, status_agendamento, data_proxima_reposicao')
+          .in('status_agendamento', ['Previsto', 'Agendado'])
+          .gte('data_proxima_reposicao', format(semanaAtual.inicio, 'yyyy-MM-dd'))
+          .lte('data_proxima_reposicao', format(semanaAtual.fim, 'yyyy-MM-dd'));
+
+        if (agendamentosError) throw agendamentosError;
+
+        const giroAgendadoAtual = agendamentosData?.reduce(
+          (sum, ag) => sum + (ag.quantidade_total || 0),
+          0
+        ) || 0;
+
+        // Processar dados históricos das 12 semanas (incluindo semana atual)
+        const historicoSemanas: HistoricoSemana[] = semanas.map((sem, index) => {
           const giroSemana = girosPorSemana.get(sem.chave) || 0;
+          const isUltimaSemana = index === semanas.length - 1;
 
           return {
             semana: format(sem.inicio, 'dd/MM', { locale: ptBR }),
+            periodoInicio: format(sem.inicio, 'dd/MM/yyyy', { locale: ptBR }),
+            periodoFim: format(sem.fim, 'dd/MM/yyyy', { locale: ptBR }),
             giroReal: giroSemana,
-            giroAgendado: undefined,
-            isProjecao: false
+            giroAgendado: isUltimaSemana ? giroAgendadoAtual : undefined,
+            isProjecao: isUltimaSemana && giroAgendadoAtual > 0
           };
         });
 
-        // Calcular média geral (todas as 11 semanas)
+        // Calcular média geral (primeiras 11 semanas, excluindo a atual)
         const girosCompletos = historicoSemanas
+          .slice(0, -1)
           .map(s => s.giroReal)
           .filter(g => g > 0);
 
@@ -116,8 +138,9 @@ export const useGiroDashboardGeral = () => {
           tendencia = variacao > 0 ? 'crescimento' : 'queda';
         }
 
-        // Calcular tendência das 11 semanas (regressão linear simples)
+        // Calcular tendência das 11 semanas (excluindo atual, regressão linear simples)
         const giros11Semanas = historicoSemanas
+          .slice(0, -1)
           .map(s => s.giroReal)
           .filter(g => g > 0);
 
@@ -141,13 +164,19 @@ export const useGiroDashboardGeral = () => {
         const valeSemanal = giros11Semanas.length > 0 ? Math.min(...giros11Semanas) : 0;
         const amplitudeVariacao = picoSemanal - valeSemanal;
 
-        // Valores zerados para semana atual (já que não estamos considerando)
-        const giroRealAtual = 0;
-        const giroAgendadoAtual = 0;
-        const giroProjetado = 0;
-        const performanceVsMedia = 0;
-        const percentualSemanaPassado = 0;
-        const diasRestantes = 0;
+        // Dados da semana atual
+        const giroRealAtual = historicoSemanas[historicoSemanas.length - 1].giroReal;
+        const giroProjetado = giroRealAtual + giroAgendadoAtual;
+        const performanceVsMedia = mediaGeral > 0
+          ? ((giroProjetado / mediaGeral) - 1) * 100
+          : 0;
+
+        // Calcular percentual da semana que já passou
+        const diasDesdeInicio = Math.floor(
+          (hoje.getTime() - semanaAtual.inicio.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        const percentualSemanaPassado = Math.min((diasDesdeInicio / 7) * 100, 100);
+        const diasRestantes = Math.max(7 - diasDesdeInicio, 0);
 
         setDados({
           historicoSemanas,
