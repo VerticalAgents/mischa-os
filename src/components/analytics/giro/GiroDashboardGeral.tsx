@@ -61,101 +61,53 @@ const CustomTooltip = memo(({ active, payload }: any) => {
 
 CustomTooltip.displayName = 'CustomTooltip';
 
-export function GiroDashboardGeral() {
-  const { dados, loading, error } = useGiroDashboardGeral();
-
-  // Hooks devem ser sempre chamados na mesma ordem entre renders.
-  // Usamos valores seguros enquanto carrega/erro para manter a ordem.
-  const historicoSemanasSafe = dados?.historicoSemanas ?? [];
-  const mediaGeralSafe = dados?.mediaGeral ?? 0;
-
-  // Memoizar dados do gráfico (sempre chamado)
-  const chartData = useMemo(() => 
-    historicoSemanasSafe.map((sem: any) => ({
-      semana: sem.semana,
-      periodoInicio: sem.periodoInicio,
-      periodoFim: sem.periodoFim,
-      'Giro Real': sem.giroReal + (sem.giroAgendado || 0),
-      'Giro Agendado': sem.giroAgendado || null,
-      'Média Histórica': Math.round(mediaGeralSafe),
-      isProjecao: sem.isProjecao || false
-    })), [historicoSemanasSafe, mediaGeralSafe]
-  );
-
-  // Funções memoizadas (sempre chamadas)
-  const getTendenciaIcon = useCallback((tipo: string) => {
-    if (tipo === 'crescimento') return <TrendingUp className="h-4 w-4" />;
-    if (tipo === 'queda') return <TrendingDown className="h-4 w-4" />;
-    return <Minus className="h-4 w-4" />;
-  }, []);
-
-  const getTendenciaColor = useCallback((tipo: string) => {
-    if (tipo === 'crescimento') return 'bg-green-600 text-white';
-    if (tipo === 'queda') return 'bg-red-600 text-white';
-    return 'bg-muted text-muted-foreground';
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-4 w-32" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-24" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[4, 5].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-4 w-32" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-24 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <Card>
+// Componente de Loading isolado
+const LoadingState = memo(() => (
+  <div className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {[1, 2, 3].map((i) => (
+        <Card key={i}>
           <CardHeader>
-            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-32" />
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-80 w-full" />
+            <Skeleton className="h-8 w-24" />
           </CardContent>
         </Card>
-      </div>
-    );
-  }
+      ))}
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {[4, 5].map((i) => (
+        <Card key={i}>
+          <CardHeader>
+            <Skeleton className="h-4 w-32" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-24 w-full" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-6 w-48" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-80 w-full" />
+      </CardContent>
+    </Card>
+  </div>
+));
 
-  if (error) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Erro ao carregar dados do dashboard: {error}
-        </AlertDescription>
-      </Alert>
-    );
-  }
+LoadingState.displayName = 'LoadingState';
 
-  if (!dados) {
-    return null;
-  }
-
+// Componente principal memoizado
+const GiroDashboardGeralContent = memo(({ dados }: { dados: any }) => {
   const {
     historicoSemanas,
     ultimas4Semanas,
     mediaUltimas4,
     mediaGeral,
-    variacao,
-    tendencia,
     tendencia12Semanas,
     picoSemanal,
     valeSemanal,
@@ -168,6 +120,29 @@ export function GiroDashboardGeral() {
     diasRestantes
   } = dados;
 
+  // Memoizar dados do gráfico
+  const chartData = useMemo(() => 
+    historicoSemanas.map((sem: any) => ({
+      semana: sem.semana,
+      periodoInicio: sem.periodoInicio,
+      periodoFim: sem.periodoFim,
+      'Giro Real': sem.giroReal + (sem.giroAgendado || 0),
+      'Média Histórica': Math.round(mediaGeral),
+      isProjecao: sem.isProjecao || false
+    })), [historicoSemanas, mediaGeral]
+  );
+
+  const getTendenciaIcon = useCallback((tipo: string) => {
+    if (tipo === 'crescimento') return <TrendingUp className="h-4 w-4" />;
+    if (tipo === 'queda') return <TrendingDown className="h-4 w-4" />;
+    return <Minus className="h-4 w-4" />;
+  }, []);
+
+  const getTendenciaColor = useCallback((tipo: string) => {
+    if (tipo === 'crescimento') return 'bg-green-600 text-white';
+    if (tipo === 'queda') return 'bg-red-600 text-white';
+    return 'bg-muted text-muted-foreground';
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -258,10 +233,10 @@ export function GiroDashboardGeral() {
               </div>
               {giroAgendadoAtual > 0 && (
                 <div className="flex justify-between items-baseline">
-                  <span className="text-sm" style={{ color: 'hsl(var(--purple-600))' }}>
+                  <span className="text-sm text-primary">
                     + Agendado:
                   </span>
-                  <span className="text-xl font-semibold" style={{ color: 'hsl(var(--purple-600))' }}>
+                  <span className="text-xl font-semibold text-primary">
                     {giroAgendadoAtual}
                   </span>
                 </div>
@@ -356,6 +331,7 @@ export function GiroDashboardGeral() {
                 dataKey="semana" 
                 className="text-xs"
                 tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                interval="preserveStartEnd"
               />
               <YAxis 
                 className="text-xs"
@@ -399,19 +375,11 @@ export function GiroDashboardGeral() {
             <ul className="space-y-1 text-muted-foreground">
               <li className="flex items-center gap-2">
                 <div className="w-4 h-0.5 bg-primary"></div>
-                <span><strong>Giro Real:</strong> Entregas já confirmadas no sistema</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(var(--purple-500))', opacity: 0.3 }}></div>
-                <span><strong>Giro Agendado:</strong> Entregas previstas mas ainda não confirmadas (apenas semana atual)</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <div className="w-4 h-0.5 border-t-2 border-dashed" style={{ borderColor: 'hsl(var(--purple-600))' }}></div>
-                <span><strong>Total Projetado:</strong> Soma de real + agendado na semana atual</span>
+                <span><strong>Giro Semanal:</strong> Entregas confirmadas + agendamentos programados</span>
               </li>
               <li className="flex items-center gap-2">
                 <div className="w-4 h-0.5 border-t-2 border-dashed border-muted-foreground"></div>
-                <span><strong>Média Histórica:</strong> Média das 11 semanas anteriores (sem projeção)</span>
+                <span><strong>Média Histórica:</strong> Média das 11 semanas anteriores</span>
               </li>
             </ul>
           </div>
@@ -419,4 +387,31 @@ export function GiroDashboardGeral() {
       </Card>
     </div>
   );
+});
+
+GiroDashboardGeralContent.displayName = 'GiroDashboardGeralContent';
+
+export function GiroDashboardGeral() {
+  const { dados, loading, error } = useGiroDashboardGeral();
+
+  if (loading) {
+    return <LoadingState />;
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Erro ao carregar dados do dashboard: {error}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!dados) {
+    return null;
+  }
+
+  return <GiroDashboardGeralContent dados={dados} />;
 }
