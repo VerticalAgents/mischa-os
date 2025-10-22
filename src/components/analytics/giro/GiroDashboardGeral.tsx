@@ -1,3 +1,4 @@
+import { useMemo, useCallback, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -7,7 +8,6 @@ import { useGiroDashboardGeral } from "@/hooks/useGiroDashboardGeral";
 import {
   ComposedChart,
   Line,
-  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -92,34 +92,36 @@ export function GiroDashboardGeral() {
     diasRestantes
   } = dados;
 
-  // Preparar dados para o gráfico
-  const chartData = historicoSemanas.map((sem) => ({
-    semana: sem.semana,
-    periodoInicio: sem.periodoInicio,
-    periodoFim: sem.periodoFim,
-    'Giro Real': sem.giroReal + (sem.giroAgendado || 0), // Total = real + agendado
-    'Giro Agendado': sem.giroAgendado || null,
-    'Média Histórica': Math.round(mediaGeral),
-    isProjecao: sem.isProjecao || false
-  }));
+  // Memoizar dados do gráfico
+  const chartData = useMemo(() => 
+    historicoSemanas.map((sem) => ({
+      semana: sem.semana,
+      periodoInicio: sem.periodoInicio,
+      periodoFim: sem.periodoFim,
+      'Giro Real': sem.giroReal + (sem.giroAgendado || 0),
+      'Giro Agendado': sem.giroAgendado || null,
+      'Média Histórica': Math.round(mediaGeral),
+      isProjecao: sem.isProjecao || false
+    })), [historicoSemanas, mediaGeral]
+  );
 
-  const getTendenciaIcon = (tipo: string) => {
+  const getTendenciaIcon = useCallback((tipo: string) => {
     if (tipo === 'crescimento') return <TrendingUp className="h-4 w-4" />;
     if (tipo === 'queda') return <TrendingDown className="h-4 w-4" />;
     return <Minus className="h-4 w-4" />;
-  };
+  }, []);
 
-  const getTendenciaColor = (tipo: string) => {
+  const getTendenciaColor = useCallback((tipo: string) => {
     if (tipo === 'crescimento') return 'bg-green-600 text-white';
     if (tipo === 'queda') return 'bg-red-600 text-white';
     return 'bg-muted text-muted-foreground';
-  };
+  }, []);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = useMemo(() => memo(({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const isProjecao = data.isProjecao;
-      const giroTotal = data['Giro Real'] + (data['Giro Agendado'] || 0);
+      const giroTotal = data['Giro Real'];
       const mediaHistorica = data['Média Histórica'];
       const diffVsMedia = mediaHistorica > 0 
         ? ((giroTotal / mediaHistorica - 1) * 100).toFixed(1)
@@ -138,16 +140,9 @@ export function GiroDashboardGeral() {
           
           <div className="space-y-1.5 text-sm mt-2">
             <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">Giro Real:</span>
-              <span className="font-bold">{data['Giro Real']}</span>
+              <span className="text-muted-foreground">Giro Total:</span>
+              <span className="font-bold">{giroTotal}</span>
             </div>
-            
-            {isProjecao && data['Giro Agendado'] > 0 && (
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">+ Agendado:</span>
-                <span className="font-semibold">{data['Giro Agendado']}</span>
-              </div>
-            )}
             
             <div className="border-t pt-1.5 mt-1.5 flex justify-between gap-4">
               <span className="text-muted-foreground">Média Histórica:</span>
@@ -162,7 +157,7 @@ export function GiroDashboardGeral() {
       );
     }
     return null;
-  };
+  }), []);
 
   return (
     <div className="space-y-6">
@@ -342,7 +337,10 @@ export function GiroDashboardGeral() {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={400}>
-            <ComposedChart data={chartData}>
+            <ComposedChart 
+              data={chartData}
+              margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+            >
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis 
                 dataKey="semana" 
@@ -359,7 +357,7 @@ export function GiroDashboardGeral() {
                 iconType="line"
               />
               
-              {/* Linha de média histórica (horizontal) */}
+              {/* Linha de média histórica */}
               <Line
                 type="monotone"
                 dataKey="Média Histórica"
@@ -368,50 +366,20 @@ export function GiroDashboardGeral() {
                 strokeDasharray="5 5"
                 dot={false}
                 name="Média Histórica"
+                isAnimationActive={false}
               />
               
-              {/* Linha principal conectando os pontos */}
+              {/* Linha principal */}
               <Line
                 type="monotone"
                 dataKey="Giro Real"
                 stroke="hsl(var(--primary))"
                 strokeWidth={2.5}
-                dot={(props: any) => {
-                  const { cx, cy, payload } = props;
-                  if (payload.isProjecao) {
-                    return (
-                      <circle 
-                        cx={cx} 
-                        cy={cy} 
-                        r={5} 
-                        fill="hsl(var(--primary))" 
-                        strokeWidth={2} 
-                        stroke="hsl(var(--background))"
-                      />
-                    );
-                  }
-                  return (
-                    <circle 
-                      cx={cx} 
-                      cy={cy} 
-                      r={4} 
-                      fill="hsl(var(--primary))" 
-                      stroke="hsl(var(--background))" 
-                      strokeWidth={2}
-                    />
-                  );
-                }}
-                name="Giro Real"
+                dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 2, stroke: "hsl(var(--background))" }}
+                name="Giro Semanal"
                 activeDot={{ r: 6 }}
+                isAnimationActive={false}
               />
-              
-              {/* Gradientes */}
-              <defs>
-                <linearGradient id="colorAgendado" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--purple-500))" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(var(--purple-500))" stopOpacity={0.05} />
-                </linearGradient>
-              </defs>
             </ComposedChart>
           </ResponsiveContainer>
           
