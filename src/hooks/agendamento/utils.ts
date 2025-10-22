@@ -34,6 +34,7 @@ export const convertDbRowToAgendamento = (row: any): AgendamentoCliente => {
 
 export const convertToAgendamentoItem = (agendamento: any, cliente: any): AgendamentoItem => {
   return {
+    id: agendamento.id,
     cliente: {
       id: cliente.id,
       nome: cliente.nome,

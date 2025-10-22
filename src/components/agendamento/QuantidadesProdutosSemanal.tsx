@@ -54,12 +54,22 @@ export default function QuantidadesProdutosSemanal({
         return;
       }
 
+      console.log('🔍 Calculando quantidades para', agendamentosSemana.length, 'agendamentos');
+
       setLoading(true);
       try {
         const quantidadesTemp: Record<string, ProdutoQuantidade> = {};
 
         // Processar cada agendamento
         for (const agendamento of agendamentosSemana) {
+          // Validar que o ID existe
+          if (!agendamento.id) {
+            console.error('❌ Agendamento sem ID:', agendamento);
+            continue;
+          }
+
+          console.log('📦 Processando agendamento:', agendamento.id, 'Status:', agendamento.statusAgendamento);
+
           try {
             // Chamar a função RPC para calcular os itens
             const { data, error } = await supabase.rpc('compute_entrega_itens_v2', {
@@ -67,9 +77,11 @@ export default function QuantidadesProdutosSemanal({
             });
 
             if (error) {
-              console.error(`Erro ao calcular itens para ${agendamento.cliente.nome}:`, error);
+              console.error(`❌ Erro ao calcular itens para ${agendamento.cliente.nome}:`, error);
               continue;
             }
+
+            console.log('✅ Itens recebidos para agendamento', agendamento.id, ':', data);
 
             if (data && Array.isArray(data)) {
               // Agregar quantidades por produto
@@ -90,13 +102,14 @@ export default function QuantidadesProdutosSemanal({
               });
             }
           } catch (error) {
-            console.error(`Erro ao processar agendamento ${agendamento.cliente.nome}:`, error);
+            console.error(`❌ Erro ao processar agendamento ${agendamento.cliente.nome}:`, error);
           }
         }
 
+        console.log('📊 Resultado final:', quantidadesTemp);
         setQuantidadesPorProduto(quantidadesTemp);
       } catch (error) {
-        console.error('Erro ao calcular quantidades de produtos:', error);
+        console.error('❌ Erro ao calcular quantidades de produtos:', error);
       } finally {
         setLoading(false);
       }

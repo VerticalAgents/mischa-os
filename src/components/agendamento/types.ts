@@ -2,6 +2,7 @@
 import { Cliente, Pedido, StatusAgendamentoCliente } from "@/types";
 
 export interface AgendamentoItem {
+  id?: string;
   cliente: Cliente;
   pedido?: Pedido;
   dataReposicao: Date;
