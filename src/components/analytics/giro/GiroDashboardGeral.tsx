@@ -64,6 +64,37 @@ CustomTooltip.displayName = 'CustomTooltip';
 export function GiroDashboardGeral() {
   const { dados, loading, error } = useGiroDashboardGeral();
 
+  // Hooks devem ser sempre chamados na mesma ordem entre renders.
+  // Usamos valores seguros enquanto carrega/erro para manter a ordem.
+  const historicoSemanasSafe = dados?.historicoSemanas ?? [];
+  const mediaGeralSafe = dados?.mediaGeral ?? 0;
+
+  // Memoizar dados do gráfico (sempre chamado)
+  const chartData = useMemo(() => 
+    historicoSemanasSafe.map((sem: any) => ({
+      semana: sem.semana,
+      periodoInicio: sem.periodoInicio,
+      periodoFim: sem.periodoFim,
+      'Giro Real': sem.giroReal + (sem.giroAgendado || 0),
+      'Giro Agendado': sem.giroAgendado || null,
+      'Média Histórica': Math.round(mediaGeralSafe),
+      isProjecao: sem.isProjecao || false
+    })), [historicoSemanasSafe, mediaGeralSafe]
+  );
+
+  // Funções memoizadas (sempre chamadas)
+  const getTendenciaIcon = useCallback((tipo: string) => {
+    if (tipo === 'crescimento') return <TrendingUp className="h-4 w-4" />;
+    if (tipo === 'queda') return <TrendingDown className="h-4 w-4" />;
+    return <Minus className="h-4 w-4" />;
+  }, []);
+
+  const getTendenciaColor = useCallback((tipo: string) => {
+    if (tipo === 'crescimento') return 'bg-green-600 text-white';
+    if (tipo === 'queda') return 'bg-red-600 text-white';
+    return 'bg-muted text-muted-foreground';
+  }, []);
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -137,30 +168,6 @@ export function GiroDashboardGeral() {
     diasRestantes
   } = dados;
 
-  // Memoizar dados do gráfico
-  const chartData = useMemo(() => 
-    historicoSemanas.map((sem) => ({
-      semana: sem.semana,
-      periodoInicio: sem.periodoInicio,
-      periodoFim: sem.periodoFim,
-      'Giro Real': sem.giroReal + (sem.giroAgendado || 0),
-      'Giro Agendado': sem.giroAgendado || null,
-      'Média Histórica': Math.round(mediaGeral),
-      isProjecao: sem.isProjecao || false
-    })), [historicoSemanas, mediaGeral]
-  );
-
-  const getTendenciaIcon = useCallback((tipo: string) => {
-    if (tipo === 'crescimento') return <TrendingUp className="h-4 w-4" />;
-    if (tipo === 'queda') return <TrendingDown className="h-4 w-4" />;
-    return <Minus className="h-4 w-4" />;
-  }, []);
-
-  const getTendenciaColor = useCallback((tipo: string) => {
-    if (tipo === 'crescimento') return 'bg-green-600 text-white';
-    if (tipo === 'queda') return 'bg-red-600 text-white';
-    return 'bg-muted text-muted-foreground';
-  }, []);
 
   return (
     <div className="space-y-6">
