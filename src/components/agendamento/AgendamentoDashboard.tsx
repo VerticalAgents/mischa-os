@@ -521,14 +521,14 @@ export default function AgendamentoDashboard() {
         </Card>
       </div>
 
-      {/* Quantidades de Produtos da Semana */}
-      <QuantidadesProdutosSemanal 
-        agendamentosFiltrados={agendamentosFiltrados} 
-        semanaAtual={semanaAtual} 
-      />
-
-      {/* Entregas Realizadas da Semana */}
-      <EntregasRealizadasSemanal semanaAtual={semanaAtual} />
+      {/* Resumo de Produtos da Semana */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <QuantidadesProdutosSemanal 
+          agendamentosFiltrados={agendamentosFiltrados} 
+          semanaAtual={semanaAtual} 
+        />
+        <EntregasRealizadasSemanal semanaAtual={semanaAtual} />
+      </div>
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -133,23 +133,22 @@ export default function QuantidadesProdutosSemanal({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Quantidades de Produtos da Semana</CardTitle>
-            <CardDescription className="text-left mt-1">
-              Produtos necessários para atender os pedidos {incluirPrevistos ? "confirmados e previstos" : "confirmados"}
-            </CardDescription>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="incluir-previstos"
-              checked={incluirPrevistos}
-              onCheckedChange={setIncluirPrevistos}
-            />
-            <Label htmlFor="incluir-previstos" className="text-sm cursor-pointer">
-              Incluir previstos
-            </Label>
-          </div>
+        <CardTitle className="flex items-center gap-2">
+          <Package className="h-5 w-5 text-primary" />
+          Produtos Necessários
+        </CardTitle>
+        <CardDescription className="text-left">
+          Quantidades para pedidos {incluirPrevistos ? "confirmados e previstos" : "confirmados"}
+        </CardDescription>
+        <div className="flex items-center space-x-2 mt-3">
+          <Switch
+            id="incluir-previstos"
+            checked={incluirPrevistos}
+            onCheckedChange={setIncluirPrevistos}
+          />
+          <Label htmlFor="incluir-previstos" className="text-sm cursor-pointer">
+            Incluir previstos
+          </Label>
         </div>
       </CardHeader>
       <CardContent>
@@ -168,12 +167,10 @@ export default function QuantidadesProdutosSemanal({
         ) : (
           <div className="space-y-4">
             {/* Total Geral */}
-            <div className="flex items-center justify-between p-4 bg-primary/10 rounded-lg border border-primary/20">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Quantidade Total</p>
-                <p className="text-2xl font-bold">{quantidadeTotal}</p>
-              </div>
-              <Badge variant="default" className="text-lg px-4 py-2">
+            <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
+              <p className="text-sm text-muted-foreground mb-1">Quantidade Total Necessária</p>
+              <p className="text-3xl font-bold text-primary">{quantidadeTotal}</p>
+              <Badge variant="default" className="mt-2">
                 {agendamentosSemana.length} {agendamentosSemana.length === 1 ? 'pedido' : 'pedidos'}
               </Badge>
             </div>

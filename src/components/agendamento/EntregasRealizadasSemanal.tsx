@@ -114,10 +114,10 @@ export default function EntregasRealizadasSemanal({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CheckCircle2 className="h-5 w-5 text-green-600" />
-          Entregas Realizadas da Semana
+          Produtos Entregues
         </CardTitle>
         <CardDescription className="text-left">
-          Resumo das entregas já concluídas nesta semana
+          Quantidades já entregues nesta semana
         </CardDescription>
       </CardHeader>
 
