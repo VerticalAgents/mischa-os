@@ -2,10 +2,11 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, Users, Package, Settings, Target } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, Package, Settings, Target } from 'lucide-react';
 import { useGiroAnalysisConsolidated } from '@/hooks/useGiroAnalysisConsolidated';
 import { GiroAnalysisFiltersComponent } from '@/components/analytics/giro/GiroAnalysisFilters';
 import { GiroOverviewCards } from '@/components/analytics/giro/GiroOverviewCards';
+import { GiroDashboardGeral } from '@/components/analytics/giro/GiroDashboardGeral';
 import { GiroOverviewGeneral } from '@/components/analytics/giro/GiroOverviewGeneral';
 import { GiroRankingClientes } from '@/components/analytics/giro/GiroRankingClientes';
 import { GiroPorCategoria } from '@/components/analytics/giro/GiroPorCategoria';
@@ -15,7 +16,7 @@ import { GiroAnalysisFilters } from '@/types/giroAnalysis';
 
 export default function AnaliseGiro() {
   const [filtros, setFiltros] = useState<GiroAnalysisFilters>({});
-  const [activeTab, setActiveTab] = useState('visao-geral');
+  const [activeTab, setActiveTab] = useState('dashboard');
   
   const {
     dadosConsolidados,
@@ -71,7 +72,11 @@ export default function AnaliseGiro() {
       {overview && <GiroOverviewCards overview={overview} />}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="dashboard" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Dashboard
+          </TabsTrigger>
           <TabsTrigger value="visao-geral" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             Visão Geral
@@ -93,6 +98,10 @@ export default function AnaliseGiro() {
             Otimização de Periodicidade
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-6">
+          <GiroDashboardGeral />
+        </TabsContent>
 
         <TabsContent value="visao-geral" className="space-y-6">
           <GiroOverviewGeneral 

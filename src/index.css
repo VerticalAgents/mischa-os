@@ -35,6 +35,10 @@
     --sidebar-accent-foreground: 262 83.3% 57.8%;
     --sidebar-border: 214.3 31.8% 91.4%;
     --sidebar-ring: 221.2 83.2% 53.3%;
+    
+    /* Cores adicionais para gráficos */
+    --purple-500: 262 83% 58%;
+    --purple-600: 262 83% 48%;
   }
 
   .dark {
@@ -67,6 +71,10 @@
     --sidebar-accent-foreground: 262 83.3% 76%;
     --sidebar-border: 217.2 32.6% 20%;
     --sidebar-ring: 224.3 76.3% 48%;
+    
+    /* Cores adicionais para gráficos em modo escuro */
+    --purple-500: 262 83% 68%;
+    --purple-600: 262 83% 58%;
   }
 }
 
