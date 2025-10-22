@@ -3,9 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Package, Loader2, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
+import { Package, Loader2, ChevronDown, ChevronUp, CheckCircle2, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { startOfWeek, endOfWeek } from "date-fns";
+import { startOfWeek, endOfWeek, subWeeks } from "date-fns";
 interface EntregasRealizadasSemanelProps {
   semanaAtual: Date;
 }
@@ -18,35 +18,52 @@ export default function EntregasRealizadasSemanal({
   semanaAtual
 }: EntregasRealizadasSemanelProps) {
   const [quantidadesPorProduto, setQuantidadesPorProduto] = useState<Record<string, ProdutoQuantidade>>({});
+  const [quantidadeSemanaAnterior, setQuantidadeSemanaAnterior] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  // Calcular início e fim da semana
+  // Calcular início e fim da semana atual e anterior
   const {
     inicioSemana,
-    fimSemana
+    fimSemana,
+    inicioSemanaAnterior,
+    fimSemanaAnterior
   } = useMemo(() => {
+    const semanaAnterior = subWeeks(semanaAtual, 1);
     return {
       inicioSemana: startOfWeek(semanaAtual, {
         weekStartsOn: 1
       }),
       fimSemana: endOfWeek(semanaAtual, {
         weekStartsOn: 1
+      }),
+      inicioSemanaAnterior: startOfWeek(semanaAnterior, {
+        weekStartsOn: 1
+      }),
+      fimSemanaAnterior: endOfWeek(semanaAnterior, {
+        weekStartsOn: 1
       })
     };
   }, [semanaAtual]);
 
-  // Buscar entregas da semana e calcular quantidades
+  // Buscar entregas da semana atual e anterior
   useEffect(() => {
     const calcularQuantidades = async () => {
       setLoading(true);
       try {
-        // Buscar entregas da semana
+        // Buscar entregas da semana atual
         const {
           data: entregas,
           error: entregasError
         } = await supabase.from('historico_entregas').select('id, quantidade, itens').eq('tipo', 'entrega').gte('data', inicioSemana.toISOString()).lte('data', fimSemana.toISOString());
         if (entregasError) throw entregasError;
+
+        // Buscar entregas da semana anterior
+        const {
+          data: entregasAnterior,
+          error: entregasAnteriorError
+        } = await supabase.from('historico_entregas').select('id, quantidade, itens').eq('tipo', 'entrega').gte('data', inicioSemanaAnterior.toISOString()).lte('data', fimSemanaAnterior.toISOString());
+        if (entregasAnteriorError) throw entregasAnteriorError;
 
         // Buscar produtos para obter nomes
         const {
@@ -58,7 +75,7 @@ export default function EntregasRealizadasSemanal({
         // Criar mapa de produtos
         const produtosMap = new Map(produtos?.map(p => [p.id, p.nome]) || []);
 
-        // Agregar quantidades por produto
+        // Agregar quantidades por produto (semana atual)
         const quantidadesTemp: Record<string, ProdutoQuantidade> = {};
         entregas?.forEach(entrega => {
           if (!entrega.itens || !Array.isArray(entrega.itens)) {
@@ -85,40 +102,74 @@ export default function EntregasRealizadasSemanal({
           });
         });
         setQuantidadesPorProduto(quantidadesTemp);
+
+        // Calcular total da semana anterior
+        let totalAnterior = 0;
+        entregasAnterior?.forEach(entrega => {
+          if (!entrega.itens || !Array.isArray(entrega.itens)) return;
+          entrega.itens.forEach((item: any) => {
+            if (item.quantidade) {
+              totalAnterior += item.quantidade;
+            }
+          });
+        });
+        setQuantidadeSemanaAnterior(totalAnterior);
       } catch (error) {
         console.error('Erro ao carregar entregas:', error);
         setQuantidadesPorProduto({});
+        setQuantidadeSemanaAnterior(0);
       } finally {
         setLoading(false);
       }
     };
     calcularQuantidades();
-  }, [inicioSemana, fimSemana]);
+  }, [inicioSemana, fimSemana, inicioSemanaAnterior, fimSemanaAnterior]);
 
-  // Calcular totais e ordenar produtos
+  // Calcular totais, percentual e ordenar produtos
   const {
     quantidadeTotal,
     totalEntregas,
-    produtosOrdenados
+    produtosOrdenados,
+    percentualEntregue
   } = useMemo(() => {
     const produtos = Object.values(quantidadesPorProduto);
     const total = produtos.reduce((acc, p) => acc + p.quantidade, 0);
     const ordenados = [...produtos].sort((a, b) => b.quantidade - a.quantidade);
+    const percentual = quantidadeSemanaAnterior > 0 
+      ? (total / quantidadeSemanaAnterior) * 100 
+      : 0;
     return {
       quantidadeTotal: total,
       totalEntregas: produtos.length > 0 ? produtos.length : 0,
-      produtosOrdenados: ordenados
+      produtosOrdenados: ordenados,
+      percentualEntregue: percentual
     };
-  }, [quantidadesPorProduto]);
+  }, [quantidadesPorProduto, quantidadeSemanaAnterior]);
   return <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-green-600" />
-          Produtos Entregues
-        </CardTitle>
-        <CardDescription className="text-left">
-          Quantidades já entregues nesta semana
-        </CardDescription>
+        <div className="flex items-start justify-between">
+          <div className="space-y-1.5">
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              Produtos Entregues
+            </CardTitle>
+            <CardDescription className="text-left">
+              Quantidades já entregues nesta semana
+            </CardDescription>
+          </div>
+          {quantidadeSemanaAnterior > 0 && (
+            <div className="flex flex-col items-end text-right">
+              <div className="text-xs text-muted-foreground mb-1">Semana anterior</div>
+              <div className="text-lg font-semibold text-foreground">{quantidadeSemanaAnterior}</div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <TrendingUp className="h-3 w-3 text-green-600" />
+                <span className="text-sm font-medium text-green-600">
+                  {percentualEntregue.toFixed(0)}%
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </CardHeader>
 
       <CardContent>
