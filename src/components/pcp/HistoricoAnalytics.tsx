@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProductionAnalytics } from "@/hooks/useProductionAnalytics";
-import { TrendingUp, TrendingDown, Package, Calendar } from "lucide-react";
-import { format, subMonths, startOfMonth, endOfMonth, subYears } from "date-fns";
+import { TrendingUp, TrendingDown, Package, Calendar, Factory } from "lucide-react";
+import { format, subMonths, startOfMonth, endOfMonth, subYears, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 export default function HistoricoAnalytics() {
   const hoje = new Date();
@@ -48,6 +48,17 @@ export default function HistoricoAnalytics() {
   } = useProductionAnalytics({
     startDate: inicioMesAnterior,
     endDate: fimMesAnterior,
+    aggregation: 'day'
+  });
+
+  // Últimos 90 dias
+  const inicio90Dias = subDays(hoje, 90);
+  const {
+    kpis: kpis90Dias,
+    topProducts: produtos90Dias
+  } = useProductionAnalytics({
+    startDate: inicio90Dias,
+    endDate: hoje,
     aggregation: 'day'
   });
 
@@ -120,6 +131,61 @@ export default function HistoricoAnalytics() {
                 {Math.abs(variacaoAnoAnterior).toFixed(1)}%
               </span>
               <span className="text-muted-foreground">de diferença</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Estatísticas dos Últimos 90 Dias */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Factory className="h-5 w-5" />
+              Total de Formas - Últimos 90 dias
+            </CardTitle>
+            <CardDescription className="text-left">
+              Produção total de formas no período
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold text-primary">
+              {kpis90Dias.totalFormsProduced.toLocaleString('pt-BR')}
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Formas produzidas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Produção por Produto
+            </CardTitle>
+            <CardDescription className="text-left">
+              Distribuição dos últimos 90 dias
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {produtos90Dias.slice(0, 5).map((produto) => (
+                <div key={produto.productName} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">{produto.productName}</span>
+                    <span className="text-muted-foreground">
+                      {produto.totalForms.toLocaleString('pt-BR')} formas ({produto.percentage.toFixed(1)}%)
+                    </span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary transition-all duration-300"
+                      style={{ width: `${produto.percentage}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
