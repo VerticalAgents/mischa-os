@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Trash2, Calendar, ChevronDown, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Calendar, ChevronDown, ChevronRight, Eye, EyeOff, TrendingUp, Package } from 'lucide-react';
 import { useSupabaseHistoricoProducao } from '@/hooks/useSupabaseHistoricoProducao';
 import { HistoricoProducaoModal } from './HistoricoProducaoModal';
 import { ConfirmacaoProducaoButton } from './ConfirmacaoProducaoButton';
-import { format, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { format, startOfWeek, endOfWeek, isWithinInterval, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
@@ -121,6 +121,46 @@ export default function HistoricoProducao() {
     return acc;
   }, []).sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
+  // Calcular estatísticas dos últimos 90 dias
+  const estatisticas90Dias = useMemo(() => {
+    const agora = new Date();
+    const inicio90Dias = subDays(agora, 90);
+    
+    const registrosUltimos90Dias = historico.filter(registro => {
+      const dataRegistro = new Date(registro.data_producao + 'T12:00:00');
+      return dataRegistro >= inicio90Dias && dataRegistro <= agora;
+    });
+
+    const totalFormas = registrosUltimos90Dias.reduce((sum, r) => sum + (r.formas_producidas || 0), 0);
+    
+    // Agrupar por produto
+    const porProduto = registrosUltimos90Dias.reduce((acc, registro) => {
+      const nome = registro.produto_nome;
+      if (!acc[nome]) {
+        acc[nome] = {
+          nome,
+          formas: 0,
+          unidades: 0
+        };
+      }
+      acc[nome].formas += registro.formas_producidas || 0;
+      acc[nome].unidades += registro.unidades_previstas || registro.unidades_calculadas || 0;
+      return acc;
+    }, {} as Record<string, { nome: string; formas: number; unidades: number }>);
+
+    const produtosComPercentual = Object.values(porProduto)
+      .map(produto => ({
+        ...produto,
+        percentual: totalFormas > 0 ? (produto.formas / totalFormas) * 100 : 0
+      }))
+      .sort((a, b) => b.formas - a.formas);
+
+    return {
+      totalFormas,
+      produtos: produtosComPercentual
+    };
+  }, [historico]);
+
   // Separar dias por semana
   const agora = new Date();
   const inicioSemanaAtual = startOfWeek(agora, { weekStartsOn: 1 }); // Segunda-feira
@@ -168,6 +208,57 @@ export default function HistoricoProducao() {
 
   return (
     <div className="space-y-6">
+      {/* Estatísticas dos últimos 90 dias */}
+      {estatisticas90Dias.produtos.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <TrendingUp className="h-5 w-5" />
+                Total de Formas - Últimos 90 dias
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-primary">
+                {estatisticas90Dias.totalFormas}
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Formas produzidas
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Package className="h-5 w-5" />
+                Produção por Produto
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {estatisticas90Dias.produtos.map((produto) => (
+                  <div key={produto.nome} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{produto.nome}</span>
+                      <span className="text-muted-foreground">
+                        {produto.formas} formas ({produto.percentual.toFixed(1)}%)
+                      </span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all duration-300"
+                        style={{ width: `${produto.percentual}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
