@@ -18,11 +18,12 @@ export interface ProdutoEstoqueDisponivel {
 export const useEstoqueDisponivel = () => {
   const { produtos: produtosBase, loading: loadingProdutos } = useSupabaseProdutos();
   const { obterSaldoProduto } = useMovimentacoesEstoqueProdutos();
-  const { pedidos } = useExpedicaoStore();
+  const { pedidos, carregarPedidos, isLoading: loadingExpedicao } = useExpedicaoStore();
   
   const [saldos, setSaldos] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [parcial, setParcial] = useState(false);
 
   // Filtrar pedidos separados e despachados
   const pedidosSeparados = useMemo(
@@ -35,6 +36,14 @@ export const useEstoqueDisponivel = () => {
     [pedidos]
   );
 
+  // Garantir que pedidos da expedição estejam carregados neste contexto
+  useEffect(() => {
+    if (pedidos.length === 0 && !loadingExpedicao) {
+      console.log('[EstoqueDisponivel] Nenhum pedido na store; carregando pedidos de expedição...');
+      carregarPedidos().catch(err => console.error('[EstoqueDisponivel] Erro ao carregar pedidos:', err));
+    }
+  }, [pedidos.length, loadingExpedicao, carregarPedidos]);
+
   // Usar hook para calcular quantidades de expedição
   const {
     quantidadesSeparadas,
@@ -44,9 +53,19 @@ export const useEstoqueDisponivel = () => {
     obterQuantidadeDespachada
   } = useQuantidadesExpedicao(pedidosSeparados, pedidosDespachados);
 
+  // Atualizar indicador de dados parciais
+  useEffect(() => {
+    setParcial(calculandoExpedicao);
+  }, [calculandoExpedicao]);
+
   // Carregar saldos de produtos
   const carregarSaldos = useCallback(async () => {
-    if (produtosBase.length === 0) return;
+    if (produtosBase.length === 0) {
+      // Garantir que não fiquemos travados em loading quando não há produtos
+      setSaldos({});
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(false);
@@ -89,18 +108,36 @@ export const useEstoqueDisponivel = () => {
     carregarSaldos();
   }, [carregarSaldos]);
 
+  // Timeout de segurança para evitar loading infinito
+  useEffect(() => {
+    if (!loading) return;
+    const t = setTimeout(() => {
+      console.warn('[EstoqueDisponivel] Timeout no carregamento de saldos, finalizando com erro');
+      setLoading(false);
+      setError(true);
+    }, 15000);
+    return () => clearTimeout(t);
+  }, [loading]);
+
   // Processar dados para o formato final
   const produtosComEstoque = useMemo((): ProdutoEstoqueDisponivel[] => {
-    if (loadingProdutos || loading || calculandoExpedicao) return [];
+    if (loadingProdutos || loading) {
+      console.log('[EstoqueDisponivel] Aguardando dados base...', { loadingProdutos, loading });
+      return [];
+    }
 
-    console.log('[EstoqueDisponivel] Processando produtos com estoque...');
+    console.log('[EstoqueDisponivel] Processando produtos com estoque...', {
+      produtosAtivos: produtosBase.filter(p => p.ativo).length,
+      saldosCarregados: Object.keys(saldos).length,
+      calculandoExpedicao
+    });
     
     return produtosBase
       .filter(p => p.ativo)
       .map(produto => {
         const saldo_atual = saldos[produto.id] || 0;
-        const quantidade_separada = obterQuantidadeSeparada(produto.nome);
-        const quantidade_despachada = obterQuantidadeDespachada(produto.nome);
+        const quantidade_separada = calculandoExpedicao ? 0 : obterQuantidadeSeparada(produto.nome);
+        const quantidade_despachada = calculandoExpedicao ? 0 : obterQuantidadeDespachada(produto.nome);
         const estoque_disponivel = saldo_atual - (quantidade_separada + quantidade_despachada);
 
         return {

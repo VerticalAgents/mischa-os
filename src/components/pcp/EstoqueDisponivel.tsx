@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronUp, RefreshCw, Package, AlertCircle, TrendingDown, TrendingUp } from "lucide-react";
 import { useEstoqueDisponivel } from "@/hooks/useEstoqueDisponivel";
@@ -14,6 +15,7 @@ export function EstoqueDisponivel({ className }: EstoqueDisponivelProps) {
   const { 
     produtos, 
     loading, 
+    parcial,
     error,
     totalDisponivel,
     totalSeparado,
@@ -84,6 +86,9 @@ export function EstoqueDisponivel({ className }: EstoqueDisponivelProps) {
         {!loading && !error && produtos.length > 0 && (
           <>
             <div className="space-y-2 rounded-lg border bg-muted/50 p-4">
+              {parcial && (
+                <p className="text-xs text-muted-foreground">Alguns dados ainda estão sendo calculados…</p>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Total Disponível:</span>
                 <span className={`text-2xl font-bold ${
