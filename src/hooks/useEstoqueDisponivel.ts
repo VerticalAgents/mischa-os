@@ -25,6 +25,14 @@ export const useEstoqueDisponivel = () => {
   const [error, setError] = useState(false);
   const [parcial, setParcial] = useState(false);
 
+  console.log('[EstoqueDisponivel] Hook iniciado', {
+    produtosBase: produtosBase.length,
+    loadingProdutos,
+    pedidos: pedidos.length,
+    loading,
+    loadingExpedicao
+  });
+
   // Filtrar pedidos separados e despachados
   const pedidosSeparados = useMemo(
     () => pedidos.filter((p) => p.substatus_pedido === "Separado"),
@@ -35,6 +43,11 @@ export const useEstoqueDisponivel = () => {
     () => pedidos.filter((p) => p.substatus_pedido === "Despachado"),
     [pedidos]
   );
+
+  console.log('[EstoqueDisponivel] Pedidos filtrados', {
+    separados: pedidosSeparados.length,
+    despachados: pedidosDespachados.length
+  });
 
   // Garantir que pedidos da expedição estejam carregados neste contexto
   useEffect(() => {
@@ -56,12 +69,13 @@ export const useEstoqueDisponivel = () => {
   // Atualizar indicador de dados parciais
   useEffect(() => {
     setParcial(calculandoExpedicao);
+    console.log('[EstoqueDisponivel] Estado parcial:', calculandoExpedicao);
   }, [calculandoExpedicao]);
 
   // Carregar saldos de produtos
   const carregarSaldos = useCallback(async () => {
     if (produtosBase.length === 0) {
-      // Garantir que não fiquemos travados em loading quando não há produtos
+      console.log('[EstoqueDisponivel] Nenhum produto, finalizando loading');
       setSaldos({});
       setLoading(false);
       return;
@@ -79,6 +93,7 @@ export const useEstoqueDisponivel = () => {
         .map(async (produto) => {
           try {
             const saldo = await obterSaldoProduto(produto.id);
+            console.log(`[EstoqueDisponivel] Saldo carregado para ${produto.nome}:`, saldo);
             return { id: produto.id, saldo };
           } catch (err) {
             console.error(`[EstoqueDisponivel] Erro ao obter saldo do produto ${produto.nome}:`, err);
@@ -111,12 +126,12 @@ export const useEstoqueDisponivel = () => {
   // Timeout de segurança para evitar loading infinito
   useEffect(() => {
     if (!loading) return;
-    const t = setTimeout(() => {
-      console.warn('[EstoqueDisponivel] Timeout no carregamento de saldos, finalizando com erro');
+    const timeout = setTimeout(() => {
+      console.warn('[EstoqueDisponivel] Timeout no carregamento de saldos (15s), finalizando com erro');
       setLoading(false);
       setError(true);
     }, 15000);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timeout);
   }, [loading]);
 
   // Processar dados para o formato final
@@ -139,6 +154,13 @@ export const useEstoqueDisponivel = () => {
         const quantidade_separada = calculandoExpedicao ? 0 : obterQuantidadeSeparada(produto.nome);
         const quantidade_despachada = calculandoExpedicao ? 0 : obterQuantidadeDespachada(produto.nome);
         const estoque_disponivel = saldo_atual - (quantidade_separada + quantidade_despachada);
+
+        console.log(`[EstoqueDisponivel] Produto ${produto.nome}:`, {
+          saldo_atual,
+          quantidade_separada,
+          quantidade_despachada,
+          estoque_disponivel
+        });
 
         return {
           produto_id: produto.id,
@@ -167,9 +189,20 @@ export const useEstoqueDisponivel = () => {
     return produtosComEstoque.reduce((sum, p) => sum + p.quantidade_despachada, 0);
   }, [produtosComEstoque]);
 
+  console.log('[EstoqueDisponivel] Retornando:', {
+    produtos: produtosComEstoque.length,
+    loading: loadingProdutos || loading,
+    parcial,
+    error,
+    totalDisponivel,
+    totalSeparado,
+    totalDespachado
+  });
+
   return {
     produtos: produtosComEstoque,
-    loading: loadingProdutos || loading || calculandoExpedicao,
+    loading: loadingProdutos || loading,
+    parcial,
     error,
     totalDisponivel,
     totalSeparado,

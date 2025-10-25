@@ -42,9 +42,14 @@ export function EstoqueDisponivel({ className }: EstoqueDisponivelProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-xl font-semibold">Estoque Disponível</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-xl font-semibold">Estoque Disponível</CardTitle>
+              {parcial && (
+                <Badge variant="outline" className="text-xs">Calculando...</Badge>
+              )}
+            </div>
             <CardDescription>
-              Saldo atual menos quantidades em expedição
+              Saldo atual menos quantidades em expedição{parcial ? ' (valores de expedição sendo processados)' : ''}
             </CardDescription>
           </div>
           <Button
@@ -73,6 +78,9 @@ export function EstoqueDisponivel({ className }: EstoqueDisponivelProps) {
             <div className="flex flex-col items-center gap-2 text-destructive">
               <AlertCircle className="h-6 w-6" />
               <p className="text-sm">Erro ao carregar estoque</p>
+              <Button variant="outline" size="sm" onClick={recarregar}>
+                Tentar novamente
+              </Button>
             </div>
           </div>
         )}
@@ -87,7 +95,7 @@ export function EstoqueDisponivel({ className }: EstoqueDisponivelProps) {
           <>
             <div className="space-y-2 rounded-lg border bg-muted/50 p-4">
               {parcial && (
-                <p className="text-xs text-muted-foreground">Alguns dados ainda estão sendo calculados…</p>
+                <p className="text-xs text-muted-foreground mb-2">⏳ Alguns dados ainda estão sendo calculados...</p>
               )}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Total Disponível:</span>
