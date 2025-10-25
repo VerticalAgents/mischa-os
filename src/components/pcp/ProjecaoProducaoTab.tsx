@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -6,16 +6,140 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Package, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { startOfWeek, endOfWeek } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
+
+interface ProdutoQuantidade {
+  produto_id: string;
+  produto_nome: string;
+  quantidade: number;
+}
 
 export default function ProjecaoProducaoTab() {
   const [incluirPrevistos, setIncluirPrevistos] = useState(false);
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [semanaAtual] = useState(new Date());
+  const [quantidadesPorProduto, setQuantidadesPorProduto] = useState<Record<string, ProdutoQuantidade>>({});
 
-  // Dados mockados temporariamente
-  const produtosOrdenados = useMemo(() => [], []);
-  const quantidadeTotal = useMemo(() => 0, []);
-  const agendamentosSemana: any[] = [];
+  const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
+
+  // Carregar agendamentos na montagem do componente
+  useEffect(() => {
+    const loadData = async () => {
+      console.log('🚀 Carregando agendamentos para projeção...');
+      if (agendamentos.length === 0) {
+        await carregarTodosAgendamentos();
+      }
+    };
+    loadData();
+  }, [carregarTodosAgendamentos]);
+
+  // Filtrar agendamentos da semana
+  const agendamentosSemana = useMemo(() => {
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    
+    const filtrados = agendamentos.filter(agendamento => {
+      const dataAgendamento = new Date(agendamento.dataReposicao);
+      const dentroSemana = dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana;
+      
+      if (!dentroSemana) return false;
+      
+      if (incluirPrevistos) {
+        return agendamento.statusAgendamento === "Agendado" || 
+               agendamento.statusAgendamento === "Previsto";
+      } else {
+        return agendamento.statusAgendamento === "Agendado";
+      }
+    });
+
+    console.log('📊 Agendamentos da semana filtrados:', {
+      total: filtrados.length,
+      incluirPrevistos,
+      inicioSemana: inicioSemana.toISOString(),
+      fimSemana: fimSemana.toISOString()
+    });
+
+    return filtrados;
+  }, [agendamentos, semanaAtual, incluirPrevistos]);
+
+  // Calcular quantidades de produtos
+  useEffect(() => {
+    const calcularQuantidades = async () => {
+      if (agendamentosSemana.length === 0) {
+        console.log('ℹ️ Nenhum agendamento para processar');
+        setQuantidadesPorProduto({});
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      console.log('🔄 Calculando quantidades para', agendamentosSemana.length, 'agendamentos...');
+
+      try {
+        const quantidadesTemp: Record<string, ProdutoQuantidade> = {};
+
+        for (const agendamento of agendamentosSemana) {
+          if (!agendamento.id) {
+            console.warn('⚠️ Agendamento sem ID:', agendamento);
+            continue;
+          }
+
+          console.log('📦 Processando agendamento:', {
+            id: agendamento.id,
+            cliente: agendamento.cliente?.nome,
+            status: agendamento.statusAgendamento
+          });
+
+          const { data, error } = await supabase.rpc('compute_entrega_itens_v2', {
+            p_agendamento_id: agendamento.id
+          });
+
+          if (error) {
+            console.error('❌ Erro ao calcular itens para agendamento', agendamento.id, ':', error);
+            continue;
+          }
+
+          if (data && Array.isArray(data)) {
+            console.log('✅ Itens calculados:', data);
+            data.forEach((item: any) => {
+              const produtoId = item.produto_id;
+              if (quantidadesTemp[produtoId]) {
+                quantidadesTemp[produtoId].quantidade += item.quantidade;
+              } else {
+                quantidadesTemp[produtoId] = {
+                  produto_id: produtoId,
+                  produto_nome: item.produto_nome,
+                  quantidade: item.quantidade
+                };
+              }
+            });
+          }
+        }
+
+        console.log('✅ Quantidades finais calculadas:', quantidadesTemp);
+        setQuantidadesPorProduto(quantidadesTemp);
+      } catch (error) {
+        console.error('❌ Erro ao calcular quantidades:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    calcularQuantidades();
+  }, [agendamentosSemana]);
+
+  // Processar dados para visualização
+  const produtosOrdenados = useMemo(() => {
+    return Object.values(quantidadesPorProduto)
+      .sort((a, b) => b.quantidade - a.quantidade);
+  }, [quantidadesPorProduto]);
+
+  const quantidadeTotal = useMemo(() => {
+    return produtosOrdenados.reduce((sum, produto) => sum + produto.quantidade, 0);
+  }, [produtosOrdenados]);
 
   return (
     <Card>
