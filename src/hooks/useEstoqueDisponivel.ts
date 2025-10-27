@@ -10,13 +10,18 @@ export interface ProdutoEstoqueDisponivel {
   saldo_atual: number;
   quantidade_separada: number;
   quantidade_despachada: number;
+  quantidade_necessaria: number;
   estoque_disponivel: number;
   estoque_minimo: number;
   estoque_ideal: number;
   status: 'critico' | 'baixo' | 'adequado' | 'excesso';
 }
 
-export const useEstoqueDisponivel = () => {
+interface QuantidadesNecessarias {
+  [produto_id: string]: number;
+}
+
+export const useEstoqueDisponivel = (quantidadesNecessarias: QuantidadesNecessarias = {}) => {
   const { produtos: produtosBase, loading: loadingProdutos } = useSupabaseProdutos();
   const { pedidos, carregarPedidos } = useExpedicaoStore();
   const [saldos, setSaldos] = useState<Record<string, number>>({});
@@ -121,7 +126,8 @@ export const useEstoqueDisponivel = () => {
     console.log('🔄 [EstoqueDisponivel] Calculando estoque disponível...', {
       produtos: produtosBase.length,
       saldos: Object.keys(saldos).length,
-      quantidades: Object.keys(quantidadesPorProduto).length
+      quantidades: Object.keys(quantidadesPorProduto).length,
+      necessarias: Object.keys(quantidadesNecessarias).length
     });
 
     return produtosBase
@@ -130,7 +136,10 @@ export const useEstoqueDisponivel = () => {
         const saldo_atual = saldos[produto.id] || 0;
         const quantidade_separada = quantidadesPorProduto[produto.nome] || 0;
         const quantidade_despachada = 0; // Já incluído em quantidadesPorProduto
-        const estoque_disponivel = saldo_atual - quantidade_separada;
+        const quantidade_necessaria = quantidadesNecessarias[produto.id] || 0;
+        
+        // Calcular disponível: saldo - (separado + necessário para produção)
+        const estoque_disponivel = saldo_atual - quantidade_separada - quantidade_necessaria;
 
         let status: 'critico' | 'baixo' | 'adequado' | 'excesso' = 'adequado';
         if (estoque_disponivel < 0) {
@@ -147,6 +156,7 @@ export const useEstoqueDisponivel = () => {
           saldo_atual,
           quantidade_separada,
           quantidade_despachada,
+          quantidade_necessaria,
           estoque_disponivel,
           estoque_minimo: produto.estoque_minimo || 0,
           estoque_ideal: produto.estoque_ideal || 0,
@@ -154,7 +164,7 @@ export const useEstoqueDisponivel = () => {
         };
       })
       .sort((a, b) => a.estoque_disponivel - b.estoque_disponivel);
-  }, [produtosBase, saldos, quantidadesPorProduto, loadingProdutos, loading]);
+  }, [produtosBase, saldos, quantidadesPorProduto, quantidadesNecessarias, loadingProdutos, loading]);
 
   // Calcular totais
   const totalDisponivel = useMemo(() => {
@@ -167,6 +177,10 @@ export const useEstoqueDisponivel = () => {
 
   const totalDespachado = useMemo(() => {
     return produtosComEstoque.reduce((sum, p) => sum + p.quantidade_despachada, 0);
+  }, [produtosComEstoque]);
+
+  const totalNecessario = useMemo(() => {
+    return produtosComEstoque.reduce((sum, p) => sum + p.quantidade_necessaria, 0);
   }, [produtosComEstoque]);
 
   const recarregar = useCallback(async () => {
@@ -182,6 +196,7 @@ export const useEstoqueDisponivel = () => {
     totalDisponivel,
     totalSeparado,
     totalDespachado,
+    totalNecessario,
     recarregar
   };
 };

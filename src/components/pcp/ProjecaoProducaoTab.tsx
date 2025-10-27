@@ -142,6 +142,15 @@ export default function ProjecaoProducaoTab() {
     return produtosOrdenados.reduce((sum, produto) => sum + produto.quantidade, 0);
   }, [produtosOrdenados]);
 
+  // Converter para formato esperado pelo EstoqueDisponivel
+  const quantidadesNecessarias = useMemo(() => {
+    const resultado: Record<string, number> = {};
+    Object.values(quantidadesPorProduto).forEach(produto => {
+      resultado[produto.produto_id] = produto.quantidade;
+    });
+    return resultado;
+  }, [quantidadesPorProduto]);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Bloco Existente - Produtos Necessários */}
@@ -230,7 +239,7 @@ export default function ProjecaoProducaoTab() {
       </Card>
 
       {/* NOVO Bloco - Estoque Disponível */}
-      <EstoqueDisponivel />
+      <EstoqueDisponivel quantidadesNecessarias={quantidadesNecessarias} />
     </div>
   );
 }

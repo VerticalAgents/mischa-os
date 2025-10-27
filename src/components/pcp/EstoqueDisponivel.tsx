@@ -8,7 +8,11 @@ import { useEstoqueDisponivel } from "@/hooks/useEstoqueDisponivel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-export default function EstoqueDisponivel() {
+interface EstoqueDisponivelProps {
+  quantidadesNecessarias?: Record<string, number>;
+}
+
+export default function EstoqueDisponivel({ quantidadesNecessarias = {} }: EstoqueDisponivelProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const { 
     produtos, 
@@ -16,8 +20,9 @@ export default function EstoqueDisponivel() {
     error, 
     totalDisponivel, 
     totalSeparado,
+    totalNecessario,
     recarregar 
-  } = useEstoqueDisponivel();
+  } = useEstoqueDisponivel(quantidadesNecessarias);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -119,6 +124,11 @@ export default function EstoqueDisponivel() {
                     {totalSeparado} separados
                   </Badge>
                 )}
+                {totalNecessario > 0 && (
+                  <Badge variant="outline">
+                    {totalNecessario} necessários
+                  </Badge>
+                )}
               </div>
             </div>
 
@@ -148,6 +158,7 @@ export default function EstoqueDisponivel() {
                               <span className="font-medium">{produto.produto_nome}</span>
                               <p className="text-xs text-muted-foreground mt-0.5 text-left">
                                 Saldo: {produto.saldo_atual} | Separado: {produto.quantidade_separada}
+                                {produto.quantidade_necessaria > 0 && ` | Necessário: ${produto.quantidade_necessaria}`}
                               </p>
                             </div>
                           </div>
