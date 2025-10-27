@@ -25,7 +25,7 @@ export default function EstoqueInsumos() {
       <div className="mt-8">
         <Tabs value={activeTab} onValueChange={changeTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="produtos">Produtos Acabados</TabsTrigger>
+            <TabsTrigger value="produtos">Produtos</TabsTrigger>
             <TabsTrigger value="insumos">Insumos</TabsTrigger>
             <TabsTrigger value="pedidos">Compras</TabsTrigger>
           </TabsList>
