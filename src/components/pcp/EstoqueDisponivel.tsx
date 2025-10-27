@@ -10,9 +10,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 interface EstoqueDisponivelProps {
   quantidadesNecessarias?: Record<string, number>;
+  ordemProdutosNecessarios?: string[]; // IDs na ordem correta
 }
 
-export default function EstoqueDisponivel({ quantidadesNecessarias = {} }: EstoqueDisponivelProps) {
+export default function EstoqueDisponivel({ quantidadesNecessarias = {}, ordemProdutosNecessarios = [] }: EstoqueDisponivelProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [showSemPrevisao, setShowSemPrevisao] = useState(false);
   const { 
@@ -27,8 +28,28 @@ export default function EstoqueDisponivel({ quantidadesNecessarias = {} }: Estoq
 
   // Separar produtos com e sem previsão
   const produtosComPrevisao = useMemo(() => {
-    return produtos.filter(p => p.quantidade_necessaria > 0);
-  }, [produtos]);
+    const comPrevisao = produtos.filter(p => p.quantidade_necessaria > 0);
+    
+    // Ordenar de acordo com a ordem dos produtos necessários
+    return comPrevisao.sort((a, b) => {
+      const indexA = ordemProdutosNecessarios.indexOf(a.produto_id);
+      const indexB = ordemProdutosNecessarios.indexOf(b.produto_id);
+      
+      // Se ambos estão na lista, usar a ordem da lista
+      if (indexA !== -1 && indexB !== -1) {
+        return indexA - indexB;
+      }
+      
+      // Se apenas A está na lista, A vem primeiro
+      if (indexA !== -1) return -1;
+      
+      // Se apenas B está na lista, B vem primeiro
+      if (indexB !== -1) return 1;
+      
+      // Se nenhum está na lista, manter ordem atual
+      return 0;
+    });
+  }, [produtos, ordemProdutosNecessarios]);
 
   const produtosSemPrevisao = useMemo(() => {
     return produtos.filter(p => p.quantidade_necessaria === 0);

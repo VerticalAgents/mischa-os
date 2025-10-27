@@ -151,6 +151,11 @@ export default function ProjecaoProducaoTab() {
     return resultado;
   }, [quantidadesPorProduto]);
 
+  // Ordem dos produtos conforme exibidos (pela quantidade necessária)
+  const ordemProdutosNecessarios = useMemo(() => {
+    return produtosOrdenados.map(p => p.produto_id);
+  }, [produtosOrdenados]);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Bloco Existente - Produtos Necessários */}
@@ -239,7 +244,10 @@ export default function ProjecaoProducaoTab() {
       </Card>
 
       {/* NOVO Bloco - Estoque Disponível */}
-      <EstoqueDisponivel quantidadesNecessarias={quantidadesNecessarias} />
+      <EstoqueDisponivel 
+        quantidadesNecessarias={quantidadesNecessarias}
+        ordemProdutosNecessarios={ordemProdutosNecessarios}
+      />
     </div>
   );
 }
