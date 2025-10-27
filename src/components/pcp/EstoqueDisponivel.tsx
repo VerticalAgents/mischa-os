@@ -104,12 +104,12 @@ export default function EstoqueDisponivel() {
         ) : (
           <div className="space-y-4">
             {/* Total Geral */}
-            <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
+            <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20 text-center">
               <p className="text-sm text-muted-foreground mb-1">Estoque Total Disponível</p>
               <p className={`text-3xl font-bold ${totalDisponivel < 0 ? 'text-red-500' : 'text-primary'}`}>
                 {totalDisponivel}
               </p>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center justify-center gap-2 mt-2">
                 <Badge variant="default">
                   {produtos.length} {produtos.length === 1 ? 'produto' : 'produtos'}
                 </Badge>
@@ -141,11 +141,11 @@ export default function EstoqueDisponivel() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 text-left">
                             {getStatusIcon(produto.status)}
                             <div>
                               <span className="font-medium">{produto.produto_nome}</span>
-                              <p className="text-xs text-muted-foreground mt-0.5">
+                              <p className="text-xs text-muted-foreground mt-0.5 text-left">
                                 Saldo: {produto.saldo_atual} | Separado: {produto.quantidade_separada}
                               </p>
                             </div>
