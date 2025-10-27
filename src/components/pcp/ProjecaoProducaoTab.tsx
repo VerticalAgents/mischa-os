@@ -10,6 +10,7 @@ import { startOfWeek, endOfWeek } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import EstoqueDisponivel from "./EstoqueDisponivel";
+import SugestaoProducao from "./SugestaoProducao";
 
 interface ProdutoQuantidade {
   produto_id: string;
@@ -157,9 +158,11 @@ export default function ProjecaoProducaoTab() {
   }, [produtosOrdenados]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Bloco Existente - Produtos Necessários */}
-      <Card>
+    <div className="space-y-6">
+      {/* Grid com 2 blocos superiores */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Bloco Existente - Produtos Necessários */}
+        <Card>
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="space-y-1.5">
@@ -243,10 +246,17 @@ export default function ProjecaoProducaoTab() {
         </CardContent>
       </Card>
 
-      {/* NOVO Bloco - Estoque Disponível */}
-      <EstoqueDisponivel 
-        quantidadesNecessarias={quantidadesNecessarias}
-        ordemProdutosNecessarios={ordemProdutosNecessarios}
+        {/* NOVO Bloco - Estoque Disponível */}
+        <EstoqueDisponivel 
+          quantidadesNecessarias={quantidadesNecessarias}
+          ordemProdutosNecessarios={ordemProdutosNecessarios}
+        />
+      </div>
+
+      {/* Bloco Sugestão de Produção - Largura Total */}
+      <SugestaoProducao 
+        produtosNecessarios={produtosOrdenados}
+        loading={loading}
       />
     </div>
   );
