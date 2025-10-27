@@ -151,18 +151,18 @@ export default function EstoqueDisponivel() {
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge 
-                              variant="outline"
-                              className={`text-xs border ${getStatusBadgeVariant(produto.status)}`}
-                            >
-                              {getStatusLabel(produto.status)}
-                            </Badge>
+                          <div className="flex flex-col items-end gap-1">
                             <Badge 
                               variant="secondary"
                               className="text-base px-3 py-1"
                             >
                               {produto.estoque_disponivel}
+                            </Badge>
+                            <Badge 
+                              variant="outline"
+                              className={`text-xs border ${getStatusBadgeVariant(produto.status)}`}
+                            >
+                              {getStatusLabel(produto.status)}
                             </Badge>
                           </div>
                         </div>
