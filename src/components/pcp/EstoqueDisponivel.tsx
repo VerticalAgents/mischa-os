@@ -27,11 +27,11 @@ export default function EstoqueDisponivel({ quantidadesNecessarias = {} }: Estoq
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'critico':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
       case 'baixo':
-        return <TrendingDown className="h-4 w-4 text-yellow-600" />;
+        return <TrendingDown className="h-4 w-4 text-red-600" />;
       case 'excesso':
-        return <TrendingUp className="h-4 w-4 text-blue-500" />;
+        return <TrendingUp className="h-4 w-4 text-yellow-600" />;
       default:
         return <Package className="h-4 w-4 text-green-600" />;
     }
@@ -40,6 +40,7 @@ export default function EstoqueDisponivel({ quantidadesNecessarias = {} }: Estoq
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'critico':
+        return 'bg-red-600 text-white border-red-600';
       case 'baixo':
         return 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20';
       case 'excesso':
