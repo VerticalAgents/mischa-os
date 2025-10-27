@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import EstoqueDisponivel from "./EstoqueDisponivel";
 import SugestaoProducao from "./SugestaoProducao";
+import { useEstoqueDisponivel } from "@/hooks/useEstoqueDisponivel";
 
 interface ProdutoQuantidade {
   produto_id: string;
@@ -157,6 +158,9 @@ export default function ProjecaoProducaoTab() {
     return produtosOrdenados.map(p => p.produto_id);
   }, [produtosOrdenados]);
 
+  // Hook para obter estoque disponível
+  const { produtos: produtosEstoque } = useEstoqueDisponivel(quantidadesNecessarias);
+
   return (
     <div className="space-y-6">
       {/* Grid com 2 blocos superiores */}
@@ -257,6 +261,10 @@ export default function ProjecaoProducaoTab() {
       {/* Bloco Sugestão de Produção - Largura Total */}
       <SugestaoProducao 
         produtosNecessarios={produtosOrdenados}
+        estoqueDisponivel={produtosEstoque.map(p => ({
+          produto_id: p.produto_id,
+          estoque_disponivel: p.estoque_disponivel
+        }))}
         loading={loading}
       />
     </div>

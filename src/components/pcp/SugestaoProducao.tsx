@@ -15,8 +15,14 @@ interface ProdutoQuantidade {
   quantidade: number;
 }
 
+interface EstoqueDisponivel {
+  produto_id: string;
+  estoque_disponivel: number;
+}
+
 interface SugestaoProducaoProps {
   produtosNecessarios: ProdutoQuantidade[];
+  estoqueDisponivel: EstoqueDisponivel[];
   loading?: boolean;
 }
 
@@ -24,12 +30,15 @@ interface SugestaoProducaoProduto {
   produto_id: string;
   produto_nome: string;
   quantidade_necessaria: number;
+  estoque_disponivel: number;
+  quantidade_a_produzir: number;
   rendimento: number | null;
   formas_sugeridas: number;
   tem_rendimento: boolean;
+  nao_precisa_produzir: boolean;
 }
 
-export default function SugestaoProducao({ produtosNecessarios, loading = false }: SugestaoProducaoProps) {
+export default function SugestaoProducao({ produtosNecessarios, estoqueDisponivel, loading = false }: SugestaoProducaoProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const { obterRendimentoPorProduto, loading: loadingRendimentos } = useRendimentosReceitaProduto();
 
@@ -42,33 +51,49 @@ export default function SugestaoProducao({ produtosNecessarios, loading = false 
       const rendimento = rendimentoInfo?.rendimento || null;
       const tem_rendimento = !!rendimento && rendimento > 0;
       
-      // Calcular formas necessárias: quantidade necessária / rendimento
-      const formas_sugeridas = tem_rendimento 
-        ? Math.ceil(produto.quantidade / rendimento) 
+      // Buscar estoque disponível do produto
+      const estoqueInfo = estoqueDisponivel.find(e => e.produto_id === produto.produto_id);
+      const estoque_atual = estoqueInfo?.estoque_disponivel || 0;
+      
+      // Calcular quantidade a produzir: necessário - estoque
+      const quantidade_a_produzir = Math.max(0, produto.quantidade - estoque_atual);
+      
+      // Calcular formas necessárias: quantidade a produzir / rendimento
+      const formas_sugeridas = tem_rendimento && quantidade_a_produzir > 0
+        ? Math.ceil(quantidade_a_produzir / rendimento) 
         : 0;
+
+      const nao_precisa_produzir = quantidade_a_produzir === 0;
 
       return {
         produto_id: produto.produto_id,
         produto_nome: produto.produto_nome,
         quantidade_necessaria: produto.quantidade,
+        estoque_disponivel: estoque_atual,
+        quantidade_a_produzir,
         rendimento,
         formas_sugeridas,
-        tem_rendimento
+        tem_rendimento,
+        nao_precisa_produzir
       };
     });
-  }, [produtosNecessarios, obterRendimentoPorProduto, loadingRendimentos, loading]);
+  }, [produtosNecessarios, estoqueDisponivel, obterRendimentoPorProduto, loadingRendimentos, loading]);
 
   // Calcular totais
   const totalFormas = useMemo(() => {
     return sugestoesProducao.reduce((sum, s) => sum + s.formas_sugeridas, 0);
   }, [sugestoesProducao]);
 
-  const totalProdutosComRendimento = useMemo(() => {
-    return sugestoesProducao.filter(s => s.tem_rendimento).length;
+  const totalProdutosParaProduzir = useMemo(() => {
+    return sugestoesProducao.filter(s => !s.nao_precisa_produzir && s.tem_rendimento).length;
   }, [sugestoesProducao]);
 
   const totalProdutosSemRendimento = useMemo(() => {
-    return sugestoesProducao.filter(s => !s.tem_rendimento).length;
+    return sugestoesProducao.filter(s => !s.tem_rendimento && !s.nao_precisa_produzir).length;
+  }, [sugestoesProducao]);
+
+  const totalProdutosNaoPrecisamProduzir = useMemo(() => {
+    return sugestoesProducao.filter(s => s.nao_precisa_produzir).length;
   }, [sugestoesProducao]);
 
   const isLoading = loading || loadingRendimentos;
@@ -107,11 +132,16 @@ export default function SugestaoProducao({ produtosNecessarios, loading = false 
               <p className="text-3xl font-bold text-primary">{totalFormas}</p>
               <div className="flex items-center justify-center gap-2 mt-2">
                 <Badge variant="default">
-                  {totalProdutosComRendimento} {totalProdutosComRendimento === 1 ? 'produto' : 'produtos'}
+                  {totalProdutosParaProduzir} {totalProdutosParaProduzir === 1 ? 'produto' : 'produtos'}
                 </Badge>
                 {totalProdutosSemRendimento > 0 && (
                   <Badge variant="destructive">
                     {totalProdutosSemRendimento} sem rendimento
+                  </Badge>
+                )}
+                {totalProdutosNaoPrecisamProduzir > 0 && (
+                  <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
+                    {totalProdutosNaoPrecisamProduzir} com estoque suficiente
                   </Badge>
                 )}
               </div>
@@ -153,22 +183,36 @@ export default function SugestaoProducao({ produtosNecessarios, loading = false 
                             <div>
                               <span className="font-medium">{sugestao.produto_nome}</span>
                               <p className="text-xs text-muted-foreground mt-0.5 text-left">
-                                Necessário: {sugestao.quantidade_necessaria} unidades
+                                Necessário: {sugestao.quantidade_necessaria} | Estoque: {sugestao.estoque_disponivel}
+                                {sugestao.quantidade_a_produzir > 0 && ` | Produzir: ${sugestao.quantidade_a_produzir}`}
                                 {sugestao.tem_rendimento && ` | Rendimento: ${sugestao.rendimento}/forma`}
                               </p>
                             </div>
                           </div>
                           <div className="flex flex-col items-end gap-1">
-                            <Badge 
-                              variant={sugestao.tem_rendimento ? "default" : "destructive"}
-                              className="text-base px-3 py-1"
-                            >
-                              {sugestao.tem_rendimento ? `${sugestao.formas_sugeridas} formas` : '—'}
-                            </Badge>
-                            {!sugestao.tem_rendimento && (
-                              <Badge variant="outline" className="text-xs border bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20">
-                                Sem rendimento
-                              </Badge>
+                            {sugestao.nao_precisa_produzir ? (
+                              <>
+                                <Badge 
+                                  variant="outline"
+                                  className="text-base px-3 py-1 bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
+                                >
+                                  Estoque OK
+                                </Badge>
+                              </>
+                            ) : (
+                              <>
+                                <Badge 
+                                  variant={sugestao.tem_rendimento ? "default" : "destructive"}
+                                  className="text-base px-3 py-1"
+                                >
+                                  {sugestao.tem_rendimento ? `${sugestao.formas_sugeridas} formas` : '—'}
+                                </Badge>
+                                {!sugestao.tem_rendimento && (
+                                  <Badge variant="outline" className="text-xs border bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20">
+                                    Sem rendimento
+                                  </Badge>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -176,10 +220,14 @@ export default function SugestaoProducao({ produtosNecessarios, loading = false 
                       <TooltipContent>
                         <div className="text-xs space-y-1">
                           <p><strong>Quantidade necessária:</strong> {sugestao.quantidade_necessaria} unidades</p>
-                          {sugestao.tem_rendimento ? (
+                          <p><strong>Estoque disponível:</strong> {sugestao.estoque_disponivel} unidades</p>
+                          <p><strong>Quantidade a produzir:</strong> {sugestao.quantidade_a_produzir} unidades</p>
+                          {sugestao.nao_precisa_produzir ? (
+                            <p className="text-green-600 dark:text-green-400">✓ Estoque suficiente - não precisa produzir</p>
+                          ) : sugestao.tem_rendimento ? (
                             <>
                               <p><strong>Rendimento:</strong> {sugestao.rendimento} unidades/forma</p>
-                              <p><strong>Cálculo:</strong> {sugestao.quantidade_necessaria} ÷ {sugestao.rendimento} = {sugestao.formas_sugeridas} formas</p>
+                              <p><strong>Cálculo:</strong> {sugestao.quantidade_a_produzir} ÷ {sugestao.rendimento} = {sugestao.formas_sugeridas} formas</p>
                               <p className="text-green-600 dark:text-green-400">✓ Rendimento configurado</p>
                             </>
                           ) : (
