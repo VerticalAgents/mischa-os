@@ -15,19 +15,18 @@ export default function EstoqueInsumos() {
     // Verificar se há parâmetro de tab na URL
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['produtos', 'insumos', 'cotacoes', 'pedidos', 'necessidade'].includes(tabParam)) {
+    if (tabParam && ['produtos', 'insumos', 'pedidos', 'necessidade'].includes(tabParam)) {
       changeTab(tabParam);
     }
   }, [location.search, changeTab]);
   return <>
-      <PageHeader title="Gestão de Estoque" description="Controle completo do estoque de produtos e insumos" icon={<Package className="h-5 w-5" />} backLink="/estoque" />
+      <PageHeader title="Gestão de Estoque" description="Controle completo do estoque de produtos e insumos" icon={<Package className="h-5 w-5" />} />
 
       <div className="mt-8">
         <Tabs value={activeTab} onValueChange={changeTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="produtos">Produtos Acabados</TabsTrigger>
             <TabsTrigger value="insumos">Insumos</TabsTrigger>
-            <TabsTrigger value="cotacoes">Cotações</TabsTrigger>
             <TabsTrigger value="pedidos">Compras</TabsTrigger>
           </TabsList>
           
@@ -37,10 +36,6 @@ export default function EstoqueInsumos() {
           
           <TabsContent value="insumos">
             <InsumosTabs.EstoqueInsumosTab />
-          </TabsContent>
-          
-          <TabsContent value="cotacoes">
-            <InsumosTabs.CotacoesTab />
           </TabsContent>
           
           <TabsContent value="pedidos">
