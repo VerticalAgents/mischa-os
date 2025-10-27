@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ interface EstoqueDisponivelProps {
 
 export default function EstoqueDisponivel({ quantidadesNecessarias = {} }: EstoqueDisponivelProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [showSemPrevisao, setShowSemPrevisao] = useState(false);
   const { 
     produtos, 
     loading, 
@@ -23,6 +24,15 @@ export default function EstoqueDisponivel({ quantidadesNecessarias = {} }: Estoq
     totalNecessario,
     recarregar 
   } = useEstoqueDisponivel(quantidadesNecessarias);
+
+  // Separar produtos com e sem previsão
+  const produtosComPrevisao = useMemo(() => {
+    return produtos.filter(p => p.quantidade_necessaria > 0);
+  }, [produtos]);
+
+  const produtosSemPrevisao = useMemo(() => {
+    return produtos.filter(p => p.quantidade_necessaria === 0);
+  }, [produtos]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -148,7 +158,8 @@ export default function EstoqueDisponivel({ quantidadesNecessarias = {} }: Estoq
                 </CollapsibleTrigger>
               </div>
               <CollapsibleContent className="space-y-2">
-                {produtos.map((produto) => (
+                {/* Produtos COM previsão - sempre visíveis */}
+                {produtosComPrevisao.map((produto) => (
                   <TooltipProvider key={produto.produto_id}>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -192,6 +203,75 @@ export default function EstoqueDisponivel({ quantidadesNecessarias = {} }: Estoq
                     </Tooltip>
                   </TooltipProvider>
                 ))}
+
+                {/* Produtos SEM previsão - collapsible */}
+                {produtosSemPrevisao.length > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full flex items-center justify-between text-muted-foreground hover:text-foreground mb-2"
+                      onClick={() => setShowSemPrevisao(!showSemPrevisao)}
+                    >
+                      <span className="text-xs">
+                        Outros produtos ({produtosSemPrevisao.length})
+                      </span>
+                      {showSemPrevisao ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                    </Button>
+                    
+                    {showSemPrevisao && (
+                      <div className="space-y-2">
+                        {produtosSemPrevisao.map((produto) => (
+                          <TooltipProvider key={produto.produto_id}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                                  <div className="flex items-center gap-3 text-left">
+                                    {getStatusIcon(produto.status)}
+                                    <div>
+                                      <span className="font-medium">{produto.produto_nome}</span>
+                                      <p className="text-xs text-muted-foreground mt-0.5 text-left">
+                                        Saldo: {produto.saldo_atual} | Separado: {produto.quantidade_separada}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col items-end gap-1">
+                                    <Badge 
+                                      variant="secondary"
+                                      className="text-base px-3 py-1"
+                                    >
+                                      {produto.estoque_disponivel}
+                                    </Badge>
+                                    <Badge 
+                                      variant="outline"
+                                      className={`text-xs border ${getStatusBadgeVariant(produto.status)}`}
+                                    >
+                                      {getStatusLabel(produto.status)}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="text-xs space-y-1">
+                                  <p><strong>Mínimo:</strong> {produto.estoque_minimo}</p>
+                                  <p><strong>Ideal:</strong> {produto.estoque_ideal}</p>
+                                  <p><strong>Disponível:</strong> {produto.estoque_disponivel}</p>
+                                  {produto.status === 'critico' && (
+                                    <p className="text-red-500 font-semibold">⚠️ Estoque insuficiente!</p>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </CollapsibleContent>
             </Collapsible>
           </div>
