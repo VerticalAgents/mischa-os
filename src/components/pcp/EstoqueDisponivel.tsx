@@ -32,14 +32,15 @@ export default function EstoqueDisponivel() {
     }
   };
 
-  const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'critico':
-        return 'destructive';
       case 'baixo':
-        return 'outline';
+        return 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20';
+      case 'excesso':
+        return 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20';
       default:
-        return 'secondary';
+        return 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20';
     }
   };
 
@@ -152,13 +153,16 @@ export default function EstoqueDisponivel() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge 
-                              variant={getStatusBadgeVariant(produto.status)}
+                              variant="outline"
+                              className={`text-xs border ${getStatusBadgeVariant(produto.status)}`}
+                            >
+                              {getStatusLabel(produto.status)}
+                            </Badge>
+                            <Badge 
+                              variant="secondary"
                               className="text-base px-3 py-1"
                             >
                               {produto.estoque_disponivel}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {getStatusLabel(produto.status)}
                             </Badge>
                           </div>
                         </div>
