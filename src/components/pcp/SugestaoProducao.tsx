@@ -55,8 +55,8 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
       const estoqueInfo = estoqueDisponivel.find(e => e.produto_id === produto.produto_id);
       const estoque_atual = estoqueInfo?.estoque_disponivel || 0;
       
-      // Calcular quantidade a produzir: necessário - estoque
-      const quantidade_a_produzir = Math.max(0, produto.quantidade - estoque_atual);
+      // Calcular quantidade a produzir: se estoque disponível é negativo, precisamos produzir o valor absoluto
+      const quantidade_a_produzir = Math.max(0, -estoque_atual);
       
       // Calcular formas necessárias: quantidade a produzir / rendimento
       const formas_sugeridas = tem_rendimento && quantidade_a_produzir > 0
