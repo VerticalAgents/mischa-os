@@ -61,15 +61,26 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
       const estoqueInfo = estoqueDisponivel.find(e => e.produto_id === produto.produto_id);
       const estoque_atual = estoqueInfo?.estoque_disponivel || 0;
       
-      // 1. Calcular quantidade base (cobrir déficit)
-      const quantidade_base = Math.max(0, -estoque_atual);
-      
-      // 2. Calcular estoque alvo (20% da média de vendas das últimas 12 semanas)
+      // 1. Calcular estoque alvo (20% da média de vendas das últimas 12 semanas)
       const media_vendas = mediaVendasPorProduto[produto.produto_id] || 0;
       const estoque_alvo = Math.round(media_vendas * 0.20);
       
-      // 3. Quantidade total a produzir (base + estoque alvo)
-      const quantidade_a_produzir = quantidade_base + estoque_alvo;
+      // 2. Calcular quantidade base e quantidade para estoque alvo
+      let quantidade_base = 0;
+      let quantidade_estoque_alvo = 0;
+      
+      if (estoque_atual < 0) {
+        // Estoque negativo (déficit): precisa cobrir déficit + atingir estoque alvo
+        quantidade_base = -estoque_atual;
+        quantidade_estoque_alvo = estoque_alvo;
+      } else {
+        // Estoque positivo: só precisa produzir o que falta para atingir estoque alvo
+        quantidade_base = 0;
+        quantidade_estoque_alvo = Math.max(0, estoque_alvo - estoque_atual);
+      }
+      
+      // 3. Quantidade total a produzir
+      const quantidade_a_produzir = quantidade_base + quantidade_estoque_alvo;
       
       // 4. Calcular formas necessárias: quantidade a produzir / rendimento
       const formas_sugeridas = tem_rendimento && quantidade_a_produzir > 0
