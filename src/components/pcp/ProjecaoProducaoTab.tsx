@@ -250,6 +250,7 @@ export default function ProjecaoProducaoTab() {
         <EstoqueDisponivel 
           quantidadesNecessarias={quantidadesNecessarias}
           ordemProdutosNecessarios={ordemProdutosNecessarios}
+          loadingNecessarios={loading}
         />
       </div>
 

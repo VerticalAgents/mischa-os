@@ -11,9 +11,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 interface EstoqueDisponivelProps {
   quantidadesNecessarias?: Record<string, number>;
   ordemProdutosNecessarios?: string[]; // IDs na ordem correta
+  loadingNecessarios?: boolean; // Loading do cálculo de produtos necessários
 }
 
-export default function EstoqueDisponivel({ quantidadesNecessarias = {}, ordemProdutosNecessarios = [] }: EstoqueDisponivelProps) {
+export default function EstoqueDisponivel({ quantidadesNecessarias = {}, ordemProdutosNecessarios = [], loadingNecessarios = false }: EstoqueDisponivelProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [showSemPrevisao, setShowSemPrevisao] = useState(false);
   const { 
@@ -129,10 +130,12 @@ export default function EstoqueDisponivel({ quantidadesNecessarias = {}, ordemPr
               </Button>
             </AlertDescription>
           </Alert>
-        ) : loading ? (
+        ) : loading || loadingNecessarios ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">Calculando estoque...</span>
+            <span className="ml-2 text-muted-foreground">
+              {loadingNecessarios ? 'Carregando estoque...' : 'Calculando estoque...'}
+            </span>
           </div>
         ) : produtos.length === 0 ? (
           <div className="text-center py-8">
