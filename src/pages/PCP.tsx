@@ -9,8 +9,6 @@ import { useTabPersistence } from "@/hooks/useTabPersistence";
 // Import components
 import HistoricoAnalytics from "@/components/pcp/HistoricoAnalytics";
 import ProjecaoProducaoTab from "@/components/pcp/ProjecaoProducaoTab";
-import NecessidadeDiariaTab from "@/components/pcp/NecessidadeDiariaTab";
-import ProducaoAgendadaTab from "@/components/pcp/ProducaoAgendadaTab";
 import HistoricoProducao from "@/components/pcp/HistoricoProducao";
 import AuditoriaPCPTab from "@/components/pcp/AuditoriaPCPTab";
 
@@ -59,22 +57,12 @@ export default function PCP() {
         <TabsList className="w-full justify-start">
           <TabsTrigger value="historico">Histórico</TabsTrigger>
           <TabsTrigger value="projecao-producao">Projeção de Produção</TabsTrigger>
-          <TabsTrigger value="necessidade-diaria">Necessidade Diária</TabsTrigger>
-          <TabsTrigger value="producao-agendada">Produção Agendada</TabsTrigger>
           <TabsTrigger value="registro">Registro</TabsTrigger>
           <TabsTrigger value="auditoria-pcp">Auditoria PCP</TabsTrigger>
         </TabsList>
         
         <TabsContent value="projecao-producao" className="space-y-6 mt-6" forceMount={activeTab === "projecao-producao" ? true : undefined}>
           {activeTab === "projecao-producao" && <ProjecaoProducaoTab />}
-        </TabsContent>
-        
-        <TabsContent value="necessidade-diaria" className="space-y-6 mt-6" forceMount={activeTab === "necessidade-diaria" ? true : undefined}>
-          {activeTab === "necessidade-diaria" && <NecessidadeDiariaTab />}
-        </TabsContent>
-        
-        <TabsContent value="producao-agendada" className="space-y-6 mt-6" forceMount={activeTab === "producao-agendada" ? true : undefined}>
-          {activeTab === "producao-agendada" && <ProducaoAgendadaTab />}
         </TabsContent>
 
         <TabsContent value="historico" className="space-y-6 mt-6">
