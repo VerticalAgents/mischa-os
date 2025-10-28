@@ -1,9 +1,15 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProductionAnalytics } from "@/hooks/useProductionAnalytics";
-import { TrendingUp, TrendingDown, Package, Calendar, Factory } from "lucide-react";
+import { TrendingUp, TrendingDown, Package, Calendar, Factory, Filter } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, subYears, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useState, useMemo } from "react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 export default function HistoricoAnalytics() {
+  const [filtrarPorProporcao, setFiltrarPorProporcao] = useState(false);
+  const { proporcoes, loading: loadingProporcoes } = useSupabaseProporoesPadrao();
   const hoje = new Date();
   const inicioMesAtual = startOfMonth(hoje);
   const fimMesAtual = endOfMonth(hoje);
@@ -65,6 +71,22 @@ export default function HistoricoAnalytics() {
   // Cálculos de variação
   const variacaoMesAnterior = kpisMesAnterior.totalUnitsProduced > 0 ? (kpisMesAtual.totalUnitsProduced - kpisMesAnterior.totalUnitsProduced) / kpisMesAnterior.totalUnitsProduced * 100 : 0;
   const variacaoAnoAnterior = kpisMesmoMesAnoPassado.totalUnitsProduced > 0 ? (kpisMesAtual.totalUnitsProduced - kpisMesmoMesAnoPassado.totalUnitsProduced) / kpisMesmoMesAnoPassado.totalUnitsProduced * 100 : 0;
+
+  // Criar mapa de proporções para lookup rápido
+  const proporcoesMap = useMemo(() => {
+    return new Map(proporcoes.map(p => [p.produto_nome, p.percentual]));
+  }, [proporcoes]);
+
+  // Filtrar produtos baseado no toggle
+  const produtosFiltrados = useMemo(() => {
+    if (filtrarPorProporcao) {
+      return produtos90Dias.filter(produto => {
+        const proporcao = proporcoesMap.get(produto.productName) || 0;
+        return proporcao > 0;
+      });
+    }
+    return produtos90Dias;
+  }, [produtos90Dias, filtrarPorProporcao, proporcoesMap]);
   return <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Produção Últimos 3 Meses */}
@@ -160,32 +182,56 @@ export default function HistoricoAnalytics() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Produção por Produto
-            </CardTitle>
-            <CardDescription className="text-left">
-              Distribuição dos últimos 90 dias
-            </CardDescription>
+            <div className="flex items-start justify-between">
+              <div className="space-y-1.5">
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Produção por Produto
+                </CardTitle>
+                <CardDescription className="text-left">
+                  Distribuição dos últimos 90 dias
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="filtro-proporcao-historico" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
+                  <Filter className="h-4 w-4 inline mr-1" />
+                  Apenas com proporção
+                </Label>
+                <Switch 
+                  id="filtro-proporcao-historico"
+                  checked={filtrarPorProporcao}
+                  onCheckedChange={setFiltrarPorProporcao}
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {produtos90Dias.slice(0, 5).map((produto) => (
-                <div key={produto.productName} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{produto.productName}</span>
-                    <span className="text-muted-foreground">
-                      {produto.totalForms.toLocaleString('pt-BR')} formas ({produto.percentage.toFixed(1)}%)
-                    </span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{ width: `${produto.percentage}%` }}
-                    />
-                  </div>
+              {produtosFiltrados.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground text-sm">
+                  {filtrarPorProporcao 
+                    ? 'Nenhum produto com proporção padrão configurada'
+                    : 'Nenhum produto encontrado no período'
+                  }
                 </div>
-              ))}
+              ) : (
+                produtosFiltrados.map((produto) => (
+                  <div key={produto.productName} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{produto.productName}</span>
+                      <span className="text-muted-foreground">
+                        {produto.totalForms.toLocaleString('pt-BR')} formas ({produto.percentage.toFixed(1)}%)
+                      </span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all duration-300"
+                        style={{ width: `${produto.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
