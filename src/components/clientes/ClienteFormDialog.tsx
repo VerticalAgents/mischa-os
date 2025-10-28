@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +48,31 @@ interface ClienteFormDialogProps {
   onClienteUpdate?: () => void;
 }
 
+const getDefaultFormData = (): Partial<Cliente> => ({
+  nome: '',
+  cnpjCpf: '',
+  enderecoEntrega: '',
+  linkGoogleMaps: '',
+  contatoNome: '',
+  contatoTelefone: '',
+  contatoEmail: '',
+  quantidadePadrao: 0,
+  periodicidadePadrao: 7,
+  statusCliente: 'Ativo',
+  tipoLogistica: 'Própria',
+  tipoCobranca: 'À vista',
+  formaPagamento: 'Boleto',
+  emiteNotaFiscal: true,
+  contabilizarGiroMedio: true,
+  observacoes: '',
+  categoriasHabilitadas: [],
+  janelasEntrega: [],
+  representanteId: undefined,
+  rotaEntregaId: undefined,
+  categoriaEstabelecimentoId: undefined,
+  instrucoesEntrega: ''
+});
+
 export default function ClienteFormDialog({ 
   open, 
   onOpenChange, 
@@ -66,69 +91,42 @@ export default function ClienteFormDialog({
   const { salvarCategoriasCliente } = useClientesCategorias();
   const { isOpen: isErrorDetailOpen, errorDetail, hideErrorDetail } = useErrorDetail();
 
-  const [formData, setFormData] = useState<Partial<Cliente>>({
-    nome: '',
-    cnpjCpf: '',
-    enderecoEntrega: '',
-    linkGoogleMaps: '',
-    contatoNome: '',
-    contatoTelefone: '',
-    contatoEmail: '',
-    quantidadePadrao: 0,
-    periodicidadePadrao: 7,
-    statusCliente: 'Ativo',
-    tipoLogistica: 'Própria',
-    tipoCobranca: 'À vista',
-    formaPagamento: 'Boleto',
-    emiteNotaFiscal: true,
-    contabilizarGiroMedio: true,
-    observacoes: '',
-    categoriasHabilitadas: [],
-    janelasEntrega: [],
-    representanteId: undefined,
-    rotaEntregaId: undefined,
-    categoriaEstabelecimentoId: undefined,
-    instrucoesEntrega: ''
-  });
-
+  const [formData, setFormData] = useState<Partial<Cliente>>(getDefaultFormData());
   const [isSaving, setIsSaving] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
+  
+  const initializedRef = useRef(false);
+  const lastClienteIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (cliente && open) {
-      console.log('ClienteFormDialog: Carregando dados do cliente para edição:', cliente);
-      setFormData({
-        ...cliente,
-        categoriasHabilitadas: cliente.categoriasHabilitadas || []
-      });
-    } else if (!cliente && open) {
-      console.log('ClienteFormDialog: Inicializando formulário para novo cliente');
-      setFormData({
-        nome: '',
-        cnpjCpf: '',
-        enderecoEntrega: '',
-        linkGoogleMaps: '',
-        contatoNome: '',
-        contatoTelefone: '',
-        contatoEmail: '',
-        quantidadePadrao: 0,
-        periodicidadePadrao: 7,
-        statusCliente: 'Ativo',
-        tipoLogistica: 'Própria',
-        tipoCobranca: 'À vista',
-        formaPagamento: 'Boleto',
-        emiteNotaFiscal: true,
-        contabilizarGiroMedio: true,
-        observacoes: '',
-        categoriasHabilitadas: [],
-        janelasEntrega: [],
-        representanteId: undefined,
-        rotaEntregaId: undefined,
-        categoriaEstabelecimentoId: undefined,
-        instrucoesEntrega: ''
-      });
+    if (!open) {
+      // Ao fechar, libera para uma futura re-inicialização
+      initializedRef.current = false;
+      return;
     }
-  }, [cliente, open]);
+
+    const currentId = cliente?.id || null;
+    const isFirstOpen = !initializedRef.current;
+    const idChanged = currentId !== lastClienteIdRef.current;
+
+    // Apenas inicializa quando abrir pela 1ª vez OU quando o id do cliente mudar
+    if (isFirstOpen || idChanged) {
+      console.log('🧭 Inicializando form', { isFirstOpen, idChanged, clienteId: currentId });
+      if (cliente) {
+        setFormData({
+          ...cliente,
+          categoriasHabilitadas: cliente.categoriasHabilitadas || []
+        });
+        lastClienteIdRef.current = currentId;
+      } else {
+        setFormData(getDefaultFormData());
+        lastClienteIdRef.current = null;
+      }
+      initializedRef.current = true;
+    } else {
+      console.log('⏭️ Mantendo formData (sem reinit)');
+    }
+  }, [open, cliente?.id]);
 
   const handleInputChange = (field: keyof Cliente, value: any) => {
     console.log(`ClienteFormDialog: Atualizando campo ${field}:`, value);
