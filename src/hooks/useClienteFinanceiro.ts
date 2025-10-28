@@ -66,7 +66,7 @@ export function useClienteFinanceiro(cliente: Cliente) {
   const { carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
   
   const { data: dadosFinanceiros, isLoading, error, refetch } = useQuery({
-    queryKey: ['cliente-financeiro', cliente.id],
+    queryKey: ['cliente-financeiro', cliente.id, cliente.emiteNotaFiscal, cliente.formaPagamento, cliente.tipoLogistica],
     queryFn: async () => {
       console.log('useClienteFinanceiro: Calculando dados financeiros para cliente', cliente.id);
       
