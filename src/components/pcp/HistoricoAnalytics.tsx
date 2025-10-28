@@ -31,12 +31,13 @@ export default function HistoricoAnalytics() {
   // Função para categorizar produtos baseado no nome
   const categorizarProduto = (nomeProduto: string): 'revenda' | 'foodservice' => {
     const nome = nomeProduto.toLowerCase();
-    // Produtos com "food", "grande", "gg" são Food Service
-    if (nome.includes('food') || nome.includes('grande') || nome.includes('gg') || 
-        nome.includes('g.g') || nome.includes('food service')) {
+    
+    // Produtos Food-Service: Mini e Nano (porções menores para serviço)
+    if (nome.includes('mini') || nome.includes('nano')) {
       return 'foodservice';
     }
-    // Caso contrário, é Revenda
+    
+    // Produtos Revenda: Tamanho padrão (para revenda)
     return 'revenda';
   };
   
@@ -132,7 +133,11 @@ export default function HistoricoAnalytics() {
       meses.push(startOfMonth(subMonths(hoje, i)));
     }
 
-    return meses.map(mesInicio => {
+    // Contadores para debug
+    let totalProdutosRevenda = 0;
+    let totalProdutosFoodService = 0;
+
+    const dados = meses.map(mesInicio => {
       const mesFim = endOfMonth(mesInicio);
       const mesLabel = format(mesInicio, "MMM/yy", { locale: ptBR });
 
@@ -153,9 +158,11 @@ export default function HistoricoAnalytics() {
         if (categoria === 'revenda') {
           formasRevenda += record.formas_producidas;
           unidadesRevenda += record.unidades_calculadas || 0;
+          totalProdutosRevenda++;
         } else {
           formasFoodService += record.formas_producidas;
           unidadesFoodService += record.unidades_calculadas || 0;
+          totalProdutosFoodService++;
         }
       });
 
@@ -165,6 +172,15 @@ export default function HistoricoAnalytics() {
         foodService: mostrarUnidades ? unidadesFoodService : formasFoodService
       };
     });
+
+    // Debug: Log da categorização
+    console.log('📊 Categorização de Produtos (6 meses):', {
+      totalRegistrosRevenda: totalProdutosRevenda,
+      totalRegistrosFoodService: totalProdutosFoodService,
+      dadosGrafico: dados
+    });
+
+    return dados;
   }, [historico, hoje, mostrarUnidades]);
 
 
@@ -476,21 +492,26 @@ export default function HistoricoAnalytics() {
           </div>
         </CardHeader>
         <CardContent>
-          <ChartContainer
+          {dadosGraficoComparativo.length === 0 ? (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <p>Nenhum dado disponível para o período</p>
+            </div>
+          ) : (
+            <ChartContainer
             config={{
               revenda: {
                 label: "Revenda",
-                color: "hsl(var(--chart-1))",
+                color: "hsl(262 83% 58%)",
               },
               foodService: {
                 label: "Food-Service",
-                color: "hsl(var(--chart-2))",
+                color: "hsl(142 76% 36%)",
               },
             }}
-            className="h-[400px]"
+            className="h-[300px] w-full"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dadosGraficoComparativo}>
+              <BarChart data={dadosGraficoComparativo} barSize={40}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis 
                   dataKey="mes" 
@@ -507,26 +528,28 @@ export default function HistoricoAnalytics() {
                     style: { fill: 'hsl(var(--foreground))' }
                   }}
                 />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Legend 
-                  wrapperStyle={{ paddingTop: '20px' }}
-                  iconType="rect"
+                <ChartTooltip 
+                  content={<ChartTooltipContent 
+                    formatter={(value) => value.toLocaleString('pt-BR')}
+                  />} 
                 />
+                <Legend />
                 <Bar 
                   dataKey="revenda" 
-                  fill="hsl(var(--chart-1))" 
+                  fill="var(--color-revenda)" 
                   name="Revenda"
                   radius={[4, 4, 0, 0]}
                 />
                 <Bar 
                   dataKey="foodService" 
-                  fill="hsl(var(--chart-2))" 
+                  fill="var(--color-foodService)" 
                   name="Food-Service"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
+          )}
         </CardContent>
       </Card>
 
