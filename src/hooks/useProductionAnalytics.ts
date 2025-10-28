@@ -25,8 +25,10 @@ export interface ProductionKPI {
 }
 
 export interface ProductionTimeSeriesData {
-  period: string;
-  produced: number;
+  period: string; // ISO date string
+  periodLabel: string; // Formatted label for display
+  produced: number; // unidades
+  producedForms: number; // formas
   planned: number;
   variance: number;
 }
@@ -160,14 +162,17 @@ export const useProductionAnalytics = (filters: ProductionFilters) => {
       });
 
       const produced = periodProduction.reduce((sum, record) => sum + record.unidades_calculadas, 0);
+      const producedForms = periodProduction.reduce((sum, record) => sum + record.formas_producidas, 0);
       
       // For planned data, we'll use a simplified approach
       const planned = periodProduction.length > 0 ? produced * 1.1 : 0; // Mock planned data as 110% of actual
       const variance = planned > 0 ? ((produced - planned) / planned) * 100 : 0;
 
       return {
-        period: periodLabel,
+        period: periodStart.toISOString(), // ISO date string for reliable parsing
+        periodLabel, // Formatted label for display
         produced,
+        producedForms,
         planned,
         variance
       };

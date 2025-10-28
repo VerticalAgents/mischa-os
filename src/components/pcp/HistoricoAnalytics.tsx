@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProductionAnalytics } from "@/hooks/useProductionAnalytics";
 import { TrendingUp, TrendingDown, Package, Calendar, Factory, Filter, ChevronDown, ChevronUp, BarChart3 } from "lucide-react";
-import { format, subMonths, startOfMonth, endOfMonth, subYears, subDays } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, subYears, subDays, isWithinInterval, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useMemo } from "react";
 import { Switch } from "@/components/ui/switch";
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { useSupabaseHistoricoProducao } from "@/hooks/useSupabaseHistoricoProducao";
 export default function HistoricoAnalytics() {
   // Estados para controle de UI
   const [filtrarPorProporcao, setFiltrarPorProporcao] = useState(false);
@@ -24,6 +25,19 @@ export default function HistoricoAnalytics() {
   // Dados do Supabase
   const { proporcoes, loading: loadingProporcoes } = useSupabaseProporoesPadrao();
   const { categorias } = useSupabaseCategoriasProduto();
+  const { historico } = useSupabaseHistoricoProducao();
+  
+  // Função para categorizar produtos baseado no nome
+  const categorizarProduto = (nomeProduto: string): 'revenda' | 'foodservice' => {
+    const nome = nomeProduto.toLowerCase();
+    // Produtos com "food", "grande", "gg" são Food Service
+    if (nome.includes('food') || nome.includes('grande') || nome.includes('gg') || 
+        nome.includes('g.g') || nome.includes('food service')) {
+      return 'foodservice';
+    }
+    // Caso contrário, é Revenda
+    return 'revenda';
+  };
   
   // Datas de referência
   const hoje = new Date();
@@ -107,69 +121,46 @@ export default function HistoricoAnalytics() {
     return `Últimos ${diasPeriodo} dias`;
   }, [diasPeriodo]);
 
-  // Últimos 6 meses - Revenda (para o gráfico)
+  // Últimos 6 meses - Processamento manual para o gráfico
   const inicio6Meses = startOfMonth(subMonths(hoje, 5));
-  const {
-    timeSeriesData: producaoMensalRevenda
-  } = useProductionAnalytics({
-    startDate: inicio6Meses,
-    endDate: fimMesAtual,
-    aggregation: 'month',
-    categoriaId: categoriaRevenda?.id
-  });
-
-  // Últimos 6 meses - Food Service (para o gráfico)
-  const {
-    timeSeriesData: producaoMensalFoodService
-  } = useProductionAnalytics({
-    startDate: inicio6Meses,
-    endDate: fimMesAtual,
-    aggregation: 'month',
-    categoriaId: categoriaFoodService?.id
-  });
-
-  // Preparar dados para o gráfico comparativo
+  
   const dadosGraficoComparativo = useMemo(() => {
-    const mesesMap = new Map();
-    
-    // Adicionar dados de Revenda
-    producaoMensalRevenda.forEach(item => {
-      if (!item.period) return;
-      
-      try {
-        const data = new Date(item.period);
-        if (isNaN(data.getTime())) return; // Skip invalid dates
-        
-        const mesNome = format(data, "MMM/yy", { locale: ptBR });
-        if (!mesesMap.has(mesNome)) {
-          mesesMap.set(mesNome, { mes: mesNome, revenda: 0, foodService: 0 });
+    // Gerar array com os últimos 6 meses
+    const meses: Date[] = [];
+    for (let i = 5; i >= 0; i--) {
+      meses.push(startOfMonth(subMonths(hoje, i)));
+    }
+
+    return meses.map(mesInicio => {
+      const mesFim = endOfMonth(mesInicio);
+      const mesLabel = format(mesInicio, "MMM/yy", { locale: ptBR });
+
+      // Filtrar registros deste mês
+      const registrosMes = historico.filter(record => {
+        const dataProducao = startOfDay(new Date(record.data_producao));
+        return isWithinInterval(dataProducao, { start: mesInicio, end: mesFim });
+      });
+
+      // Separar por categoria e somar formas
+      let formasRevenda = 0;
+      let formasFoodService = 0;
+
+      registrosMes.forEach(record => {
+        const categoria = categorizarProduto(record.produto_nome);
+        if (categoria === 'revenda') {
+          formasRevenda += record.formas_producidas;
+        } else {
+          formasFoodService += record.formas_producidas;
         }
-        mesesMap.get(mesNome).revenda = item.produced;
-      } catch (error) {
-        console.error('Erro ao processar data de Revenda:', item.period, error);
-      }
+      });
+
+      return {
+        mes: mesLabel,
+        revenda: formasRevenda,
+        foodService: formasFoodService
+      };
     });
-    
-    // Adicionar dados de Food Service
-    producaoMensalFoodService.forEach(item => {
-      if (!item.period) return;
-      
-      try {
-        const data = new Date(item.period);
-        if (isNaN(data.getTime())) return; // Skip invalid dates
-        
-        const mesNome = format(data, "MMM/yy", { locale: ptBR });
-        if (!mesesMap.has(mesNome)) {
-          mesesMap.set(mesNome, { mes: mesNome, revenda: 0, foodService: 0 });
-        }
-        mesesMap.get(mesNome).foodService = item.produced;
-      } catch (error) {
-        console.error('Erro ao processar data de Food Service:', item.period, error);
-      }
-    });
-    
-    return Array.from(mesesMap.values());
-  }, [producaoMensalRevenda, producaoMensalFoodService]);
+  }, [historico, hoje]);
 
 
   // Cálculos de variação
