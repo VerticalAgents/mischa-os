@@ -123,13 +123,20 @@ export default function HistoricoAnalytics() {
     return `Últimos ${diasPeriodo} dias`;
   }, [diasPeriodo]);
 
-  // Últimos 6 meses - Processamento manual para o gráfico
-  const inicio6Meses = startOfMonth(subMonths(hoje, 5));
+  // Calcular quantos meses mostrar baseado no período selecionado
+  const numeroMeses = useMemo(() => {
+    const dias = parseInt(periodoSelecionado);
+    if (dias <= 30) return 1;
+    if (dias <= 60) return 2;
+    if (dias <= 90) return 3;
+    if (dias <= 180) return 6;
+    return 12; // 365 dias = 1 ano
+  }, [periodoSelecionado]);
   
   const dadosGraficoComparativo = useMemo(() => {
-    // Gerar array com os últimos 6 meses
+    // Gerar array com os meses baseado no período selecionado
     const meses: Date[] = [];
-    for (let i = 5; i >= 0; i--) {
+    for (let i = numeroMeses - 1; i >= 0; i--) {
       meses.push(startOfMonth(subMonths(hoje, i)));
     }
 
@@ -174,14 +181,16 @@ export default function HistoricoAnalytics() {
     });
 
     // Debug: Log da categorização
-    console.log('📊 Categorização de Produtos (6 meses):', {
+    console.log('📊 Categorização de Produtos:', {
+      periodoSelecionado: periodoSelecionado + ' dias',
+      numeroMeses: numeroMeses,
       totalRegistrosRevenda: totalProdutosRevenda,
       totalRegistrosFoodService: totalProdutosFoodService,
       dadosGrafico: dados
     });
 
     return dados;
-  }, [historico, hoje, mostrarUnidades]);
+  }, [historico, hoje, mostrarUnidades, numeroMeses, periodoSelecionado]);
 
 
   // Cálculos de variação
