@@ -77,13 +77,24 @@ export default function HistoricoAnalytics() {
     return new Map(proporcoes.map(p => [p.produto_nome, p.percentual]));
   }, [proporcoes]);
 
-  // Filtrar produtos baseado no toggle
+  // Filtrar produtos baseado no toggle e recalcular percentuais
   const produtosFiltrados = useMemo(() => {
     if (filtrarPorProporcao) {
-      return produtos90Dias.filter(produto => {
+      // Filtrar produtos com proporção > 0
+      const filtrados = produtos90Dias.filter(produto => {
         const proporcao = proporcoesMap.get(produto.productName) || 0;
         return proporcao > 0;
       });
+
+      // Recalcular percentuais para somar 100%
+      const totalFormasFiltradas = filtrados.reduce((sum, p) => sum + p.totalForms, 0);
+      
+      if (totalFormasFiltradas === 0) return filtrados;
+
+      return filtrados.map(produto => ({
+        ...produto,
+        percentage: (produto.totalForms / totalFormasFiltradas) * 100
+      }));
     }
     return produtos90Dias;
   }, [produtos90Dias, filtrarPorProporcao, proporcoesMap]);
