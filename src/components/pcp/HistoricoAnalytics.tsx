@@ -12,11 +12,16 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 export default function HistoricoAnalytics() {
+  // Estados para controle de UI
   const [filtrarPorProporcao, setFiltrarPorProporcao] = useState(false);
   const [isRevendaDetailsOpen, setIsRevendaDetailsOpen] = useState(false);
   const [isFoodServiceDetailsOpen, setIsFoodServiceDetailsOpen] = useState(false);
+  
+  // Dados do Supabase
   const { proporcoes, loading: loadingProporcoes } = useSupabaseProporoesPadrao();
   const { categorias } = useSupabaseCategoriasProduto();
+  
+  // Datas de referência
   const hoje = new Date();
   const inicioMesAtual = startOfMonth(hoje);
   const fimMesAtual = endOfMonth(hoje);
