@@ -174,12 +174,12 @@ export function useClienteFinanceiro(cliente: Cliente) {
         if (Array.isArray(entrega.itens)) {
           entrega.itens.forEach((item: any) => {
             const produtoId = item.produto_id;
-            const produtoNome = item.produto_nome || item.produto || item.nome || 'Produto não identificado';
             const quantidade = item.quantidade || 0;
             
             if (produtoId) {
               const produto = produtos?.find(p => p.id === produtoId);
               const categoriaId = produto?.categoria_id || null;
+              const produtoNome = produto?.nome || item.produto_nome || item.produto || item.nome || 'Produto não identificado';
               
               if (!agregadoProdutos.has(produtoId)) {
                 agregadoProdutos.set(produtoId, {
