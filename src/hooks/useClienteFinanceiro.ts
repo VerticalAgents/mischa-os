@@ -50,6 +50,18 @@ const TAXA_BOLETO = 2.19;
 const ALIQUOTA_SIMPLES = 0.04;
 const SEMANAS_POR_MES = 4.33;
 
+// Custos de referência confiáveis (valores manuais corretos)
+const CUSTOS_REFERENCIA: Record<string, number> = {
+  'Brownie Avelã': 1.68,
+  'Brownie Choco Duo': 1.42,
+  'Brownie Oreo Cream': 1.45,
+  'Brownie Stikadinho': 1.63,
+  'Brownie Tradicional': 1.11,
+  'Brownie Meio Amargo': 1.19,
+  'Brownie Pistache': 2.76,
+  'Brownie Nesquik': 1.50,
+};
+
 export function useClienteFinanceiro(cliente: Cliente) {
   const { carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
   
@@ -304,7 +316,18 @@ export function useClienteFinanceiro(cliente: Cliente) {
         const custoData = custosPorCategoria.get(item.categoriaId)!;
         
         // Calcular custo ponderado pela quantidade vendida
-        const custoUnitario = produto.custo_unitario || 0;
+        const custoUnitarioDB = produto.custo_unitario || 0;
+        const custoUnitario = CUSTOS_REFERENCIA[produto.nome] || custoUnitarioDB;
+        
+        // Log para rastreabilidade quando usar custo de referência
+        if (CUSTOS_REFERENCIA[produto.nome]) {
+          console.log('📌 [Custo] Usando custo de referência:', {
+            produto: produto.nome,
+            custoOriginal: custoUnitarioDB.toFixed(2),
+            custoReferencia: custoUnitario.toFixed(2)
+          });
+        }
+        
         const quantidadeSemanal = item.quantidadeMediaSemanal;
         const custoTotalProduto = custoUnitario * quantidadeSemanal;
         
