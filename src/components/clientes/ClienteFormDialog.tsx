@@ -458,12 +458,16 @@ export default function ClienteFormDialog({
                     </SelectContent>
                   </Select>
                 </div>
-                 <div className="space-y-2">
-                  <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
-                  <Select 
-                    value={formData.tipoLogistica || 'Própria'} 
-                    onValueChange={(value) => handleInputChange('tipoLogistica', value)}
-                  >
+                  <div className="space-y-2">
+                   <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
+                   <Select 
+                     value={formData.tipoLogistica || 'Própria'} 
+                     onValueChange={(value) => {
+                       console.log('🔄 Mudança de Tipo de Logística:', value);
+                       console.log('📊 Estado ANTES da mudança:', { ...formData });
+                       handleInputChange('tipoLogistica', value);
+                     }}
+                   >
                     <SelectTrigger className="notranslate" translate="no" data-translate="no">
                       <SelectValue />
                     </SelectTrigger>
