@@ -243,35 +243,53 @@ export function useClienteFinanceiro(cliente: Cliente) {
         })
       );
       
-      // 9. Calcular custos médios por categoria
-      const custosPorCategoria = new Map<number, { soma: number; count: number; nome: string }>();
+      // 9. Calcular custos PONDERADOS por categoria (baseado nas vendas reais)
+      const custosPorCategoria = new Map<number, { 
+        custoTotal: number; 
+        quantidadeTotal: number; 
+        nome: string 
+      }>();
       
-      produtos?.forEach(produto => {
-        if (produto.categoria_id && categoriasHabilitadas.includes(produto.categoria_id)) {
-          const categoria = categorias?.find(c => c.id === produto.categoria_id);
-          if (categoria) {
-            if (!custosPorCategoria.has(produto.categoria_id)) {
-              custosPorCategoria.set(produto.categoria_id, {
-                soma: 0,
-                count: 0,
-                nome: categoria.nome
-              });
-            }
-            
-            const custoData = custosPorCategoria.get(produto.categoria_id)!;
-            custoData.soma += produto.custo_unitario || 0;
-            custoData.count += 1;
-          }
+      // Usar quantidadesMedias (produtos realmente vendidos) para calcular custo ponderado
+      quantidadesMedias.forEach(item => {
+        if (!item.categoriaId) return; // Ignorar produtos sem categoria
+        
+        // Buscar produto para obter custo_unitario
+        const produto = produtos?.find(p => p.id === item.produtoId);
+        if (!produto) return;
+        
+        const categoria = categorias?.find(c => c.id === item.categoriaId);
+        if (!categoria) return;
+        
+        // Inicializar categoria se não existe
+        if (!custosPorCategoria.has(item.categoriaId)) {
+          custosPorCategoria.set(item.categoriaId, {
+            custoTotal: 0,
+            quantidadeTotal: 0,
+            nome: categoria.nome
+          });
         }
+        
+        const custoData = custosPorCategoria.get(item.categoriaId)!;
+        
+        // Calcular custo ponderado pela quantidade vendida
+        const custoUnitario = produto.custo_unitario || 0;
+        const quantidadeSemanal = item.quantidadeMediaSemanal;
+        
+        custoData.custoTotal += (custoUnitario * quantidadeSemanal);
+        custoData.quantidadeTotal += quantidadeSemanal;
       });
       
-      const custosCategoria: CustoCategoria[] = Array.from(custosPorCategoria.entries()).map(
-        ([categoriaId, dados]) => ({
-          categoriaId,
-          categoriaNome: dados.nome,
-          custoMedio: dados.count > 0 ? dados.soma / dados.count : 0
-        })
-      );
+      // Calcular média ponderada final
+      const custosCategoria: CustoCategoria[] = Array.from(
+        custosPorCategoria.entries()
+      ).map(([categoriaId, dados]) => ({
+        categoriaId,
+        categoriaNome: dados.nome,
+        custoMedio: dados.quantidadeTotal > 0 
+          ? dados.custoTotal / dados.quantidadeTotal 
+          : 0
+      }));
       
       // 10. Calcular resumo financeiro mensal
       const quantidadeEntregasSemanas = entregas?.length || 0;

@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Cliente } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertCircle, TrendingUp, TrendingDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { AlertCircle, TrendingUp, TrendingDown, Package, ChevronDown, ChevronUp } from "lucide-react";
 import { useClienteFinanceiro } from "@/hooks/useClienteFinanceiro";
 interface ClienteFinanceiroProps {
   cliente: Cliente;
@@ -10,6 +12,9 @@ interface ClienteFinanceiroProps {
 export default function ClienteFinanceiro({
   cliente
 }: ClienteFinanceiroProps) {
+  const [isCustosOpen, setIsCustosOpen] = useState(false);
+  const [isProdutosOpen, setIsProdutosOpen] = useState(false);
+  
   const {
     dadosFinanceiros,
     isLoading,
@@ -83,197 +88,265 @@ export default function ClienteFinanceiro({
           📊 <strong>Análise baseada nas últimas 12 semanas</strong> de histórico de entregas
         </p>
       </div>
-      
-      {/* 1. Resumo Financeiro Mensal */}
+
+      {/* Grid 2 colunas - Blocos principais */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 1. Resumo Financeiro Mensal */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div className="space-y-1.5">
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Resumo Financeiro Mensal
+                </CardTitle>
+                <CardDescription className="text-left">
+                  Projeção baseada nas últimas 12 semanas
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Total Geral - Destaque */}
+              <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
+                <p className="text-sm text-muted-foreground mb-1">
+                  Faturamento Médio Mensal
+                </p>
+                <p className="text-3xl font-bold text-primary">
+                  R$ {dadosFinanceiros.resumoMensal.faturamentoMedio.toFixed(2)}
+                </p>
+                <Badge variant="default" className="mt-2">
+                  {dadosFinanceiros.resumoMensal.quantidadeEntregasMes} entregas/mês
+                </Badge>
+              </div>
+
+              {/* Custos Operacionais - Collapsible */}
+              <Collapsible open={isCustosOpen} onOpenChange={setIsCustosOpen}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Detalhes de Custos
+                  </p>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 px-2">
+                      {isCustosOpen ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                
+                <CollapsibleContent className="space-y-2">
+                  {/* Custo de Produtos */}
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">Custo de Produtos</span>
+                    </div>
+                    <span className="font-medium text-sm">
+                      R$ {dadosFinanceiros.resumoMensal.custoProdutos.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* Custo Logístico (se aplicável) */}
+                  {cliente.tipoLogistica === 'Própria' && (
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <TrendingDown className="h-4 w-4 text-orange-500" />
+                        <span className="text-sm">Custo Logístico</span>
+                      </div>
+                      <span className="font-medium text-sm text-orange-600">
+                        R$ {dadosFinanceiros.resumoMensal.custoLogistico.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Imposto (se aplicável) */}
+                  {cliente.emiteNotaFiscal && (
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <TrendingDown className="h-4 w-4 text-purple-500" />
+                        <span className="text-sm">Imposto (4%)</span>
+                      </div>
+                      <span className="font-medium text-sm text-purple-600">
+                        R$ {dadosFinanceiros.resumoMensal.impostoEstimado.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Taxa Boleto (se aplicável) */}
+                  {cliente.formaPagamento === 'Boleto' && (
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <TrendingDown className="h-4 w-4 text-pink-500" />
+                        <span className="text-sm">Taxa Boleto</span>
+                      </div>
+                      <span className="font-medium text-sm text-pink-600">
+                        R$ {dadosFinanceiros.resumoMensal.taxaBoleto.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Total de Custos */}
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg font-medium">
+                    <span className="text-sm">Total de Custos</span>
+                    <span className="text-sm">
+                      R$ {dadosFinanceiros.resumoMensal.totalCustosOperacionais.toFixed(2)}
+                    </span>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Margem Bruta */}
+              <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-green-700 dark:text-green-400">
+                    Margem Bruta
+                  </span>
+                  <div className="text-right">
+                    <div className="text-xl font-bold text-green-800 dark:text-green-300">
+                      R$ {dadosFinanceiros.resumoMensal.margemBruta.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-green-600 dark:text-green-400">
+                      {dadosFinanceiros.resumoMensal.margemBrutaPercentual.toFixed(1)}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 2. Preços Aplicados */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              Preços Aplicados
+            </CardTitle>
+            <CardDescription className="text-left">
+              Por categoria habilitada
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {dadosFinanceiros.precosCategoria.map(item => (
+                <div 
+                  key={item.categoriaId}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="font-medium">{item.categoriaNome}</span>
+                    <Badge variant={item.fonte === 'personalizado' ? 'default' : 'secondary'} 
+                           className="text-xs">
+                      {item.fonte === 'personalizado' ? '⭐' : '📋'}
+                    </Badge>
+                  </div>
+                  <span className="text-base font-bold text-primary">
+                    R$ {item.precoUnitario.toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 3. Quantidades Médias - Largura total */}
       <Card>
         <CardHeader>
-          <CardTitle>📊 Resumo Financeiro Mensal</CardTitle>
-          <CardDescription>
-            Projeção baseada na média das últimas 12 semanas
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Faturamento Médio */}
-            <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-              <div className="text-sm text-green-700 dark:text-green-400 mb-1">Faturamento Médio Mensal</div>
-              <div className="text-2xl font-bold text-green-800 dark:text-green-300">
-                R$ {dadosFinanceiros.resumoMensal.faturamentoMedio.toFixed(2)}
-              </div>
-            </div>
-            
-            {/* Quantidade de Entregas/Mês */}
-            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="text-sm text-blue-700 dark:text-blue-400 mb-1">Entregas por Mês</div>
-              <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">
-                {dadosFinanceiros.resumoMensal.quantidadeEntregasMes} entregas
-              </div>
-            </div>
-            
-            {/* Custo dos Produtos */}
-            <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-              <div className="text-sm text-amber-700 dark:text-amber-400 mb-1">Custo dos Produtos</div>
-              <div className="text-2xl font-bold text-amber-800 dark:text-amber-300">
-                R$ {dadosFinanceiros.resumoMensal.custoProdutos.toFixed(2)}
-              </div>
-            </div>
-            
-            {/* Custo Logístico */}
-            {cliente.tipoLogistica === 'Própria' && <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-                <div className="text-sm text-orange-700 dark:text-orange-400 mb-1">
-                  Custo Logístico (R$15/entrega)
-                </div>
-                <div className="text-2xl font-bold text-orange-800 dark:text-orange-300">
-                  R$ {dadosFinanceiros.resumoMensal.custoLogistico.toFixed(2)}
-                </div>
-                <div className="text-xs text-orange-600 dark:text-orange-500 mt-1">
-                  {dadosFinanceiros.resumoMensal.quantidadeEntregasMes} entregas × R$15,00
-                </div>
-              </div>}
-            
-            {/* Imposto Estimado */}
-            {cliente.emiteNotaFiscal && <div className="p-4 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg">
-                <div className="text-sm text-purple-700 dark:text-purple-400 mb-1">
-                  Imposto Estimado (Simples 4%)
-                </div>
-                <div className="text-2xl font-bold text-purple-800 dark:text-purple-300">
-                  R$ {dadosFinanceiros.resumoMensal.impostoEstimado.toFixed(2)}
-                </div>
-                <div className="text-xs text-purple-600 dark:text-purple-500 mt-1">
-                  4% sobre faturamento
-                </div>
-              </div>}
-            
-            {/* Taxa de Boleto */}
-            {cliente.formaPagamento === 'Boleto' && <div className="p-4 bg-pink-50 dark:bg-pink-950/20 border border-pink-200 dark:border-pink-800 rounded-lg">
-                <div className="text-sm text-pink-700 dark:text-pink-400 mb-1">
-                  Taxa de Boleto (R$2,19/entrega)
-                </div>
-                <div className="text-2xl font-bold text-pink-800 dark:text-pink-300">
-                  R$ {dadosFinanceiros.resumoMensal.taxaBoleto.toFixed(2)}
-                </div>
-                <div className="text-xs text-pink-600 dark:text-pink-500 mt-1">
-                  {dadosFinanceiros.resumoMensal.quantidadeEntregasMes} entregas × R$2,19
-                </div>
-              </div>}
-          </div>
-          
-          {/* Total de Custos Operacionais */}
-          <div className="mt-4 p-4 bg-muted border rounded-lg">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium">Total de Custos Operacionais:</span>
-              <span className="text-xl font-bold">
-                R$ {dadosFinanceiros.resumoMensal.totalCustosOperacionais.toFixed(2)}
-              </span>
-            </div>
-            
-            <div className="flex justify-between items-center pt-2 border-t">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Margem Bruta:</span>
-                {dadosFinanceiros.resumoMensal.margemBruta >= 0 ? <TrendingUp className="h-4 w-4 text-green-600" /> : <TrendingDown className="h-4 w-4 text-red-600" />}
-              </div>
-              <div className="text-right">
-                <div className={`text-xl font-bold ${dadosFinanceiros.resumoMensal.margemBruta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  R$ {dadosFinanceiros.resumoMensal.margemBruta.toFixed(2)}
-                </div>
-                <div className={`text-sm ${dadosFinanceiros.resumoMensal.margemBruta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {dadosFinanceiros.resumoMensal.margemBrutaPercentual.toFixed(1)}%
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* 2. Preços Aplicados por Categoria */}
-      <Card>
-        <CardHeader>
-          <CardTitle>💰 Preços Aplicados</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5 text-primary" />
+            Quantidades Médias Semanais
+          </CardTitle>
           <CardDescription className="text-left">
-            Preços unitários por categoria de produto habilitada
+            Últimas 12 semanas
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {dadosFinanceiros.precosCategoria.length === 0 ? <p className="text-center text-muted-foreground py-4">
-              Nenhum preço configurado
-            </p> : <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Preço Unitário</TableHead>
-                  <TableHead>Fonte</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dadosFinanceiros.precosCategoria.map(item => <TableRow key={item.categoriaId}>
-                    <TableCell className="font-medium">{item.categoriaNome}</TableCell>
-                    <TableCell>R$ {item.precoUnitario.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Badge variant={item.fonte === 'personalizado' ? 'default' : 'secondary'}>
-                        {item.fonte === 'personalizado' ? '⭐ Personalizado' : '📋 Padrão'}
+          <div className="space-y-4">
+            {/* Total Geral */}
+            <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
+              <p className="text-sm text-muted-foreground mb-1">
+                Total Médio Semanal
+              </p>
+              <p className="text-3xl font-bold text-primary">
+                {dadosFinanceiros.quantidadesMedias.reduce(
+                  (sum, item) => sum + item.quantidadeMediaSemanal, 0
+                )} un/sem
+              </p>
+              <Badge variant="default" className="mt-2">
+                {dadosFinanceiros.quantidadesMedias.length} produtos
+              </Badge>
+            </div>
+
+            {/* Lista de Produtos - Collapsible */}
+            <Collapsible open={isProdutosOpen} onOpenChange={setIsProdutosOpen}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Detalhes por Produto
+                </p>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                    {isProdutosOpen ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+              
+              <CollapsibleContent className="space-y-2">
+                {dadosFinanceiros.quantidadesMedias
+                  .sort((a, b) => b.quantidadeMediaSemanal - a.quantidadeMediaSemanal)
+                  .map(item => (
+                    <div 
+                      key={item.produtoId}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{item.produtoNome}</span>
+                      </div>
+                      <Badge variant="secondary" className="text-base px-3 py-1">
+                        {item.quantidadeMediaSemanal} un/sem
                       </Badge>
-                    </TableCell>
-                  </TableRow>)}
-              </TableBody>
-            </Table>}
+                    </div>
+                  ))}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
         </CardContent>
       </Card>
-      
-      {/* 3. Quantidades Médias por Produto */}
+
+      {/* 4. Custos por Categoria - Largura total */}
       <Card>
         <CardHeader>
-          <CardTitle>📦 Quantidades Médias Semanais</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingDown className="h-5 w-5 text-primary" />
+            Custos Médios por Categoria
+          </CardTitle>
           <CardDescription className="text-left">
-            Média de unidades vendidas por semana (últimas 12 semanas)
+            Custo ponderado baseado nas vendas
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Produto</TableHead>
-                <TableHead className="text-right">Total (12 sem)</TableHead>
-                <TableHead className="text-right">Média Semanal</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {dadosFinanceiros.quantidadesMedias.map(item => <TableRow key={item.produtoId}>
-                  <TableCell className="font-medium">{item.produtoNome}</TableCell>
-                  <TableCell className="text-right">{item.quantidadeTotal12Semanas} un</TableCell>
-                  <TableCell className="text-right font-medium">
-                    {item.quantidadeMediaSemanal} un/sem
-                  </TableCell>
-                </TableRow>)}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-      
-      {/* 4. Custos Médios por Categoria */}
-      <Card>
-        <CardHeader>
-          <CardTitle>💵 Custos Médios por Categoria</CardTitle>
-          <CardDescription className="text-left">
-            Custo unitário médio dos produtos em cada categoria
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {dadosFinanceiros.custosCategoria.length === 0 ? <p className="text-center text-muted-foreground py-4">
-              Nenhum custo disponível
-            </p> : <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead className="text-right">Custo Médio Unitário</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dadosFinanceiros.custosCategoria.map(item => <TableRow key={item.categoriaId}>
-                    <TableCell className="font-medium">{item.categoriaNome}</TableCell>
-                    <TableCell className="text-right">R$ {item.custoMedio.toFixed(2)}</TableCell>
-                  </TableRow>)}
-              </TableBody>
-            </Table>}
+          <div className="space-y-2">
+            {dadosFinanceiros.custosCategoria.map(item => (
+              <div 
+                key={item.categoriaId}
+                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <span className="font-medium">{item.categoriaNome}</span>
+                <span className="text-base font-bold text-primary">
+                  R$ {item.custoMedio.toFixed(2)}
+                </span>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>;
