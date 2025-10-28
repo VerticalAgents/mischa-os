@@ -170,28 +170,65 @@ export function useClienteFinanceiro(cliente: Cliente) {
         total: number;
       }>();
       
+      // Criar índice de produtos por nome para lookup rápido
+      const produtosPorNome = new Map<string, any>();
+      produtos?.forEach(p => {
+        produtosPorNome.set(p.nome.toLowerCase(), p);
+      });
+      
       entregas?.forEach(entrega => {
         if (Array.isArray(entrega.itens)) {
           entrega.itens.forEach((item: any) => {
-            const produtoId = item.produto_id;
             const quantidade = item.quantidade || 0;
+            if (quantidade === 0) return;
             
-            if (produtoId) {
+            let produtoId: string;
+            let produtoNome: string;
+            let categoriaId: number | null = null;
+            
+            // ESTRATÉGIA 1: Item tem produto_id
+            if (item.produto_id) {
+              produtoId = item.produto_id;
               const produto = produtos?.find(p => p.id === produtoId);
-              const categoriaId = produto?.categoria_id || null;
-              const produtoNome = produto?.nome || item.produto_nome || item.produto || item.nome || 'Produto não identificado';
               
-              if (!agregadoProdutos.has(produtoId)) {
-                agregadoProdutos.set(produtoId, {
-                  nome: produtoNome,
-                  categoriaId: categoriaId,
-                  total: 0
-                });
+              if (produto) {
+                produtoNome = produto.nome;
+                categoriaId = produto.categoria_id || null;
+              } else {
+                // produto_id existe mas não encontrado em produtos_finais
+                produtoNome = item.produto_nome || item.produto || item.nome || `Produto ${produtoId.slice(0, 8)}`;
               }
+            } 
+            // ESTRATÉGIA 2: Item tem apenas nome (dados legados)
+            else if (item.produto || item.produto_nome || item.nome) {
+              produtoNome = item.produto || item.produto_nome || item.nome;
               
-              const agregado = agregadoProdutos.get(produtoId)!;
-              agregado.total += quantidade;
+              // Tentar encontrar produto pelo nome
+              const produtoEncontrado = produtosPorNome.get(produtoNome.toLowerCase());
+              if (produtoEncontrado) {
+                produtoId = produtoEncontrado.id;
+                categoriaId = produtoEncontrado.categoria_id || null;
+              } else {
+                // Produto não encontrado, usar nome como ID
+                produtoId = `legacy_${produtoNome.toLowerCase().replace(/\s+/g, '_')}`;
+              }
+            } 
+            // Item sem identificação
+            else {
+              return;
             }
+            
+            // Agregar quantidade
+            if (!agregadoProdutos.has(produtoId)) {
+              agregadoProdutos.set(produtoId, {
+                nome: produtoNome,
+                categoriaId: categoriaId,
+                total: 0
+              });
+            }
+            
+            const agregado = agregadoProdutos.get(produtoId)!;
+            agregado.total += quantidade;
           });
         }
       });
