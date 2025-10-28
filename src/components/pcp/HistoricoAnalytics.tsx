@@ -183,10 +183,10 @@ export default function HistoricoAnalytics() {
               <div className="space-y-1.5">
                 <CardTitle className="flex items-center gap-2">
                   <Package className="h-5 w-5" />
-                  Produção Revenda Últimos 90 dias
+                  Produção Revenda
                 </CardTitle>
                 <CardDescription className="text-left">
-                  Unidades produzidas - Revenda Padrão
+                  Últimos 90 dias
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -276,10 +276,10 @@ export default function HistoricoAnalytics() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              Produção Food-Service Últimos 90 dias
+              Produção Food-Service
             </CardTitle>
             <CardDescription className="text-left">
-              Unidades produzidas - Food-Service
+              Últimos 90 dias
             </CardDescription>
           </CardHeader>
           <CardContent>
