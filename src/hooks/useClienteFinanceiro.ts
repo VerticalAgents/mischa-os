@@ -255,6 +255,16 @@ export function useClienteFinanceiro(cliente: Cliente) {
         })
       );
       
+      console.log('📊 [Quantidades Médias] Calculadas:', {
+        cliente: cliente.nome,
+        totalEntregas: entregas?.length || 0,
+        produtos: quantidadesMedias.map(q => ({
+          nome: q.produtoNome,
+          total12sem: q.quantidadeTotal12Semanas,
+          mediaSemanal: q.quantidadeMediaSemanal
+        }))
+      });
+      
       // 9. Calcular custos PONDERADOS por categoria (baseado nas vendas reais)
       const custosPorCategoria = new Map<number, { 
         custoTotal: number; 
@@ -262,7 +272,12 @@ export function useClienteFinanceiro(cliente: Cliente) {
         nome: string 
       }>();
       
-      console.log('🔍 [Custo Médio] Iniciando cálculo ponderado...');
+      console.log('🔍 [Custo Médio] Iniciando cálculo ponderado...', {
+        cliente: cliente.nome,
+        totalEntregas: entregas?.length || 0,
+        entregasComItens: entregas?.filter(h => h.itens && Array.isArray(h.itens) && h.itens.length > 0).length || 0,
+        quantidadesProdutos: quantidadesMedias.length
+      });
       
       // Usar quantidadesMedias (produtos realmente vendidos) para calcular custo ponderado
       quantidadesMedias.forEach(item => {
@@ -361,7 +376,7 @@ export function useClienteFinanceiro(cliente: Cliente) {
         return {
           categoriaId,
           categoriaNome: dados.nome,
-          custoMedio: Number(custoMedio.toFixed(2)) // Arredondar para 2 casas decimais
+          custoMedio: Math.ceil(custoMedio * 100) / 100 // Arredondar para cima (2 casas decimais)
         };
       });
       
