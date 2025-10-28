@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProductionAnalytics } from "@/hooks/useProductionAnalytics";
-import { TrendingUp, TrendingDown, Package, Calendar, Factory, Filter, ChevronDown, ChevronUp } from "lucide-react";
+import { TrendingUp, TrendingDown, Package, Calendar, Factory, Filter, ChevronDown, ChevronUp, BarChart3 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, subYears, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useMemo } from "react";
@@ -12,6 +12,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 export default function HistoricoAnalytics() {
   // Estados para controle de UI
   const [filtrarPorProporcao, setFiltrarPorProporcao] = useState(false);
@@ -104,6 +106,52 @@ export default function HistoricoAnalytics() {
     if (diasPeriodo >= 365) return "Último ano";
     return `Últimos ${diasPeriodo} dias`;
   }, [diasPeriodo]);
+
+  // Últimos 6 meses - Revenda (para o gráfico)
+  const inicio6Meses = startOfMonth(subMonths(hoje, 5));
+  const {
+    timeSeriesData: producaoMensalRevenda
+  } = useProductionAnalytics({
+    startDate: inicio6Meses,
+    endDate: fimMesAtual,
+    aggregation: 'month',
+    categoriaId: categoriaRevenda?.id
+  });
+
+  // Últimos 6 meses - Food Service (para o gráfico)
+  const {
+    timeSeriesData: producaoMensalFoodService
+  } = useProductionAnalytics({
+    startDate: inicio6Meses,
+    endDate: fimMesAtual,
+    aggregation: 'month',
+    categoriaId: categoriaFoodService?.id
+  });
+
+  // Preparar dados para o gráfico comparativo
+  const dadosGraficoComparativo = useMemo(() => {
+    const mesesMap = new Map();
+    
+    // Adicionar dados de Revenda
+    producaoMensalRevenda.forEach(item => {
+      const mesNome = format(new Date(item.period), "MMM/yy", { locale: ptBR });
+      if (!mesesMap.has(mesNome)) {
+        mesesMap.set(mesNome, { mes: mesNome, revenda: 0, foodService: 0 });
+      }
+      mesesMap.get(mesNome).revenda = item.produced;
+    });
+    
+    // Adicionar dados de Food Service
+    producaoMensalFoodService.forEach(item => {
+      const mesNome = format(new Date(item.period), "MMM/yy", { locale: ptBR });
+      if (!mesesMap.has(mesNome)) {
+        mesesMap.set(mesNome, { mes: mesNome, revenda: 0, foodService: 0 });
+      }
+      mesesMap.get(mesNome).foodService = item.produced;
+    });
+    
+    return Array.from(mesesMap.values());
+  }, [producaoMensalRevenda, producaoMensalFoodService]);
 
 
   // Cálculos de variação
@@ -387,6 +435,72 @@ export default function HistoricoAnalytics() {
         </Card>
 
       </div>
+
+      {/* Gráfico Comparativo - Últimos 6 Meses */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Evolução da Produção por Categoria
+          </CardTitle>
+          <CardDescription className="text-left">
+            Comparativo mensal de formas produzidas - Últimos 6 meses
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer
+            config={{
+              revenda: {
+                label: "Revenda",
+                color: "hsl(var(--chart-1))",
+              },
+              foodService: {
+                label: "Food-Service",
+                color: "hsl(var(--chart-2))",
+              },
+            }}
+            className="h-[400px]"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dadosGraficoComparativo}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis 
+                  dataKey="mes" 
+                  className="text-xs"
+                  tick={{ fill: 'hsl(var(--foreground))' }}
+                />
+                <YAxis 
+                  className="text-xs"
+                  tick={{ fill: 'hsl(var(--foreground))' }}
+                  label={{ 
+                    value: 'Formas Produzidas', 
+                    angle: -90, 
+                    position: 'insideLeft',
+                    style: { fill: 'hsl(var(--foreground))' }
+                  }}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Legend 
+                  wrapperStyle={{ paddingTop: '20px' }}
+                  iconType="rect"
+                />
+                <Bar 
+                  dataKey="revenda" 
+                  fill="hsl(var(--chart-1))" 
+                  name="Revenda"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar 
+                  dataKey="foodService" 
+                  fill="hsl(var(--chart-2))" 
+                  name="Food-Service"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        </CardContent>
+      </Card>
 
       {/* Card com detalhes adicionais */}
       <Card>
