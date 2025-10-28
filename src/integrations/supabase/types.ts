@@ -76,7 +76,7 @@ export type Database = {
           action: string
           created_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           new_values: Json | null
           old_values: Json | null
           record_id: string | null
@@ -88,7 +88,7 @@ export type Database = {
           action: string
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           record_id?: string | null
@@ -100,7 +100,7 @@ export type Database = {
           action?: string
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           record_id?: string | null
@@ -1383,7 +1383,7 @@ export type Database = {
           details: Json | null
           event_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           user_agent: string | null
           user_id: string | null
         }
@@ -1392,7 +1392,7 @@ export type Database = {
           details?: Json | null
           event_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
         }
@@ -1401,7 +1401,7 @@ export type Database = {
           details?: Json | null
           event_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
         }
@@ -1586,7 +1586,7 @@ export type Database = {
     }
     Functions: {
       check_cliente_status_consistency: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           ativo: boolean
           id: string
@@ -1625,10 +1625,7 @@ export type Database = {
         Args: { encrypted_data: string }
         Returns: string
       }
-      encrypt_sensitive_data: {
-        Args: { data: string }
-        Returns: string
-      }
+      encrypt_sensitive_data: { Args: { data: string }; Returns: string }
       get_cliente_secure: {
         Args: { cliente_id: string }
         Returns: {
@@ -1647,7 +1644,7 @@ export type Database = {
         }[]
       }
       get_clientes_basic_info: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           ativo: boolean
           categoria_estabelecimento_id: number
@@ -1667,7 +1664,7 @@ export type Database = {
         }[]
       }
       get_clientes_secure: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           ativo: boolean
           categoria_estabelecimento_id: number
@@ -1688,28 +1685,22 @@ export type Database = {
         }[]
       }
       get_custos_summary: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           num_categorias_custos: number
           total_custos_fixos: number
           total_custos_variaveis: number
         }[]
       }
-      get_feature_flag: {
-        Args: { flag_name: string }
-        Returns: boolean
-      }
+      get_feature_flag: { Args: { flag_name: string }; Returns: boolean }
       get_pedidos_summary: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           total_pedidos_mes: number
           valor_medio_pedido: number
         }[]
       }
-      get_request_ip: {
-        Args: Record<PropertyKey, never>
-        Returns: unknown
-      }
+      get_request_ip: { Args: never; Returns: unknown }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1721,14 +1712,8 @@ export type Database = {
         }
         Returns: boolean
       }
-      populate_historico_giro_semanal: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      process_entrega: {
-        Args: { p_entrega_id: string }
-        Returns: undefined
-      }
+      populate_historico_giro_semanal: { Args: never; Returns: undefined }
+      process_entrega: { Args: { p_entrega_id: string }; Returns: undefined }
       process_entrega_idempotente: {
         Args: {
           p_agendamento_id: string
@@ -1737,36 +1722,24 @@ export type Database = {
         }
         Returns: undefined
       }
-      process_entrega_safe: {
-        Args:
-          | {
+      process_entrega_safe:
+        | {
+            Args: {
               p_agendamento_id: string
               p_data_entrega?: string
               p_observacao?: string
             }
-          | { p_agendamento_id: string; p_observacao?: string }
-        Returns: undefined
-      }
-      refresh_dados_analise_giro: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      saldo_insumo: {
-        Args: { i_id: string }
-        Returns: number
-      }
-      saldo_produto: {
-        Args: { p_id: string }
-        Returns: number
-      }
-      validate_cnpj_cpf: {
-        Args: { doc: string }
-        Returns: boolean
-      }
-      validate_email: {
-        Args: { email: string }
-        Returns: boolean
-      }
+            Returns: undefined
+          }
+        | {
+            Args: { p_agendamento_id: string; p_observacao?: string }
+            Returns: undefined
+          }
+      refresh_dados_analise_giro: { Args: never; Returns: undefined }
+      saldo_insumo: { Args: { i_id: string }; Returns: number }
+      saldo_produto: { Args: { p_id: string }; Returns: number }
+      validate_cnpj_cpf: { Args: { doc: string }; Returns: boolean }
+      validate_email: { Args: { email: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"
