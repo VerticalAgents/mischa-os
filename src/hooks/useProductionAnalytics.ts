@@ -179,16 +179,16 @@ export const useProductionAnalytics = (filters: ProductionFilters) => {
       return acc;
     }, {} as Record<string, { totalUnits: number; totalForms: number }>);
 
-    const totalUnits = Object.values(productTotals).reduce((sum, product) => sum + product.totalUnits, 0);
+    const totalForms = Object.values(productTotals).reduce((sum, product) => sum + product.totalForms, 0);
 
     return Object.entries(productTotals)
       .map(([productName, data]) => ({
         productName,
         totalUnits: data.totalUnits,
         totalForms: data.totalForms,
-        percentage: totalUnits > 0 ? (data.totalUnits / totalUnits) * 100 : 0
+        percentage: totalForms > 0 ? (data.totalForms / totalForms) * 100 : 0
       }))
-      .sort((a, b) => b.totalUnits - a.totalUnits)
+      .sort((a, b) => b.totalForms - a.totalForms)
       .slice(0, 10);
   }, [filteredHistorico]);
 
