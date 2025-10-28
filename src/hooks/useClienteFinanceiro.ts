@@ -406,8 +406,8 @@ export function useClienteFinanceiro(cliente: Cliente) {
       const faturamentoMedio = faturamentoSemanal * SEMANAS_POR_MES;
       const custoProdutos = custoTotalSemanal * SEMANAS_POR_MES;
       
-      // Custo logístico (apenas se "Própria")
-      const custoLogistico = cliente.tipoLogistica === 'Própria' 
+      // Custo logístico (apenas se "Própria" ou "PROPRIA")
+      const custoLogistico = (cliente.tipoLogistica?.toUpperCase() === 'PROPRIA' || cliente.tipoLogistica === 'Própria')
         ? quantidadeEntregasMes * CUSTO_POR_ENTREGA 
         : 0;
       
@@ -417,7 +417,7 @@ export function useClienteFinanceiro(cliente: Cliente) {
         : 0;
       
       // Taxa de boleto (apenas se forma de pagamento for Boleto)
-      const taxaBoleto = cliente.formaPagamento === 'Boleto'
+      const taxaBoleto = (cliente.formaPagamento?.toUpperCase() === 'BOLETO' || cliente.formaPagamento === 'Boleto')
         ? quantidadeEntregasMes * TAXA_BOLETO
         : 0;
       

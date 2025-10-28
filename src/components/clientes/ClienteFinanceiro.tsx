@@ -151,7 +151,7 @@ export default function ClienteFinanceiro({
                   </div>
 
                   {/* Custo Logístico (se aplicável) */}
-                  {cliente.tipoLogistica === 'Própria' && (
+                  {(cliente.tipoLogistica?.toUpperCase() === 'PROPRIA' || cliente.tipoLogistica === 'Própria') && (
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-2">
                         <TrendingDown className="h-4 w-4 text-orange-500" />
@@ -177,7 +177,7 @@ export default function ClienteFinanceiro({
                   )}
 
                   {/* Taxa Boleto (se aplicável) */}
-                  {cliente.formaPagamento === 'Boleto' && (
+                  {(cliente.formaPagamento?.toUpperCase() === 'BOLETO' || cliente.formaPagamento === 'Boleto') && (
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-2">
                         <TrendingDown className="h-4 w-4 text-pink-500" />
