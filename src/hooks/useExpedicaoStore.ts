@@ -356,22 +356,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
-          // CRÍTICO: Gravar no histórico ANTES de alterar o agendamento
-          const historicoStore = useHistoricoEntregasStore.getState();
-          
-          // CORREÇÃO: Usar a data prevista de entrega do pedido como data da entrega
-          const dataEntrega = pedido.data_prevista_entrega;
-          
-          console.log('📝 Criando NOVO registro de entrega no histórico com data prevista:', dataEntrega);
-          await historicoStore.adicionarRegistro({
-            cliente_id: pedido.cliente_id,
-            data: dataEntrega, // Usar data prevista do pedido, não data atual
-            tipo: 'entrega',
-            quantidade: pedido.quantidade_total,
-            itens: pedido.itens_personalizados || [],
-            status_anterior: pedido.substatus_pedido || 'Agendado',
-            observacao: observacao || undefined
-          });
+          // O RPC process_entrega_safe já cria o registro no histórico, então só precisamos recarregar
+          console.log('✅ Entrega processada - o histórico foi criado pelo backend');
 
           // Remover do estado local da expedição
           set(state => ({
@@ -386,6 +372,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .single();
 
           // CORREÇÃO: Calcular próxima data baseada na data prevista original, não na data atual
+          const dataEntrega = pedido.data_prevista_entrega;
           const proximaData = addDays(dataEntrega, cliente?.periodicidade_padrao || 7);
           const proximaDataFormatada = format(proximaData, 'yyyy-MM-dd');
 
@@ -415,7 +402,11 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             .update(dadosAtualizacao)
             .eq('id', pedidoId);
 
-          console.log('✅ Entrega confirmada com baixa no estoque - NOVO registro criado no histórico com data prevista');
+          // Recarregar histórico para obter o registro criado pelo backend
+          const historicoStore = useHistoricoEntregasStore.getState();
+          await historicoStore.carregarHistorico();
+
+          console.log('✅ Entrega confirmada com baixa no estoque - registro criado pelo backend');
           toast.success(`Entrega confirmada para ${pedido.cliente_nome} na data ${format(dataEntrega, 'dd/MM/yyyy')} com baixa automática no estoque. Reagendado como Previsto preservando configurações.`);
         } catch (error) {
           console.error('❌ Erro ao confirmar entrega:', error);
@@ -603,8 +594,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             return;
           }
 
-          // Gravar histórico para todos os pedidos - CADA UM UM NOVO REGISTRO
-          const historicoStore = useHistoricoEntregasStore.getState();
+          // O RPC process_entrega_safe já cria os registros no histórico para cada pedido
+          console.log('✅ Entregas processadas - históricos criados pelo backend');
           
           set(state => ({
             pedidos: state.pedidos.filter(p => 
@@ -613,20 +604,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           }));
 
           for (const pedido of pedidosParaEntregar) {
-            console.log(`📝 Criando registro de entrega para ${pedido.cliente_nome}...`);
-            
-            // CORREÇÃO: Usar a data prevista de entrega do pedido
             const dataEntrega = pedido.data_prevista_entrega;
-            
-            // Gravar no histórico - NOVO registro para cada pedido
-            await historicoStore.adicionarRegistro({
-              cliente_id: pedido.cliente_id,
-              data: dataEntrega, // Usar data prevista do pedido, não data atual
-              tipo: 'entrega',
-              quantidade: pedido.quantidade_total,
-              itens: pedido.itens_personalizados || [],
-              status_anterior: pedido.substatus_pedido || 'Agendado'
-            });
 
             const { data: cliente } = await supabase
               .from('clientes')
@@ -661,7 +639,11 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               .eq('id', pedido.id);
           }
 
-          console.log(`✅ ${pedidosParaEntregar.length} entregas confirmadas com baixa automática no estoque - NOVOS registros criados no histórico com datas previstas`);
+          // Recarregar histórico para obter os registros criados pelo backend
+          const historicoStore = useHistoricoEntregasStore.getState();
+          await historicoStore.carregarHistorico();
+
+          console.log(`✅ ${pedidosParaEntregar.length} entregas confirmadas com baixa automática no estoque - registros criados pelo backend`);
           toast.success(`${pedidosParaEntregar.length} entregas confirmadas nas respectivas datas previstas com baixa automática no estoque e reagendadas como Previsto`);
         } catch (error) {
           console.error('❌ Erro na entrega em massa:', error);

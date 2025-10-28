@@ -53,7 +53,7 @@ let produtosCache: Map<string, string> | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
-// Função para carregar e cachear nomes de produtos
+// Função para carregar e cachear nomes de produtos (incluindo inativos e legacy)
 const carregarProdutosCache = async (): Promise<Map<string, string>> => {
   const now = Date.now();
   
@@ -63,15 +63,36 @@ const carregarProdutosCache = async (): Promise<Map<string, string>> => {
   }
   
   try {
-    // Carregar todos os produtos ativos
-    const { data, error } = await supabase
+    // Carregar produtos_finais (todos, incluindo inativos)
+    const { data: produtosFinais, error: errorFinais } = await supabase
       .from('produtos_finais')
-      .select('id, nome')
-      .eq('ativo', true);
+      .select('id, nome');
     
-    if (error) throw error;
+    if (errorFinais) throw errorFinais;
     
-    produtosCache = new Map(data?.map(p => [p.id, p.nome]) || []);
+    // Carregar produtos legacy (tabela antiga)
+    const { data: produtosLegacy, error: errorLegacy } = await supabase
+      .from('produtos')
+      .select('id, nome');
+    
+    // Não falhar se a tabela legacy não existir
+    if (errorLegacy) {
+      console.warn('Tabela produtos não encontrada ou erro ao carregar:', errorLegacy);
+    }
+    
+    // Mesclar resultados (produtos_finais tem prioridade)
+    produtosCache = new Map();
+    
+    // Adicionar produtos legacy primeiro
+    produtosLegacy?.forEach(p => {
+      produtosCache!.set(p.id, p.nome);
+    });
+    
+    // Sobrescrever com produtos_finais (prioridade)
+    produtosFinais?.forEach(p => {
+      produtosCache!.set(p.id, p.nome);
+    });
+    
     cacheTimestamp = now;
     
     return produtosCache;
@@ -88,12 +109,19 @@ const enriquecerItensComNomes = async (itens: any[]): Promise<any[]> => {
   try {
     const produtoNomeMap = await carregarProdutosCache();
     
-    return itens.map(item => ({
-      ...item,
-      produto_nome: item.produto_nome || 
-                    produtoNomeMap.get(item.produto_id) || 
-                    `Produto ${item.produto_id?.substring(0, 8) || 'N/A'}`
-    }));
+    return itens.map(item => {
+      // Prioridade de nomes: item.produto_nome > item.produto > item.nome > busca por ID > fallback
+      const nomeExistente = item.produto_nome || item.produto || item.nome;
+      const nomePorId = item.produto_id ? produtoNomeMap.get(item.produto_id) : null;
+      const nomeFinal = nomeExistente || 
+                        nomePorId || 
+                        (item.produto_id ? `Produto ${item.produto_id.substring(0, 8)}` : 'Produto não identificado');
+      
+      return {
+        ...item,
+        produto_nome: nomeFinal
+      };
+    });
   } catch (error) {
     console.error('Erro ao enriquecer itens com nomes:', error);
     return itens;
