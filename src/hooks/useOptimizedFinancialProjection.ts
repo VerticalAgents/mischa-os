@@ -6,6 +6,7 @@ import { useSupabasePrecosCategoriaCliente } from './useSupabasePrecosCategoriaC
 import { useSupabaseGirosSemanaPersonalizados } from './useSupabaseGirosSemanaPersonalizados';
 import { useConfiguracoesStore } from './useConfiguracoesStore';
 import { useFinancialCache } from './useFinancialCache';
+import { useGiroHistoricoReal } from './useGiroHistoricoReal';
 
 // Preços temporários por categoria (fallback)
 const PRECOS_TEMPORARIOS: Record<string, number> = {
@@ -23,6 +24,8 @@ interface DetailedPrice {
   precoPersonalizado: boolean;
   giroSemanal: number;
   faturamentoSemanal: number;
+  origemGiro?: 'personalizado' | 'historico_completo' | 'historico_parcial' | 'projetado';
+  numeroSemanasHistorico?: number;
 }
 
 export function useOptimizedFinancialProjection(): {
@@ -41,6 +44,9 @@ export function useOptimizedFinancialProjection(): {
   const { carregarTodosGiros } = useSupabaseGirosSemanaPersonalizados();
   const { obterConfiguracao } = useConfiguracoesStore();
   const { setCachedData, getCachedData } = useFinancialCache();
+  
+  const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo');
+  const { data: girosHistoricos } = useGiroHistoricoReal(clientesAtivos.map(c => c.id));
 
   // Função memoizada para obter preço por categoria
   const obterPrecoCategoria = useCallback((nomeCategoria: string): number => {
@@ -64,14 +70,15 @@ export function useOptimizedFinancialProjection(): {
     queryFn: async () => {
       console.log('🚀 Carregando projeção financeira otimizada...');
       
-      // Verificar cache primeiro
+      // Verificar cache primeiro (v2 com giro histórico)
       const cachedData = getCachedData();
       if (cachedData && Date.now() - cachedData.lastUpdated.getTime() < 5 * 60 * 1000) {
-        console.log('📦 Dados carregados do cache');
+        console.log('📦 Dados carregados do cache (v2)');
         return cachedData;
       }
 
       const startTime = performance.now();
+      const clientesAtivos = clientes.filter(cliente => cliente.statusCliente === 'Ativo');
 
       // Carregar TODOS os dados em paralelo (elimina N+1)
       const [
@@ -88,9 +95,6 @@ export function useOptimizedFinancialProjection(): {
         tempo: `${performance.now() - startTime}ms`
       });
 
-      // Filtrar apenas clientes ativos
-      const clientesAtivos = clientes.filter(cliente => cliente.statusCliente === 'Ativo');
-      
       if (clientesAtivos.length === 0 || categorias.length === 0) {
         return {
           faturamentoSemanal: 0,
@@ -134,14 +138,26 @@ export function useOptimizedFinancialProjection(): {
 
           const key = `${cliente.id}_${categoriaId}`;
 
-          // Calcular giro semanal (busca O(1))
-          const giroPersonalizado = girosMap.get(key);
+          // Calcular giro semanal com prioridades: personalizado > histórico > projetado
           let giroSemanal = 0;
+          let origemGiro: 'personalizado' | 'historico_completo' | 'historico_parcial' | 'projetado' = 'projetado';
           
+          // Prioridade 1: giro personalizado para a categoria
+          const giroPersonalizado = girosMap.get(key);
           if (giroPersonalizado !== undefined) {
-            giroSemanal = giroPersonalizado;
-          } else if (cliente.periodicidadePadrao > 0) {
-            giroSemanal = Math.round((cliente.quantidadePadrao / cliente.periodicidadePadrao) * 7);
+            giroSemanal = Math.round(giroPersonalizado);
+            origemGiro = 'personalizado';
+          } else {
+            // Prioridade 2: giro histórico real (últimas 12 semanas ou desde primeira entrega)
+            const giroHistorico = girosHistoricos?.get(cliente.id);
+            if (giroHistorico && giroHistorico.giroSemanal > 0) {
+              giroSemanal = giroHistorico.giroSemanal;
+              origemGiro = giroHistorico.origem as any;
+            } else if (cliente.periodicidadePadrao > 0) {
+              // Fallback: cálculo projetado
+              giroSemanal = Math.round((cliente.quantidadePadrao / cliente.periodicidadePadrao) * 7);
+              origemGiro = 'projetado';
+            }
           }
 
           // Obter preço aplicado (busca O(1))
@@ -170,7 +186,9 @@ export function useOptimizedFinancialProjection(): {
             precoUnitario: precoAplicado,
             precoPersonalizado: isPersonalizado,
             giroSemanal,
-            faturamentoSemanal
+            faturamentoSemanal,
+            origemGiro,
+            numeroSemanasHistorico: girosHistoricos?.get(cliente.id)?.numeroSemanas || 0,
           });
         }
       }

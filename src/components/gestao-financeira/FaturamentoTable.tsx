@@ -2,6 +2,7 @@
 import StatsTable from '@/components/dashboard/StatsTable';
 import { Badge } from '@/components/ui/badge';
 import GiroInlineEditor from './GiroInlineEditor';
+import GiroOrigemBadge from './GiroOrigemBadge';
 
 interface FaturamentoTableProps {
   precosDetalhados: any[];
@@ -35,13 +36,20 @@ export default function FaturamentoTable({
       header: 'Giro Semanal',
       accessorKey: 'giroSemanal' as keyof any,
       cell: (item: any) => (
-        <GiroInlineEditor
-          clienteId={item.clienteId}
-          categoriaId={item.categoriaId}
-          giroAtual={item.giroSemanal}
-          isPersonalizado={verificarSeGiroPersonalizado(item.clienteId, item.categoriaId)}
-          onGiroAtualizado={handleGiroAtualizado}
-        />
+        <div className="space-y-1">
+          <GiroInlineEditor
+            clienteId={item.clienteId}
+            categoriaId={item.categoriaId}
+            giroAtual={item.giroSemanal}
+            isPersonalizado={verificarSeGiroPersonalizado(item.clienteId, item.categoriaId)}
+            onGiroAtualizado={handleGiroAtualizado}
+          />
+          <GiroOrigemBadge 
+            origem={item.origemGiro} 
+            numeroSemanas={item.numeroSemanasHistorico}
+            compact
+          />
+        </div>
       )
     },
     {

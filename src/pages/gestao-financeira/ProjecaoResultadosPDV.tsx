@@ -9,6 +9,7 @@ import { useOptimizedFinancialProjection } from '@/hooks/useOptimizedFinancialPr
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { useSupabaseCategoriasProduto } from '@/hooks/useSupabaseCategoriasProduto';
 import { useSupabaseGirosSemanaPersonalizados } from '@/hooks/useSupabaseGirosSemanaPersonalizados';
+import { useGiroHistoricoReal } from '@/hooks/useGiroHistoricoReal';
 import GiroInlineEditor from '@/components/gestao-financeira/GiroInlineEditor';
 import ResumoGeralTab from '@/components/gestao-financeira/ResumoGeralTab';
 import LazyTabs from '@/components/gestao-financeira/LazyTabs';
@@ -19,6 +20,19 @@ export default function ProjecaoResultadosPDV() {
   const { categorias } = useSupabaseCategoriasProduto();
   const { obterGiroPersonalizado } = useSupabaseGirosSemanaPersonalizados();
   const [faturamentoMedioRevenda, setFaturamentoMedioRevenda] = useState(0);
+  
+  const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo');
+  const { data: girosHistoricos } = useGiroHistoricoReal(clientesAtivos.map(c => c.id));
+
+  // Calcular estatísticas de origem dos dados
+  const estatisticasOrigem = useMemo(() => {
+    return {
+      personalizado: precosDetalhados.filter((p: any) => p.origemGiro === 'personalizado').length,
+      historicoCompleto: precosDetalhados.filter((p: any) => p.origemGiro === 'historico_completo').length,
+      historicoParcial: precosDetalhados.filter((p: any) => p.origemGiro === 'historico_parcial').length,
+      projetado: precosDetalhados.filter((p: any) => p.origemGiro === 'projetado').length,
+    };
+  }, [precosDetalhados]);
 
   // Função para verificar se uma categoria é "Revenda Padrão"
   const isCategoriaRevenda = (categoriaNome: string): boolean => {
@@ -71,7 +85,7 @@ export default function ProjecaoResultadosPDV() {
   }, [precosDetalhados]);
 
   // Calcular métricas gerais
-  const clientesAtivos = clientes?.filter(c => c.statusCliente === 'Ativo').length || 0;
+  const totalClientesAtivos = clientes?.filter(c => c.statusCliente === 'Ativo').length || 0;
   const totalFaturamentoMensal = precosDetalhados?.reduce((sum, item) => sum + (item.faturamentoSemanal * 4), 0) || 0;
 
   // Agrupar dados por categoria para análise
@@ -134,6 +148,43 @@ export default function ProjecaoResultadosPDV() {
         description="Análise financeira e projeção de resultados por ponto de venda"
       />
 
+      {/* Banner informativo sobre origem dos dados */}
+      <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg dark:from-blue-950/20 dark:to-indigo-950/20 dark:border-blue-800">
+        <div className="flex items-start gap-3">
+          <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+              📊 Cálculo baseado em dados reais de entrega
+            </h3>
+            <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+              As projeções agora utilizam o giro médio histórico real dos últimos 3 meses (12 semanas) de cada cliente.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {estatisticasOrigem.personalizado > 0 && (
+                <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-200 dark:border-purple-700">
+                  ⭐ {estatisticasOrigem.personalizado} Personalizados
+                </Badge>
+              )}
+              {estatisticasOrigem.historicoCompleto > 0 && (
+                <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-200 dark:border-green-700">
+                  🟢 {estatisticasOrigem.historicoCompleto} Histórico completo (12 sem)
+                </Badge>
+              )}
+              {estatisticasOrigem.historicoParcial > 0 && (
+                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-200 dark:border-yellow-700">
+                  🟡 {estatisticasOrigem.historicoParcial} Histórico parcial (&lt;12 sem)
+                </Badge>
+              )}
+              {estatisticasOrigem.projetado > 0 && (
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700">
+                  🔵 {estatisticasOrigem.projetado} Projetados (sem histórico)
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Cards de Métricas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card>
@@ -142,7 +193,7 @@ export default function ProjecaoResultadosPDV() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{clientesAtivos}</div>
+            <div className="text-2xl font-bold">{totalClientesAtivos}</div>
             <p className="text-xs text-muted-foreground">
               Pontos de venda em operação
             </p>
@@ -186,7 +237,7 @@ export default function ProjecaoResultadosPDV() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              R$ {clientesAtivos > 0 ? (totalFaturamentoMensal / clientesAtivos).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
+              R$ {totalClientesAtivos > 0 ? (totalFaturamentoMensal / totalClientesAtivos).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
             </div>
             <p className="text-xs text-muted-foreground">
               Por PDV/mês

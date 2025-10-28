@@ -5,6 +5,7 @@ import { useSupabaseCategoriasProduto } from '@/hooks/useSupabaseCategoriasProdu
 import { useConfiguracoesStore } from '@/hooks/useConfiguracoesStore';
 import { useSupabasePrecosCategoriaCliente } from '@/hooks/useSupabasePrecosCategoriaCliente';
 import { useSupabaseGirosSemanaPersonalizados } from '@/hooks/useSupabaseGirosSemanaPersonalizados';
+import { useGiroHistoricoReal } from '@/hooks/useGiroHistoricoReal';
 
 // Preços temporários por categoria (fallback quando não há configuração)
 const PRECOS_TEMPORARIOS: Record<string, number> = {
@@ -34,6 +35,9 @@ export function useFaturamentoPrevisto() {
   const { obterConfiguracao } = useConfiguracoesStore();
   const { carregarPrecosPorCliente } = useSupabasePrecosCategoriaCliente();
   const { obterGiroPersonalizado } = useSupabaseGirosSemanaPersonalizados();
+  
+  const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo');
+  const { data: girosHistoricos } = useGiroHistoricoReal(clientesAtivos.map(c => c.id));
 
   const obterPrecoCategoria = (nomeCategoria: string): number => {
     const nomeNormalizado = nomeCategoria.toLowerCase();
@@ -46,18 +50,25 @@ export function useFaturamentoPrevisto() {
   };
 
   const calcularGiroSemanalPorCategoria = (cliente: any, categoriaId: number): number => {
-    // Primeiro, verificar se existe giro personalizado para esta combinação cliente-categoria
+    // Prioridade 1: Verificar se existe giro personalizado para esta combinação cliente-categoria
     const giroPersonalizado = obterGiroPersonalizado(cliente.id, categoriaId);
     if (giroPersonalizado !== null) {
       console.log(`🎯 Giro personalizado encontrado para cliente ${cliente.nome}, categoria ${categoriaId}: ${giroPersonalizado}`);
       return giroPersonalizado;
     }
 
-    // Se não há giro personalizado, calcular baseado no giro padrão do cliente
+    // Prioridade 2: Usar giro histórico real (últimas 12 semanas ou desde primeira entrega)
+    const giroHistorico = girosHistoricos?.get(cliente.id);
+    if (giroHistorico && giroHistorico.giroSemanal > 0) {
+      console.log(`📊 Giro histórico real para cliente ${cliente.nome}: ${giroHistorico.giroSemanal} (${giroHistorico.numeroSemanas} semanas)`);
+      return giroHistorico.giroSemanal;
+    }
+
+    // Fallback: Usar cálculo projetado (quantidade_padrao / periodicidade_padrao) * 7 dias
     if (cliente.periodicidadePadrao === 0) return 0;
     const giroCalculado = Math.round((cliente.quantidadePadrao / cliente.periodicidadePadrao) * 7);
     
-    console.log(`📊 Giro calculado para cliente ${cliente.nome}, categoria ${categoriaId}: ${giroCalculado} (baseado em ${cliente.quantidadePadrao}/${cliente.periodicidadePadrao})`);
+    console.log(`📊 Giro projetado para cliente ${cliente.nome}, categoria ${categoriaId}: ${giroCalculado} (baseado em ${cliente.quantidadePadrao}/${cliente.periodicidadePadrao})`);
     return giroCalculado;
   };
 

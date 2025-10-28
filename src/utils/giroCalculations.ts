@@ -158,3 +158,39 @@ export function gerarUltimas12Semanas(): Array<{ ano: number; semana: number; ch
   
   return semanas;
 }
+
+/**
+ * Calcula giro semanal médio baseado em histórico consolidado (últimas 12 semanas ou menos)
+ * @param clienteId - ID do cliente
+ * @returns Giro semanal médio real e número de semanas consideradas
+ */
+export async function calcularGiroSemanalHistoricoConsolidado(
+  clienteId: string
+): Promise<{ giroSemanal: number; numeroSemanas: number }> {
+  try {
+    const { data, error } = await supabase
+      .from('historico_giro_semanal_consolidado')
+      .select('giro_semanal, semana')
+      .eq('cliente_id', clienteId)
+      .order('semana', { ascending: false })
+      .limit(12);
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return { giroSemanal: 0, numeroSemanas: 0 };
+    }
+
+    const totalGiro = data.reduce((sum, reg) => sum + (reg.giro_semanal || 0), 0);
+    const mediaGiro = Math.round(totalGiro / data.length);
+
+    console.log(`[GiroHistórico] Cliente ${clienteId.substring(0, 8)}: ${data.length} semanas, média ${mediaGiro}`);
+    
+    return {
+      giroSemanal: mediaGiro,
+      numeroSemanas: data.length
+    };
+  } catch (error) {
+    console.error('Erro ao calcular giro histórico consolidado:', error);
+    return { giroSemanal: 0, numeroSemanas: 0 };
+  }
+}
