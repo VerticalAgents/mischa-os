@@ -250,16 +250,47 @@ export function useClienteFinanceiro(cliente: Cliente) {
         nome: string 
       }>();
       
+      console.log('🔍 [Custo Médio] Iniciando cálculo ponderado...');
+      
       // Usar quantidadesMedias (produtos realmente vendidos) para calcular custo ponderado
       quantidadesMedias.forEach(item => {
-        if (!item.categoriaId) return; // Ignorar produtos sem categoria
+        if (!item.categoriaId) {
+          console.warn('⚠️ [Custo Médio] Produto sem categoria:', item.produtoNome);
+          return;
+        }
         
-        // Buscar produto para obter custo_unitario
-        const produto = produtos?.find(p => p.id === item.produtoId);
-        if (!produto) return;
+        // ESTRATÉGIA 1: Buscar produto por ID
+        let produto = produtos?.find(p => p.id === item.produtoId);
+        
+        // ESTRATÉGIA 2: Buscar produto por NOME (fallback)
+        if (!produto) {
+          console.log('🔄 [Custo Médio] Produto não encontrado por ID, tentando por nome:', {
+            produtoId: item.produtoId,
+            produtoNome: item.produtoNome
+          });
+          
+          produto = produtosPorNome.get(item.produtoNome.toLowerCase());
+          
+          if (produto) {
+            console.log('✅ [Custo Médio] Produto encontrado por nome:', produto.nome);
+          }
+        }
+        
+        // ESTRATÉGIA 3: Fallback - Pular item
+        if (!produto) {
+          console.error('❌ [Custo Médio] Produto não encontrado (ID nem Nome):', {
+            produtoId: item.produtoId,
+            produtoNome: item.produtoNome,
+            quantidade: item.quantidadeMediaSemanal
+          });
+          return;
+        }
         
         const categoria = categorias?.find(c => c.id === item.categoriaId);
-        if (!categoria) return;
+        if (!categoria) {
+          console.warn('⚠️ [Custo Médio] Categoria não encontrada:', item.categoriaId);
+          return;
+        }
         
         // Inicializar categoria se não existe
         if (!custosPorCategoria.has(item.categoriaId)) {
@@ -275,21 +306,41 @@ export function useClienteFinanceiro(cliente: Cliente) {
         // Calcular custo ponderado pela quantidade vendida
         const custoUnitario = produto.custo_unitario || 0;
         const quantidadeSemanal = item.quantidadeMediaSemanal;
+        const custoTotalProduto = custoUnitario * quantidadeSemanal;
         
-        custoData.custoTotal += (custoUnitario * quantidadeSemanal);
+        console.log('📊 [Custo Médio] Processando:', {
+          produto: produto.nome,
+          categoria: categoria.nome,
+          custoUnitario: custoUnitario.toFixed(2),
+          quantidadeSemanal,
+          custoTotalProduto: custoTotalProduto.toFixed(2)
+        });
+        
+        custoData.custoTotal += custoTotalProduto;
         custoData.quantidadeTotal += quantidadeSemanal;
       });
       
       // Calcular média ponderada final
       const custosCategoria: CustoCategoria[] = Array.from(
         custosPorCategoria.entries()
-      ).map(([categoriaId, dados]) => ({
-        categoriaId,
-        categoriaNome: dados.nome,
-        custoMedio: dados.quantidadeTotal > 0 
+      ).map(([categoriaId, dados]) => {
+        const custoMedio = dados.quantidadeTotal > 0 
           ? dados.custoTotal / dados.quantidadeTotal 
-          : 0
-      }));
+          : 0;
+        
+        console.log('💰 [Custo Médio] Resultado final:', {
+          categoria: dados.nome,
+          custoTotal: dados.custoTotal.toFixed(2),
+          quantidadeTotal: dados.quantidadeTotal,
+          custoMedio: custoMedio.toFixed(2)
+        });
+        
+        return {
+          categoriaId,
+          categoriaNome: dados.nome,
+          custoMedio: Number(custoMedio.toFixed(2)) // Arredondar para 2 casas decimais
+        };
+      });
       
       // 10. Calcular resumo financeiro mensal
       const quantidadeEntregasSemanas = entregas?.length || 0;
