@@ -21,6 +21,7 @@ export default function HistoricoAnalytics() {
   const [isRevendaDetailsOpen, setIsRevendaDetailsOpen] = useState(false);
   const [isFoodServiceDetailsOpen, setIsFoodServiceDetailsOpen] = useState(false);
   const [periodoSelecionado, setPeriodoSelecionado] = useState("90");
+  const [mostrarUnidades, setMostrarUnidades] = useState(false);
   
   // Dados do Supabase
   const { proporcoes, loading: loadingProporcoes } = useSupabaseProporoesPadrao();
@@ -141,26 +142,30 @@ export default function HistoricoAnalytics() {
         return isWithinInterval(dataProducao, { start: mesInicio, end: mesFim });
       });
 
-      // Separar por categoria e somar formas
+      // Separar por categoria e somar formas e unidades
       let formasRevenda = 0;
       let formasFoodService = 0;
+      let unidadesRevenda = 0;
+      let unidadesFoodService = 0;
 
       registrosMes.forEach(record => {
         const categoria = categorizarProduto(record.produto_nome);
         if (categoria === 'revenda') {
           formasRevenda += record.formas_producidas;
+          unidadesRevenda += record.unidades_calculadas || 0;
         } else {
           formasFoodService += record.formas_producidas;
+          unidadesFoodService += record.unidades_calculadas || 0;
         }
       });
 
       return {
         mes: mesLabel,
-        revenda: formasRevenda,
-        foodService: formasFoodService
+        revenda: mostrarUnidades ? unidadesRevenda : formasRevenda,
+        foodService: mostrarUnidades ? unidadesFoodService : formasFoodService
       };
     });
-  }, [historico, hoje]);
+  }, [historico, hoje, mostrarUnidades]);
 
 
   // Cálculos de variação
@@ -448,13 +453,27 @@ export default function HistoricoAnalytics() {
       {/* Gráfico Comparativo - Últimos 6 Meses */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Evolução da Produção por Categoria
-          </CardTitle>
-          <CardDescription className="text-left">
-            Comparativo mensal de formas produzidas - Últimos 6 meses
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1.5">
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Evolução da Produção por Categoria
+              </CardTitle>
+              <CardDescription className="text-left">
+                Comparativo mensal de {mostrarUnidades ? 'unidades produzidas' : 'formas produzidas'} - Últimos 6 meses
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="toggle-unidades" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
+                {mostrarUnidades ? 'Unidades' : 'Formas'}
+              </Label>
+              <Switch 
+                id="toggle-unidades"
+                checked={mostrarUnidades}
+                onCheckedChange={setMostrarUnidades}
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <ChartContainer
@@ -482,7 +501,7 @@ export default function HistoricoAnalytics() {
                   className="text-xs"
                   tick={{ fill: 'hsl(var(--foreground))' }}
                   label={{ 
-                    value: 'Formas Produzidas', 
+                    value: mostrarUnidades ? 'Unidades Produzidas' : 'Formas Produzidas', 
                     angle: -90, 
                     position: 'insideLeft',
                     style: { fill: 'hsl(var(--foreground))' }
