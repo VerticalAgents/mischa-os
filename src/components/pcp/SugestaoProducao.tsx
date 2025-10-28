@@ -1,14 +1,17 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Factory, Loader2, ChevronDown, ChevronUp, AlertCircle, Info, Target, Package } from "lucide-react";
+import { Factory, Loader2, ChevronDown, ChevronUp, AlertCircle, Info, Target, Package, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRendimentosReceitaProduto } from "@/hooks/useRendimentosReceitaProduto";
 import { useMediaVendasSemanais } from "@/hooks/useMediaVendasSemanais";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useState } from "react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 
 interface ProdutoQuantidade {
   produto_id: string;
@@ -41,28 +44,77 @@ interface SugestaoProducaoProduto {
   estoque_alvo: number;
   quantidade_base: number;
   quantidade_estoque_alvo: number;
+  proporcao_padrao: number;
+}
+
+interface ProdutoFinal {
+  id: string;
+  nome: string;
 }
 
 export default function SugestaoProducao({ produtosNecessarios, estoqueDisponivel, loading = false }: SugestaoProducaoProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [filtrarPorProporcao, setFiltrarPorProporcao] = useState(false);
+  const [todosProdutos, setTodosProdutos] = useState<ProdutoFinal[]>([]);
+  const [loadingProdutos, setLoadingProdutos] = useState(true);
+  
   const { obterRendimentoPorProduto, loading: loadingRendimentos } = useRendimentosReceitaProduto();
   const { mediaVendasPorProduto, loading: loadingMediaVendas } = useMediaVendasSemanais();
+  const { proporcoes, loading: loadingProporcoes } = useSupabaseProporoesPadrao();
 
-  // Calcular sugestões de produção
+  // Buscar todos os produtos finais ativos
+  useEffect(() => {
+    const buscarProdutos = async () => {
+      try {
+        setLoadingProdutos(true);
+        const { data, error } = await supabase
+          .from('produtos_finais')
+          .select('id, nome')
+          .eq('ativo', true)
+          .order('nome');
+
+        if (error) throw error;
+        setTodosProdutos(data || []);
+      } catch (error) {
+        console.error('Erro ao buscar produtos:', error);
+        setTodosProdutos([]);
+      } finally {
+        setLoadingProdutos(false);
+      }
+    };
+
+    buscarProdutos();
+  }, []);
+
+  // Calcular sugestões de produção para TODOS os produtos
   const sugestoesProducao = useMemo((): SugestaoProducaoProduto[] => {
-    if (loadingRendimentos || loading || loadingMediaVendas) return [];
+    if (loadingRendimentos || loading || loadingMediaVendas || loadingProdutos || loadingProporcoes) return [];
 
-    return produtosNecessarios.map(produto => {
-      const rendimentoInfo = obterRendimentoPorProduto(produto.produto_id);
+    // Criar mapa de produtos necessários para lookup rápido
+    const necessariosMap = new Map(
+      produtosNecessarios.map(p => [p.produto_id, p.quantidade])
+    );
+
+    // Criar mapa de proporções para lookup rápido
+    const proporcoesMap = new Map(
+      proporcoes.map(p => [p.produto_id, p.percentual])
+    );
+
+    return todosProdutos.map(produto => {
+      const quantidade_necessaria = necessariosMap.get(produto.id) || 0;
+      const rendimentoInfo = obterRendimentoPorProduto(produto.id);
       const rendimento = rendimentoInfo?.rendimento || null;
       const tem_rendimento = !!rendimento && rendimento > 0;
       
       // Buscar estoque disponível do produto
-      const estoqueInfo = estoqueDisponivel.find(e => e.produto_id === produto.produto_id);
+      const estoqueInfo = estoqueDisponivel.find(e => e.produto_id === produto.id);
       const estoque_atual = estoqueInfo?.estoque_disponivel || 0;
       
+      // Buscar proporção padrão
+      const proporcao_padrao = proporcoesMap.get(produto.id) || 0;
+      
       // 1. Calcular estoque alvo (20% da média de vendas das últimas 12 semanas)
-      const media_vendas = mediaVendasPorProduto[produto.produto_id] || 0;
+      const media_vendas = mediaVendasPorProduto[produto.id] || 0;
       const estoque_alvo = Math.round(media_vendas * 0.20);
       
       // 2. Calcular quantidade base e quantidade para estoque alvo
@@ -90,9 +142,9 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
       const nao_precisa_produzir = quantidade_a_produzir === 0;
 
       return {
-        produto_id: produto.produto_id,
-        produto_nome: produto.produto_nome,
-        quantidade_necessaria: produto.quantidade,
+        produto_id: produto.id,
+        produto_nome: produto.nome,
+        quantidade_necessaria,
         estoque_disponivel: estoque_atual,
         quantidade_a_produzir,
         rendimento,
@@ -102,29 +154,38 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
         media_vendas_12_semanas: media_vendas,
         estoque_alvo,
         quantidade_base,
-        quantidade_estoque_alvo: estoque_alvo
+        quantidade_estoque_alvo: estoque_alvo,
+        proporcao_padrao
       };
     });
-  }, [produtosNecessarios, estoqueDisponivel, obterRendimentoPorProduto, mediaVendasPorProduto, loadingRendimentos, loading, loadingMediaVendas]);
+  }, [todosProdutos, produtosNecessarios, estoqueDisponivel, obterRendimentoPorProduto, mediaVendasPorProduto, proporcoes, loadingRendimentos, loading, loadingMediaVendas, loadingProdutos, loadingProporcoes]);
 
-  // Calcular totais
+  // Filtrar produtos baseado no toggle
+  const sugestoesFiltradas = useMemo(() => {
+    if (filtrarPorProporcao) {
+      return sugestoesProducao.filter(s => s.proporcao_padrao > 0);
+    }
+    return sugestoesProducao;
+  }, [sugestoesProducao, filtrarPorProporcao]);
+
+  // Calcular totais (usar sugestões filtradas)
   const totalFormas = useMemo(() => {
-    return sugestoesProducao.reduce((sum, s) => sum + s.formas_sugeridas, 0);
-  }, [sugestoesProducao]);
+    return sugestoesFiltradas.reduce((sum, s) => sum + s.formas_sugeridas, 0);
+  }, [sugestoesFiltradas]);
 
   const totalProdutosParaProduzir = useMemo(() => {
-    return sugestoesProducao.filter(s => !s.nao_precisa_produzir && s.tem_rendimento).length;
-  }, [sugestoesProducao]);
+    return sugestoesFiltradas.filter(s => !s.nao_precisa_produzir && s.tem_rendimento).length;
+  }, [sugestoesFiltradas]);
 
   const totalProdutosSemRendimento = useMemo(() => {
-    return sugestoesProducao.filter(s => !s.tem_rendimento && !s.nao_precisa_produzir).length;
-  }, [sugestoesProducao]);
+    return sugestoesFiltradas.filter(s => !s.tem_rendimento && !s.nao_precisa_produzir).length;
+  }, [sugestoesFiltradas]);
 
   const totalProdutosNaoPrecisamProduzir = useMemo(() => {
-    return sugestoesProducao.filter(s => s.nao_precisa_produzir).length;
-  }, [sugestoesProducao]);
+    return sugestoesFiltradas.filter(s => s.nao_precisa_produzir).length;
+  }, [sugestoesFiltradas]);
 
-  const isLoading = loading || loadingRendimentos || loadingMediaVendas;
+  const isLoading = loading || loadingRendimentos || loadingMediaVendas || loadingProdutos || loadingProporcoes;
 
   return (
     <Card>
@@ -139,6 +200,17 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
               Quantidade de formas a produzir baseada nos rendimentos cadastrados
             </CardDescription>
           </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="filtro-proporcao" className="text-sm text-muted-foreground cursor-pointer">
+              <Filter className="h-4 w-4 inline mr-1" />
+              Apenas com proporção
+            </Label>
+            <Switch 
+              id="filtro-proporcao"
+              checked={filtrarPorProporcao}
+              onCheckedChange={setFiltrarPorProporcao}
+            />
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -147,10 +219,15 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             <span className="ml-2 text-muted-foreground">Calculando sugestões...</span>
           </div>
-        ) : produtosNecessarios.length === 0 ? (
+        ) : sugestoesFiltradas.length === 0 ? (
           <div className="text-center py-8">
             <Factory className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-            <p className="text-muted-foreground">Nenhum produto necessário nesta semana</p>
+            <p className="text-muted-foreground">
+              {filtrarPorProporcao 
+                ? 'Nenhum produto com proporção padrão configurada'
+                : 'Nenhum produto disponível'
+              }
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -210,7 +287,7 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
                 </CollapsibleTrigger>
               </div>
               <CollapsibleContent className="space-y-2">
-                {sugestoesProducao.map((sugestao) => (
+                {sugestoesFiltradas.map((sugestao) => (
                   <TooltipProvider key={sugestao.produto_id}>
                     <Tooltip>
                       <TooltipTrigger asChild>
