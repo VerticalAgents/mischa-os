@@ -4,17 +4,19 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertCircle, TrendingUp, TrendingDown } from "lucide-react";
 import { useClienteFinanceiro } from "@/hooks/useClienteFinanceiro";
-
 interface ClienteFinanceiroProps {
   cliente: Cliente;
 }
-
-export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
-  const { dadosFinanceiros, isLoading, error } = useClienteFinanceiro(cliente);
-  
+export default function ClienteFinanceiro({
+  cliente
+}: ClienteFinanceiroProps) {
+  const {
+    dadosFinanceiros,
+    isLoading,
+    error
+  } = useClienteFinanceiro(cliente);
   if (isLoading) {
-    return (
-      <Card>
+    return <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-center h-64">
             <div className="text-center space-y-2">
@@ -23,13 +25,10 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-  
   if (error) {
-    return (
-      <Card>
+    return <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-center h-64">
             <div className="text-center space-y-2">
@@ -38,20 +37,16 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-  
   if (!dadosFinanceiros) {
     return null;
   }
-  
+
   // Verificar se há categorias habilitadas
   const temCategoriasHabilitadas = cliente.categoriasHabilitadas && cliente.categoriasHabilitadas.length > 0;
-  
   if (!temCategoriasHabilitadas) {
-    return (
-      <Card>
+    return <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-center h-64">
             <div className="text-center space-y-2">
@@ -63,15 +58,11 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-  
   const temDados = dadosFinanceiros.quantidadesMedias.length > 0;
-  
   if (!temDados) {
-    return (
-      <Card>
+    return <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-center h-64">
             <div className="text-center space-y-2">
@@ -83,12 +74,9 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
-    );
+      </Card>;
   }
-  
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Banner informativo */}
       <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
         <p className="text-sm">
@@ -131,8 +119,7 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
             </div>
             
             {/* Custo Logístico */}
-            {cliente.tipoLogistica === 'Própria' && (
-              <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+            {cliente.tipoLogistica === 'Própria' && <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg">
                 <div className="text-sm text-orange-700 dark:text-orange-400 mb-1">
                   Custo Logístico (R$15/entrega)
                 </div>
@@ -142,12 +129,10 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
                 <div className="text-xs text-orange-600 dark:text-orange-500 mt-1">
                   {dadosFinanceiros.resumoMensal.quantidadeEntregasMes} entregas × R$15,00
                 </div>
-              </div>
-            )}
+              </div>}
             
             {/* Imposto Estimado */}
-            {cliente.emiteNotaFiscal && (
-              <div className="p-4 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+            {cliente.emiteNotaFiscal && <div className="p-4 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg">
                 <div className="text-sm text-purple-700 dark:text-purple-400 mb-1">
                   Imposto Estimado (Simples 4%)
                 </div>
@@ -157,12 +142,10 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
                 <div className="text-xs text-purple-600 dark:text-purple-500 mt-1">
                   4% sobre faturamento
                 </div>
-              </div>
-            )}
+              </div>}
             
             {/* Taxa de Boleto */}
-            {cliente.formaPagamento === 'Boleto' && (
-              <div className="p-4 bg-pink-50 dark:bg-pink-950/20 border border-pink-200 dark:border-pink-800 rounded-lg">
+            {cliente.formaPagamento === 'Boleto' && <div className="p-4 bg-pink-50 dark:bg-pink-950/20 border border-pink-200 dark:border-pink-800 rounded-lg">
                 <div className="text-sm text-pink-700 dark:text-pink-400 mb-1">
                   Taxa de Boleto (R$2,19/entrega)
                 </div>
@@ -172,8 +155,7 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
                 <div className="text-xs text-pink-600 dark:text-pink-500 mt-1">
                   {dadosFinanceiros.resumoMensal.quantidadeEntregasMes} entregas × R$2,19
                 </div>
-              </div>
-            )}
+              </div>}
           </div>
           
           {/* Total de Custos Operacionais */}
@@ -188,25 +170,13 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
             <div className="flex justify-between items-center pt-2 border-t">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">Margem Bruta:</span>
-                {dadosFinanceiros.resumoMensal.margemBruta >= 0 ? (
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                ) : (
-                  <TrendingDown className="h-4 w-4 text-red-600" />
-                )}
+                {dadosFinanceiros.resumoMensal.margemBruta >= 0 ? <TrendingUp className="h-4 w-4 text-green-600" /> : <TrendingDown className="h-4 w-4 text-red-600" />}
               </div>
               <div className="text-right">
-                <div className={`text-xl font-bold ${
-                  dadosFinanceiros.resumoMensal.margemBruta >= 0 
-                    ? 'text-green-600' 
-                    : 'text-red-600'
-                }`}>
+                <div className={`text-xl font-bold ${dadosFinanceiros.resumoMensal.margemBruta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   R$ {dadosFinanceiros.resumoMensal.margemBruta.toFixed(2)}
                 </div>
-                <div className={`text-sm ${
-                  dadosFinanceiros.resumoMensal.margemBruta >= 0 
-                    ? 'text-green-600' 
-                    : 'text-red-600'
-                }`}>
+                <div className={`text-sm ${dadosFinanceiros.resumoMensal.margemBruta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {dadosFinanceiros.resumoMensal.margemBrutaPercentual.toFixed(1)}%
                 </div>
               </div>
@@ -219,17 +189,14 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
       <Card>
         <CardHeader>
           <CardTitle>💰 Preços Aplicados</CardTitle>
-          <CardDescription>
+          <CardDescription className="text-left">
             Preços unitários por categoria de produto habilitada
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {dadosFinanceiros.precosCategoria.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">
+          {dadosFinanceiros.precosCategoria.length === 0 ? <p className="text-center text-muted-foreground py-4">
               Nenhum preço configurado
-            </p>
-          ) : (
-            <Table>
+            </p> : <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Categoria</TableHead>
@@ -238,8 +205,7 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dadosFinanceiros.precosCategoria.map(item => (
-                  <TableRow key={item.categoriaId}>
+                {dadosFinanceiros.precosCategoria.map(item => <TableRow key={item.categoriaId}>
                     <TableCell className="font-medium">{item.categoriaNome}</TableCell>
                     <TableCell>R$ {item.precoUnitario.toFixed(2)}</TableCell>
                     <TableCell>
@@ -247,11 +213,9 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
                         {item.fonte === 'personalizado' ? '⭐ Personalizado' : '📋 Padrão'}
                       </Badge>
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>)}
               </TableBody>
-            </Table>
-          )}
+            </Table>}
         </CardContent>
       </Card>
       
@@ -259,7 +223,7 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
       <Card>
         <CardHeader>
           <CardTitle>📦 Quantidades Médias Semanais</CardTitle>
-          <CardDescription>
+          <CardDescription className="text-left">
             Média de unidades vendidas por semana (últimas 12 semanas)
           </CardDescription>
         </CardHeader>
@@ -273,15 +237,13 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {dadosFinanceiros.quantidadesMedias.map(item => (
-                <TableRow key={item.produtoId}>
+              {dadosFinanceiros.quantidadesMedias.map(item => <TableRow key={item.produtoId}>
                   <TableCell className="font-medium">{item.produtoNome}</TableCell>
                   <TableCell className="text-right">{item.quantidadeTotal12Semanas} un</TableCell>
                   <TableCell className="text-right font-medium">
                     {item.quantidadeMediaSemanal} un/sem
                   </TableCell>
-                </TableRow>
-              ))}
+                </TableRow>)}
             </TableBody>
           </Table>
         </CardContent>
@@ -291,17 +253,14 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
       <Card>
         <CardHeader>
           <CardTitle>💵 Custos Médios por Categoria</CardTitle>
-          <CardDescription>
+          <CardDescription className="text-left">
             Custo unitário médio dos produtos em cada categoria
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {dadosFinanceiros.custosCategoria.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">
+          {dadosFinanceiros.custosCategoria.length === 0 ? <p className="text-center text-muted-foreground py-4">
               Nenhum custo disponível
-            </p>
-          ) : (
-            <Table>
+            </p> : <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Categoria</TableHead>
@@ -309,17 +268,13 @@ export default function ClienteFinanceiro({ cliente }: ClienteFinanceiroProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dadosFinanceiros.custosCategoria.map(item => (
-                  <TableRow key={item.categoriaId}>
+                {dadosFinanceiros.custosCategoria.map(item => <TableRow key={item.categoriaId}>
                     <TableCell className="font-medium">{item.categoriaNome}</TableCell>
                     <TableCell className="text-right">R$ {item.custoMedio.toFixed(2)}</TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>)}
               </TableBody>
-            </Table>
-          )}
+            </Table>}
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 }
