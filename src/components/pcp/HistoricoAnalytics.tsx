@@ -95,15 +95,6 @@ export default function HistoricoAnalytics() {
     categoriaId: categoriaFoodService?.id
   });
 
-  // Últimos 90 dias - Todos os produtos (para o card de produção por produto)
-  const {
-    kpis: kpis90Dias,
-    topProducts: produtos90Dias
-  } = useProductionAnalytics({
-    startDate: inicio90Dias,
-    endDate: hoje,
-    aggregation: 'day'
-  });
 
   // Cálculos de variação
   const variacaoMesAnterior = kpisMesAnterior.totalUnitsProduced > 0 ? (kpisMesAtual.totalUnitsProduced - kpisMesAnterior.totalUnitsProduced) / kpisMesAnterior.totalUnitsProduced * 100 : 0;
@@ -114,11 +105,11 @@ export default function HistoricoAnalytics() {
     return new Map(proporcoes.map(p => [p.produto_nome, p.percentual]));
   }, [proporcoes]);
 
-  // Filtrar produtos baseado no toggle e recalcular percentuais
-  const produtosFiltrados = useMemo(() => {
+  // Filtrar produtos Revenda baseado no toggle e recalcular percentuais
+  const produtosRevendaFiltrados = useMemo(() => {
     if (filtrarPorProporcao) {
       // Filtrar produtos com proporção > 0
-      const filtrados = produtos90Dias.filter(produto => {
+      const filtrados = produtosRevenda90Dias.filter(produto => {
         const proporcao = proporcoesMap.get(produto.productName) || 0;
         return proporcao > 0;
       });
@@ -133,8 +124,8 @@ export default function HistoricoAnalytics() {
         percentage: (produto.totalForms / totalFormasFiltradas) * 100
       }));
     }
-    return produtos90Dias;
-  }, [produtos90Dias, filtrarPorProporcao, proporcoesMap]);
+    return produtosRevenda90Dias;
+  }, [produtosRevenda90Dias, filtrarPorProporcao, proporcoesMap]);
   return <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2">
         {/* Produção Mês Atual */}
@@ -188,13 +179,28 @@ export default function HistoricoAnalytics() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Produção Revenda Últimos 90 dias
-            </CardTitle>
-            <CardDescription className="text-left">
-              Unidades produzidas - Revenda Padrão
-            </CardDescription>
+            <div className="flex items-start justify-between">
+              <div className="space-y-1.5">
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Produção Revenda Últimos 90 dias
+                </CardTitle>
+                <CardDescription className="text-left">
+                  Unidades produzidas - Revenda Padrão
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="filtro-proporcao-revenda" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
+                  <Filter className="h-4 w-4 inline mr-1" />
+                  Apenas com proporção
+                </Label>
+                <Switch 
+                  id="filtro-proporcao-revenda"
+                  checked={filtrarPorProporcao}
+                  onCheckedChange={setFiltrarPorProporcao}
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -210,7 +216,7 @@ export default function HistoricoAnalytics() {
               </div>
 
               {/* Produtos Individuais - Collapsible */}
-              {produtosRevenda90Dias.length > 0 && (
+              {produtosRevendaFiltrados.length > 0 && (
                 <Collapsible open={isRevendaDetailsOpen} onOpenChange={setIsRevendaDetailsOpen}>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-medium text-muted-foreground">Detalhes por Produto</p>
@@ -224,28 +230,43 @@ export default function HistoricoAnalytics() {
                       </Button>
                     </CollapsibleTrigger>
                   </div>
-                  <CollapsibleContent className="space-y-2">
-                    {produtosRevenda90Dias.map((produto) => (
-                      <div 
-                        key={produto.productName}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{produto.productName}</span>
+                  <CollapsibleContent className="space-y-3">
+                    {produtosRevendaFiltrados.map((produto) => (
+                      <div key={produto.productName} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{produto.productName}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-sm px-2 py-0.5">
+                              {produto.totalForms.toLocaleString('pt-BR')} formas
+                            </Badge>
+                            <Badge variant="outline" className="text-sm">
+                              {produto.percentage.toFixed(1)}%
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-base px-3 py-1">
-                            {produto.totalForms.toLocaleString('pt-BR')} formas
-                          </Badge>
-                          <Badge variant="outline" className="text-sm">
-                            {produto.percentage.toFixed(1)}%
-                          </Badge>
+                        <div className="relative">
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-primary transition-all duration-300"
+                              style={{ width: `${produto.percentage}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
                   </CollapsibleContent>
                 </Collapsible>
+              )}
+              {produtosRevendaFiltrados.length === 0 && (
+                <div className="text-center py-4 text-muted-foreground text-sm">
+                  {filtrarPorProporcao 
+                    ? 'Nenhum produto com proporção padrão configurada'
+                    : 'Nenhum produto encontrado no período'
+                  }
+                </div>
               )}
             </div>
           </CardContent>
@@ -289,23 +310,30 @@ export default function HistoricoAnalytics() {
                       </Button>
                     </CollapsibleTrigger>
                   </div>
-                  <CollapsibleContent className="space-y-2">
+                  <CollapsibleContent className="space-y-3">
                     {produtosFoodService90Dias.map((produto) => (
-                      <div 
-                        key={produto.productName}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{produto.productName}</span>
+                      <div key={produto.productName} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{produto.productName}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-sm px-2 py-0.5">
+                              {produto.totalForms.toLocaleString('pt-BR')} formas
+                            </Badge>
+                            <Badge variant="outline" className="text-sm">
+                              {produto.percentage.toFixed(1)}%
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-base px-3 py-1">
-                            {produto.totalForms.toLocaleString('pt-BR')} formas
-                          </Badge>
-                          <Badge variant="outline" className="text-sm">
-                            {produto.percentage.toFixed(1)}%
-                          </Badge>
+                        <div className="relative">
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-primary transition-all duration-300"
+                              style={{ width: `${produto.percentage}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -316,61 +344,6 @@ export default function HistoricoAnalytics() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="space-y-1.5">
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Produção por Produto
-                </CardTitle>
-                <CardDescription className="text-left">
-                  Distribuição dos últimos 90 dias
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="filtro-proporcao-historico" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
-                  <Filter className="h-4 w-4 inline mr-1" />
-                  Apenas com proporção
-                </Label>
-                <Switch 
-                  id="filtro-proporcao-historico"
-                  checked={filtrarPorProporcao}
-                  onCheckedChange={setFiltrarPorProporcao}
-                />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {produtosFiltrados.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground text-sm">
-                  {filtrarPorProporcao 
-                    ? 'Nenhum produto com proporção padrão configurada'
-                    : 'Nenhum produto encontrado no período'
-                  }
-                </div>
-              ) : (
-                produtosFiltrados.map((produto) => (
-                  <div key={produto.productName} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{produto.productName}</span>
-                      <span className="text-muted-foreground">
-                        {produto.totalForms.toLocaleString('pt-BR')} formas ({produto.percentage.toFixed(1)}%)
-                      </span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary transition-all duration-300"
-                        style={{ width: `${produto.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Card com detalhes adicionais */}
