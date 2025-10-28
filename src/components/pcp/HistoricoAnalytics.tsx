@@ -134,20 +134,38 @@ export default function HistoricoAnalytics() {
     
     // Adicionar dados de Revenda
     producaoMensalRevenda.forEach(item => {
-      const mesNome = format(new Date(item.period), "MMM/yy", { locale: ptBR });
-      if (!mesesMap.has(mesNome)) {
-        mesesMap.set(mesNome, { mes: mesNome, revenda: 0, foodService: 0 });
+      if (!item.period) return;
+      
+      try {
+        const data = new Date(item.period);
+        if (isNaN(data.getTime())) return; // Skip invalid dates
+        
+        const mesNome = format(data, "MMM/yy", { locale: ptBR });
+        if (!mesesMap.has(mesNome)) {
+          mesesMap.set(mesNome, { mes: mesNome, revenda: 0, foodService: 0 });
+        }
+        mesesMap.get(mesNome).revenda = item.produced;
+      } catch (error) {
+        console.error('Erro ao processar data de Revenda:', item.period, error);
       }
-      mesesMap.get(mesNome).revenda = item.produced;
     });
     
     // Adicionar dados de Food Service
     producaoMensalFoodService.forEach(item => {
-      const mesNome = format(new Date(item.period), "MMM/yy", { locale: ptBR });
-      if (!mesesMap.has(mesNome)) {
-        mesesMap.set(mesNome, { mes: mesNome, revenda: 0, foodService: 0 });
+      if (!item.period) return;
+      
+      try {
+        const data = new Date(item.period);
+        if (isNaN(data.getTime())) return; // Skip invalid dates
+        
+        const mesNome = format(data, "MMM/yy", { locale: ptBR });
+        if (!mesesMap.has(mesNome)) {
+          mesesMap.set(mesNome, { mes: mesNome, revenda: 0, foodService: 0 });
+        }
+        mesesMap.get(mesNome).foodService = item.produced;
+      } catch (error) {
+        console.error('Erro ao processar data de Food Service:', item.period, error);
       }
-      mesesMap.get(mesNome).foodService = item.produced;
     });
     
     return Array.from(mesesMap.values());
