@@ -48,6 +48,58 @@ interface HistoricoEntregasStore {
   getRegistrosFiltrados: () => HistoricoEntrega[];
 }
 
+// Cache para nomes de produtos
+let produtosCache: Map<string, string> | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+// Função para carregar e cachear nomes de produtos
+const carregarProdutosCache = async (): Promise<Map<string, string>> => {
+  const now = Date.now();
+  
+  // Usar cache se ainda válido
+  if (produtosCache && (now - cacheTimestamp) < CACHE_DURATION) {
+    return produtosCache;
+  }
+  
+  try {
+    // Carregar todos os produtos ativos
+    const { data, error } = await supabase
+      .from('produtos_finais')
+      .select('id, nome')
+      .eq('ativo', true);
+    
+    if (error) throw error;
+    
+    produtosCache = new Map(data?.map(p => [p.id, p.nome]) || []);
+    cacheTimestamp = now;
+    
+    return produtosCache;
+  } catch (error) {
+    console.error('Erro ao carregar cache de produtos:', error);
+    return new Map();
+  }
+};
+
+// Função para enriquecer itens com nomes de produtos
+const enriquecerItensComNomes = async (itens: any[]): Promise<any[]> => {
+  if (!Array.isArray(itens) || itens.length === 0) return [];
+  
+  try {
+    const produtoNomeMap = await carregarProdutosCache();
+    
+    return itens.map(item => ({
+      ...item,
+      produto_nome: item.produto_nome || 
+                    produtoNomeMap.get(item.produto_id) || 
+                    `Produto ${item.produto_id?.substring(0, 8) || 'N/A'}`
+    }));
+  } catch (error) {
+    console.error('Erro ao enriquecer itens com nomes:', error);
+    return itens;
+  }
+};
+
 // Função auxiliar para carregar nome do cliente
 const carregarNomeCliente = async (clienteId: string): Promise<string> => {
   try {
@@ -120,10 +172,13 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             return;
           }
 
-          // Processar os registros e garantir que tenham nome do cliente
+          // Processar os registros e garantir que tenham nome do cliente e produtos
           const registrosProcessados = await Promise.all(
             data.map(async (registro) => {
               const clienteNome = await carregarNomeCliente(registro.cliente_id);
+              const itensEnriquecidos = await enriquecerItensComNomes(
+                Array.isArray(registro.itens) ? registro.itens : []
+              );
 
               return {
                 id: registro.id,
@@ -132,7 +187,7 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
                 data: new Date(registro.data),
                 tipo: registro.tipo as 'entrega' | 'retorno',
                 quantidade: registro.quantidade || 0,
-                itens: Array.isArray(registro.itens) ? registro.itens : [],
+                itens: itensEnriquecidos,
                 status_anterior: registro.status_anterior,
                 observacao: registro.observacao,
                 editado_manualmente: registro.editado_manualmente || false,
