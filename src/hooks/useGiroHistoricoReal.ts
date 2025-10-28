@@ -47,8 +47,11 @@ export function useGiroHistoricoReal(clienteIds: string[]) {
 
       // Calcular média para cada cliente
       registrosPorCliente.forEach((registros, clienteId) => {
-        // Pegar até as últimas 12 semanas
-        const ultimas12 = registros.slice(0, 12);
+        // Ordenar registros deste cliente por semana DESC e pegar até as últimas 12 semanas
+        const registrosOrdenados = registros.sort((a, b) => 
+          new Date(b.semana).getTime() - new Date(a.semana).getTime()
+        );
+        const ultimas12 = registrosOrdenados.slice(0, 12);
         const totalGiro = ultimas12.reduce((sum, reg) => sum + (reg.giro_semanal || 0), 0);
         const numeroSemanas = ultimas12.length;
         const mediaGiro = numeroSemanas > 0 ? Math.round(totalGiro / numeroSemanas) : 0;
