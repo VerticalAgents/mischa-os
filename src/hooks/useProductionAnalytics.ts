@@ -12,6 +12,7 @@ export interface ProductionFilters {
   aggregation: 'day' | 'week' | 'month';
   productId?: string;
   status?: string;
+  categoriaId?: number;
 }
 
 export interface ProductionKPI {
@@ -71,11 +72,17 @@ export const useProductionAnalytics = (filters: ProductionFilters) => {
       if (filters.productId && record.produto_id !== filters.productId) return false;
       if (filters.status && record.status !== filters.status) return false;
       
+      // Filter by categoria_id if specified
+      if (filters.categoriaId !== undefined) {
+        const produto = produtos.find(p => p.id === record.produto_id);
+        if (!produto || produto.categoria_id !== filters.categoriaId) return false;
+      }
+      
       return true;
     });
 
     return filtered;
-  }, [historico, filters]);
+  }, [historico, filters, produtos]);
 
   // Calculate KPIs
   const kpis = useMemo((): ProductionKPI => {

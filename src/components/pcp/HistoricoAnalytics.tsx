@@ -7,9 +7,11 @@ import { useState, useMemo } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
+import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 export default function HistoricoAnalytics() {
   const [filtrarPorProporcao, setFiltrarPorProporcao] = useState(false);
   const { proporcoes, loading: loadingProporcoes } = useSupabaseProporoesPadrao();
+  const { categorias } = useSupabaseCategoriasProduto();
   const hoje = new Date();
   const inicioMesAtual = startOfMonth(hoje);
   const fimMesAtual = endOfMonth(hoje);
@@ -57,8 +59,31 @@ export default function HistoricoAnalytics() {
     aggregation: 'day'
   });
 
-  // Últimos 90 dias
+  // Últimos 90 dias - Revenda Padrão
   const inicio90Dias = subDays(hoje, 90);
+  const categoriaRevenda = categorias.find(c => c.nome.toLowerCase().includes('revenda'));
+  const categoriaFoodService = categorias.find(c => c.nome.toLowerCase().includes('food'));
+  
+  const {
+    kpis: kpisRevenda90Dias
+  } = useProductionAnalytics({
+    startDate: inicio90Dias,
+    endDate: hoje,
+    aggregation: 'day',
+    categoriaId: categoriaRevenda?.id
+  });
+
+  // Últimos 90 dias - Food Service
+  const {
+    kpis: kpisFoodService90Dias
+  } = useProductionAnalytics({
+    startDate: inicio90Dias,
+    endDate: hoje,
+    aggregation: 'day',
+    categoriaId: categoriaFoodService?.id
+  });
+
+  // Últimos 90 dias - Todos os produtos (para o card de produção por produto)
   const {
     kpis: kpis90Dias,
     topProducts: produtos90Dias
@@ -99,29 +124,7 @@ export default function HistoricoAnalytics() {
     return produtos90Dias;
   }, [produtos90Dias, filtrarPorProporcao, proporcoesMap]);
   return <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Produção Últimos 3 Meses */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Produção Últimos 3 Meses
-            </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {kpisTresMeses.totalUnitsProduced.toLocaleString('pt-BR')} un
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {format(inicioTresMeses, "MMM", {
-              locale: ptBR
-            })} - {format(fimMesAtual, "MMM yyyy", {
-              locale: ptBR
-            })}
-            </p>
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-4 md:grid-cols-2">
         {/* Produção Mês Atual */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -169,24 +172,44 @@ export default function HistoricoAnalytics() {
         </Card>
       </div>
 
-      {/* Estatísticas dos Últimos 90 Dias */}
+      {/* Estatísticas dos Últimos 90 Dias - Por Categoria */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Factory className="h-5 w-5" />
-              Total de Formas - Últimos 90 dias
+              <Package className="h-5 w-5" />
+              Produção Revenda Últimos 90 dias
             </CardTitle>
             <CardDescription className="text-left">
-              Produção total de formas no período
+              Unidades produzidas - Revenda Padrão
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold text-primary">
-              {kpis90Dias.totalFormsProduced.toLocaleString('pt-BR')}
+              {kpisRevenda90Dias.totalUnitsProduced.toLocaleString('pt-BR')} un
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              Formas produzidas
+              {kpisRevenda90Dias.totalFormsProduced.toLocaleString('pt-BR')} formas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Produção Food-Service Últimos 90 dias
+            </CardTitle>
+            <CardDescription className="text-left">
+              Unidades produzidas - Food-Service
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold text-primary">
+              {kpisFoodService90Dias.totalUnitsProduced.toLocaleString('pt-BR')} un
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {kpisFoodService90Dias.totalFormsProduced.toLocaleString('pt-BR')} formas
             </p>
           </CardContent>
         </Card>
