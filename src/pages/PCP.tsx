@@ -14,7 +14,7 @@ import AuditoriaPCPTab from "@/components/pcp/AuditoriaPCPTab";
 
 export default function PCP() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { activeTab, changeTab } = useTabPersistence("historico");
+  const { activeTab, changeTab } = useTabPersistence("dashboard");
   
   // Sincronização com a URL
   const tabFromUrl = searchParams.get('tab');
@@ -55,7 +55,7 @@ export default function PCP() {
       
       <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
         <TabsList className="w-full justify-start">
-          <TabsTrigger value="historico">Histórico</TabsTrigger>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="projecao-producao">Projeção de Produção</TabsTrigger>
           <TabsTrigger value="registro">Registro</TabsTrigger>
           <TabsTrigger value="auditoria-pcp">Auditoria PCP</TabsTrigger>
@@ -65,8 +65,8 @@ export default function PCP() {
           {activeTab === "projecao-producao" && <ProjecaoProducaoTab />}
         </TabsContent>
 
-        <TabsContent value="historico" className="space-y-6 mt-6">
-          {activeTab === "historico" && <HistoricoAnalytics />}
+        <TabsContent value="dashboard" className="space-y-6 mt-6">
+          {activeTab === "dashboard" && <HistoricoAnalytics />}
         </TabsContent>
 
         <TabsContent value="registro" className="space-y-6 mt-6">

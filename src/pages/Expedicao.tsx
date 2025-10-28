@@ -7,6 +7,7 @@ import SeparacaoPedidos from "@/components/expedicao/SeparacaoPedidos";
 import { Despacho } from "@/components/expedicao/Despacho";
 import { HistoricoEntregas } from "@/components/expedicao/HistoricoEntregas";
 import { RotaEntrega } from "@/components/expedicao/RotaEntrega";
+import DashboardEntregasAnalytics from "@/components/expedicao/DashboardEntregasAnalytics";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -79,6 +80,7 @@ export default function Expedicao() {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList>
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="separacao">Separação de Pedidos</TabsTrigger>
           <TabsTrigger value="despacho">Despacho de Pedidos</TabsTrigger>
           <TabsTrigger value="rota">Rota de Entrega</TabsTrigger>
@@ -87,6 +89,10 @@ export default function Expedicao() {
         
         <TabsContent value="resumo" className="space-y-4" forceMount={activeTab === "resumo" ? true : undefined}>
           {activeTab === "resumo" && <ResumoExpedicao />}
+        </TabsContent>
+
+        <TabsContent value="dashboard" className="space-y-4" forceMount={activeTab === "dashboard" ? true : undefined}>
+          {activeTab === "dashboard" && <DashboardEntregasAnalytics />}
         </TabsContent>
         
         <TabsContent value="separacao" className="space-y-4" forceMount={activeTab === "separacao" ? true : undefined}>
