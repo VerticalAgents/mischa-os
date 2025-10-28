@@ -11,11 +11,13 @@ import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProdu
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 export default function HistoricoAnalytics() {
   // Estados para controle de UI
   const [filtrarPorProporcao, setFiltrarPorProporcao] = useState(false);
   const [isRevendaDetailsOpen, setIsRevendaDetailsOpen] = useState(false);
   const [isFoodServiceDetailsOpen, setIsFoodServiceDetailsOpen] = useState(false);
+  const [periodoSelecionado, setPeriodoSelecionado] = useState("90");
   
   // Dados do Supabase
   const { proporcoes, loading: loadingProporcoes } = useSupabaseProporoesPadrao();
@@ -69,31 +71,39 @@ export default function HistoricoAnalytics() {
     aggregation: 'day'
   });
 
-  // Últimos 90 dias - Revenda Padrão
-  const inicio90Dias = subDays(hoje, 90);
+  // Período dinâmico baseado na seleção
+  const diasPeriodo = parseInt(periodoSelecionado);
+  const inicioPeriodo = subDays(hoje, diasPeriodo);
   const categoriaRevenda = categorias.find(c => c.nome.toLowerCase().includes('revenda'));
   const categoriaFoodService = categorias.find(c => c.nome.toLowerCase().includes('food'));
   
+  // Revenda - Período selecionado
   const {
     kpis: kpisRevenda90Dias,
     topProducts: produtosRevenda90Dias
   } = useProductionAnalytics({
-    startDate: inicio90Dias,
+    startDate: inicioPeriodo,
     endDate: hoje,
     aggregation: 'day',
     categoriaId: categoriaRevenda?.id
   });
 
-  // Últimos 90 dias - Food Service
+  // Food Service - Período selecionado
   const {
     kpis: kpisFoodService90Dias,
     topProducts: produtosFoodService90Dias
   } = useProductionAnalytics({
-    startDate: inicio90Dias,
+    startDate: inicioPeriodo,
     endDate: hoje,
     aggregation: 'day',
     categoriaId: categoriaFoodService?.id
   });
+
+  // Texto do período para exibição
+  const textoPeriodo = useMemo(() => {
+    if (diasPeriodo >= 365) return "Último ano";
+    return `Últimos ${diasPeriodo} dias`;
+  }, [diasPeriodo]);
 
 
   // Cálculos de variação
@@ -175,7 +185,39 @@ export default function HistoricoAnalytics() {
         </Card>
       </div>
 
-      {/* Estatísticas dos Últimos 90 Dias - Por Categoria */}
+      {/* Filtro de Período */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filtros de Período
+          </CardTitle>
+          <CardDescription className="text-left">
+            Selecione o período para análise por categoria
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <Label htmlFor="periodo-select" className="text-sm font-medium whitespace-nowrap">
+              Período de análise:
+            </Label>
+            <Select value={periodoSelecionado} onValueChange={setPeriodoSelecionado}>
+              <SelectTrigger id="periodo-select" className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="30">Últimos 30 dias</SelectItem>
+                <SelectItem value="60">Últimos 60 dias</SelectItem>
+                <SelectItem value="90">Últimos 90 dias</SelectItem>
+                <SelectItem value="180">Últimos 180 dias</SelectItem>
+                <SelectItem value="365">Último ano</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Estatísticas dos Últimos Dias - Por Categoria */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -186,7 +228,7 @@ export default function HistoricoAnalytics() {
                   Produção Revenda
                 </CardTitle>
                 <CardDescription className="text-left">
-                  Últimos 90 dias
+                  {textoPeriodo}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -279,7 +321,7 @@ export default function HistoricoAnalytics() {
               Produção Food-Service
             </CardTitle>
             <CardDescription className="text-left">
-              Últimos 90 dias
+              {textoPeriodo}
             </CardDescription>
           </CardHeader>
           <CardContent>
