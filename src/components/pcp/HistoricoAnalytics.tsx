@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProductionAnalytics } from "@/hooks/useProductionAnalytics";
-import { TrendingUp, TrendingDown, Package, Calendar, Factory, Filter } from "lucide-react";
+import { TrendingUp, TrendingDown, Package, Calendar, Factory, Filter, ChevronDown, ChevronUp } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, subYears, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useMemo } from "react";
@@ -8,8 +8,13 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 export default function HistoricoAnalytics() {
   const [filtrarPorProporcao, setFiltrarPorProporcao] = useState(false);
+  const [isRevendaDetailsOpen, setIsRevendaDetailsOpen] = useState(false);
+  const [isFoodServiceDetailsOpen, setIsFoodServiceDetailsOpen] = useState(false);
   const { proporcoes, loading: loadingProporcoes } = useSupabaseProporoesPadrao();
   const { categorias } = useSupabaseCategoriasProduto();
   const hoje = new Date();
@@ -65,7 +70,8 @@ export default function HistoricoAnalytics() {
   const categoriaFoodService = categorias.find(c => c.nome.toLowerCase().includes('food'));
   
   const {
-    kpis: kpisRevenda90Dias
+    kpis: kpisRevenda90Dias,
+    topProducts: produtosRevenda90Dias
   } = useProductionAnalytics({
     startDate: inicio90Dias,
     endDate: hoje,
@@ -75,7 +81,8 @@ export default function HistoricoAnalytics() {
 
   // Últimos 90 dias - Food Service
   const {
-    kpis: kpisFoodService90Dias
+    kpis: kpisFoodService90Dias,
+    topProducts: produtosFoodService90Dias
   } = useProductionAnalytics({
     startDate: inicio90Dias,
     endDate: hoje,
@@ -185,12 +192,57 @@ export default function HistoricoAnalytics() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold text-primary">
-              {kpisRevenda90Dias.totalUnitsProduced.toLocaleString('pt-BR')} un
+            <div className="space-y-4">
+              {/* Total Geral */}
+              <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
+                <p className="text-sm text-muted-foreground mb-1">Total Produzido</p>
+                <p className="text-3xl font-bold text-primary">
+                  {kpisRevenda90Dias.totalUnitsProduced.toLocaleString('pt-BR')} un
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {kpisRevenda90Dias.totalFormsProduced.toLocaleString('pt-BR')} formas
+                </p>
+              </div>
+
+              {/* Produtos Individuais - Collapsible */}
+              {produtosRevenda90Dias.length > 0 && (
+                <Collapsible open={isRevendaDetailsOpen} onOpenChange={setIsRevendaDetailsOpen}>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-medium text-muted-foreground">Detalhes por Produto</p>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 px-2">
+                        {isRevendaDetailsOpen ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent className="space-y-2">
+                    {produtosRevenda90Dias.map((produto) => (
+                      <div 
+                        key={produto.productName}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{produto.productName}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-base px-3 py-1">
+                            {produto.totalForms.toLocaleString('pt-BR')} formas
+                          </Badge>
+                          <Badge variant="outline" className="text-sm">
+                            {produto.percentage.toFixed(1)}%
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {kpisRevenda90Dias.totalFormsProduced.toLocaleString('pt-BR')} formas
-            </p>
           </CardContent>
         </Card>
 
@@ -205,12 +257,57 @@ export default function HistoricoAnalytics() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold text-primary">
-              {kpisFoodService90Dias.totalUnitsProduced.toLocaleString('pt-BR')} un
+            <div className="space-y-4">
+              {/* Total Geral */}
+              <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
+                <p className="text-sm text-muted-foreground mb-1">Total Produzido</p>
+                <p className="text-3xl font-bold text-primary">
+                  {kpisFoodService90Dias.totalUnitsProduced.toLocaleString('pt-BR')} un
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {kpisFoodService90Dias.totalFormsProduced.toLocaleString('pt-BR')} formas
+                </p>
+              </div>
+
+              {/* Produtos Individuais - Collapsible */}
+              {produtosFoodService90Dias.length > 0 && (
+                <Collapsible open={isFoodServiceDetailsOpen} onOpenChange={setIsFoodServiceDetailsOpen}>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-medium text-muted-foreground">Detalhes por Produto</p>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 px-2">
+                        {isFoodServiceDetailsOpen ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent className="space-y-2">
+                    {produtosFoodService90Dias.map((produto) => (
+                      <div 
+                        key={produto.productName}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{produto.productName}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-base px-3 py-1">
+                            {produto.totalForms.toLocaleString('pt-BR')} formas
+                          </Badge>
+                          <Badge variant="outline" className="text-sm">
+                            {produto.percentage.toFixed(1)}%
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {kpisFoodService90Dias.totalFormsProduced.toLocaleString('pt-BR')} formas
-            </p>
           </CardContent>
         </Card>
 
