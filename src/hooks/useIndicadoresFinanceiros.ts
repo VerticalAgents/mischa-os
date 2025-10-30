@@ -89,14 +89,21 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
   const [precosCache, setPrecosCache] = useState<Map<string, Map<number, number>>>(new Map());
 
   const buscarProdutos = async () => {
-    const { data } = await supabase
+    console.log('[Indicadores] Iniciando carregamento de produtos...');
+    const { data, error } = await supabase
       .from("produtos_finais")
       .select("id, nome, categoria_id, custo_unitario");
+    
+    if (error) {
+      console.error('[Indicadores] Erro ao buscar produtos:', error);
+      throw error;
+    }
     
     if (data) {
       const cache = new Map();
       data.forEach(p => cache.set(p.id, p));
       setProdutosCache(cache);
+      console.log(`[Indicadores] ${cache.size} produtos carregados no cache`);
     }
   };
 
@@ -172,6 +179,7 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
 
       if (entregasError) throw entregasError;
       if (!entregas || entregas.length === 0) {
+        console.log('[Indicadores] Nenhuma entrega encontrada no período');
         setIndicadores({
           periodoAnalise: { dataInicio, dataFim, diasAnalisados: diasRetroativos },
           precoMedioPorCategoria: [],
@@ -180,8 +188,11 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
           ticketMedio: { geral: { ticketMedio: 0, totalEntregas: 0, faturamentoTotal: 0 }, porCategoria: [] },
           metadados: { totalEntregasAnalisadas: 0, clientesAtendidos: 0, categoriasComVendas: 0 }
         });
+        setLoading(false);
         return;
       }
+
+      console.log(`[Indicadores] ${entregas.length} entregas encontradas para análise`);
 
       // Estruturas para agregação
       const categoriaVendas = new Map<number, {
@@ -189,7 +200,7 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
         faturamentoTotal: number;
         custoTotal: number;
         clientesUnicos: Set<string>;
-        entregasComCategoria: number;
+        entregasUnicas: Set<string>;
       }>();
 
       let faturamentoTotalGeral = 0;
@@ -197,10 +208,21 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
 
       // Processar cada entrega
       for (const entrega of entregas) {
+        if (!entrega.id || !entrega.cliente_id) {
+          console.warn('[Indicadores] Entrega sem ID ou cliente_id - ignorada');
+          continue;
+        }
+
         clientesAtendidos.add(entrega.cliente_id);
         
-        const itens = Array.isArray(entrega.itens) ? entrega.itens : [];
+        if (!Array.isArray(entrega.itens)) {
+          console.warn(`[Indicadores] Entrega ${entrega.id} sem itens válidos`);
+          continue;
+        }
+
+        const itens = entrega.itens;
         let faturamentoEntrega = 0;
+        const categoriasDaEntrega = new Set<number>();
 
         for (const item of itens) {
           const itemTyped = item as any;
@@ -210,7 +232,12 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
           const produto = produtosCache.get(itemTyped.produto_id);
           const categoriaId = itemTyped.categoria_id || produto?.categoria_id;
           
-          if (!categoriaId) continue;
+          if (!categoriaId) {
+            console.warn(`[Indicadores] Produto ${itemTyped.produto_id} sem categoria - item ignorado`);
+            continue;
+          }
+
+          categoriasDaEntrega.add(categoriaId);
 
           // Obter preço e custo
           const preco = await obterPrecoAplicado(entrega.cliente_id, categoriaId);
@@ -230,7 +257,7 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
               faturamentoTotal: 0,
               custoTotal: 0,
               clientesUnicos: new Set(),
-              entregasComCategoria: 0
+              entregasUnicas: new Set()
             });
           }
 
@@ -239,6 +266,14 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
           stats.faturamentoTotal += faturamentoItem;
           stats.custoTotal += custoItem;
           stats.clientesUnicos.add(entrega.cliente_id);
+        }
+
+        // Adicionar entrega a todas as categorias que ela contém
+        for (const catId of categoriasDaEntrega) {
+          const stats = categoriaVendas.get(catId);
+          if (stats) {
+            stats.entregasUnicas.add(entrega.id);
+          }
         }
 
         faturamentoTotalGeral += faturamentoEntrega;
@@ -296,8 +331,8 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
         ticketMedioPorCategoria.push({
           categoriaId,
           categoriaNome: categoria.nome,
-          ticketMedio: stats.entregasComCategoria > 0 ? stats.faturamentoTotal / stats.entregasComCategoria : 0,
-          numeroEntregas: stats.entregasComCategoria,
+          ticketMedio: stats.entregasUnicas.size > 0 ? stats.faturamentoTotal / stats.entregasUnicas.size : 0,
+          numeroEntregas: stats.entregasUnicas.size,
           faturamento: stats.faturamentoTotal
         });
       }
@@ -337,10 +372,12 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
   };
 
   useEffect(() => {
-    if (categorias.length > 0 && clientes.length > 0) {
+    if (categorias.length > 0) {
       calcularIndicadores();
+    } else {
+      console.warn('[Indicadores] Aguardando carregamento de categorias...');
     }
-  }, [diasRetroativos, categorias.length, clientes.length]);
+  }, [diasRetroativos, categorias.length]);
 
   return { 
     indicadores, 
