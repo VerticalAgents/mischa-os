@@ -98,8 +98,13 @@ export const menuGroups: MenuGroup[] = [
         icon: <TrendingUp className="h-4 w-4" />,
       },
       {
-        label: "Gestão Financeira",
+        label: "Financeiro",
         path: "/gestao-financeira",
+        icon: <DollarSign className="h-4 w-4" />,
+      },
+      {
+        label: "Financeiro OLD",
+        path: "/gestao-financeira-old",
         icon: <DollarSign className="h-4 w-4" />,
       },
       {

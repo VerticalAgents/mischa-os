@@ -1,19 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-interface GestaoFinanceiraUiState {
+interface GestaoFinanceiraOldUiState {
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }
 
-export const useGestaoFinanceiraUiStore = create<GestaoFinanceiraUiState>()(
+export const useGestaoFinanceiraOldUiStore = create<GestaoFinanceiraOldUiState>()(
   persist(
     (set) => ({
       activeTab: "resumo",
       setActiveTab: (tab) => set({ activeTab: tab }),
     }),
     {
-      name: 'gestao-financeira-ui-state',
+      name: 'gestao-financeira-old-ui-state',
       version: 1,
     }
   )
