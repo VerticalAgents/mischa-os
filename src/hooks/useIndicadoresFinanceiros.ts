@@ -88,7 +88,7 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
   const [produtosCache, setProdutosCache] = useState<Map<string, any>>(new Map());
   const [precosCache, setPrecosCache] = useState<Map<string, Map<number, number>>>(new Map());
 
-  const buscarProdutos = async () => {
+  const buscarProdutos = async (): Promise<Map<string, any>> => {
     console.log('[Indicadores] Iniciando carregamento de produtos...');
     
     try {
@@ -103,7 +103,9 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
       
       if (!data || data.length === 0) {
         console.warn('[Indicadores] ATENÇÃO: Nenhum produto encontrado no banco');
-        return;
+        const emptyCache = new Map();
+        setProdutosCache(emptyCache);
+        return emptyCache;
       }
       
       // Validar produtos sem categoria
@@ -121,8 +123,7 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
       
       console.log(`[Indicadores] ✅ ${cache.size} produtos carregados (${produtosSemCategoria.length} sem categoria)`);
       
-      // Pequeno delay para garantir que setState completou
-      await new Promise(resolve => setTimeout(resolve, 100));
+      return cache;
     } catch (error) {
       console.error('[Indicadores] Exceção ao buscar produtos:', error);
       throw error;
@@ -159,22 +160,24 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
     const precoDiferencial = precos.find(p => p.categoria_id === categoriaId);
     
     // 3. Se tem preço diferencial, usar ele
-    if (precoDiferencial && precoDiferencial.preco_unitario > 0) {
+    if (precoDiferencial && Number(precoDiferencial.preco_unitario) > 0) {
+      const precoNum = Number(precoDiferencial.preco_unitario);
       if (!precosCache.has(clienteId)) {
         precosCache.set(clienteId, new Map());
       }
-      precosCache.get(clienteId)!.set(categoriaId, precoDiferencial.preco_unitario);
-      return precoDiferencial.preco_unitario;
+      precosCache.get(clienteId)!.set(categoriaId, precoNum);
+      return precoNum;
     }
     
     // 4. Senão, usar preço padrão
     const precoPadrao = obterPrecoPadrao(categoriaId);
-    if (precoPadrao && precoPadrao > 0) {
+    if (precoPadrao != null && precoPadrao > 0) {
+      const precoNum = Number(precoPadrao);
       if (!precosCache.has(clienteId)) {
         precosCache.set(clienteId, new Map());
       }
-      precosCache.get(clienteId)!.set(categoriaId, precoPadrao);
-      return precoPadrao;
+      precosCache.get(clienteId)!.set(categoriaId, precoNum);
+      return precoNum;
     }
     
     return null;
@@ -186,7 +189,7 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
     // Adicionar preço padrão se existir
     const precoPadrao = obterPrecoPadrao(categoriaId);
     if (precoPadrao && precoPadrao > 0) {
-      precosUnicos.add(precoPadrao);
+      precosUnicos.add(Number(precoPadrao));
     }
     
     // Adicionar preços diferenciais
@@ -197,7 +200,7 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
       .gt("preco_unitario", 0);
     
     if (data) {
-      data.forEach(p => precosUnicos.add(p.preco_unitario));
+      data.forEach(p => precosUnicos.add(Number(p.preco_unitario)));
     }
     
     return precosUnicos;
@@ -221,16 +224,30 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
       setLoading(true);
       setError(null);
 
-      // Buscar produtos para cache
-      await buscarProdutos();
+      // Buscar produtos e usar o Map retornado diretamente
+      const produtosMap = await buscarProdutos();
       
       // Validar se o cache foi populado
-      if (produtosCache.size === 0) {
-        console.error('[Indicadores] ERRO: Cache de produtos vazio após carregamento!');
-        throw new Error('Falha ao carregar produtos no cache');
+      if (!produtosMap || produtosMap.size === 0) {
+        console.error('[Indicadores] ERRO: Nenhum produto encontrado para análise!');
+        throw new Error('Nenhum produto encontrado para análise');
       }
       
-      console.log(`[Indicadores] ✅ Cache validado: ${produtosCache.size} produtos disponíveis`);
+      console.log(`[Indicadores] ✅ Cache validado: ${produtosMap.size} produtos disponíveis`);
+      
+      // Helper local para obter custo usando o Map local
+      const obterCustoUnitarioLocal = (produtoId: string, categoriaNome?: string): number => {
+        const produto = produtosMap.get(produtoId);
+        if (produto?.custo_unitario && Number(produto.custo_unitario) > 0) {
+          return Number(produto.custo_unitario);
+        }
+
+        if (categoriaNome && CUSTOS_UNITARIOS[categoriaNome]) {
+          return CUSTOS_UNITARIOS[categoriaNome];
+        }
+
+        return 1.80; // Fallback final
+      };
 
       const dataFim = new Date();
       const dataInicio = new Date();
@@ -296,12 +313,12 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
           const itemTyped = item as any;
           if (!itemTyped.produto_id || !itemTyped.quantidade || itemTyped.quantidade <= 0) continue;
 
-          const produto = produtosCache.get(itemTyped.produto_id);
+          const produto = produtosMap.get(itemTyped.produto_id);
           if (!produto) {
             console.error(
               `[Indicadores] ❌ ERRO CRÍTICO: Produto ${itemTyped.produto_id} não encontrado.\n` +
-              `   Cache size: ${produtosCache.size}\n` +
-              `   IDs no cache: ${Array.from(produtosCache.keys()).slice(0, 3).join(', ')}...`
+              `   Cache local size: ${produtosMap.size}\n` +
+              `   IDs no cache: ${Array.from(produtosMap.keys()).slice(0, 3).join(', ')}...`
             );
             continue;
           }
@@ -327,10 +344,11 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
           }
 
           const categoria = categorias.find(c => c.id === categoriaId);
-          const custo = obterCustoUnitario(itemTyped.produto_id, categoria?.nome);
+          const custo = obterCustoUnitarioLocal(itemTyped.produto_id, categoria?.nome);
 
           const quantidade = itemTyped.quantidade;
-          const faturamentoItem = quantidade * precoAplicado;
+          const precoNum = Number(precoAplicado);
+          const faturamentoItem = quantidade * precoNum;
           const custoItem = quantidade * custo;
 
           faturamentoEntrega += faturamentoItem;
@@ -354,15 +372,15 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
           stats.clientesUnicos.add(entrega.cliente_id);
 
           // Acumular no pool de preço correspondente
-          if (!stats.pools.has(precoAplicado)) {
-            stats.pools.set(precoAplicado, {
+          if (!stats.pools.has(precoNum)) {
+            stats.pools.set(precoNum, {
               volumeVendido: 0,
               faturamento: 0,
               percentual: 0
             });
           }
 
-          const pool = stats.pools.get(precoAplicado)!;
+          const pool = stats.pools.get(precoNum)!;
           pool.volumeVendido += quantidade;
           pool.faturamento += faturamentoItem;
         }
