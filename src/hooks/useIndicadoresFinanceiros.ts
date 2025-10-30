@@ -90,33 +90,54 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
 
   const buscarProdutos = async () => {
     console.log('[Indicadores] Iniciando carregamento de produtos...');
-    const { data, error } = await supabase
-      .from("produtos_finais")
-      .select("id, nome, categoria_id, custo_unitario");
     
-    if (error) {
-      console.error('[Indicadores] Erro ao buscar produtos:', error);
-      throw error;
-    }
-    
-    if (data) {
+    try {
+      const { data, error } = await supabase
+        .from("produtos_finais")
+        .select("id, nome, categoria_id, custo_unitario");
+      
+      if (error) {
+        console.error('[Indicadores] ERRO CRÍTICO ao buscar produtos:', error);
+        throw new Error(`Falha ao carregar produtos: ${error.message}`);
+      }
+      
+      if (!data || data.length === 0) {
+        console.warn('[Indicadores] ATENÇÃO: Nenhum produto encontrado no banco');
+        return;
+      }
+      
+      // Validar produtos sem categoria
+      const produtosSemCategoria = data.filter(p => !p.categoria_id);
+      if (produtosSemCategoria.length > 0) {
+        console.warn(
+          `[Indicadores] ${produtosSemCategoria.length} produtos sem categoria:`,
+          produtosSemCategoria.map(p => p.nome).join(', ')
+        );
+      }
+      
       const cache = new Map();
       data.forEach(p => cache.set(p.id, p));
       setProdutosCache(cache);
-      console.log(`[Indicadores] ${cache.size} produtos carregados no cache`);
+      
+      console.log(`[Indicadores] ✅ ${cache.size} produtos carregados (${produtosSemCategoria.length} sem categoria)`);
+    } catch (error) {
+      console.error('[Indicadores] Exceção ao buscar produtos:', error);
+      throw error;
     }
   };
 
-  const obterPrecoAplicado = async (clienteId: string, categoriaId: number): Promise<number> => {
-    // Verificar cache
+  const obterPrecoAplicado = async (clienteId: string, categoriaId: number): Promise<number | null> => {
+    // Verificar cache primeiro
     if (precosCache.has(clienteId)) {
       const clientePrecos = precosCache.get(clienteId)!;
       if (clientePrecos.has(categoriaId)) {
-        return clientePrecos.get(categoriaId)!;
+        const precoCache = clientePrecos.get(categoriaId)!;
+        console.log(`[Preço] Cliente ${clienteId.substring(0,8)}... Cat ${categoriaId}: R$ ${precoCache.toFixed(2)} (cache)`);
+        return precoCache;
       }
     }
 
-    // Buscar do banco
+    // Carregar preços do cliente se não estiver em cache
     const precos = await carregarPrecosPorCliente(clienteId);
     const precoPersonalizado = precos.find(p => p.categoria_id === categoriaId);
     
@@ -126,22 +147,14 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
         precosCache.set(clienteId, new Map());
       }
       precosCache.get(clienteId)!.set(categoriaId, precoPersonalizado.preco_unitario);
+      console.log(`[Preço] Cliente ${clienteId.substring(0,8)}... Cat ${categoriaId}: R$ ${precoPersonalizado.preco_unitario.toFixed(2)} (BD)`);
       return precoPersonalizado.preco_unitario;
     }
 
-    // Fallback para configuração geral
-    const config = obterConfiguracao('precificacao');
-    if (config?.precosPorCategoria?.[categoriaId]) {
-      return config.precosPorCategoria[categoriaId];
-    }
-
-    // Fallback para categoria nome
-    const categoria = categorias.find(c => c.id === categoriaId);
-    if (categoria && PRECOS_TEMPORARIOS[categoria.nome]) {
-      return PRECOS_TEMPORARIOS[categoria.nome];
-    }
-
-    return 3.50; // Fallback final
+    // Se não houver preço personalizado, retornar NULL
+    // Isso permite que o código ignore o item em vez de usar fallback incorreto
+    console.warn(`[Preço] Cliente ${clienteId.substring(0,8)}... Cat ${categoriaId}: SEM PREÇO CADASTRADO`);
+    return null;
   };
 
   const obterCustoUnitario = (produtoId: string, categoriaNome?: string): number => {
@@ -228,19 +241,35 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
           const itemTyped = item as any;
           if (!itemTyped.produto_id || !itemTyped.quantidade || itemTyped.quantidade <= 0) continue;
 
-          // Obter categoria do produto
+          // Garantir que produto existe no cache
           const produto = produtosCache.get(itemTyped.produto_id);
-          const categoriaId = itemTyped.categoria_id || produto?.categoria_id;
+          if (!produto) {
+            console.warn(`[Indicadores] ⚠️ Produto ${itemTyped.produto_id} NÃO ENCONTRADO no cache - item IGNORADO`);
+            continue;
+          }
+
+          // Categoria DEVE vir do produto (itens não têm categoria)
+          const categoriaId = produto.categoria_id;
           
           if (!categoriaId) {
-            console.warn(`[Indicadores] Produto ${itemTyped.produto_id} sem categoria - item ignorado`);
+            console.warn(`[Indicadores] Produto "${produto.nome}" (${produto.id}) sem categoria - item IGNORADO`);
             continue;
           }
 
           categoriasDaEntrega.add(categoriaId);
 
-          // Obter preço e custo
+          // Obter preço (pode retornar null)
           const preco = await obterPrecoAplicado(entrega.cliente_id, categoriaId);
+          
+          // Ignorar item se não houver preço válido
+          if (preco === null || preco <= 0) {
+            console.warn(
+              `[Indicadores] Cliente ${entrega.cliente_id.substring(0,8)}... ` +
+              `SEM PREÇO para categoria ${categoriaId} - item "${produto.nome}" IGNORADO`
+            );
+            continue;
+          }
+
           const categoria = categorias.find(c => c.id === categoriaId);
           const custo = obterCustoUnitario(itemTyped.produto_id, categoria?.nome);
 
@@ -285,12 +314,22 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
       const faturamentoMedioPorCategoria: FaturamentoMedioCategoria[] = [];
       const ticketMedioPorCategoria: TicketMedio['porCategoria'] = [];
 
+      console.log('\n📊 RESULTADO - Preço Médio por Categoria:');
+      
       for (const [categoriaId, stats] of categoriaVendas.entries()) {
         const categoria = categorias.find(c => c.id === categoriaId);
         if (!categoria) continue;
 
         const precoMedio = stats.volumeTotal > 0 ? stats.faturamentoTotal / stats.volumeTotal : 0;
         const custoMedio = stats.volumeTotal > 0 ? stats.custoTotal / stats.volumeTotal : 0;
+
+        console.log(`\n✅ ${categoria.nome}:`);
+        console.log(`   - Volume Total: ${stats.volumeTotal} unidades`);
+        console.log(`   - Faturamento Total: R$ ${stats.faturamentoTotal.toFixed(2)}`);
+        console.log(`   - Preço Médio Ponderado: R$ ${precoMedio.toFixed(2)}/un`);
+        console.log(`   - Custo Médio: R$ ${custoMedio.toFixed(2)}/un`);
+        console.log(`   - Clientes: ${stats.clientesUnicos.size}`);
+        console.log(`   - Entregas: ${stats.entregasUnicas.size}`);
 
         precoMedioPorCategoria.push({
           categoriaId,
