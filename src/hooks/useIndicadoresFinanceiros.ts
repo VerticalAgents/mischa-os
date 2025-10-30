@@ -120,6 +120,9 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
       setProdutosCache(cache);
       
       console.log(`[Indicadores] ✅ ${cache.size} produtos carregados (${produtosSemCategoria.length} sem categoria)`);
+      
+      // Pequeno delay para garantir que setState completou
+      await new Promise(resolve => setTimeout(resolve, 100));
     } catch (error) {
       console.error('[Indicadores] Exceção ao buscar produtos:', error);
       throw error;
@@ -220,6 +223,14 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
 
       // Buscar produtos para cache
       await buscarProdutos();
+      
+      // Validar se o cache foi populado
+      if (produtosCache.size === 0) {
+        console.error('[Indicadores] ERRO: Cache de produtos vazio após carregamento!');
+        throw new Error('Falha ao carregar produtos no cache');
+      }
+      
+      console.log(`[Indicadores] ✅ Cache validado: ${produtosCache.size} produtos disponíveis`);
 
       const dataFim = new Date();
       const dataInicio = new Date();
@@ -287,7 +298,11 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
 
           const produto = produtosCache.get(itemTyped.produto_id);
           if (!produto) {
-            console.warn(`[Indicadores] ⚠️ Produto ${itemTyped.produto_id} NÃO ENCONTRADO no cache - item IGNORADO`);
+            console.error(
+              `[Indicadores] ❌ ERRO CRÍTICO: Produto ${itemTyped.produto_id} não encontrado.\n` +
+              `   Cache size: ${produtosCache.size}\n` +
+              `   IDs no cache: ${Array.from(produtosCache.keys()).slice(0, 3).join(', ')}...`
+            );
             continue;
           }
 
@@ -361,6 +376,16 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
         }
 
         faturamentoTotalGeral += faturamentoEntrega;
+      }
+
+      // Log de resumo do processamento
+      console.log('\n📊 RESUMO DO PROCESSAMENTO:');
+      console.log(`   - Entregas processadas: ${entregas.length}`);
+      console.log(`   - Categorias com vendas: ${categoriaVendas.size}`);
+      console.log(`   - Clientes atendidos: ${clientesAtendidos.size}`);
+      
+      if (categoriaVendas.size === 0) {
+        console.error('⚠️ ATENÇÃO: Nenhuma categoria processada! Verifique logs acima.');
       }
 
       // Calcular indicadores por categoria
