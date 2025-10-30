@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { useProjectionStore } from '@/hooks/useProjectionStore';
 import { useDREData } from '@/hooks/useDREData';
 import { useFaturamentoMedioPDV } from '@/hooks/useFaturamentoMedioPDV';
@@ -29,19 +30,25 @@ export default function ProjecoesTab() {
   }, [faturamentoMedioRevenda, setFaturamentoMedioPDV]);
 
   return (
-    <div>
+    <div className="space-y-6">
+      {/* Info Card sobre Faturamento Médio */}
       {faturamentoMedioRevenda > 0 && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Faturamento Médio por PDV (Revenda Padrão):</strong> R$ {faturamentoMedioRevenda.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <p className="text-xs text-blue-600 mt-1">
-            Este valor é sincronizado com a aba "Projeção por PDV" → aba "Análise por Categoria"
-          </p>
-        </div>
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-blue-900">
+                Faturamento Médio por PDV (Revenda Padrão): <span className="font-bold">R$ {faturamentoMedioRevenda.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </p>
+              <p className="text-xs text-blue-700">
+                Este valor é sincronizado com a aba "Projeção por PDV" → aba "Análise por Categoria"
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
       
-      <div className="flex gap-4 mb-6">
+      {/* View Selector */}
+      <div className="flex gap-3">
         <button
           onClick={() => setActiveView('scenarios')}
           className={`px-4 py-2 rounded-lg ${
@@ -85,17 +92,21 @@ export default function ProjecoesTab() {
       </div>
       
       {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Carregando projeções...</p>
-          </div>
-        </div>
+        <Card>
+          <CardContent className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4 text-muted-foreground">Carregando projeções...</p>
+            </div>
+          </CardContent>
+        </Card>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <h3 className="text-red-800 font-semibold mb-2">Erro ao carregar dados</h3>
-          <p className="text-red-600">{error}</p>
-        </div>
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="pt-6">
+            <h3 className="text-red-800 font-semibold mb-2">Erro ao carregar dados</h3>
+            <p className="text-red-600">{error}</p>
+          </CardContent>
+        </Card>
       ) : (
         <>
           {activeView === 'scenarios' && (

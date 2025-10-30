@@ -42,18 +42,21 @@ export default function ResumoFinanceiroTab() {
   const margemLiquida = faturamentoMensal > 0 ? (resultadoLiquido / faturamentoMensal) * 100 : 0;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <DollarSign className="h-6 w-6 text-blue-600" />
-          <h2 className="text-2xl font-bold">💰 Resumo Financeiro - Indicadores Estratégicos</h2>
-          <span className="text-sm text-muted-foreground bg-blue-50 px-2 py-1 rounded">Valores Mensais</span>
+    <div className="space-y-6">
+      {/* Header com Refresh Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <DollarSign className="h-6 w-6 text-primary" />
+            Resumo Financeiro
+          </h2>
+          <p className="text-muted-foreground mt-1">Indicadores estratégicos - Valores mensais</p>
         </div>
         <RefreshButton onRefresh={refetch} lastUpdated={lastUpdated} />
       </div>
 
-      {/* Primary Financial Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      {/* Primary Financial Metrics - Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {loading ? (
           <>
             <CardSkeleton />
@@ -142,10 +145,13 @@ export default function ResumoFinanceiroTab() {
       </div>
 
       {/* Secondary Financial Metrics */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Calculator className="h-5 w-5 text-slate-600" />
-          <h3 className="text-xl font-bold">📊 Resultados e Indicadores</h3>
+      <div>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Calculator className="h-5 w-5 text-primary" />
+            Resultados e Indicadores
+          </h3>
+          <p className="text-sm text-muted-foreground">Análise detalhada dos resultados operacionais</p>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
