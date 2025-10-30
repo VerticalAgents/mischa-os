@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { useState } from "react";
+import IndicadoresTab from "@/components/gestao-financeira/tabs/IndicadoresTab";
 
 export default function GestaoFinanceira() {
   const [activeTab, setActiveTab] = useState("resumo");
@@ -38,11 +39,7 @@ export default function GestaoFinanceira() {
         </TabsContent>
 
         <TabsContent value="indicadores" className="space-y-6">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground text-center">Conteúdo em desenvolvimento</p>
-            </CardContent>
-          </Card>
+          <IndicadoresTab />
         </TabsContent>
 
         <TabsContent value="custos" className="space-y-6">
