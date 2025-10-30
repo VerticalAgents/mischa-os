@@ -126,35 +126,78 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
     }
   };
 
-  const obterPrecoAplicado = async (clienteId: string, categoriaId: number): Promise<number | null> => {
-    // Verificar cache primeiro
+  const obterPrecoPadrao = (categoriaId: number): number | null => {
+    const configPrecificacao = obterConfiguracao('precificacao');
+    
+    if (!configPrecificacao?.precosPorCategoria) {
+      return null;
+    }
+    
+    const preco = configPrecificacao.precosPorCategoria[categoriaId.toString()];
+    
+    if (!preco || preco <= 0) {
+      return null;
+    }
+    
+    return preco;
+  };
+
+  const obterPrecoCliente = async (clienteId: string, categoriaId: number): Promise<number | null> => {
+    // 1. Verificar cache primeiro
     if (precosCache.has(clienteId)) {
       const clientePrecos = precosCache.get(clienteId)!;
       if (clientePrecos.has(categoriaId)) {
-        const precoCache = clientePrecos.get(categoriaId)!;
-        console.log(`[Preço] Cliente ${clienteId.substring(0,8)}... Cat ${categoriaId}: R$ ${precoCache.toFixed(2)} (cache)`);
-        return precoCache;
+        return clientePrecos.get(categoriaId)!;
       }
     }
 
-    // Carregar preços do cliente se não estiver em cache
+    // 2. Carregar preços do cliente
     const precos = await carregarPrecosPorCliente(clienteId);
-    const precoPersonalizado = precos.find(p => p.categoria_id === categoriaId);
+    const precoDiferencial = precos.find(p => p.categoria_id === categoriaId);
     
-    if (precoPersonalizado && precoPersonalizado.preco_unitario > 0) {
-      // Atualizar cache
+    // 3. Se tem preço diferencial, usar ele
+    if (precoDiferencial && precoDiferencial.preco_unitario > 0) {
       if (!precosCache.has(clienteId)) {
         precosCache.set(clienteId, new Map());
       }
-      precosCache.get(clienteId)!.set(categoriaId, precoPersonalizado.preco_unitario);
-      console.log(`[Preço] Cliente ${clienteId.substring(0,8)}... Cat ${categoriaId}: R$ ${precoPersonalizado.preco_unitario.toFixed(2)} (BD)`);
-      return precoPersonalizado.preco_unitario;
+      precosCache.get(clienteId)!.set(categoriaId, precoDiferencial.preco_unitario);
+      return precoDiferencial.preco_unitario;
     }
-
-    // Se não houver preço personalizado, retornar NULL
-    // Isso permite que o código ignore o item em vez de usar fallback incorreto
-    console.warn(`[Preço] Cliente ${clienteId.substring(0,8)}... Cat ${categoriaId}: SEM PREÇO CADASTRADO`);
+    
+    // 4. Senão, usar preço padrão
+    const precoPadrao = obterPrecoPadrao(categoriaId);
+    if (precoPadrao && precoPadrao > 0) {
+      if (!precosCache.has(clienteId)) {
+        precosCache.set(clienteId, new Map());
+      }
+      precosCache.get(clienteId)!.set(categoriaId, precoPadrao);
+      return precoPadrao;
+    }
+    
     return null;
+  };
+
+  const descobrirPrecosUnicos = async (categoriaId: number): Promise<Set<number>> => {
+    const precosUnicos = new Set<number>();
+    
+    // Adicionar preço padrão se existir
+    const precoPadrao = obterPrecoPadrao(categoriaId);
+    if (precoPadrao && precoPadrao > 0) {
+      precosUnicos.add(precoPadrao);
+    }
+    
+    // Adicionar preços diferenciais
+    const { data } = await supabase
+      .from("precos_categoria_cliente")
+      .select("preco_unitario")
+      .eq("categoria_id", categoriaId)
+      .gt("preco_unitario", 0);
+    
+    if (data) {
+      data.forEach(p => precosUnicos.add(p.preco_unitario));
+    }
+    
+    return precosUnicos;
   };
 
   const obterCustoUnitario = (produtoId: string, categoriaNome?: string): number => {
@@ -207,13 +250,14 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
 
       console.log(`[Indicadores] ${entregas.length} entregas encontradas para análise`);
 
-      // Estruturas para agregação
+      // Estruturas para agregação por categoria
       const categoriaVendas = new Map<number, {
         volumeTotal: number;
         faturamentoTotal: number;
         custoTotal: number;
         clientesUnicos: Set<string>;
         entregasUnicas: Set<string>;
+        pools: Map<number, { volumeVendido: number; faturamento: number; percentual: number }>;
       }>();
 
       let faturamentoTotalGeral = 0;
@@ -241,14 +285,12 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
           const itemTyped = item as any;
           if (!itemTyped.produto_id || !itemTyped.quantidade || itemTyped.quantidade <= 0) continue;
 
-          // Garantir que produto existe no cache
           const produto = produtosCache.get(itemTyped.produto_id);
           if (!produto) {
             console.warn(`[Indicadores] ⚠️ Produto ${itemTyped.produto_id} NÃO ENCONTRADO no cache - item IGNORADO`);
             continue;
           }
 
-          // Categoria DEVE vir do produto (itens não têm categoria)
           const categoriaId = produto.categoria_id;
           
           if (!categoriaId) {
@@ -258,11 +300,10 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
 
           categoriasDaEntrega.add(categoriaId);
 
-          // Obter preço (pode retornar null)
-          const preco = await obterPrecoAplicado(entrega.cliente_id, categoriaId);
+          // Obter preço aplicado ao cliente (padrão ou diferencial)
+          const precoAplicado = await obterPrecoCliente(entrega.cliente_id, categoriaId);
           
-          // Ignorar item se não houver preço válido
-          if (preco === null || preco <= 0) {
+          if (precoAplicado === null || precoAplicado <= 0) {
             console.warn(
               `[Indicadores] Cliente ${entrega.cliente_id.substring(0,8)}... ` +
               `SEM PREÇO para categoria ${categoriaId} - item "${produto.nome}" IGNORADO`
@@ -274,19 +315,20 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
           const custo = obterCustoUnitario(itemTyped.produto_id, categoria?.nome);
 
           const quantidade = itemTyped.quantidade;
-          const faturamentoItem = quantidade * preco;
+          const faturamentoItem = quantidade * precoAplicado;
           const custoItem = quantidade * custo;
 
           faturamentoEntrega += faturamentoItem;
 
-          // Agregar por categoria
+          // Inicializar categoria se necessário
           if (!categoriaVendas.has(categoriaId)) {
             categoriaVendas.set(categoriaId, {
               volumeTotal: 0,
               faturamentoTotal: 0,
               custoTotal: 0,
               clientesUnicos: new Set(),
-              entregasUnicas: new Set()
+              entregasUnicas: new Set(),
+              pools: new Map()
             });
           }
 
@@ -295,6 +337,19 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
           stats.faturamentoTotal += faturamentoItem;
           stats.custoTotal += custoItem;
           stats.clientesUnicos.add(entrega.cliente_id);
+
+          // Acumular no pool de preço correspondente
+          if (!stats.pools.has(precoAplicado)) {
+            stats.pools.set(precoAplicado, {
+              volumeVendido: 0,
+              faturamento: 0,
+              percentual: 0
+            });
+          }
+
+          const pool = stats.pools.get(precoAplicado)!;
+          pool.volumeVendido += quantidade;
+          pool.faturamento += faturamentoItem;
         }
 
         // Adicionar entrega a todas as categorias que ela contém
@@ -314,19 +369,42 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
       const faturamentoMedioPorCategoria: FaturamentoMedioCategoria[] = [];
       const ticketMedioPorCategoria: TicketMedio['porCategoria'] = [];
 
-      console.log('\n📊 RESULTADO - Preço Médio por Categoria:');
+      console.log('\n📊 RESULTADO - Preço Médio por Categoria (Pools Numéricos):');
       
       for (const [categoriaId, stats] of categoriaVendas.entries()) {
         const categoria = categorias.find(c => c.id === categoriaId);
         if (!categoria) continue;
 
-        const precoMedio = stats.volumeTotal > 0 ? stats.faturamentoTotal / stats.volumeTotal : 0;
+        // Calcular percentuais dos pools
+        stats.pools.forEach(pool => {
+          pool.percentual = stats.volumeTotal > 0 ? (pool.volumeVendido / stats.volumeTotal) * 100 : 0;
+        });
+
+        // Calcular preço médio ponderado
+        let precoMedio = 0;
+        stats.pools.forEach((pool, preco) => {
+          precoMedio += (preco * pool.percentual / 100);
+        });
+
         const custoMedio = stats.volumeTotal > 0 ? stats.custoTotal / stats.volumeTotal : 0;
 
         console.log(`\n✅ ${categoria.nome}:`);
         console.log(`   - Volume Total: ${stats.volumeTotal} unidades`);
         console.log(`   - Faturamento Total: R$ ${stats.faturamentoTotal.toFixed(2)}`);
-        console.log(`   - Preço Médio Ponderado: R$ ${precoMedio.toFixed(2)}/un`);
+        console.log(`   - ${stats.pools.size} preços únicos encontrados:`);
+        
+        // Ordenar pools por preço decrescente para melhor visualização
+        const poolsOrdenados = Array.from(stats.pools.entries()).sort((a, b) => b[0] - a[0]);
+        
+        poolsOrdenados.forEach(([preco, pool]) => {
+          const contribuicao = (preco * pool.percentual / 100);
+          console.log(
+            `      • R$ ${preco.toFixed(2)}: ${pool.volumeVendido} un (${pool.percentual.toFixed(1)}%) ` +
+            `→ contribui R$ ${contribuicao.toFixed(2)}`
+          );
+        });
+        
+        console.log(`   ✅ PREÇO MÉDIO PONDERADO: R$ ${precoMedio.toFixed(2)}/un`);
         console.log(`   - Custo Médio: R$ ${custoMedio.toFixed(2)}/un`);
         console.log(`   - Clientes: ${stats.clientesUnicos.size}`);
         console.log(`   - Entregas: ${stats.entregasUnicas.size}`);
