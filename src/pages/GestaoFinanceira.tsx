@@ -1,9 +1,12 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
-import { DollarSign, TrendingUp, Receipt, Target } from "lucide-react";
+import { useState } from "react";
 
 export default function GestaoFinanceira() {
+  const [activeTab, setActiveTab] = useState("resumo");
+
   return (
     <div className="container mx-auto">
       <BreadcrumbNavigation />
@@ -13,152 +16,75 @@ export default function GestaoFinanceira() {
         description="Visão completa da saúde financeira da empresa" 
       />
 
-      <div className="space-y-6 mt-6">
-        {/* Indicadores Principais */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-primary" />
-                Faturamento Mensal
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">R$ 0,00</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Baseado em projeções
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                Lucro Bruto
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">R$ 0,00</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Margem: 0%
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Receipt className="h-4 w-4 text-primary" />
-                Custos Totais
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">R$ 0,00</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Fixos + Variáveis
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
-                Margem Líquida
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0%</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Após impostos
-              </p>
-            </CardContent>
-          </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-6">
+        <div className="sticky top-0 z-10 bg-background pb-4">
+          <TabsList className="grid w-full grid-cols-7 h-auto">
+            <TabsTrigger value="resumo" className="text-xs sm:text-sm">Resumo</TabsTrigger>
+            <TabsTrigger value="indicadores" className="text-xs sm:text-sm">Indicadores</TabsTrigger>
+            <TabsTrigger value="custos" className="text-xs sm:text-sm">Custos</TabsTrigger>
+            <TabsTrigger value="dre" className="text-xs sm:text-sm">DRE</TabsTrigger>
+            <TabsTrigger value="cenarios" className="text-xs sm:text-sm">Cenários</TabsTrigger>
+            <TabsTrigger value="ponto-equilibrio" className="text-xs sm:text-sm">Ponto de Equilíbrio</TabsTrigger>
+            <TabsTrigger value="parcelamentos" className="text-xs sm:text-sm">Controle de Parcelamentos</TabsTrigger>
+          </TabsList>
         </div>
 
-        {/* Visão Geral */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TabsContent value="resumo" className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                Receitas
-              </CardTitle>
-              <CardDescription>
-                Análise de faturamento e vendas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Faturamento Previsto</span>
-                  <span className="font-semibold">R$ 0,00</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Ticket Médio</span>
-                  <span className="font-semibold">R$ 0,00</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Total de Clientes Ativos</span>
-                  <span className="font-semibold">0</span>
-                </div>
-              </div>
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground text-center">Conteúdo em desenvolvimento</p>
             </CardContent>
           </Card>
+        </TabsContent>
 
+        <TabsContent value="indicadores" className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Receipt className="h-5 w-5 text-primary" />
-                Despesas
-              </CardTitle>
-              <CardDescription>
-                Controle de custos e despesas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Custos Fixos</span>
-                  <span className="font-semibold">R$ 0,00</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Custos Variáveis</span>
-                  <span className="font-semibold">R$ 0,00</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Custo de Insumos</span>
-                  <span className="font-semibold">R$ 0,00</span>
-                </div>
-              </div>
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground text-center">Conteúdo em desenvolvimento</p>
             </CardContent>
           </Card>
-        </div>
+        </TabsContent>
 
-        {/* Placeholder para desenvolvimento futuro */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Em Desenvolvimento</CardTitle>
-            <CardDescription>
-              Esta é a nova versão da Gestão Financeira. 
-              A versão anterior está disponível como "Financeiro OLD" para referência.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Funcionalidades planejadas:
-            </p>
-            <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
-              <li>• Dashboard financeiro completo</li>
-              <li>• Integração com dados reais de faturamento</li>
-              <li>• Análise de margens e rentabilidade</li>
-              <li>• Controle de fluxo de caixa</li>
-              <li>• Projeções e cenários financeiros</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
+        <TabsContent value="custos" className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground text-center">Conteúdo em desenvolvimento</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="dre" className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground text-center">Conteúdo em desenvolvimento</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="cenarios" className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground text-center">Conteúdo em desenvolvimento</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ponto-equilibrio" className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground text-center">Conteúdo em desenvolvimento</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="parcelamentos" className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground text-center">Conteúdo em desenvolvimento</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
