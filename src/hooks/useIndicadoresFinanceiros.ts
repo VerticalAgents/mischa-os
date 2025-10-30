@@ -94,7 +94,7 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
     try {
       const { data, error } = await supabase
         .from("produtos_finais")
-        .select("id, nome, categoria_id, custo_unitario");
+        .select("id, nome, categoria_id, custo_unitario, custo_total, unidades_producao");
       
       if (error) {
         console.error('[Indicadores] ERRO CRÍTICO ao buscar produtos:', error);
@@ -238,8 +238,11 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
       // Helper local para obter custo usando o Map local
       const obterCustoUnitarioLocal = (produtoId: string, categoriaNome?: string): number => {
         const produto = produtosMap.get(produtoId);
-        if (produto?.custo_unitario && Number(produto.custo_unitario) > 0) {
-          return Number(produto.custo_unitario);
+        
+        // 🔧 CORREÇÃO: Calcular custo unitário usando custo_total / unidades_producao
+        if (produto?.custo_total && produto?.unidades_producao && 
+            Number(produto.custo_total) > 0 && Number(produto.unidades_producao) > 0) {
+          return Number(produto.custo_total) / Number(produto.unidades_producao);
         }
 
         if (categoriaNome && CUSTOS_UNITARIOS[categoriaNome]) {
@@ -345,6 +348,13 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
 
           const categoria = categorias.find(c => c.id === categoriaId);
           const custo = obterCustoUnitarioLocal(itemTyped.produto_id, categoria?.nome);
+          
+          // 🔧 Log de validação de custos altos
+          if (custo > 100) {
+            console.warn(
+              `[Indicadores] ⚠️ Custo alto detectado: ${produto.nome} = R$ ${custo.toFixed(2)}/un`
+            );
+          }
 
           const quantidade = itemTyped.quantidade;
           const precoNum = Number(precoAplicado);
@@ -469,12 +479,8 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
           custoTotal: stats.custoTotal
         });
 
-        // Contar clientes ativos com esta categoria habilitada
-        const clientesAtivosCategoria = clientes.filter(c => 
-          c.statusCliente === 'Ativo' && 
-          Array.isArray(c.categoriasHabilitadas) &&
-          c.categoriasHabilitadas.includes(categoriaId)
-        ).length;
+        // 🔧 CORREÇÃO: Usar clientes que realmente compraram (não apenas "Ativos")
+        const clientesAtivosCategoria = stats.clientesUnicos.size;
 
         const faturamentoMedioPorCliente = clientesAtivosCategoria > 0 
           ? stats.faturamentoTotal / clientesAtivosCategoria 

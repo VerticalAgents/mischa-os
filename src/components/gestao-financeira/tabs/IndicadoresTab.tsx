@@ -188,8 +188,8 @@ export default function IndicadoresTab() {
         {/* Faturamento Médio Mensal */}
         <Card>
           <CardHeader>
-            <CardTitle>Faturamento Médio por Cliente</CardTitle>
-            <CardDescription>Por categoria habilitada</CardDescription>
+            <CardTitle>Faturamento Médio por Categoria</CardTitle>
+            <CardDescription>Por cliente que comprou a categoria</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
