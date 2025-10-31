@@ -92,9 +92,9 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
     console.log('[Indicadores] Iniciando carregamento de produtos...');
     
     try {
-      // ✅ CORREÇÃO: Buscar da tabela 'produtos' (dados corretos) ao invés de 'produtos_finais' (dados corrompidos)
+      // Buscar todos os produtos do banco
       const { data, error } = await supabase
-        .from("produtos")
+        .from("produtos_finais")
         .select("id, nome, categoria_id, custo_unitario, custo_total, unidades_producao");
       
       if (error) {
@@ -209,10 +209,13 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
 
   const obterCustoUnitario = (produtoId: string, categoriaNome?: string): number => {
     const produto = produtosCache.get(produtoId);
-    if (produto?.custo_unitario && produto.custo_unitario > 0) {
+    
+    // Usar custo_unitario do banco se disponível e razoável (< R$ 10)
+    if (produto?.custo_unitario && produto.custo_unitario > 0 && produto.custo_unitario < 10) {
       return produto.custo_unitario;
     }
 
+    // Fallback para custos padrão por categoria
     if (categoriaNome && CUSTOS_UNITARIOS[categoriaNome]) {
       return CUSTOS_UNITARIOS[categoriaNome];
     }
@@ -456,61 +459,8 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
           precoMedio += (preco * pool.percentual / 100);
         });
 
-        // ✅ CALCULAR CUSTO MÉDIO PONDERADO (baseado na representatividade de vendas)
-        const produtosVendidos = new Map<string, {
-          nome: string,
-          quantidade: number,
-          custo: number
-        }>();
-
-        // Coletar produtos vendidos da categoria com suas quantidades
-        const { data: entregasData } = await supabase
-          .from('historico_entregas')
-          .select('itens, data')
-          .gte('data', dataInicio)
-          .lte('data', dataFim);
-
-        entregasData?.forEach(entrega => {
-          const itens = Array.isArray(entrega.itens) ? entrega.itens : [];
-          itens.forEach((item: any) => {
-            const produto = produtosCache.get(item.produto_id);
-            if (produto && produto.categoria_id === categoriaId) {
-              const custoUnitario = obterCustoUnitario(item.produto_id, categoria.nome);
-              
-              const dadosExistentes = produtosVendidos.get(item.produto_id);
-              if (dadosExistentes) {
-                dadosExistentes.quantidade += item.quantidade;
-              } else {
-                produtosVendidos.set(item.produto_id, {
-                  nome: produto.nome,
-                  quantidade: item.quantidade,
-                  custo: custoUnitario
-                });
-              }
-            }
-          });
-        });
-
-        // Calcular custo médio ponderado pela representatividade
-        let custoMedioPonderado = 0;
-        
-        if (produtosVendidos.size > 0 && stats.volumeTotal > 0) {
-          console.log(`\n✅ ${categoria.nome} - CUSTO MÉDIO PONDERADO:`);
-          
-          produtosVendidos.forEach((dados, produtoId) => {
-            const percentualRepresentatividade = dados.quantidade / stats.volumeTotal;
-            const contribuicaoCusto = dados.custo * percentualRepresentatividade;
-            custoMedioPonderado += contribuicaoCusto;
-            
-            console.log(`   • ${dados.nome}: ${dados.quantidade} un (${(percentualRepresentatividade * 100).toFixed(1)}%) × R$ ${dados.custo.toFixed(2)} = R$ ${contribuicaoCusto.toFixed(4)}`);
-          });
-          
-          console.log(`   ✅ Custo Médio Ponderado: R$ ${custoMedioPonderado.toFixed(2)}/un`);
-        } else {
-          // Fallback para cálculo simples se não houver produtos vendidos mapeados
-          custoMedioPonderado = stats.volumeTotal > 0 ? stats.custoTotal / stats.volumeTotal : 0;
-          console.log(`   ⚠️ ${categoria.nome}: Usando cálculo simples - R$ ${custoMedioPonderado.toFixed(2)}/un`);
-        }
+        // Calcular custo médio simples (já temos custoTotal acumulado anteriormente)
+        const custoMedio = stats.volumeTotal > 0 ? stats.custoTotal / stats.volumeTotal : 0;
 
         console.log(`\n✅ ${categoria.nome}:`);
         console.log(`   - Volume Total: ${stats.volumeTotal} unidades`);
@@ -529,7 +479,7 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
         });
         
         console.log(`   ✅ PREÇO MÉDIO PONDERADO: R$ ${precoMedio.toFixed(2)}/un`);
-        console.log(`   - Custo Médio Ponderado: R$ ${custoMedioPonderado.toFixed(2)}/un`);
+        console.log(`   - Custo Médio: R$ ${custoMedio.toFixed(2)}/un`);
         console.log(`   - Clientes: ${stats.clientesUnicos.size}`);
         console.log(`   - Entregas: ${stats.entregasUnicas.size}`);
 
@@ -545,7 +495,7 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
         custoMedioPorCategoria.push({
           categoriaId,
           categoriaNome: categoria.nome,
-          custoMedio: custoMedioPonderado, // ✅ Usar custo ponderado ao invés de simples
+          custoMedio,
           volumeTotal: stats.volumeTotal,
           custoTotal: stats.custoTotal
         });
