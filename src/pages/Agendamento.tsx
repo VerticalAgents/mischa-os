@@ -10,6 +10,7 @@ import AgendamentosDespachados from "@/components/agendamento/AgendamentosDespac
 import AgendamentosSemData from "@/components/agendamento/AgendamentosSemData";
 import AgendamentoRepresentantes from "@/components/agendamento/AgendamentoRepresentantes";
 import NovaConfirmacaoReposicaoTab from "@/components/agendamento/NovaConfirmacaoReposicaoTab";
+import AgendamentosPositivacao from "@/components/agendamento/AgendamentosPositivacao";
 import { useSearchParams } from "react-router-dom";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -37,7 +38,7 @@ export default function Agendamento() {
   useEffect(() => {
     // Verificar se há parâmetro de tab na URL e atualizar
     const tab = searchParams.get("tab");
-    if (tab && ["dashboard", "agendamentos", "despachados", "representantes", "confirmacao", "pendentes", "atrasados", "sem-data"].includes(tab)) {
+    if (tab && ["dashboard", "agendamentos", "positivacao", "despachados", "representantes", "confirmacao", "pendentes", "atrasados", "sem-data"].includes(tab)) {
       changeTab(tab);
     }
   }, [searchParams, changeTab]);
@@ -98,6 +99,7 @@ export default function Agendamento() {
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="agendamentos">Agendamentos</TabsTrigger>
+          <TabsTrigger value="positivacao">Positivação</TabsTrigger>
           {temAgendamentosDespachados && <TabsTrigger value="despachados">Despachado</TabsTrigger>}
           <TabsTrigger value="representantes">Representantes</TabsTrigger>
           <TabsTrigger value="confirmacao">Confirmação de Reposição</TabsTrigger>
@@ -112,6 +114,10 @@ export default function Agendamento() {
         
         <TabsContent value="agendamentos" className="space-y-4">
           <TodosAgendamentos />
+        </TabsContent>
+        
+        <TabsContent value="positivacao" className="space-y-4">
+          <AgendamentosPositivacao />
         </TabsContent>
         
         {temAgendamentosDespachados && (
