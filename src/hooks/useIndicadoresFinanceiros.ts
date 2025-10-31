@@ -239,16 +239,31 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
       const obterCustoUnitarioLocal = (produtoId: string, categoriaNome?: string): number => {
         const produto = produtosMap.get(produtoId);
         
-        // 🔧 CORREÇÃO: Calcular custo unitário usando custo_total / unidades_producao
-        if (produto?.custo_total && produto?.unidades_producao && 
-            Number(produto.custo_total) > 0 && Number(produto.unidades_producao) > 0) {
-          return Number(produto.custo_total) / Number(produto.unidades_producao);
+        // ✅ USAR O CUSTO_UNITARIO QUE JÁ EXISTE NO BANCO (correto)
+        if (produto?.custo_unitario && Number(produto.custo_unitario) > 0) {
+          const custo = Number(produto.custo_unitario);
+          
+          // Validação: alertar se o custo parecer fora do padrão
+          if (custo > 100) {
+            console.warn(
+              `[Indicadores] ⚠️ Custo muito alto para "${produto.nome}": R$ ${custo.toFixed(2)}/un`
+            );
+          }
+          
+          return custo;
         }
 
+        // Fallback apenas se custo_unitario não existir
         if (categoriaNome && CUSTOS_UNITARIOS[categoriaNome]) {
+          console.warn(
+            `[Indicadores] Usando fallback para produto ${produtoId} (${categoriaNome})`
+          );
           return CUSTOS_UNITARIOS[categoriaNome];
         }
 
+        console.warn(
+          `[Indicadores] Usando fallback genérico para produto ${produtoId}`
+        );
         return 1.80; // Fallback final
       };
 
