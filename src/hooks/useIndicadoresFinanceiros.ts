@@ -92,8 +92,9 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
     console.log('[Indicadores] Iniciando carregamento de produtos...');
     
     try {
+      // ✅ CORREÇÃO: Buscar da tabela 'produtos' (dados corretos) ao invés de 'produtos_finais' (dados corrompidos)
       const { data, error } = await supabase
-        .from("produtos_finais")
+        .from("produtos")
         .select("id, nome, categoria_id, custo_unitario, custo_total, unidades_producao");
       
       if (error) {
@@ -239,18 +240,19 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
       const obterCustoUnitarioLocal = (produtoId: string, categoriaNome?: string): number => {
         const produto = produtosMap.get(produtoId);
         
-        // ✅ USAR O CUSTO_UNITARIO QUE JÁ EXISTE NO BANCO (correto)
+        // ✅ USAR O CUSTO_UNITARIO da tabela 'produtos' (fonte correta)
         if (produto?.custo_unitario && Number(produto.custo_unitario) > 0) {
           const custo = Number(produto.custo_unitario);
           
-          // Validação: alertar se o custo parecer fora do padrão
-          if (custo > 100) {
+          // Validação: rejeitar custos absurdos (> R$ 10 para brownies)
+          if (custo > 10) {
             console.warn(
-              `[Indicadores] ⚠️ Custo muito alto para "${produto.nome}": R$ ${custo.toFixed(2)}/un`
+              `[Indicadores] ⚠️ Custo suspeito ignorado para "${produto.nome}": R$ ${custo.toFixed(2)}/un - usando fallback`
             );
+            // Pular para fallback
+          } else {
+            return custo;
           }
-          
-          return custo;
         }
 
         // Fallback apenas se custo_unitario não existir
@@ -454,7 +456,61 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
           precoMedio += (preco * pool.percentual / 100);
         });
 
-        const custoMedio = stats.volumeTotal > 0 ? stats.custoTotal / stats.volumeTotal : 0;
+        // ✅ CALCULAR CUSTO MÉDIO PONDERADO (baseado na representatividade de vendas)
+        const produtosVendidos = new Map<string, {
+          nome: string,
+          quantidade: number,
+          custo: number
+        }>();
+
+        // Coletar produtos vendidos da categoria com suas quantidades
+        const { data: entregasData } = await supabase
+          .from('historico_entregas')
+          .select('itens, data')
+          .gte('data', dataInicio)
+          .lte('data', dataFim);
+
+        entregasData?.forEach(entrega => {
+          const itens = Array.isArray(entrega.itens) ? entrega.itens : [];
+          itens.forEach((item: any) => {
+            const produto = produtosCache.get(item.produto_id);
+            if (produto && produto.categoria_id === categoriaId) {
+              const custoUnitario = obterCustoUnitario(item.produto_id, categoria.nome);
+              
+              const dadosExistentes = produtosVendidos.get(item.produto_id);
+              if (dadosExistentes) {
+                dadosExistentes.quantidade += item.quantidade;
+              } else {
+                produtosVendidos.set(item.produto_id, {
+                  nome: produto.nome,
+                  quantidade: item.quantidade,
+                  custo: custoUnitario
+                });
+              }
+            }
+          });
+        });
+
+        // Calcular custo médio ponderado pela representatividade
+        let custoMedioPonderado = 0;
+        
+        if (produtosVendidos.size > 0 && stats.volumeTotal > 0) {
+          console.log(`\n✅ ${categoria.nome} - CUSTO MÉDIO PONDERADO:`);
+          
+          produtosVendidos.forEach((dados, produtoId) => {
+            const percentualRepresentatividade = dados.quantidade / stats.volumeTotal;
+            const contribuicaoCusto = dados.custo * percentualRepresentatividade;
+            custoMedioPonderado += contribuicaoCusto;
+            
+            console.log(`   • ${dados.nome}: ${dados.quantidade} un (${(percentualRepresentatividade * 100).toFixed(1)}%) × R$ ${dados.custo.toFixed(2)} = R$ ${contribuicaoCusto.toFixed(4)}`);
+          });
+          
+          console.log(`   ✅ Custo Médio Ponderado: R$ ${custoMedioPonderado.toFixed(2)}/un`);
+        } else {
+          // Fallback para cálculo simples se não houver produtos vendidos mapeados
+          custoMedioPonderado = stats.volumeTotal > 0 ? stats.custoTotal / stats.volumeTotal : 0;
+          console.log(`   ⚠️ ${categoria.nome}: Usando cálculo simples - R$ ${custoMedioPonderado.toFixed(2)}/un`);
+        }
 
         console.log(`\n✅ ${categoria.nome}:`);
         console.log(`   - Volume Total: ${stats.volumeTotal} unidades`);
@@ -473,7 +529,7 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
         });
         
         console.log(`   ✅ PREÇO MÉDIO PONDERADO: R$ ${precoMedio.toFixed(2)}/un`);
-        console.log(`   - Custo Médio: R$ ${custoMedio.toFixed(2)}/un`);
+        console.log(`   - Custo Médio Ponderado: R$ ${custoMedioPonderado.toFixed(2)}/un`);
         console.log(`   - Clientes: ${stats.clientesUnicos.size}`);
         console.log(`   - Entregas: ${stats.entregasUnicas.size}`);
 
@@ -489,7 +545,7 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
         custoMedioPorCategoria.push({
           categoriaId,
           categoriaNome: categoria.nome,
-          custoMedio,
+          custoMedio: custoMedioPonderado, // ✅ Usar custo ponderado ao invés de simples
           volumeTotal: stats.volumeTotal,
           custoTotal: stats.custoTotal
         });
