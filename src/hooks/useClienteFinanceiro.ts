@@ -129,14 +129,14 @@ export function useClienteFinanceiro(cliente: Cliente) {
       const { data: configPrecos, error: errorConfig } = await supabase
         .from('configuracoes_sistema')
         .select('configuracoes')
-        .eq('modulo', 'precos')
+        .eq('modulo', 'precificacao')
         .single();
       
       if (errorConfig && errorConfig.code !== 'PGRST116') {
         console.error('Erro ao buscar configurações de preços:', errorConfig);
       }
       
-      const precosPadrao = (configPrecos?.configuracoes as any)?.precos || {};
+      const precosPadrao = (configPrecos?.configuracoes as any)?.precosPorCategoria || {};
       
       // 6. Buscar produtos para calcular custos
       const { data: produtos, error: errorProdutos } = await supabase
@@ -155,22 +155,22 @@ export function useClienteFinanceiro(cliente: Cliente) {
           p => p.categoria_id === categoria.id
         );
         
-        if (precoPersonalizado && precoPersonalizado.preco_unitario > 0) {
+        if (precoPersonalizado && Number(precoPersonalizado.preco_unitario) > 0) {
           return {
             categoriaId: categoria.id,
             categoriaNome: categoria.nome,
-            precoUnitario: precoPersonalizado.preco_unitario,
+            precoUnitario: Number(precoPersonalizado.preco_unitario),
             fonte: 'personalizado' as const
           };
         }
         
-        // Usar preço padrão da configuração
-        const precoPadrao = precosPadrao[categoria.nome] || 0;
+        // Usar preço padrão da configuração (buscar por ID da categoria)
+        const precoPadrao = precosPadrao[categoria.id.toString()] || 0;
         
         return {
           categoriaId: categoria.id,
           categoriaNome: categoria.nome,
-          precoUnitario: precoPadrao,
+          precoUnitario: Number(precoPadrao),
           fonte: 'padrao' as const
         };
       }) || [];
