@@ -72,6 +72,7 @@ const CUSTOS_UNITARIOS: Record<string, number> = {
   "Tradicional": 1.80,
   "Gourmet": 2.50,
   "Premium": 3.20,
+  "Food Service": 36.00,
 };
 
 export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
@@ -247,10 +248,19 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
         if (produto?.custo_unitario && Number(produto.custo_unitario) > 0) {
           const custo = Number(produto.custo_unitario);
           
-          // Validação: rejeitar custos absurdos (> R$ 10 para brownies)
-          if (custo > 10) {
+          // Validação contextual por categoria
+          let limiteMaximo = 1000; // Padrão genérico
+          if (categoriaNome?.toLowerCase().includes('food service')) {
+            limiteMaximo = 100;
+          } else if (categoriaNome?.toLowerCase().includes('revenda') || 
+                     categoriaNome?.toLowerCase().includes('premium')) {
+            limiteMaximo = 10;
+          }
+          
+          // Validação: rejeitar custos acima do limite por categoria
+          if (custo > limiteMaximo) {
             console.warn(
-              `[Indicadores] ⚠️ Custo suspeito ignorado para "${produto.nome}": R$ ${custo.toFixed(2)}/un - usando fallback`
+              `[Indicadores] ⚠️ Custo suspeito ignorado para "${produto.nome}" (${categoriaNome}): R$ ${custo.toFixed(2)}/un (limite: R$ ${limiteMaximo}) - usando fallback`
             );
             // Pular para fallback
           } else {
