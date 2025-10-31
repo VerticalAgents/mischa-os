@@ -16,8 +16,8 @@ interface QuantidadeMediaProduto {
   produtoId: string;
   produtoNome: string;
   categoriaId: number | null;
-  quantidadeTotal12Semanas: number;
-  quantidadeMediaSemanal: number;
+  quantidadeTotal12Semanas: number; // Total no período analisado (até 12 semanas)
+  quantidadeMediaSemanal: number;   // Média baseada no período real do cliente
 }
 
 interface CustoCategoria {
@@ -87,6 +87,30 @@ export function useClienteFinanceiro(cliente: Cliente) {
       }
       
       console.log('useClienteFinanceiro: Entregas carregadas:', entregas?.length || 0);
+      
+      // Calcular número de semanas desde a primeira entrega
+      let numeroSemanasReais = 12; // Valor padrão
+
+      if (entregas && entregas.length > 0) {
+        // Encontrar a data da primeira entrega
+        const datasEntregas = entregas.map(e => new Date(e.data));
+        const primeiraEntrega = new Date(Math.min(...datasEntregas.map(d => d.getTime())));
+        const hoje = new Date();
+        
+        // Calcular diferença em semanas (arredondar para cima)
+        const diferencaMilissegundos = hoje.getTime() - primeiraEntrega.getTime();
+        const diferencaSemanas = Math.ceil(diferencaMilissegundos / (1000 * 60 * 60 * 24 * 7));
+        
+        // Usar no mínimo 1 semana e no máximo 12 semanas
+        numeroSemanasReais = Math.max(1, Math.min(12, diferencaSemanas));
+        
+        console.log('📅 [Período Real] Cliente:', {
+          nome: cliente.nome,
+          primeiraEntrega: primeiraEntrega.toISOString().split('T')[0],
+          semanasReais: numeroSemanasReais,
+          totalEntregas: entregas.length
+        });
+      }
       
       // 2. Buscar categorias habilitadas
       const categoriasHabilitadas = cliente.categoriasHabilitadas || [];
@@ -251,13 +275,14 @@ export function useClienteFinanceiro(cliente: Cliente) {
           produtoNome: dados.nome,
           categoriaId: dados.categoriaId,
           quantidadeTotal12Semanas: dados.total,
-          quantidadeMediaSemanal: Math.round(dados.total / 12)
+          quantidadeMediaSemanal: Math.round(dados.total / numeroSemanasReais)
         })
       );
       
       console.log('📊 [Quantidades Médias] Calculadas:', {
         cliente: cliente.nome,
         totalEntregas: entregas?.length || 0,
+        semanasConsideradas: numeroSemanasReais,
         produtos: quantidadesMedias.map(q => ({
           nome: q.produtoNome,
           total12sem: q.quantidadeTotal12Semanas,
@@ -382,7 +407,7 @@ export function useClienteFinanceiro(cliente: Cliente) {
       
       // 10. Calcular resumo financeiro mensal
       const quantidadeEntregasSemanas = entregas?.length || 0;
-      const quantidadeEntregasMes = Math.round((quantidadeEntregasSemanas / 12) * SEMANAS_POR_MES);
+      const quantidadeEntregasMes = Math.round((quantidadeEntregasSemanas / numeroSemanasReais) * SEMANAS_POR_MES);
       
       // Calcular faturamento semanal
       let faturamentoSemanal = 0;
