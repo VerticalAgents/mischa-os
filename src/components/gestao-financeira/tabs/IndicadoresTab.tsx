@@ -258,6 +258,35 @@ export default function IndicadoresTab() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Margem de Contribuição por Categoria */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Margem de Contribuição Média</CardTitle>
+            <CardDescription className="text-left">Preço médio - Custo médio</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {indicadores.precoMedioPorCategoria.map(preco => {
+                const custo = indicadores.custoMedioPorCategoria.find(c => c.categoriaId === preco.categoriaId);
+                const margemContribuicao = preco.precoMedio - (custo?.custoMedio || 0);
+                return (
+                  <div key={preco.categoriaId} className="flex justify-between items-center">
+                    <div>
+                      <p className="font-medium text-left">{preco.categoriaNome}</p>
+                      <p className="text-sm text-muted-foreground text-left">
+                        {formatCurrency(preco.precoMedio)} - {formatCurrency(custo?.custoMedio || 0)}
+                      </p>
+                    </div>
+                    <p className="text-lg font-bold">
+                      {formatCurrency(margemContribuicao)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Gráficos Individuais por Categoria */}
@@ -267,7 +296,7 @@ export default function IndicadoresTab() {
           {dadosGraficoComparativo.map(categoria => <Card key={categoria.categoria}>
               <CardHeader>
                 <CardTitle>{categoria.categoria}</CardTitle>
-                <CardDescription className="text-left">Margem de lucro: {formatCurrency(categoria.margem)}</CardDescription>
+                <CardDescription className="text-left">Margem de contribuição: {formatCurrency(categoria.margem)}</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
