@@ -11,12 +11,12 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 export default function IndicadoresTab() {
-  const [periodo, setPeriodo] = useState("30");
+  const [periodo, setPeriodo] = useState("mes-passado");
   const {
     indicadores,
     loading,
     error
-  } = useIndicadoresFinanceiros(Number(periodo));
+  } = useIndicadoresFinanceiros(periodo);
   if (loading) {
     return <div className="flex items-center justify-center h-64">
         <p className="text-muted-foreground">Carregando indicadores...</p>
@@ -55,6 +55,8 @@ export default function IndicadoresTab() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="mes-passado">Mês Passado</SelectItem>
+                <SelectItem value="mes-atual">Mês Atual</SelectItem>
                 <SelectItem value="30">Últimos 30 dias</SelectItem>
                 <SelectItem value="60">Últimos 60 dias</SelectItem>
                 <SelectItem value="90">Últimos 90 dias</SelectItem>
@@ -96,7 +98,7 @@ export default function IndicadoresTab() {
               <p className="text-2xl font-bold">{formatCurrency(indicadores.ticketMedio.geral.faturamentoTotal)}</p>
             </div>
             <p className="text-xs text-muted-foreground mt-1 text-left">
-              Período de {periodo} dias
+              {periodo === 'mes-atual' ? 'Mês Atual' : periodo === 'mes-passado' ? 'Mês Passado' : `Período de ${periodo} dias`}
             </p>
           </CardContent>
         </Card>

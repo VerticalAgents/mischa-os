@@ -75,7 +75,7 @@ const CUSTOS_UNITARIOS: Record<string, number> = {
   "Food Service": 36.00,
 };
 
-export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
+export const useIndicadoresFinanceiros = (periodo: string | number = "mes-passado") => {
   const [indicadores, setIndicadores] = useState<IndicadoresFinanceiros | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -282,9 +282,31 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
         return 1.80; // Fallback final
       };
 
+      // Calcular datas com base no período selecionado
       const dataFim = new Date();
       const dataInicio = new Date();
-      dataInicio.setDate(dataInicio.getDate() - diasRetroativos);
+      let diasRetroativos = 30; // Padrão
+
+      if (typeof periodo === 'string') {
+        if (periodo === 'mes-atual') {
+          // Primeiro dia do mês atual até hoje
+          dataInicio.setDate(1);
+          dataInicio.setHours(0, 0, 0, 0);
+          diasRetroativos = Math.ceil((dataFim.getTime() - dataInicio.getTime()) / (1000 * 60 * 60 * 24));
+        } else if (periodo === 'mes-passado') {
+          // Primeiro dia do mês passado até último dia do mês passado
+          dataFim.setDate(0); // Último dia do mês passado
+          dataFim.setHours(23, 59, 59, 999);
+          dataInicio.setMonth(dataFim.getMonth());
+          dataInicio.setDate(1);
+          dataInicio.setHours(0, 0, 0, 0);
+          diasRetroativos = Math.ceil((dataFim.getTime() - dataInicio.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        }
+      } else {
+        // Período em dias (número)
+        diasRetroativos = periodo;
+        dataInicio.setDate(dataInicio.getDate() - diasRetroativos);
+      }
 
       // Buscar entregas dos últimos N dias
       const { data: entregas, error: entregasError } = await supabase
@@ -574,7 +596,7 @@ export const useIndicadoresFinanceiros = (diasRetroativos: number = 30) => {
     } else {
       console.warn('[Indicadores] Aguardando carregamento de categorias...');
     }
-  }, [diasRetroativos, categorias.length]);
+  }, [periodo, categorias.length]);
 
   return { 
     indicadores, 
