@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Search, Percent, AlertTriangle, TrendingUp, Calculator, DollarSign, PieChart } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Percent, AlertTriangle, TrendingUp, Calculator, DollarSign, PieChart, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useSupabaseCustosFixos, CustoFixo } from "@/hooks/useSupabaseCustosFixos";
 import { useSupabaseCustosVariaveis, CustoVariavel } from "@/hooks/useSupabaseCustosVariaveis";
 import { useSupabaseSubcategoriasCustos } from "@/hooks/useSupabaseSubcategoriasCustos";
@@ -332,7 +333,7 @@ export default function CustosTab() {
     };
     return labels[freq];
   };
-  const isLoading = loadingFixos || loadingVariaveis;
+  const isLoading = loadingFixos || loadingVariaveis || loadingFaturamento;
   const getSubcategoriasList = () => {
     return obterSubcategoriasPorTipo(novoCusto.tipoCusto);
   };
@@ -365,6 +366,32 @@ export default function CustosTab() {
     }
     return custo.percentual_faturamento;
   };
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <TrendingUp className="h-6 w-6 text-primary" />
+            Controle de Custos
+          </h2>
+          <p className="text-muted-foreground mt-1 text-left">Gerencie custos fixos e variáveis da operação</p>
+        </div>
+
+        {/* Loading Card */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Carregando dados de custos...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return <div className="space-y-6">
       {/* Header */}
       <div>

@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { TrendingUp, DollarSign, ShoppingCart, Receipt } from "lucide-react";
+import { TrendingUp, DollarSign, ShoppingCart, Receipt, Loader2 } from "lucide-react";
 import { useIndicadoresFinanceiros } from "@/hooks/useIndicadoresFinanceiros";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 const formatCurrency = (value: number) => {
@@ -51,9 +50,9 @@ export default function IndicadoresTab() {
         {renderPeriodoSelector()}
         <Card>
           <CardContent className="pt-6">
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground text-center">Carregando indicadores...</p>
-              <Progress value={66} className="w-full" />
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Carregando indicadores...</p>
             </div>
           </CardContent>
         </Card>
