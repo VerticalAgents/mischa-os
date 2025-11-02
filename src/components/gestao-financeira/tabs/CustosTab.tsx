@@ -16,6 +16,7 @@ import { useSupabaseSubcategoriasCustos } from "@/hooks/useSupabaseSubcategorias
 import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
+import { useIndicadoresFinanceiros } from "@/hooks/useIndicadoresFinanceiros";
 
 type Frequencia = "mensal" | "semanal" | "trimestral" | "semestral" | "anual" | "por-producao";
 type TipoCusto = "fixo" | "variavel";
@@ -67,6 +68,7 @@ export default function CustosTab() {
   const {
     categorias
   } = useSupabaseCategoriasProduto();
+  const { indicadores } = useIndicadoresFinanceiros('mes-passado');
 
   const [novoCusto, setNovoCusto] = useState<FormData>({
     nome: "",
@@ -231,32 +233,14 @@ export default function CustosTab() {
     return Math.round(qtdPadrao / periodicidade * 7);
   };
 
-  // Calculate inputs cost from client projections
+  // Calculate inputs cost from real data (Custo Médio × Volume Total)
   const calcularCustoInsumos = (): number => {
-    if (!clientes.length || !categorias.length) return 0;
+    if (!indicadores || !indicadores.custoMedioPorCategoria) return 0;
 
-    const clientesAtivos = clientes.filter(c => 
-      c.statusCliente === 'Ativo' && 
-      c.categoriasHabilitadas && 
-      c.categoriasHabilitadas.length > 0
-    );
-
-    let custoTotalInsumos = 0;
-
-    clientesAtivos.forEach(cliente => {
-      cliente.categoriasHabilitadas.forEach(categoriaId => {
-        const categoria = categorias.find(cat => cat.id === categoriaId);
-        if (!categoria) return;
-
-        const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
-        const custoUnitario = obterCustoCategoria(categoria.nome);
-        const custoInsumos = giroSemanal * custoUnitario;
-        
-        custoTotalInsumos += custoInsumos * 4;
-      });
-    });
-
-    return custoTotalInsumos;
+    return indicadores.custoMedioPorCategoria.reduce((total, categoria) => {
+      const custoTotal = categoria.custoMedio * categoria.volumeTotal;
+      return total + custoTotal;
+    }, 0);
   };
 
   const totalCustoInsumos = calcularCustoInsumos();
@@ -478,7 +462,7 @@ export default function CustosTab() {
           <CardContent>
             <p className="text-2xl font-bold">{formatCurrency(totalCustoInsumos)}</p>
             <p className="text-xs text-muted-foreground mt-1 text-left">
-              Calculado a partir das projeções
+              Baseado nos dados do mês passado
             </p>
           </CardContent>
         </Card>
