@@ -4,6 +4,7 @@ import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { useState } from "react";
 import IndicadoresTab from "@/components/gestao-financeira/tabs/IndicadoresTab";
+import CustosTab from "@/components/gestao-financeira/tabs/CustosTab";
 
 export default function GestaoFinanceira() {
   const [activeTab, setActiveTab] = useState("resumo");
@@ -43,11 +44,7 @@ export default function GestaoFinanceira() {
         </TabsContent>
 
         <TabsContent value="custos" className="space-y-6">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground text-center">Conteúdo em desenvolvimento</p>
-            </CardContent>
-          </Card>
+          <CustosTab />
         </TabsContent>
 
         <TabsContent value="dre" className="space-y-6">
