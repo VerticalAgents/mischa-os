@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { AgendamentoItem } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Edit, Search, TrendingUp, TrendingDown } from "lucide-react";
 import {
   Table,
@@ -29,6 +31,7 @@ export default function AgendamentosPositivacao() {
   const [searchTerm, setSearchTerm] = useState("");
   const [clientesComVenda, setClientesComVenda] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [usarMesAtual, setUsarMesAtual] = useState(false); // false = últimos 30 dias (padrão)
   const { toast } = useToast();
   const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
 
@@ -40,30 +43,39 @@ export default function AgendamentosPositivacao() {
     setSortDirection(direction);
   };
 
-  // Buscar clientes com vendas no mês vigente
+  // Buscar clientes com vendas no período selecionado
   useEffect(() => {
-    const carregarVendasMes = async () => {
+    const carregarVendasPeriodo = async () => {
       try {
         setLoading(true);
-        const inicioMes = startOfMonth(new Date());
-        const fimMes = endOfMonth(new Date());
+        
+        let dataInicio: Date;
+        let dataFim: Date = new Date();
+
+        if (usarMesAtual) {
+          // Mês atual: do primeiro dia do mês até hoje
+          dataInicio = startOfMonth(new Date());
+        } else {
+          // Últimos 30 dias
+          dataInicio = subDays(new Date(), 30);
+        }
 
         const { data: entregas, error } = await supabase
           .from('historico_entregas')
           .select('cliente_id')
           .eq('tipo', 'entrega')
-          .gte('data', inicioMes.toISOString())
-          .lte('data', fimMes.toISOString());
+          .gte('data', dataInicio.toISOString())
+          .lte('data', dataFim.toISOString());
 
         if (error) throw error;
 
-        // Criar Set com IDs de clientes que tiveram venda no mês
+        // Criar Set com IDs de clientes que tiveram venda no período
         const clientesIds = new Set(entregas?.map(e => e.cliente_id) || []);
         setClientesComVenda(clientesIds);
         
-        console.log('📊 [Positivação] Clientes com venda no mês:', clientesIds.size);
+        console.log(`📊 [Positivação] Clientes com venda (${usarMesAtual ? 'Mês Atual' : 'Últimos 30 dias'}):`, clientesIds.size);
       } catch (error) {
-        console.error('Erro ao carregar vendas do mês:', error);
+        console.error('Erro ao carregar vendas do período:', error);
         toast({
           title: "Erro",
           description: "Erro ao carregar dados de positivação",
@@ -74,8 +86,8 @@ export default function AgendamentosPositivacao() {
       }
     };
 
-    carregarVendasMes();
-  }, [toast]);
+    carregarVendasPeriodo();
+  }, [usarMesAtual, toast]);
 
   useEffect(() => {
     carregarTodosAgendamentos();
@@ -233,7 +245,7 @@ export default function AgendamentosPositivacao() {
               {estatisticasPositivacao.percentualNaoPositivado.toFixed(1)}% do total
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Sem vendas em {format(new Date(), 'MMMM/yyyy', { locale: ptBR })}
+              Sem vendas {usarMesAtual ? `em ${format(new Date(), 'MMMM/yyyy', { locale: ptBR })}` : 'nos últimos 30 dias'}
             </p>
           </CardContent>
         </Card>
@@ -253,6 +265,21 @@ export default function AgendamentosPositivacao() {
         <div className="text-sm text-muted-foreground">
           {sortedAgendamentos.length} cliente(s) sem positivação
         </div>
+      </div>
+
+      {/* Filtro de Período */}
+      <div className="flex items-center gap-3 px-1">
+        <Label htmlFor="periodo-toggle" className="text-sm font-medium cursor-pointer">
+          Últimos 30 dias
+        </Label>
+        <Switch
+          id="periodo-toggle"
+          checked={usarMesAtual}
+          onCheckedChange={setUsarMesAtual}
+        />
+        <Label htmlFor="periodo-toggle" className="text-sm font-medium cursor-pointer">
+          Mês Atual
+        </Label>
       </div>
 
       {/* Controles de Ordenação */}
