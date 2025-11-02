@@ -273,29 +273,36 @@ export default function IndicadoresTab() {
         </Card>
       </div>
 
-      {/* Gráfico Comparativo */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Análise Comparativa: Preço vs Custo</CardTitle>
-          <CardDescription>Margem de lucro por categoria</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={dadosGraficoComparativo}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="categoria" className="text-xs" />
-              <YAxis className="text-xs" />
-              <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{
-              backgroundColor: 'hsl(var(--background))',
-              border: '1px solid hsl(var(--border))'
-            }} />
-              <Legend />
-              <Bar dataKey="precoMedio" fill="hsl(var(--primary))" name="Preço Médio" />
-              <Bar dataKey="custoMedio" fill="hsl(var(--destructive))" name="Custo Médio" />
-              <Bar dataKey="margem" fill="hsl(var(--success))" name="Margem" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {/* Gráficos Individuais por Categoria */}
+      <div className="space-y-6">
+        <h3 className="text-lg font-semibold">Análise Comparativa: Preço vs Custo</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {dadosGraficoComparativo.map((categoria) => (
+            <Card key={categoria.categoria}>
+              <CardHeader>
+                <CardTitle>{categoria.categoria}</CardTitle>
+                <CardDescription>Margem de lucro: {formatCurrency(categoria.margem)}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={[categoria]}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="categoria" className="text-xs" />
+                    <YAxis className="text-xs" />
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))'
+                    }} />
+                    <Legend />
+                    <Bar dataKey="precoMedio" fill="hsl(var(--primary))" name="Preço Médio" />
+                    <Bar dataKey="custoMedio" fill="hsl(var(--destructive))" name="Custo Médio" />
+                    <Bar dataKey="margem" fill="hsl(var(--success))" name="Margem" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
     </div>;
 }
