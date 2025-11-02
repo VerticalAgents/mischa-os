@@ -19,8 +19,7 @@ export default function IndicadoresTab() {
     error
   } = useIndicadoresFinanceiros(periodo);
   // Renderizar sempre o seletor de período
-  const renderPeriodoSelector = () => (
-    <Card>
+  const renderPeriodoSelector = () => <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -40,20 +39,15 @@ export default function IndicadoresTab() {
             </SelectContent>
           </Select>
         </div>
-        {!loading && indicadores && (
-          <CardDescription className="text-left">
+        {!loading && indicadores && <CardDescription className="text-left">
             Período: {indicadores.periodoAnalise.dataInicio.toLocaleDateString()} a {indicadores.periodoAnalise.dataFim.toLocaleDateString()} 
             {" • "}
             {indicadores.metadados.totalEntregasAnalisadas} entregas analisadas
-          </CardDescription>
-        )}
+          </CardDescription>}
       </CardHeader>
-    </Card>
-  );
-
+    </Card>;
   if (loading) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         {renderPeriodoSelector()}
         <Card>
           <CardContent className="pt-6">
@@ -63,34 +57,27 @@ export default function IndicadoresTab() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
   if (error) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         {renderPeriodoSelector()}
         <Card>
           <CardContent className="pt-6">
             <p className="text-destructive text-center">Erro ao carregar indicadores: {error}</p>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
   if (!indicadores || indicadores.metadados.totalEntregasAnalisadas === 0) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         {renderPeriodoSelector()}
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground text-center">Nenhuma entrega encontrada no período selecionado</p>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
   const dadosGraficoComparativo = indicadores.precoMedioPorCategoria.map(preco => {
     const custo = indicadores.custoMedioPorCategoria.find(c => c.categoriaId === preco.categoriaId);
@@ -225,7 +212,7 @@ export default function IndicadoresTab() {
         <Card>
           <CardHeader>
             <CardTitle>Faturamento Médio por Categoria</CardTitle>
-            <CardDescription>Por cliente que comprou a categoria</CardDescription>
+            <CardDescription className="text-left">Por cliente que comprou a categoria</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -277,11 +264,10 @@ export default function IndicadoresTab() {
       <div className="space-y-6">
         <h3 className="text-lg font-semibold">Análise Comparativa: Preço vs Custo</h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {dadosGraficoComparativo.map((categoria) => (
-            <Card key={categoria.categoria}>
+          {dadosGraficoComparativo.map(categoria => <Card key={categoria.categoria}>
               <CardHeader>
                 <CardTitle>{categoria.categoria}</CardTitle>
-                <CardDescription>Margem de lucro: {formatCurrency(categoria.margem)}</CardDescription>
+                <CardDescription className="text-left">Margem de lucro: {formatCurrency(categoria.margem)}</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -290,9 +276,9 @@ export default function IndicadoresTab() {
                     <XAxis dataKey="categoria" className="text-xs" />
                     <YAxis className="text-xs" />
                     <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '1px solid hsl(var(--border))'
-                    }} />
+                  backgroundColor: 'hsl(var(--background))',
+                  border: '1px solid hsl(var(--border))'
+                }} />
                     <Legend />
                     <Bar dataKey="precoMedio" fill="hsl(var(--primary))" name="Preço Médio" />
                     <Bar dataKey="custoMedio" fill="hsl(var(--destructive))" name="Custo Médio" />
@@ -300,8 +286,7 @@ export default function IndicadoresTab() {
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
-            </Card>
-          ))}
+            </Card>)}
         </div>
       </div>
     </div>;
