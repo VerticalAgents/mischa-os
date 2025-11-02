@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { TrendingUp, DollarSign, ShoppingCart, Receipt } from "lucide-react";
 import { useIndicadoresFinanceiros } from "@/hooks/useIndicadoresFinanceiros";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -17,20 +18,79 @@ export default function IndicadoresTab() {
     loading,
     error
   } = useIndicadoresFinanceiros(periodo);
+  // Renderizar sempre o seletor de período
+  const renderPeriodoSelector = () => (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <CardTitle>Indicadores Financeiros</CardTitle>
+          </div>
+          <Select value={periodo} onValueChange={setPeriodo}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="mes-passado">Mês Passado</SelectItem>
+              <SelectItem value="mes-atual">Mês Atual</SelectItem>
+              <SelectItem value="30">Últimos 30 dias</SelectItem>
+              <SelectItem value="60">Últimos 60 dias</SelectItem>
+              <SelectItem value="90">Últimos 90 dias</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {!loading && indicadores && (
+          <CardDescription className="text-left">
+            Período: {indicadores.periodoAnalise.dataInicio.toLocaleDateString()} a {indicadores.periodoAnalise.dataFim.toLocaleDateString()} 
+            {" • "}
+            {indicadores.metadados.totalEntregasAnalisadas} entregas analisadas
+          </CardDescription>
+        )}
+      </CardHeader>
+    </Card>
+  );
+
   if (loading) {
-    return <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Carregando indicadores...</p>
-      </div>;
+    return (
+      <div className="space-y-6">
+        {renderPeriodoSelector()}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground text-center">Carregando indicadores...</p>
+              <Progress value={66} className="w-full" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
+
   if (error) {
-    return <div className="flex items-center justify-center h-64">
-        <p className="text-destructive">Erro ao carregar indicadores: {error}</p>
-      </div>;
+    return (
+      <div className="space-y-6">
+        {renderPeriodoSelector()}
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-destructive text-center">Erro ao carregar indicadores: {error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
+
   if (!indicadores || indicadores.metadados.totalEntregasAnalisadas === 0) {
-    return <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Nenhuma entrega encontrada no período selecionado</p>
-      </div>;
+    return (
+      <div className="space-y-6">
+        {renderPeriodoSelector()}
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground text-center">Nenhuma entrega encontrada no período selecionado</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
   const dadosGraficoComparativo = indicadores.precoMedioPorCategoria.map(preco => {
     const custo = indicadores.custoMedioPorCategoria.find(c => c.categoriaId === preco.categoriaId);
@@ -43,33 +103,7 @@ export default function IndicadoresTab() {
   });
   return <div className="space-y-6">
       {/* Header com período */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              <CardTitle>Indicadores Financeiros</CardTitle>
-            </div>
-            <Select value={periodo} onValueChange={setPeriodo}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mes-passado">Mês Passado</SelectItem>
-                <SelectItem value="mes-atual">Mês Atual</SelectItem>
-                <SelectItem value="30">Últimos 30 dias</SelectItem>
-                <SelectItem value="60">Últimos 60 dias</SelectItem>
-                <SelectItem value="90">Últimos 90 dias</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <CardDescription className="text-left">
-            Período: {indicadores.periodoAnalise.dataInicio.toLocaleDateString()} a {indicadores.periodoAnalise.dataFim.toLocaleDateString()} 
-            {" • "}
-            {indicadores.metadados.totalEntregasAnalisadas} entregas analisadas
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      {renderPeriodoSelector()}
 
       {/* Cards de resumo */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
