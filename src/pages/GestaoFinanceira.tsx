@@ -5,6 +5,7 @@ import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { useState } from "react";
 import IndicadoresTab from "@/components/gestao-financeira/tabs/IndicadoresTab";
 import CustosTab from "@/components/gestao-financeira/tabs/CustosTab";
+import { DRETab } from "@/components/gestao-financeira/tabs/DRETab";
 
 export default function GestaoFinanceira() {
   const [activeTab, setActiveTab] = useState("resumo");
@@ -48,11 +49,7 @@ export default function GestaoFinanceira() {
         </TabsContent>
 
         <TabsContent value="dre" className="space-y-6">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground text-center">Conteúdo em desenvolvimento</p>
-            </CardContent>
-          </Card>
+          <DRETab />
         </TabsContent>
 
         <TabsContent value="cenarios" className="space-y-6">
