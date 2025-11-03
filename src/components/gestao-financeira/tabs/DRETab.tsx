@@ -8,13 +8,17 @@ import { ScenarioTabs } from "@/components/projections/ScenarioTabs";
 import { ComparisonView } from "@/components/projections/ComparisonView";
 import { DREAuditoria } from "@/components/projections/DREAuditoria";
 import { DREDebugTab } from "@/components/projections/DREDebugTab";
-
 type ViewType = 'scenarios' | 'comparison' | 'audit' | 'debug';
-
 export function DRETab() {
   const [activeView, setActiveView] = useState<ViewType>('scenarios');
-  const { data: dreData, isLoading, error } = useDREDataFromIndicadores();
-  const { setBaseDRE } = useProjectionStore();
+  const {
+    data: dreData,
+    isLoading,
+    error
+  } = useDREDataFromIndicadores();
+  const {
+    setBaseDRE
+  } = useProjectionStore();
 
   // Atualizar a base DRE quando os dados estiverem disponíveis
   useEffect(() => {
@@ -25,8 +29,7 @@ export function DRETab() {
 
   // Loading state
   if (isLoading) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         {/* Header */}
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -47,14 +50,12 @@ export function DRETab() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
 
   // Error state
   if (error) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <TrendingUp className="h-6 w-6 text-primary" />
@@ -71,12 +72,9 @@ export function DRETab() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -95,7 +93,7 @@ export function DRETab() {
             <FileText className="h-5 w-5 text-primary" />
             Período de Análise
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-left">
             Os dados apresentados são baseados no período: <strong>Mês Passado</strong> (dados reais consolidados)
           </CardDescription>
         </CardHeader>
@@ -103,28 +101,16 @@ export function DRETab() {
 
       {/* View Selector */}
       <div className="flex flex-wrap gap-2">
-        <Button
-          variant={activeView === 'scenarios' ? 'default' : 'outline'}
-          onClick={() => setActiveView('scenarios')}
-        >
+        <Button variant={activeView === 'scenarios' ? 'default' : 'outline'} onClick={() => setActiveView('scenarios')}>
           Cenários
         </Button>
-        <Button
-          variant={activeView === 'comparison' ? 'default' : 'outline'}
-          onClick={() => setActiveView('comparison')}
-        >
+        <Button variant={activeView === 'comparison' ? 'default' : 'outline'} onClick={() => setActiveView('comparison')}>
           Comparação
         </Button>
-        <Button
-          variant={activeView === 'audit' ? 'default' : 'outline'}
-          onClick={() => setActiveView('audit')}
-        >
+        <Button variant={activeView === 'audit' ? 'default' : 'outline'} onClick={() => setActiveView('audit')}>
           Auditoria DRE
         </Button>
-        <Button
-          variant={activeView === 'debug' ? 'default' : 'outline'}
-          onClick={() => setActiveView('debug')}
-        >
+        <Button variant={activeView === 'debug' ? 'default' : 'outline'} onClick={() => setActiveView('debug')}>
           Debug DRE
         </Button>
       </div>
@@ -134,6 +120,5 @@ export function DRETab() {
       {activeView === 'comparison' && <ComparisonView />}
       {activeView === 'audit' && <DREAuditoria />}
       {activeView === 'debug' && <DREDebugTab />}
-    </div>
-  );
+    </div>;
 }
