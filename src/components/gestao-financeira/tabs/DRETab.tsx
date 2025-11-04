@@ -11,7 +11,7 @@ import { DREDebugTab } from "@/components/projections/DREDebugTab";
 type ViewType = 'scenarios' | 'comparison' | 'audit' | 'debug';
 export function DRETab() {
   const [activeView, setActiveView] = useState<ViewType>('scenarios');
-  const [useRealPercentages, setUseRealPercentages] = useState(false);
+  const [useRealPercentages, setUseRealPercentages] = useState(true);
   const {
     data: dreData,
     isLoading,

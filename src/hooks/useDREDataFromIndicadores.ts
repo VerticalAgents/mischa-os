@@ -3,6 +3,8 @@ import { DREData, ChannelData, CostItem, InvestmentItem } from "@/types/projecti
 import { useIndicadoresFinanceiros } from "./useIndicadoresFinanceiros";
 import { useSupabaseCustosFixos } from "./useSupabaseCustosFixos";
 import { useSupabaseCustosVariaveis } from "./useSupabaseCustosVariaveis";
+import { supabase } from "@/integrations/supabase/client";
+import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 
 const convertToMonthlyValue = (value: number, frequency: string): number => {
   const multipliers: Record<string, number> = {
@@ -79,6 +81,46 @@ export const useDREDataFromIndicadores = (useRealPercentages: boolean = false) =
 
       const totalFixedCosts = fixedCosts.reduce((sum, cost) => sum + cost.value, 0);
 
+      // Calcular taxa de boleto baseada em entregas reais
+      // 1. Buscar clientes que pagam via boleto
+      const { data: clientesBoleto, error: errorClientes } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('forma_pagamento', 'Boleto')
+        .eq('ativo', true);
+
+      if (errorClientes) {
+        console.error('Erro ao buscar clientes com boleto:', errorClientes);
+      }
+
+      let taxaBoletoValue = 0;
+      if (clientesBoleto && clientesBoleto.length > 0) {
+        // 2. Buscar entregas do mês passado para esses clientes
+        const mesPassado = subMonths(new Date(), 1);
+        const inicioMesPassado = startOfMonth(mesPassado);
+        const fimMesPassado = endOfMonth(mesPassado);
+
+        const clientesBoletoIds = clientesBoleto.map(c => c.id);
+
+        const { data: entregas, error: errorEntregas } = await supabase
+          .from('historico_entregas')
+          .select('id')
+          .eq('tipo', 'entrega')
+          .in('cliente_id', clientesBoletoIds)
+          .gte('data', inicioMesPassado.toISOString())
+          .lte('data', fimMesPassado.toISOString());
+
+        if (errorEntregas) {
+          console.error('Erro ao buscar entregas de boleto:', errorEntregas);
+        }
+
+        if (entregas && entregas.length > 0) {
+          // 3. Calcular: número de entregas × R$ 2,19
+          const numeroEntregas = entregas.length;
+          taxaBoletoValue = numeroEntregas * 2.19;
+        }
+      }
+
       // Processar custos administrativos (custos variáveis)
       let administrativeCosts: CostItem[] = [];
       
@@ -100,7 +142,7 @@ export const useDREDataFromIndicadores = (useRealPercentages: boolean = false) =
           },
           {
             name: 'Taxa Boleto',
-            value: (totalRevenue * 0.015), // 1.5% do faturamento (valor padrão estimado)
+            value: taxaBoletoValue,
             isPercentage: true,
           }
         ];
@@ -117,6 +159,13 @@ export const useDREDataFromIndicadores = (useRealPercentages: boolean = false) =
             value,
             isPercentage,
           };
+        });
+
+        // Adicionar Taxa Boleto sempre
+        administrativeCosts.push({
+          name: 'Taxa Boleto',
+          value: taxaBoletoValue,
+          isPercentage: true,
         });
       }
 
