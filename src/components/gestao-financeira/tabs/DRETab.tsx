@@ -11,11 +11,12 @@ import { DREDebugTab } from "@/components/projections/DREDebugTab";
 type ViewType = 'scenarios' | 'comparison' | 'audit' | 'debug';
 export function DRETab() {
   const [activeView, setActiveView] = useState<ViewType>('scenarios');
+  const [useRealPercentages, setUseRealPercentages] = useState(false);
   const {
     data: dreData,
     isLoading,
     error
-  } = useDREDataFromIndicadores();
+  } = useDREDataFromIndicadores(useRealPercentages);
   const {
     setBaseDRE
   } = useProjectionStore();
@@ -116,7 +117,7 @@ export function DRETab() {
       </div>
 
       {/* Content based on active view */}
-      {activeView === 'scenarios' && <ScenarioTabs />}
+      {activeView === 'scenarios' && <ScenarioTabs useRealPercentages={useRealPercentages} onToggleRealPercentages={setUseRealPercentages} />}
       {activeView === 'comparison' && <ComparisonView />}
       {activeView === 'audit' && <DREAuditoria />}
       {activeView === 'debug' && <DREDebugTab />}

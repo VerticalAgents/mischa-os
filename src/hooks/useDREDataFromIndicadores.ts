@@ -17,13 +17,13 @@ const convertToMonthlyValue = (value: number, frequency: string): number => {
   return value * (multipliers[frequency.toLowerCase()] || 1);
 };
 
-export const useDREDataFromIndicadores = () => {
+export const useDREDataFromIndicadores = (useRealPercentages: boolean = false) => {
   const { indicadores, loading: loadingIndicadores } = useIndicadoresFinanceiros('mes-passado');
   const { custosFixos, isLoading: loadingFixos } = useSupabaseCustosFixos();
   const { custosVariaveis, isLoading: loadingVariaveis } = useSupabaseCustosVariaveis();
 
   return useQuery({
-    queryKey: ['dre-from-indicadores', indicadores, custosFixos, custosVariaveis],
+    queryKey: ['dre-from-indicadores', indicadores, custosFixos, custosVariaveis, useRealPercentages],
     queryFn: async (): Promise<DREData> => {
       if (!indicadores) {
         throw new Error('Indicadores não disponíveis');
@@ -80,18 +80,45 @@ export const useDREDataFromIndicadores = () => {
       const totalFixedCosts = fixedCosts.reduce((sum, cost) => sum + cost.value, 0);
 
       // Processar custos administrativos (custos variáveis)
-      const administrativeCosts: CostItem[] = custosVariaveis.map(custo => {
-        const isPercentage = Number(custo.percentual_faturamento) > 0;
-        const value = isPercentage 
-          ? (totalRevenue * Number(custo.percentual_faturamento) / 100)
-          : convertToMonthlyValue(Number(custo.valor), custo.frequencia);
+      let administrativeCosts: CostItem[] = [];
+      
+      if (useRealPercentages) {
+        // Usar percentuais reais das projeções de PDV
+        const logisticaPercentual = custosVariaveis.find(c => c.nome.toLowerCase().includes('logistica') || c.nome.toLowerCase().includes('logística'))?.percentual_faturamento || 0;
+        const impostoPercentual = custosVariaveis.find(c => c.nome.toLowerCase().includes('imposto'))?.percentual_faturamento || 0;
+        
+        administrativeCosts = [
+          {
+            name: 'Logística',
+            value: (totalRevenue * Number(logisticaPercentual) / 100),
+            isPercentage: true,
+          },
+          {
+            name: 'Imposto',
+            value: (totalRevenue * Number(impostoPercentual) / 100),
+            isPercentage: true,
+          },
+          {
+            name: 'Taxa Boleto',
+            value: (totalRevenue * 0.015), // 1.5% do faturamento (valor padrão estimado)
+            isPercentage: true,
+          }
+        ];
+      } else {
+        // Usar custos cadastrados normalmente
+        administrativeCosts = custosVariaveis.map(custo => {
+          const isPercentage = Number(custo.percentual_faturamento) > 0;
+          const value = isPercentage 
+            ? (totalRevenue * Number(custo.percentual_faturamento) / 100)
+            : convertToMonthlyValue(Number(custo.valor), custo.frequencia);
 
-        return {
-          name: custo.nome,
-          value,
-          isPercentage,
-        };
-      });
+          return {
+            name: custo.nome,
+            value,
+            isPercentage,
+          };
+        });
+      }
 
       const totalAdministrativeCosts = administrativeCosts.reduce((sum, cost) => sum + cost.value, 0);
 

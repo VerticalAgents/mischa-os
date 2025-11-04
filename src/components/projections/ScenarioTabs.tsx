@@ -7,7 +7,9 @@ import {
   TabsContent
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Plus, Copy, Trash2, Calculator } from "lucide-react";
+import { Plus, Copy, Trash2, Calculator, Percent } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useProjectionStore } from '@/hooks/useProjectionStore';
@@ -15,7 +17,12 @@ import { DRETableHierarchical } from './DRETableHierarchical';
 import { ScenarioForm } from './ScenarioForm';
 import { ScenarioCalculationDetails } from './ScenarioCalculationDetails';
 
-export function ScenarioTabs() {
+interface ScenarioTabsProps {
+  useRealPercentages?: boolean;
+  onToggleRealPercentages?: (value: boolean) => void;
+}
+
+export function ScenarioTabs({ useRealPercentages = false, onToggleRealPercentages }: ScenarioTabsProps = {}) {
   const { baseDRE, scenarios, activeScenarioId, createScenario, duplicateScenario, deleteScenario, setActiveScenario } = useProjectionStore();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newScenarioName, setNewScenarioName] = useState('');
@@ -100,6 +107,19 @@ export function ScenarioTabs() {
 
         <TabsContent value="base">
           <div className="space-y-6">
+            {onToggleRealPercentages && (
+              <div className="flex items-center justify-end gap-2 mb-4 p-4 bg-muted/50 rounded-lg border">
+                <Percent className="h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="real-percentages" className="text-sm cursor-pointer">
+                  Usar percentuais reais das projeções de PDV
+                </Label>
+                <Switch
+                  id="real-percentages"
+                  checked={useRealPercentages}
+                  onCheckedChange={onToggleRealPercentages}
+                />
+              </div>
+            )}
             {baseDRE ? (
               <DRETableHierarchical dreData={baseDRE} />
             ) : (
