@@ -18,45 +18,25 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
   // Número atual de PDVs ativos
   const pdvsAtivosBase = clientes.filter(c => c.statusCliente === 'Ativo').length;
 
-  // Debug: verificar se baseDRE tem detailedBreakdown
-  console.log('🔍 [GrowthFactorsSection] baseDRE:', {
-    hasBaseDRE: !!baseDRE,
-    hasDetailedBreakdown: !!baseDRE?.detailedBreakdown,
-    detailedBreakdown: baseDRE?.detailedBreakdown
-  });
+  // Usar baseDRE do store, ou o próprio scenario se não houver baseDRE ainda
+  const baseData = baseDRE || scenario;
 
   // Gerar prefixo do código baseado no ID do cenário
   const getCodePrefix = () => `GF-${scenario.id.slice(0, 8).toUpperCase()}`;
   const codePrefix = getCodePrefix();
-
-  // Se não temos baseDRE ou detailedBreakdown, mostrar loading
-  if (!baseDRE || !baseDRE.detailedBreakdown) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Fatores de Crescimento</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <div className="animate-pulse">Carregando dados base da DRE...</div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   // Apenas os itens de faturamento (sem custos de insumos) + PDVs
   const revendaSubitems = [
     { 
       key: 'revendaPadraoFaturamento', 
       label: 'Revenda Padrão - Faturamento', 
-      baseValue: baseDRE.detailedBreakdown.revendaPadraoFaturamento,
+      baseValue: baseData?.detailedBreakdown?.revendaPadraoFaturamento || 0,
       code: `${codePrefix}-001`
     },
     { 
       key: 'foodServiceFaturamento', 
       label: 'Food Service - Faturamento', 
-      baseValue: baseDRE.detailedBreakdown.foodServiceFaturamento,
+      baseValue: baseData?.detailedBreakdown?.foodServiceFaturamento || 0,
       code: `${codePrefix}-002`
     },
     { 
@@ -68,11 +48,9 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
   ];
 
   const updateGrowthFactor = (subitemKey: string, type: 'percentage' | 'absolute', value: number) => {
-    console.log(`🔄 [GrowthFactorsSection] Atualizando fator de crescimento: ${subitemKey}, tipo: ${type}, valor: ${value}`);
-    console.log(`💰 [GrowthFactorsSection] Faturamento médio por PDV usado: R$ ${faturamentoMedioPDV}`);
-
-    if (!baseDRE) {
-      console.error('❌ [GrowthFactorsSection] DRE Base não encontrada');
+    // Usar baseData ao invés de baseDRE
+    if (!baseData || !baseData.detailedBreakdown) {
+      console.error('❌ [GrowthFactorsSection] Dados base não encontrados');
       return;
     }
 
@@ -83,15 +61,15 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
 
     // Começar sempre com os valores da DRE base
     const updatedBreakdown = {
-      revendaPadraoFaturamento: baseDRE.detailedBreakdown?.revendaPadraoFaturamento || 0,
-      foodServiceFaturamento: baseDRE.detailedBreakdown?.foodServiceFaturamento || 0,
-      totalInsumosRevenda: baseDRE.detailedBreakdown?.totalInsumosRevenda || 0,
-      totalInsumosFoodService: baseDRE.detailedBreakdown?.totalInsumosFoodService || 0,
-      totalLogistica: baseDRE.detailedBreakdown?.totalLogistica || 0,
-      aquisicaoClientes: baseDRE.detailedBreakdown?.aquisicaoClientes || 0
+      revendaPadraoFaturamento: baseData.detailedBreakdown.revendaPadraoFaturamento,
+      foodServiceFaturamento: baseData.detailedBreakdown.foodServiceFaturamento,
+      totalInsumosRevenda: baseData.detailedBreakdown.totalInsumosRevenda,
+      totalInsumosFoodService: baseData.detailedBreakdown.totalInsumosFoodService,
+      totalLogistica: baseData.detailedBreakdown.totalLogistica,
+      aquisicaoClientes: baseData.detailedBreakdown.aquisicaoClientes
     };
 
-    console.log(`📊 [GrowthFactorsSection] Valores base carregados:`, updatedBreakdown);
+    
 
     // Aplicar fatores de crescimento APENAS para os subitens específicos
     const revendaFactor = updatedGrowthFactors['revendaPadraoFaturamento'] || { type: 'percentage', value: 0 };
@@ -101,9 +79,8 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
     // Aplicar fator de crescimento para Revenda Padrão
     if (revendaFactor.value !== 0) {
       if (revendaFactor.type === 'percentage') {
-        updatedBreakdown.revendaPadraoFaturamento = (baseDRE.detailedBreakdown?.revendaPadraoFaturamento || 0) * (1 + revendaFactor.value / 100);
+        updatedBreakdown.revendaPadraoFaturamento = (baseData.detailedBreakdown.revendaPadraoFaturamento) * (1 + revendaFactor.value / 100);
       } else {
-        // Para absoluto, o novo valor É o valor absoluto
         updatedBreakdown.revendaPadraoFaturamento = revendaFactor.value;
       }
     }
@@ -111,9 +88,8 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
     // Aplicar fator de crescimento para Food Service
     if (foodServiceFactor.value !== 0) {
       if (foodServiceFactor.type === 'percentage') {
-        updatedBreakdown.foodServiceFaturamento = (baseDRE.detailedBreakdown?.foodServiceFaturamento || 0) * (1 + foodServiceFactor.value / 100);
+        updatedBreakdown.foodServiceFaturamento = (baseData.detailedBreakdown.foodServiceFaturamento) * (1 + foodServiceFactor.value / 100);
       } else {
-        // Para absoluto, o novo valor É o valor absoluto
         updatedBreakdown.foodServiceFaturamento = foodServiceFactor.value;
       }
     }
@@ -125,16 +101,11 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
       if (pdvsFactor.type === 'percentage') {
         variacaoPDVs = Math.round(pdvsAtivosBase * (pdvsFactor.value / 100));
       } else {
-        // Para PDVs absoluto, calculamos a variação
         variacaoPDVs = pdvsFactor.value - pdvsAtivosBase;
       }
       
-      console.log(`📊 [GrowthFactorsSection] Variação de PDVs: ${variacaoPDVs > 0 ? '+' : ''}${variacaoPDVs} PDVs`);
-      
       // Calcular variação do faturamento
       const variacaoFaturamento = variacaoPDVs * faturamentoMedioPDV;
-      
-      console.log(`💵 [GrowthFactorsSection] Cálculo: ${variacaoPDVs} PDVs × R$ ${faturamentoMedioPDV.toFixed(2)} = R$ ${variacaoFaturamento.toFixed(2)}`);
       
       // Distribuir proporcionalmente entre os canais
       const faturamentoBaseTotal = updatedBreakdown.revendaPadraoFaturamento + updatedBreakdown.foodServiceFaturamento;
@@ -154,10 +125,10 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
     }
 
     // Recalcular custos de insumos proporcionalmente
-    const baseRevendaFaturamento = baseDRE.detailedBreakdown?.revendaPadraoFaturamento || 0;
-    const baseFoodServiceFaturamento = baseDRE.detailedBreakdown?.foodServiceFaturamento || 0;
-    const baseRevendaInsumos = baseDRE.detailedBreakdown?.totalInsumosRevenda || 0;
-    const baseFoodServiceInsumos = baseDRE.detailedBreakdown?.totalInsumosFoodService || 0;
+    const baseRevendaFaturamento = baseData.detailedBreakdown.revendaPadraoFaturamento;
+    const baseFoodServiceFaturamento = baseData.detailedBreakdown.foodServiceFaturamento;
+    const baseRevendaInsumos = baseData.detailedBreakdown.totalInsumosRevenda;
+    const baseFoodServiceInsumos = baseData.detailedBreakdown.totalInsumosFoodService;
 
     if (baseRevendaFaturamento > 0) {
       const revendaGrowthFactor = updatedBreakdown.revendaPadraoFaturamento / baseRevendaFaturamento;
@@ -179,13 +150,13 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
     const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue * 100) : 0;
     
     // Recalcular custos administrativos proporcionalmente ao faturamento
-    const faturamentoGrowthFactor = baseDRE.totalRevenue > 0 ? totalRevenue / baseDRE.totalRevenue : 1;
+    const faturamentoGrowthFactor = baseData.totalRevenue > 0 ? totalRevenue / baseData.totalRevenue : 1;
     
     const updatedAdministrativeCosts = scenario.administrativeCosts.map(cost => ({
       ...cost,
       value: cost.isPercentage 
-        ? (cost.value / baseDRE.totalRevenue) * totalRevenue // Manter percentual sobre novo faturamento
-        : cost.value // Manter valor fixo
+        ? (cost.value / baseData.totalRevenue) * totalRevenue
+        : cost.value
     }));
     
     const totalAdministrativeCosts = updatedAdministrativeCosts.reduce((sum, c) => sum + c.value, 0);
@@ -198,7 +169,7 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
     const operationalMargin = totalRevenue > 0 ? (operationalResult / totalRevenue * 100) : 0;
     
     // Atualizar channelsData também
-    const updatedChannelsData = baseDRE.channelsData.map(channel => {
+    const updatedChannelsData = baseData.channelsData.map(channel => {
       if (channel.channel === 'B2B-Revenda') {
         const newRevenue = updatedBreakdown.revendaPadraoFaturamento;
         const newVariableCosts = updatedBreakdown.totalInsumosRevenda;
@@ -224,23 +195,8 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
       return channel;
     });
     
-    // Recalcular EBITDA
     const ebitda = operationalResult + scenario.monthlyDepreciation;
     const ebitdaMargin = totalRevenue > 0 ? (ebitda / totalRevenue) * 100 : 0;
-
-    console.log(`📊 [GrowthFactorsSection] Estado antes:`, {
-      faturamentoBase: baseDRE.totalRevenue,
-      custosVariaveisBase: baseDRE.totalVariableCosts,
-      custosAdministrativosBase: baseDRE.totalAdministrativeCosts
-    });
-
-    console.log(`📊 [GrowthFactorsSection] Estado depois:`, {
-      faturamentoNovo: totalRevenue,
-      custosVariaveisNovo: totalVariableCosts,
-      custosAdministrativosNovo: totalAdministrativeCosts,
-      resultadoOperacional: operationalResult,
-      ebitda
-    });
 
     updateScenario(scenario.id, {
       channelGrowthFactors: updatedGrowthFactors,
