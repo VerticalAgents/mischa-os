@@ -24,6 +24,11 @@ export function DRETab() {
   // Atualizar a base DRE quando os dados estiverem disponíveis
   useEffect(() => {
     if (dreData) {
+      console.log('🔄 [DRETab] Atualizando DRE Base no store:', {
+        totalRevenue: dreData.totalRevenue,
+        hasDetailedBreakdown: !!dreData.detailedBreakdown,
+        detailedBreakdown: dreData.detailedBreakdown
+      });
       setBaseDRE(dreData);
     }
   }, [dreData, setBaseDRE]);

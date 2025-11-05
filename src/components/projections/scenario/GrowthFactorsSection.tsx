@@ -18,22 +18,45 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
   // Número atual de PDVs ativos
   const pdvsAtivosBase = clientes.filter(c => c.statusCliente === 'Ativo').length;
 
+  // Debug: verificar se baseDRE tem detailedBreakdown
+  console.log('🔍 [GrowthFactorsSection] baseDRE:', {
+    hasBaseDRE: !!baseDRE,
+    hasDetailedBreakdown: !!baseDRE?.detailedBreakdown,
+    detailedBreakdown: baseDRE?.detailedBreakdown
+  });
+
   // Gerar prefixo do código baseado no ID do cenário
   const getCodePrefix = () => `GF-${scenario.id.slice(0, 8).toUpperCase()}`;
   const codePrefix = getCodePrefix();
+
+  // Se não temos baseDRE ou detailedBreakdown, mostrar loading
+  if (!baseDRE || !baseDRE.detailedBreakdown) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Fatores de Crescimento</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <div className="animate-pulse">Carregando dados base da DRE...</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Apenas os itens de faturamento (sem custos de insumos) + PDVs
   const revendaSubitems = [
     { 
       key: 'revendaPadraoFaturamento', 
       label: 'Revenda Padrão - Faturamento', 
-      baseValue: baseDRE?.detailedBreakdown?.revendaPadraoFaturamento || 0,
+      baseValue: baseDRE.detailedBreakdown.revendaPadraoFaturamento,
       code: `${codePrefix}-001`
     },
     { 
       key: 'foodServiceFaturamento', 
       label: 'Food Service - Faturamento', 
-      baseValue: baseDRE?.detailedBreakdown?.foodServiceFaturamento || 0,
+      baseValue: baseDRE.detailedBreakdown.foodServiceFaturamento,
       code: `${codePrefix}-002`
     },
     { 
