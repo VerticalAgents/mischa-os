@@ -146,37 +146,93 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
       updatedBreakdown.totalInsumosFoodService = baseFoodServiceInsumos * foodServiceGrowthFactor;
     }
 
-    // Recalcular logística e aquisição proporcionalmente ao faturamento total
-    const novoTotalFaturamento = updatedBreakdown.revendaPadraoFaturamento + updatedBreakdown.foodServiceFaturamento;
-    const faturamentoGrowthFactor = baseDRE.totalRevenue > 0 ? novoTotalFaturamento / baseDRE.totalRevenue : 1;
-    
-    updatedBreakdown.totalLogistica = (baseDRE.detailedBreakdown?.totalLogistica || 0) * faturamentoGrowthFactor;
-    updatedBreakdown.aquisicaoClientes = (baseDRE.detailedBreakdown?.aquisicaoClientes || 0) * faturamentoGrowthFactor;
-
     // Recalcular totais
     const totalRevenue = updatedBreakdown.revendaPadraoFaturamento + updatedBreakdown.foodServiceFaturamento;
-    const totalVariableCosts = updatedBreakdown.totalInsumosRevenda + updatedBreakdown.totalInsumosFoodService + updatedBreakdown.totalLogistica + updatedBreakdown.aquisicaoClientes;
+    
+    // Custos variáveis = APENAS insumos (não incluir logística nem aquisição)
+    const totalVariableCosts = updatedBreakdown.totalInsumosRevenda + updatedBreakdown.totalInsumosFoodService;
+    
     const grossProfit = totalRevenue - totalVariableCosts;
     const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue * 100) : 0;
-    const operationalResult = grossProfit - scenario.totalFixedCosts - scenario.totalAdministrativeCosts;
+    
+    // Recalcular custos administrativos proporcionalmente ao faturamento
+    const faturamentoGrowthFactor = baseDRE.totalRevenue > 0 ? totalRevenue / baseDRE.totalRevenue : 1;
+    
+    const updatedAdministrativeCosts = scenario.administrativeCosts.map(cost => ({
+      ...cost,
+      value: cost.isPercentage 
+        ? (cost.value / baseDRE.totalRevenue) * totalRevenue // Manter percentual sobre novo faturamento
+        : cost.value // Manter valor fixo
+    }));
+    
+    const totalAdministrativeCosts = updatedAdministrativeCosts.reduce((sum, c) => sum + c.value, 0);
+    
+    // Atualizar logística e aquisição no breakdown
+    updatedBreakdown.totalLogistica = updatedAdministrativeCosts.find(c => c.name === 'Logística')?.value || 0;
+    updatedBreakdown.aquisicaoClientes = 0; // Não temos este dado ainda
+    
+    const operationalResult = grossProfit - scenario.totalFixedCosts - totalAdministrativeCosts;
     const operationalMargin = totalRevenue > 0 ? (operationalResult / totalRevenue * 100) : 0;
+    
+    // Atualizar channelsData também
+    const updatedChannelsData = baseDRE.channelsData.map(channel => {
+      if (channel.channel === 'B2B-Revenda') {
+        const newRevenue = updatedBreakdown.revendaPadraoFaturamento;
+        const newVariableCosts = updatedBreakdown.totalInsumosRevenda;
+        return {
+          ...channel,
+          revenue: newRevenue,
+          variableCosts: newVariableCosts,
+          margin: newRevenue - newVariableCosts,
+          marginPercent: newRevenue > 0 ? ((newRevenue - newVariableCosts) / newRevenue) * 100 : 0
+        };
+      }
+      if (channel.channel === 'B2B-FoodService') {
+        const newRevenue = updatedBreakdown.foodServiceFaturamento;
+        const newVariableCosts = updatedBreakdown.totalInsumosFoodService;
+        return {
+          ...channel,
+          revenue: newRevenue,
+          variableCosts: newVariableCosts,
+          margin: newRevenue - newVariableCosts,
+          marginPercent: newRevenue > 0 ? ((newRevenue - newVariableCosts) / newRevenue) * 100 : 0
+        };
+      }
+      return channel;
+    });
+    
+    // Recalcular EBITDA
+    const ebitda = operationalResult + scenario.monthlyDepreciation;
+    const ebitdaMargin = totalRevenue > 0 ? (ebitda / totalRevenue) * 100 : 0;
 
-    console.log(`📊 [GrowthFactorsSection] Novos valores calculados:`, {
-      totalRevenue,
-      totalVariableCosts,
-      grossProfit,
-      grossMargin
+    console.log(`📊 [GrowthFactorsSection] Estado antes:`, {
+      faturamentoBase: baseDRE.totalRevenue,
+      custosVariaveisBase: baseDRE.totalVariableCosts,
+      custosAdministrativosBase: baseDRE.totalAdministrativeCosts
+    });
+
+    console.log(`📊 [GrowthFactorsSection] Estado depois:`, {
+      faturamentoNovo: totalRevenue,
+      custosVariaveisNovo: totalVariableCosts,
+      custosAdministrativosNovo: totalAdministrativeCosts,
+      resultadoOperacional: operationalResult,
+      ebitda
     });
 
     updateScenario(scenario.id, {
       channelGrowthFactors: updatedGrowthFactors,
       detailedBreakdown: updatedBreakdown,
+      channelsData: updatedChannelsData,
       totalRevenue,
       totalVariableCosts,
+      administrativeCosts: updatedAdministrativeCosts,
+      totalAdministrativeCosts,
       grossProfit,
       grossMargin,
       operationalResult,
-      operationalMargin
+      operationalMargin,
+      ebitda,
+      ebitdaMargin
     });
   };
 
@@ -194,7 +250,7 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
           </p>
         )}
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {revendaSubitems.map((subitem) => {
           const growth = scenario.channelGrowthFactors?.[subitem.key] || { type: 'absolute', value: 0 };
           const isPDVs = subitem.key === 'pdvsAtivos';
@@ -211,7 +267,7 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
           }
           
           return (
-            <div key={subitem.key} className="space-y-2 p-3 border rounded-md">
+            <div key={subitem.key} className="space-y-3 p-4 border rounded-lg bg-muted/30">
               <label className="text-sm font-medium block flex items-center gap-2">
                 <span className="text-xs text-muted-foreground bg-blue-50 px-2 py-1 rounded">{subitem.code}</span>
                 <span>{subitem.label}</span>
@@ -222,7 +278,7 @@ export function GrowthFactorsSection({ scenario }: GrowthFactorsSectionProps) {
                   : `Valor base: R$ ${subitem.baseValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 }
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Select
                   value={growth.type}
                   onValueChange={(value: 'percentage' | 'absolute') => 

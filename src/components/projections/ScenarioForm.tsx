@@ -11,8 +11,9 @@ interface ScenarioFormProps {
 export function ScenarioForm({ scenario }: ScenarioFormProps) {
   return (
     <div className="space-y-6 w-full min-w-0">
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 w-full">
-        <ScenarioBasicInfo scenario={scenario} />
+      <ScenarioBasicInfo scenario={scenario} />
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
         <GrowthFactorsSection scenario={scenario} />
         <CostsManagementSection scenario={scenario} />
       </div>

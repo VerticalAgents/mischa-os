@@ -196,6 +196,30 @@ export const useDREDataFromIndicadores = (useRealPercentages: boolean = false) =
         ? totalInvestment / operationalResult 
         : 0;
 
+      // Criar detailedBreakdown com base nos channelsData
+      const revendaChannel = channelsData.find(ch => ch.channel === 'B2B-Revenda');
+      const foodServiceChannel = channelsData.find(ch => ch.channel === 'B2B-FoodService');
+
+      const detailedBreakdown = {
+        revendaPadraoFaturamento: revendaChannel?.revenue || 0,
+        foodServiceFaturamento: foodServiceChannel?.revenue || 0,
+        totalInsumosRevenda: revendaChannel?.variableCosts || 0,
+        totalInsumosFoodService: foodServiceChannel?.variableCosts || 0,
+        totalLogistica: administrativeCosts.find(c => c.name === 'Logística')?.value || 0,
+        aquisicaoClientes: 0, // Não temos este dado ainda
+      };
+
+      console.log('✅ [useDREDataFromIndicadores] DRE calculada com sucesso:', {
+        totalRevenue,
+        totalVariableCosts,
+        totalFixedCosts,
+        totalAdministrativeCosts,
+        ebitda,
+        breakEvenPoint,
+        paybackMonths,
+        detailedBreakdown
+      });
+
       return {
         id: 'base',
         name: 'DRE Base',
@@ -220,6 +244,7 @@ export const useDREDataFromIndicadores = (useRealPercentages: boolean = false) =
         ebitdaMargin,
         breakEvenPoint,
         paybackMonths,
+        detailedBreakdown
       };
     },
     enabled: !loadingIndicadores && !loadingFixos && !loadingVariaveis && !!indicadores,

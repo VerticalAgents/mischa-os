@@ -71,9 +71,9 @@ export function CostsManagementSection({ scenario }: CostsManagementSectionProps
           Adicionar
         </Button>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {costs.map((cost, index) => (
-          <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 border rounded-md">
+          <div key={index} className="grid grid-cols-12 gap-2 items-center p-3 border rounded-lg bg-muted/30">
             <div className="col-span-6">
               <Input
                 value={cost.name}

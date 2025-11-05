@@ -161,6 +161,80 @@ export function DREAuditoria() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Como Funcionam os Fatores de Crescimento</CardTitle>
+          <CardDescription>
+            Entenda o impacto dos ajustes nos cenários alternativos
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <h4 className="font-semibold text-base">1. Crescimento de Faturamento</h4>
+            <p className="text-sm text-muted-foreground">
+              Quando você aplica um fator de crescimento no faturamento (Revenda Padrão ou Food Service):
+            </p>
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-2 ml-2">
+              <li><strong>Percentual</strong>: Aumenta o faturamento em X% sobre o valor base</li>
+              <li><strong>Absoluto</strong>: Define um novo valor total de faturamento</li>
+              <li><strong>Custos de Insumos</strong>: Crescem proporcionalmente ao faturamento (mesma % de margem)</li>
+              <li><strong>Custos Administrativos (%)</strong>: Mantêm o mesmo percentual sobre o novo faturamento</li>
+              <li><strong>Custos Fixos</strong>: Permanecem constantes (não crescem com faturamento)</li>
+            </ul>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="font-semibold text-base">2. Crescimento de PDVs</h4>
+            <p className="text-sm text-muted-foreground">
+              Quando você ajusta o número de PDVs ativos:
+            </p>
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-2 ml-2">
+              <li>Cada PDV adicional/removido afeta o faturamento proporcionalmente</li>
+              <li>O impacto é distribuído entre Revenda Padrão e Food Service conforme a proporção atual</li>
+              <li>Custos de insumos crescem junto com o faturamento (mantendo margens)</li>
+              <li>Custos administrativos percentuais se ajustam automaticamente ao novo faturamento</li>
+            </ul>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="font-semibold text-base">3. Exemplo Prático</h4>
+            <div className="bg-muted/50 p-4 rounded-lg text-sm space-y-2">
+              <p className="font-semibold">Cenário: Aumento de 10% no faturamento de Revenda Padrão</p>
+              <div className="space-y-1 ml-2">
+                <p>• Faturamento Revenda: R$ 100.000 → R$ 110.000 (+10%)</p>
+                <p>• Custos Insumos Revenda: R$ 50.000 → R$ 55.000 (+10%)</p>
+                <p>• Logística (10% do faturamento total): Ajusta proporcionalmente</p>
+                <p>• Impostos (5% do faturamento total): Ajusta proporcionalmente</p>
+                <p>• Taxa Boleto: Ajusta proporcionalmente</p>
+                <p>• Custos Fixos: R$ 20.000 → R$ 20.000 (sem alteração)</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="font-semibold text-base">4. Fórmulas de Cálculo</h4>
+            <div className="bg-muted/50 p-4 rounded-lg text-sm space-y-3">
+              <div>
+                <p className="font-semibold mb-1">Faturamento com Crescimento %:</p>
+                <code className="text-xs bg-background px-2 py-1 rounded">Novo Faturamento = Faturamento Base × (1 + Percentual/100)</code>
+              </div>
+              <div>
+                <p className="font-semibold mb-1">Custos de Insumos:</p>
+                <code className="text-xs bg-background px-2 py-1 rounded">Novos Insumos = Insumos Base × (Novo Faturamento / Faturamento Base)</code>
+              </div>
+              <div>
+                <p className="font-semibold mb-1">Custos Administrativos %:</p>
+                <code className="text-xs bg-background px-2 py-1 rounded">Novo Custo % = (Custo Base / Faturamento Base) × Novo Faturamento</code>
+              </div>
+              <div>
+                <p className="font-semibold mb-1">EBITDA:</p>
+                <code className="text-xs bg-background px-2 py-1 rounded">EBITDA = Resultado Operacional + Depreciação Mensal</code>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
