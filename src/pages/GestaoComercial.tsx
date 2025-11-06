@@ -58,50 +58,42 @@ export default function GestaoComercial() {
       <Tabs
         value={activeTab}
         onValueChange={handleTabChange}
-        className="w-full"
+        className="mt-6"
       >
-        {/* Always visible tabs at the top */}
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b mb-6">
-          <div className="container mx-auto py-4">
-            <TabsList className="grid w-full grid-cols-4 max-w-2xl">
-              <TabsTrigger value="representantes" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                <span className="hidden sm:inline">Representantes</span>
-              </TabsTrigger>
-              <TabsTrigger value="funil-leads" className="flex items-center gap-2">
-                <UserCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">Funil de Leads</span>
-              </TabsTrigger>
-              <TabsTrigger value="distribuidores" className="flex items-center gap-2">
-                <Building className="h-4 w-4" />
-                <span className="hidden sm:inline">Distribuidores</span>
-              </TabsTrigger>
-              <TabsTrigger value="parceiros" className="flex items-center gap-2">
-                <HelpingHand className="h-4 w-4" />
-                <span className="hidden sm:inline">Parceiros</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
-        </div>
+        <TabsList className="w-full justify-start">
+          <TabsTrigger value="representantes" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Representantes
+          </TabsTrigger>
+          <TabsTrigger value="funil-leads" className="flex items-center gap-2">
+            <UserCircle className="h-4 w-4" />
+            Funil de Leads
+          </TabsTrigger>
+          <TabsTrigger value="distribuidores" className="flex items-center gap-2">
+            <Building className="h-4 w-4" />
+            Distribuidores
+          </TabsTrigger>
+          <TabsTrigger value="parceiros" className="flex items-center gap-2">
+            <HelpingHand className="h-4 w-4" />
+            Parceiros
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Tab content with forceMount for critical tabs */}
-        <div className="mt-6">
-          <TabsContent value="representantes" forceMount={activeTab === "representantes" ? true : undefined}>
-            {activeTab === "representantes" && <Representantes />}
-          </TabsContent>
+        <TabsContent value="representantes" className="space-y-6 mt-6" forceMount={activeTab === "representantes" ? true : undefined}>
+          {activeTab === "representantes" && <Representantes />}
+        </TabsContent>
 
-          <TabsContent value="funil-leads" forceMount={activeTab === "funil-leads" ? true : undefined}>
-            {activeTab === "funil-leads" && <FunilLeads />}
-          </TabsContent>
+        <TabsContent value="funil-leads" className="space-y-6 mt-6" forceMount={activeTab === "funil-leads" ? true : undefined}>
+          {activeTab === "funil-leads" && <FunilLeads />}
+        </TabsContent>
 
-          <TabsContent value="distribuidores">
-            {activeTab === "distribuidores" && <Distribuidores />}
-          </TabsContent>
+        <TabsContent value="distribuidores" className="space-y-6 mt-6">
+          {activeTab === "distribuidores" && <Distribuidores />}
+        </TabsContent>
 
-          <TabsContent value="parceiros">
-            {activeTab === "parceiros" && <Parceiros />}
-          </TabsContent>
-        </div>
+        <TabsContent value="parceiros" className="space-y-6 mt-6">
+          {activeTab === "parceiros" && <Parceiros />}
+        </TabsContent>
       </Tabs>
     </div>
   );
