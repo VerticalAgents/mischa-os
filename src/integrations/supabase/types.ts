@@ -167,6 +167,51 @@ export type Database = {
         }
         Relationships: []
       }
+      cartoes_credito: {
+        Row: {
+          ativo: boolean
+          bandeira: string
+          cor_identificacao: string | null
+          created_at: string
+          dia_fechamento: number
+          dia_vencimento: number
+          id: string
+          limite_credito: number | null
+          nome: string
+          observacoes: string | null
+          ultimos_digitos: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          bandeira: string
+          cor_identificacao?: string | null
+          created_at?: string
+          dia_fechamento: number
+          dia_vencimento: number
+          id?: string
+          limite_credito?: number | null
+          nome: string
+          observacoes?: string | null
+          ultimos_digitos: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          bandeira?: string
+          cor_identificacao?: string | null
+          created_at?: string
+          dia_fechamento?: number
+          dia_vencimento?: number
+          id?: string
+          limite_credito?: number | null
+          nome?: string
+          observacoes?: string | null
+          ultimos_digitos?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categorias_estabelecimento: {
         Row: {
           ativo: boolean
@@ -909,6 +954,110 @@ export type Database = {
         }
         Relationships: []
       }
+      parcelamentos: {
+        Row: {
+          cartao_id: string
+          created_at: string
+          data_compra: string
+          descricao: string
+          id: string
+          numero_parcelas: number
+          observacoes: string | null
+          status: string
+          tipo_parcelamento_id: string
+          updated_at: string
+          valor_total: number
+        }
+        Insert: {
+          cartao_id: string
+          created_at?: string
+          data_compra: string
+          descricao: string
+          id?: string
+          numero_parcelas: number
+          observacoes?: string | null
+          status?: string
+          tipo_parcelamento_id: string
+          updated_at?: string
+          valor_total: number
+        }
+        Update: {
+          cartao_id?: string
+          created_at?: string
+          data_compra?: string
+          descricao?: string
+          id?: string
+          numero_parcelas?: number
+          observacoes?: string | null
+          status?: string
+          tipo_parcelamento_id?: string
+          updated_at?: string
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parcelamentos_cartao_id_fkey"
+            columns: ["cartao_id"]
+            isOneToOne: false
+            referencedRelation: "cartoes_credito"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parcelamentos_tipo_parcelamento_id_fkey"
+            columns: ["tipo_parcelamento_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_parcelamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parcelas: {
+        Row: {
+          created_at: string
+          data_pagamento: string | null
+          data_vencimento: string
+          id: string
+          numero_parcela: number
+          observacoes: string | null
+          parcelamento_id: string
+          status: string
+          updated_at: string
+          valor_parcela: number
+        }
+        Insert: {
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento: string
+          id?: string
+          numero_parcela: number
+          observacoes?: string | null
+          parcelamento_id: string
+          status?: string
+          updated_at?: string
+          valor_parcela: number
+        }
+        Update: {
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento?: string
+          id?: string
+          numero_parcela?: number
+          observacoes?: string | null
+          parcelamento_id?: string
+          status?: string
+          updated_at?: string
+          valor_parcela?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parcelas_parcelamento_id_fkey"
+            columns: ["parcelamento_id"]
+            isOneToOne: false
+            referencedRelation: "parcelamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedidos: {
         Row: {
           cliente_id: string
@@ -1526,6 +1675,39 @@ export type Database = {
         }
         Relationships: []
       }
+      tipos_parcelamento: {
+        Row: {
+          ativo: boolean
+          cor_hex: string | null
+          created_at: string
+          descricao: string | null
+          icone: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cor_hex?: string | null
+          created_at?: string
+          descricao?: string | null
+          icone?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cor_hex?: string | null
+          created_at?: string
+          descricao?: string | null
+          icone?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -1712,6 +1894,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      marcar_parcelas_atrasadas: { Args: never; Returns: undefined }
       populate_historico_giro_semanal: { Args: never; Returns: undefined }
       process_entrega: { Args: { p_entrega_id: string }; Returns: undefined }
       process_entrega_idempotente: {
