@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -279,6 +279,29 @@ export function NovoParcelamentoDialog() {
                 required
               />
             </div>
+
+            {dataVencimentoSugerida && cartaoSelecionado && (
+              <div className="grid gap-2">
+                <Label htmlFor="primeira_data_vencimento">
+                  Data de Vencimento da 1ª Parcela
+                </Label>
+                <Input
+                  id="primeira_data_vencimento"
+                  type="date"
+                  value={primeiraDataVencimento}
+                  onChange={(e) => setPrimeiraDataVencimento(e.target.value)}
+                  disabled={calculandoData}
+                  className="font-medium"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {primeiraDataVencimento !== dataVencimentoSugerida && (
+                    <span className="text-amber-600">⚠ Data personalizada. </span>
+                  )}
+                  As demais parcelas vencerão sempre no dia {cartaoSelecionado.dia_vencimento} dos meses seguintes
+                  {cartaoSelecionado.dia_vencimento > 28 && " (ajustado ao último dia quando necessário)"}.
+                </p>
+              </div>
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="observacoes">Observações</Label>
