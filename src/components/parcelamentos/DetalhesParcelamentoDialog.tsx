@@ -27,7 +27,8 @@ export function DetalhesParcelamentoDialog({
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR');
+    // Adiciona horário local para evitar problemas de timezone
+    return new Date(date + 'T00:00:00').toLocaleDateString('pt-BR');
   };
 
   const getStatusBadge = (status: string) => {

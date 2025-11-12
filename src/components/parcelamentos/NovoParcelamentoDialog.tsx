@@ -59,7 +59,7 @@ export function NovoParcelamentoDialog() {
         setCalculandoData(true);
         try {
           const { data, error } = await supabase
-            .rpc('compute_primeira_data_vencimento', {
+            .rpc('compute_primeira_data_vencimento' as any, {
               p_cartao_id: formData.cartao_id,
               p_data_compra: formData.data_compra
             });
@@ -67,8 +67,8 @@ export function NovoParcelamentoDialog() {
           if (error) {
             console.error('Erro ao calcular data:', error);
           } else if (data) {
-            setDataVencimentoSugerida(data);
-            setPrimeiraDataVencimento(data);
+            setDataVencimentoSugerida(data as string);
+            setPrimeiraDataVencimento(data as string);
           }
         } finally {
           setCalculandoData(false);
