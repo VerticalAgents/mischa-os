@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,46 +44,8 @@ export function NovoParcelamentoDialog() {
     observacoes: "",
   });
 
-  const [primeiraDataVencimento, setPrimeiraDataVencimento] = useState("");
-
   const { data: limites } = useCartaoLimites(formData.cartao_id || null);
   const cartaoSelecionado = cartoes.find(c => c.id === formData.cartao_id);
-
-  // Calcular primeira data de vencimento automaticamente
-  useEffect(() => {
-    if (cartaoSelecionado && formData.data_compra) {
-      const dataCompra = new Date(formData.data_compra + "T00:00:00");
-      const diaVencimento = cartaoSelecionado.dia_vencimento;
-      const diaFechamento = cartaoSelecionado.dia_fechamento;
-
-      // Construir data de fechamento do mês da compra
-      const anoCompra = dataCompra.getFullYear();
-      const mesCompra = dataCompra.getMonth();
-      const dataFechamentoMes = new Date(anoCompra, mesCompra, diaFechamento);
-
-      // Determinar quantos meses adicionar
-      const mesesParaPrimeira = dataCompra >= dataFechamentoMes ? 2 : 1;
-
-      // Calcular data de vencimento
-      let anoVencimento = anoCompra;
-      let mesVencimento = mesCompra + mesesParaPrimeira;
-
-      // Ajustar ano se necessário
-      while (mesVencimento > 11) {
-        anoVencimento += 1;
-        mesVencimento -= 12;
-      }
-
-      // Garantir que o dia existe no mês (ex: 31 em fevereiro)
-      const ultimoDiaMes = new Date(anoVencimento, mesVencimento + 1, 0).getDate();
-      const diaFinal = Math.min(diaVencimento, ultimoDiaMes);
-
-      const dataVencimento = new Date(anoVencimento, mesVencimento, diaFinal);
-      setPrimeiraDataVencimento(dataVencimento.toISOString().split("T")[0]);
-    } else {
-      setPrimeiraDataVencimento("");
-    }
-  }, [cartaoSelecionado, formData.data_compra]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,8 +80,7 @@ export function NovoParcelamentoDialog() {
       data_compra: formData.data_compra,
       status: "ativo",
       observacoes: formData.observacoes || undefined,
-      primeira_data_vencimento: primeiraDataVencimento || undefined,
-    } as any);
+    });
 
     setOpen(false);
     setFormData({
@@ -131,7 +92,6 @@ export function NovoParcelamentoDialog() {
       data_compra: new Date().toISOString().split("T")[0],
       observacoes: "",
     });
-    setPrimeiraDataVencimento("");
   };
 
   const valorTotal = parseFloat(formData.valor_total) || 0;
@@ -319,24 +279,6 @@ export function NovoParcelamentoDialog() {
                 required
               />
             </div>
-
-            {primeiraDataVencimento && (
-              <div className="grid gap-2">
-                <Label htmlFor="primeira_data_vencimento">
-                  Data de Vencimento da 1ª Parcela
-                </Label>
-                <Input
-                  id="primeira_data_vencimento"
-                  type="date"
-                  value={primeiraDataVencimento}
-                  onChange={(e) => setPrimeiraDataVencimento(e.target.value)}
-                  className="font-medium"
-                />
-                <p className="text-xs text-muted-foreground">
-                  As demais parcelas vencerão sempre no dia {new Date(primeiraDataVencimento + "T00:00:00").getDate()} dos meses seguintes
-                </p>
-              </div>
-            )}
 
             <div className="grid gap-2">
               <Label htmlFor="observacoes">Observações</Label>
