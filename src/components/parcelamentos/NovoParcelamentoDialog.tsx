@@ -27,6 +27,7 @@ import { useCartaoLimites } from "@/hooks/useCartaoLimites";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
 
 export function NovoParcelamentoDialog() {
   const [open, setOpen] = useState(false);
@@ -44,8 +45,36 @@ export function NovoParcelamentoDialog() {
     observacoes: "",
   });
 
+  const [primeiraDataVencimento, setPrimeiraDataVencimento] = useState("");
+  const [dataVencimentoSugerida, setDataVencimentoSugerida] = useState("");
+  const [calculandoData, setCalculandoData] = useState(false);
+
   const { data: limites } = useCartaoLimites(formData.cartao_id || null);
   const cartaoSelecionado = cartoes.find(c => c.id === formData.cartao_id);
+
+  // Calcular data de vencimento sugerida usando RPC
+  useEffect(() => {
+    if (cartaoSelecionado && formData.data_compra) {
+      setCalculandoData(true);
+      supabase
+        .rpc('compute_primeira_data_vencimento', {
+          p_cartao_id: formData.cartao_id,
+          p_data_compra: formData.data_compra
+        })
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('Erro ao calcular data:', error);
+          } else if (data) {
+            setDataVencimentoSugerida(data);
+            setPrimeiraDataVencimento(data);
+          }
+        })
+        .finally(() => setCalculandoData(false));
+    } else {
+      setDataVencimentoSugerida("");
+      setPrimeiraDataVencimento("");
+    }
+  }, [cartaoSelecionado, formData.cartao_id, formData.data_compra]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +109,8 @@ export function NovoParcelamentoDialog() {
       data_compra: formData.data_compra,
       status: "ativo",
       observacoes: formData.observacoes || undefined,
-    });
+      primeira_data_vencimento: primeiraDataVencimento || undefined,
+    } as any);
 
     setOpen(false);
     setFormData({
@@ -92,6 +122,8 @@ export function NovoParcelamentoDialog() {
       data_compra: new Date().toISOString().split("T")[0],
       observacoes: "",
     });
+    setPrimeiraDataVencimento("");
+    setDataVencimentoSugerida("");
   };
 
   const valorTotal = parseFloat(formData.valor_total) || 0;
