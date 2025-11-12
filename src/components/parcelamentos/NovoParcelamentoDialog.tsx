@@ -335,8 +335,14 @@ export function NovoParcelamentoDialog() {
                   {primeiraDataVencimento !== dataVencimentoSugerida && (
                     <span className="text-amber-600">⚠ Data personalizada. </span>
                   )}
-                  As demais parcelas vencerão sempre no dia {cartaoSelecionado.dia_vencimento} dos meses seguintes
-                  {cartaoSelecionado.dia_vencimento > 28 && " (ajustado ao último dia quando necessário)"}.
+                  As demais parcelas vencerão sempre no dia {
+                    primeiraDataVencimento !== dataVencimentoSugerida 
+                      ? new Date(primeiraDataVencimento + 'T00:00:00').getDate()
+                      : cartaoSelecionado.dia_vencimento
+                  } dos meses seguintes
+                  {((primeiraDataVencimento !== dataVencimentoSugerida 
+                      ? new Date(primeiraDataVencimento + 'T00:00:00').getDate()
+                      : cartaoSelecionado.dia_vencimento) > 28) && " (ajustado ao último dia quando necessário)"}.
                 </p>
               </div>
             )}
