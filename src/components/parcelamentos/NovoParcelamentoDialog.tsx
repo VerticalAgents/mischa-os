@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,6 +27,7 @@ import { useCartaoLimites } from "@/hooks/useCartaoLimites";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
 
 export function NovoParcelamentoDialog() {
   const [open, setOpen] = useState(false);
@@ -44,8 +45,42 @@ export function NovoParcelamentoDialog() {
     observacoes: "",
   });
 
+  const [primeiraDataVencimento, setPrimeiraDataVencimento] = useState("");
+  const [dataVencimentoSugerida, setDataVencimentoSugerida] = useState("");
+  const [calculandoData, setCalculandoData] = useState(false);
+
   const { data: limites } = useCartaoLimites(formData.cartao_id || null);
   const cartaoSelecionado = cartoes.find(c => c.id === formData.cartao_id);
+
+  // Calcular data de vencimento sugerida usando RPC
+  useEffect(() => {
+    const calcularData = async () => {
+      if (cartaoSelecionado && formData.data_compra) {
+        setCalculandoData(true);
+        try {
+          const { data, error } = await supabase
+            .rpc('compute_primeira_data_vencimento', {
+              p_cartao_id: formData.cartao_id,
+              p_data_compra: formData.data_compra
+            });
+          
+          if (error) {
+            console.error('Erro ao calcular data:', error);
+          } else if (data) {
+            setDataVencimentoSugerida(data);
+            setPrimeiraDataVencimento(data);
+          }
+        } finally {
+          setCalculandoData(false);
+        }
+      } else {
+        setDataVencimentoSugerida("");
+        setPrimeiraDataVencimento("");
+      }
+    };
+    
+    calcularData();
+  }, [cartaoSelecionado, formData.cartao_id, formData.data_compra]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +115,8 @@ export function NovoParcelamentoDialog() {
       data_compra: formData.data_compra,
       status: "ativo",
       observacoes: formData.observacoes || undefined,
-    });
+      primeira_data_vencimento: primeiraDataVencimento || undefined,
+    } as any);
 
     setOpen(false);
     setFormData({
@@ -92,6 +128,8 @@ export function NovoParcelamentoDialog() {
       data_compra: new Date().toISOString().split("T")[0],
       observacoes: "",
     });
+    setPrimeiraDataVencimento("");
+    setDataVencimentoSugerida("");
   };
 
   const valorTotal = parseFloat(formData.valor_total) || 0;
@@ -279,6 +317,29 @@ export function NovoParcelamentoDialog() {
                 required
               />
             </div>
+
+            {dataVencimentoSugerida && cartaoSelecionado && (
+              <div className="grid gap-2">
+                <Label htmlFor="primeira_data_vencimento">
+                  Data de Vencimento da 1ª Parcela
+                </Label>
+                <Input
+                  id="primeira_data_vencimento"
+                  type="date"
+                  value={primeiraDataVencimento}
+                  onChange={(e) => setPrimeiraDataVencimento(e.target.value)}
+                  disabled={calculandoData}
+                  className="font-medium"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {primeiraDataVencimento !== dataVencimentoSugerida && (
+                    <span className="text-amber-600">⚠ Data personalizada. </span>
+                  )}
+                  As demais parcelas vencerão sempre no dia {cartaoSelecionado.dia_vencimento} dos meses seguintes
+                  {cartaoSelecionado.dia_vencimento > 28 && " (ajustado ao último dia quando necessário)"}.
+                </p>
+              </div>
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="observacoes">Observações</Label>
