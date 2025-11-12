@@ -29,7 +29,7 @@ export default function GestaoFinanceira() {
             <TabsTrigger value="dre" className="text-xs sm:text-sm">DRE</TabsTrigger>
             <TabsTrigger value="cenarios" className="text-xs sm:text-sm">Cenários</TabsTrigger>
             <TabsTrigger value="ponto-equilibrio" className="text-xs sm:text-sm">Ponto de Equilíbrio</TabsTrigger>
-            <TabsTrigger value="parcelamentos" className="text-xs sm:text-sm">Controle de Parcelamentos</TabsTrigger>
+            <TabsTrigger value="parcelamentos" className="text-xs sm:text-sm">Parcelamentos</TabsTrigger>
           </TabsList>
         </div>
 

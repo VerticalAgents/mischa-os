@@ -12,6 +12,7 @@ import AgentesIAConfigTab from "./tabs/AgentesIAConfigTab";
 import FinanceiroTab from "./tabs/FinanceiroTab";
 import PrecificacaoTab from "./tabs/PrecificacaoTab";
 import CustosTab from "./tabs/CustosTab";
+import CartoesTab from "./tabs/CartoesTab";
 import CategoriasProdutoTab from "./tabs/CategoriasProdutoTab";
 import ProporcoesTab from "./tabs/ProporcoesTab";
 import ClientesTab from "./tabs/ClientesTab";
@@ -35,6 +36,7 @@ const configGroups = [
       { id: "financeiro", label: "Parâmetros", component: FinanceiroTab },
       { id: "precificacao", label: "Precificação", component: PrecificacaoTab },
       { id: "custos", label: "Custos", component: CustosTab },
+      { id: "cartoes-credito", label: "Cartões de Crédito", component: CartoesTab },
     ]
   },
   {
