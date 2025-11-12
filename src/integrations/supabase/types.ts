@@ -963,6 +963,7 @@ export type Database = {
           id: string
           numero_parcelas: number
           observacoes: string | null
+          primeira_data_vencimento: string | null
           status: string
           tipo_parcelamento_id: string
           updated_at: string
@@ -976,6 +977,7 @@ export type Database = {
           id?: string
           numero_parcelas: number
           observacoes?: string | null
+          primeira_data_vencimento?: string | null
           status?: string
           tipo_parcelamento_id: string
           updated_at?: string
@@ -989,6 +991,7 @@ export type Database = {
           id?: string
           numero_parcelas?: number
           observacoes?: string | null
+          primeira_data_vencimento?: string | null
           status?: string
           tipo_parcelamento_id?: string
           updated_at?: string
@@ -1767,6 +1770,10 @@ export type Database = {
       }
     }
     Functions: {
+      adicionar_meses_com_dia_fixo: {
+        Args: { data_base: string; dia_fixo: number; n_meses: number }
+        Returns: string
+      }
       check_cliente_status_consistency: {
         Args: never
         Returns: {
@@ -1802,6 +1809,10 @@ export type Database = {
           produto_nome: string
           quantidade: number
         }[]
+      }
+      compute_primeira_data_vencimento: {
+        Args: { p_cartao_id: string; p_data_compra: string }
+        Returns: string
       }
       decrypt_sensitive_data: {
         Args: { encrypted_data: string }
