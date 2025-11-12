@@ -6,6 +6,7 @@ import { useState } from "react";
 import IndicadoresTab from "@/components/gestao-financeira/tabs/IndicadoresTab";
 import CustosTab from "@/components/gestao-financeira/tabs/CustosTab";
 import { DRETab } from "@/components/gestao-financeira/tabs/DRETab";
+import { ParcelamentosTab } from "@/components/gestao-financeira/tabs/ParcelamentosTab";
 
 export default function GestaoFinanceira() {
   const [activeTab, setActiveTab] = useState("resumo");
@@ -69,11 +70,7 @@ export default function GestaoFinanceira() {
         </TabsContent>
 
         <TabsContent value="parcelamentos" className="space-y-6">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground text-center">Conteúdo em desenvolvimento</p>
-            </CardContent>
-          </Card>
+          <ParcelamentosTab />
         </TabsContent>
       </Tabs>
     </div>
