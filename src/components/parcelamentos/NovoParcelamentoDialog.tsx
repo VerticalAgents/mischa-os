@@ -54,26 +54,32 @@ export function NovoParcelamentoDialog() {
 
   // Calcular data de vencimento sugerida usando RPC
   useEffect(() => {
-    if (cartaoSelecionado && formData.data_compra) {
-      setCalculandoData(true);
-      supabase
-        .rpc('compute_primeira_data_vencimento', {
-          p_cartao_id: formData.cartao_id,
-          p_data_compra: formData.data_compra
-        })
-        .then(({ data, error }) => {
+    const calcularData = async () => {
+      if (cartaoSelecionado && formData.data_compra) {
+        setCalculandoData(true);
+        try {
+          const { data, error } = await supabase
+            .rpc('compute_primeira_data_vencimento', {
+              p_cartao_id: formData.cartao_id,
+              p_data_compra: formData.data_compra
+            });
+          
           if (error) {
             console.error('Erro ao calcular data:', error);
           } else if (data) {
             setDataVencimentoSugerida(data);
             setPrimeiraDataVencimento(data);
           }
-        })
-        .finally(() => setCalculandoData(false));
-    } else {
-      setDataVencimentoSugerida("");
-      setPrimeiraDataVencimento("");
-    }
+        } finally {
+          setCalculandoData(false);
+        }
+      } else {
+        setDataVencimentoSugerida("");
+        setPrimeiraDataVencimento("");
+      }
+    };
+    
+    calcularData();
   }, [cartaoSelecionado, formData.cartao_id, formData.data_compra]);
 
   const handleSubmit = (e: React.FormEvent) => {
