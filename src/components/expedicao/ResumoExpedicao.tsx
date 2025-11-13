@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RefreshCw, Package, Eye, User, Calendar, Hash } from "lucide-react";
-import { ResumoUnidadesSeparadas } from "./components/ResumoUnidadesSeparadas";
+import { ProdutosEmExpedicao } from "./components/ProdutosEmExpedicao";
+import { ProdutosNecessarios } from "./components/ProdutosNecessarios";
 import { DetalheProdutosModal } from "./components/DetalheProdutosModal";
 import { useState } from "react";
 import { format } from "date-fns";
@@ -56,12 +57,22 @@ const ResumoExpedicao = () => {
         </Button>
       </div>
 
-      {/* Resumo de Unidades Separadas */}
-      <ResumoUnidadesSeparadas 
-        pedidosSeparados={pedidosSeparados}
-        pedidosDespachados={pedidosDespachados}
-      />
+      {/* Grid 2 colunas - Cards de Resumo */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Produtos Necessários (esquerda) */}
+        <ProdutosNecessarios 
+          pedidosSeparados={pedidosSeparados}
+          pedidosDespachados={pedidosDespachados}
+        />
+        
+        {/* Produtos em Expedição (direita) */}
+        <ProdutosEmExpedicao 
+          pedidosSeparados={pedidosSeparados}
+          pedidosDespachados={pedidosDespachados}
+        />
+      </div>
 
+      {/* Grid 2 colunas - Lista de Pedidos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pedidos Separados */}
         <Card>
