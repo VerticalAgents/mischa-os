@@ -33,7 +33,7 @@ export default function AgendamentoDashboard() {
     toast
   } = useToast();
   const { representantes } = useSupabaseRepresentantes();
-  const { registros: entregasHistorico } = useHistoricoEntregasStore();
+  const { registros: entregasHistorico, carregarHistorico: carregarHistoricoEntregas } = useHistoricoEntregasStore();
   const [isLoading, setIsLoading] = useState(false);
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
   const [selectedAgendamento, setSelectedAgendamento] = useState<any>(null);
@@ -46,13 +46,23 @@ export default function AgendamentoDashboard() {
       if (agendamentos.length === 0 && !isLoading) {
         setIsLoading(true);
         try {
-          await carregarTodosAgendamentos();
+          await Promise.all([
+            carregarTodosAgendamentos(),
+            carregarHistoricoEntregas()
+          ]);
         } finally {
           setIsLoading(false);
         }
       }
     };
     loadData();
+  }, []);
+  
+  // Carregar histórico de entregas na montagem do componente
+  useEffect(() => {
+    if (entregasHistorico.length === 0) {
+      carregarHistoricoEntregas();
+    }
   }, []);
 
   const navegarSemanaAnterior = () => {
