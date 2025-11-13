@@ -13,7 +13,7 @@ import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { DetalheProdutosModal } from "./DetalheProdutosModal";
-import { ResumoUnidadesSeparadas } from "./ResumoUnidadesSeparadas";
+import { ProdutosEmExpedicao } from "./ProdutosEmExpedicao";
 
 interface CalculosModalProps {
   open: boolean;
@@ -81,8 +81,8 @@ export const CalculosModal = ({ open, onOpenChange }: CalculosModalProps) => {
             </DialogDescription>
           </DialogHeader>
 
-          {/* Card de Resumo de Unidades Separadas */}
-          <ResumoUnidadesSeparadas 
+          {/* Card de Produtos em Expedição */}
+          <ProdutosEmExpedicao 
             pedidosSeparados={pedidosSeparados} 
             pedidosDespachados={pedidosDespachados} 
           />
