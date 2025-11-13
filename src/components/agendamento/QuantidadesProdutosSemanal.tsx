@@ -136,7 +136,7 @@ export default function QuantidadesProdutosSemanal({
         <div className="flex items-start justify-between">
           <div className="space-y-1.5">
             <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-primary" />
+              <Package className="h-5 w-5 text-blue-500" />
               Produtos Necessários
             </CardTitle>
             <CardDescription className="text-left">
@@ -171,9 +171,9 @@ export default function QuantidadesProdutosSemanal({
         ) : (
           <div className="space-y-4">
             {/* Total Geral */}
-            <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
+            <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-muted-foreground mb-1">Quantidade Total Necessária</p>
-              <p className="text-3xl font-bold text-primary">{quantidadeTotal}</p>
+              <p className="text-3xl font-bold text-blue-600">{quantidadeTotal}</p>
               <Badge variant="default" className="mt-2">
                 {agendamentosSemana.length} {agendamentosSemana.length === 1 ? 'pedido' : 'pedidos'}
               </Badge>
