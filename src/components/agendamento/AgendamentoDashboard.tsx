@@ -2,12 +2,13 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useToast } from "@/hooks/use-toast";
+import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
@@ -32,6 +33,7 @@ export default function AgendamentoDashboard() {
     toast
   } = useToast();
   const { representantes } = useSupabaseRepresentantes();
+  const { registros: entregasHistorico } = useHistoricoEntregasStore();
   const [isLoading, setIsLoading] = useState(false);
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
   const [selectedAgendamento, setSelectedAgendamento] = useState<any>(null);
@@ -90,22 +92,21 @@ export default function AgendamentoDashboard() {
     });
     const previstos = agendamentosSemana.filter(a => a.statusAgendamento === "Previsto");
     const confirmados = agendamentosSemana.filter(a => a.statusAgendamento === "Agendado");
-    const clientesComAgendamento = new Set(agendamentosFiltrados.map(a => a.cliente.id));
-    const clientesSemAgendamento = clientes.filter(c => {
-      const clienteNoFiltro = 
-        representanteFiltro === "todos" || 
-        (representanteFiltro === "sem_representante" && !c.representanteId) ||
-        c.representanteId?.toString() === representanteFiltro;
-      return c.ativo && clienteNoFiltro && !clientesComAgendamento.has(c.id);
+    
+    // Calcular entregas realizadas na semana
+    const entregasRealizadas = entregasHistorico.filter(entrega => {
+      const dataEntrega = new Date(entrega.data);
+      return dataEntrega >= inicioSemana && dataEntrega <= fimSemana;
     });
+    
     return {
       totalSemana: agendamentosSemana.length,
       previstos: previstos.length,
       confirmados: confirmados.length,
-      pendentes: clientesSemAgendamento.length,
+      entregasRealizadas: entregasRealizadas.length,
       taxaConfirmacao: agendamentosSemana.length > 0 ? confirmados.length / agendamentosSemana.length * 100 : 0
     };
-  }, [agendamentosFiltrados, clientes, semanaAtual, representanteFiltro]);
+  }, [agendamentosFiltrados, semanaAtual, representanteFiltro, entregasHistorico]);
 
   const dadosGraficoStatus = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
@@ -511,12 +512,12 @@ export default function AgendamentoDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-500" />
+            <CardTitle className="text-sm font-medium">Entregas Realizadas</CardTitle>
+            <Truck className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{indicadoresSemana.pendentes}</div>
-            <p className="text-xs text-muted-foreground">Sem agendamento</p>
+            <div className="text-2xl font-bold text-blue-600">{indicadoresSemana.entregasRealizadas}</div>
+            <p className="text-xs text-muted-foreground">Entregas da semana</p>
           </CardContent>
         </Card>
       </div>
