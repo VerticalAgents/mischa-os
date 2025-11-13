@@ -132,12 +132,28 @@ export default function AgendamentoDashboard() {
       return acc;
     }, {} as Record<string, number>);
     
-    return Object.entries(contadores).map(([status, count]) => ({
+    const data = Object.entries(contadores).map(([status, count]) => ({
       status,
       quantidade: count,
       cor: status === "Previsto" ? "#F59E0B" : status === "Agendado" ? "#10B981" : "#EF4444"
     }));
-  }, [agendamentosFiltrados, semanaAtual]);
+    
+    // Adicionar entregas realizadas na semana
+    const entregasRealizadasSemana = entregasHistorico.filter(entrega => {
+      const dataEntrega = new Date(entrega.data);
+      return dataEntrega >= inicioSemana && dataEntrega <= fimSemana && entrega.tipo === 'entrega';
+    }).length;
+    
+    if (entregasRealizadasSemana > 0) {
+      data.push({
+        status: "Realizadas",
+        quantidade: entregasRealizadasSemana,
+        cor: "#3B82F6"
+      });
+    }
+    
+    return data;
+  }, [agendamentosFiltrados, semanaAtual, entregasHistorico]);
 
   const dadosGraficoSemanal = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, {
@@ -154,6 +170,12 @@ export default function AgendamentoDashboard() {
       const agendamentosDia = agendamentosFiltrados.filter(agendamento => isSameDay(new Date(agendamento.dataReposicao), dia));
       const previstos = agendamentosDia.filter(a => a.statusAgendamento === "Previsto").length;
       const confirmados = agendamentosDia.filter(a => a.statusAgendamento === "Agendado").length;
+      
+      // Adicionar entregas realizadas do dia
+      const entregasRealizadasDia = entregasHistorico.filter(entrega => 
+        isSameDay(new Date(entrega.data), dia) && entrega.tipo === 'entrega'
+      ).length;
+      
       return {
         dia: format(dia, 'dd/MM', {
           locale: ptBR
@@ -163,12 +185,13 @@ export default function AgendamentoDashboard() {
         }),
         previstos,
         confirmados,
+        realizadas: entregasRealizadasDia,
         total: previstos + confirmados,
         isToday: isToday(dia),
         dataCompleta: dia
       };
     });
-  }, [agendamentosFiltrados, semanaAtual]);
+  }, [agendamentosFiltrados, semanaAtual, entregasHistorico]);
 
   const agendamentosDiaSelecionado = useMemo(() => {
     if (!diaSelecionado) return [];
@@ -489,7 +512,7 @@ export default function AgendamentoDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Agendamentos Semana</CardTitle>
+            <CardTitle className="text-sm font-medium">Agendamentos Restantes</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -582,6 +605,7 @@ export default function AgendamentoDashboard() {
                   <Tooltip />
                   <Bar dataKey="previstos" stackId="a" fill="#F59E0B" name="Previstos" />
                   <Bar dataKey="confirmados" stackId="a" fill="#10B981" name="Confirmados" />
+                  <Bar dataKey="realizadas" stackId="a" fill="#3B82F6" name="Realizadas" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
