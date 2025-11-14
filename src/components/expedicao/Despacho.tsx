@@ -35,7 +35,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     getPedidosParaDespacho,
     getPedidosAtrasados,
     getPedidosSeparadosAntecipados,
-    carregarPedidos
+    carregarPedidos,
+    recarregarSilencioso
   } = useExpedicaoStore();
 
   const { converterPedidoParaCard } = usePedidoConverter();
@@ -133,8 +134,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
       const sucesso = await confirmarEntregaEmMassaHook(pedidosParaEntrega);
       if (sucesso) {
-        // Recarregar os dados após confirmação bem-sucedida
-        await carregarPedidos();
+        // Recarregar os dados após confirmação bem-sucedida sem bloquear a UI
+        await recarregarSilencioso();
       }
     } catch (error) {
       console.error('Erro ao confirmar entregas em massa:', error);
@@ -152,7 +153,6 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
   const handleRetornarParaSeparacao = async (pedidoId: string) => {
     await retornarParaSeparacao(pedidoId);
-    await carregarPedidos();
   };
 
   const handleOrganizarEntregas = () => {
@@ -165,8 +165,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
   const handleConfirmarEntregaIndividual = async (pedidoId: string, observacao?: string) => {
     // A confirmação já é feita pelo PedidoCard usando o hook useConfirmacaoEntrega
-    // Aqui só precisamos recarregar os dados
-    await carregarPedidos();
+    // Recarregar os dados silenciosamente sem bloquear a UI
+    await recarregarSilencioso();
   };
 
   if (isLoading) {
@@ -286,20 +286,10 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 showDespachoActions={tipoFiltro !== "antecipada"}
                 showReagendarButton={tipoFiltro === "atrasadas" && pedido.substatus_pedido === 'Agendado'}
                 showRetornarParaSeparacaoButton={tipoFiltro === "antecipada"}
-                onConfirmarDespacho={async () => {
-                  await confirmarDespacho(String(pedido.id));
-                  // Forçar atualização da UI após confirmar despacho
-                  await carregarPedidos();
-                }}
+                onConfirmarDespacho={() => confirmarDespacho(String(pedido.id))}
                 onConfirmarEntrega={(observacao) => handleConfirmarEntregaIndividual(String(pedido.id), observacao)}
-                onConfirmarRetorno={async (observacao) => {
-                  await confirmarRetorno(String(pedido.id), observacao);
-                  await carregarPedidos();
-                }}
-                onRetornarParaSeparacao={async () => {
-                  await handleRetornarParaSeparacao(String(pedido.id));
-                  await carregarPedidos();
-                }}
+                onConfirmarRetorno={(observacao) => confirmarRetorno(String(pedido.id), observacao)}
+                onRetornarParaSeparacao={() => handleRetornarParaSeparacao(String(pedido.id))}
               />
             ))}
           </div>

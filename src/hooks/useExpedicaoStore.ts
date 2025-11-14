@@ -31,6 +31,7 @@ interface ExpedicaoStore {
   
   // Actions
   carregarPedidos: () => Promise<void>;
+  recarregarSilencioso: () => Promise<void>;
   atualizarDataReferencia: () => Promise<void>;
   confirmarSeparacao: (pedidoId: string) => Promise<void>;
   desfazerSeparacao: (pedidoId: string) => Promise<void>;
@@ -199,6 +200,75 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           toast.error("Erro ao carregar pedidos");
         } finally {
           set({ isLoading: false });
+        }
+      },
+
+      // Recarregar dados sem mostrar indicador de loading (para atualizações em background)
+      recarregarSilencioso: async () => {
+        try {
+          console.log('🔄 Recarregando dados silenciosamente...');
+          
+          const { data: agendamentos, error } = await supabase
+            .from('agendamentos_clientes')
+            .select('*')
+            .eq('status_agendamento', 'Agendado');
+
+          if (error) {
+            console.error('Erro ao recarregar agendamentos:', error);
+            return;
+          }
+
+          let clientesData: any[] = [];
+          
+          try {
+            const { data: clientesComLink, error: clientesError } = await supabase
+              .from('clientes')
+              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id');
+
+            if (clientesError) {
+              const { data: clientesSemLink, error: fallbackError } = await supabase
+                .from('clientes')
+                .select('id, nome, endereco_entrega, contato_telefone, representante_id');
+
+              if (fallbackError) {
+                throw fallbackError;
+              }
+
+              clientesData = clientesSemLink || [];
+            } else {
+              clientesData = clientesComLink || [];
+            }
+          } catch (fallbackError) {
+            console.warn('Erro ao carregar dados dos clientes:', fallbackError);
+          }
+
+          const clientesMap = new Map(clientesData.map(c => [c.id, c]));
+
+          const pedidosFormatados: PedidoExpedicao[] = (agendamentos || []).map(agendamento => {
+            const cliente = clientesMap.get(agendamento.cliente_id);
+            
+            return {
+              id: agendamento.id,
+              cliente_id: agendamento.cliente_id,
+              cliente_nome: cliente?.nome || 'Cliente não encontrado',
+              cliente_endereco: cliente?.endereco_entrega,
+              cliente_telefone: cliente?.contato_telefone,
+              link_google_maps: cliente?.link_google_maps,
+              representante_id: cliente?.representante_id,
+              data_prevista_entrega: parseDataSegura(agendamento.data_proxima_reposicao || new Date()),
+              quantidade_total: agendamento.quantidade_total,
+              tipo_pedido: agendamento.tipo_pedido,
+              status_agendamento: agendamento.status_agendamento,
+              substatus_pedido: agendamento.substatus_pedido as SubstatusPedidoAgendado,
+              itens_personalizados: agendamento.itens_personalizados,
+              created_at: new Date(agendamento.created_at)
+            };
+          });
+
+          set({ pedidos: pedidosFormatados, ultimaAtualizacao: new Date() });
+          console.log('✅ Dados recarregados silenciosamente');
+        } catch (error) {
+          console.error('❌ Erro ao recarregar dados:', error);
         }
       },
 
