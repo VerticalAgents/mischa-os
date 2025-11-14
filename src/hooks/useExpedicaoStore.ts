@@ -279,7 +279,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } : p
-            )
+            ),
+            _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
           }));
 
           const { error } = await supabase
@@ -291,7 +292,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             set(state => ({
               pedidos: state.pedidos.map(p => 
                 p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } : p
-              )
+              ),
+              _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
             }));
             throw error;
           }
@@ -310,7 +312,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } : p
-            )
+            ),
+            _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
           }));
 
           const { error } = await supabase
@@ -322,7 +325,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             set(state => ({
               pedidos: state.pedidos.map(p => 
                 p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } : p
-              )
+              ),
+              _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
             }));
             throw error;
           }
@@ -342,7 +346,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } : p
-            )
+            ),
+            _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
           }));
 
           // Atualiza no banco de dados
@@ -356,7 +361,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             set(state => ({
               pedidos: state.pedidos.map(p => 
                 p.id === pedidoId ? { ...p, substatus_pedido: 'Despachado' as SubstatusPedidoAgendado } : p
-              )
+              ),
+              _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
             }));
             throw error;
           }
@@ -375,7 +381,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           set(state => ({
             pedidos: state.pedidos.map(p => 
               p.id === pedidoId ? { ...p, substatus_pedido: 'Despachado' as SubstatusPedidoAgendado } : p
-            )
+            ),
+            _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
           }));
 
           const { error } = await supabase
@@ -387,7 +394,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             set(state => ({
               pedidos: state.pedidos.map(p => 
                 p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } : p
-              )
+              ),
+              _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
             }));
             throw error;
           }
@@ -431,7 +439,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
           // Remover do estado local da expedição
           set(state => ({
-            pedidos: state.pedidos.filter(p => p.id !== pedidoId)
+            pedidos: state.pedidos.filter(p => p.id !== pedidoId),
+            _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
           }));
 
           // Carregar dados do cliente para periodicidade
@@ -521,7 +530,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
 
           // Remover do estado local da expedição
           set(state => ({
-            pedidos: state.pedidos.filter(p => p.id !== pedidoId)
+            pedidos: state.pedidos.filter(p => p.id !== pedidoId),
+            _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
           }));
 
           // Reagendar para próximo dia útil baseado na data prevista original
@@ -578,7 +588,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               pedidosParaSeparar.some(ps => ps.id === p.id) 
                 ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } 
                 : p
-            )
+            ),
+            _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
           }));
 
           const { error } = await supabase
@@ -592,7 +603,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                 pedidosParaSeparar.some(ps => ps.id === p.id) 
                   ? { ...p, substatus_pedido: 'Agendado' as SubstatusPedidoAgendado } 
                   : p
-              )
+              ),
+              _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
             }));
             throw error;
           }
@@ -618,7 +630,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               pedidosParaDespachar.some(pd => pd.id === p.id) 
                 ? { ...p, substatus_pedido: 'Despachado' as SubstatusPedidoAgendado } 
                 : p
-            )
+            ),
+            _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
           }));
 
           const { error } = await supabase
@@ -632,7 +645,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
                 pedidosParaDespachar.some(pd => pd.id === p.id) 
                   ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } 
                   : p
-              )
+              ),
+              _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
             }));
             throw error;
           }
@@ -670,7 +684,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           set(state => ({
             pedidos: state.pedidos.filter(p => 
               !pedidosParaEntregar.some(pe => pe.id === p.id)
-            )
+            ),
+            _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
           }));
 
           for (const pedido of pedidosParaEntregar) {
@@ -738,7 +753,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           set(state => ({
             pedidos: state.pedidos.filter(p => 
               !pedidosParaRetorno.some(pr => pr.id === p.id)
-            )
+            ),
+            _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
           }));
 
           for (const pedido of pedidosParaRetorno) {
