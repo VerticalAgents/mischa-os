@@ -66,14 +66,16 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
       }
 
       // Queries complementares em paralelo (não bloqueantes)
-      const [representantesResult, precosResult, categoriasResult] = await Promise.allSettled([
+      const [representantesResult, precosResult, categoriasResult, configResult] = await Promise.allSettled([
         supabase.from('representantes').select('id, nome').eq('ativo', true),
         supabase.from('precos_categoria_cliente').select(`
           cliente_id,
+          categoria_id,
           preco_unitario,
-          categorias_produto!inner (nome)
+          categorias_produto!inner (id, nome)
         `),
-        supabase.from('categorias_produto').select('id, nome').eq('ativo', true)
+        supabase.from('categorias_produto').select('id, nome').eq('ativo', true),
+        supabase.from('configuracoes_sistema').select('configuracoes').eq('modulo', 'precificacao').single()
       ]);
 
       // Mapear dados complementares
@@ -84,43 +86,77 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
         });
       }
 
-      const precosMap = new Map();
+      // Mapear preços personalizados por cliente e categoria
+      const precosPersonalizadosMap = new Map<string, Map<number, { categoria: string; preco: number }>>();
       if (precosResult.status === 'fulfilled' && precosResult.value.data) {
         precosResult.value.data.forEach((preco: any) => {
-          if (!precosMap.has(preco.cliente_id)) {
-            precosMap.set(preco.cliente_id, []);
+          if (!precosPersonalizadosMap.has(preco.cliente_id)) {
+            precosPersonalizadosMap.set(preco.cliente_id, new Map());
           }
-          precosMap.get(preco.cliente_id).push({
+          const clientePrecos = precosPersonalizadosMap.get(preco.cliente_id)!;
+          clientePrecos.set(preco.categoria_id, {
             categoria: preco.categorias_produto?.nome || 'Sem categoria',
             preco: preco.preco_unitario || 0
           });
         });
       }
 
-      // Preço padrão (Revenda Padrão) para clientes sem preço personalizado
-      const categoriasPadrao: Array<{ nome: string; precoPadrao: number }> = [];
+      // Mapear categorias por ID
+      const categoriasMap = new Map<number, string>();
       if (categoriasResult.status === 'fulfilled' && categoriasResult.value.data) {
         categoriasResult.value.data.forEach((cat: any) => {
-          categoriasPadrao.push({
-            nome: cat.nome,
-            precoPadrao: 4.90 // Preço padrão fixo
-          });
+          categoriasMap.set(cat.id, cat.nome);
         });
       }
+
+      // Buscar preços padrão das configurações
+      const precosPadrao: Record<string, number> = {};
+      if (configResult.status === 'fulfilled' && configResult.value.data?.configuracoes) {
+        const config = configResult.value.data.configuracoes as any;
+        if (config.precos_padrao) {
+          Object.assign(precosPadrao, config.precos_padrao);
+        }
+      }
+      
+      // Fallback: preço padrão genérico se não estiver nas configurações
+      const precoPadraoGenerico = 4.90;
 
       // Normalizar e mapear entregas
       const entregasProcessadas: EntregaOrganizada[] = agendamentos.map((ag: any, index: number) => {
         const cliente = ag.clientes;
         const representanteNome = representantesMap.get(cliente?.representante_id) || 'Sem representante';
-        let precosCliente = precosMap.get(ag.cliente_id) || [];
+        
+        // Buscar categorias habilitadas do cliente
+        const categoriasHabilitadas: number[] = Array.isArray(cliente?.categorias_habilitadas) 
+          ? cliente.categorias_habilitadas 
+          : [];
 
-        // Se não tem preço personalizado, usar preço padrão
-        if (precosCliente.length === 0 && categoriasPadrao.length > 0) {
-          precosCliente = categoriasPadrao.map(cat => ({
-            categoria: cat.nome,
-            preco: cat.precoPadrao
-          }));
-        }
+        // Construir array de preços baseado nas categorias habilitadas
+        const precosCliente: Array<{ categoria: string; preco: number }> = [];
+        const precosPersonalizados = precosPersonalizadosMap.get(ag.cliente_id);
+
+        categoriasHabilitadas.forEach((categoriaId: number) => {
+          const nomeCategoria = categoriasMap.get(categoriaId);
+          if (!nomeCategoria) return;
+
+          // Verificar se tem preço personalizado
+          const precoPersonalizado = precosPersonalizados?.get(categoriaId);
+          
+          if (precoPersonalizado) {
+            // Usar preço personalizado
+            precosCliente.push({
+              categoria: precoPersonalizado.categoria,
+              preco: precoPersonalizado.preco
+            });
+          } else {
+            // Usar preço padrão da categoria (das configurações ou genérico)
+            const precoPadrao = precosPadrao[nomeCategoria] || precoPadraoGenerico;
+            precosCliente.push({
+              categoria: nomeCategoria,
+              preco: precoPadrao
+            });
+          }
+        });
 
         return {
           id: ag.id,
