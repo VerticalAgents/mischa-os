@@ -1,10 +1,11 @@
 export type LeadStatus = 
-  | 'Visitados' 
-  | 'EfetivadosImediato' 
-  | 'ContatosCapturados' 
-  | 'ChamadosWhatsApp' 
-  | 'RespostaWhatsApp' 
-  | 'EfetivadosWhatsApp' 
+  | 'Cadastrado'
+  | 'Visitados'
+  | 'EfetivadosImediato'
+  | 'ContatosCapturados'
+  | 'ChamadosWhatsApp'
+  | 'RespostaWhatsApp'
+  | 'EfetivadosWhatsApp'
   | 'Perdidos';
 
 export interface Lead {
@@ -44,6 +45,7 @@ export interface Lead {
 }
 
 export const STATUS_LABELS: Record<LeadStatus, string> = {
+  'Cadastrado': 'Cadastrado',
   'Visitados': 'Clientes Visitados',
   'EfetivadosImediato': 'Efetivados na Hora',
   'ContatosCapturados': 'Contatos Capturados',
@@ -54,6 +56,7 @@ export const STATUS_LABELS: Record<LeadStatus, string> = {
 };
 
 export const STATUS_COLORS: Record<LeadStatus, string> = {
+  'Cadastrado': 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400',
   'Visitados': 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
   'EfetivadosImediato': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
   'ContatosCapturados': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
