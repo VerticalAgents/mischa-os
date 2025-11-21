@@ -14,6 +14,7 @@ interface EntregaOrganizada {
   tipoCobranca: string;
   formaPagamento: string;
   emiteNotaFiscal: boolean;
+  linkGoogleMaps?: string;
   precos: { categoria: string; preco: number }[];
   observacao: string;
   selecionada: boolean;
@@ -53,7 +54,8 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
             forma_pagamento,
             emite_nota_fiscal,
             representante_id,
-            categorias_habilitadas
+            categorias_habilitadas,
+            link_google_maps
           )
         `)
         .eq('data_proxima_reposicao', dataFiltro)
@@ -172,6 +174,7 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
           tipoCobranca: normalizarTipoCobranca(cliente?.tipo_cobranca),
           formaPagamento: normalizarFormaPagamento(cliente?.forma_pagamento),
           emiteNotaFiscal: cliente?.emite_nota_fiscal ?? false,
+          linkGoogleMaps: cliente?.link_google_maps || undefined,
           precos: precosCliente,
           observacao: '',
           selecionada: false,
@@ -255,7 +258,11 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
       const partes: string[] = [];
       
       partes.push(`${index + 1}. ${entrega.clienteNome}`);
-      partes.push(`📍 ${entrega.endereco}`);
+      partes.push(`${entrega.endereco}`);
+      
+      if (entrega.linkGoogleMaps) {
+        partes.push(`📍 ${entrega.linkGoogleMaps}`);
+      }
       
       if (entrega.telefone) {
         partes.push(`📞 ${entrega.telefone}`);
@@ -264,14 +271,13 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
       partes.push(`📦 Quantidade: ${entrega.quantidade}`);
       partes.push(`💰 ${entrega.tipoCobranca} - ${entrega.formaPagamento}`);
       
-      if (entrega.emiteNotaFiscal) {
-        partes.push(`📄 Emite NF`);
-      }
+      const textoNF = entrega.emiteNotaFiscal ? 'Exige NF na entrega' : 'Sem NF';
+      partes.push(`📄 ${textoNF}`);
       
       if (entrega.precos.length > 0) {
         partes.push(`💵 Preços:`);
         entrega.precos.forEach(p => {
-          partes.push(`   • ${p.categoria}: R$ ${p.preco.toFixed(2)}`);
+          partes.push(`• ${p.categoria}: R$ ${p.preco.toFixed(2)}`);
         });
       }
       
