@@ -52,7 +52,8 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
             tipo_cobranca,
             forma_pagamento,
             emite_nota_fiscal,
-            representante_id
+            representante_id,
+            categorias_habilitadas
           )
         `)
         .eq('data_proxima_reposicao', dataFiltro)
@@ -109,17 +110,14 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
         });
       }
 
-      // Buscar preços padrão das configurações
+      // Buscar preços padrão das configurações (por categoria ID)
       const precosPadrao: Record<string, number> = {};
       if (configResult.status === 'fulfilled' && configResult.value.data?.configuracoes) {
         const config = configResult.value.data.configuracoes as any;
-        if (config.precos_padrao) {
-          Object.assign(precosPadrao, config.precos_padrao);
+        if (config.precosPorCategoria) {
+          Object.assign(precosPadrao, config.precosPorCategoria);
         }
       }
-      
-      // Fallback: preço padrão genérico se não estiver nas configurações
-      const precoPadraoGenerico = 4.90;
 
       // Normalizar e mapear entregas
       const entregasProcessadas: EntregaOrganizada[] = agendamentos.map((ag: any, index: number) => {
@@ -149,12 +147,16 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
               preco: precoPersonalizado.preco
             });
           } else {
-            // Usar preço padrão da categoria (das configurações ou genérico)
-            const precoPadrao = precosPadrao[nomeCategoria] || precoPadraoGenerico;
-            precosCliente.push({
-              categoria: nomeCategoria,
-              preco: precoPadrao
-            });
+            // Usar preço padrão da categoria (das configurações) - buscar por ID
+            const precoPadrao = precosPadrao[categoriaId.toString()];
+            
+            // Só adiciona se houver preço configurado
+            if (precoPadrao && precoPadrao > 0) {
+              precosCliente.push({
+                categoria: nomeCategoria,
+                preco: precoPadrao
+              });
+            }
           }
         });
 
