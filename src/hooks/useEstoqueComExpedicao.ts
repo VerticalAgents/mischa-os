@@ -7,6 +7,7 @@ import { useQuantidadesExpedicao } from './useQuantidadesExpedicao';
 export interface ProdutoComEstoqueDetalhado {
   id: string;
   nome: string;
+  categoria_id?: number;
   saldoAtual: number;
   quantidadeSeparada: number;
   quantidadeDespachada: number;
@@ -159,6 +160,7 @@ export const useEstoqueComExpedicao = () => {
     return {
       id: produto.id,
       nome: produto.nome,
+      categoria_id: produto.categoria_id,
       saldoAtual,
       quantidadeSeparada,
       quantidadeDespachada,
