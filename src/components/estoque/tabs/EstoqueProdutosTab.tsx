@@ -1,33 +1,81 @@
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Minus, TrendingDown, BarChart3, Search, Settings } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Search, Settings } from "lucide-react";
 import { useEstoqueComExpedicao } from "@/hooks/useEstoqueComExpedicao";
 import { useMovimentacoesEstoqueProdutos } from "@/hooks/useMovimentacoesEstoqueProdutos";
+import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
+import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import MovimentacaoEstoqueModal from "../MovimentacaoEstoqueModal";
 import BaixaEstoqueModal from "../BaixaEstoqueModal";
 import HistoricoMovimentacoes from "../HistoricoMovimentacoes";
 import CalculoEstoqueModal from "../CalculoEstoqueModal";
+import CategoriaEstoqueGroup from "../CategoriaEstoqueGroup";
 
 export default function EstoqueProdutosTab() {
   const { produtos, loading, timeoutError, carregarSaldos, forcarRecarregamento } = useEstoqueComExpedicao();
   const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao } = useMovimentacoesEstoqueProdutos();
+  const { categorias } = useSupabaseCategoriasProduto();
+  const { proporcoes } = useSupabaseProporoesPadrao();
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [mostrarSaldoTotal, setMostrarSaldoTotal] = useState(false);
   const [modalMovimentacao, setModalMovimentacao] = useState(false);
   const [modalBaixa, setModalBaixa] = useState(false);
   const [modalCalculos, setModalCalculos] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState<{id: string, nome: string} | null>(null);
   const [showHistorico, setShowHistorico] = useState<string | null>(null);
 
-  // Filtrar produtos
-  const produtosFiltrados = produtos.filter(produto =>
-    produto.nome.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filtrar produtos por busca
+  const produtosFiltrados = useMemo(() => 
+    produtos.filter(produto =>
+      produto.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+    [produtos, searchTerm]
   );
+
+  // Agrupar produtos por categoria
+  const produtosPorCategoria = useMemo(() => {
+    const grupos: Record<string, typeof produtosFiltrados> = {};
+    
+    produtosFiltrados.forEach(produto => {
+      const categoriaId = produto.categoria_id?.toString() || 'sem-categoria';
+      if (!grupos[categoriaId]) {
+        grupos[categoriaId] = [];
+      }
+      grupos[categoriaId].push(produto);
+    });
+    
+    return grupos;
+  }, [produtosFiltrados]);
+
+  // Ordenar categorias: Revenda Padrão primeiro, depois outras, depois Sem Categoria
+  const categoriasOrdenadas = useMemo(() => {
+    const cats = [...categorias];
+    const revendaPadrao = cats.find(c => c.nome === "Revenda Padrão");
+    const outras = cats.filter(c => c.nome !== "Revenda Padrão");
+    
+    const resultado = [];
+    if (revendaPadrao && produtosPorCategoria[revendaPadrao.id.toString()]) {
+      resultado.push(revendaPadrao);
+    }
+    outras.forEach(cat => {
+      if (produtosPorCategoria[cat.id.toString()]) {
+        resultado.push(cat);
+      }
+    });
+    
+    // Adicionar categoria "Sem Categoria" se houver produtos
+    if (produtosPorCategoria['sem-categoria']) {
+      resultado.push({ id: 0, nome: "Sem Categoria", ativo: true, created_at: "", updated_at: "" });
+    }
+    
+    return resultado;
+  }, [categorias, produtosPorCategoria]);
 
   // Entrada rápida
   const entradaRapida = async (produtoId: string, quantidade: number) => {
@@ -110,7 +158,7 @@ export default function EstoqueProdutosTab() {
   return (
     <div className="space-y-6">
       {/* Filtros e busca */}
-      <div className="flex gap-4">
+      <div className="flex gap-4 items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
@@ -120,105 +168,57 @@ export default function EstoqueProdutosTab() {
             className="pl-10"
           />
         </div>
+        <div className="flex items-center gap-2 border rounded-lg px-4 py-2">
+          <Switch 
+            checked={mostrarSaldoTotal}
+            onCheckedChange={setMostrarSaldoTotal}
+            id="mostrar-saldo-total"
+          />
+          <Label htmlFor="mostrar-saldo-total" className="cursor-pointer whitespace-nowrap text-sm">
+            Mostrar Saldo Total
+          </Label>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setModalCalculos(true)}
+          className="flex items-center gap-2"
+        >
+          <Settings className="h-4 w-4" />
+          Cálculo
+        </Button>
       </div>
 
-      {/* Tabela de produtos */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Controle de Estoque - Produtos</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setModalCalculos(true)}
-              className="flex items-center gap-2"
-            >
-              <Settings className="h-4 w-4" />
-              Cálculo de Estoque
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Produto</TableHead>
-                <TableHead className="text-center">Saldo Atual</TableHead>
-                <TableHead className="text-center">Saldo Real</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {produtosFiltrados.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4">
-                    {searchTerm ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                produtosFiltrados.map((produto) => {
-                  const status = getStatusEstoque(produto.saldoReal);
-                  
-                  return (
-                    <TableRow key={produto.id}>
-                      <TableCell>
-                        <div className="font-medium">{produto.nome}</div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="font-mono font-semibold">{produto.saldoAtual}</span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="font-mono font-semibold">{produto.saldoReal}</span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant={status.variant}>{status.label}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => entradaRapida(produto.id, 1)}
-                            title="Entrada rápida (+1)"
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleModalBaixa(produto)}
-                            disabled={produto.saldoReal <= 0}
-                            title="Baixa de estoque"
-                          >
-                            <TrendingDown className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleModalMovimentacao(produto)}
-                            title="Nova movimentação"
-                          >
-                            Movimentar
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowHistorico(showHistorico === produto.id ? null : produto.id)}
-                            title="Ver histórico"
-                          >
-                            <BarChart3 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Produtos agrupados por categoria */}
+      <div className="space-y-4">
+        {categoriasOrdenadas.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center text-muted-foreground">
+              {searchTerm ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
+            </CardContent>
+          </Card>
+        ) : (
+          categoriasOrdenadas.map((categoria) => {
+            const categoriaKey = categoria.id === 0 ? 'sem-categoria' : categoria.id.toString();
+            const produtosCategoria = produtosPorCategoria[categoriaKey] || [];
+            
+            return (
+              <CategoriaEstoqueGroup
+                key={categoriaKey}
+                categoria={categoria}
+                produtos={produtosCategoria}
+                proporcoes={proporcoes}
+                mostrarSaldoTotal={mostrarSaldoTotal}
+                onEntradaRapida={entradaRapida}
+                onAbrirMovimentacao={handleModalMovimentacao}
+                onAbrirBaixa={handleModalBaixa}
+                onVerHistorico={(produtoId) => setShowHistorico(showHistorico === produtoId ? null : produtoId)}
+                getStatusEstoque={getStatusEstoque}
+              />
+            );
+          })
+        )}
+      </div>
 
       {/* Histórico do produto selecionado */}
       {showHistorico && (
