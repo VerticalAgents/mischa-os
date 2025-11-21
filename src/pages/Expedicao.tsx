@@ -8,6 +8,7 @@ import { Despacho } from "@/components/expedicao/Despacho";
 import { HistoricoEntregas } from "@/components/expedicao/HistoricoEntregas";
 import { RotaEntrega } from "@/components/expedicao/RotaEntrega";
 import DashboardEntregasAnalytics from "@/components/expedicao/DashboardEntregasAnalytics";
+import { OrganizacaoEntregas } from "@/components/expedicao/organizacao/OrganizacaoEntregas";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -83,6 +84,7 @@ export default function Expedicao() {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="separacao">Separação de Pedidos</TabsTrigger>
           <TabsTrigger value="despacho">Despacho de Pedidos</TabsTrigger>
+          <TabsTrigger value="organizacao">Organização</TabsTrigger>
           <TabsTrigger value="rota">Rota de Entrega</TabsTrigger>
           <TabsTrigger value="historico">Histórico de Entregas</TabsTrigger>
         </TabsList>
@@ -127,6 +129,10 @@ export default function Expedicao() {
               </TabsContent>
             </Tabs>
           )}
+        </TabsContent>
+
+        <TabsContent value="organizacao" className="space-y-4" forceMount={activeTab === "organizacao" ? true : undefined}>
+          {activeTab === "organizacao" && <OrganizacaoEntregas />}
         </TabsContent>
         
         <TabsContent value="rota" className="space-y-4" forceMount={activeTab === "rota" ? true : undefined}>
