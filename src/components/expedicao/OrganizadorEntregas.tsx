@@ -5,10 +5,39 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Copy, MapPin, User, AlertTriangle, ArrowUpDown, Check, Bug } from "lucide-react";
+import { Copy, MapPin, User, AlertTriangle, ArrowUpDown, Check, Bug, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { DebugEntregasModal } from "./DebugEntregasModal";
+
+// Funções de normalização de valores do banco
+const normalizarTipoCobranca = (tipo?: string): string => {
+  if (!tipo) return 'À vista';
+  
+  const mapa: Record<string, string> = {
+    'A_VISTA': 'À vista',
+    'CONSIGNADO': 'Consignado',
+    'PRAZO': 'A Prazo',
+    'PARCELADO': 'Parcelado'
+  };
+  
+  return mapa[tipo.toUpperCase()] || tipo;
+};
+
+const normalizarFormaPagamento = (forma?: string): string => {
+  if (!forma) return 'Boleto';
+  
+  const mapa: Record<string, string> = {
+    'PIX': 'PIX',
+    'BOLETO': 'Boleto',
+    'DINHEIRO': 'Dinheiro',
+    'CARTAO_CREDITO': 'Cartão de Crédito',
+    'CARTAO_DEBITO': 'Cartão de Débito',
+    'CARTAO': 'Cartão'
+  };
+  
+  return mapa[forma.toUpperCase()] || forma;
+};
 
 interface EntregaOrganizada {
   id: string;
@@ -34,6 +63,7 @@ interface OrganizadorEntregasProps {
   onOpenChange: (open: boolean) => void;
   entregas: Array<{
     id: string;
+    cliente_id: string;
     cliente_nome: string;
     cliente_endereco?: string;
     link_google_maps?: string;
@@ -47,6 +77,7 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
   const [representantes, setRepresentantes] = useState<Representante[]>([]);
   const [copiado, setCopiado] = useState(false);
   const [debugModalOpen, setDebugModalOpen] = useState(false);
+  const [carregandoDados, setCarregandoDados] = useState(false);
 
   // Carregar representantes
   useEffect(() => {
@@ -71,111 +102,113 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
   useEffect(() => {
     if (open && entregas.length > 0) {
       const carregarDadosCompletos = async () => {
+        setCarregandoDados(true);
         console.log('🔍 Carregando dados completos das entregas:', entregas.length);
-        const entregasComDados: EntregaOrganizada[] = [];
         
-        for (const entrega of entregas) {
-          console.log(`📋 Processando entrega ID: ${entrega.id} - Cliente: ${entrega.cliente_nome}`);
+        try {
+          // ✅ NOVA ABORDAGEM: Uma única query com JOINs
+          const clienteIds = entregas.map(e => e.cliente_id);
           
-          // CORREÇÃO: Buscar dados do cliente separadamente
-          const { data: cliente, error: clienteError } = await supabase
+          // 1. Buscar todos os clientes de uma vez com JOIN para representantes
+          const { data: clientes, error: clientesError } = await supabase
             .from('clientes')
             .select(`
+              id,
               representante_id,
               tipo_cobranca,
               forma_pagamento,
               emite_nota_fiscal,
-              categorias_habilitadas
+              categorias_habilitadas,
+              representantes:representante_id(id, nome)
             `)
-            .eq('id', entrega.id)
-            .maybeSingle();
+            .in('id', clienteIds);
 
-          if (clienteError) {
-            console.error(`❌ Erro ao buscar cliente ${entrega.cliente_nome}:`, clienteError);
+          if (clientesError) {
+            console.error('❌ Erro ao buscar clientes:', clientesError);
+            toast.error('Erro ao carregar dados dos clientes');
+            return;
           }
 
-          // Buscar nome do representante separadamente se existir representante_id
-          let nomeRepresentante = 'Sem representante';
-          if (cliente?.representante_id) {
-            console.log(`🔍 Buscando representante ID: ${cliente.representante_id} para cliente ${entrega.cliente_nome}`);
+          console.log('✅ Clientes carregados:', clientes?.length || 0);
+
+          // 2. Buscar preços de todas as categorias de uma vez
+          const { data: precos, error: precosError } = await supabase
+            .from('precos_categoria_cliente')
+            .select(`
+              cliente_id,
+              categoria_id,
+              preco_unitario,
+              categorias_produto(nome)
+            `)
+            .in('cliente_id', clienteIds);
+
+          if (precosError) {
+            console.warn('⚠️ Erro ao buscar preços:', precosError);
+          }
+
+          console.log('💰 Preços carregados:', precos?.length || 0);
+
+          // 3. Mapear clientes e preços em estruturas rápidas
+          const clientesMap = new Map(
+            (clientes || []).map(c => [c.id, c])
+          );
+
+          const precosMap = new Map<string, Array<{categoria: string, preco: number}>>();
+          (precos || []).forEach(p => {
+            if (!precosMap.has(p.cliente_id)) {
+              precosMap.set(p.cliente_id, []);
+            }
+            precosMap.get(p.cliente_id)!.push({
+              categoria: (p as any).categorias_produto?.nome || `Categoria ${p.categoria_id}`,
+              preco: p.preco_unitario
+            });
+          });
+
+          // 4. Montar entregas organizadas
+          const entregasComDados: EntregaOrganizada[] = entregas.map((entrega, index) => {
+            const cliente = clientesMap.get(entrega.cliente_id);
             
-            const { data: representante, error: repError } = await supabase
-              .from('representantes')
-              .select('nome')
-              .eq('id', cliente.representante_id)
-              .maybeSingle();
-
-            if (repError) {
-              console.error(`❌ Erro ao buscar representante:`, repError);
-            } else if (representante) {
-              nomeRepresentante = representante.nome;
-              console.log(`✅ Representante encontrado: ${nomeRepresentante}`);
-            } else {
-              console.warn(`⚠️ Representante não encontrado para ID: ${cliente.representante_id}`);
+            if (!cliente) {
+              console.warn(`⚠️ Cliente ${entrega.cliente_id} não encontrado`);
             }
-          }
 
-          console.log(`📊 Dados completos do cliente ${entrega.cliente_nome}:`, {
-            representante_id: cliente?.representante_id,
-            representante: nomeRepresentante,
-            tipo_cobranca: cliente?.tipo_cobranca || 'À vista',
-            forma_pagamento: cliente?.forma_pagamento || 'Boleto',
-            emite_nota_fiscal: cliente?.emite_nota_fiscal ?? true,
-            categorias_habilitadas: cliente?.categorias_habilitadas
+            const representante = (cliente as any)?.representantes;
+            const nomeRepresentante = representante?.nome || 'Sem representante';
+            
+            const precosCategorias = precosMap.get(entrega.cliente_id) || [];
+
+            console.log(`✅ Cliente ${entrega.cliente_nome}:`, {
+              tipo_cobranca: cliente?.tipo_cobranca,
+              forma_pagamento: cliente?.forma_pagamento,
+              emite_nota_fiscal: cliente?.emite_nota_fiscal,
+              representante: nomeRepresentante,
+              precos: precosCategorias.length
+            });
+
+            return {
+              id: entrega.id,
+              clienteNome: entrega.cliente_nome,
+              googleMapsLink: entrega.link_google_maps,
+              observacao: "",
+              ordem: index + 1,
+              representante: nomeRepresentante,
+              tipoCobranca: normalizarTipoCobranca(cliente?.tipo_cobranca),
+              formaPagamento: normalizarFormaPagamento(cliente?.forma_pagamento),
+              emiteNotaFiscal: cliente?.emite_nota_fiscal ?? true,
+              precosCategorias,
+              selecionada: true
+            };
           });
-
-          // Buscar preços por categoria se existirem categorias habilitadas
-          let precosCategorias: Array<{categoria: string, preco: number}> = [];
-          if (cliente?.categorias_habilitadas && Array.isArray(cliente.categorias_habilitadas)) {
-            // Convert Json[] to number[] safely
-            const categoriasIds = cliente.categorias_habilitadas
-              .map(cat => typeof cat === 'number' ? cat : parseInt(String(cat)))
-              .filter(id => !isNaN(id));
-
-            console.log(`💰 Buscando preços para categorias [${categoriasIds.join(', ')}] do cliente ${entrega.cliente_nome}`);
-
-            if (categoriasIds.length > 0) {
-              const { data: precos, error: precosError } = await supabase
-                .from('precos_categoria_cliente')
-                .select(`
-                  categoria_id,
-                  preco_unitario,
-                  categorias_produto(nome)
-                `)
-                .eq('cliente_id', entrega.id)
-                .in('categoria_id', categoriasIds);
-
-              if (precosError) {
-                console.error(`❌ Erro ao buscar preços do cliente ${entrega.cliente_nome}:`, precosError);
-              }
-
-              if (precos) {
-                precosCategorias = precos.map(p => ({
-                  categoria: (p as any).categorias_produto?.nome || `Categoria ${p.categoria_id}`,
-                  preco: p.preco_unitario
-                }));
-                console.log(`💲 Preços encontrados para ${entrega.cliente_nome}:`, precosCategorias);
-              }
-            }
-          }
-
-          entregasComDados.push({
-            id: entrega.id,
-            clienteNome: entrega.cliente_nome,
-            googleMapsLink: entrega.link_google_maps,
-            observacao: "",
-            ordem: entregasComDados.length + 1,
-            representante: nomeRepresentante,
-            tipoCobranca: cliente?.tipo_cobranca || 'À vista',
-            formaPagamento: cliente?.forma_pagamento || 'Boleto',
-            emiteNotaFiscal: cliente?.emite_nota_fiscal ?? true,
-            precosCategorias,
-            selecionada: true // Todas as entregas começam selecionadas
-          });
+          
+          console.log('✅ Entregas processadas:', entregasComDados.length);
+          setEntregasOrganizadas(entregasComDados);
+          
+        } catch (error) {
+          console.error('❌ Erro ao carregar dados:', error);
+          toast.error('Erro ao carregar dados das entregas');
+        } finally {
+          setCarregandoDados(false);
         }
-        
-        console.log('✅ Entregas processadas:', entregasComDados.length);
-        setEntregasOrganizadas(entregasComDados);
       };
 
       carregarDadosCompletos();
@@ -374,6 +407,12 @@ export const OrganizadorEntregas = ({ open, onOpenChange, entregas }: Organizado
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <User className="h-5 w-5" />
                   Lista de Entregas ({entregasOrganizadas.length} total | {entregasSelecionadas.length} selecionadas)
+                  {carregandoDados && (
+                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Carregando...
+                    </span>
+                  )}
                 </h3>
               </div>
               

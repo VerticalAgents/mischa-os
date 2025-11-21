@@ -322,6 +322,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
           onOpenChange={setOrganizadorAberto}
           entregas={pedidosFiltrados.map(p => ({
             id: p.id,
+            cliente_id: p.cliente_id,
             cliente_nome: p.cliente_nome,
             cliente_endereco: p.cliente_endereco,
             link_google_maps: (p as any).link_google_maps
