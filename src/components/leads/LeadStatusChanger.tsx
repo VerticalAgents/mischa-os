@@ -28,6 +28,13 @@ export default function LeadStatusChanger({ onStatusChange, currentStatus }: Lea
         <DropdownMenuSeparator />
         
         <DropdownMenuItem 
+          onClick={() => onStatusChange('Cadastrado')}
+          disabled={currentStatus === 'Cadastrado'}
+        >
+          📝 Marcar como Cadastrado
+        </DropdownMenuItem>
+        
+        <DropdownMenuItem 
           onClick={() => onStatusChange('Visitados')}
           disabled={currentStatus === 'Visitados'}
         >

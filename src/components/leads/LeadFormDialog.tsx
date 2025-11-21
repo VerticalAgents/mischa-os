@@ -30,7 +30,7 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
     contatoTelefone: '',
     contatoEmail: '',
     origem: '',
-    status: 'Visitados' as LeadStatus,
+    status: 'Cadastrado' as LeadStatus,
     representanteId: undefined as number | undefined,
     categoriaEstabelecimentoId: undefined as number | undefined,
     quantidadeEstimada: 0,
@@ -76,7 +76,7 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
         contatoTelefone: '',
         contatoEmail: '',
         origem: '',
-        status: 'Visitados',
+        status: 'Cadastrado',
         representanteId: undefined,
         categoriaEstabelecimentoId: undefined,
         quantidadeEstimada: 0,
@@ -236,6 +236,7 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="Cadastrado">Cadastrado</SelectItem>
                       <SelectItem value="Visitados">Visitados</SelectItem>
                       <SelectItem value="EfetivadosImediato">Efetivados na Hora</SelectItem>
                       <SelectItem value="ContatosCapturados">Contatos Capturados</SelectItem>
