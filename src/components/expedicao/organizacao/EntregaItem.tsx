@@ -73,7 +73,7 @@ export const EntregaItem = ({
           <div className="space-y-2 text-sm">
             <div className="flex items-start gap-1.5 text-muted-foreground">
               <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span>{entrega.endereco}</span>
+              <span className="text-left">{entrega.endereco}</span>
             </div>
 
             {entrega.telefone && (
@@ -93,15 +93,13 @@ export const EntregaItem = ({
               <span>{formatPaymentText(entrega.tipoCobranca)} - {formatPaymentText(entrega.formaPagamento)}</span>
             </div>
 
-            {entrega.precos.length > 0 && (
-              <div className="space-y-1">
-                {entrega.precos.map((p, i) => (
-                  <div key={i} className="text-sm text-muted-foreground">
-                    {p.categoria}: R$ {p.preco.toFixed(2)}
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="space-y-1">
+              {entrega.precos.map((p, i) => (
+                <div key={i} className="text-sm text-muted-foreground text-left">
+                  {p.categoria}: R$ {p.preco.toFixed(2)}
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-2">

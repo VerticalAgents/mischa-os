@@ -66,13 +66,14 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
       }
 
       // Queries complementares em paralelo (não bloqueantes)
-      const [representantesResult, precosResult] = await Promise.allSettled([
+      const [representantesResult, precosResult, categoriasResult] = await Promise.allSettled([
         supabase.from('representantes').select('id, nome').eq('ativo', true),
         supabase.from('precos_categoria_cliente').select(`
           cliente_id,
           preco_unitario,
           categorias_produto!inner (nome)
-        `)
+        `),
+        supabase.from('categorias_produto').select('id, nome').eq('ativo', true)
       ]);
 
       // Mapear dados complementares
@@ -96,11 +97,30 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
         });
       }
 
+      // Preço padrão (Revenda Padrão) para clientes sem preço personalizado
+      const categoriasPadrao: Array<{ nome: string; precoPadrao: number }> = [];
+      if (categoriasResult.status === 'fulfilled' && categoriasResult.value.data) {
+        categoriasResult.value.data.forEach((cat: any) => {
+          categoriasPadrao.push({
+            nome: cat.nome,
+            precoPadrao: 4.90 // Preço padrão fixo
+          });
+        });
+      }
+
       // Normalizar e mapear entregas
       const entregasProcessadas: EntregaOrganizada[] = agendamentos.map((ag: any, index: number) => {
         const cliente = ag.clientes;
         const representanteNome = representantesMap.get(cliente?.representante_id) || 'Sem representante';
-        const precosCliente = precosMap.get(ag.cliente_id) || [];
+        let precosCliente = precosMap.get(ag.cliente_id) || [];
+
+        // Se não tem preço personalizado, usar preço padrão
+        if (precosCliente.length === 0 && categoriasPadrao.length > 0) {
+          precosCliente = categoriasPadrao.map(cat => ({
+            categoria: cat.nome,
+            preco: cat.precoPadrao
+          }));
+        }
 
         return {
           id: ag.id,
