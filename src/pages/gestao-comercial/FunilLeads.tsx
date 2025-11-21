@@ -1,210 +1,36 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, UserPlus, Target, TrendingUp, AlertCircle, Building, HelpingHand, UserCircle, Users } from "lucide-react";
+import { Plus, Edit, Trash2, UserPlus, Target, TrendingUp, AlertCircle, MessageCircle } from "lucide-react";
+import { Lead, LeadStatus, STATUS_LABELS, STATUS_COLORS } from "@/types/lead";
+import { useSupabaseLeads } from "@/hooks/useSupabaseLeads";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
-import { useNavigate, useLocation } from "react-router-dom";
-
-interface Lead {
-  id: string;
-  nome: string;
-  origem: string;
-  status: 'Novos' | 'Contatados' | 'Em Proposta' | 'Fechados' | 'Perdidos';
-  nomeResponsavel: string;
-  contatoResponsavel: string;
-  representanteId?: number;
-  observacoes?: string;
-  dataContato?: Date;
-  dataCriacao: Date;
-}
-
-interface Objecao {
-  id: string;
-  nome: string;
-  descricao?: string;
-  dataCriacao: Date;
-}
-
-const origens = [
-  'Site',
-  'Indicação',
-  'Telefone',
-  'Email',
-  'Redes Sociais',
-  'Eventos',
-  'Prospecção Ativa',
-  'Outros'
-];
+import LeadFormDialog from "@/components/leads/LeadFormDialog";
+import LeadStatusChanger from "@/components/leads/LeadStatusChanger";
+import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
+import { convertLeadToCliente } from "@/utils/leadToClienteConverter";
+import { Cliente } from "@/types";
+import { toast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 export default function FunilLeads() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { leads, loading, carregarLeads, adicionarLead, atualizarLead, deletarLead, converterLeadEmCliente } = useSupabaseLeads();
   const { representantes, carregarRepresentantes } = useSupabaseRepresentantes();
   
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [objecoes, setObjecoes] = useState<Objecao[]>([]);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isObjecaoDialogOpen, setIsObjecaoDialogOpen] = useState(false);
+  const [isLeadDialogOpen, setIsLeadDialogOpen] = useState(false);
+  const [isClienteDialogOpen, setIsClienteDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const [editingObjecao, setEditingObjecao] = useState<Objecao | null>(null);
-  
-  // Form states
-  const [formData, setFormData] = useState({
-    nome: '',
-    origem: '',
-    status: 'Novos' as Lead['status'],
-    nomeResponsavel: '',
-    contatoResponsavel: '',
-    representanteId: '',
-    observacoes: ''
-  });
-
-  const [objecaoFormData, setObjecaoFormData] = useState({
-    nome: '',
-    descricao: ''
-  });
-
-  // Determine active tab based on current route
-  const getActiveTab = () => {
-    const path = location.pathname;
-    if (path.includes('funil-leads')) return 'funil-leads';
-    if (path.includes('distribuidores')) return 'distribuidores';
-    if (path.includes('parceiros')) return 'parceiros';
-    return 'representantes';
-  };
-
-  const [activeTab, setActiveTab] = useState(getActiveTab());
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    navigate(`/gestao-comercial/${value}`);
-  };
+  const [clientePreenchido, setClientePreenchido] = useState<Partial<Cliente> | null>(null);
+  const [leadEmConversao, setLeadEmConversao] = useState<Lead | null>(null);
+  const [filtroStatus, setFiltroStatus] = useState<LeadStatus | 'todos'>('todos');
 
   useEffect(() => {
+    carregarLeads();
     carregarRepresentantes();
-  }, [carregarRepresentantes]);
-
-  const resetForm = () => {
-    setFormData({
-      nome: '',
-      origem: '',
-      status: 'Novos',
-      nomeResponsavel: '',
-      contatoResponsavel: '',
-      representanteId: '',
-      observacoes: ''
-    });
-    setEditingLead(null);
-  };
-
-  const resetObjecaoForm = () => {
-    setObjecaoFormData({
-      nome: '',
-      descricao: ''
-    });
-    setEditingObjecao(null);
-  };
-
-  const handleSaveLead = () => {
-    if (!formData.nome || !formData.origem || !formData.nomeResponsavel || !formData.contatoResponsavel) {
-      return;
-    }
-
-    const leadData: Lead = {
-      id: editingLead?.id || Date.now().toString(),
-      nome: formData.nome,
-      origem: formData.origem,
-      status: formData.status,
-      nomeResponsavel: formData.nomeResponsavel,
-      contatoResponsavel: formData.contatoResponsavel,
-      representanteId: formData.representanteId ? Number(formData.representanteId) : undefined,
-      observacoes: formData.observacoes || undefined,
-      dataContato: new Date(),
-      dataCriacao: editingLead?.dataCriacao || new Date()
-    };
-
-    if (editingLead) {
-      setLeads(leads.map(lead => lead.id === editingLead.id ? leadData : lead));
-    } else {
-      setLeads([...leads, leadData]);
-    }
-
-    setIsDialogOpen(false);
-    resetForm();
-  };
-
-  const handleSaveObjecao = () => {
-    if (!objecaoFormData.nome) {
-      return;
-    }
-
-    const objecaoData: Objecao = {
-      id: editingObjecao?.id || Date.now().toString(),
-      nome: objecaoFormData.nome,
-      descricao: objecaoFormData.descricao || undefined,
-      dataCriacao: editingObjecao?.dataCriacao || new Date()
-    };
-
-    if (editingObjecao) {
-      setObjecoes(objecoes.map(obj => obj.id === editingObjecao.id ? objecaoData : obj));
-    } else {
-      setObjecoes([...objecoes, objecaoData]);
-    }
-
-    setIsObjecaoDialogOpen(false);
-    resetObjecaoForm();
-  };
-
-  const handleEditLead = (lead: Lead) => {
-    setEditingLead(lead);
-    setFormData({
-      nome: lead.nome,
-      origem: lead.origem,
-      status: lead.status,
-      nomeResponsavel: lead.nomeResponsavel,
-      contatoResponsavel: lead.contatoResponsavel,
-      representanteId: lead.representanteId?.toString() || '',
-      observacoes: lead.observacoes || ''
-    });
-    setIsDialogOpen(true);
-  };
-
-  const handleEditObjecao = (objecao: Objecao) => {
-    setEditingObjecao(objecao);
-    setObjecaoFormData({
-      nome: objecao.nome,
-      descricao: objecao.descricao || ''
-    });
-    setIsObjecaoDialogOpen(true);
-  };
-
-  const handleDeleteLead = (id: string) => {
-    setLeads(leads.filter(lead => lead.id !== id));
-  };
-
-  const handleDeleteObjecao = (id: string) => {
-    setObjecoes(objecoes.filter(obj => obj.id !== id));
-  };
-
-  const getStatusColor = (status: Lead['status']) => {
-    switch (status) {
-      case 'Novos': return 'bg-blue-100 text-blue-800';
-      case 'Contatados': return 'bg-yellow-100 text-yellow-800';
-      case 'Em Proposta': return 'bg-purple-100 text-purple-800';
-      case 'Fechados': return 'bg-green-100 text-green-800';
-      case 'Perdidos': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  }, [carregarLeads, carregarRepresentantes]);
 
   const getRepresentanteNome = (id?: number) => {
     if (!id) return '-';
@@ -212,56 +38,105 @@ export default function FunilLeads() {
     return rep ? rep.nome : 'Representante não encontrado';
   };
 
-  // Calculate statistics
-  const stats = {
-    total: leads.length,
-    novos: leads.filter(l => l.status === 'Novos').length,
-    contatados: leads.filter(l => l.status === 'Contatados').length,
-    emProposta: leads.filter(l => l.status === 'Em Proposta').length,
-    fechados: leads.filter(l => l.status === 'Fechados').length,
-    perdidos: leads.filter(l => l.status === 'Perdidos').length,
-    taxaConversao: leads.length > 0 ? (leads.filter(l => l.status === 'Fechados').length / leads.length) * 100 : 0
+  const handleSaveLead = async (leadData: Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (editingLead) {
+      await atualizarLead(editingLead.id, leadData);
+    } else {
+      await adicionarLead(leadData);
+    }
+    setEditingLead(null);
   };
+
+  const handleEditLead = (lead: Lead) => {
+    setEditingLead(lead);
+    setIsLeadDialogOpen(true);
+  };
+
+  const handleDeleteLead = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este lead?')) {
+      await deletarLead(id);
+    }
+  };
+
+  const handleMudarStatus = async (lead: Lead, novoStatus: LeadStatus) => {
+    await atualizarLead(lead.id, { status: novoStatus });
+
+    // Se movido para estágios de efetivação, abrir modal de cliente
+    if (novoStatus === 'EfetivadosImediato' || novoStatus === 'EfetivadosWhatsApp') {
+      const dadosCliente = convertLeadToCliente(lead);
+      setClientePreenchido(dadosCliente);
+      setLeadEmConversao(lead);
+      setIsClienteDialogOpen(true);
+    }
+  };
+
+  const handleClienteConvertidoSucesso = async () => {
+    if (leadEmConversao) {
+      toast({
+        title: "Lead convertido em cliente!",
+        description: `${leadEmConversao.nome} foi cadastrado como cliente com sucesso.`
+      });
+      
+      setLeadEmConversao(null);
+      setClientePreenchido(null);
+      setIsClienteDialogOpen(false);
+      await carregarLeads();
+    }
+  };
+
+  const handleWhatsApp = (lead: Lead) => {
+    const telefone = lead.contatoTelefone?.replace(/\D/g, '');
+    const mensagem = encodeURIComponent(
+      `Olá ${lead.contatoNome || lead.nome}, tudo bem? Gostaria de conversar sobre nossa parceria!`
+    );
+    window.open(`https://wa.me/55${telefone}?text=${mensagem}`, '_blank');
+  };
+
+  // Filtrar leads
+  const leadsFiltrados = useMemo(() => {
+    if (filtroStatus === 'todos') return leads;
+    return leads.filter(lead => lead.status === filtroStatus);
+  }, [leads, filtroStatus]);
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const total = leads.length;
+    const visitados = leads.filter(l => l.status === 'Visitados').length;
+    const efetivadosImediato = leads.filter(l => l.status === 'EfetivadosImediato').length;
+    const contatosCapturados = leads.filter(l => l.status === 'ContatosCapturados').length;
+    const chamadosWhatsApp = leads.filter(l => l.status === 'ChamadosWhatsApp').length;
+    const respostaWhatsApp = leads.filter(l => l.status === 'RespostaWhatsApp').length;
+    const efetivadosWhatsApp = leads.filter(l => l.status === 'EfetivadosWhatsApp').length;
+    const perdidos = leads.filter(l => l.status === 'Perdidos').length;
+    const totalEfetivados = efetivadosImediato + efetivadosWhatsApp;
+    const taxaConversao = total > 0 ? (totalEfetivados / total) * 100 : 0;
+
+    return {
+      total,
+      visitados,
+      efetivadosImediato,
+      contatosCapturados,
+      chamadosWhatsApp,
+      respostaWhatsApp,
+      efetivadosWhatsApp,
+      perdidos,
+      taxaConversao
+    };
+  }, [leads]);
 
   return (
     <div className="space-y-6">
-      {/* Commercial Management Tabs - Always visible at the top */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container mx-auto py-4">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 max-w-2xl">
-              <TabsTrigger value="representantes" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                <span className="hidden sm:inline">Representantes</span>
-              </TabsTrigger>
-              <TabsTrigger value="funil-leads" className="flex items-center gap-2">
-                <UserCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">Funil de Leads</span>
-              </TabsTrigger>
-              <TabsTrigger value="distribuidores" className="flex items-center gap-2">
-                <Building className="h-4 w-4" />
-                <span className="hidden sm:inline">Distribuidores</span>
-              </TabsTrigger>
-              <TabsTrigger value="parceiros" className="flex items-center gap-2">
-                <HelpingHand className="h-4 w-4" />
-                <span className="hidden sm:inline">Parceiros</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </div>
-
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold">Funil de Leads</h1>
-        <p className="text-muted-foreground">Gerencie leads, objeções e acompanhe o funil de vendas</p>
+        <p className="text-muted-foreground">Gerencie leads, acompanhe visitas e conversões</p>
       </div>
 
       {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Leads</CardTitle>
+            <CardTitle className="text-sm font-medium">Total</CardTitle>
             <UserPlus className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -271,51 +146,51 @@ export default function FunilLeads() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Novos</CardTitle>
+            <CardTitle className="text-sm font-medium">Visitados</CardTitle>
             <AlertCircle className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.novos}</div>
+            <div className="text-2xl font-bold text-blue-600">{stats.visitados}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Contatados</CardTitle>
-            <Target className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.contatados}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Em Proposta</CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{stats.emProposta}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fechados</CardTitle>
+            <CardTitle className="text-sm font-medium">Efetivados Imediato</CardTitle>
             <Target className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.fechados}</div>
+            <div className="text-2xl font-bold text-green-600">{stats.efetivadosImediato}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Perdidos</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-500" />
+            <CardTitle className="text-sm font-medium">Contatos</CardTitle>
+            <UserPlus className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.perdidos}</div>
+            <div className="text-2xl font-bold text-yellow-600">{stats.contatosCapturados}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Chamados</CardTitle>
+            <MessageCircle className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.chamadosWhatsApp}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Efetivados Pós-WPP</CardTitle>
+            <Target className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600">{stats.efetivadosWhatsApp}</div>
           </CardContent>
         </Card>
 
@@ -330,282 +205,131 @@ export default function FunilLeads() {
         </Card>
       </div>
 
-      {/* Main Content Tabs */}
-      <Tabs defaultValue="leads" className="w-full">
-        <TabsList>
-          <TabsTrigger value="leads">Gerenciar Leads</TabsTrigger>
-          <TabsTrigger value="objecoes">Objeções</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="leads" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Lista de Leads</CardTitle>
-                  <CardDescription>Gerencie todos os leads do funil de vendas</CardDescription>
-                </div>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button onClick={resetForm}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Novo Lead
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                      <DialogTitle>{editingLead ? 'Editar Lead' : 'Novo Lead'}</DialogTitle>
-                      <DialogDescription>
-                        Preencha as informações do lead abaixo.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="nome" className="text-right">Nome</Label>
-                        <Input
-                          id="nome"
-                          value={formData.nome}
-                          onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                          className="col-span-3"
-                          placeholder="Nome do lead"
+      {/* Main Content */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Pipeline de Leads</CardTitle>
+              <CardDescription>Gerencie o progresso dos leads no funil</CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Select value={filtroStatus} onValueChange={(value: LeadStatus | 'todos') => setFiltroStatus(value)}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os status</SelectItem>
+                  <SelectItem value="Visitados">Visitados</SelectItem>
+                  <SelectItem value="EfetivadosImediato">Efetivados na Hora</SelectItem>
+                  <SelectItem value="ContatosCapturados">Contatos Capturados</SelectItem>
+                  <SelectItem value="ChamadosWhatsApp">Chamados WhatsApp</SelectItem>
+                  <SelectItem value="RespostaWhatsApp">Responderam</SelectItem>
+                  <SelectItem value="EfetivadosWhatsApp">Efetivados WhatsApp</SelectItem>
+                  <SelectItem value="Perdidos">Perdidos</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={() => { setEditingLead(null); setIsLeadDialogOpen(true); }}>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Lead
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Lead</TableHead>
+                <TableHead>Contato</TableHead>
+                <TableHead>Telefone</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Representante</TableHead>
+                <TableHead>Data Visita</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center">
+                    Carregando...
+                  </TableCell>
+                </TableRow>
+              ) : leadsFiltrados.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center">
+                    Nenhum lead encontrado
+                  </TableCell>
+                </TableRow>
+              ) : (
+                leadsFiltrados.map((lead) => (
+                  <TableRow key={lead.id}>
+                    <TableCell className="font-medium">{lead.nome}</TableCell>
+                    <TableCell>{lead.contatoNome || '-'}</TableCell>
+                    <TableCell>{lead.contatoTelefone || '-'}</TableCell>
+                    <TableCell>
+                      <Badge className={STATUS_COLORS[lead.status]}>
+                        {STATUS_LABELS[lead.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{getRepresentanteNome(lead.representanteId)}</TableCell>
+                    <TableCell>
+                      {lead.dataVisita ? format(new Date(lead.dataVisita), 'dd/MM/yyyy HH:mm') : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {lead.contatoTelefone && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleWhatsApp(lead)}
+                            title="Enviar WhatsApp"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditLead(lead)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <LeadStatusChanger
+                          currentStatus={lead.status}
+                          onStatusChange={(novoStatus) => handleMudarStatus(lead, novoStatus)}
                         />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteLead(lead.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="origem" className="text-right">Origem</Label>
-                        <Select value={formData.origem} onValueChange={(value) => setFormData({...formData, origem: value})}>
-                          <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="Selecione a origem" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {origens.map((origem) => (
-                              <SelectItem key={origem} value={origem}>{origem}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="status" className="text-right">Status</Label>
-                        <Select value={formData.status} onValueChange={(value: Lead['status']) => setFormData({...formData, status: value})}>
-                          <SelectTrigger className="col-span-3">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Novos">Novos</SelectItem>
-                            <SelectItem value="Contatados">Contatados</SelectItem>
-                            <SelectItem value="Em Proposta">Em Proposta</SelectItem>
-                            <SelectItem value="Fechados">Fechados</SelectItem>
-                            <SelectItem value="Perdidos">Perdidos</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="responsavel" className="text-right">Responsável</Label>
-                        <Input
-                          id="responsavel"
-                          value={formData.nomeResponsavel}
-                          onChange={(e) => setFormData({...formData, nomeResponsavel: e.target.value})}
-                          className="col-span-3"
-                          placeholder="Nome do responsável"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="contato" className="text-right">Contato</Label>
-                        <Input
-                          id="contato"
-                          value={formData.contatoResponsavel}
-                          onChange={(e) => setFormData({...formData, contatoResponsavel: e.target.value})}
-                          className="col-span-3"
-                          placeholder="Email ou telefone"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="representante" className="text-right">Representante</Label>
-                        <Select value={formData.representanteId} onValueChange={(value) => setFormData({...formData, representanteId: value})}>
-                          <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="Selecione um representante" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">Nenhum</SelectItem>
-                            {representantes.map((rep) => (
-                              <SelectItem key={rep.id} value={rep.id.toString()}>{rep.nome}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="observacoes" className="text-right">Observações</Label>
-                        <Textarea
-                          id="observacoes"
-                          value={formData.observacoes}
-                          onChange={(e) => setFormData({...formData, observacoes: e.target.value})}
-                          className="col-span-3"
-                          placeholder="Observações adicionais"
-                          rows={3}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit" onClick={handleSaveLead}>
-                        {editingLead ? 'Atualizar' : 'Criar'} Lead
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Lead</TableHead>
-                    <TableHead>Origem</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Responsável</TableHead>
-                    <TableHead>Representante</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leads.map((lead) => (
-                    <TableRow key={lead.id}>
-                      <TableCell className="font-medium">
-                        <div>
-                          <div>{lead.nome}</div>
-                          <div className="text-sm text-muted-foreground">{lead.contatoResponsavel}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{lead.origem}</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(lead.status)}>
-                          {lead.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{lead.nomeResponsavel}</TableCell>
-                      <TableCell>{getRepresentanteNome(lead.representanteId)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
-                          <Button variant="ghost" size="sm" onClick={() => handleEditLead(lead)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDeleteLead(lead.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {leads.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <UserPlus className="mx-auto h-12 w-12 mb-4" />
-                  <p>Nenhum lead cadastrado ainda</p>
-                  <p className="text-sm">Clique em "Novo Lead" para começar</p>
-                </div>
+                ))
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="objecoes" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Objeções</CardTitle>
-                  <CardDescription>Cadastre e gerencie possíveis objeções de vendas</CardDescription>
-                </div>
-                <Dialog open={isObjecaoDialogOpen} onOpenChange={setIsObjecaoDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button onClick={resetObjecaoForm}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Nova Objeção
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                      <DialogTitle>{editingObjecao ? 'Editar Objeção' : 'Nova Objeção'}</DialogTitle>
-                      <DialogDescription>
-                        Cadastre uma nova objeção que pode surgir durante o processo de vendas.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="nomeObjecao" className="text-right">Nome</Label>
-                        <Input
-                          id="nomeObjecao"
-                          value={objecaoFormData.nome}
-                          onChange={(e) => setObjecaoFormData({...objecaoFormData, nome: e.target.value})}
-                          className="col-span-3"
-                          placeholder="Nome da objeção"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="descricaoObjecao" className="text-right">Descrição</Label>
-                        <Textarea
-                          id="descricaoObjecao"
-                          value={objecaoFormData.descricao}
-                          onChange={(e) => setObjecaoFormData({...objecaoFormData, descricao: e.target.value})}
-                          className="col-span-3"
-                          placeholder="Descrição detalhada da objeção"
-                          rows={4}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit" onClick={handleSaveObjecao}>
-                        {editingObjecao ? 'Atualizar' : 'Criar'} Objeção
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Data de Criação</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {objecoes.map((objecao) => (
-                    <TableRow key={objecao.id}>
-                      <TableCell className="font-medium">{objecao.nome}</TableCell>
-                      <TableCell>
-                        <div className="max-w-md truncate">
-                          {objecao.descricao || '-'}
-                        </div>
-                      </TableCell>
-                      <TableCell>{objecao.dataCriacao.toLocaleDateString()}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
-                          <Button variant="ghost" size="sm" onClick={() => handleEditObjecao(objecao)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDeleteObjecao(objecao.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {objecoes.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <AlertCircle className="mx-auto h-12 w-12 mb-4" />
-                  <p>Nenhuma objeção cadastrada ainda</p>
-                  <p className="text-sm">Clique em "Nova Objeção" para começar</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <LeadFormDialog
+        open={isLeadDialogOpen}
+        onOpenChange={setIsLeadDialogOpen}
+        lead={editingLead}
+        onSave={handleSaveLead}
+      />
+
+      <ClienteFormDialog
+        open={isClienteDialogOpen}
+        onOpenChange={setIsClienteDialogOpen}
+        cliente={clientePreenchido as Cliente}
+        onClienteUpdate={handleClienteConvertidoSucesso}
+      />
     </div>
   );
 }

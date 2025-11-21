@@ -874,6 +874,113 @@ export type Database = {
           },
         ]
       }
+      leads: {
+        Row: {
+          categoria_estabelecimento_id: number | null
+          cliente_convertido_id: string | null
+          cnpj_cpf: string | null
+          contato_email: string | null
+          contato_nome: string | null
+          contato_telefone: string | null
+          created_at: string | null
+          data_contato_whatsapp: string | null
+          data_conversao: string | null
+          data_resposta: string | null
+          data_visita: string | null
+          endereco_entrega: string | null
+          id: string
+          link_google_maps: string | null
+          motivo_perda: string | null
+          nome: string
+          observacoes: string | null
+          origem: string
+          periodicidade_estimada: number | null
+          quantidade_estimada: number | null
+          representante_id: number | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          categoria_estabelecimento_id?: number | null
+          cliente_convertido_id?: string | null
+          cnpj_cpf?: string | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string | null
+          data_contato_whatsapp?: string | null
+          data_conversao?: string | null
+          data_resposta?: string | null
+          data_visita?: string | null
+          endereco_entrega?: string | null
+          id?: string
+          link_google_maps?: string | null
+          motivo_perda?: string | null
+          nome: string
+          observacoes?: string | null
+          origem: string
+          periodicidade_estimada?: number | null
+          quantidade_estimada?: number | null
+          representante_id?: number | null
+          status: string
+          updated_at?: string | null
+        }
+        Update: {
+          categoria_estabelecimento_id?: number | null
+          cliente_convertido_id?: string | null
+          cnpj_cpf?: string | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string | null
+          data_contato_whatsapp?: string | null
+          data_conversao?: string | null
+          data_resposta?: string | null
+          data_visita?: string | null
+          endereco_entrega?: string | null
+          id?: string
+          link_google_maps?: string | null
+          motivo_perda?: string | null
+          nome?: string
+          observacoes?: string | null
+          origem?: string
+          periodicidade_estimada?: number | null
+          quantidade_estimada?: number | null
+          representante_id?: number | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_categoria_estabelecimento_id_fkey"
+            columns: ["categoria_estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "categorias_estabelecimento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_cliente_convertido_id_fkey"
+            columns: ["cliente_convertido_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_cliente_convertido_id_fkey"
+            columns: ["cliente_convertido_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "leads_representante_id_fkey"
+            columns: ["representante_id"]
+            isOneToOne: false
+            referencedRelation: "representantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movimentacoes_estoque_insumos: {
         Row: {
           created_at: string
