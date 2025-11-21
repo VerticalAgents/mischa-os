@@ -13,12 +13,13 @@ interface CalculoEstoqueModalProps {
 export default function CalculoEstoqueModal({ isOpen, onClose }: CalculoEstoqueModalProps) {
   const { produtos, loading, forcarRecarregamento } = useEstoqueComExpedicao();
 
-  // Recarregar dados ao abrir o modal
+  // Recarregar dados apenas quando o modal é aberto
   useEffect(() => {
     if (isOpen) {
       forcarRecarregamento();
     }
-  }, [isOpen, forcarRecarregamento]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const getStatusEstoque = (saldoReal: number) => {
     if (saldoReal <= 0) return { variant: "destructive" as const, label: "Sem estoque" };
