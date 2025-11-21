@@ -37,7 +37,7 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
   const carregarEntregas = async () => {
     setLoading(true);
     try {
-      // Query principal: agendamentos com clientes
+      // Query principal: agendamentos com clientes (usando os mesmos critérios da aba Despacho)
       const { data: agendamentos, error: agendError } = await supabase
         .from('agendamentos_clientes')
         .select(`
@@ -46,6 +46,7 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
           data_proxima_reposicao,
           quantidade_total,
           status_agendamento,
+          substatus_pedido,
           clientes!inner (
             nome,
             endereco_entrega,
@@ -59,7 +60,8 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
           )
         `)
         .eq('data_proxima_reposicao', dataFiltro)
-        .eq('status_agendamento', 'Despachar');
+        .eq('status_agendamento', 'Agendado')
+        .in('substatus_pedido', ['Separado', 'Despachado']);
 
       if (agendError) throw agendError;
       if (!agendamentos || agendamentos.length === 0) {
