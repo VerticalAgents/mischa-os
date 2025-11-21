@@ -17,7 +17,7 @@ export interface ProdutoComEstoqueDetalhado {
 export const useEstoqueComExpedicao = () => {
   const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
   const { obterSaldoProduto } = useMovimentacoesEstoqueProdutos();
-  const { getPedidosParaSeparacao, getPedidosParaDespacho, carregarPedidos } = useExpedicaoStore();
+  const { pedidos, carregarPedidos } = useExpedicaoStore();
   
   const [saldos, setSaldos] = useState<Record<string, number>>({});
   const [loadingSaldos, setLoadingSaldos] = useState(false);
@@ -29,19 +29,15 @@ export const useEstoqueComExpedicao = () => {
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLoadingRef = useRef(false);
 
-  // Estabilizar getters para evitar re-renders infinitos
-  const pedidosSeparacao = useMemo(() => getPedidosParaSeparacao(), [getPedidosParaSeparacao]);
-  const pedidosDespacho = useMemo(() => getPedidosParaDespacho(), [getPedidosParaDespacho]);
-  const todosPedidos = useMemo(() => [...pedidosSeparacao, ...pedidosDespacho], [pedidosSeparacao, pedidosDespacho]);
-
+  // Filtrar TODOS os pedidos por substatus (mesma lógica do ResumoExpedicao)
   const pedidosSeparados = useMemo(() => 
-    pedidosSeparacao.filter(p => p.substatus_pedido === 'Separado'), 
-    [pedidosSeparacao]
+    pedidos.filter(p => p.substatus_pedido === 'Separado'), 
+    [pedidos]
   );
   
   const pedidosDespachados = useMemo(() => 
-    pedidosDespacho.filter(p => p.substatus_pedido === 'Despachado'), 
-    [pedidosDespacho]
+    pedidos.filter(p => p.substatus_pedido === 'Despachado'), 
+    [pedidos]
   );
   
   // Usar o hook para calcular quantidades separadas e despachadas
@@ -79,7 +75,7 @@ export const useEstoqueComExpedicao = () => {
   // Carregar dados de expedição se não estiverem disponíveis
   useEffect(() => {
     const inicializarDados = async () => {
-      if (todosPedidos.length === 0 && !dadosCarregados) {
+      if (pedidos.length === 0 && !dadosCarregados) {
         console.log('🔄 Carregando dados de expedição para cálculo de estoque...');
         try {
           await carregarPedidosMemo();
@@ -91,7 +87,7 @@ export const useEstoqueComExpedicao = () => {
     };
 
     inicializarDados();
-  }, [todosPedidos.length, dadosCarregados, carregarPedidosMemo]);
+  }, [pedidos.length, dadosCarregados, carregarPedidosMemo]);
 
   // Memoizar função de carregar saldos com controle de timeout
   const carregarSaldos = useCallback(async () => {
