@@ -13,9 +13,8 @@ import { RepresentantesFilter } from "./components/RepresentantesFilter";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
 import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
-import { OrganizadorEntregas } from "./OrganizadorEntregas";
 import { toast } from "sonner";
-import { Truck, Package, ArrowLeft, ClipboardList, Loader2 } from "lucide-react";
+import { Truck, Package, ArrowLeft, Loader2 } from "lucide-react";
 
 interface DespachoProps {
   tipoFiltro: "hoje" | "atrasadas" | "antecipada";
@@ -49,7 +48,6 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     handleSalvarAgendamento
   } = useAgendamentoActions();
 
-  const [organizadorAberto, setOrganizadorAberto] = useState(false);
   const [filtroTexto, setFiltroTexto] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("todos");
   
@@ -155,14 +153,6 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     await retornarParaSeparacao(pedidoId);
   };
 
-  const handleOrganizarEntregas = () => {
-    if (pedidosFiltrados.length === 0) {
-      toast.error("Não há entregas para organizar.");
-      return;
-    }
-    setOrganizadorAberto(true);
-  };
-
   const handleConfirmarEntregaIndividual = async (pedidoId: string, observacao?: string) => {
     // A confirmação já é feita pelo PedidoCard usando o hook useConfirmacaoEntrega
     // Recarregar os dados silenciosamente sem bloquear a UI
@@ -191,7 +181,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     ? <Truck className="h-5 w-5" /> 
     : tipoFiltro === "atrasadas"
     ? <Package className="h-5 w-5" />
-    : <ClipboardList className="h-5 w-5" />;
+    : <Package className="h-5 w-5" />;
 
   return (
     <div className="space-y-4">
@@ -220,15 +210,6 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
           </h2>
           {tipoFiltro !== "antecipada" && (
             <div className="flex flex-wrap gap-2">
-              <Button 
-                onClick={handleOrganizarEntregas}
-                size="sm" 
-                variant="outline"
-                className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-              >
-                <ClipboardList className="h-4 w-4" />
-                Organizar Entregas
-              </Button>
               <Button 
                 onClick={handleDespachoEmMassa} 
                 size="sm" 
@@ -315,20 +296,6 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
         />
       )}
 
-      {/* Modal do Organizador de Entregas - só mostrar se não for separação antecipada */}
-      {tipoFiltro !== "antecipada" && (
-        <OrganizadorEntregas
-          open={organizadorAberto}
-          onOpenChange={setOrganizadorAberto}
-          entregas={pedidosFiltrados.map(p => ({
-            id: p.id,
-            cliente_id: p.cliente_id,
-            cliente_nome: p.cliente_nome,
-            cliente_endereco: p.cliente_endereco,
-            link_google_maps: (p as any).link_google_maps
-          }))}
-        />
-      )}
     </div>
   );
 };
