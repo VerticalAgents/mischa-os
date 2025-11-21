@@ -2,10 +2,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useEstoqueComExpedicao } from "@/hooks/useEstoqueComExpedicao";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
-import { useQuantidadesExpedicao } from "@/hooks/useQuantidadesExpedicao";
-import { useMemo } from "react";
+import { useQuantidadesSeparadas } from "@/hooks/useQuantidadesSeparadas";
+import { useEstoqueProdutos } from "@/hooks/useEstoqueProdutos";
+import { useMovimentacoesEstoqueProdutos } from "@/hooks/useMovimentacoesEstoqueProdutos";
+import { useMemo, useEffect, useState } from "react";
 
 interface CalculoEstoqueModalProps {
   isOpen: boolean;
@@ -13,28 +14,53 @@ interface CalculoEstoqueModalProps {
 }
 
 export default function CalculoEstoqueModal({ isOpen, onClose }: CalculoEstoqueModalProps) {
-  const { produtos, loading } = useEstoqueComExpedicao();
-  const { getPedidosParaSeparacao, getPedidosParaDespacho } = useExpedicaoStore();
+  const { produtos } = useEstoqueProdutos();
+  const { obterSaldoProduto } = useMovimentacoesEstoqueProdutos();
+  const { pedidos } = useExpedicaoStore();
+  const [saldos, setSaldos] = useState<{ [produtoId: string]: number }>({});
+  const [loadingSaldos, setLoadingSaldos] = useState(true);
 
-  // Obter os pedidos para calcular as quantidades corretamente
-  const pedidosSeparacao = useMemo(() => getPedidosParaSeparacao(), [getPedidosParaSeparacao]);
-  const pedidosDespacho = useMemo(() => getPedidosParaDespacho(), [getPedidosParaDespacho]);
-  
+  // Filtrar pedidos exatamente como no ResumoExpedicao
   const pedidosSeparados = useMemo(() => 
-    pedidosSeparacao.filter(p => p.substatus_pedido === 'Separado'), 
-    [pedidosSeparacao]
+    pedidos.filter(p => p.substatus_pedido === 'Separado'), 
+    [pedidos]
   );
   
   const pedidosDespachados = useMemo(() => 
-    pedidosDespacho.filter(p => p.substatus_pedido === 'Despachado'), 
-    [pedidosDespacho]
+    pedidos.filter(p => p.substatus_pedido === 'Despachado'), 
+    [pedidos]
   );
 
-  // Usar o mesmo hook que funciona no ResumoUnidadesSeparadas
-  const { quantidadesSeparadas, quantidadesDespachadas } = useQuantidadesExpedicao(
+  // Usar o mesmo hook que funciona no ProdutosEmExpedicao
+  const { quantidadesPorProduto, calculando, obterQuantidadeProduto } = useQuantidadesSeparadas(
     pedidosSeparados, 
     pedidosDespachados
   );
+
+  // Carregar saldos dos produtos
+  useEffect(() => {
+    const carregarSaldos = async () => {
+      setLoadingSaldos(true);
+      const saldosTemp: { [produtoId: string]: number } = {};
+      
+      for (const produto of produtos.filter(p => p.ativo)) {
+        try {
+          const saldo = await obterSaldoProduto(produto.id);
+          saldosTemp[produto.id] = saldo;
+        } catch (error) {
+          console.error(`Erro ao carregar saldo do produto ${produto.nome}:`, error);
+          saldosTemp[produto.id] = 0;
+        }
+      }
+      
+      setSaldos(saldosTemp);
+      setLoadingSaldos(false);
+    };
+
+    if (produtos.length > 0) {
+      carregarSaldos();
+    }
+  }, [produtos, obterSaldoProduto]);
 
   const getStatusEstoque = (saldoReal: number) => {
     if (saldoReal <= 0) return { variant: "destructive" as const, label: "Sem estoque" };
@@ -43,27 +69,30 @@ export default function CalculoEstoqueModal({ isOpen, onClose }: CalculoEstoqueM
     return { variant: "default" as const, label: "Alto" };
   };
 
-  // Calcular totais usando as quantidades corretas do hook de expedição
+  // Calcular totais e produtos com cálculo correto
   const produtosAtivos = produtos.filter(p => p.ativo);
-  const totalSaldoAtual = produtosAtivos.reduce((sum, p) => sum + p.saldoAtual, 0);
-  const totalSeparado = Object.values(quantidadesSeparadas).reduce((sum, qty) => sum + qty, 0);
-  const totalDespachado = Object.values(quantidadesDespachadas).reduce((sum, qty) => sum + qty, 0);
+  const totalSaldoAtual = produtosAtivos.reduce((sum, p) => sum + (saldos[p.id] || 0), 0);
+  
+  // Total separado + despachado (quantidadesPorProduto já inclui ambos)
+  const totalEmExpedicao = Object.values(quantidadesPorProduto).reduce((sum, qty) => sum + qty, 0);
   
   // Calcular saldo real correto usando os dados de expedição
   const produtosComCalculoCorreto = produtosAtivos.map(produto => {
-    const quantidadeSeparada = quantidadesSeparadas[produto.nome] || 0;
-    const quantidadeDespachada = quantidadesDespachadas[produto.nome] || 0;
-    const saldoReal = produto.saldoAtual - quantidadeSeparada - quantidadeDespachada;
+    const saldoAtual = saldos[produto.id] || 0;
+    const quantidadeEmExpedicao = obterQuantidadeProduto(produto.nome);
+    const saldoReal = saldoAtual - quantidadeEmExpedicao;
     
     return {
       ...produto,
-      quantidadeSeparada,
-      quantidadeDespachada,
+      saldoAtual,
+      quantidadeEmExpedicao,
       saldoReal
     };
   });
   
   const totalSaldoReal = produtosComCalculoCorreto.reduce((sum, p) => sum + p.saldoReal, 0);
+  
+  const loading = calculando || loadingSaldos;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -76,18 +105,14 @@ export default function CalculoEstoqueModal({ isOpen, onClose }: CalculoEstoqueM
 
         <div className="space-y-4">
           {/* Resumo Geral */}
-          <div className="grid grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+          <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
             <div className="text-center">
               <div className="text-lg font-bold text-primary">{totalSaldoAtual}</div>
               <div className="text-sm text-muted-foreground">Saldo Atual</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-orange-600">-{totalSeparado}</div>
-              <div className="text-sm text-muted-foreground">Separado</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-blue-600">-{totalDespachado}</div>
-              <div className="text-sm text-muted-foreground">Despachado</div>
+              <div className="text-lg font-bold text-orange-600">-{totalEmExpedicao}</div>
+              <div className="text-sm text-muted-foreground">Em Expedição</div>
             </div>
             <div className="text-center">
               <div className="text-lg font-bold text-green-600">{totalSaldoReal}</div>
@@ -105,12 +130,11 @@ export default function CalculoEstoqueModal({ isOpen, onClose }: CalculoEstoqueM
               {" = "}
               <span className="text-green-600">Saldo Atual</span>
               {" - "}
-              <span className="text-orange-600">Separado</span>
-              {" - "}
-              <span className="text-blue-600">Despachado</span>
+              <span className="text-orange-600">Em Expedição</span>
             </div>
             <p className="text-sm text-muted-foreground mt-2 text-center">
-              O Saldo Real representa a quantidade disponível para separação de novos pedidos
+              O Saldo Real representa a quantidade disponível para separação de novos pedidos. 
+              "Em Expedição" inclui pedidos separados e despachados.
             </p>
           </div>
 
@@ -121,8 +145,7 @@ export default function CalculoEstoqueModal({ isOpen, onClose }: CalculoEstoqueM
                 <TableRow>
                   <TableHead>Produto</TableHead>
                   <TableHead className="text-center">Saldo Atual</TableHead>
-                  <TableHead className="text-center">Separado</TableHead>
-                  <TableHead className="text-center">Despachado</TableHead>
+                  <TableHead className="text-center">Em Expedição</TableHead>
                   <TableHead className="text-center">Saldo Real</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                 </TableRow>
@@ -130,13 +153,13 @@ export default function CalculoEstoqueModal({ isOpen, onClose }: CalculoEstoqueM
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={5} className="text-center py-8">
                       Carregando dados...
                     </TableCell>
                   </TableRow>
                 ) : produtosComCalculoCorreto.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={5} className="text-center py-8">
                       Nenhum produto ativo encontrado
                     </TableCell>
                   </TableRow>
@@ -156,12 +179,7 @@ export default function CalculoEstoqueModal({ isOpen, onClose }: CalculoEstoqueM
                         </TableCell>
                         <TableCell className="text-center">
                           <span className="font-mono font-semibold text-orange-600">
-                            {produto.quantidadeSeparada > 0 ? `-${produto.quantidadeSeparada}` : '0'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="font-mono font-semibold text-blue-600">
-                            {produto.quantidadeDespachada > 0 ? `-${produto.quantidadeDespachada}` : '0'}
+                            {produto.quantidadeEmExpedicao > 0 ? `-${produto.quantidadeEmExpedicao}` : '0'}
                           </span>
                         </TableCell>
                         <TableCell className="text-center">
@@ -181,21 +199,13 @@ export default function CalculoEstoqueModal({ isOpen, onClose }: CalculoEstoqueM
           </div>
 
           {/* Legendas */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="space-y-2">
-              <h4 className="font-semibold">📋 Definições:</h4>
-              <ul className="space-y-1 text-muted-foreground">
-                <li><span className="text-green-600 font-mono">Saldo Atual</span>: Estoque físico disponível</li>
-                <li><span className="text-orange-600 font-mono">Separado</span>: Reservado para pedidos já separados</li>
-              </ul>
-            </div>
-            <div className="space-y-2">
-              <h4 className="font-semibold">🚀 Status:</h4>
-              <ul className="space-y-1 text-muted-foreground">
-                <li><span className="text-blue-600 font-mono">Despachado</span>: Reservado para pedidos despachados</li>
-                <li><span className="font-mono">Saldo Real</span>: Disponível para novos pedidos</li>
-              </ul>
-            </div>
+          <div className="space-y-2 text-sm">
+            <h4 className="font-semibold">📋 Definições:</h4>
+            <ul className="space-y-1 text-muted-foreground">
+              <li><span className="text-green-600 font-mono">Saldo Atual</span>: Estoque físico disponível no sistema</li>
+              <li><span className="text-orange-600 font-mono">Em Expedição</span>: Total reservado para pedidos separados + despachados</li>
+              <li><span className="font-mono">Saldo Real</span>: Quantidade efetivamente disponível para novos pedidos</li>
+            </ul>
           </div>
         </div>
       </DialogContent>
