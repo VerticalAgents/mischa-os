@@ -252,14 +252,13 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
                 <div className="space-y-2">
                   <Label htmlFor="representante">Representante</Label>
                   <Select 
-                    value={formData.representanteId?.toString() || ''} 
+                    value={formData.representanteId?.toString()} 
                     onValueChange={(value) => setFormData({ ...formData, representanteId: value ? parseInt(value) : undefined })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um representante" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhum</SelectItem>
                       {representantes.map((rep) => (
                         <SelectItem key={rep.id} value={rep.id.toString()}>{rep.nome}</SelectItem>
                       ))}
@@ -269,14 +268,13 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
                 <div className="space-y-2">
                   <Label htmlFor="categoriaEstabelecimento">Categoria do Estabelecimento</Label>
                   <Select 
-                    value={formData.categoriaEstabelecimentoId?.toString() || ''} 
+                    value={formData.categoriaEstabelecimentoId?.toString()} 
                     onValueChange={(value) => setFormData({ ...formData, categoriaEstabelecimentoId: value ? parseInt(value) : undefined })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhuma</SelectItem>
                       {categorias.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id.toString()}>{cat.nome}</SelectItem>
                       ))}
