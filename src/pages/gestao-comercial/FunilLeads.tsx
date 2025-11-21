@@ -144,8 +144,8 @@ export default function FunilLeads() {
         <p className="text-muted-foreground text-left">Gerencie leads, acompanhe visitas e conversões</p>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      {/* Linha 1: Principais métricas */}
+      <div className="grid gap-4 grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
@@ -189,7 +189,7 @@ export default function FunilLeads() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Fechados WhatsApp</CardTitle>
-            <Target className="h-4 w-4 text-emerald-500" />
+            <MessageCircle className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">{stats.efetivadosWhatsApp}</div>
@@ -197,8 +197,57 @@ export default function FunilLeads() {
         </Card>
       </div>
 
-      {/* Conversion Rate Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Linha 2: Pipeline de follow-up */}
+      <div className="grid gap-4 grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Contatos Capturados</CardTitle>
+            <UserPlus className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{stats.contatosCapturados}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Leads com contato p/ follow-up
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Chamados WhatsApp</CardTitle>
+            <MessageCircle className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.chamadosWhatsApp}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Responderam</CardTitle>
+            <MessageCircle className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{stats.respostaWhatsApp}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Avaliando proposta
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Perdidos</CardTitle>
+            <AlertCircle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{stats.perdidos}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Linha 3: Taxas de conversão */}
+      <div className="grid gap-4 grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Taxa Conversão Geral</CardTitle>
