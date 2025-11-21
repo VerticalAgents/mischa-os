@@ -5,6 +5,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Phone, Package, DollarSign, FileText, User } from 'lucide-react';
 
+const formatPaymentText = (text: string): string => {
+  return text
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
 interface EntregaItemProps {
   entrega: {
     id: string;
@@ -83,14 +90,14 @@ export const EntregaItem = ({
 
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <DollarSign className="w-4 h-4" />
-              <span>{entrega.tipoCobranca} - {entrega.formaPagamento}</span>
+              <span>{formatPaymentText(entrega.tipoCobranca)} - {formatPaymentText(entrega.formaPagamento)}</span>
             </div>
 
             {entrega.precos.length > 0 && (
-              <div className="ml-5 space-y-1 text-xs">
+              <div className="space-y-1">
                 {entrega.precos.map((p, i) => (
-                  <div key={i} className="text-muted-foreground">
-                    • {p.categoria}: R$ {p.preco.toFixed(2)}
+                  <div key={i} className="text-sm text-muted-foreground">
+                    {p.categoria}: R$ {p.preco.toFixed(2)}
                   </div>
                 ))}
               </div>
