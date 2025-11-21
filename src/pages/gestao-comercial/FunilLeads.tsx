@@ -15,29 +15,35 @@ import { convertLeadToCliente } from "@/utils/leadToClienteConverter";
 import { Cliente } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-
 export default function FunilLeads() {
-  const { leads, loading, carregarLeads, adicionarLead, atualizarLead, deletarLead, converterLeadEmCliente } = useSupabaseLeads();
-  const { representantes, carregarRepresentantes } = useSupabaseRepresentantes();
-  
+  const {
+    leads,
+    loading,
+    carregarLeads,
+    adicionarLead,
+    atualizarLead,
+    deletarLead,
+    converterLeadEmCliente
+  } = useSupabaseLeads();
+  const {
+    representantes,
+    carregarRepresentantes
+  } = useSupabaseRepresentantes();
   const [isLeadDialogOpen, setIsLeadDialogOpen] = useState(false);
   const [isClienteDialogOpen, setIsClienteDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [clientePreenchido, setClientePreenchido] = useState<Partial<Cliente> | null>(null);
   const [leadEmConversao, setLeadEmConversao] = useState<Lead | null>(null);
   const [filtroStatus, setFiltroStatus] = useState<LeadStatus | 'todos'>('todos');
-
   useEffect(() => {
     carregarLeads();
     carregarRepresentantes();
   }, [carregarLeads, carregarRepresentantes]);
-
   const getRepresentanteNome = (id?: number) => {
     if (!id) return '-';
     const rep = representantes.find(r => r.id === id);
     return rep ? rep.nome : 'Representante não encontrado';
   };
-
   const handleSaveLead = async (leadData: Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (editingLead) {
       await atualizarLead(editingLead.id, leadData);
@@ -46,20 +52,19 @@ export default function FunilLeads() {
     }
     setEditingLead(null);
   };
-
   const handleEditLead = (lead: Lead) => {
     setEditingLead(lead);
     setIsLeadDialogOpen(true);
   };
-
   const handleDeleteLead = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este lead?')) {
       await deletarLead(id);
     }
   };
-
   const handleMudarStatus = async (lead: Lead, novoStatus: LeadStatus) => {
-    await atualizarLead(lead.id, { status: novoStatus });
+    await atualizarLead(lead.id, {
+      status: novoStatus
+    });
 
     // Se movido para estágios de efetivação, abrir modal de cliente
     if (novoStatus === 'EfetivadosImediato' || novoStatus === 'EfetivadosWhatsApp') {
@@ -69,26 +74,21 @@ export default function FunilLeads() {
       setIsClienteDialogOpen(true);
     }
   };
-
   const handleClienteConvertidoSucesso = async () => {
     if (leadEmConversao) {
       toast({
         title: "Lead convertido em cliente!",
         description: `${leadEmConversao.nome} foi cadastrado como cliente com sucesso.`
       });
-      
       setLeadEmConversao(null);
       setClientePreenchido(null);
       setIsClienteDialogOpen(false);
       await carregarLeads();
     }
   };
-
   const handleWhatsApp = (lead: Lead) => {
     const telefone = lead.contatoTelefone?.replace(/\D/g, '');
-    const mensagem = encodeURIComponent(
-      `Olá ${lead.contatoNome || lead.nome}, tudo bem? Gostaria de conversar sobre nossa parceria!`
-    );
+    const mensagem = encodeURIComponent(`Olá ${lead.contatoNome || lead.nome}, tudo bem? Gostaria de conversar sobre nossa parceria!`);
     window.open(`https://wa.me/55${telefone}?text=${mensagem}`, '_blank');
   };
 
@@ -109,8 +109,7 @@ export default function FunilLeads() {
     const efetivadosWhatsApp = leads.filter(l => l.status === 'EfetivadosWhatsApp').length;
     const perdidos = leads.filter(l => l.status === 'Perdidos').length;
     const totalEfetivados = efetivadosImediato + efetivadosWhatsApp;
-    const taxaConversao = total > 0 ? (totalEfetivados / total) * 100 : 0;
-
+    const taxaConversao = total > 0 ? totalEfetivados / total * 100 : 0;
     return {
       total,
       visitados,
@@ -123,13 +122,11 @@ export default function FunilLeads() {
       taxaConversao
     };
   }, [leads]);
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold">Funil de Leads</h1>
-        <p className="text-muted-foreground">Gerencie leads, acompanhe visitas e conversões</p>
+        <p className="text-muted-foreground text-left">Gerencie leads, acompanhe visitas e conversões</p>
       </div>
 
       {/* Statistics Cards */}
@@ -229,7 +226,10 @@ export default function FunilLeads() {
                   <SelectItem value="Perdidos">Perdidos</SelectItem>
                 </SelectContent>
               </Select>
-              <Button onClick={() => { setEditingLead(null); setIsLeadDialogOpen(true); }}>
+              <Button onClick={() => {
+              setEditingLead(null);
+              setIsLeadDialogOpen(true);
+            }}>
                 <Plus className="mr-2 h-4 w-4" />
                 Novo Lead
               </Button>
@@ -250,21 +250,15 @@ export default function FunilLeads() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
-                <TableRow>
+              {loading ? <TableRow>
                   <TableCell colSpan={7} className="text-center">
                     Carregando...
                   </TableCell>
-                </TableRow>
-              ) : leadsFiltrados.length === 0 ? (
-                <TableRow>
+                </TableRow> : leadsFiltrados.length === 0 ? <TableRow>
                   <TableCell colSpan={7} className="text-center">
                     Nenhum lead encontrado
                   </TableCell>
-                </TableRow>
-              ) : (
-                leadsFiltrados.map((lead) => (
-                  <TableRow key={lead.id}>
+                </TableRow> : leadsFiltrados.map(lead => <TableRow key={lead.id}>
                     <TableCell className="font-medium">{lead.nome}</TableCell>
                     <TableCell>{lead.contatoNome || '-'}</TableCell>
                     <TableCell>{lead.contatoTelefone || '-'}</TableCell>
@@ -279,57 +273,26 @@ export default function FunilLeads() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {lead.contatoTelefone && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleWhatsApp(lead)}
-                            title="Enviar WhatsApp"
-                          >
+                        {lead.contatoTelefone && <Button variant="ghost" size="sm" onClick={() => handleWhatsApp(lead)} title="Enviar WhatsApp">
                             <MessageCircle className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditLead(lead)}
-                        >
+                          </Button>}
+                        <Button variant="ghost" size="sm" onClick={() => handleEditLead(lead)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <LeadStatusChanger
-                          currentStatus={lead.status}
-                          onStatusChange={(novoStatus) => handleMudarStatus(lead, novoStatus)}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteLead(lead.id)}
-                        >
+                        <LeadStatusChanger currentStatus={lead.status} onStatusChange={novoStatus => handleMudarStatus(lead, novoStatus)} />
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteLead(lead.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
-                  </TableRow>
-                ))
-              )}
+                  </TableRow>)}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
-      <LeadFormDialog
-        open={isLeadDialogOpen}
-        onOpenChange={setIsLeadDialogOpen}
-        lead={editingLead}
-        onSave={handleSaveLead}
-      />
+      <LeadFormDialog open={isLeadDialogOpen} onOpenChange={setIsLeadDialogOpen} lead={editingLead} onSave={handleSaveLead} />
 
-      <ClienteFormDialog
-        open={isClienteDialogOpen}
-        onOpenChange={setIsClienteDialogOpen}
-        cliente={clientePreenchido as Cliente}
-        onClienteUpdate={handleClienteConvertidoSucesso}
-      />
-    </div>
-  );
+      <ClienteFormDialog open={isClienteDialogOpen} onOpenChange={setIsClienteDialogOpen} cliente={clientePreenchido as Cliente} onClienteUpdate={handleClienteConvertidoSucesso} />
+    </div>;
 }
