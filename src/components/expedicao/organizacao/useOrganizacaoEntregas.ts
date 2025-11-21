@@ -59,7 +59,7 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
           )
         `)
         .eq('data_proxima_reposicao', dataFiltro)
-        .in('status_agendamento', ['Despachar', 'Previsto']);
+        .eq('status_agendamento', 'Despachar');
 
       if (agendError) throw agendError;
       if (!agendamentos || agendamentos.length === 0) {
