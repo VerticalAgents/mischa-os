@@ -37,7 +37,10 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
   const carregarEntregas = async () => {
     setLoading(true);
     try {
-      // Query principal: agendamentos com clientes (usando os mesmos critérios da aba Despacho)
+      // Usar a data de HOJE (não o filtro de data do usuário)
+      const hoje = new Date().toISOString().split('T')[0];
+      
+      // Query principal: agendamentos de HOJE que estão separados ou despachados
       const { data: agendamentos, error: agendError } = await supabase
         .from('agendamentos_clientes')
         .select(`
@@ -59,7 +62,7 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
             link_google_maps
           )
         `)
-        .eq('data_proxima_reposicao', dataFiltro)
+        .eq('data_proxima_reposicao', hoje)
         .eq('status_agendamento', 'Agendado')
         .in('substatus_pedido', ['Separado', 'Despachado']);
 
