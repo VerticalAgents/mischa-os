@@ -17,12 +17,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import * as XLSX from 'xlsx';
 import DebugReceitasNecessarias from './DebugReceitasNecessarias';
 export default function NecessidadeInsumosTab() {
-  const [dataInicio, setDataInicio] = useState<Date>(startOfWeek(new Date(), {
-    weekStartsOn: 1
-  }));
-  const [dataFim, setDataFim] = useState<Date>(endOfWeek(addDays(new Date(), 7), {
-    weekStartsOn: 1
-  }));
+  const [dataInicio, setDataInicio] = useState<Date>(new Date());
+  const [dataFim, setDataFim] = useState<Date>(addDays(new Date(), 7));
   const [mostrarEtapas, setMostrarEtapas] = useState(false);
   const {
     necessidadeInsumos,
