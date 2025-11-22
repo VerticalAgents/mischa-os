@@ -23,69 +23,93 @@ export default function LeadStatusChanger({ onStatusChange, currentStatus }: Lea
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[240px]">
-        <DropdownMenuLabel>Mudar Status</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-[280px]">
+        <DropdownMenuLabel>Mudar Status do Lead</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        <DropdownMenuItem 
-          onClick={() => onStatusChange('Cadastrado')}
-          disabled={currentStatus === 'Cadastrado'}
-        >
-          📝 Marcar como Cadastrado
+        {/* === ENTRADA === */}
+        <DropdownMenuLabel className="text-xs text-muted-foreground">Entrada</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => onStatusChange('cadastrado')} disabled={currentStatus === 'cadastrado'}>
+          📝 Cadastrado (Não visitado)
         </DropdownMenuItem>
-        
-        <DropdownMenuItem 
-          onClick={() => onStatusChange('Visitados')}
-          disabled={currentStatus === 'Visitados'}
-        >
-          📍 Marcar como Visitado
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem 
-          onClick={() => onStatusChange('EfetivadosImediato')}
-          disabled={currentStatus === 'EfetivadosImediato'}
-          className="text-green-600"
-        >
-          ✅ Efetivado na Hora → Cadastrar
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem 
-          onClick={() => onStatusChange('ContatosCapturados')}
-          disabled={currentStatus === 'ContatosCapturados'}
-        >
-          📋 Contato Capturado
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem 
-          onClick={() => onStatusChange('ChamadosWhatsApp')}
-          disabled={currentStatus === 'ChamadosWhatsApp'}
-        >
-          💬 Chamado no WhatsApp
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem 
-          onClick={() => onStatusChange('RespostaWhatsApp')}
-          disabled={currentStatus === 'RespostaWhatsApp'}
-        >
-          ↩️ Respondeu WhatsApp
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem 
-          onClick={() => onStatusChange('EfetivadosWhatsApp')}
-          disabled={currentStatus === 'EfetivadosWhatsApp'}
-          className="text-emerald-600"
-        >
-          🎉 Efetivado WhatsApp → Cadastrar
+        <DropdownMenuItem onClick={() => onStatusChange('visitado')} disabled={currentStatus === 'visitado'}>
+          📍 Visitado (Amostra entregue)
         </DropdownMenuItem>
         
         <DropdownMenuSeparator />
         
+        {/* === FOLLOW-UP WHATSAPP === */}
+        <DropdownMenuLabel className="text-xs text-muted-foreground">Follow-up WhatsApp</DropdownMenuLabel>
         <DropdownMenuItem 
-          onClick={() => onStatusChange('Perdidos')}
-          disabled={currentStatus === 'Perdidos'}
-          className="text-red-600"
+          onClick={() => onStatusChange('followup_wpp_pendente')} 
+          disabled={currentStatus === 'followup_wpp_pendente'}
+          className="text-amber-600"
         >
-          ❌ Marcar como Perdido
+          ⚠️ WhatsApp Pendente
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onStatusChange('followup_wpp_tentativa')} disabled={currentStatus === 'followup_wpp_tentativa'}>
+          💬 WhatsApp Enviado
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onStatusChange('followup_wpp_negociacao')} disabled={currentStatus === 'followup_wpp_negociacao'}>
+          🤝 Negociando (WhatsApp)
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        
+        {/* === FOLLOW-UP PRESENCIAL === */}
+        <DropdownMenuLabel className="text-xs text-muted-foreground">Follow-up Presencial</DropdownMenuLabel>
+        <DropdownMenuItem 
+          onClick={() => onStatusChange('followup_presencial_pendente')} 
+          disabled={currentStatus === 'followup_presencial_pendente'}
+          className="text-orange-600"
+        >
+          ⚠️ Retorno Pendente
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onStatusChange('followup_presencial_tentativa')} disabled={currentStatus === 'followup_presencial_tentativa'}>
+          🏢 Revisitado
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onStatusChange('followup_presencial_negociacao')} disabled={currentStatus === 'followup_presencial_negociacao'}>
+          🤝 Negociando (Presencial)
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        
+        {/* === FECHAMENTO === */}
+        <DropdownMenuLabel className="text-xs text-muted-foreground">Fechamento (Sucesso)</DropdownMenuLabel>
+        <DropdownMenuItem 
+          onClick={() => onStatusChange('efetivado_imediato')} 
+          disabled={currentStatus === 'efetivado_imediato'}
+          className="text-green-600 font-medium"
+        >
+          ✅ Fechado na Hora → Cadastrar Cliente
+        </DropdownMenuItem>
+        <DropdownMenuItem 
+          onClick={() => onStatusChange('efetivado_wpp')} 
+          disabled={currentStatus === 'efetivado_wpp'}
+          className="text-emerald-600 font-medium"
+        >
+          ✅ Fechado WhatsApp → Cadastrar Cliente
+        </DropdownMenuItem>
+        <DropdownMenuItem 
+          onClick={() => onStatusChange('efetivado_presencial')} 
+          disabled={currentStatus === 'efetivado_presencial'}
+          className="text-teal-600 font-medium"
+        >
+          ✅ Fechado Presencial → Cadastrar Cliente
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        
+        {/* === PERDA === */}
+        <DropdownMenuLabel className="text-xs text-muted-foreground">Perda</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => onStatusChange('perdido_imediato')} disabled={currentStatus === 'perdido_imediato'} className="text-red-600">
+          ❌ Perdido Imediato
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onStatusChange('perdido_wpp')} disabled={currentStatus === 'perdido_wpp'} className="text-red-600">
+          ❌ Perdido WhatsApp
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onStatusChange('perdido_presencial')} disabled={currentStatus === 'perdido_presencial'} className="text-red-600">
+          ❌ Perdido Presencial
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
