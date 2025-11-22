@@ -25,16 +25,20 @@ export const useExportacao = () => {
 
     const linhas = [];
     
-    // Adicionar linha de endereço de partida se fornecido
-    if (enderecoPartida) {
-      linhas.push(`Endereço de Partida: ${enderecoPartida}\t\t\t`);
-      linhas.push(''); // Linha em branco
-    }
-
     // Adicionar cabeçalhos
     linhas.push(headers.join('\t'));
     
-    // Adicionar dados
+    // Adicionar endereço de partida como primeira linha após o cabeçalho
+    if (enderecoPartida) {
+      linhas.push([
+        `"${enderecoPartida}"`,
+        `"Fábrica Mischa's Bakery"`,
+        `""`,
+        `""`
+      ].join('\t'));
+    }
+    
+    // Adicionar dados dos clientes
     entregas.forEach(entrega => {
       linhas.push([
         `"${entrega.cliente_endereco || ''}"`,
