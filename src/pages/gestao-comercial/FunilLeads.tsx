@@ -4,8 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, UserPlus, Target, TrendingUp, AlertCircle, MessageCircle } from "lucide-react";
-import { Lead, LeadStatus, STATUS_LABELS, STATUS_COLORS } from "@/types/lead";
+import { 
+  Plus, Edit, Trash2, UserPlus, Target, TrendingUp, AlertCircle, MessageCircle, 
+  FileText, CheckCircle2, Phone, MapPin, Clock, Trophy, Zap 
+} from "lucide-react";
+import { Lead, LeadStatus, getCanalFollowup } from "@/types/lead";
+import LeadStatusBadge from "@/components/leads/LeadStatusBadge";
 import { useSupabaseLeads } from "@/hooks/useSupabaseLeads";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import LeadFormDialog from "@/components/leads/LeadFormDialog";
@@ -66,8 +70,8 @@ export default function FunilLeads() {
       status: novoStatus
     });
 
-    // Se movido para estágios de efetivação, abrir modal de cliente
-    if (novoStatus === 'EfetivadosImediato' || novoStatus === 'EfetivadosWhatsApp') {
+    // Se movido para qualquer estágio de efetivação, abrir modal de cliente
+    if (novoStatus.startsWith('efetivado_')) {
       const dadosCliente = convertLeadToCliente(lead);
       setClientePreenchido(dadosCliente);
       setLeadEmConversao(lead);
@@ -100,43 +104,72 @@ export default function FunilLeads() {
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const cadastrados = leads.filter(l => l.status === 'Cadastrado').length;
-    const visitados = leads.filter(l => l.status !== 'Cadastrado').length;
-    const efetivadosImediato = leads.filter(l => l.status === 'EfetivadosImediato').length;
-    const contatosCapturados = leads.filter(l => l.contatoTelefone && l.contatoTelefone.trim() !== '').length;
-    const chamadosWhatsApp = leads.filter(l => l.status === 'ChamadosWhatsApp').length;
-    const respostaWhatsApp = leads.filter(l => l.status === 'RespostaWhatsApp').length;
-    const efetivadosWhatsApp = leads.filter(l => l.status === 'EfetivadosWhatsApp').length;
-    const perdidos = leads.filter(l => l.status === 'Perdidos').length;
+    // === GRUPO 1: PIPELINE (FLUXO) ===
+    const paraVisitar = leads.filter(l => l.status === 'cadastrado').length;
+    const visitados = leads.filter(l => l.status !== 'cadastrado').length;
     
-    // Total leads = todos menos os fechados
-    const total = leads.length - efetivadosImediato - efetivadosWhatsApp;
+    // === GRUPO 2: AÇÕES NECESSÁRIAS (Prioridade do Vendedor) ===
+    const pendenciasWpp = leads.filter(l => l.status === 'followup_wpp_pendente').length;
+    const retornosPresenciais = leads.filter(l => l.status === 'followup_presencial_pendente').length;
     
-    const totalEfetivados = efetivadosImediato + efetivadosWhatsApp;
+    // === GRUPO 3: EM NEGOCIAÇÃO (Aguardando Cliente) ===
+    const aguardandoCliente = leads.filter(l => 
+      l.status === 'followup_wpp_tentativa' ||
+      l.status === 'followup_wpp_negociacao' ||
+      l.status === 'followup_presencial_tentativa' ||
+      l.status === 'followup_presencial_negociacao'
+    ).length;
     
-    // Taxa de conversão geral: (Efetivados Imediato + Efetivados WhatsApp) / Visitados
-    const taxaConversaoGeral = visitados > 0 ? (totalEfetivados / visitados) * 100 : 0;
+    // === GRUPO 4: RESULTADOS ===
+    const totalEfetivados = leads.filter(l => 
+      l.status === 'efetivado_imediato' ||
+      l.status === 'efetivado_wpp' ||
+      l.status === 'efetivado_presencial'
+    ).length;
     
-    // Taxa de conversão imediata: Efetivados Imediato / Visitados
-    const taxaConversaoImediata = visitados > 0 ? (efetivadosImediato / visitados) * 100 : 0;
+    const totalPerdidos = leads.filter(l =>
+      l.status === 'perdido_imediato' ||
+      l.status === 'perdido_wpp' ||
+      l.status === 'perdido_presencial'
+    ).length;
     
-    // Taxa de conversão WhatsApp: Efetivados WhatsApp / Leads contactados por WhatsApp
-    const leadsContactadosWhatsApp = chamadosWhatsApp + respostaWhatsApp + efetivadosWhatsApp;
-    const taxaConversaoWhatsApp = leadsContactadosWhatsApp > 0 ? (efetivadosWhatsApp / leadsContactadosWhatsApp) * 100 : 0;
+    // Taxa de Conversão: (Total Efetivados / Total Visitados) * 100
+    const taxaConversao = visitados > 0 
+      ? ((totalEfetivados / visitados) * 100).toFixed(1)
+      : '0.0';
+    
+    // Detalhamento por canal
+    const efetivadosImediato = leads.filter(l => l.status === 'efetivado_imediato').length;
+    const efetivadosWpp = leads.filter(l => l.status === 'efetivado_wpp').length;
+    const efetivadosPresencial = leads.filter(l => l.status === 'efetivado_presencial').length;
+    
+    // Contatos capturados (leads com telefone preenchido)
+    const contatosCapturados = leads.filter(l => 
+      l.contatoTelefone && l.contatoTelefone.trim() !== ''
+    ).length;
     
     return {
-      total,
-      cadastrados,
+      // Grupo 1
+      paraVisitar,
       visitados,
+      
+      // Grupo 2
+      pendenciasWpp,
+      retornosPresenciais,
+      
+      // Grupo 3
+      aguardandoCliente,
+      
+      // Grupo 4
+      taxaConversao,
+      totalEfetivados,
       efetivadosImediato,
-      contatosCapturados,
-      chamadosWhatsApp,
-      respostaWhatsApp,
-      efetivadosWhatsApp,
-      perdidos,
-      taxaConversaoGeral,
-      taxaConversaoImediata,
-      taxaConversaoWhatsApp
+      efetivadosWpp,
+      efetivadosPresencial,
+      totalPerdidos,
+      
+      // Extra
+      contatosCapturados
     };
   }, [leads]);
   return <div className="space-y-6">
@@ -146,150 +179,144 @@ export default function FunilLeads() {
         <p className="text-muted-foreground text-left">Gerencie leads, acompanhe visitas e conversões</p>
       </div>
 
-      {/* Linha 1: Principais métricas */}
-      <div className="grid gap-4 grid-cols-5">
+      {/* === GRUPO 1: PIPELINE === */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
-            <UserPlus className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Para Visitar</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cadastrados</CardTitle>
-            <UserPlus className="h-4 w-4 text-gray-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{stats.cadastrados}</div>
+            <div className="text-2xl font-bold">{stats.paraVisitar}</div>
+            <p className="text-xs text-muted-foreground">Leads cadastrados</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Visitados</CardTitle>
-            <AlertCircle className="h-4 w-4 text-blue-500" />
+            <CheckCircle2 className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.visitados}</div>
+            <div className="text-2xl font-bold">{stats.visitados}</div>
+            <p className="text-xs text-muted-foreground">Já receberam amostras</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Contatos Capturados</CardTitle>
+            <Phone className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.contatosCapturados}</div>
+            <p className="text-xs text-muted-foreground">Leads com WhatsApp</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.taxaConversao}%</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.totalEfetivados} de {stats.visitados} visitados
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* === GRUPO 2: AÇÕES NECESSÁRIAS === */}
+      <div className="grid gap-4 md:grid-cols-2 mb-6">
+        <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">⚠️ Pendências WhatsApp</CardTitle>
+            <MessageCircle className="h-5 w-5 text-amber-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-amber-600">{stats.pendenciasWpp}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Contatos capturados aguardando mensagem
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-orange-300 bg-orange-50 dark:bg-orange-950/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">⚠️ Retornos Presenciais</CardTitle>
+            <MapPin className="h-5 w-5 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-orange-600">{stats.retornosPresenciais}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Clientes aguardando revisita
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* === GRUPO 3: EM NEGOCIAÇÃO === */}
+      <div className="grid gap-4 md:grid-cols-1 mb-6">
+        <Card className="border-purple-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Em Negociação</CardTitle>
+            <Clock className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.aguardandoCliente}</div>
+            <p className="text-xs text-muted-foreground">Aguardando resposta do cliente</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* === GRUPO 4: RESULTADOS === */}
+      <div className="grid gap-4 md:grid-cols-4 mb-6">
+        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Vendas Totais</CardTitle>
+            <Trophy className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.totalEfetivados}</div>
+            <p className="text-xs text-muted-foreground">Clientes fechados</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Fechados na Hora</CardTitle>
-            <Target className="h-4 w-4 text-green-500" />
+            <Zap className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.efetivadosImediato}</div>
+            <div className="text-2xl font-bold">{stats.efetivadosImediato}</div>
+            <p className="text-xs text-muted-foreground">Na primeira visita</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Fechados WhatsApp</CardTitle>
-            <MessageCircle className="h-4 w-4 text-emerald-500" />
+            <MessageCircle className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">{stats.efetivadosWhatsApp}</div>
+            <div className="text-2xl font-bold">{stats.efetivadosWpp}</div>
+            <p className="text-xs text-muted-foreground">Via mensagem</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Fechados Presencial</CardTitle>
+            <UserPlus className="h-4 w-4 text-teal-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.efetivadosPresencial}</div>
+            <p className="text-xs text-muted-foreground">No retorno</p>
           </CardContent>
         </Card>
       </div>
-
-      {/* Linha 2: Pipeline de follow-up */}
-      <div className="grid gap-4 grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Contatos Capturados</CardTitle>
-            <UserPlus className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.contatosCapturados}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Leads com contato p/ follow-up
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aguardando Resposta</CardTitle>
-            <MessageCircle className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{stats.chamadosWhatsApp}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Responderam</CardTitle>
-            <MessageCircle className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.respostaWhatsApp}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Avaliando proposta
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Perdidos</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.perdidos}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Linha 3: Taxas de conversão */}
-      <div className="grid gap-4 grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa Conversão Geral</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.taxaConversaoGeral.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Fechados / Visitados
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa Fechamento Imediato</CardTitle>
-            <Target className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.taxaConversaoImediata.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Fechados na hora / Visitados
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa Conversão WhatsApp</CardTitle>
-            <MessageCircle className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">{stats.taxaConversaoWhatsApp.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Fechados WPP / Contactados WPP
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Main Content */}
       <Card>
         <CardHeader>
@@ -305,14 +332,20 @@ export default function FunilLeads() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os status</SelectItem>
-                  <SelectItem value="Cadastrado">Cadastrado</SelectItem>
-                  <SelectItem value="Visitados">Visitados</SelectItem>
-                  <SelectItem value="EfetivadosImediato">Efetivados na Hora</SelectItem>
-                  <SelectItem value="ContatosCapturados">Contatos Capturados</SelectItem>
-                  <SelectItem value="ChamadosWhatsApp">Chamados WhatsApp</SelectItem>
-                  <SelectItem value="RespostaWhatsApp">Responderam</SelectItem>
-                  <SelectItem value="EfetivadosWhatsApp">Efetivados WhatsApp</SelectItem>
-                  <SelectItem value="Perdidos">Perdidos</SelectItem>
+                  <SelectItem value="cadastrado">Cadastrado</SelectItem>
+                  <SelectItem value="visitado">Visitado</SelectItem>
+                  <SelectItem value="followup_wpp_pendente">WhatsApp Pendente</SelectItem>
+                  <SelectItem value="followup_wpp_tentativa">WhatsApp Enviado</SelectItem>
+                  <SelectItem value="followup_wpp_negociacao">Negociando (WhatsApp)</SelectItem>
+                  <SelectItem value="followup_presencial_pendente">Retorno Pendente</SelectItem>
+                  <SelectItem value="followup_presencial_tentativa">Revisitado</SelectItem>
+                  <SelectItem value="followup_presencial_negociacao">Negociando (Presencial)</SelectItem>
+                  <SelectItem value="efetivado_imediato">Fechado na Hora</SelectItem>
+                  <SelectItem value="efetivado_wpp">Fechado WhatsApp</SelectItem>
+                  <SelectItem value="efetivado_presencial">Fechado Presencial</SelectItem>
+                  <SelectItem value="perdido_imediato">Perdido Imediato</SelectItem>
+                  <SelectItem value="perdido_wpp">Perdido WhatsApp</SelectItem>
+                  <SelectItem value="perdido_presencial">Perdido Presencial</SelectItem>
                 </SelectContent>
               </Select>
               <Button onClick={() => {
@@ -352,9 +385,7 @@ export default function FunilLeads() {
                     <TableCell>{lead.contatoNome || '-'}</TableCell>
                     <TableCell>{lead.contatoTelefone || '-'}</TableCell>
                     <TableCell>
-                      <Badge className={STATUS_COLORS[lead.status]}>
-                        {STATUS_LABELS[lead.status]}
-                      </Badge>
+                      <LeadStatusBadge status={lead.status} />
                     </TableCell>
                     <TableCell>{getRepresentanteNome(lead.representanteId)}</TableCell>
                     <TableCell>
@@ -362,9 +393,31 @@ export default function FunilLeads() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {lead.contatoTelefone && <Button variant="ghost" size="sm" onClick={() => handleWhatsApp(lead)} title="Enviar WhatsApp">
-                            <MessageCircle className="h-4 w-4" />
-                          </Button>}
+                        {/* Botão de Ação Rápida Dinâmico */}
+                        {getCanalFollowup(lead.status) === 'wpp' && lead.contatoTelefone && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => handleWhatsApp(lead)}
+                          >
+                            <MessageCircle className="h-4 w-4 mr-1" />
+                            WhatsApp
+                          </Button>
+                        )}
+                        
+                        {getCanalFollowup(lead.status) === 'presencial' && lead.linkGoogleMaps && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="bg-blue-600 hover:bg-blue-700"
+                            onClick={() => window.open(lead.linkGoogleMaps, '_blank')}
+                          >
+                            <MapPin className="h-4 w-4 mr-1" />
+                            Ir ao Local
+                          </Button>
+                        )}
+                        
                         <Button variant="ghost" size="sm" onClick={() => handleEditLead(lead)}>
                           <Edit className="h-4 w-4" />
                         </Button>

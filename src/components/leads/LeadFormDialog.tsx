@@ -30,7 +30,7 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
     contatoTelefone: '',
     contatoEmail: '',
     origem: '',
-    status: 'Cadastrado' as LeadStatus,
+    status: 'cadastrado' as LeadStatus,
     representanteId: undefined as number | undefined,
     categoriaEstabelecimentoId: undefined as number | undefined,
     quantidadeEstimada: 0,
@@ -76,7 +76,7 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
         contatoTelefone: '',
         contatoEmail: '',
         origem: '',
-        status: 'Cadastrado',
+        status: 'cadastrado',
         representanteId: undefined,
         categoriaEstabelecimentoId: undefined,
         quantidadeEstimada: 0,
@@ -97,7 +97,7 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
       return;
     }
 
-    if (formData.status === 'Perdidos' && !formData.motivoPerda) {
+    if (formData.status.startsWith('perdido_') && !formData.motivoPerda) {
       return;
     }
 
@@ -235,14 +235,20 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Cadastrado">Cadastrado</SelectItem>
-                      <SelectItem value="Visitados">Visitados</SelectItem>
-                      <SelectItem value="EfetivadosImediato">Efetivados na Hora</SelectItem>
-                      <SelectItem value="ContatosCapturados">Contatos Capturados</SelectItem>
-                      <SelectItem value="ChamadosWhatsApp">Chamados WhatsApp</SelectItem>
-                      <SelectItem value="RespostaWhatsApp">Responderam</SelectItem>
-                      <SelectItem value="EfetivadosWhatsApp">Efetivados WhatsApp</SelectItem>
-                      <SelectItem value="Perdidos">Perdidos</SelectItem>
+                      <SelectItem value="cadastrado">Cadastrado</SelectItem>
+                      <SelectItem value="visitado">Visitado</SelectItem>
+                      <SelectItem value="followup_wpp_pendente">WhatsApp Pendente</SelectItem>
+                      <SelectItem value="followup_wpp_tentativa">WhatsApp Enviado</SelectItem>
+                      <SelectItem value="followup_wpp_negociacao">Negociando (WhatsApp)</SelectItem>
+                      <SelectItem value="followup_presencial_pendente">Retorno Pendente</SelectItem>
+                      <SelectItem value="followup_presencial_tentativa">Revisitado</SelectItem>
+                      <SelectItem value="followup_presencial_negociacao">Negociando (Presencial)</SelectItem>
+                      <SelectItem value="efetivado_imediato">Fechado na Hora</SelectItem>
+                      <SelectItem value="efetivado_wpp">Fechado WhatsApp</SelectItem>
+                      <SelectItem value="efetivado_presencial">Fechado Presencial</SelectItem>
+                      <SelectItem value="perdido_imediato">Perdido Imediato</SelectItem>
+                      <SelectItem value="perdido_wpp">Perdido WhatsApp</SelectItem>
+                      <SelectItem value="perdido_presencial">Perdido Presencial</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -353,7 +359,7 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
                 />
               </div>
 
-              {formData.status === 'Perdidos' && (
+              {formData.status.startsWith('perdido_') && (
                 <div className="space-y-2">
                   <Label htmlFor="motivoPerda">
                     Motivo da Perda <span className="text-red-500">*</span>
@@ -363,7 +369,7 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
                     rows={2}
                     value={formData.motivoPerda}
                     onChange={(e) => setFormData({ ...formData, motivoPerda: e.target.value })}
-                    required={formData.status === 'Perdidos'}
+                    required={formData.status.startsWith('perdido_')}
                   />
                 </div>
               )}
