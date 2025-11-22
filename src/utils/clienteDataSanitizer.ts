@@ -127,8 +127,9 @@ const PAGAMENTO_TO_CANONICAL = {
 
 // Helpers para transformação segura de dados
 const intOrNull = (v: any): number | null => {
-  if (v === undefined || v === null || v === '' || Number.isNaN(Number(v))) return null;
-  return parseInt(String(v), 10);
+  if (v === undefined || v === null || v === '' || v === 'undefined' || Number.isNaN(Number(v))) return null;
+  const parsed = parseInt(String(v), 10);
+  return Number.isNaN(parsed) ? null : parsed;
 };
 
 const numOrNull = (v: any): number | null => {

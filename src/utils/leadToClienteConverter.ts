@@ -4,14 +4,14 @@ import { Cliente } from '@/types';
 export function convertLeadToCliente(lead: Lead): Partial<Cliente> {
   return {
     nome: lead.nome,
-    cnpjCpf: lead.cnpjCpf,
-    enderecoEntrega: lead.enderecoEntrega,
-    linkGoogleMaps: lead.linkGoogleMaps,
-    contatoNome: lead.contatoNome,
-    contatoTelefone: lead.contatoTelefone,
-    contatoEmail: lead.contatoEmail,
-    representanteId: lead.representanteId,
-    categoriaEstabelecimentoId: lead.categoriaEstabelecimentoId,
+    cnpjCpf: lead.cnpjCpf || undefined,
+    enderecoEntrega: lead.enderecoEntrega || undefined,
+    linkGoogleMaps: lead.linkGoogleMaps || undefined,
+    contatoNome: lead.contatoNome || undefined,
+    contatoTelefone: lead.contatoTelefone || undefined,
+    contatoEmail: lead.contatoEmail || undefined,
+    representanteId: lead.representanteId || undefined,
+    categoriaEstabelecimentoId: lead.categoriaEstabelecimentoId || undefined,
     quantidadePadrao: lead.quantidadeEstimada || 0,
     periodicidadePadrao: lead.periodicidadeEstimada || 7,
     // Valores padrão
