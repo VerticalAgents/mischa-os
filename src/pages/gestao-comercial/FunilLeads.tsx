@@ -103,7 +103,7 @@ export default function FunilLeads() {
     const cadastrados = leads.filter(l => l.status === 'Cadastrado').length;
     const visitados = leads.filter(l => l.status !== 'Cadastrado').length;
     const efetivadosImediato = leads.filter(l => l.status === 'EfetivadosImediato').length;
-    const contatosCapturados = leads.filter(l => l.status === 'ContatosCapturados').length;
+    const contatosCapturados = leads.filter(l => l.contatoTelefone && l.contatoTelefone.trim() !== '').length;
     const chamadosWhatsApp = leads.filter(l => l.status === 'ChamadosWhatsApp').length;
     const respostaWhatsApp = leads.filter(l => l.status === 'RespostaWhatsApp').length;
     const efetivadosWhatsApp = leads.filter(l => l.status === 'EfetivadosWhatsApp').length;
