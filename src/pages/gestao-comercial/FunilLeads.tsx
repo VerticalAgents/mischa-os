@@ -382,6 +382,11 @@ export default function FunilLeads() {
 
       <LeadFormDialog open={isLeadDialogOpen} onOpenChange={setIsLeadDialogOpen} lead={editingLead} onSave={handleSaveLead} />
 
-      <ClienteFormDialog open={isClienteDialogOpen} onOpenChange={setIsClienteDialogOpen} cliente={clientePreenchido as Cliente} onClienteUpdate={handleClienteConvertidoSucesso} />
+      <ClienteFormDialog 
+        open={isClienteDialogOpen} 
+        onOpenChange={setIsClienteDialogOpen} 
+        dadosIniciais={clientePreenchido || undefined}
+        onClienteUpdate={handleClienteConvertidoSucesso} 
+      />
     </div>;
 }
