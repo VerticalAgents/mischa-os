@@ -6,6 +6,7 @@ import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
 import { usePedidoConverter } from "./hooks/usePedidoConverter";
 import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
 import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
+import { useExportacao } from "@/hooks/useExportacao";
 import { DebugInfo } from "./components/DebugInfo";
 import { DespachoFilters } from "./components/DespachoFilters";
 import { ResumoStatusCard } from "./components/ResumoStatusCard";
@@ -14,7 +15,7 @@ import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
 import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
 import { toast } from "sonner";
-import { Truck, Package, ArrowLeft, Loader2 } from "lucide-react";
+import { Truck, Package, ArrowLeft, Loader2, Download } from "lucide-react";
 
 interface DespachoProps {
   tipoFiltro: "hoje" | "atrasadas" | "antecipada";
@@ -40,6 +41,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
   const { converterPedidoParaCard } = usePedidoConverter();
   const { confirmarEntregaEmMassa: confirmarEntregaEmMassaHook, loading: loadingConfirmacao } = useConfirmacaoEntrega();
+  const { exportarEntregasCSV } = useExportacao();
   const {
     modalEditarAberto,
     setModalEditarAberto,
@@ -159,6 +161,16 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     await recarregarSilencioso();
   };
 
+  const handleDownloadCSV = () => {
+    if (pedidosFiltrados.length === 0) {
+      toast.error("Não há pedidos para exportar.");
+      return;
+    }
+    
+    exportarEntregasCSV(pedidosFiltrados, `entregas_${tipoFiltro}`);
+    toast.success("CSV exportado com sucesso!");
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -210,6 +222,14 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
           </h2>
           {tipoFiltro !== "antecipada" && (
             <div className="flex flex-wrap gap-2">
+              <Button 
+                onClick={handleDownloadCSV} 
+                size="sm" 
+                variant="outline"
+                className="flex items-center gap-1"
+              >
+                <Download className="h-4 w-4" /> Download CSV
+              </Button>
               <Button 
                 onClick={handleDespachoEmMassa} 
                 size="sm" 
