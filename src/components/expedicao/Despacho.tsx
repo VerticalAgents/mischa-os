@@ -15,7 +15,7 @@ import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
 import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
 import { toast } from "sonner";
-import { Truck, Package, ArrowLeft, Loader2, Download } from "lucide-react";
+import { Truck, Package, ArrowLeft, Loader2, Download, MapPin } from "lucide-react";
 
 interface DespachoProps {
   tipoFiltro: "hoje" | "atrasadas" | "antecipada";
@@ -222,6 +222,14 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
           </h2>
           {tipoFiltro !== "antecipada" && (
             <div className="flex flex-wrap gap-2">
+              <Button 
+                onClick={() => window.open('https://web.lalamove.com/', '_blank')}
+                size="sm" 
+                variant="outline"
+                className="flex items-center gap-1"
+              >
+                <MapPin className="h-4 w-4" /> Otimizador de Rota
+              </Button>
               <Button 
                 onClick={handleDownloadCSV} 
                 size="sm" 
