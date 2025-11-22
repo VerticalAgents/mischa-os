@@ -14,6 +14,39 @@ interface ClienteExportacao extends Cliente {
 
 export const useExportacao = () => {
   
+  // Exportar Entregas para CSV (formato específico para expedição)
+  const exportarEntregasCSV = useCallback((entregas: any[], nomeArquivo = 'entregas_expedicao') => {
+    const headers = [
+      '1. Endereço',
+      '2. Nome',
+      '3. Telefone',
+      '4. Bloco/piso'
+    ];
+
+    const csvContent = [
+      headers.join('\t'),
+      ...entregas.map(entrega => [
+        `"${entrega.endereco_entrega || ''}"`,
+        `"${entrega.cliente_nome || ''}"`,
+        `"${entrega.contato_telefone || ''}"`,
+        `""` // Bloco/piso - campo vazio por enquanto
+      ].join('\t'))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${nomeArquivo}_${format(new Date(), 'ddMMyyyy')}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }, []);
+  
   // Exportar para CSV
   const exportarCSV = useCallback((clientes: ClienteExportacao[], nomeArquivo = 'confirmacao_reposicao') => {
     const headers = [
@@ -134,6 +167,7 @@ export const useExportacao = () => {
 
   return {
     exportarCSV,
-    exportarPDF
+    exportarPDF,
+    exportarEntregasCSV
   };
 };
