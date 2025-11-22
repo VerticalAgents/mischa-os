@@ -981,6 +981,27 @@ export type Database = {
           },
         ]
       }
+      leads_backup_status_20251122: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       movimentacoes_estoque_insumos: {
         Row: {
           created_at: string
