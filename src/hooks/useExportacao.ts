@@ -15,7 +15,7 @@ interface ClienteExportacao extends Cliente {
 export const useExportacao = () => {
   
   // Exportar Entregas para CSV (formato específico para expedição)
-  const exportarEntregasCSV = useCallback((entregas: any[], nomeArquivo = 'entregas_expedicao') => {
+  const exportarEntregasCSV = useCallback((entregas: any[], nomeArquivo = 'entregas_expedicao', enderecoPartida?: string) => {
     const headers = [
       '1. Endereço',
       '2. Nome',
@@ -23,15 +23,28 @@ export const useExportacao = () => {
       '4. Bloco/piso'
     ];
 
-    const csvContent = [
-      headers.join('\t'),
-      ...entregas.map(entrega => [
+    const linhas = [];
+    
+    // Adicionar linha de endereço de partida se fornecido
+    if (enderecoPartida) {
+      linhas.push(`Endereço de Partida: ${enderecoPartida}\t\t\t`);
+      linhas.push(''); // Linha em branco
+    }
+
+    // Adicionar cabeçalhos
+    linhas.push(headers.join('\t'));
+    
+    // Adicionar dados
+    entregas.forEach(entrega => {
+      linhas.push([
         `"${entrega.cliente_endereco || ''}"`,
         `"${entrega.cliente_nome || ''}"`,
         `"${entrega.cliente_telefone || ''}"`,
         `""` // Bloco/piso - campo vazio por enquanto
-      ].join('\t'))
-    ].join('\n');
+      ].join('\t'));
+    });
+
+    const csvContent = linhas.join('\n');
 
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');

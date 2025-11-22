@@ -16,6 +16,8 @@ import PedidoCard from "./PedidoCard";
 import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
 import { toast } from "sonner";
 import { Truck, Package, ArrowLeft, Loader2, Download, MapPin } from "lucide-react";
+import { ExportCSVDialog } from "./components/ExportCSVDialog";
+import { useExportCSVDialog } from "@/hooks/useExportCSVDialog";
 
 interface DespachoProps {
   tipoFiltro: "hoje" | "atrasadas" | "antecipada";
@@ -101,6 +103,10 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
     return pedidosFiltrados;
   }, [pedidosBase, filtroTexto, filtroTipo, filtroRepresentantes]);
+  
+  // Hook para o modal de exportação CSV (após pedidosFiltrados estar definido)
+  const exportDialog = useExportCSVDialog(pedidosFiltrados);
+
 
   // Verificar quantos pedidos estão despachados
   const pedidosDespachados = pedidosFiltrados.filter(p => p.substatus_pedido === 'Despachado');
@@ -167,8 +173,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
       return;
     }
     
-    exportarEntregasCSV(pedidosFiltrados, `entregas_${tipoFiltro}`);
-    toast.success("CSV exportado com sucesso!");
+    exportDialog.openDialog();
   };
 
   if (isLoading) {
@@ -323,6 +328,23 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
           onSalvar={handleSalvarAgendamento}
         />
       )}
+
+      {/* Modal de exportação CSV */}
+      <ExportCSVDialog
+        open={exportDialog.open}
+        onOpenChange={exportDialog.setOpen}
+        enderecoPartida={exportDialog.enderecoPartida}
+        onEnderecoPartidaChange={exportDialog.setEnderecoPartida}
+        filtroRepresentantes={exportDialog.filtroRepresentantes}
+        onFiltroRepresentantesChange={exportDialog.setFiltroRepresentantes}
+        entregasFiltradas={exportDialog.entregasFiltradas}
+        entregasSelecionadas={exportDialog.entregasSelecionadas}
+        onToggleEntrega={exportDialog.toggleEntrega}
+        onToggleAll={exportDialog.toggleAll}
+        onExport={exportDialog.handleExport}
+        totalSelecionadas={exportDialog.totalSelecionadas}
+        totalFiltradas={exportDialog.totalFiltradas}
+      />
 
     </div>
   );
