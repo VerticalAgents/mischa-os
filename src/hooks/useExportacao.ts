@@ -26,9 +26,9 @@ export const useExportacao = () => {
     const csvContent = [
       headers.join('\t'),
       ...entregas.map(entrega => [
-        `"${entrega.endereco_entrega || ''}"`,
+        `"${entrega.cliente_endereco || ''}"`,
         `"${entrega.cliente_nome || ''}"`,
-        `"${entrega.contato_telefone || ''}"`,
+        `"${entrega.cliente_telefone || ''}"`,
         `""` // Bloco/piso - campo vazio por enquanto
       ].join('\t'))
     ].join('\n');
