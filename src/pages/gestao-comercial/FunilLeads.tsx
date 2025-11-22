@@ -100,7 +100,6 @@ export default function FunilLeads() {
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const total = leads.length;
     const cadastrados = leads.filter(l => l.status === 'Cadastrado').length;
     const visitados = leads.filter(l => l.status === 'Visitados').length;
     const efetivadosImediato = leads.filter(l => l.status === 'EfetivadosImediato').length;
@@ -109,6 +108,9 @@ export default function FunilLeads() {
     const respostaWhatsApp = leads.filter(l => l.status === 'RespostaWhatsApp').length;
     const efetivadosWhatsApp = leads.filter(l => l.status === 'EfetivadosWhatsApp').length;
     const perdidos = leads.filter(l => l.status === 'Perdidos').length;
+    
+    // Total leads = todos menos os fechados
+    const total = leads.length - efetivadosImediato - efetivadosWhatsApp;
     
     const totalEfetivados = efetivadosImediato + efetivadosWhatsApp;
     
@@ -214,7 +216,7 @@ export default function FunilLeads() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Chamados WhatsApp</CardTitle>
+            <CardTitle className="text-sm font-medium">Aguardando Resposta</CardTitle>
             <MessageCircle className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
