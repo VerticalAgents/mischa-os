@@ -45,6 +45,7 @@ interface ClienteFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   cliente?: Cliente | null;
+  dadosIniciais?: Partial<Cliente>;
   onClienteUpdate?: () => void;
 }
 
@@ -77,6 +78,7 @@ export default function ClienteFormDialog({
   open, 
   onOpenChange, 
   cliente = null,
+  dadosIniciais = null,
   onClienteUpdate 
 }: ClienteFormDialogProps) {
   const { adicionarCliente, atualizarCliente, loading } = useClienteStore();
@@ -100,7 +102,6 @@ export default function ClienteFormDialog({
 
   useEffect(() => {
     if (!open) {
-      // Ao fechar, libera para uma futura re-inicialização
       initializedRef.current = false;
       return;
     }
@@ -109,16 +110,31 @@ export default function ClienteFormDialog({
     const isFirstOpen = !initializedRef.current;
     const idChanged = currentId !== lastClienteIdRef.current;
 
-    // Apenas inicializa quando abrir pela 1ª vez OU quando o id do cliente mudar
     if (isFirstOpen || idChanged) {
-      console.log('🧭 Inicializando form', { isFirstOpen, idChanged, clienteId: currentId });
+      console.log('🧭 Inicializando form', { 
+        isFirstOpen, 
+        idChanged, 
+        clienteId: currentId,
+        temDadosIniciais: !!dadosIniciais 
+      });
+      
       if (cliente) {
+        // MODO DE EDIÇÃO: Cliente existente
         setFormData({
           ...cliente,
           categoriasHabilitadas: cliente.categoriasHabilitadas || []
         });
         lastClienteIdRef.current = currentId;
+      } else if (dadosIniciais) {
+        // MODO DE CRIAÇÃO COM DADOS: Novo cliente a partir de lead
+        setFormData({
+          ...getDefaultFormData(),
+          ...dadosIniciais,
+          categoriasHabilitadas: dadosIniciais.categoriasHabilitadas || []
+        });
+        lastClienteIdRef.current = null;
       } else {
+        // MODO DE CRIAÇÃO VAZIA: Novo cliente em branco
         setFormData(getDefaultFormData());
         lastClienteIdRef.current = null;
       }
@@ -126,7 +142,7 @@ export default function ClienteFormDialog({
     } else {
       console.log('⏭️ Mantendo formData (sem reinit)');
     }
-  }, [open, cliente?.id]);
+  }, [open, cliente?.id, dadosIniciais]);
 
   const handleInputChange = (field: keyof Cliente, value: any) => {
     console.log(`ClienteFormDialog: Atualizando campo ${field}:`, value);
