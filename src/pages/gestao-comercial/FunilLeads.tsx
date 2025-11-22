@@ -101,7 +101,7 @@ export default function FunilLeads() {
   // Calculate statistics
   const stats = useMemo(() => {
     const cadastrados = leads.filter(l => l.status === 'Cadastrado').length;
-    const visitados = leads.filter(l => l.status === 'Visitados').length;
+    const visitados = leads.filter(l => l.status !== 'Cadastrado').length;
     const efetivadosImediato = leads.filter(l => l.status === 'EfetivadosImediato').length;
     const contatosCapturados = leads.filter(l => l.status === 'ContatosCapturados').length;
     const chamadosWhatsApp = leads.filter(l => l.status === 'ChamadosWhatsApp').length;
