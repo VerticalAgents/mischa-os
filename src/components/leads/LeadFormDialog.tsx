@@ -93,7 +93,7 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome || !formData.origem || !formData.contatoTelefone) {
+    if (!formData.nome || !formData.origem) {
       return;
     }
 
@@ -186,13 +186,12 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="contatoTelefone">
-                    Telefone/WhatsApp <span className="text-red-500">*</span>
+                    Telefone/WhatsApp
                   </Label>
                   <Input
                     id="contatoTelefone"
                     value={formData.contatoTelefone}
                     onChange={(e) => setFormData({ ...formData, contatoTelefone: e.target.value })}
-                    required
                   />
                 </div>
                 <div className="space-y-2">
