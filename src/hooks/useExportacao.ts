@@ -28,6 +28,9 @@ export const useExportacao = () => {
     // Adicionar cabeçalhos
     linhas.push(headers.join('\t'));
     
+    // Adicionar linha em branco
+    linhas.push('');
+    
     // Adicionar endereço de partida como primeira linha após o cabeçalho
     if (enderecoPartida) {
       linhas.push([
