@@ -185,6 +185,12 @@ export default function ProdutoQuantidadeSelector({
       novosProdutos[index].quantidade = Number(valor);
     }
     onChange(novosProdutos);
+    
+    // Atualizar quantidade total automaticamente quando quantidades individuais mudarem
+    if (campo === 'quantidade' && onQuantidadeTotalChange) {
+      const novaQuantidadeTotal = novosProdutos.reduce((soma, p) => soma + p.quantidade, 0);
+      onQuantidadeTotalChange(novaQuantidadeTotal);
+    }
   };
 
   const somaQuantidades = value.reduce((soma, produto) => soma + produto.quantidade, 0);
