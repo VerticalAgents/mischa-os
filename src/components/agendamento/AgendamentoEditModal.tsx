@@ -282,6 +282,7 @@ export default function AgendamentoEditModal({
                 onChange={setItensPersonalizados}
                 clienteId={agendamento.cliente.id}
                 quantidadeTotal={quantidadeTotal}
+                onQuantidadeTotalChange={setQuantidadeTotal}
               />
             </div>
           )}
