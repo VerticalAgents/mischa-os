@@ -3,10 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, RefreshCw, PackagePlus } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Plus, Trash2, RefreshCw, PackagePlus, History, Calculator } from 'lucide-react';
 import { useSupabaseProdutos } from '@/hooks/useSupabaseProdutos';
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { useSupabaseProporoesPadrao } from '@/hooks/useSupabaseProporoesPadrao';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProdutoQuantidade {
   produto: string;
@@ -28,8 +31,9 @@ export default function ProdutoQuantidadeSelector({
 }: ProdutoQuantidadeSelectorProps) {
   const { produtos, carregarProdutos } = useSupabaseProdutos();
   const { getClientePorId } = useClienteStore();
-  const { proporcoes } = useSupabaseProporoesPadrao();
+  const { proporcoes, obterProporcoesParaPedido } = useSupabaseProporoesPadrao();
   const [refreshing, setRefreshing] = useState(false);
+  const { toast } = useToast();
 
   const cliente = getClientePorId(clienteId);
 
@@ -52,6 +56,76 @@ export default function ProdutoQuantidadeSelector({
       await carregarProdutos();
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const repetirUltimoPedido = async () => {
+    try {
+      const { data: ultimoPedido, error } = await supabase
+        .from('historico_entregas')
+        .select('itens, quantidade')
+        .eq('cliente_id', clienteId)
+        .eq('tipo', 'entrega')
+        .order('data', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error || !ultimoPedido?.itens) {
+        toast({ title: "Nenhum pedido anterior encontrado", variant: "destructive" });
+        return;
+      }
+
+      const itens = ultimoPedido.itens as { produto_id: string; quantidade: number }[];
+      const produtoIds = itens.map(item => item.produto_id);
+      
+      const { data: produtos } = await supabase
+        .from('produtos_finais')
+        .select('id, nome')
+        .in('id', produtoIds);
+
+      const novosProdutos = itens
+        .map(item => {
+          const produto = produtos?.find(p => p.id === item.produto_id);
+          return produto ? { produto: produto.nome, quantidade: item.quantidade } : null;
+        })
+        .filter(Boolean) as ProdutoQuantidade[];
+
+      onChange(novosProdutos);
+      toast({ title: "Último pedido carregado", description: `${novosProdutos.length} itens` });
+    } catch (error) {
+      console.error('Erro ao repetir último pedido:', error);
+      toast({ title: "Erro ao carregar pedido anterior", variant: "destructive" });
+    }
+  };
+
+  const preencherQuantidades = async () => {
+    if (value.length === 0) return;
+    
+    try {
+      const proporcoesCalculadas = await obterProporcoesParaPedido(quantidadeTotal);
+      
+      if (proporcoesCalculadas.length === 0) {
+        toast({ 
+          title: "Proporções não configuradas", 
+          description: "Configure as proporções padrão primeiro",
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      const produtosAtualizados = value.map(item => {
+        const proporcao = proporcoesCalculadas.find(p => p.produto_nome === item.produto);
+        return {
+          produto: item.produto,
+          quantidade: proporcao?.quantidade || 0
+        };
+      });
+
+      onChange(produtosAtualizados);
+      toast({ title: "Quantidades preenchidas", description: "Baseado nas proporções padrão" });
+    } catch (error) {
+      console.error('Erro ao preencher quantidades:', error);
+      toast({ title: "Erro ao preencher quantidades", variant: "destructive" });
     }
   };
 
@@ -110,42 +184,87 @@ export default function ProdutoQuantidadeSelector({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Label className="text-base font-medium">Produtos e Quantidades</Label>
-        <div className="flex items-center gap-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Atualizar Lista
-          </Button>
-          <Button 
-            type="button" 
-            onClick={adicionarProdutosPadrao} 
-            size="sm"
-            variant="outline"
-            disabled={
-              produtosFiltrados.filter(produto => {
-                const proporcao = proporcoes.find(p => p.produto_id === produto.id);
-                return proporcao && proporcao.percentual > 0 && !value.some(item => item.produto === produto.nome);
-              }).length === 0
-            }
-          >
-            <PackagePlus className="h-4 w-4 mr-2" />
-            Adicionar Padrão
-          </Button>
-          <Button 
-            type="button" 
-            onClick={adicionarProduto} 
-            size="sm"
-            disabled={produtosDisponiveis.length === 0}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Adicionar Produto
-          </Button>
-        </div>
+        <TooltipProvider>
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                >
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Atualizar Lista</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={repetirUltimoPedido}
+                >
+                  <History className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Repetir Último Pedido</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={adicionarProdutosPadrao}
+                  disabled={
+                    produtosFiltrados.filter(produto => {
+                      const proporcao = proporcoes.find(p => p.produto_id === produto.id);
+                      return proporcao && proporcao.percentual > 0 && !value.some(item => item.produto === produto.nome);
+                    }).length === 0
+                  }
+                >
+                  <PackagePlus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Adicionar Padrão</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={preencherQuantidades}
+                  disabled={value.length === 0}
+                >
+                  <Calculator className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Preencher Quantidades</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  type="button" 
+                  size="icon" 
+                  onClick={adicionarProduto}
+                  disabled={produtosDisponiveis.length === 0}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Adicionar Produto</TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
       </div>
 
       {produtosFiltrados.length === 0 ? (
