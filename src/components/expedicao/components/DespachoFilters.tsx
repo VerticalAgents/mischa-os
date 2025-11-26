@@ -35,9 +35,9 @@ export const DespachoFilters = ({
             <SelectValue placeholder="Todos os tipos" />
           </SelectTrigger>
           <SelectContent className="bg-white border shadow-lg z-50">
-            <SelectItem value="todos">Todos os tipos</SelectItem>
-            <SelectItem value="Padrão">Padrão</SelectItem>
-            <SelectItem value="Alterado">Alterado</SelectItem>
+            <SelectItem value="todos">Todos os status</SelectItem>
+            <SelectItem value="Separado">Separado</SelectItem>
+            <SelectItem value="Despachado">Despachado</SelectItem>
           </SelectContent>
         </Select>
       </div>
