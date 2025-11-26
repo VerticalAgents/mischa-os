@@ -20,6 +20,7 @@ export interface ProdutoSupabase {
   custo_total?: number;
   custo_unitario?: number;
   margem_lucro?: number;
+  ordem_categoria?: number;
 }
 
 export interface ComponenteProduto {

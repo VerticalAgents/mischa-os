@@ -1375,6 +1375,7 @@ export type Database = {
           id: string
           margem_lucro: number | null
           nome: string
+          ordem_categoria: number | null
           peso_unitario: number | null
           preco_venda: number | null
           subcategoria_id: number | null
@@ -1394,6 +1395,7 @@ export type Database = {
           id?: string
           margem_lucro?: number | null
           nome: string
+          ordem_categoria?: number | null
           peso_unitario?: number | null
           preco_venda?: number | null
           subcategoria_id?: number | null
@@ -1413,6 +1415,7 @@ export type Database = {
           id?: string
           margem_lucro?: number | null
           nome?: string
+          ordem_categoria?: number | null
           peso_unitario?: number | null
           preco_venda?: number | null
           subcategoria_id?: number | null

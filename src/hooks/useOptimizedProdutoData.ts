@@ -21,6 +21,7 @@ export interface ProdutoOptimizado {
   custo_total?: number;
   custo_unitario?: number;
   margem_lucro?: number;
+  ordem_categoria?: number;
   // Dados calculados otimizados
   custo_unitario_calculado: number;
   margem_real: number;

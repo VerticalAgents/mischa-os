@@ -1,8 +1,9 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Edit, Copy, Trash2 } from "lucide-react";
 import { ProdutoOptimizado } from "@/hooks/useOptimizedProdutoData";
 
@@ -13,6 +14,7 @@ interface ProdutoTableRowProps {
   onEditar: (produto: ProdutoOptimizado) => void;
   onDuplicar: (produto: ProdutoOptimizado) => void;
   onRemover: (produtoId: string) => void;
+  onAtualizarOrdem: (produtoId: string, novaOrdem: number | null) => void;
   isLoadingAction: boolean;
 }
 
@@ -23,16 +25,50 @@ export const ProdutoTableRow: React.FC<ProdutoTableRowProps> = ({
   onEditar,
   onDuplicar,
   onRemover,
+  onAtualizarOrdem,
   isLoadingAction
 }) => {
+  const [ordemLocal, setOrdemLocal] = useState<string>(
+    produto.ordem_categoria?.toString() || ""
+  );
+
   const margemVariant = produto.margem_real > 20 
     ? "default" 
     : produto.margem_real > 10 
     ? "secondary" 
     : "destructive";
 
+  const handleOrdemBlur = () => {
+    const valorNumerico = ordemLocal.trim() === "" ? null : parseInt(ordemLocal);
+    if (valorNumerico !== null && (isNaN(valorNumerico) || valorNumerico < 1)) {
+      setOrdemLocal(produto.ordem_categoria?.toString() || "");
+      return;
+    }
+    if (valorNumerico !== produto.ordem_categoria) {
+      onAtualizarOrdem(produto.id, valorNumerico);
+    }
+  };
+
+  const handleOrdemKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    }
+  };
+
   return (
     <TableRow key={produto.id}>
+      <TableCell className="w-[80px]">
+        <Input
+          type="text"
+          value={ordemLocal}
+          onChange={(e) => setOrdemLocal(e.target.value)}
+          onBlur={handleOrdemBlur}
+          onKeyDown={handleOrdemKeyDown}
+          placeholder="-"
+          className="w-[60px] h-8 text-center"
+          disabled={isLoadingAction}
+        />
+      </TableCell>
       <TableCell className="font-medium">{produto.nome}</TableCell>
       <TableCell>
         <Badge variant="outline">

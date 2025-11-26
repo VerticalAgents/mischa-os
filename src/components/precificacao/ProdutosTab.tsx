@@ -104,6 +104,22 @@ export default function ProdutosTab() {
     refresh();
   };
 
+  const handleAtualizarOrdem = async (produtoId: string, novaOrdem: number | null) => {
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { error } = await supabase
+        .from('produtos_finais')
+        .update({ ordem_categoria: novaOrdem })
+        .eq('id', produtoId);
+
+      if (error) throw error;
+      
+      await refresh();
+    } catch (error) {
+      console.error('Erro ao atualizar ordem:', error);
+    }
+  };
+
   // Agrupar produtos por categoria
   const produtosPorCategoria = useMemo(() => {
     const grupos: Record<string, ProdutoOptimizado[]> = {};
@@ -124,6 +140,23 @@ export default function ProdutosTab() {
       });
     }
 
+    // Ordenar produtos dentro de cada categoria
+    Object.keys(grupos).forEach((categoria) => {
+      grupos[categoria].sort((a, b) => {
+        // Produtos com ordem definida primeiro
+        if (a.ordem_categoria != null && b.ordem_categoria == null) return -1;
+        if (a.ordem_categoria == null && b.ordem_categoria != null) return 1;
+        
+        // Ambos têm ordem: ordenar por número
+        if (a.ordem_categoria != null && b.ordem_categoria != null) {
+          return a.ordem_categoria - b.ordem_categoria;
+        }
+        
+        // Nenhum tem ordem: ordenar por nome
+        return a.nome.localeCompare(b.nome);
+      });
+    });
+
     return grupos;
   }, [produtos, categorias, filtrarRevendaPorProporcao, proporcoes]);
 
@@ -132,7 +165,7 @@ export default function ProdutosTab() {
     if (produtosCategoria.length === 0) {
       return (
         <TableRow>
-          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
             Nenhum produto nesta categoria
           </TableCell>
         </TableRow>
@@ -148,6 +181,7 @@ export default function ProdutosTab() {
         onEditar={abrirEdicaoProduto}
         onRemover={handleRemoverProduto}
         onDuplicar={handleDuplicarProduto}
+        onAtualizarOrdem={handleAtualizarOrdem}
         isLoadingAction={isLoadingAction}
       />
     ));
@@ -276,6 +310,7 @@ export default function ProdutosTab() {
                           <Table>
                             <TableHeader>
                               <TableRow>
+                                <TableHead className="w-[80px]">Ordem</TableHead>
                                 <TableHead className="min-w-[150px]">Nome</TableHead>
                                 <TableHead className="min-w-[100px]">Categoria</TableHead>
                                 <TableHead className="min-w-[120px]">Subcategoria</TableHead>
