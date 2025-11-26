@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Trash2, RefreshCw, PackagePlus } from 'lucide-react';
 import { useSupabaseProdutos } from '@/hooks/useSupabaseProdutos';
 import { useClienteStore } from '@/hooks/useClienteStore';
+import { useSupabaseProporoesPadrao } from '@/hooks/useSupabaseProporoesPadrao';
 
 interface ProdutoQuantidade {
   produto: string;
@@ -27,6 +28,7 @@ export default function ProdutoQuantidadeSelector({
 }: ProdutoQuantidadeSelectorProps) {
   const { produtos, carregarProdutos } = useSupabaseProdutos();
   const { getClientePorId } = useClienteStore();
+  const { proporcoes } = useSupabaseProporoesPadrao();
   const [refreshing, setRefreshing] = useState(false);
 
   const cliente = getClientePorId(clienteId);
@@ -57,8 +59,31 @@ export default function ProdutoQuantidadeSelector({
     onChange([...value, { produto: '', quantidade: 0 }]);
   };
 
-  const adicionarTodosProdutos = () => {
-    const novosProdutos = produtosDisponiveis.map(produto => ({
+  const adicionarProdutosPadrao = () => {
+    // 1. Filtrar produtos com proporção padrão > 0
+    const produtosComProporcao = produtosFiltrados.filter(produto => {
+      const proporcao = proporcoes.find(p => p.produto_id === produto.id);
+      return proporcao && proporcao.percentual > 0;
+    });
+    
+    // 2. Filtrar produtos não adicionados ainda
+    const produtosDisponiveis = produtosComProporcao.filter(produto => {
+      return !value.some(item => item.produto === produto.nome);
+    });
+    
+    // 3. Ordenar por ordem_categoria (produtos sem ordem vão por último, ordenados por nome)
+    const produtosOrdenados = produtosDisponiveis.sort((a, b) => {
+      // Produtos com ordem vão primeiro
+      if (a.ordem_categoria != null && b.ordem_categoria != null) {
+        return a.ordem_categoria - b.ordem_categoria;
+      }
+      if (a.ordem_categoria != null) return -1;
+      if (b.ordem_categoria != null) return 1;
+      return a.nome.localeCompare(b.nome);
+    });
+    
+    // 4. Adicionar produtos na lista
+    const novosProdutos = produtosOrdenados.map(produto => ({
       produto: produto.nome,
       quantidade: 0
     }));
@@ -98,13 +123,18 @@ export default function ProdutoQuantidadeSelector({
           </Button>
           <Button 
             type="button" 
-            onClick={adicionarTodosProdutos} 
+            onClick={adicionarProdutosPadrao} 
             size="sm"
             variant="outline"
-            disabled={produtosDisponiveis.length === 0}
+            disabled={
+              produtosFiltrados.filter(produto => {
+                const proporcao = proporcoes.find(p => p.produto_id === produto.id);
+                return proporcao && proporcao.percentual > 0 && !value.some(item => item.produto === produto.nome);
+              }).length === 0
+            }
           >
             <PackagePlus className="h-4 w-4 mr-2" />
-            Adicionar Todos
+            Adicionar Padrão
           </Button>
           <Button 
             type="button" 
