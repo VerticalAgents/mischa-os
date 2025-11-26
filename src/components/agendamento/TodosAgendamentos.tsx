@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AgendamentoItem } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Edit, CheckCheck, Search } from "lucide-react";
+import { Edit, CheckCheck, Search, Calendar } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -16,18 +16,22 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 import AgendamentoFilters from "./AgendamentoFilters";
+import ReagendamentoEmMassaDialog from "./ReagendamentoEmMassaDialog";
 
 export default function TodosAgendamentos() {
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("todos");
+  const [agendamentosSelecionados, setAgendamentosSelecionados] = useState<Set<string>>(new Set());
+  const [modalReagendarAberto, setModalReagendarAberto] = useState(false);
   const { toast } = useToast();
   const { agendamentos, carregarTodosAgendamentos, obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
   const { carregarClientes } = useClienteStore();
@@ -165,6 +169,71 @@ export default function TodosAgendamentos() {
     }
   };
 
+  const toggleSelecao = (clienteId: string) => {
+    setAgendamentosSelecionados(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(clienteId)) {
+        newSet.delete(clienteId);
+      } else {
+        newSet.add(clienteId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelecionarTodos = () => {
+    if (agendamentosSelecionados.size === sortedAgendamentos.length) {
+      setAgendamentosSelecionados(new Set());
+    } else {
+      const todosIds = new Set(sortedAgendamentos.map(a => a.cliente.id));
+      setAgendamentosSelecionados(todosIds);
+    }
+  };
+
+  const limparSelecao = () => {
+    setAgendamentosSelecionados(new Set());
+  };
+
+  const handleReagendarEmMassa = async (novaData: Date) => {
+    try {
+      const agendamentosParaReagendar = sortedAgendamentos.filter(a => 
+        agendamentosSelecionados.has(a.cliente.id)
+      );
+
+      await Promise.all(
+        agendamentosParaReagendar.map(async (agendamento) => {
+          const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
+          
+          if (agendamentoAtual) {
+            await salvarAgendamento(agendamento.cliente.id, {
+              data_proxima_reposicao: novaData,
+              tipo_pedido: agendamentoAtual.tipo_pedido,
+              quantidade_total: agendamentoAtual.quantidade_total,
+              itens_personalizados: agendamentoAtual.itens_personalizados,
+              status_agendamento: agendamentoAtual.status_agendamento,
+            });
+          }
+        })
+      );
+
+      await carregarTodosAgendamentos();
+      await carregarClientes();
+      limparSelecao();
+
+      toast({
+        title: "Sucesso",
+        description: `${agendamentosParaReagendar.length} agendamento(s) reagendado(s) com sucesso`,
+      });
+    } catch (error) {
+      console.error('Erro ao reagendar em massa:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao reagendar agendamentos",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Filtros */}
@@ -176,7 +245,7 @@ export default function TodosAgendamentos() {
         onFiltroStatusChange={setFiltroStatus}
       />
 
-      {/* Filtro de Pesquisa */}
+      {/* Filtro de Pesquisa e Botão de Reagendamento em Massa */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -187,6 +256,14 @@ export default function TodosAgendamentos() {
             className="pl-10"
           />
         </div>
+        <Button
+          onClick={() => setModalReagendarAberto(true)}
+          disabled={agendamentosSelecionados.size === 0}
+          className="whitespace-nowrap"
+        >
+          <Calendar className="mr-2 h-4 w-4" />
+          Reagendar Selecionados ({agendamentosSelecionados.size})
+        </Button>
       </div>
 
       {/* Controles de Ordenação */}
@@ -208,6 +285,12 @@ export default function TodosAgendamentos() {
         <TableCaption className="text-left">Lista de agendamentos.</TableCaption>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[50px]">
+              <Checkbox
+                checked={agendamentosSelecionados.size === sortedAgendamentos.length && sortedAgendamentos.length > 0}
+                onCheckedChange={toggleSelecionarTodos}
+              />
+            </TableHead>
             <TableHead className="text-left">PDV</TableHead>
             <TableHead className="text-left">Data Reposição</TableHead>
             <TableHead className="text-left">Status</TableHead>
@@ -218,6 +301,12 @@ export default function TodosAgendamentos() {
         <TableBody>
           {sortedAgendamentos.map((agendamento) => (
             <TableRow key={agendamento.cliente.id}>
+              <TableCell>
+                <Checkbox
+                  checked={agendamentosSelecionados.has(agendamento.cliente.id)}
+                  onCheckedChange={() => toggleSelecao(agendamento.cliente.id)}
+                />
+              </TableCell>
               <TableCell className="text-left">{agendamento.cliente.nome}</TableCell>
               <TableCell className="text-left">
                 {format(agendamento.dataReposicao, "dd 'de' MMMM 'de' yyyy", {
@@ -270,6 +359,15 @@ export default function TodosAgendamentos() {
         onOpenChange={setOpen}
         agendamento={selectedAgendamento}
         onSalvar={handleSalvarAgendamento}
+      />
+
+      <ReagendamentoEmMassaDialog
+        open={modalReagendarAberto}
+        onOpenChange={setModalReagendarAberto}
+        agendamentosSelecionados={sortedAgendamentos.filter(a => 
+          agendamentosSelecionados.has(a.cliente.id)
+        )}
+        onConfirm={handleReagendarEmMassa}
       />
     </div>
   );
