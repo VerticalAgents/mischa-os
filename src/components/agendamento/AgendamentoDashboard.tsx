@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -12,6 +13,7 @@ import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
+import ReagendamentoEmMassaDialog from "./ReagendamentoEmMassaDialog";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import jsPDF from 'jspdf';
@@ -40,6 +42,8 @@ export default function AgendamentoDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [semanaAtual, setSemanaAtual] = useState<Date>(new Date());
   const [representanteFiltro, setRepresentanteFiltro] = useState<string>("todos");
+  const [agendamentosSelecionados, setAgendamentosSelecionados] = useState<Set<string>>(new Set());
+  const [modalReagendarAberto, setModalReagendarAberto] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -271,6 +275,70 @@ export default function AgendamentoDashboard() {
       toast({
         title: "Erro",
         description: "Erro ao confirmar agendamento",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const toggleSelecao = (clienteId: string) => {
+    setAgendamentosSelecionados(prev => {
+      const novaSeleção = new Set(prev);
+      if (novaSeleção.has(clienteId)) {
+        novaSeleção.delete(clienteId);
+      } else {
+        novaSeleção.add(clienteId);
+      }
+      return novaSeleção;
+    });
+  };
+
+  const toggleSelecionarTodos = () => {
+    if (agendamentosSelecionados.size === agendamentosDiaSelecionado.length) {
+      limparSelecao();
+    } else {
+      const todosIds = new Set(agendamentosDiaSelecionado.map(a => a.cliente.id));
+      setAgendamentosSelecionados(todosIds);
+    }
+  };
+
+  const limparSelecao = () => {
+    setAgendamentosSelecionados(new Set());
+  };
+
+  const handleReagendarEmMassa = async (novaData: Date) => {
+    try {
+      const agendamentosParaReagendar = agendamentosDiaSelecionado.filter(
+        a => agendamentosSelecionados.has(a.cliente.id)
+      );
+
+      await Promise.all(
+        agendamentosParaReagendar.map(async (agendamento) => {
+          const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
+          
+          if (agendamentoAtual) {
+            await salvarAgendamento(agendamento.cliente.id, {
+              data_proxima_reposicao: novaData,
+              tipo_pedido: agendamentoAtual.tipo_pedido,
+              quantidade_total: agendamentoAtual.quantidade_total,
+              itens_personalizados: agendamentoAtual.itens_personalizados,
+              status_agendamento: agendamentoAtual.status_agendamento
+            });
+          }
+        })
+      );
+
+      await carregarTodosAgendamentos();
+      limparSelecao();
+      
+      toast({
+        title: "Sucesso",
+        description: `${agendamentosParaReagendar.length} agendamento(s) reagendado(s) com sucesso`
+      });
+    } catch (error) {
+      console.error('Erro ao reagendar em massa:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao reagendar agendamentos",
         variant: "destructive"
       });
     }
@@ -642,15 +710,40 @@ export default function AgendamentoDashboard() {
       {/* Agendamentos do Dia Selecionado */}
       {diaSelecionado && <Card>
           <CardHeader>
-            <CardTitle>Agendamentos para {format(diaSelecionado, "dd 'de' MMMM 'de' yyyy", {
-            locale: ptBR
-          })}</CardTitle>
-            <CardDescription className="text-left">
-              {agendamentosDiaSelecionado.length === 0 ? "Nenhum agendamento encontrado para este dia" : `${agendamentosDiaSelecionado.length} agendamento(s) encontrado(s)`}
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Agendamentos para {format(diaSelecionado, "dd 'de' MMMM 'de' yyyy", {
+                  locale: ptBR
+                })}</CardTitle>
+                <CardDescription className="text-left">
+                  {agendamentosDiaSelecionado.length === 0 ? "Nenhum agendamento encontrado para este dia" : `${agendamentosDiaSelecionado.length} agendamento(s) encontrado(s)`}
+                </CardDescription>
+              </div>
+              {agendamentosDiaSelecionado.length > 0 && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setModalReagendarAberto(true)}
+                  disabled={agendamentosSelecionados.size === 0}
+                  className="flex items-center gap-2"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Reagendar Selecionados ({agendamentosSelecionados.size})
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {agendamentosDiaSelecionado.length > 0 ? <div className="space-y-3">
+                <div className="flex items-center gap-2 pb-2 border-b mb-3">
+                  <Checkbox
+                    checked={agendamentosSelecionados.size === agendamentosDiaSelecionado.length && agendamentosDiaSelecionado.length > 0}
+                    onCheckedChange={toggleSelecionarTodos}
+                  />
+                  <span className="text-sm font-medium">
+                    Selecionar Todos
+                  </span>
+                </div>
                 {agendamentosDiaSelecionado.map(agendamento => {
                   // Criar um componente que busca a quantidade atualizada
                   const QuantidadeAtualizada = ({ agendamento }: { agendamento: any }) => {
@@ -691,7 +784,11 @@ export default function AgendamentoDashboard() {
                     };
 
                     return (
-                      <div key={agendamento.cliente.id} className={`flex items-center justify-between p-3 border rounded-lg ${getBackgroundColor()}`}>
+                      <div key={agendamento.cliente.id} className={`flex items-center gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
+                        <Checkbox
+                          checked={agendamentosSelecionados.has(agendamento.cliente.id)}
+                          onCheckedChange={() => toggleSelecao(agendamento.cliente.id)}
+                        />
                         <div className="flex-1 text-left">
                           <div className="font-medium text-left">{agendamento.cliente.nome}</div>
                           <div className="text-sm text-muted-foreground text-left">
@@ -733,5 +830,12 @@ export default function AgendamentoDashboard() {
         </Card>}
 
       <AgendamentoEditModal open={modalOpen} onOpenChange={setModalOpen} agendamento={selectedAgendamento} onSalvar={handleSalvarAgendamento} />
+      
+      <ReagendamentoEmMassaDialog
+        open={modalReagendarAberto}
+        onOpenChange={setModalReagendarAberto}
+        agendamentosSelecionados={agendamentosDiaSelecionado.filter(a => agendamentosSelecionados.has(a.cliente.id))}
+        onConfirm={handleReagendarEmMassa}
+      />
     </div>;
 }
