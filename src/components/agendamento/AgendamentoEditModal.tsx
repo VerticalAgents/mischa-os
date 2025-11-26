@@ -275,16 +275,6 @@ export default function AgendamentoEditModal({
 
           {tipoPedido === "Alterado" && (
             <div className="space-y-4 border-t pt-4">
-              {hasValidationError && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    A soma das quantidades dos produtos ({somaQuantidadesProdutos}) deve ser igual ao total do pedido ({quantidadeTotal}).
-                    Diferença: {Math.abs(somaQuantidadesProdutos - quantidadeTotal)} unidades.
-                  </AlertDescription>
-                </Alert>
-              )}
-              
               <ProdutoQuantidadeSelector
                 value={itensPersonalizados}
                 onChange={setItensPersonalizados}
