@@ -87,10 +87,10 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
       );
     }
 
-    // Filtro por tipo
+    // Filtro por status (substatus_pedido)
     if (filtroTipo !== "todos") {
       pedidosFiltrados = pedidosFiltrados.filter(pedido => 
-        pedido.tipo_pedido === filtroTipo
+        pedido.substatus_pedido === filtroTipo
       );
     }
 
