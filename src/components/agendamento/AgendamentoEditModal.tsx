@@ -257,7 +257,14 @@ export default function AgendamentoEditModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="quantidade">Quantidade Total</Label>
+            <div className="flex items-center justify-between gap-4">
+              <Label htmlFor="quantidade">Quantidade Total</Label>
+              {hasValidationError && (
+                <p className="text-sm text-red-500">
+                  Total deve ser igual à soma das quantidades dos produtos ({somaQuantidadesProdutos})
+                </p>
+              )}
+            </div>
             <Input
               id="quantidade"
               type="number"
@@ -266,11 +273,6 @@ export default function AgendamentoEditModal({
               min="0"
               className={hasValidationError ? "border-red-500" : ""}
             />
-            {hasValidationError && (
-              <p className="text-sm text-red-500">
-                Total deve ser igual à soma das quantidades dos produtos ({somaQuantidadesProdutos})
-              </p>
-            )}
           </div>
 
           {tipoPedido === "Alterado" && (
