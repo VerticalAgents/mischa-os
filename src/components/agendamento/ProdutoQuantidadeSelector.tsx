@@ -21,13 +21,15 @@ interface ProdutoQuantidadeSelectorProps {
   onChange: (produtos: ProdutoQuantidade[]) => void;
   clienteId: string;
   quantidadeTotal: number;
+  onQuantidadeTotalChange?: (novaQuantidade: number) => void;
 }
 
 export default function ProdutoQuantidadeSelector({ 
   value, 
   onChange, 
   clienteId,
-  quantidadeTotal 
+  quantidadeTotal,
+  onQuantidadeTotalChange
 }: ProdutoQuantidadeSelectorProps) {
   const { produtos, carregarProdutos } = useSupabaseProdutos();
   const { getClientePorId } = useClienteStore();
@@ -68,7 +70,7 @@ export default function ProdutoQuantidadeSelector({
         .eq('tipo', 'entrega')
         .order('data', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error || !ultimoPedido?.itens) {
         toast({ title: "Nenhum pedido anterior encontrado", variant: "destructive" });
@@ -91,7 +93,14 @@ export default function ProdutoQuantidadeSelector({
         .filter(Boolean) as ProdutoQuantidade[];
 
       onChange(novosProdutos);
-      toast({ title: "Último pedido carregado", description: `${novosProdutos.length} itens` });
+      
+      // Atualizar quantidade total com a soma dos produtos
+      const somaQuantidades = novosProdutos.reduce((soma, p) => soma + p.quantidade, 0);
+      if (onQuantidadeTotalChange) {
+        onQuantidadeTotalChange(somaQuantidades);
+      }
+      
+      toast({ title: "Último pedido carregado", description: `${novosProdutos.length} itens, total: ${somaQuantidades}` });
     } catch (error) {
       console.error('Erro ao repetir último pedido:', error);
       toast({ title: "Erro ao carregar pedido anterior", variant: "destructive" });
