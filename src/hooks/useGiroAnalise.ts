@@ -37,7 +37,7 @@ export function useGiroAnalise(cliente: Cliente) {
         console.log('🔄 Carregando dados de giro para cliente:', cliente.id);
 
         // **MUDANÇA PRINCIPAL: Usar função centralizada para calcular média histórica**
-        const { giroSemanal: mediaHistorica, numeroSemanas: numeroSemanasHistorico } = await calcularGiroSemanalHistorico(cliente.id);
+        const { giroSemanal: mediaHistorica, numeroSemanas: numeroSemanasHistorico, dataPrimeiraEntrega } = await calcularGiroSemanalHistorico(cliente.id);
         console.log('📊 Média histórica calculada (função centralizada):', mediaHistorica, 'em', numeroSemanasHistorico, 'semanas');
 
         // Buscar histórico de entregas dos últimos 84 dias para o gráfico (12 semanas)
@@ -118,6 +118,7 @@ export function useGiroAnalise(cliente: Cliente) {
         const resultado: AnaliseGiroData = {
           mediaHistorica, // Usar o valor calculado pela função centralizada
           numeroSemanasHistorico,
+          dataPrimeiraEntrega,
           ultimaSemana,
           variacaoPercentual,
           meta,
