@@ -67,7 +67,7 @@ function App() {
             <RouteGuard>
               <SidebarProvider>
                 <Suspense fallback={<PageLoader />}>
-                  <div className="min-h-screen w-full">
+                  <main className="min-h-screen w-full">
                     <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/auth" element={<AuthPage />} />
@@ -261,7 +261,7 @@ function App() {
                      } />
                        <Route path="*" element={<NotFound />} />
                     </Routes>
-                  </div>
+                  </main>
                 </Suspense>
               </SidebarProvider>
             </RouteGuard>
