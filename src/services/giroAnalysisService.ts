@@ -115,7 +115,8 @@ function parseJsonArray(jsonValue: Json): number[] | null {
 // Helper function to calculate historical giro from deliveries
 async function calcularGiroHistoricoPorEntregas(clienteId: string): Promise<number> {
   // **MUDANÇA: Usar função centralizada unificada**
-  return await calcularGiroSemanalHistorico(clienteId);
+  const { giroSemanal } = await calcularGiroSemanalHistorico(clienteId);
+  return giroSemanal;
 }
 
 // Helper function to transform database row to our interface
