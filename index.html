@@ -26,7 +26,46 @@
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Inline loading state for faster FCP -->
+      <style>
+        .initial-loader {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          background: #0a0a0a;
+          font-family: system-ui, -apple-system, sans-serif;
+        }
+        .initial-loader-content {
+          text-align: center;
+          color: #fafafa;
+        }
+        .initial-loader-spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid #27272a;
+          border-top-color: #fafafa;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 16px;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        @media (prefers-color-scheme: light) {
+          .initial-loader { background: #ffffff; }
+          .initial-loader-content { color: #0a0a0a; }
+          .initial-loader-spinner { border-color: #e4e4e7; border-top-color: #0a0a0a; }
+        }
+      </style>
+      <div class="initial-loader">
+        <div class="initial-loader-content">
+          <div class="initial-loader-spinner"></div>
+          <p>Carregando...</p>
+        </div>
+      </div>
+    </div>
     <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
