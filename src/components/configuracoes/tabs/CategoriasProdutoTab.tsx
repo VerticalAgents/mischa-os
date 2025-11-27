@@ -1,10 +1,9 @@
 
 import { useState } from "react";
-import { useCategoriaStore } from "@/hooks/useCategoriaStore";
-import { ProdutoCategoria, ProdutoSubcategoria } from "@/types";
+import { useSupabaseCategoriasProduto, CategoriasProdutoSupabase, SubcategoriaProdutoSupabase } from "@/hooks/useSupabaseCategoriasProduto";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Pencil, Trash, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { 
   Card, 
   CardContent, 
@@ -41,7 +40,6 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useToast } from "@/components/ui/use-toast";
 
 // Schemas for form validation
 const categoriaSchema = z.object({
@@ -59,17 +57,16 @@ type SubcategoriaFormValues = z.infer<typeof subcategoriaSchema>;
 export default function CategoriasProdutoTab() {
   const { 
     categorias, 
+    subcategorias,
+    loading,
     adicionarCategoria, 
     atualizarCategoria, 
     removerCategoria,
     adicionarSubcategoria,
     atualizarSubcategoria,
     removerSubcategoria,
-    categoriaTemProdutos,
-    subcategoriaTemProdutos
-  } = useCategoriaStore();
-  
-  const { toast } = useToast();
+    getSubcategoriasPorCategoria
+  } = useSupabaseCategoriasProduto();
   
   // State for dialogs
   const [isCategoriaDialogOpen, setIsCategoriaDialogOpen] = useState(false);
@@ -79,8 +76,8 @@ export default function CategoriasProdutoTab() {
   const [alertMessage, setAlertMessage] = useState("");
   
   // State for editing
-  const [editingCategoria, setEditingCategoria] = useState<ProdutoCategoria | null>(null);
-  const [editingSubcategoria, setEditingSubcategoria] = useState<ProdutoSubcategoria | null>(null);
+  const [editingCategoria, setEditingCategoria] = useState<CategoriasProdutoSupabase | null>(null);
+  const [editingSubcategoria, setEditingSubcategoria] = useState<SubcategoriaProdutoSupabase | null>(null);
   const [selectedCategoriaId, setSelectedCategoriaId] = useState<number | null>(null);
   
   // State for confirmation dialog
@@ -108,96 +105,61 @@ export default function CategoriasProdutoTab() {
   });
   
   // Handlers
-  const handleCreateCategoria = (data: CategoriaFormValues) => {
+  const handleCreateCategoria = async (data: CategoriaFormValues) => {
     if (editingCategoria) {
-      // Show confirmation dialog for editing
       setConfirmTitle("Confirmar Alteração");
       setConfirmDescription("Deseja realmente alterar o nome desta categoria? Isso impactará todos os produtos vinculados.");
-      setConfirmAction(() => () => {
-        atualizarCategoria(editingCategoria.id, data.nome, data.descricao);
+      setConfirmAction(() => async () => {
+        await atualizarCategoria(editingCategoria.id, data.nome, data.descricao);
         setIsCategoriaDialogOpen(false);
         setEditingCategoria(null);
-        toast({
-          title: "Categoria atualizada",
-          description: `A categoria "${data.nome}" foi atualizada com sucesso.`
-        });
       });
       setIsConfirmDialogOpen(true);
     } else {
-      adicionarCategoria(data.nome, data.descricao);
+      await adicionarCategoria(data.nome, data.descricao);
       setIsCategoriaDialogOpen(false);
-      toast({
-        title: "Categoria criada",
-        description: `A categoria "${data.nome}" foi criada com sucesso.`
-      });
     }
   };
   
-  const handleCreateSubcategoria = (data: SubcategoriaFormValues) => {
+  const handleCreateSubcategoria = async (data: SubcategoriaFormValues) => {
     if (selectedCategoriaId === null) return;
     
     if (editingSubcategoria) {
-      // Show confirmation dialog for editing
       setConfirmTitle("Confirmar Alteração");
       setConfirmDescription("Deseja realmente alterar o nome desta subcategoria? Isso impactará todos os produtos vinculados.");
-      setConfirmAction(() => () => {
-        atualizarSubcategoria(editingSubcategoria.id, selectedCategoriaId, data.nome);
+      setConfirmAction(() => async () => {
+        await atualizarSubcategoria(editingSubcategoria.id, data.nome);
         setIsSubcategoriaDialogOpen(false);
         setEditingSubcategoria(null);
-        toast({
-          title: "Subcategoria atualizada",
-          description: `A subcategoria "${data.nome}" foi atualizada com sucesso.`
-        });
       });
       setIsConfirmDialogOpen(true);
     } else {
-      adicionarSubcategoria(selectedCategoriaId, data.nome);
+      await adicionarSubcategoria(selectedCategoriaId, data.nome);
       setIsSubcategoriaDialogOpen(false);
-      toast({
-        title: "Subcategoria criada",
-        description: `A subcategoria "${data.nome}" foi criada com sucesso.`
-      });
     }
   };
   
-  const handleDeleteCategoria = (categoria: ProdutoCategoria) => {
-    if (categoriaTemProdutos(categoria.id)) {
-      setAlertMessage("Esta categoria contém produtos ativos. Mova ou exclua os produtos antes de remover a categoria.");
+  const handleDeleteCategoria = (categoria: CategoriasProdutoSupabase) => {
+    const subcats = getSubcategoriasPorCategoria(categoria.id);
+    if (subcats.length > 0) {
+      setAlertMessage("Esta categoria possui subcategorias. Remova as subcategorias antes de remover a categoria.");
       setIsAlertDialogOpen(true);
       return;
     }
     
     setConfirmTitle("Confirmar Exclusão");
     setConfirmDescription(`Deseja realmente excluir a categoria "${categoria.nome}"?`);
-    setConfirmAction(() => () => {
-      const success = removerCategoria(categoria.id);
-      if (success) {
-        toast({
-          title: "Categoria removida",
-          description: `A categoria "${categoria.nome}" foi removida com sucesso.`
-        });
-      }
+    setConfirmAction(() => async () => {
+      await removerCategoria(categoria.id);
     });
     setIsConfirmDialogOpen(true);
   };
   
-  const handleDeleteSubcategoria = (categoriaId: number, subcategoria: ProdutoSubcategoria) => {
-    if (subcategoriaTemProdutos(subcategoria.id)) {
-      setAlertMessage("Esta subcategoria contém produtos ativos. Mova ou exclua os produtos antes de remover a subcategoria.");
-      setIsAlertDialogOpen(true);
-      return;
-    }
-    
+  const handleDeleteSubcategoria = (subcategoria: SubcategoriaProdutoSupabase) => {
     setConfirmTitle("Confirmar Exclusão");
     setConfirmDescription(`Deseja realmente excluir a subcategoria "${subcategoria.nome}"?`);
-    setConfirmAction(() => () => {
-      const success = removerSubcategoria(categoriaId, subcategoria.id);
-      if (success) {
-        toast({
-          title: "Subcategoria removida",
-          description: `A subcategoria "${subcategoria.nome}" foi removida com sucesso.`
-        });
-      }
+    setConfirmAction(() => async () => {
+      await removerSubcategoria(subcategoria.id);
     });
     setIsConfirmDialogOpen(true);
   };
@@ -217,10 +179,10 @@ export default function CategoriasProdutoTab() {
     setIsCategoriaDialogOpen(true);
   };
   
-  const openEditCategoriaDialog = (categoria: ProdutoCategoria) => {
+  const openEditCategoriaDialog = (categoria: CategoriasProdutoSupabase) => {
     categoriaForm.reset({ 
       nome: categoria.nome, 
-      descricao: categoria.descricao 
+      descricao: categoria.descricao || "" 
     });
     setEditingCategoria(categoria);
     setIsCategoriaDialogOpen(true);
@@ -233,12 +195,20 @@ export default function CategoriasProdutoTab() {
     setIsSubcategoriaDialogOpen(true);
   };
   
-  const openEditSubcategoriaDialog = (categoriaId: number, subcategoria: ProdutoSubcategoria) => {
+  const openEditSubcategoriaDialog = (subcategoria: SubcategoriaProdutoSupabase) => {
     subcategoriaForm.reset({ nome: subcategoria.nome });
     setEditingSubcategoria(subcategoria);
-    setSelectedCategoriaId(categoriaId);
+    setSelectedCategoriaId(subcategoria.categoria_id);
     setIsSubcategoriaDialogOpen(true);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-10">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
   
   return (
     <div>
@@ -261,101 +231,104 @@ export default function CategoriasProdutoTab() {
             </Button>
           </div>
         ) : (
-          categorias.map(categoria => (
-            <Card key={categoria.id} className="w-full">
-              <CardHeader className="cursor-pointer" onClick={() => toggleCategoryExpansion(categoria.id)}>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>{categoria.nome}</CardTitle>
-                    {categoria.descricao && (
-                      <CardDescription>{categoria.descricao}</CardDescription>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="text-primary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEditCategoriaDialog(categoria);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteCategoria(categoria);
-                      }}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                    {expandedCategories.includes(categoria.id) ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              
-              {expandedCategories.includes(categoria.id) && (
-                <CardContent>
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-medium">Subcategorias</h3>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openNewSubcategoriaDialog(categoria.id)}
-                      >
-                        <Plus className="mr-2 h-3 w-3" /> Adicionar
-                      </Button>
+          categorias.map(categoria => {
+            const subcategoriasDaCategoria = getSubcategoriasPorCategoria(categoria.id);
+            return (
+              <Card key={categoria.id} className="w-full">
+                <CardHeader className="cursor-pointer" onClick={() => toggleCategoryExpansion(categoria.id)}>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>{categoria.nome}</CardTitle>
+                      {categoria.descricao && (
+                        <CardDescription>{categoria.descricao}</CardDescription>
+                      )}
                     </div>
-                    
-                    {categoria.subcategorias.length === 0 ? (
-                      <p className="text-muted-foreground text-sm">
-                        Nenhuma subcategoria cadastrada.
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {categoria.subcategorias.map(subcategoria => (
-                          <div
-                            key={subcategoria.id}
-                            className="flex justify-between items-center p-2 rounded-md border"
-                          >
-                            <span>{subcategoria.nome}</span>
-                            <div className="flex space-x-1">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => openEditSubcategoriaDialog(categoria.id, subcategoria)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => handleDeleteSubcategoria(categoria.id, subcategoria)}
-                              >
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditCategoriaDialog(categoria);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCategoria(categoria);
+                        }}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                      {expandedCategories.includes(categoria.id) ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </div>
                   </div>
-                </CardContent>
-              )}
-            </Card>
-          ))
+                </CardHeader>
+                
+                {expandedCategories.includes(categoria.id) && (
+                  <CardContent>
+                    <div className="mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-medium">Subcategorias</h3>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openNewSubcategoriaDialog(categoria.id)}
+                        >
+                          <Plus className="mr-2 h-3 w-3" /> Adicionar
+                        </Button>
+                      </div>
+                      
+                      {subcategoriasDaCategoria.length === 0 ? (
+                        <p className="text-muted-foreground text-sm">
+                          Nenhuma subcategoria cadastrada.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {subcategoriasDaCategoria.map(subcategoria => (
+                            <div
+                              key={subcategoria.id}
+                              className="flex justify-between items-center p-2 rounded-md border"
+                            >
+                              <span>{subcategoria.nome}</span>
+                              <div className="flex space-x-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => openEditSubcategoriaDialog(subcategoria)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive"
+                                  onClick={() => handleDeleteSubcategoria(subcategoria)}
+                                >
+                                  <Trash className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            );
+          })
         )}
       </div>
       
@@ -480,11 +453,11 @@ export default function CategoriasProdutoTab() {
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Alert dialog for blocked actions */}
+      {/* Alert dialog for validation errors */}
       <AlertDialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Ação Bloqueada</AlertDialogTitle>
+            <AlertDialogTitle>Ação não permitida</AlertDialogTitle>
             <AlertDialogDescription>{alertMessage}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

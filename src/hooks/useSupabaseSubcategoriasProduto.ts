@@ -9,6 +9,7 @@ interface SubcategoriaProduto {
   descricao?: string;
   categoria_id: number;
   ativo: boolean;
+  user_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -31,7 +32,7 @@ export const useSupabaseSubcategoriasProduto = () => {
         return;
       }
 
-      setSubcategorias(data || []);
+      setSubcategorias((data as any[]) || []);
     } catch (error) {
       console.error('Erro ao carregar subcategorias:', error);
     } finally {
@@ -45,9 +46,19 @@ export const useSupabaseSubcategoriasProduto = () => {
     categoria_id: number;
   }) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return null;
+      }
+
       const { data, error } = await supabase
         .from('subcategorias_produto')
-        .insert(subcategoria)
+        .insert([{ ...subcategoria, user_id: user.id }])
         .select()
         .single();
 
