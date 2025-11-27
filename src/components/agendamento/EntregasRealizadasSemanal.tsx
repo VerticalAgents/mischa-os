@@ -160,8 +160,8 @@ export default function EntregasRealizadasSemanal({
           {quantidadeSemanaAnterior > 0 && (
             <div className="flex flex-col items-end text-right">
               <div className="text-xs text-muted-foreground mb-1">Semana anterior</div>
-              <div className="text-lg font-semibold text-foreground">{quantidadeSemanaAnterior}</div>
-              <div className="flex items-center gap-1 mt-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-lg font-semibold text-foreground">{quantidadeSemanaAnterior}</span>
                 <TrendingUp className="h-3 w-3 text-green-600" />
                 <span className="text-sm font-medium text-green-600">
                   {percentualEntregue.toFixed(0)}%
