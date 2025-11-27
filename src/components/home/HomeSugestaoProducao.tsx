@@ -6,7 +6,6 @@ import { Factory, Package, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRendimentosReceitaProduto } from '@/hooks/useRendimentosReceitaProduto';
 import { useMediaVendasSemanais } from '@/hooks/useMediaVendasSemanais';
-import { useSupabaseProporoesPadrao } from '@/hooks/useSupabaseProporoesPadrao';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProdutoFinal {
@@ -35,7 +34,6 @@ export default function HomeSugestaoProducao() {
   
   const { obterRendimentoPorProduto, loading: loadingRendimentos } = useRendimentosReceitaProduto();
   const { mediaVendasPorProduto, loading: loadingMediaVendas } = useMediaVendasSemanais();
-  const { proporcoes, loading: loadingProporcoes } = useSupabaseProporoesPadrao();
 
   useEffect(() => {
     const buscarProdutos = async () => {
@@ -57,28 +55,39 @@ export default function HomeSugestaoProducao() {
     buscarProdutos();
   }, []);
 
+  // Calcular sugestões usando a mesma lógica do PCP (sem filtro de proporção)
   const sugestoes = useMemo(() => {
-    if (loadingRendimentos || loadingMediaVendas || loadingProdutos || loadingProporcoes) return null;
-
-    const proporcoesMap = new Map(proporcoes.map(p => [p.produto_id, p.percentual]));
+    if (loadingRendimentos || loadingMediaVendas || loadingProdutos) return null;
 
     const produtosComSugestao = produtos
-      .filter(p => proporcoesMap.get(p.id) && proporcoesMap.get(p.id)! > 0)
       .map(produto => {
         const rendimentoInfo = obterRendimentoPorProduto(produto.id);
         const rendimento = rendimentoInfo?.rendimento || null;
+        const tem_rendimento = !!rendimento && rendimento > 0;
         const mediaVendas = mediaVendasPorProduto[produto.id] || 0;
         const estoqueAtual = produto.estoque_atual || 0;
+        
+        // Estoque alvo = 20% da média de vendas das últimas 12 semanas
         const estoqueAlvo = Math.round(mediaVendas * 0.20);
         
-        let quantidadeAProduzir = 0;
+        // Calcular quantidade a produzir (mesma lógica do PCP)
+        let quantidadeBase = 0;
+        let quantidadeEstoqueAlvo = 0;
+        
         if (estoqueAtual < 0) {
-          quantidadeAProduzir = -estoqueAtual + estoqueAlvo;
+          // Estoque negativo: cobrir déficit + atingir estoque alvo
+          quantidadeBase = -estoqueAtual;
+          quantidadeEstoqueAlvo = estoqueAlvo;
         } else {
-          quantidadeAProduzir = Math.max(0, estoqueAlvo - estoqueAtual);
+          // Estoque positivo: só produzir o que falta para estoque alvo
+          quantidadeBase = 0;
+          quantidadeEstoqueAlvo = Math.max(0, estoqueAlvo - estoqueAtual);
         }
+        
+        const quantidadeAProduzir = quantidadeBase + quantidadeEstoqueAlvo;
 
-        const formasSugeridas = rendimento && quantidadeAProduzir > 0
+        // Calcular formas sugeridas
+        const formasSugeridas = tem_rendimento && quantidadeAProduzir > 0
           ? Math.ceil(quantidadeAProduzir / rendimento)
           : 0;
 
@@ -87,23 +96,46 @@ export default function HomeSugestaoProducao() {
           nome: produto.nome,
           formasSugeridas,
           quantidadeAProduzir,
-          estoqueAtual
+          estoqueAtual,
+          temRendimento: tem_rendimento,
+          naoPrecisaProduzir: quantidadeAProduzir === 0
         };
       })
+      // Filtrar produtos que precisam produção e têm rendimento
       .filter(p => p.formasSugeridas > 0)
       .sort((a, b) => b.formasSugeridas - a.formasSugeridas);
 
     const totalFormas = produtosComSugestao.reduce((acc, p) => acc + p.formasSugeridas, 0);
+    
+    // Contar produtos com estoque suficiente (não precisam produzir)
+    const produtosComEstoqueSuficiente = produtos.filter(produto => {
+      const rendimentoInfo = obterRendimentoPorProduto(produto.id);
+      const rendimento = rendimentoInfo?.rendimento || null;
+      const mediaVendas = mediaVendasPorProduto[produto.id] || 0;
+      const estoqueAtual = produto.estoque_atual || 0;
+      const estoqueAlvo = Math.round(mediaVendas * 0.20);
+      
+      let quantidadeAProduzir = 0;
+      if (estoqueAtual < 0) {
+        quantidadeAProduzir = -estoqueAtual + estoqueAlvo;
+      } else {
+        quantidadeAProduzir = Math.max(0, estoqueAlvo - estoqueAtual);
+      }
+      
+      return quantidadeAProduzir === 0 && rendimento && rendimento > 0;
+    }).length;
+
     const top5 = produtosComSugestao.slice(0, 5);
 
     return {
       totalFormas,
       totalProdutos: produtosComSugestao.length,
+      produtosComEstoqueSuficiente,
       top5
     };
-  }, [produtos, obterRendimentoPorProduto, mediaVendasPorProduto, proporcoes, loadingRendimentos, loadingMediaVendas, loadingProdutos, loadingProporcoes]);
+  }, [produtos, obterRendimentoPorProduto, mediaVendasPorProduto, loadingRendimentos, loadingMediaVendas, loadingProdutos]);
 
-  const isLoading = loadingRendimentos || loadingMediaVendas || loadingProdutos || loadingProporcoes;
+  const isLoading = loadingRendimentos || loadingMediaVendas || loadingProdutos;
 
   if (isLoading) return <LoadingState />;
 
@@ -132,6 +164,11 @@ export default function HomeSugestaoProducao() {
               <div className="text-xs text-muted-foreground">
                 formas sugeridas ({sugestoes.totalProdutos} produtos)
               </div>
+              {sugestoes.produtosComEstoqueSuficiente > 0 && (
+                <Badge variant="outline" className="mt-2 text-xs bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
+                  {sugestoes.produtosComEstoqueSuficiente} com estoque suficiente
+                </Badge>
+              )}
             </div>
 
             {/* Top 5 */}
