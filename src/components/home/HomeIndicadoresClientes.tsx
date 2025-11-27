@@ -82,9 +82,9 @@ export default function HomeIndicadoresClientes() {
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <IndicadorCard
-        title="Total de Clientes"
-        value={indicadores.totalClientes}
-        subtitle={`${indicadores.totalAtivos} ativos`}
+        title="Clientes Ativos"
+        value={indicadores.totalAtivos}
+        subtitle={`${indicadores.totalClientes} total`}
         icon={Users}
         isLoading={loading}
         onClick={() => navigate('/clientes')}
