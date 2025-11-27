@@ -617,14 +617,6 @@ export default function ClienteFormDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button 
-              type="button"
-              variant="secondary" 
-              onClick={() => setShowResetDialog(true)}
-              className="bg-warning hover:bg-warning/90"
-            >
-              Reset Seguro
-            </Button>
             <Button type="submit" disabled={loading || isSaving}>
               <Save className="h-4 w-4 mr-2" />
               {cliente ? 'Atualizar' : 'Cadastrar'}
