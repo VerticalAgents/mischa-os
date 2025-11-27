@@ -48,10 +48,6 @@ const routeMap: { [key: string]: BreadcrumbPathItem[] } = {
     { title: "Início", href: "/" },
     { title: "Gestão Financeira", href: "/gestao-financeira", current: true }
   ],
-  "/gestao-financeira-old": [
-    { title: "Início", href: "/" },
-    { title: "Gestão Financeira OLD", href: "/gestao-financeira-old", current: true }
-  ],
   "/custos": [
     { title: "Início", href: "/" },
     { title: "Gestão Financeira", href: "/gestao-financeira" },

@@ -103,11 +103,6 @@ export const menuGroups: MenuGroup[] = [
         icon: <DollarSign className="h-4 w-4" />,
       },
       {
-        label: "Financeiro OLD",
-        path: "/gestao-financeira-old",
-        icon: <DollarSign className="h-4 w-4" />,
-      },
-      {
         label: "Agentes de IA",
         path: "/agentes-ia",
         icon: <Cpu className="h-4 w-4" />,
