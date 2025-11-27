@@ -26,7 +26,6 @@ import Parceiros from '@/pages/gestao-comercial/Parceiros';
 import DashboardAnalytics from '@/pages/DashboardAnalytics';
 import AnaliseGiro from '@/pages/AnaliseGiro';
 import GestaoFinanceira from '@/pages/GestaoFinanceira';
-import GestaoFinanceiraOld from '@/pages/GestaoFinanceiraOld';
 import ProjecaoResultadosPDV from '@/pages/gestao-financeira/ProjecaoResultadosPDV';
 import PontoEquilibrio from '@/pages/gestao-financeira/PontoEquilibrio';
 import Configuracoes from '@/pages/Configuracoes';
@@ -186,13 +185,6 @@ function App() {
                     <ProtectedRoute>
                       <AppLayout>
                         <GestaoFinanceira />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/gestao-financeira-old" element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <GestaoFinanceiraOld />
                       </AppLayout>
                     </ProtectedRoute>
                   } />
