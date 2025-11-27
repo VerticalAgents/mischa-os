@@ -2088,6 +2088,37 @@ export type Database = {
           total_custos_variaveis: number
         }[]
       }
+      get_dados_analise_giro_admin: {
+        Args: never
+        Returns: {
+          achievement_meta: number
+          categoria_estabelecimento_nome: string
+          categorias_habilitadas: Json
+          cliente_id: string
+          cliente_nome: string
+          cnpj_cpf: string
+          contato_email: string
+          contato_nome: string
+          contato_telefone: string
+          created_at: string
+          data_consolidacao: string
+          desvio_padrao_giro: number
+          endereco_entrega: string
+          faturamento_semanal_previsto: number
+          giro_medio_historico: number
+          giro_semanal_calculado: number
+          giro_ultima_semana: number
+          meta_giro_semanal: number
+          periodicidade_padrao: number
+          quantidade_padrao: number
+          representante_nome: string
+          rota_entrega_nome: string
+          semaforo_performance: string
+          status_cliente: string
+          updated_at: string
+          variacao_percentual: number
+        }[]
+      }
       get_feature_flag: { Args: { flag_name: string }; Returns: boolean }
       get_pedidos_summary: {
         Args: never
