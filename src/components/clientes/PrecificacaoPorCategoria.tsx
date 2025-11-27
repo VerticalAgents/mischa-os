@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { DollarSign, Edit3, Check, X, RotateCcw, RefreshCw } from "lucide-react";
 import { Cliente } from "@/types";
-import { useCategoriaStore } from "@/hooks/useCategoriaStore";
+import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { usePrecificacaoClienteStore } from "@/hooks/usePrecificacaoClienteStore";
 
 interface PrecificacaoPorCategoriaProps {
@@ -15,7 +15,7 @@ interface PrecificacaoPorCategoriaProps {
 }
 
 export default function PrecificacaoPorCategoria({ cliente }: PrecificacaoPorCategoriaProps) {
-  const { categorias } = useCategoriaStore();
+  const { categorias, loading: loadingCategorias, carregarCategorias } = useSupabaseCategoriasProduto();
   const {
     precosCliente,
     loading,
@@ -28,6 +28,11 @@ export default function PrecificacaoPorCategoria({ cliente }: PrecificacaoPorCat
   const [editingCategory, setEditingCategory] = useState<number | null>(null);
   const [tempValue, setTempValue] = useState<string>("");
   const [precosCarregados, setPrecosCarregados] = useState(false);
+
+  // Carregar categorias ao montar
+  useEffect(() => {
+    carregarCategorias();
+  }, []);
 
   const handleCarregarPrecos = async () => {
     if (cliente?.id && cliente?.categoriasHabilitadas?.length) {
@@ -101,7 +106,11 @@ export default function PrecificacaoPorCategoria({ cliente }: PrecificacaoPorCat
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {categoriasHabilitadas.length === 0 ? (
+        {loadingCategorias ? (
+          <div className="text-center py-8 text-muted-foreground">
+            Carregando categorias...
+          </div>
+        ) : categoriasHabilitadas.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <p>Nenhuma categoria habilitada para este cliente.</p>
             <p className="text-sm mt-1">

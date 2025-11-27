@@ -12,18 +12,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
 import { Tag, Edit3, Check, X } from "lucide-react";
-import { useCategoriaStore } from "@/hooks/useCategoriaStore";
+import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useConfiguracoesStore } from "@/hooks/useConfiguracoesStore";
 
 // Schema for form validation
@@ -32,7 +23,7 @@ const precificacaoSchema = z.object({
 });
 
 export default function PrecificacaoTab() {
-  const { categorias } = useCategoriaStore();
+  const { categorias, loading: loadingCategorias, carregarCategorias } = useSupabaseCategoriasProduto();
   const { obterConfiguracao, salvarConfiguracao, loading } = useConfiguracoesStore();
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState<string>("");
@@ -44,8 +35,15 @@ export default function PrecificacaoTab() {
     },
   });
 
-  // Carregar dados salvos quando o componente monta
+  // Carregar categorias ao montar
   useEffect(() => {
+    carregarCategorias();
+  }, []);
+
+  // Carregar dados salvos quando as categorias são carregadas
+  useEffect(() => {
+    if (categorias.length === 0) return;
+    
     const configPrecificacao = obterConfiguracao('precificacao');
     if (configPrecificacao && Object.keys(configPrecificacao).length > 0) {
       precificacaoForm.reset(configPrecificacao);
@@ -130,7 +128,11 @@ export default function PrecificacaoTab() {
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Preços por Categoria</h3>
             
-            {categorias.length === 0 ? (
+            {loadingCategorias ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Carregando categorias...
+              </div>
+            ) : categorias.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>Nenhuma categoria de produto encontrada.</p>
                 <p className="text-sm mt-1">
