@@ -19,10 +19,19 @@ export const useSupabaseRotasEntrega = () => {
   const carregarRotasEntrega = async () => {
     try {
       setLoading(true);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('Usuário não autenticado');
+        setRotasEntrega([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('rotas_entrega')
         .select('*')
         .eq('ativo', true)
+        .eq('user_id', user.id)
         .order('nome');
 
       if (error) {
@@ -43,9 +52,19 @@ export const useSupabaseRotasEntrega = () => {
     descricao?: string;
   }) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return null;
+      }
+
       const { data, error } = await supabase
         .from('rotas_entrega')
-        .insert(rota)
+        .insert({ ...rota, user_id: user.id })
         .select()
         .single();
 

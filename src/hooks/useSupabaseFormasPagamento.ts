@@ -18,10 +18,19 @@ export const useSupabaseFormasPagamento = () => {
   const carregarFormasPagamento = async () => {
     try {
       setLoading(true);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('Usuário não autenticado');
+        setFormasPagamento([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('formas_pagamento')
         .select('*')
         .eq('ativo', true)
+        .eq('user_id', user.id)
         .order('nome');
 
       if (error) {
@@ -41,9 +50,19 @@ export const useSupabaseFormasPagamento = () => {
     nome: string;
   }) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return null;
+      }
+
       const { data, error } = await supabase
         .from('formas_pagamento')
-        .insert(forma)
+        .insert({ ...forma, user_id: user.id })
         .select()
         .single();
 

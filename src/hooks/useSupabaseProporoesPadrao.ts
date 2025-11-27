@@ -19,6 +19,13 @@ export const useSupabaseProporoesPadrao = () => {
     try {
       setLoading(true);
       
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('Usuário não autenticado');
+        setProporcoes([]);
+        return;
+      }
+
       // Primeiro, buscar todos os produtos ativos
       const { data: produtos, error: produtosError } = await supabase
         .from('produtos_finais')
@@ -42,11 +49,12 @@ export const useSupabaseProporoesPadrao = () => {
         return;
       }
 
-      // Buscar proporções existentes
+      // Buscar proporções existentes do usuário
       const { data: proporcoesExistentes, error: proporcoesError } = await supabase
         .from('proporcoes_padrao')
         .select('id, produto_id, percentual, ativo')
-        .eq('ativo', true);
+        .eq('ativo', true)
+        .eq('user_id', user.id);
 
       if (proporcoesError) {
         console.error('Erro ao carregar proporções:', proporcoesError);
@@ -85,12 +93,23 @@ export const useSupabaseProporoesPadrao = () => {
 
   const atualizarProporcao = async (produtoId: string, novoPercentual: number) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return false;
+      }
+
       const { error } = await supabase
         .from('proporcoes_padrao')
         .upsert({
           produto_id: produtoId,
           percentual: novoPercentual,
-          ativo: true
+          ativo: true,
+          user_id: user.id
         });
 
       if (error) {
@@ -112,6 +131,16 @@ export const useSupabaseProporoesPadrao = () => {
 
   const salvarTodasProporcoes = async (novasProporcoes: { produto_id: string; percentual: number }[]) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return false;
+      }
+
       // Verificar se soma é 100%
       const total = novasProporcoes.reduce((sum, p) => sum + p.percentual, 0);
       if (Math.abs(total - 100) > 0.01) {
@@ -148,7 +177,8 @@ export const useSupabaseProporoesPadrao = () => {
             .insert({
               produto_id: proporcao.produto_id,
               percentual: proporcao.percentual,
-              ativo: true
+              ativo: true,
+              user_id: user.id
             });
 
           if (error) {
@@ -180,16 +210,22 @@ export const useSupabaseProporoesPadrao = () => {
     try {
       console.log('🔍 Obtendo proporções para pedido com quantidade total:', quantidadeTotal);
       
-      // Primeiro buscar proporções ativas
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('Usuário não autenticado');
+        return [];
+      }
+
+      // Primeiro buscar proporções ativas do usuário
       const { data: proporcoes, error: propError } = await supabase
         .from('proporcoes_padrao')
         .select('produto_id, percentual')
         .eq('ativo', true)
+        .eq('user_id', user.id)
         .gt('percentual', 0);
 
       if (propError) {
         console.error('Erro ao obter proporções:', propError);
-        // Fallback silencioso para evitar loops
         return [];
       }
 
@@ -269,7 +305,6 @@ export const useSupabaseProporoesPadrao = () => {
         })) || [];
     } catch (error) {
       console.error('Erro ao obter proporções para pedido:', error);
-      // Retornar array vazio ao invés de throw para evitar quebrar o fluxo
       return [];
     }
   }, []);

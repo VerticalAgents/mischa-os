@@ -19,10 +19,19 @@ export const useSupabaseTiposLogistica = () => {
   const carregarTiposLogistica = async () => {
     try {
       setLoading(true);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('Usuário não autenticado');
+        setTiposLogistica([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('tipos_logistica')
         .select('*')
         .eq('ativo', true)
+        .eq('user_id', user.id)
         .order('nome');
 
       if (error) {
@@ -43,9 +52,19 @@ export const useSupabaseTiposLogistica = () => {
     percentual_logistico?: number;
   }) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return null;
+      }
+
       const { data, error } = await supabase
         .from('tipos_logistica')
-        .insert(tipo)
+        .insert({ ...tipo, user_id: user.id })
         .select()
         .single();
 
