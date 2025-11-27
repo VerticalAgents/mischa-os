@@ -1,13 +1,10 @@
 import { useState } from "react";
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
-import { ArrowUp, ArrowDown, Filter, AlertCircle } from "lucide-react";
+import { ArrowUp, ArrowDown, AlertCircle } from "lucide-react";
 import { Cliente } from "@/types";
 import GiroMetricCard from "./GiroMetricCard";
-import GiroComparativoBlock from "./GiroComparativoBlock";
 import { useGiroAnalise } from "@/hooks/useGiroAnalise";
 import { supabase } from "@/integrations/supabase/client";
 interface AnaliseGiroProps {
@@ -196,20 +193,6 @@ export default function AnaliseGiro({
     return null;
   };
   return <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between gap-4">
-        <Button variant="outline" className="self-start flex gap-2 items-center">
-          <Filter className="h-4 w-4" />
-          Filtrar dados
-        </Button>
-        
-        <div className="flex gap-2 items-center">
-          <span className="text-sm text-muted-foreground">Média histórica:</span>
-          <Badge variant="outline" className="font-medium">{dadosGiro.mediaHistorica} unidades/semana</Badge>
-        </div>
-      </div>
-
-      <GiroComparativoBlock cliente={cliente} mediaHistorica={dadosGiro.mediaHistorica} />
-      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <GiroMetricCard title="Média Histórica" value={dadosGiro.mediaHistorica} suffix="un/sem" description="Últimas 4 semanas" />
         
