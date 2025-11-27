@@ -468,6 +468,7 @@ export type Database = {
           id: string
           modulo: string
           updated_at: string
+          user_id: string
         }
         Insert: {
           configuracoes?: Json
@@ -475,6 +476,7 @@ export type Database = {
           id?: string
           modulo: string
           updated_at?: string
+          user_id: string
         }
         Update: {
           configuracoes?: Json
@@ -482,6 +484,7 @@ export type Database = {
           id?: string
           modulo?: string
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

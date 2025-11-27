@@ -73,6 +73,9 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
         return;
       }
 
+      // Buscar usuário logado para filtrar configurações
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
       // Queries complementares em paralelo (não bloqueantes)
       const [representantesResult, precosResult, categoriasResult, configResult] = await Promise.allSettled([
         supabase.from('representantes').select('id, nome').eq('ativo', true),
@@ -83,7 +86,9 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
           categorias_produto!inner (id, nome)
         `),
         supabase.from('categorias_produto').select('id, nome').eq('ativo', true),
-        supabase.from('configuracoes_sistema').select('configuracoes').eq('modulo', 'precificacao').single()
+        currentUser 
+          ? supabase.from('configuracoes_sistema').select('configuracoes').eq('modulo', 'precificacao').eq('user_id', currentUser.id).single()
+          : Promise.resolve({ data: null, error: null })
       ]);
 
       // Mapear dados complementares
