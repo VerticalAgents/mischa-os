@@ -845,6 +845,7 @@ export type Database = {
           ultima_entrada: string | null
           unidade_medida: string
           updated_at: string
+          user_id: string
           volume_bruto: number
         }
         Insert: {
@@ -859,6 +860,7 @@ export type Database = {
           ultima_entrada?: string | null
           unidade_medida: string
           updated_at?: string
+          user_id: string
           volume_bruto: number
         }
         Update: {
@@ -873,6 +875,7 @@ export type Database = {
           ultima_entrada?: string | null
           unidade_medida?: string
           updated_at?: string
+          user_id?: string
           volume_bruto?: number
         }
         Relationships: []
@@ -1423,6 +1426,7 @@ export type Database = {
           subcategoria_id: number | null
           unidades_producao: number
           updated_at: string
+          user_id: string
         }
         Insert: {
           ativo?: boolean
@@ -1443,6 +1447,7 @@ export type Database = {
           subcategoria_id?: number | null
           unidades_producao?: number
           updated_at?: string
+          user_id: string
         }
         Update: {
           ativo?: boolean
@@ -1463,6 +1468,7 @@ export type Database = {
           subcategoria_id?: number | null
           unidades_producao?: number
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1540,6 +1546,7 @@ export type Database = {
           rendimento: number
           unidade_rendimento: string
           updated_at: string
+          user_id: string
         }
         Insert: {
           created_at?: string
@@ -1549,6 +1556,7 @@ export type Database = {
           rendimento: number
           unidade_rendimento: string
           updated_at?: string
+          user_id: string
         }
         Update: {
           created_at?: string
@@ -1558,6 +1566,7 @@ export type Database = {
           rendimento?: number
           unidade_rendimento?: string
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

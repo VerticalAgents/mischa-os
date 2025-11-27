@@ -21,6 +21,7 @@ export interface ProdutoSupabase {
   custo_unitario?: number;
   margem_lucro?: number;
   ordem_categoria?: number;
+  user_id: string;
 }
 
 export interface ComponenteProduto {
@@ -43,6 +44,7 @@ export const useSupabaseProdutos = () => {
   const carregarProdutos = async () => {
     try {
       setLoading(true);
+      // RLS filtrará automaticamente por user_id
       const { data, error } = await supabase
         .from('produtos_finais')
         .select('*')
@@ -208,9 +210,20 @@ export const useSupabaseProdutos = () => {
         return null;
       }
 
+      // Obter o user_id do usuário autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return null;
+      }
+
       const { data, error } = await supabase
         .from('produtos_finais')
-        .insert(dadosProduto as any) // Cast to avoid type issues
+        .insert({ ...dadosProduto, user_id: user.id } as any)
         .select()
         .single();
 
@@ -244,9 +257,12 @@ export const useSupabaseProdutos = () => {
 
   const atualizarProduto = async (produtoId: string, dadosAtualizacao: Partial<ProdutoSupabase>) => {
     try {
+      // Remover user_id do objeto de atualização para não permitir alteração
+      const { user_id, ...dados } = dadosAtualizacao;
+      
       const { error } = await supabase
         .from('produtos_finais')
-        .update(dadosAtualizacao as any) // Cast to avoid type issues
+        .update(dados as any)
         .eq('id', produtoId);
 
       if (error) {
@@ -309,6 +325,17 @@ export const useSupabaseProdutos = () => {
 
   const duplicarProduto = async (produto: ProdutoSupabase) => {
     try {
+      // Obter o user_id do usuário autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return null;
+      }
+
       const novoProduto = {
         nome: `${produto.nome} (Cópia)`,
         descricao: produto.descricao,
@@ -323,7 +350,8 @@ export const useSupabaseProdutos = () => {
         estoque_ideal: produto.estoque_ideal,
         custo_total: produto.custo_total,
         custo_unitario: produto.custo_unitario,
-        margem_lucro: produto.margem_lucro
+        margem_lucro: produto.margem_lucro,
+        user_id: user.id
       };
 
       return await adicionarProduto(novoProduto);

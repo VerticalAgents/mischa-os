@@ -16,6 +16,7 @@ export interface InsumoSupabase {
   ultima_entrada?: string;
   created_at: string;
   updated_at: string;
+  user_id: string;
 }
 
 export const useSupabaseInsumos = () => {
@@ -48,11 +49,22 @@ export const useSupabaseInsumos = () => {
     }
   };
 
-  const adicionarInsumo = async (insumo: Omit<InsumoSupabase, 'id' | 'created_at' | 'updated_at'>) => {
+  const adicionarInsumo = async (insumo: Omit<InsumoSupabase, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
     try {
+      // Obter o user_id do usuário autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return false;
+      }
+
       const { data, error } = await supabase
         .from('insumos')
-        .insert([insumo])
+        .insert([{ ...insumo, user_id: user.id }])
         .select()
         .single();
 
@@ -80,9 +92,12 @@ export const useSupabaseInsumos = () => {
 
   const atualizarInsumo = async (id: string, insumo: Partial<InsumoSupabase>) => {
     try {
+      // Remover user_id do objeto de atualização para não permitir alteração
+      const { user_id, ...dadosAtualizacao } = insumo;
+      
       const { data, error } = await supabase
         .from('insumos')
-        .update(insumo)
+        .update(dadosAtualizacao)
         .eq('id', id)
         .select()
         .single();

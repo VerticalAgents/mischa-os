@@ -22,6 +22,7 @@ export interface ProdutoOptimizado {
   custo_unitario?: number;
   margem_lucro?: number;
   ordem_categoria?: number;
+  user_id: string;
   // Dados calculados otimizados
   custo_unitario_calculado: number;
   margem_real: number;
@@ -254,6 +255,17 @@ export const useOptimizedProdutoData = () => {
 
   const duplicarProduto = async (produto: ProdutoOptimizado) => {
     try {
+      // Obter o user_id do usuário autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return null;
+      }
+
       const novoProduto = {
         nome: `${produto.nome} (Cópia)`,
         descricao: produto.descricao,
@@ -268,7 +280,8 @@ export const useOptimizedProdutoData = () => {
         estoque_ideal: produto.estoque_ideal,
         custo_total: produto.custo_total,
         custo_unitario: produto.custo_unitario,
-        margem_lucro: produto.margem_lucro
+        margem_lucro: produto.margem_lucro,
+        user_id: user.id
       };
 
       const { data, error } = await supabase

@@ -63,6 +63,18 @@ export default function CriarReceitaModal({
     setIsLoading(true);
 
     try {
+      // Obter o user_id do usuário autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Usuário não autenticado",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('receitas_base')
         .insert({
@@ -70,6 +82,7 @@ export default function CriarReceitaModal({
           descricao: formData.descricao?.trim() || null,
           rendimento: formData.rendimento,
           unidade_rendimento: formData.unidade_rendimento,
+          user_id: user.id,
         });
 
       if (error) {
