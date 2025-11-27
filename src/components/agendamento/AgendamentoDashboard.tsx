@@ -47,26 +47,18 @@ export default function AgendamentoDashboard() {
 
   useEffect(() => {
     const loadData = async () => {
-      if (agendamentos.length === 0 && !isLoading) {
-        setIsLoading(true);
-        try {
-          await Promise.all([
-            carregarTodosAgendamentos(),
-            carregarHistoricoEntregas()
-          ]);
-        } finally {
-          setIsLoading(false);
-        }
+      setIsLoading(true);
+      try {
+        // Sempre carregar agendamentos e histórico de entregas na montagem
+        await Promise.all([
+          agendamentos.length === 0 ? carregarTodosAgendamentos() : Promise.resolve(),
+          carregarHistoricoEntregas() // Sempre recarregar para ter dados atualizados
+        ]);
+      } finally {
+        setIsLoading(false);
       }
     };
     loadData();
-  }, []);
-  
-  // Carregar histórico de entregas na montagem do componente
-  useEffect(() => {
-    if (entregasHistorico.length === 0) {
-      carregarHistoricoEntregas();
-    }
   }, []);
 
   const navegarSemanaAnterior = () => {
@@ -107,10 +99,10 @@ export default function AgendamentoDashboard() {
     const previstos = agendamentosSemana.filter(a => a.statusAgendamento === "Previsto");
     const confirmados = agendamentosSemana.filter(a => a.statusAgendamento === "Agendado");
     
-    // Calcular entregas realizadas na semana
+    // Calcular entregas realizadas na semana (apenas tipo 'entrega', não 'retorno')
     const entregasRealizadas = entregasHistorico.filter(entrega => {
       const dataEntrega = new Date(entrega.data);
-      return dataEntrega >= inicioSemana && dataEntrega <= fimSemana;
+      return dataEntrega >= inicioSemana && dataEntrega <= fimSemana && entrega.tipo === 'entrega';
     });
     
     return {
