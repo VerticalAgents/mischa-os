@@ -33,9 +33,17 @@ export function useSupabaseRepresentantes(): UseSupabaseRepresentantesReturn {
       setLoading(true);
       setError(null);
       
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('Usuário não autenticado');
+        setRepresentantes([]);
+        return;
+      }
+
       const { data, error: supabaseError } = await supabase
         .from('representantes')
         .select('*')
+        .eq('user_id', user.id)
         .order('nome');
 
       if (supabaseError) {
@@ -55,11 +63,18 @@ export function useSupabaseRepresentantes(): UseSupabaseRepresentantesReturn {
 
   const adicionarRepresentante = useCallback(async (data: Omit<Representante, 'id' | 'ativo'>) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Usuário não autenticado');
+        return false;
+      }
+
       const { error: supabaseError } = await supabase
         .from('representantes')
         .insert([{
           ...data,
-          ativo: true
+          ativo: true,
+          user_id: user.id
         }]);
 
       if (supabaseError) {

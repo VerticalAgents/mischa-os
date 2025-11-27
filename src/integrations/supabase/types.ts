@@ -603,6 +603,7 @@ export type Database = {
           id: number
           nome: string
           updated_at: string
+          user_id: string
         }
         Insert: {
           ativo?: boolean
@@ -610,6 +611,7 @@ export type Database = {
           id?: number
           nome: string
           updated_at?: string
+          user_id: string
         }
         Update: {
           ativo?: boolean
@@ -617,6 +619,7 @@ export type Database = {
           id?: number
           nome?: string
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1462,6 +1465,7 @@ export type Database = {
           percentual: number
           produto_id: string
           updated_at: string
+          user_id: string
         }
         Insert: {
           ativo?: boolean
@@ -1470,6 +1474,7 @@ export type Database = {
           percentual: number
           produto_id: string
           updated_at?: string
+          user_id: string
         }
         Update: {
           ativo?: boolean
@@ -1478,6 +1483,7 @@ export type Database = {
           percentual?: number
           produto_id?: string
           updated_at?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -1570,6 +1576,7 @@ export type Database = {
           nome: string
           telefone: string | null
           updated_at: string
+          user_id: string
         }
         Insert: {
           ativo?: boolean
@@ -1579,6 +1586,7 @@ export type Database = {
           nome: string
           telefone?: string | null
           updated_at?: string
+          user_id: string
         }
         Update: {
           ativo?: boolean
@@ -1588,6 +1596,7 @@ export type Database = {
           nome?: string
           telefone?: string | null
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1599,6 +1608,7 @@ export type Database = {
           id: number
           nome: string
           updated_at: string
+          user_id: string
         }
         Insert: {
           ativo?: boolean
@@ -1607,6 +1617,7 @@ export type Database = {
           id?: number
           nome: string
           updated_at?: string
+          user_id: string
         }
         Update: {
           ativo?: boolean
@@ -1615,6 +1626,7 @@ export type Database = {
           id?: number
           nome?: string
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1766,6 +1778,7 @@ export type Database = {
           id: number
           nome: string
           updated_at: string
+          user_id: string
         }
         Insert: {
           ativo?: boolean
@@ -1774,6 +1787,7 @@ export type Database = {
           id?: number
           nome: string
           updated_at?: string
+          user_id: string
         }
         Update: {
           ativo?: boolean
@@ -1782,6 +1796,7 @@ export type Database = {
           id?: number
           nome?: string
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1793,6 +1808,7 @@ export type Database = {
           nome: string
           percentual_logistico: number | null
           updated_at: string
+          user_id: string
         }
         Insert: {
           ativo?: boolean
@@ -1801,6 +1817,7 @@ export type Database = {
           nome: string
           percentual_logistico?: number | null
           updated_at?: string
+          user_id: string
         }
         Update: {
           ativo?: boolean
@@ -1809,6 +1826,7 @@ export type Database = {
           nome?: string
           percentual_logistico?: number | null
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
