@@ -22,9 +22,12 @@ export function useCartoes() {
 
   const createMutation = useMutation({
     mutationFn: async (cartao: Omit<CartaoCredito, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
       const { data, error } = await supabase
         .from('cartoes_credito')
-        .insert(cartao)
+        .insert({ ...cartao, user_id: user.id })
         .select()
         .single();
 

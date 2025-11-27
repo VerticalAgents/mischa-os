@@ -47,9 +47,19 @@ export const useSupabaseSubcategoriasCustos = () => {
 
   const criarSubcategoria = async (nome: string, tipo: 'fixo' | 'variavel') => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return false;
+      }
+
       const { data, error } = await supabase
         .from('subcategorias_custos')
-        .insert([{ nome, tipo }])
+        .insert([{ nome, tipo, user_id: user.id }])
         .select()
         .single();
 
