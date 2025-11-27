@@ -1,7 +1,9 @@
 
 export interface GiroHistorico {
-  semana: string; // Formato: "YYYY-WW" (ano-número da semana)
+  semana: string; // Formato: "Sem XX" (display)
   valor: number;
+  startDate?: string; // ISO string da data de início da semana
+  endDate?: string; // ISO string da data de fim da semana
 }
 
 export interface MetaGiro {

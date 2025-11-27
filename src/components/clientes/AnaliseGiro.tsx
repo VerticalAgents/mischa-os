@@ -7,32 +7,11 @@ import { Cliente } from "@/types";
 import GiroMetricCard from "./GiroMetricCard";
 import { useGiroAnalise } from "@/hooks/useGiroAnalise";
 import { supabase } from "@/integrations/supabase/client";
+
 interface AnaliseGiroProps {
   cliente: Cliente;
 }
 
-// Função para converter número da semana ISO para data de início e fim
-function getWeekDates(year: number, week: number) {
-  const firstDayOfYear = new Date(year, 0, 1);
-  const firstMonday = new Date(firstDayOfYear);
-
-  // Encontrar a primeira segunda-feira do ano
-  const dayOfWeek = firstDayOfYear.getDay();
-  const daysToAdd = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
-  firstMonday.setDate(firstDayOfYear.getDate() + daysToAdd);
-
-  // Calcular a data de início da semana especificada
-  const startDate = new Date(firstMonday);
-  startDate.setDate(firstMonday.getDate() + (week - 2) * 7);
-
-  // Data de fim (domingo da mesma semana)
-  const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 6);
-  return {
-    startDate,
-    endDate
-  };
-}
 export default function AnaliseGiro({
   cliente
 }: AnaliseGiroProps) {
@@ -108,37 +87,37 @@ export default function AnaliseGiro({
   const dadosGrafico = dadosGiro.historico.map(item => ({
     semana: item.semana,
     giro: item.valor,
-    mediaHistorica: dadosGiro.mediaHistorica
+    mediaHistorica: dadosGiro.mediaHistorica,
+    startDate: item.startDate,
+    endDate: item.endDate
   }));
 
   // Tooltip customizado para o gráfico
   const CustomTooltip = ({
     active,
-    payload,
-    label
+    payload
   }: any) => {
     const [entregasDetalhes, setEntregasDetalhes] = useState<any[]>([]);
     const [carregandoEntregas, setCarregandoEntregas] = useState(false);
+    
+    // Pegar datas do payload
+    const startDate = payload?.[0]?.payload?.startDate;
+    const endDate = payload?.[0]?.payload?.endDate;
+    
     React.useEffect(() => {
-      if (active && payload && payload.length && label) {
+      if (active && startDate && endDate) {
         const buscarEntregas = async () => {
           setCarregandoEntregas(true);
           try {
-            // Extrair ano e semana do label (formato: "Sem 01/24")
-            const match = label.match(/Sem (\d{2})\/(\d{2})/);
-            if (match) {
-              const [, semanaStr, anoStr] = match;
-              const ano = 2000 + parseInt(anoStr);
-              const semana = parseInt(semanaStr);
-              const {
-                startDate,
-                endDate
-              } = getWeekDates(ano, semana);
-              const {
-                data: entregas
-              } = await supabase.from('historico_entregas').select('data, quantidade').eq('cliente_id', cliente.id).eq('tipo', 'entrega').gte('data', startDate.toISOString()).lte('data', endDate.toISOString()).order('data');
-              setEntregasDetalhes(entregas || []);
-            }
+            const { data: entregas } = await supabase
+              .from('historico_entregas')
+              .select('data, quantidade')
+              .eq('cliente_id', cliente.id)
+              .eq('tipo', 'entrega')
+              .gte('data', startDate)
+              .lte('data', endDate)
+              .order('data');
+            setEntregasDetalhes(entregas || []);
           } catch (err) {
             console.error('Erro ao buscar entregas:', err);
           } finally {
@@ -147,48 +126,67 @@ export default function AnaliseGiro({
         };
         buscarEntregas();
       }
-    }, [active, label]);
+    }, [active, startDate, endDate]);
+    
     if (active && payload && payload.length) {
-      // Extrair ano e semana do label
-      const match = label.match(/Sem (\d{2})\/(\d{2})/);
-      let periodoTexto = '';
-      if (match) {
-        const [, semanaStr, anoStr] = match;
-        const ano = 2000 + parseInt(anoStr);
-        const semana = parseInt(semanaStr);
-        const {
-          startDate,
-          endDate
-        } = getWeekDates(ano, semana);
-        periodoTexto = `${startDate.toLocaleDateString('pt-BR')} até ${endDate.toLocaleDateString('pt-BR')}`;
-      }
-      return <div className="bg-background border border-border rounded-md shadow-lg p-3 max-w-xs">
-          <div className="font-medium">{label}</div>
-          {periodoTexto && <div className="text-xs text-muted-foreground mb-2">{periodoTexto}</div>}
+      // Formatar período
+      const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+      };
+      
+      const periodoTexto = startDate && endDate 
+        ? `📅 ${formatDate(startDate)} - ${formatDate(endDate)}`
+        : '';
+      
+      return (
+        <div className="bg-background border border-border rounded-md shadow-lg p-3 max-w-xs">
+          {periodoTexto && (
+            <div className="text-sm font-medium text-foreground mb-2 pb-2 border-b border-border">
+              {periodoTexto}
+            </div>
+          )}
           
-          <div className="mt-2 space-y-1">
+          <div className="space-y-1">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-primary rounded-full" />
-              <span className="text-muted-foreground">Giro:</span>
+              <span className="text-muted-foreground">Vendas:</span>
               <span className="font-medium">{payload[0].value} unidades</span>
             </div>
-            {payload[1] && <div className="flex items-center gap-2">
+            {payload[1] && (
+              <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                <span className="text-muted-foreground">Média Histórica:</span>
-                <span className="font-medium">{payload[1].value} unidades</span>
-              </div>}
+                <span className="text-muted-foreground">Média:</span>
+                <span className="font-medium">{payload[1].value} un/sem</span>
+              </div>
+            )}
           </div>
           
-          {carregandoEntregas ? <div className="mt-2 text-xs text-muted-foreground">Carregando entregas...</div> : entregasDetalhes.length > 0 ? <div className="mt-3 pt-2 border-t border-border">
-              <div className="text-xs font-medium mb-1">Entregas no período:</div>
-              <div className="space-y-1 max-h-24 overflow-y-auto">
-                {entregasDetalhes.map((entrega, idx) => <div key={idx} className="text-xs flex justify-between">
-                    <span>{new Date(entrega.data).toLocaleDateString('pt-BR')}</span>
+          {carregandoEntregas ? (
+            <div className="mt-3 pt-2 border-t border-border text-xs text-muted-foreground">
+              Carregando entregas...
+            </div>
+          ) : entregasDetalhes.length > 0 ? (
+            <div className="mt-3 pt-2 border-t border-border">
+              <div className="text-xs font-medium mb-1 text-muted-foreground">Entregas:</div>
+              <div className="space-y-1 max-h-28 overflow-y-auto">
+                {entregasDetalhes.map((entrega, idx) => (
+                  <div key={idx} className="text-xs flex justify-between items-center">
+                    <span className="text-muted-foreground">
+                      {new Date(entrega.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                    </span>
                     <span className="font-medium">{entrega.quantidade} un</span>
-                  </div>)}
+                  </div>
+                ))}
               </div>
-            </div> : <div className="mt-2 text-xs text-muted-foreground">Nenhuma entrega neste período</div>}
-        </div>;
+            </div>
+          ) : (
+            <div className="mt-3 pt-2 border-t border-border text-xs text-muted-foreground italic">
+              Nenhuma entrega neste período
+            </div>
+          )}
+        </div>
+      );
     }
     return null;
   };
