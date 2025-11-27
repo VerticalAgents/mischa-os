@@ -194,7 +194,7 @@ export default function AnaliseGiro({
   };
   return <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <GiroMetricCard title="Média Histórica" value={dadosGiro.mediaHistorica} suffix="un/sem" description="Últimas 4 semanas" />
+        <GiroMetricCard title="Média Histórica" value={dadosGiro.mediaHistorica} suffix="un/sem" description={`Últimas ${dadosGiro.numeroSemanasHistorico} semana${dadosGiro.numeroSemanasHistorico !== 1 ? 's' : ''}`} />
         
         <GiroMetricCard title="Última Semana" value={dadosGiro.ultimaSemana} suffix="unidades" trend={dadosGiro.variacaoPercentual !== 0 ? {
         value: Math.abs(dadosGiro.variacaoPercentual),

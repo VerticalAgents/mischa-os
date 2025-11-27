@@ -2,48 +2,61 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Calcula o giro semanal histórico de um cliente baseado na regra padrão:
- * Todas as unidades entregues nos últimos 28 dias dividido por 4
+ * Calcula o giro semanal histórico de um cliente baseado na regra:
+ * - Considera as últimas 12 semanas (84 dias)
+ * - Para clientes novos com menos de 12 semanas de histórico, usa o período real disponível
  * 
  * @param clienteId - ID do cliente
- * @returns Número de unidades por semana (média histórica)
+ * @returns Objeto com giro semanal e número de semanas consideradas
  */
-export async function calcularGiroSemanalHistorico(clienteId: string): Promise<number> {
+export async function calcularGiroSemanalHistorico(clienteId: string): Promise<{
+  giroSemanal: number;
+  numeroSemanas: number;
+}> {
   try {
-    // Calcular data de 28 dias atrás
+    // Calcular data de 84 dias atrás (12 semanas)
     const dataLimite = new Date();
-    dataLimite.setDate(dataLimite.getDate() - 28);
+    dataLimite.setDate(dataLimite.getDate() - 84);
 
-    // Buscar entregas dos últimos 28 dias baseado na coluna 'data'
+    // Buscar entregas dos últimos 84 dias baseado na coluna 'data'
     const { data: entregas, error } = await supabase
       .from('historico_entregas')
-      .select('quantidade')
+      .select('quantidade, data')
       .eq('cliente_id', clienteId)
       .eq('tipo', 'entrega')
       .gte('data', dataLimite.toISOString())
-      .order('data', { ascending: false });
+      .order('data', { ascending: true });
 
     if (error) {
       console.error('Erro ao buscar entregas para cliente', clienteId, error);
-      return 0;
+      return { giroSemanal: 0, numeroSemanas: 0 };
     }
 
     if (!entregas || entregas.length === 0) {
-      return 0;
+      return { giroSemanal: 0, numeroSemanas: 0 };
     }
 
-    // Somar todas as entregas dos últimos 28 dias
+    // Somar todas as entregas do período
     const totalEntregas = entregas.reduce((total, entrega) => total + entrega.quantidade, 0);
     
-    // Calcular média semanal (total dividido por 4 semanas)
-    const giroSemanal = Math.round(totalEntregas / 4);
+    // Calcular número de semanas reais desde a primeira entrega
+    const primeiraEntrega = new Date(entregas[0].data);
+    const hoje = new Date();
+    const diferencaDias = Math.ceil((hoje.getTime() - primeiraEntrega.getTime()) / (1000 * 60 * 60 * 24));
+    const semanasDesdeprimeiraEntrega = Math.ceil(diferencaDias / 7);
     
-    console.log(`[calcularGiroSemanalHistorico] Cliente ${clienteId}: ${entregas.length} entregas, total: ${totalEntregas}, giro semanal: ${giroSemanal}`);
+    // Número de semanas: mínimo 1, máximo 12
+    const numeroSemanas = Math.max(1, Math.min(12, semanasDesdeprimeiraEntrega));
     
-    return giroSemanal;
+    // Calcular média semanal baseada no período real
+    const giroSemanal = Math.round(totalEntregas / numeroSemanas);
+    
+    console.log(`[calcularGiroSemanalHistorico] Cliente ${clienteId}: ${entregas.length} entregas, total: ${totalEntregas}, ${numeroSemanas} semanas, giro semanal: ${giroSemanal}`);
+    
+    return { giroSemanal, numeroSemanas };
   } catch (error) {
     console.error('Erro no cálculo do giro semanal histórico:', error);
-    return 0;
+    return { giroSemanal: 0, numeroSemanas: 0 };
   }
 }
 
