@@ -80,10 +80,12 @@ export function useGiroAnalise(cliente: Cliente) {
           }
         });
 
-        // Preparar dados do gráfico
+        // Preparar dados do gráfico com datas do período
         const dadosGrafico = ultimas12Semanas.map(semana => ({
           semana: semana.display,
-          valor: giroSemanal.get(semana.chave) || 0
+          valor: giroSemanal.get(semana.chave) || 0,
+          startDate: semana.startDate.toISOString(),
+          endDate: semana.endDate.toISOString()
         }));
 
         console.log('📈 Dados do gráfico preparados:', dadosGrafico);

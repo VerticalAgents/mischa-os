@@ -148,10 +148,47 @@ export function formatarSemanaDisplay(ano: number, semana: number): string {
 }
 
 /**
+ * Função auxiliar para obter datas de início e fim de uma semana ISO
+ */
+export function getWeekDateRange(year: number, week: number): { startDate: Date; endDate: Date } {
+  // Encontrar a primeira segunda-feira do ano
+  const jan1 = new Date(year, 0, 1);
+  const dayOfWeek = jan1.getDay();
+  
+  // Calcular o primeiro dia da semana 1 (pode ser no ano anterior)
+  const daysToFirstMonday = dayOfWeek <= 4 ? 1 - dayOfWeek : 8 - dayOfWeek;
+  const week1Monday = new Date(year, 0, 1 + daysToFirstMonday);
+  
+  // Calcular a segunda-feira da semana desejada
+  const startDate = new Date(week1Monday);
+  startDate.setDate(week1Monday.getDate() + (week - 1) * 7);
+  
+  // Domingo da mesma semana
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 6);
+  
+  return { startDate, endDate };
+}
+
+/**
  * Função para gerar array de 12 semanas (mantida para compatibilidade com gráficos)
  */
-export function gerarUltimas12Semanas(): Array<{ ano: number; semana: number; chave: string; display: string }> {
-  const semanas: Array<{ ano: number; semana: number; chave: string; display: string }> = [];
+export function gerarUltimas12Semanas(): Array<{ 
+  ano: number; 
+  semana: number; 
+  chave: string; 
+  display: string;
+  startDate: Date;
+  endDate: Date;
+}> {
+  const semanas: Array<{ 
+    ano: number; 
+    semana: number; 
+    chave: string; 
+    display: string;
+    startDate: Date;
+    endDate: Date;
+  }> = [];
   const hoje = new Date();
   
   for (let i = 11; i >= 0; i--) {
@@ -160,12 +197,15 @@ export function gerarUltimas12Semanas(): Array<{ ano: number; semana: number; ch
     const { year, week } = getISOWeekNumber(data);
     const chave = `${year}-${week.toString().padStart(2, '0')}`;
     const display = formatarSemanaDisplay(year, week);
+    const { startDate, endDate } = getWeekDateRange(year, week);
     
     semanas.push({
       ano: year,
       semana: week,
       chave,
-      display
+      display,
+      startDate,
+      endDate
     });
   }
   
