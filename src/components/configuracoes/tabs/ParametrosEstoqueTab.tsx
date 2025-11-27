@@ -3,17 +3,15 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { toast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useInsumoStore } from "@/hooks/useInsumoStore";
-import { CategoriaInsumo } from "@/types";
+import { useSupabaseCategoriasInsumo, CategoriaInsumoSupabase } from "@/hooks/useSupabaseCategoriasInsumo";
 
 // Schema for form validation
 const categoriaSchema = z.object({
@@ -21,11 +19,20 @@ const categoriaSchema = z.object({
 });
 
 export default function ParametrosEstoqueTab() {
-  const { insumos, categoriasPersonalizadas, adicionarCategoria, editarCategoria, removerCategoria } = useInsumoStore();
+  const { 
+    categorias, 
+    loading,
+    adicionarCategoria, 
+    editarCategoria, 
+    removerCategoria,
+    getCategoriasPadrao,
+    getCategoriasPersonalizadas
+  } = useSupabaseCategoriasInsumo();
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<{ id: string, nome: string } | null>(null);
-  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<CategoriaInsumoSupabase | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<CategoriaInsumoSupabase | null>(null);
 
   const form = useForm<z.infer<typeof categoriaSchema>>({
     resolver: zodResolver(categoriaSchema),
@@ -34,19 +41,11 @@ export default function ParametrosEstoqueTab() {
     },
   });
 
-  const onSubmit = (values: z.infer<typeof categoriaSchema>) => {
+  const onSubmit = async (values: z.infer<typeof categoriaSchema>) => {
     if (editingCategory) {
-      editarCategoria(editingCategory.id, values.nome);
-      toast({
-        title: "Categoria atualizada",
-        description: `A categoria foi atualizada para "${values.nome}"`,
-      });
+      await editarCategoria(editingCategory.id, values.nome);
     } else {
-      adicionarCategoria(values.nome);
-      toast({
-        title: "Categoria adicionada",
-        description: `Nova categoria "${values.nome}" foi adicionada com sucesso`,
-      });
+      await adicionarCategoria(values.nome);
     }
     
     setDialogOpen(false);
@@ -60,42 +59,38 @@ export default function ParametrosEstoqueTab() {
     setDialogOpen(true);
   };
 
-  const openEditDialog = (id: string, nome: string) => {
-    form.reset({ nome });
-    setEditingCategory({ id, nome });
+  const openEditDialog = (categoria: CategoriaInsumoSupabase) => {
+    form.reset({ nome: categoria.nome });
+    setEditingCategory(categoria);
     setDialogOpen(true);
   };
 
-  const openDeleteDialog = (id: string) => {
-    setCategoryToDelete(id);
+  const openDeleteDialog = (categoria: CategoriaInsumoSupabase) => {
+    setCategoryToDelete(categoria);
     setDeleteDialogOpen(true);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!categoryToDelete) return;
     
-    removerCategoria(categoryToDelete);
-    toast({
-      title: "Categoria removida",
-      description: "A categoria foi removida com sucesso",
-    });
+    await removerCategoria(categoryToDelete.id);
     
     setDeleteDialogOpen(false);
     setCategoryToDelete(null);
   };
 
-  // Check if a category is in use
-  const isCategoryInUse = (categoria: string): boolean => {
-    return insumos.some(insumo => insumo.categoria === categoria);
-  };
+  const categoriasPadrao = getCategoriasPadrao();
+  const categoriasPersonalizadas = getCategoriasPersonalizadas();
 
-  // Count items in a category
-  const countItemsInCategory = (categoria: string): number => {
-    return insumos.filter(insumo => insumo.categoria === categoria).length;
-  };
-
-  // Standard categories that can't be edited
-  const standardCategories: CategoriaInsumo[] = ["Matéria Prima", "Embalagem", "Outros"];
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-10">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -119,44 +114,45 @@ export default function ParametrosEstoqueTab() {
           </Button>
         </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome da Categoria</TableHead>
-              <TableHead>Itens Vinculados</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {/* Standard categories */}
-            {standardCategories.map((categoria) => (
-              <TableRow key={categoria}>
-                <TableCell className="font-medium">{categoria}</TableCell>
-                <TableCell>{countItemsInCategory(categoria)}</TableCell>
-                <TableCell>
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                    Padrão
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" disabled className="opacity-50">
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Editar
-                  </Button>
-                </TableCell>
+        {categorias.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-muted-foreground">Nenhuma categoria cadastrada.</p>
+            <Button className="mt-4" onClick={openAddDialog}>
+              <Plus className="mr-2 h-4 w-4" /> Adicionar Categoria
+            </Button>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome da Categoria</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
-            ))}
-
-            {/* Custom categories */}
-            {categoriasPersonalizadas.map((categoria) => {
-              const inUse = isCategoryInUse(categoria.nome);
-              const itemCount = countItemsInCategory(categoria.nome);
-              
-              return (
+            </TableHeader>
+            <TableBody>
+              {/* Standard categories */}
+              {categoriasPadrao.map((categoria) => (
                 <TableRow key={categoria.id}>
                   <TableCell className="font-medium">{categoria.nome}</TableCell>
-                  <TableCell>{itemCount}</TableCell>
+                  <TableCell>
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                      Padrão
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm" disabled className="opacity-50">
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Editar
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+
+              {/* Custom categories */}
+              {categoriasPersonalizadas.map((categoria) => (
+                <TableRow key={categoria.id}>
+                  <TableCell className="font-medium">{categoria.nome}</TableCell>
                   <TableCell>
                     <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
                       Personalizada
@@ -167,7 +163,7 @@ export default function ParametrosEstoqueTab() {
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        onClick={() => openEditDialog(categoria.id, categoria.nome)}
+                        onClick={() => openEditDialog(categoria)}
                       >
                         <Pencil className="h-4 w-4 mr-2" />
                         Editar
@@ -175,8 +171,7 @@ export default function ParametrosEstoqueTab() {
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        onClick={() => openDeleteDialog(categoria.id)}
-                        disabled={inUse}
+                        onClick={() => openDeleteDialog(categoria)}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Excluir
@@ -184,18 +179,10 @@ export default function ParametrosEstoqueTab() {
                     </div>
                   </TableCell>
                 </TableRow>
-              );
-            })}
-            
-            {categoriasPersonalizadas.length === 0 && standardCategories.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                  Nenhuma categoria encontrada
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
 
       {/* Dialog for adding/editing categories */}
@@ -231,11 +218,10 @@ export default function ParametrosEstoqueTab() {
                 )}
               />
 
-              {editingCategory && isCategoryInUse(editingCategory.nome) && (
+              {editingCategory && (
                 <Alert className="bg-amber-50 text-amber-800">
                   <AlertDescription>
-                    Esta categoria possui {countItemsInCategory(editingCategory.nome)} item(ns) vinculado(s). 
-                    A alteração afetará todos os itens vinculados.
+                    A alteração do nome afetará a exibição em todos os insumos vinculados.
                   </AlertDescription>
                 </Alert>
               )}
@@ -259,7 +245,7 @@ export default function ParametrosEstoqueTab() {
           <DialogHeader>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja excluir esta categoria? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir a categoria "{categoryToDelete?.nome}"? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           

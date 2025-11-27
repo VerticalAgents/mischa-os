@@ -242,6 +242,36 @@ export type Database = {
         }
         Relationships: []
       }
+      categorias_insumo: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          id: number
+          nome: string
+          tipo: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          id?: number
+          nome: string
+          tipo?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          id?: number
+          nome?: string
+          tipo?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       categorias_produto: {
         Row: {
           ativo: boolean | null
@@ -250,6 +280,7 @@ export type Database = {
           id: number
           nome: string
           updated_at: string | null
+          user_id: string
         }
         Insert: {
           ativo?: boolean | null
@@ -258,6 +289,7 @@ export type Database = {
           id?: number
           nome: string
           updated_at?: string | null
+          user_id: string
         }
         Update: {
           ativo?: boolean | null
@@ -266,6 +298,7 @@ export type Database = {
           id?: number
           nome?: string
           updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -1747,6 +1780,7 @@ export type Database = {
           id: number
           nome: string
           updated_at: string | null
+          user_id: string
         }
         Insert: {
           ativo?: boolean | null
@@ -1756,6 +1790,7 @@ export type Database = {
           id?: number
           nome: string
           updated_at?: string | null
+          user_id: string
         }
         Update: {
           ativo?: boolean | null
@@ -1765,6 +1800,7 @@ export type Database = {
           id?: number
           nome?: string
           updated_at?: string | null
+          user_id?: string
         }
         Relationships: [
           {
