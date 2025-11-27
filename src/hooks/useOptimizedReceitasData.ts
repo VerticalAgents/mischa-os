@@ -12,6 +12,7 @@ export interface ReceitaCompleta {
   peso_total: number;
   custo_total: number;
   custo_unitario: number;
+  user_id: string;
   itens: {
     id: string;
     insumo_id: string;
@@ -287,12 +288,24 @@ export const useOptimizedReceitasData = () => {
 
   const duplicarReceita = async (receitaOriginal: ReceitaCompleta) => {
     try {
-      // Criar nova receita com nome (Cópia)
+      // Obter o user_id do usuário autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return null;
+      }
+
+      // Criar nova receita com nome (Cópia) e user_id
       const novaReceita = {
         nome: `${receitaOriginal.nome} (Cópia)`,
         descricao: receitaOriginal.descricao,
         rendimento: receitaOriginal.rendimento,
-        unidade_rendimento: receitaOriginal.unidade_rendimento
+        unidade_rendimento: receitaOriginal.unidade_rendimento,
+        user_id: user.id
       };
 
       const { data: receitaCriada, error: receitaError } = await supabase
