@@ -38,7 +38,6 @@ import AuthPage from '@/pages/auth/AuthPage';
 import LoginPage from '@/pages/auth/LoginPage';
 import NotFound from '@/pages/NotFound';
 import FichaPreview from '@/pages/fichas-tecnicas/Preview';
-import './App.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

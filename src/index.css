@@ -87,45 +87,11 @@
 		font-feature-settings: 'rlig' 1, 'calt' 1;
 	}
 
-  /* Ajustes de alinhamento global */
-  .text-left {
-    text-align: left !important;
-  }
-  
   h1, h2, h3, h4, h5, h6 {
     text-align: left;
   }
   
-  table th {
-    text-align: left;
-  }
-  
-  table td {
-    text-align: left;
-  }
-  
-  .table-caption {
-    text-align: left;
-  }
-  
-  /* Botões de navegação em tabs */
-  .tab-button {
-    justify-content: flex-start;
-    text-align: left;
-  }
-  
-  /* Controles de formulário */
-  .form-control {
-    text-align: left;
-  }
-  
-  /* Badges e labels */
-  .badge {
-    text-align: left;
-  }
-  
-  /* Seções de conteúdo */
-  .content-section {
+  table th, table td {
     text-align: left;
   }
 }
