@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, useEffect } from 'react';
+import { memo, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -6,13 +6,7 @@ import { Factory, Package, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRendimentosReceitaProduto } from '@/hooks/useRendimentosReceitaProduto';
 import { useMediaVendasSemanais } from '@/hooks/useMediaVendasSemanais';
-import { supabase } from '@/integrations/supabase/client';
-
-interface ProdutoFinal {
-  id: string;
-  nome: string;
-  estoque_atual: number | null;
-}
+import { useEstoqueDisponivel } from '@/hooks/useEstoqueDisponivel';
 
 const LoadingState = memo(() => (
   <Card>
@@ -29,43 +23,25 @@ LoadingState.displayName = 'LoadingState';
 
 export default function HomeSugestaoProducao() {
   const navigate = useNavigate();
-  const [produtos, setProdutos] = useState<ProdutoFinal[]>([]);
-  const [loadingProdutos, setLoadingProdutos] = useState(true);
   
+  // Usar useEstoqueDisponivel para ter o estoque calculado igual ao PCP
+  const { produtos: produtosEstoque, loading: loadingEstoque } = useEstoqueDisponivel({});
   const { obterRendimentoPorProduto, loading: loadingRendimentos } = useRendimentosReceitaProduto();
   const { mediaVendasPorProduto, loading: loadingMediaVendas } = useMediaVendasSemanais();
 
-  useEffect(() => {
-    const buscarProdutos = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('produtos_finais')
-          .select('id, nome, estoque_atual')
-          .eq('ativo', true);
-
-        if (error) throw error;
-        setProdutos(data || []);
-      } catch (error) {
-        console.error('Erro ao buscar produtos:', error);
-      } finally {
-        setLoadingProdutos(false);
-      }
-    };
-
-    buscarProdutos();
-  }, []);
-
   // Calcular sugestões usando a mesma lógica do PCP (sem filtro de proporção)
   const sugestoes = useMemo(() => {
-    if (loadingRendimentos || loadingMediaVendas || loadingProdutos) return null;
+    if (loadingRendimentos || loadingMediaVendas || loadingEstoque) return null;
 
-    const produtosComSugestao = produtos
+    const produtosComSugestao = produtosEstoque
       .map(produto => {
-        const rendimentoInfo = obterRendimentoPorProduto(produto.id);
+        const rendimentoInfo = obterRendimentoPorProduto(produto.produto_id);
         const rendimento = rendimentoInfo?.rendimento || null;
         const tem_rendimento = !!rendimento && rendimento > 0;
-        const mediaVendas = mediaVendasPorProduto[produto.id] || 0;
-        const estoqueAtual = produto.estoque_atual || 0;
+        const mediaVendas = mediaVendasPorProduto[produto.produto_id] || 0;
+        
+        // Usar estoque_disponivel que já considera pedidos separados
+        const estoqueDisponivel = produto.estoque_disponivel;
         
         // Estoque alvo = 20% da média de vendas das últimas 12 semanas
         const estoqueAlvo = Math.round(mediaVendas * 0.20);
@@ -74,14 +50,14 @@ export default function HomeSugestaoProducao() {
         let quantidadeBase = 0;
         let quantidadeEstoqueAlvo = 0;
         
-        if (estoqueAtual < 0) {
+        if (estoqueDisponivel < 0) {
           // Estoque negativo: cobrir déficit + atingir estoque alvo
-          quantidadeBase = -estoqueAtual;
+          quantidadeBase = -estoqueDisponivel;
           quantidadeEstoqueAlvo = estoqueAlvo;
         } else {
           // Estoque positivo: só produzir o que falta para estoque alvo
           quantidadeBase = 0;
-          quantidadeEstoqueAlvo = Math.max(0, estoqueAlvo - estoqueAtual);
+          quantidadeEstoqueAlvo = Math.max(0, estoqueAlvo - estoqueDisponivel);
         }
         
         const quantidadeAProduzir = quantidadeBase + quantidadeEstoqueAlvo;
@@ -92,11 +68,11 @@ export default function HomeSugestaoProducao() {
           : 0;
 
         return {
-          id: produto.id,
-          nome: produto.nome,
+          id: produto.produto_id,
+          nome: produto.produto_nome,
           formasSugeridas,
           quantidadeAProduzir,
-          estoqueAtual,
+          estoqueDisponivel,
           temRendimento: tem_rendimento,
           naoPrecisaProduzir: quantidadeAProduzir === 0
         };
@@ -108,18 +84,18 @@ export default function HomeSugestaoProducao() {
     const totalFormas = produtosComSugestao.reduce((acc, p) => acc + p.formasSugeridas, 0);
     
     // Contar produtos com estoque suficiente (não precisam produzir)
-    const produtosComEstoqueSuficiente = produtos.filter(produto => {
-      const rendimentoInfo = obterRendimentoPorProduto(produto.id);
+    const produtosComEstoqueSuficiente = produtosEstoque.filter(produto => {
+      const rendimentoInfo = obterRendimentoPorProduto(produto.produto_id);
       const rendimento = rendimentoInfo?.rendimento || null;
-      const mediaVendas = mediaVendasPorProduto[produto.id] || 0;
-      const estoqueAtual = produto.estoque_atual || 0;
+      const mediaVendas = mediaVendasPorProduto[produto.produto_id] || 0;
+      const estoqueDisponivel = produto.estoque_disponivel;
       const estoqueAlvo = Math.round(mediaVendas * 0.20);
       
       let quantidadeAProduzir = 0;
-      if (estoqueAtual < 0) {
-        quantidadeAProduzir = -estoqueAtual + estoqueAlvo;
+      if (estoqueDisponivel < 0) {
+        quantidadeAProduzir = -estoqueDisponivel + estoqueAlvo;
       } else {
-        quantidadeAProduzir = Math.max(0, estoqueAlvo - estoqueAtual);
+        quantidadeAProduzir = Math.max(0, estoqueAlvo - estoqueDisponivel);
       }
       
       return quantidadeAProduzir === 0 && rendimento && rendimento > 0;
@@ -133,9 +109,9 @@ export default function HomeSugestaoProducao() {
       produtosComEstoqueSuficiente,
       top5
     };
-  }, [produtos, obterRendimentoPorProduto, mediaVendasPorProduto, loadingRendimentos, loadingMediaVendas, loadingProdutos]);
+  }, [produtosEstoque, obterRendimentoPorProduto, mediaVendasPorProduto, loadingRendimentos, loadingMediaVendas, loadingEstoque]);
 
-  const isLoading = loadingRendimentos || loadingMediaVendas || loadingProdutos;
+  const isLoading = loadingRendimentos || loadingMediaVendas || loadingEstoque;
 
   if (isLoading) return <LoadingState />;
 
