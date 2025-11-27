@@ -7,11 +7,12 @@ import { supabase } from '@/integrations/supabase/client';
  * - Para clientes novos com menos de 12 semanas de histórico, usa o período real disponível
  * 
  * @param clienteId - ID do cliente
- * @returns Objeto com giro semanal e número de semanas consideradas
+ * @returns Objeto com giro semanal, número de semanas e data da primeira entrega
  */
 export async function calcularGiroSemanalHistorico(clienteId: string): Promise<{
   giroSemanal: number;
   numeroSemanas: number;
+  dataPrimeiraEntrega: string | null;
 }> {
   try {
     // Calcular data de 84 dias atrás (12 semanas)
@@ -29,11 +30,11 @@ export async function calcularGiroSemanalHistorico(clienteId: string): Promise<{
 
     if (error) {
       console.error('Erro ao buscar entregas para cliente', clienteId, error);
-      return { giroSemanal: 0, numeroSemanas: 0 };
+      return { giroSemanal: 0, numeroSemanas: 0, dataPrimeiraEntrega: null };
     }
 
     if (!entregas || entregas.length === 0) {
-      return { giroSemanal: 0, numeroSemanas: 0 };
+      return { giroSemanal: 0, numeroSemanas: 0, dataPrimeiraEntrega: null };
     }
 
     // Somar todas as entregas do período
@@ -53,10 +54,14 @@ export async function calcularGiroSemanalHistorico(clienteId: string): Promise<{
     
     console.log(`[calcularGiroSemanalHistorico] Cliente ${clienteId}: ${entregas.length} entregas, total: ${totalEntregas}, ${numeroSemanas} semanas, giro semanal: ${giroSemanal}`);
     
-    return { giroSemanal, numeroSemanas };
+    return { 
+      giroSemanal, 
+      numeroSemanas, 
+      dataPrimeiraEntrega: entregas[0].data 
+    };
   } catch (error) {
     console.error('Erro no cálculo do giro semanal histórico:', error);
-    return { giroSemanal: 0, numeroSemanas: 0 };
+    return { giroSemanal: 0, numeroSemanas: 0, dataPrimeiraEntrega: null };
   }
 }
 

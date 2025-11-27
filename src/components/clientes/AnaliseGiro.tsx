@@ -190,6 +190,15 @@ export default function AnaliseGiro({
     }
     return null;
   };
+  
+  // Formatar data da primeira entrega
+  const dataPrimeiraEntregaFormatada = dadosGiro.dataPrimeiraEntrega 
+    ? new Date(dadosGiro.dataPrimeiraEntrega).toLocaleDateString('pt-BR')
+    : null;
+  
+  // Verificar se cliente tem menos de 12 semanas
+  const clienteNovo = dadosGiro.numeroSemanasHistorico < 12;
+  
   return <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <GiroMetricCard title="Média Histórica" value={dadosGiro.mediaHistorica} suffix="un/sem" description={`Últimas ${dadosGiro.numeroSemanasHistorico} semana${dadosGiro.numeroSemanasHistorico !== 1 ? 's' : ''}`} />
@@ -201,6 +210,12 @@ export default function AnaliseGiro({
         
         <GiroMetricCard title="Comparativo com Giro Geral" value={`${comparativoGiroGeral}%`} description="vs giro médio geral" status={comparativoGiroGeral >= 100 ? 'verde' : 'vermelho'} />
       </div>
+      
+      {clienteNovo && dataPrimeiraEntregaFormatada && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-800 dark:text-amber-200">
+          <span className="font-medium">ℹ️ Cliente novo:</span> A média está sendo calculada com base em {dadosGiro.numeroSemanasHistorico} semana{dadosGiro.numeroSemanasHistorico !== 1 ? 's' : ''}, pois a primeira entrega foi em {dataPrimeiraEntregaFormatada}.
+        </div>
+      )}
       
       <Card>
         <CardHeader>

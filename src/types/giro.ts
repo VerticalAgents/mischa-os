@@ -16,6 +16,7 @@ export interface MetaGiro {
 export interface AnaliseGiroData {
   mediaHistorica: number;
   numeroSemanasHistorico: number; // número de semanas consideradas no cálculo
+  dataPrimeiraEntrega: string | null; // data da primeira entrega do cliente
   ultimaSemana: number;
   variacaoPercentual: number;
   meta: number;
