@@ -217,58 +217,48 @@ export class GiroAnalysisService {
     }
   }
 
-  // Get consolidated giro data
+  // Get consolidated giro data - uses admin-only RPC function for security
   static async getDadosConsolidados(filtros: GiroAnalysisFilters = {}): Promise<DadosAnaliseGiroConsolidados[]> {
-    const cacheKey = 'dados_consolidados';
-    
-    // Não usar cache para garantir dados atualizados
-    // const cached = await this.getCachedData(cacheKey, filtros);
-    // if (cached) {
-    //   return cached;
-    // }
-
-    let query = supabase
-      .from('dados_analise_giro_materialized')
-      .select('*')
-      .order('cliente_nome', { ascending: true });
-
-    // Apply filters
-    if (filtros.representante) {
-      query = query.eq('representante_nome', filtros.representante);
-    }
-    if (filtros.rota) {
-      query = query.eq('rota_entrega_nome', filtros.rota);
-    }
-    if (filtros.categoria_estabelecimento) {
-      query = query.eq('categoria_estabelecimento_nome', filtros.categoria_estabelecimento);
-    }
-    if (filtros.semaforo) {
-      query = query.eq('semaforo_performance', filtros.semaforo);
-    }
-    if (filtros.achievement_min) {
-      query = query.gte('achievement_meta', filtros.achievement_min);
-    }
-    if (filtros.achievement_max) {
-      query = query.lte('achievement_meta', filtros.achievement_max);
-    }
-
-    const { data, error } = await query;
+    // Use RPC function that checks admin role (materialized views don't support RLS)
+    const { data, error } = await supabase.rpc('get_dados_analise_giro_admin');
 
     if (error) {
       console.error('Error fetching consolidated data:', error);
       throw error;
     }
 
+    // Apply filters client-side (RPC doesn't support filtering)
+    let filteredData = data || [];
+    
+    if (filtros.representante) {
+      filteredData = filteredData.filter(row => row.representante_nome === filtros.representante);
+    }
+    if (filtros.rota) {
+      filteredData = filteredData.filter(row => row.rota_entrega_nome === filtros.rota);
+    }
+    if (filtros.categoria_estabelecimento) {
+      filteredData = filteredData.filter(row => row.categoria_estabelecimento_nome === filtros.categoria_estabelecimento);
+    }
+    if (filtros.semaforo) {
+      filteredData = filteredData.filter(row => row.semaforo_performance === filtros.semaforo);
+    }
+    if (filtros.achievement_min) {
+      filteredData = filteredData.filter(row => (row.achievement_meta || 0) >= filtros.achievement_min!);
+    }
+    if (filtros.achievement_max) {
+      filteredData = filteredData.filter(row => (row.achievement_meta || 0) <= filtros.achievement_max!);
+    }
+
+    // Sort by client name
+    filteredData.sort((a, b) => (a.cliente_nome || '').localeCompare(b.cliente_nome || ''));
+
     // Transform data with correct historical giro calculation
     const transformedData = await Promise.all(
-      (data || []).map(row => transformDatabaseRow(row))
+      filteredData.map(row => transformDatabaseRow(row))
     );
 
     // Reordenar por giro histórico correto
     const sortedData = transformedData.sort((a, b) => b.giro_medio_historico - a.giro_medio_historico);
-
-    // Não fazer cache para garantir dados sempre atualizados
-    // await this.setCachedData(cacheKey, filtros, sortedData);
     
     return sortedData;
   }
