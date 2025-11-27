@@ -7,6 +7,7 @@ export interface ConfiguracaoModulo {
   id: string;
   modulo: string;
   configuracoes: any;
+  user_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -15,13 +16,21 @@ export const useConfiguracoesStore = () => {
   const [configuracoes, setConfiguracoes] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
 
-  // Carregar todas as configurações
+  // Carregar todas as configurações DO USUÁRIO LOGADO
   const carregarConfiguracoes = async () => {
     setLoading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.warn('Usuário não autenticado');
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('configuracoes_sistema')
-        .select('*');
+        .select('*')
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('Erro ao carregar configurações:', error);
@@ -46,13 +55,20 @@ export const useConfiguracoesStore = () => {
     }
   };
 
-  // Carregar configuração específica de um módulo
+  // Carregar configuração específica de um módulo DO USUÁRIO LOGADO
   const carregarConfiguracao = async (modulo: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.warn('Usuário não autenticado');
+        return null;
+      }
+
       const { data, error } = await supabase
         .from('configuracoes_sistema')
         .select('configuracoes')
         .eq('modulo', modulo)
+        .eq('user_id', user.id)
         .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = not found
@@ -67,15 +83,27 @@ export const useConfiguracoesStore = () => {
     }
   };
 
-  // Salvar configuração de um módulo
+  // Salvar configuração de um módulo PARA O USUÁRIO LOGADO
   const salvarConfiguracao = async (modulo: string, novasConfiguracoes: any) => {
     setLoading(true);
     try {
-      // Primeiro, verificar se já existe uma configuração para este módulo
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.warn('Usuário não autenticado');
+        toast({
+          title: "Erro ao salvar configurações",
+          description: "Usuário não autenticado",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      // Primeiro, verificar se já existe uma configuração para este módulo E usuário
       const { data: existingData, error: selectError } = await supabase
         .from('configuracoes_sistema')
         .select('id')
         .eq('modulo', modulo)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (selectError) {
@@ -97,14 +125,16 @@ export const useConfiguracoesStore = () => {
             configuracoes: novasConfiguracoes,
             updated_at: new Date().toISOString()
           })
-          .eq('modulo', modulo);
+          .eq('modulo', modulo)
+          .eq('user_id', user.id);
       } else {
-        // Inserir novo registro
+        // Inserir novo registro COM user_id
         result = await supabase
           .from('configuracoes_sistema')
           .insert({
             modulo,
-            configuracoes: novasConfiguracoes
+            configuracoes: novasConfiguracoes,
+            user_id: user.id
           });
       }
 

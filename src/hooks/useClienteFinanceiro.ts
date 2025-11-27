@@ -149,12 +149,21 @@ export function useClienteFinanceiro(cliente: Cliente) {
       // 4. Buscar preços personalizados do cliente
       const precosPersonalizados = await carregarPrecosPorCliente(cliente.id);
       
-      // 5. Buscar configurações de preços padrão
-      const { data: configPrecos, error: errorConfig } = await supabase
-        .from('configuracoes_sistema')
-        .select('configuracoes')
-        .eq('modulo', 'precificacao')
-        .single();
+      // 5. Buscar configurações de preços padrão DO USUÁRIO LOGADO
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      let configPrecos = null;
+      let errorConfig = null;
+      
+      if (currentUser) {
+        const result = await supabase
+          .from('configuracoes_sistema')
+          .select('configuracoes')
+          .eq('modulo', 'precificacao')
+          .eq('user_id', currentUser.id)
+          .single();
+        configPrecos = result.data;
+        errorConfig = result.error;
+      }
       
       if (errorConfig && errorConfig.code !== 'PGRST116') {
         console.error('Erro ao buscar configurações de preços:', errorConfig);
