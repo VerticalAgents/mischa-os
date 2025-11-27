@@ -236,9 +236,30 @@ export const useOrganizacaoEntregas = (dataFiltro: string) => {
   };
 
   const atualizarOrdem = (id: string, novaOrdem: number) => {
-    setEntregas(prev => prev.map(e => 
-      e.id === id ? { ...e, ordem: novaOrdem } : e
-    ));
+    setEntregas(prev => {
+      const itemAtual = prev.find(e => e.id === id);
+      if (!itemAtual) return prev;
+      
+      const ordemAntiga = itemAtual.ordem;
+      
+      // Se a ordem não mudou, não faz nada
+      if (ordemAntiga === novaOrdem) return prev;
+      
+      // Encontrar o item que tem a nova ordem (para fazer swap)
+      const itemComNovaOrdem = prev.find(e => e.ordem === novaOrdem && e.id !== id);
+      
+      return prev.map(e => {
+        if (e.id === id) {
+          // Item atual recebe a nova ordem
+          return { ...e, ordem: novaOrdem };
+        }
+        if (itemComNovaOrdem && e.id === itemComNovaOrdem.id) {
+          // Item que tinha a nova ordem recebe a ordem antiga (swap)
+          return { ...e, ordem: ordemAntiga };
+        }
+        return e;
+      });
+    });
   };
 
   const selecionarTodas = () => {
