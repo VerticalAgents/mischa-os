@@ -128,24 +128,51 @@ const enriquecerItensComNomes = async (itens: any[]): Promise<any[]> => {
   }
 };
 
-// Função auxiliar para carregar nome do cliente
-const carregarNomeCliente = async (clienteId: string): Promise<string> => {
+// Cache para nomes de clientes
+let clientesCache: Map<string, string> | null = null;
+let clientesCacheTimestamp: number = 0;
+const CLIENTES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+// Função para carregar nomes de clientes em batch (otimizada)
+const carregarNomesClientesBatch = async (clienteIds: string[]): Promise<Map<string, string>> => {
+  const now = Date.now();
+  
+  // Se cache válido e todos IDs estão no cache, usar
+  if (clientesCache && (now - clientesCacheTimestamp) < CLIENTES_CACHE_DURATION) {
+    const todosNoCahe = clienteIds.every(id => clientesCache!.has(id));
+    if (todosNoCahe) {
+      return clientesCache;
+    }
+  }
+
   try {
-    const { data: cliente, error } = await supabase
+    const uniqueIds = [...new Set(clienteIds)];
+    
+    const { data: clientes, error } = await supabase
       .from('clientes')
-      .select('nome')
-      .eq('id', clienteId)
-      .single();
+      .select('id, nome')
+      .in('id', uniqueIds);
 
     if (error) {
-      console.warn('Erro ao carregar nome do cliente:', error);
-      return 'Cliente não encontrado';
+      console.warn('Erro ao carregar nomes dos clientes em batch:', error);
+      return new Map();
     }
 
-    return cliente?.nome || 'Cliente não encontrado';
+    // Atualizar cache
+    if (!clientesCache) {
+      clientesCache = new Map();
+    }
+    
+    clientes?.forEach(c => {
+      clientesCache!.set(c.id, c.nome);
+    });
+    
+    clientesCacheTimestamp = now;
+    
+    return clientesCache;
   } catch (error) {
-    console.warn('Erro ao carregar nome do cliente:', error);
-    return 'Cliente não encontrado';
+    console.warn('Erro ao carregar nomes dos clientes:', error);
+    return new Map();
   }
 };
 
@@ -200,10 +227,16 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
             return;
           }
 
-          // Processar os registros e garantir que tenham nome do cliente e produtos
+          // Carregar nomes de clientes em batch (1 query em vez de N)
+          const clienteIds = data.map(r => r.cliente_id);
+          const clientesMap = await carregarNomesClientesBatch(clienteIds);
+          
+          // Pré-carregar cache de produtos uma vez
+          await carregarProdutosCache();
+
+          // Processar os registros de forma síncrona (dados já em cache)
           const registrosProcessados = await Promise.all(
             data.map(async (registro) => {
-              const clienteNome = await carregarNomeCliente(registro.cliente_id);
               const itensEnriquecidos = await enriquecerItensComNomes(
                 Array.isArray(registro.itens) ? registro.itens : []
               );
@@ -211,7 +244,7 @@ export const useHistoricoEntregasStore = create<HistoricoEntregasStore>()(
               return {
                 id: registro.id,
                 cliente_id: registro.cliente_id,
-                cliente_nome: clienteNome,
+                cliente_nome: clientesMap.get(registro.cliente_id) || 'Cliente não encontrado',
                 data: new Date(registro.data),
                 tipo: registro.tipo as 'entrega' | 'retorno',
                 quantidade: registro.quantidade || 0,
