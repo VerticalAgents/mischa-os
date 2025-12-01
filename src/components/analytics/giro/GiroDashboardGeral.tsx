@@ -3,18 +3,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, TrendingUp, TrendingDown, Activity, Minus, BarChart3, Target } from "lucide-react";
+import { AlertCircle, TrendingUp, TrendingDown, Activity, Minus, BarChart3, Target, Users } from "lucide-react";
 import { useGiroDashboardGeral } from "@/hooks/useGiroDashboardGeral";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import {
   ComposedChart,
   Line,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts';
+
+const STATUS_COLORS: Record<string, string> = {
+  'Ativo': '#22c55e',
+  'Inativo': '#ef4444',
+  'Em análise': '#f59e0b',
+  'Standby': '#6b7280',
+  'A ativar': '#3b82f6',
+  'Pipeline': '#8b5cf6'
+};
 
 // Componente de Tooltip memoizado
 const CustomTooltip = memo(({ active, payload }: any) => {
@@ -101,8 +114,15 @@ const LoadingState = memo(() => (
 
 LoadingState.displayName = 'LoadingState';
 
+interface ClienteData {
+  totalClientes: number;
+  clientesAtivos: number;
+  giroMedio: number;
+  statusDistribution: Array<{ name: string; value: number; color: string }>;
+}
+
 // Componente principal memoizado
-const GiroDashboardGeralContent = memo(({ dados }: { dados: any }) => {
+const GiroDashboardGeralContent = memo(({ dados, clienteData }: { dados: any; clienteData: ClienteData }) => {
   const {
     historicoSemanas,
     totalUltimos30Dias,
@@ -214,6 +234,78 @@ const GiroDashboardGeralContent = memo(({ dados }: { dados: any }) => {
             <p className="text-xs text-muted-foreground mt-2">
               {Math.abs(tendencia12Semanas.percentual).toFixed(1)}% de variação
             </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Seção: Cards Clientes + Pie Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Coluna esquerda: Cards empilhados */}
+        <div className="space-y-4">
+          {/* Card: Clientes Ativos */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{clienteData.clientesAtivos}</div>
+              <p className="text-xs text-muted-foreground">
+                ({clienteData.totalClientes} total)
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Card: Giro Médio */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Giro Médio</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{clienteData.giroMedio}</div>
+              <p className="text-xs text-muted-foreground">
+                Unidades/semana
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Coluna direita: Pie Chart */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium">
+              Distribuição por Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={clienteData.statusDistribution}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                    animationDuration={0}
+                  >
+                    {clienteData.statusDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    formatter={(value: number, name: string) => [`${value} clientes`, name]}
+                  />
+                  <Legend
+                    iconSize={8}
+                    wrapperStyle={{ fontSize: '11px' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -340,7 +432,7 @@ const GiroDashboardGeralContent = memo(({ dados }: { dados: any }) => {
                 className="text-xs"
                 tick={{ fill: 'hsl(var(--muted-foreground))' }}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <RechartsTooltip content={<CustomTooltip />} />
               <Legend 
                 wrapperStyle={{ paddingTop: '20px' }}
                 iconType="line"
@@ -396,8 +488,43 @@ GiroDashboardGeralContent.displayName = 'GiroDashboardGeralContent';
 
 export function GiroDashboardGeral() {
   const { dados, loading, error } = useGiroDashboardGeral();
+  const { clientes, loading: clientesLoading } = useClienteStore();
 
-  if (loading) {
+  // Calcular dados de clientes
+  const clienteData = useMemo(() => {
+    const ativos = clientes.filter(c => c.statusCliente === 'Ativo').length;
+    const total = clientes.length;
+    
+    // Calcular giro médio dos clientes ativos
+    const clientesAtivosComGiro = clientes.filter(c => c.statusCliente === 'Ativo' && c.giroMedioSemanal);
+    const giroMedio = clientesAtivosComGiro.length > 0
+      ? Math.round(clientesAtivosComGiro.reduce((sum, c) => sum + (c.giroMedioSemanal || 0), 0) / clientesAtivosComGiro.length)
+      : 0;
+
+    // Calcular distribuição por status
+    const statusCount: Record<string, number> = {};
+    clientes.forEach(cliente => {
+      const status = cliente.statusCliente || 'Sem status';
+      statusCount[status] = (statusCount[status] || 0) + 1;
+    });
+
+    const statusDistribution = Object.entries(statusCount)
+      .map(([name, value]) => ({
+        name,
+        value,
+        color: STATUS_COLORS[name] || '#9ca3af'
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    return {
+      totalClientes: total,
+      clientesAtivos: ativos,
+      giroMedio,
+      statusDistribution
+    };
+  }, [clientes]);
+
+  if (loading || clientesLoading) {
     return <LoadingState />;
   }
 
@@ -416,5 +543,5 @@ export function GiroDashboardGeral() {
     return null;
   }
 
-  return <GiroDashboardGeralContent dados={dados} />;
+  return <GiroDashboardGeralContent dados={dados} clienteData={clienteData} />;
 }
