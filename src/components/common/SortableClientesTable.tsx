@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { calcularGiroSemanalHistoricoSync } from "@/utils/giroCalculations";
 import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
-import TooltipExplicativo, { ExplicacaoCalculoProps } from "@/components/common/TooltipExplicativo";
+import { ExplicacaoCalculoProps } from "@/components/common/TooltipExplicativo";
 import SortableTableHeader from "@/components/common/SortableTableHeader";
 import { useTableSort } from "@/hooks/useTableSort";
 
@@ -225,77 +225,52 @@ export default function SortableClientesTable({
                   Status
                 </SortableTableHeader>
                 
-                <TooltipExplicativo 
-                  explicacao={explicacoes.giro}
-                  variant="table-header"
+                <SortableTableHeader 
+                  sortKey="giro" 
+                  sortConfig={sortConfig} 
+                  onSort={requestSort}
+                  tooltip={explicacoes.giro}
                 >
-                  <SortableTableHeader 
-                    sortKey="giro" 
-                    sortConfig={sortConfig} 
-                    onSort={requestSort}
-                    className="cursor-help"
-                  >
-                    Giro Semanal
-                  </SortableTableHeader>
-                </TooltipExplicativo>
+                  Giro Semanal
+                </SortableTableHeader>
                 
-                <TooltipExplicativo 
-                  explicacao={explicacoes.achievement}
-                  variant="table-header"
+                <SortableTableHeader 
+                  sortKey="achievement" 
+                  sortConfig={sortConfig} 
+                  onSort={requestSort}
+                  tooltip={explicacoes.achievement}
                 >
-                  <SortableTableHeader 
-                    sortKey="achievement" 
-                    sortConfig={sortConfig} 
-                    onSort={requestSort}
-                    className="cursor-help"
-                  >
-                    Achievement
-                  </SortableTableHeader>
-                </TooltipExplicativo>
+                  Achievement
+                </SortableTableHeader>
                 
-                <TooltipExplicativo 
-                  explicacao={explicacoes.ultimaEntrega}
-                  variant="table-header"
+                <SortableTableHeader 
+                  sortKey="ultimaEntrega" 
+                  sortConfig={sortConfig} 
+                  onSort={requestSort}
+                  tooltip={explicacoes.ultimaEntrega}
                 >
-                  <SortableTableHeader 
-                    sortKey="ultimaEntrega" 
-                    sortConfig={sortConfig} 
-                    onSort={requestSort}
-                    className="cursor-help"
-                  >
-                    Última Entrega
-                  </SortableTableHeader>
-                </TooltipExplicativo>
+                  Última Entrega
+                </SortableTableHeader>
 
                 {showDeliveryStats && (
                   <>
-                    <TooltipExplicativo 
-                      explicacao={explicacoes.entregas}
-                      variant="table-header"
+                    <SortableTableHeader 
+                      sortKey="entregas" 
+                      sortConfig={sortConfig} 
+                      onSort={requestSort}
+                      tooltip={explicacoes.entregas}
                     >
-                      <SortableTableHeader 
-                        sortKey="entregas" 
-                        sortConfig={sortConfig} 
-                        onSort={requestSort}
-                        className="cursor-help"
-                      >
-                        Total Entregas
-                      </SortableTableHeader>
-                    </TooltipExplicativo>
+                      Total Entregas
+                    </SortableTableHeader>
                     
-                    <TooltipExplicativo 
-                      explicacao={explicacoes.dias}
-                      variant="table-header"
+                    <SortableTableHeader 
+                      sortKey="dias" 
+                      sortConfig={sortConfig} 
+                      onSort={requestSort}
+                      tooltip={explicacoes.dias}
                     >
-                      <SortableTableHeader 
-                        sortKey="dias" 
-                        sortConfig={sortConfig} 
-                        onSort={requestSort}
-                        className="cursor-help"
-                      >
-                        Dias Ativo
-                      </SortableTableHeader>
-                    </TooltipExplicativo>
+                      Dias Ativo
+                    </SortableTableHeader>
                   </>
                 )}
               </TableRow>
