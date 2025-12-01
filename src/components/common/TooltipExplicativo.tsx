@@ -73,33 +73,40 @@ export default function TooltipExplicativo({
     switch (variant) {
       case 'indicator':
         return {
-          triggerClass: "cursor-help hover:bg-muted/50 rounded-md transition-colors",
-          icon: <Info className="h-3 w-3 text-muted-foreground ml-1" />
+          triggerClass: "cursor-help",
+          icon: null,
+          useFlexWrapper: false
         };
       case 'table-header':
         return {
-          triggerClass: "cursor-help",
-          icon: <HelpCircle className="h-3 w-3 text-muted-foreground ml-1" />
+          triggerClass: "cursor-help inline-flex items-center",
+          icon: <HelpCircle className="h-3 w-3 text-muted-foreground ml-1" />,
+          useFlexWrapper: true
         };
       default:
         return {
           triggerClass: "cursor-help",
-          icon: showIcon ? <Info className="h-3 w-3 text-muted-foreground ml-1" /> : null
+          icon: showIcon ? <Info className="h-3 w-3 text-muted-foreground ml-1" /> : null,
+          useFlexWrapper: showIcon
         };
     }
   };
 
-  const { triggerClass, icon } = getVariantStyles();
+  const { triggerClass, icon, useFlexWrapper } = getVariantStyles();
 
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip open={isOpen} onOpenChange={setIsOpen}>
         <TooltipTrigger asChild>
           <div className={cn(triggerClass, className)}>
-            <div className="flex items-center">
-              {children}
-              {icon}
-            </div>
+            {useFlexWrapper ? (
+              <div className="inline-flex items-center">
+                {children}
+                {icon}
+              </div>
+            ) : (
+              children
+            )}
           </div>
         </TooltipTrigger>
         <TooltipContent 
