@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMemo } from 'react';
@@ -34,6 +33,7 @@ interface HistoricoEntrega {
 
 interface PrecoCategoria {
   cliente_id: string;
+  categoria_id: number;
   preco_unitario: number;
 }
 
@@ -55,7 +55,13 @@ interface Rota {
   nome: string;
 }
 
-export function useCurvaABC(periodo: string = 'todo') {
+interface ProdutoFinal {
+  id: string;
+  nome: string;
+  categoria_id: number | null;
+}
+
+export function useCurvaABC(periodo: string = '90d') {
   // Fetch historico_entregas
   const { data: entregas, isLoading: loadingEntregas } = useQuery({
     queryKey: ['curva-abc-entregas', periodo],
@@ -85,15 +91,42 @@ export function useCurvaABC(periodo: string = 'todo') {
     }
   });
 
-  // Fetch precos por cliente
+  // Fetch precos por cliente E categoria
   const { data: precos, isLoading: loadingPrecos } = useQuery({
-    queryKey: ['curva-abc-precos'],
+    queryKey: ['curva-abc-precos-categoria'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('precos_categoria_cliente')
-        .select('cliente_id, preco_unitario');
+        .select('cliente_id, categoria_id, preco_unitario');
       if (error) throw error;
       return data as PrecoCategoria[];
+    }
+  });
+
+  // Fetch produtos_finais para obter categoria_id
+  const { data: produtos, isLoading: loadingProdutos } = useQuery({
+    queryKey: ['curva-abc-produtos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('produtos_finais')
+        .select('id, nome, categoria_id');
+      if (error) throw error;
+      return data as ProdutoFinal[];
+    }
+  });
+
+  // Fetch configurações de preços padrão
+  const { data: configPrecificacao, isLoading: loadingConfig } = useQuery({
+    queryKey: ['curva-abc-config-precificacao'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('configuracoes_sistema')
+        .select('configuracoes')
+        .eq('modulo', 'precificacao')
+        .maybeSingle();
+      if (error) throw error;
+      const config = data?.configuracoes as any;
+      return config?.precosPorCategoria || {};
     }
   });
 
@@ -134,26 +167,50 @@ export function useCurvaABC(periodo: string = 'todo') {
   });
 
   // Processar dados e calcular Curva ABC
-  const { clientesABC, resumoCategorias, dadosGraficos } = useMemo(() => {
-    if (!entregas || !clientes) {
-      return { clientesABC: [], resumoCategorias: [], dadosGraficos: { pie: [], bar: [] } };
+  const { clientesABC, resumoCategorias, dadosGraficos, faturamentoTotal } = useMemo(() => {
+    if (!entregas || !clientes || !produtos) {
+      return { clientesABC: [], resumoCategorias: [], dadosGraficos: { pie: [], bar: [] }, faturamentoTotal: 0 };
     }
 
-    // Criar mapa de preços por cliente (média se houver múltiplos)
-    const precosMap = new Map<string, number>();
-    if (precos) {
-      const precosPorCliente = new Map<string, number[]>();
-      precos.forEach(p => {
-        if (!precosPorCliente.has(p.cliente_id)) {
-          precosPorCliente.set(p.cliente_id, []);
+    // Criar mapa de produtos (id -> categoria_id)
+    const produtosMap = new Map<string, number>();
+    produtos.forEach(p => {
+      if (p.categoria_id) {
+        produtosMap.set(p.id, p.categoria_id);
+      }
+    });
+
+    // Criar mapa de preços personalizados (cliente_id -> Map<categoria_id, preco>)
+    const precosPersonalizadosMap = new Map<string, Map<number, number>>();
+    precos?.forEach(p => {
+      if (!precosPersonalizadosMap.has(p.cliente_id)) {
+        precosPersonalizadosMap.set(p.cliente_id, new Map());
+      }
+      precosPersonalizadosMap.get(p.cliente_id)!.set(p.categoria_id, p.preco_unitario);
+    });
+
+    // Função para obter preço aplicado
+    const obterPreco = (clienteId: string, categoriaId: number): number => {
+      // 1. Verificar preço personalizado do cliente para esta categoria
+      const precosCliente = precosPersonalizadosMap.get(clienteId);
+      if (precosCliente?.has(categoriaId)) {
+        const precoPersonalizado = precosCliente.get(categoriaId)!;
+        if (precoPersonalizado > 0) {
+          return precoPersonalizado;
         }
-        precosPorCliente.get(p.cliente_id)!.push(p.preco_unitario);
-      });
-      precosPorCliente.forEach((valores, clienteId) => {
-        const media = valores.reduce((a, b) => a + b, 0) / valores.length;
-        precosMap.set(clienteId, media);
-      });
-    }
+      }
+      
+      // 2. Usar preço padrão da categoria (configuracoes_sistema)
+      if (configPrecificacao) {
+        const precoPadrao = configPrecificacao[categoriaId.toString()];
+        if (precoPadrao && Number(precoPadrao) > 0) {
+          return Number(precoPadrao);
+        }
+      }
+      
+      // 3. Fallback
+      return 4.50;
+    };
 
     // Criar mapas de representantes e rotas
     const repMap = new Map<number, string>();
@@ -166,20 +223,47 @@ export function useCurvaABC(periodo: string = 'todo') {
     const clientesMap = new Map<string, Cliente>();
     clientes.forEach(c => clientesMap.set(c.id, c));
 
-    // Agrupar entregas por cliente
+    // Processar entregas e calcular faturamento por cliente (item por item)
     const faturamentoPorCliente = new Map<string, { quantidade: number; faturamento: number }>();
     
     entregas.forEach(entrega => {
-      const precoUnitario = precosMap.get(entrega.cliente_id) || 4.50; // Preço padrão
-      const faturamento = entrega.quantidade * precoUnitario;
+      const itens = entrega.itens as any[];
       
-      if (!faturamentoPorCliente.has(entrega.cliente_id)) {
-        faturamentoPorCliente.set(entrega.cliente_id, { quantidade: 0, faturamento: 0 });
+      if (!Array.isArray(itens) || itens.length === 0) {
+        // Se não tem itens detalhados, não contabiliza (dados antigos sem itens)
+        return;
       }
       
-      const atual = faturamentoPorCliente.get(entrega.cliente_id)!;
-      atual.quantidade += entrega.quantidade;
-      atual.faturamento += faturamento;
+      let faturamentoEntrega = 0;
+      let quantidadeEntrega = 0;
+      
+      itens.forEach(item => {
+        const produtoId = item.produto_id;
+        const quantidade = Number(item.quantidade) || 0;
+        
+        if (!produtoId || quantidade <= 0) return;
+        
+        // Obter categoria do produto
+        const categoriaId = produtosMap.get(produtoId);
+        if (!categoriaId) return;
+        
+        // Obter preço aplicado (personalizado ou padrão)
+        const preco = obterPreco(entrega.cliente_id, categoriaId);
+        
+        // Calcular faturamento do item
+        faturamentoEntrega += quantidade * preco;
+        quantidadeEntrega += quantidade;
+      });
+      
+      if (faturamentoEntrega > 0) {
+        if (!faturamentoPorCliente.has(entrega.cliente_id)) {
+          faturamentoPorCliente.set(entrega.cliente_id, { quantidade: 0, faturamento: 0 });
+        }
+        
+        const atual = faturamentoPorCliente.get(entrega.cliente_id)!;
+        atual.quantidade += quantidadeEntrega;
+        atual.faturamento += faturamentoEntrega;
+      }
     });
 
     // Criar lista de clientes com faturamento
@@ -187,7 +271,7 @@ export function useCurvaABC(periodo: string = 'todo') {
     
     faturamentoPorCliente.forEach((dados, clienteId) => {
       const cliente = clientesMap.get(clienteId);
-      if (cliente && dados.quantidade > 0) {
+      if (cliente && dados.faturamento > 0) {
         listaClientes.push({
           cliente_id: clienteId,
           cliente_nome: cliente.nome,
@@ -207,13 +291,13 @@ export function useCurvaABC(periodo: string = 'todo') {
     listaClientes.sort((a, b) => b.faturamento_total - a.faturamento_total);
 
     // Calcular faturamento total
-    const faturamentoTotal = listaClientes.reduce((sum, c) => sum + c.faturamento_total, 0);
+    const totalFaturamento = listaClientes.reduce((sum, c) => sum + c.faturamento_total, 0);
 
     // Calcular percentual acumulado e classificar
     let acumulado = 0;
     listaClientes.forEach(cliente => {
-      cliente.percentual_do_total = faturamentoTotal > 0 
-        ? (cliente.faturamento_total / faturamentoTotal) * 100 
+      cliente.percentual_do_total = totalFaturamento > 0 
+        ? (cliente.faturamento_total / totalFaturamento) * 100 
         : 0;
       acumulado += cliente.percentual_do_total;
       cliente.percentual_acumulado = acumulado;
@@ -246,7 +330,7 @@ export function useCurvaABC(periodo: string = 'todo') {
         titulo: titulos[cat],
         num_clientes: clientesCat.length,
         faturamento_total: faturamentoCat,
-        percentual_faturamento: faturamentoTotal > 0 ? (faturamentoCat / faturamentoTotal) * 100 : 0,
+        percentual_faturamento: totalFaturamento > 0 ? (faturamentoCat / totalFaturamento) * 100 : 0,
         percentual_clientes: totalClientesGeral > 0 ? (clientesCat.length / totalClientesGeral) * 100 : 0
       };
     });
@@ -269,17 +353,18 @@ export function useCurvaABC(periodo: string = 'todo') {
     return {
       clientesABC: listaClientes,
       resumoCategorias: resumo,
-      dadosGraficos: { pie: dadosPie, bar: dadosBar }
+      dadosGraficos: { pie: dadosPie, bar: dadosBar },
+      faturamentoTotal: totalFaturamento
     };
-  }, [entregas, precos, clientes, representantes, rotas]);
+  }, [entregas, precos, clientes, representantes, rotas, produtos, configPrecificacao]);
 
-  const isLoading = loadingEntregas || loadingPrecos || loadingClientes;
+  const isLoading = loadingEntregas || loadingPrecos || loadingClientes || loadingProdutos || loadingConfig;
 
   return {
     clientesABC,
     resumoCategorias,
     dadosGraficos,
     isLoading,
-    faturamentoTotal: clientesABC.reduce((sum, c) => sum + c.faturamento_total, 0)
+    faturamentoTotal
   };
 }

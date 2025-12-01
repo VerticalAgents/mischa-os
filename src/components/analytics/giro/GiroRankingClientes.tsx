@@ -16,7 +16,7 @@ import { CurvaABCCharts } from './components/CurvaABCCharts';
 import { CurvaABCTable } from './components/CurvaABCTable';
 
 export function GiroRankingClientes() {
-  const [periodo, setPeriodo] = useState('todo');
+  const [periodo, setPeriodo] = useState('90d');
   
   const { 
     clientesABC, 
