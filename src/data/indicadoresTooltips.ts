@@ -40,25 +40,27 @@ export const GIRO_TOOLTIPS: Record<string, ExplicacaoCalculoProps> = {
   // === INDICADORES DE GIRO ===
   giroSemanalTotal: {
     titulo: "Giro Semanal Total",
-    explicacao: "Média semanal de todas as entregas realizadas nos últimos 84 dias (12 semanas).",
-    formula: "Total de entregas (84 dias) ÷ 12 semanas",
-    exemplo: "22.122 entregas em 84 dias = 1.844/semana",
+    explicacao: "Média semanal das últimas 4 semanas consolidadas, comparada com o histórico das primeiras 8 semanas.",
+    formula: "Total de entregas (últimas 4 semanas) ÷ 4",
+    exemplo: "7.680 entregas em 4 semanas = 1.920/semana",
     observacoes: [
-      "Cálculo simples: total dividido por 12 semanas fixas",
-      "Representa o giro real histórico do período",
-      "Considera todas as entregas realizadas, independente do status atual do cliente"
+      "Mostra tendência comparando período recente vs histórico",
+      "Verde (+) indica crescimento, vermelho (-) indica queda",
+      "Exclui semana atual incompleta",
+      "Considera todas as entregas realizadas"
     ],
     fontes: ["Histórico de Entregas"]
   },
   
   giroMedioPorPDV: {
     titulo: "Giro Médio por PDV",
-    explicacao: "Média aritmética do giro semanal dos PDVs ativos, representando a performance média de cada ponto de venda.",
-    formula: "Giro Total ÷ Número de Clientes Ativos",
-    exemplo: "Giro total 200, 10 ativos = 20 unidades/PDV/semana",
+    explicacao: "Média de unidades por PDV ativo, calculada com base nas últimas 4 semanas e comparada ao histórico.",
+    formula: "Giro Total (4 semanas) ÷ Número de Clientes Ativos",
+    exemplo: "Giro 4 sem. = 1.920, 10 ativos = 192 unidades/PDV/mês (48/semana)",
     observacoes: [
-      "Considera todos os clientes ativos, inclusive os com giro zero",
-      "Útil para comparar performance entre representantes ou regiões",
+      "Considera apenas clientes com status Ativo",
+      "Verde (+) indica melhora, vermelho (-) indica queda",
+      "Útil para comparar performance entre períodos",
       "Cálculo unificado em todo o sistema"
     ],
     fontes: ["Histórico de Entregas", "Cadastro de Clientes"]
