@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   GiroAnalysisService, 
@@ -16,58 +16,122 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { logAction } = useAuditLog();
 
+  // ÚNICA query para dados base - todas as outras são derivadas
   const {
     data: dadosConsolidados,
-    isLoading: loadingDados,
-    error: errorDados,
+    isLoading,
+    error,
     refetch: refetchDados
   } = useQuery({
-    queryKey: ['giro-analysis-consolidated', filtros],
+    queryKey: ['giro-analysis-base', filtros],
     queryFn: () => GiroAnalysisService.getDadosConsolidados(filtros),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
   });
 
-  const {
-    data: overview,
-    isLoading: loadingOverview,
-    error: errorOverview,
-    refetch: refetchOverview
-  } = useQuery({
-    queryKey: ['giro-analysis-overview', filtros],
-    queryFn: () => GiroAnalysisService.getGiroOverview(filtros),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+  // Computar overview localmente (sem query adicional)
+  const overview = useMemo(() => {
+    if (!dadosConsolidados?.length) return null;
+    
+    const totalClientes = dadosConsolidados.length;
+    const giroMedioGeral = dadosConsolidados.reduce((acc, item) => acc + item.giro_medio_historico, 0) / totalClientes;
+    const taxaAtingimentoGlobal = dadosConsolidados.reduce((acc, item) => acc + item.achievement_meta, 0) / totalClientes;
+    const faturamentoTotalPrevisto = dadosConsolidados.reduce((acc, item) => acc + item.faturamento_semanal_previsto, 0);
+    
+    const distribuicaoSemaforo = dadosConsolidados.reduce((acc, item) => {
+      acc[item.semaforo_performance] = (acc[item.semaforo_performance] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
-  const {
-    data: ranking,
-    isLoading: loadingRanking,
-    error: errorRanking,
-    refetch: refetchRanking
-  } = useQuery({
-    queryKey: ['giro-analysis-ranking', filtros],
-    queryFn: () => GiroAnalysisService.getGiroRanking(filtros),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+    return {
+      totalClientes,
+      giroMedioGeral: Math.round(giroMedioGeral),
+      taxaAtingimentoGlobal: Math.round(taxaAtingimentoGlobal),
+      distribuicaoSemaforo,
+      faturamentoTotalPrevisto: Math.round(faturamentoTotalPrevisto)
+    };
+  }, [dadosConsolidados]);
 
-  const {
-    data: regional,
-    isLoading: loadingRegional,
-    error: errorRegional,
-    refetch: refetchRegional
-  } = useQuery({
-    queryKey: ['giro-analysis-regional', filtros],
-    queryFn: () => GiroAnalysisService.getGiroRegional(filtros),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+  // Computar ranking localmente (sem query adicional)
+  const ranking = useMemo((): GiroRanking[] => {
+    if (!dadosConsolidados?.length) return [];
+    
+    return dadosConsolidados
+      .sort((a, b) => b.giro_medio_historico - a.giro_medio_historico)
+      .map((item, index) => {
+        const giroAnterior = item.giro_medio_historico - (item.giro_ultima_semana - item.giro_medio_historico);
+        const variacao = item.variacao_percentual;
+        
+        let tendencia: 'crescimento' | 'queda' | 'estavel' = 'estavel';
+        if (variacao > 5) tendencia = 'crescimento';
+        else if (variacao < -5) tendencia = 'queda';
+
+        return {
+          posicao: index + 1,
+          cliente_id: item.cliente_id,
+          cliente_nome: item.cliente_nome,
+          giro_atual: item.giro_medio_historico,
+          giro_anterior: giroAnterior,
+          tendencia,
+          variacao_percentual: variacao,
+          achievement_meta: item.achievement_meta
+        };
+      });
+  }, [dadosConsolidados]);
+
+  // Computar dados regionais localmente (sem query adicional)
+  const regional = useMemo((): GiroRegionalData[] => {
+    if (!dadosConsolidados?.length) return [];
+    
+    const regionalMap = dadosConsolidados.reduce((acc, item) => {
+      const rota = item.rota_entrega_nome || 'Sem rota';
+      
+      if (!acc[rota]) {
+        acc[rota] = {
+          rota_entrega: rota,
+          total_clientes: 0,
+          giro_total: 0,
+          achievement_total: 0,
+          faturamento_total: 0,
+          performance_counts: { verde: 0, amarelo: 0, vermelho: 0 }
+        };
+      }
+
+      acc[rota].total_clientes++;
+      acc[rota].giro_total += item.giro_medio_historico;
+      acc[rota].achievement_total += item.achievement_meta;
+      acc[rota].faturamento_total += item.faturamento_semanal_previsto;
+      acc[rota].performance_counts[item.semaforo_performance]++;
+
+      return acc;
+    }, {} as Record<string, any>);
+
+    return Object.values(regionalMap).map((item: any) => {
+      const giroMedio = item.giro_total / item.total_clientes;
+      const achievementMedio = item.achievement_total / item.total_clientes;
+      
+      let performanceGeral: 'verde' | 'amarelo' | 'vermelho' = 'vermelho';
+      if (item.performance_counts.verde > item.performance_counts.amarelo && 
+          item.performance_counts.verde > item.performance_counts.vermelho) {
+        performanceGeral = 'verde';
+      } else if (item.performance_counts.amarelo > item.performance_counts.vermelho) {
+        performanceGeral = 'amarelo';
+      }
+
+      return {
+        rota_entrega: item.rota_entrega,
+        total_clientes: item.total_clientes,
+        giro_medio: Math.round(giroMedio),
+        achievement_medio: Math.round(achievementMedio),
+        faturamento_previsto: Math.round(item.faturamento_total),
+        performance_geral: performanceGeral
+      };
+    });
+  }, [dadosConsolidados]);
 
   const refreshAll = async () => {
     setIsRefreshing(true);
     try {
-      // Log the refresh action
       await logAction({
         action: 'GIRO_ANALYSIS_REFRESH',
         table_name: 'dados_analise_giro_materialized',
@@ -88,16 +152,10 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
       await GiroAnalysisService.clearCache();
       
       console.log('♻️ Refetching data...');
-      await Promise.all([
-        refetchDados(),
-        refetchOverview(),
-        refetchRanking(),
-        refetchRegional()
-      ]);
+      await refetchDados();
       
       console.log('✅ Data refresh completed');
 
-      // Log successful refresh
       await logAction({
         action: 'GIRO_ANALYSIS_REFRESH_SUCCESS',
         table_name: 'dados_analise_giro_materialized',
@@ -110,7 +168,6 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
     } catch (error) {
       console.error('❌ Error refreshing data:', error);
       
-      // Log failed refresh
       await logAction({
         action: 'GIRO_ANALYSIS_REFRESH_ERROR',
         table_name: 'dados_analise_giro_materialized',
@@ -129,11 +186,11 @@ export const useGiroAnalysisConsolidated = (filtros: GiroAnalysisFilters = {}) =
   return {
     dadosConsolidados: dadosConsolidados || [],
     overview,
-    ranking: ranking || [],
-    regional: regional || [],
-    isLoading: loadingDados || loadingOverview || loadingRanking || loadingRegional,
+    ranking,
+    regional,
+    isLoading,
     isRefreshing,
-    error: errorDados || errorOverview || errorRanking || errorRegional,
+    error,
     refreshAll
   };
 };

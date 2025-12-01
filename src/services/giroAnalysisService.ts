@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
-import { calcularGiroSemanalHistorico } from '@/utils/giroCalculations';
 
 export interface DadosAnaliseGiroConsolidados {
   cliente_id: string;
@@ -112,17 +111,81 @@ function parseJsonArray(jsonValue: Json): number[] | null {
   }
 }
 
-// Helper function to calculate historical giro from deliveries
-async function calcularGiroHistoricoPorEntregas(clienteId: string): Promise<number> {
-  // **MUDANÇA: Usar função centralizada unificada**
-  const { giroSemanal } = await calcularGiroSemanalHistorico(clienteId);
-  return giroSemanal;
+// Cache para giros em batch
+let girosCache: Map<string, number> | null = null;
+let girosCacheTimestamp: number = 0;
+const GIROS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+// Função para carregar giros em batch (1 query para todos os clientes)
+async function carregarGirosEmBatch(clienteIds: string[]): Promise<Map<string, number>> {
+  const now = Date.now();
+  
+  // Se cache válido, usar
+  if (girosCache && (now - girosCacheTimestamp) < GIROS_CACHE_DURATION) {
+    return girosCache;
+  }
+
+  try {
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - 84); // 12 semanas
+
+    const { data: entregas, error } = await supabase
+      .from('historico_entregas')
+      .select('cliente_id, quantidade, data')
+      .eq('tipo', 'entrega')
+      .gte('data', dataLimite.toISOString());
+
+    if (error) {
+      console.error('Erro ao carregar giros em batch:', error);
+      return new Map();
+    }
+
+    // Agregar por cliente
+    const totaisPorCliente: Record<string, { total: number; primeiraEntrega: Date | null }> = {};
+    
+    entregas?.forEach(e => {
+      if (!totaisPorCliente[e.cliente_id]) {
+        totaisPorCliente[e.cliente_id] = { total: 0, primeiraEntrega: null };
+      }
+      totaisPorCliente[e.cliente_id].total += e.quantidade || 0;
+      
+      const dataEntrega = new Date(e.data);
+      if (!totaisPorCliente[e.cliente_id].primeiraEntrega || 
+          dataEntrega < totaisPorCliente[e.cliente_id].primeiraEntrega!) {
+        totaisPorCliente[e.cliente_id].primeiraEntrega = dataEntrega;
+      }
+    });
+
+    // Calcular média semanal considerando semanas desde primeira entrega
+    const resultado = new Map<string, number>();
+    const agora = new Date();
+    
+    Object.entries(totaisPorCliente).forEach(([clienteId, dados]) => {
+      if (dados.primeiraEntrega) {
+        const diasDesdeInicio = Math.floor(
+          (agora.getTime() - dados.primeiraEntrega.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        const semanasReais = Math.max(1, Math.min(12, Math.ceil(diasDesdeInicio / 7)));
+        resultado.set(clienteId, Math.round(dados.total / semanasReais));
+      } else {
+        resultado.set(clienteId, 0);
+      }
+    });
+
+    girosCache = resultado;
+    girosCacheTimestamp = now;
+    
+    return resultado;
+  } catch (error) {
+    console.error('Erro ao carregar giros em batch:', error);
+    return new Map();
+  }
 }
 
-// Helper function to transform database row to our interface
-async function transformDatabaseRow(row: any): Promise<DadosAnaliseGiroConsolidados> {
-  // Calcular giro histórico correto baseado nas entregas
-  const giroHistoricoCorreto = await calcularGiroHistoricoPorEntregas(row.cliente_id);
+// Helper function to transform database row to our interface (SÍNCRONO com mapa de giros)
+function transformDatabaseRowSync(row: any, girosMap: Map<string, number>): DadosAnaliseGiroConsolidados {
+  // Usar giro do mapa pré-carregado
+  const giroHistoricoCorreto = girosMap.get(row.cliente_id) || 0;
   
   // Recalcular métricas baseadas no giro histórico correto
   const metaGiroSemanal = row.meta_giro_semanal || 0;
@@ -153,7 +216,7 @@ async function transformDatabaseRow(row: any): Promise<DadosAnaliseGiroConsolida
     rota_entrega_nome: row.rota_entrega_nome,
     categoria_estabelecimento_nome: row.categoria_estabelecimento_nome,
     giro_semanal_calculado: Number(row.giro_semanal_calculado || 0),
-    giro_medio_historico: giroHistoricoCorreto, // Usar o giro histórico correto
+    giro_medio_historico: giroHistoricoCorreto,
     giro_ultima_semana: Number(row.giro_ultima_semana || 0),
     desvio_padrao_giro: Number(row.desvio_padrao_giro || 0),
     variacao_percentual: Number(row.variacao_percentual || 0),
@@ -253,10 +316,12 @@ export class GiroAnalysisService {
     // Sort by client name
     filteredData.sort((a, b) => (a.cliente_nome || '').localeCompare(b.cliente_nome || ''));
 
-    // Transform data with correct historical giro calculation
-    const transformedData = await Promise.all(
-      filteredData.map(row => transformDatabaseRow(row))
-    );
+    // Carregar todos os giros em batch (1 query para todos)
+    const clienteIds = filteredData.map(row => row.cliente_id);
+    const girosMap = await carregarGirosEmBatch(clienteIds);
+
+    // Transform data de forma síncrona usando o mapa pré-carregado
+    const transformedData = filteredData.map(row => transformDatabaseRowSync(row, girosMap));
 
     // Reordenar por giro histórico correto
     const sortedData = transformedData.sort((a, b) => b.giro_medio_historico - a.giro_medio_historico);

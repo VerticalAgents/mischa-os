@@ -8,7 +8,7 @@ import { Building, HelpingHand, UserCircle, Users } from "lucide-react";
 import FunilLeads from "./gestao-comercial/FunilLeads";
 import Distribuidores from "./gestao-comercial/Distribuidores";
 import Parceiros from "./gestao-comercial/Parceiros";
-import Representantes from "./gestao-comercial/Representantes";
+import RepresentantesOptimized from "./gestao-comercial/RepresentantesOptimized";
 import { useGestaoComercialUiStore } from "@/hooks/useGestaoComercialUiStore";
 
 export default function GestaoComercial() {
@@ -80,7 +80,7 @@ export default function GestaoComercial() {
         </TabsList>
 
         <TabsContent value="representantes" className="space-y-6 mt-6" forceMount={activeTab === "representantes" ? true : undefined}>
-          {activeTab === "representantes" && <Representantes />}
+          <RepresentantesOptimized isActive={activeTab === "representantes"} />
         </TabsContent>
 
         <TabsContent value="funil-leads" className="space-y-6 mt-6" forceMount={activeTab === "funil-leads" ? true : undefined}>
