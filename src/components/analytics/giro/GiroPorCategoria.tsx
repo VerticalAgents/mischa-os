@@ -1,11 +1,13 @@
+
 import { useState, useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, Legend
 } from 'recharts';
-import { Package, TrendingUp, Users, DollarSign, AlertCircle } from 'lucide-react';
+import { Package, TrendingUp, Users, DollarSign, AlertCircle, Trophy, ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import { DadosAnaliseGiroConsolidados } from '@/types/giroAnalysis';
 import { ClientesPorCategoriaDropdown } from './components/ClientesPorCategoriaDropdown';
 
@@ -22,6 +24,13 @@ interface CategoriaStats {
   faturamentoTotal: number;
   achievementMedio: number;
   distribuicaoPerformance: { verde: number; amarelo: number; vermelho: number };
+}
+
+interface CategoriaComparativa extends CategoriaStats {
+  posicao: number;
+  desvioGiro: number;
+  desvioAchievement: number;
+  classificacao: 'alta' | 'media' | 'baixa';
 }
 
 interface CustomTooltipProps {
@@ -263,6 +272,27 @@ export function GiroPorCategoria({ dadosConsolidados, isLoading }: GiroPorCatego
     };
   }, [dadosConsolidados]);
 
+  // Dados comparativos para ranking
+  const comparativoCategorias = useMemo((): CategoriaComparativa[] => {
+    if (categoriasArray.length === 0) return [];
+    
+    const mediaGeral = metricas.giroMedioGlobal;
+    const achievementGeral = categoriasArray.length > 0 
+      ? categoriasArray.reduce((sum, cat) => sum + cat.achievementMedio, 0) / categoriasArray.length 
+      : 0;
+
+    // Ordenar por achievement (maior primeiro)
+    const sortedByAchievement = [...categoriasArray].sort((a, b) => b.achievementMedio - a.achievementMedio);
+
+    return sortedByAchievement.map((cat, index) => ({
+      ...cat,
+      posicao: index + 1,
+      desvioGiro: mediaGeral > 0 ? ((cat.giroMedio - mediaGeral) / mediaGeral * 100) : 0,
+      desvioAchievement: cat.achievementMedio - achievementGeral,
+      classificacao: cat.achievementMedio >= 90 ? 'alta' : cat.achievementMedio >= 70 ? 'media' : 'baixa'
+    }));
+  }, [categoriasArray, metricas]);
+
   const toggleCategoriaDropdown = (categoria: string) => {
     setCategoriaDropdownAberto(
       categoriaDropdownAberto === categoria ? null : categoria
@@ -364,6 +394,86 @@ export function GiroPorCategoria({ dadosConsolidados, isLoading }: GiroPorCatego
           </CardContent>
         </Card>
       </div>
+
+      {/* Ranking Comparativo de Performance */}
+      {comparativoCategorias.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-amber-500" />
+              Ranking de Performance por Categoria
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">#</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead className="text-center">Clientes</TableHead>
+                    <TableHead className="text-center">Giro Médio</TableHead>
+                    <TableHead className="text-center">vs Média</TableHead>
+                    <TableHead className="text-center">Achievement</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {comparativoCategorias.map((cat) => (
+                    <TableRow key={cat.nome}>
+                      <TableCell>
+                        <Badge 
+                          variant={cat.posicao <= 3 ? "default" : "outline"}
+                          className={cat.posicao === 1 ? "bg-amber-500 hover:bg-amber-600" : ""}
+                        >
+                          {cat.posicao}º
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">{cat.nome}</TableCell>
+                      <TableCell className="text-center">{cat.totalClientes}</TableCell>
+                      <TableCell className="text-center">{cat.giroMedio.toFixed(1)}</TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {cat.desvioGiro > 0 ? (
+                            <ArrowUp className="h-4 w-4 text-green-600" />
+                          ) : cat.desvioGiro < 0 ? (
+                            <ArrowDown className="h-4 w-4 text-red-600" />
+                          ) : (
+                            <Minus className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <span className={cat.desvioGiro >= 0 ? "text-green-600" : "text-red-600"}>
+                            {cat.desvioGiro >= 0 ? "+" : ""}{cat.desvioGiro.toFixed(1)}%
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className={
+                          cat.achievementMedio >= 90 ? "text-green-600 font-medium" : 
+                          cat.achievementMedio >= 70 ? "text-amber-600 font-medium" : 
+                          "text-red-600 font-medium"
+                        }>
+                          {cat.achievementMedio.toFixed(1)}%
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge 
+                          variant={
+                            cat.classificacao === 'alta' ? 'default' : 
+                            cat.classificacao === 'media' ? 'secondary' : 'destructive'
+                          }
+                        >
+                          {cat.classificacao === 'alta' ? 'Alta' : 
+                           cat.classificacao === 'media' ? 'Média' : 'Baixa'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
