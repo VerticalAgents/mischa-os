@@ -1,6 +1,6 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface DadosPie {
   categoria: string;
@@ -22,7 +22,7 @@ interface CurvaABCChartsProps {
   isLoading: boolean;
 }
 
-const COLORS = {
+const COLORS: Record<string, string> = {
   A: '#22c55e', // green-500
   B: '#eab308', // yellow-500
   C: '#9ca3af'  // gray-400
@@ -37,41 +37,10 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-const CustomTooltipPie = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    return (
-      <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-        <p className="font-semibold text-foreground">{data.nome}</p>
-        <p className="text-muted-foreground">
-          Faturamento: {formatCurrency(data.faturamento)}
-        </p>
-        <p className="text-muted-foreground">
-          {data.percentual.toFixed(1)}% do total
-        </p>
-      </div>
-    );
-  }
-  return null;
-};
-
-const CustomTooltipBar = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-        <p className="font-semibold text-foreground mb-2">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} style={{ color: entry.color }} className="text-sm">
-            {entry.name}: {entry.value.toFixed(1)}%
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
-
 export function CurvaABCCharts({ dadosPie, dadosBar, isLoading }: CurvaABCChartsProps) {
+  // Debug log
+  console.log('[CurvaABCCharts] Dados recebidos:', { dadosPie, dadosBar, isLoading });
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -80,9 +49,7 @@ export function CurvaABCCharts({ dadosPie, dadosBar, isLoading }: CurvaABCCharts
             <CardTitle>Distribuição de Faturamento</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] flex items-center justify-center">
-              <div className="animate-pulse bg-muted rounded-full w-48 h-48" />
-            </div>
+            <Skeleton className="h-[300px] w-full" />
           </CardContent>
         </Card>
         <Card>
@@ -90,14 +57,17 @@ export function CurvaABCCharts({ dadosPie, dadosBar, isLoading }: CurvaABCCharts
             <CardTitle>Clientes vs Faturamento</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] flex items-center justify-center">
-              <div className="animate-pulse bg-muted rounded w-full h-48" />
-            </div>
+            <Skeleton className="h-[300px] w-full" />
           </CardContent>
         </Card>
       </div>
     );
   }
+
+  // Filtrar dados com valores > 0 para o pie chart
+  const dadosPieValidos = dadosPie.filter(d => d.faturamento > 0);
+  const temDadosPie = dadosPieValidos.length > 0;
+  const temDadosBar = dadosBar && dadosBar.length > 0;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -106,32 +76,41 @@ export function CurvaABCCharts({ dadosPie, dadosBar, isLoading }: CurvaABCCharts
         <CardHeader>
           <CardTitle className="text-lg">Distribuição de Faturamento</CardTitle>
         </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={dadosPie}
-                dataKey="faturamento"
-                nameKey="nome"
-                cx="50%"
-                cy="50%"
-                outerRadius={100}
-                label={({ categoria, percentual }) => `${categoria}: ${percentual.toFixed(0)}%`}
-                labelLine={true}
-              >
-                {dadosPie.map((entry) => (
-                  <Cell 
-                    key={`cell-${entry.categoria}`} 
-                    fill={COLORS[entry.categoria as keyof typeof COLORS]} 
-                  />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomTooltipPie />} />
-              <Legend 
-                formatter={(value) => <span className="text-foreground text-sm">{value}</span>}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+        <CardContent className="h-[320px]">
+          {temDadosPie ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={dadosPieValidos}
+                  dataKey="faturamento"
+                  nameKey="nome"
+                  cx="50%"
+                  cy="45%"
+                  outerRadius={90}
+                  fill="#8884d8"
+                  label={({ percentual }) => `${percentual?.toFixed(0) || 0}%`}
+                >
+                  {dadosPieValidos.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={COLORS[entry.categoria] || '#9ca3af'} 
+                    />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(value: number, name: string) => [formatCurrency(value), name]}
+                />
+                <Legend 
+                  verticalAlign="bottom"
+                  wrapperStyle={{ paddingTop: '10px' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center">
+              <p className="text-muted-foreground">Sem dados de faturamento</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -140,37 +119,44 @@ export function CurvaABCCharts({ dadosPie, dadosBar, isLoading }: CurvaABCCharts
         <CardHeader>
           <CardTitle className="text-lg">Clientes vs Faturamento (%)</CardTitle>
         </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={dadosBar} barGap={8}>
-              <XAxis 
-                dataKey="categoria" 
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                axisLine={{ stroke: 'hsl(var(--border))' }}
-              />
-              <YAxis 
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                axisLine={{ stroke: 'hsl(var(--border))' }}
-                tickFormatter={(value) => `${value}%`}
-              />
-              <Tooltip content={<CustomTooltipBar />} />
-              <Legend 
-                formatter={(value) => <span className="text-foreground text-sm">{value}</span>}
-              />
-              <Bar 
-                dataKey="percentual_clientes" 
-                name="% Clientes" 
-                fill="#3b82f6" 
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar 
-                dataKey="percentual_faturamento" 
-                name="% Faturamento" 
-                fill="#22c55e" 
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+        <CardContent className="h-[320px]">
+          {temDadosBar ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart 
+                data={dadosBar} 
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              >
+                <XAxis 
+                  dataKey="categoria" 
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => `${value}%`}
+                />
+                <Tooltip 
+                  formatter={(value: number) => [`${value.toFixed(1)}%`]}
+                />
+                <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                <Bar 
+                  dataKey="percentual_clientes" 
+                  name="% Clientes" 
+                  fill="#3b82f6" 
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar 
+                  dataKey="percentual_faturamento" 
+                  name="% Faturamento" 
+                  fill="#22c55e" 
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center">
+              <p className="text-muted-foreground">Sem dados para exibir</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

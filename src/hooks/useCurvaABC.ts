@@ -168,9 +168,18 @@ export function useCurvaABC(periodo: string = '90d') {
 
   // Processar dados e calcular Curva ABC
   const { clientesABC, resumoCategorias, dadosGraficos, faturamentoTotal } = useMemo(() => {
-    if (!entregas || !clientes || !produtos) {
+    // Aguardar todos os dados essenciais
+    if (!entregas || entregas.length === 0 || !clientes || clientes.length === 0 || !produtos || produtos.length === 0) {
       return { clientesABC: [], resumoCategorias: [], dadosGraficos: { pie: [], bar: [] }, faturamentoTotal: 0 };
     }
+
+    console.log('[CurvaABC] Processando dados:', {
+      entregas: entregas.length,
+      clientes: clientes.length,
+      produtos: produtos.length,
+      precosPersonalizados: precos?.length || 0,
+      configPrecificacao: configPrecificacao ? Object.keys(configPrecificacao) : 'não carregado'
+    });
 
     // Criar mapa de produtos (id -> categoria_id)
     const produtosMap = new Map<string, number>();
@@ -223,8 +232,12 @@ export function useCurvaABC(periodo: string = '90d') {
     const clientesMap = new Map<string, Cliente>();
     clientes.forEach(c => clientesMap.set(c.id, c));
 
+    console.log('[CurvaABC] Mapa de produtos:', produtosMap.size, 'produtos mapeados');
+
     // Processar entregas e calcular faturamento por cliente (item por item)
     const faturamentoPorCliente = new Map<string, { quantidade: number; faturamento: number }>();
+    let totalItensProcessados = 0;
+    let totalFaturamentoCalculado = 0;
     
     entregas.forEach(entrega => {
       const itens = entrega.itens as any[];
@@ -245,10 +258,14 @@ export function useCurvaABC(periodo: string = '90d') {
         
         // Obter categoria do produto
         const categoriaId = produtosMap.get(produtoId);
-        if (!categoriaId) return;
+        if (!categoriaId) {
+          console.log('[CurvaABC] Produto sem categoria:', produtoId);
+          return;
+        }
         
         // Obter preço aplicado (personalizado ou padrão)
         const preco = obterPreco(entrega.cliente_id, categoriaId);
+        totalItensProcessados++;
         
         // Calcular faturamento do item
         faturamentoEntrega += quantidade * preco;
@@ -349,6 +366,15 @@ export function useCurvaABC(periodo: string = '90d') {
       percentual_clientes: r.percentual_clientes,
       percentual_faturamento: r.percentual_faturamento
     }));
+
+    console.log('[CurvaABC] Resultado final:', {
+      totalItensProcessados,
+      totalClientes: listaClientes.length,
+      faturamentoTotal: totalFaturamento,
+      resumo: resumo.map(r => ({ cat: r.categoria, clientes: r.num_clientes, fat: r.faturamento_total })),
+      dadosPie: dadosPie,
+      dadosBar: dadosBar
+    });
 
     return {
       clientesABC: listaClientes,
