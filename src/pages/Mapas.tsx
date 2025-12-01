@@ -27,9 +27,15 @@ interface Cliente {
   contato_telefone?: string;
   status_cliente?: string;
   representante_id?: number;
+  rota_entrega_id?: number;
 }
 
 interface Representante {
+  id: number;
+  nome: string;
+}
+
+interface RotaEntrega {
   id: number;
   nome: string;
 }
@@ -39,9 +45,11 @@ const Mapas = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [representantes, setRepresentantes] = useState<Representante[]>([]);
+  const [rotas, setRotas] = useState<RotaEntrega[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedRepresentantes, setSelectedRepresentantes] = useState<number[]>([]);
+  const [selectedRotas, setSelectedRotas] = useState<number[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>(['ATIVO', 'EM_ANALISE']);
   const [colorMode, setColorMode] = useState<'status' | 'representante'>('status');
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -52,6 +60,7 @@ const Mapas = () => {
   useEffect(() => {
     fetchClientes();
     fetchRepresentantes();
+    fetchRotas();
     getUserLocation();
   }, []);
 
@@ -74,6 +83,13 @@ const Mapas = () => {
       );
     }
     
+    // Filter by rotas
+    if (selectedRotas.length > 0) {
+      filtered = filtered.filter(cliente => 
+        cliente.rota_entrega_id && selectedRotas.includes(cliente.rota_entrega_id)
+      );
+    }
+    
     // Filter by status
     if (selectedStatus.length > 0) {
       filtered = filtered.filter(cliente => 
@@ -91,13 +107,13 @@ const Mapas = () => {
     }
     
     return filtered;
-  }, [debouncedSearchTerm, clientes, selectedRepresentantes, selectedStatus]);
+  }, [debouncedSearchTerm, clientes, selectedRepresentantes, selectedRotas, selectedStatus]);
 
   const fetchClientes = async () => {
     try {
       const { data, error } = await supabase
         .from('clientes')
-        .select('id, nome, endereco_entrega, link_google_maps, contato_telefone, status_cliente, representante_id')
+        .select('id, nome, endereco_entrega, link_google_maps, contato_telefone, status_cliente, representante_id, rota_entrega_id')
         .eq('ativo', true)
         .not('endereco_entrega', 'is', null)
         .neq('endereco_entrega', '');
@@ -125,6 +141,21 @@ const Mapas = () => {
       setRepresentantes(data || []);
     } catch (error) {
       console.error('Erro ao buscar representantes:', error);
+    }
+  };
+
+  const fetchRotas = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('rotas_entrega')
+        .select('id, nome')
+        .eq('ativo', true)
+        .order('nome');
+
+      if (error) throw error;
+      setRotas(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar rotas:', error);
     }
   };
 
@@ -428,6 +459,55 @@ const Mapas = () => {
                   size="sm"
                   className="w-full mt-2"
                   onClick={() => setSelectedRepresentantes([])}
+                >
+                  Limpar
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-48 justify-between">
+              Rotas
+              {selectedRotas.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {selectedRotas.length}
+                </Badge>
+              )}
+              <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-3">
+            <div className="space-y-2">
+              {rotas.map((rota) => (
+                <div key={rota.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`rota-${rota.id}`}
+                    checked={selectedRotas.includes(rota.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedRotas([...selectedRotas, rota.id]);
+                      } else {
+                        setSelectedRotas(selectedRotas.filter(id => id !== rota.id));
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor={`rota-${rota.id}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {rota.nome}
+                  </label>
+                </div>
+              ))}
+              {selectedRotas.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full mt-2"
+                  onClick={() => setSelectedRotas([])}
                 >
                   Limpar
                 </Button>
