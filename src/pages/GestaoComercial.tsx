@@ -4,12 +4,11 @@ import { useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Building, HelpingHand, UserCircle, Users, BarChart3 } from "lucide-react";
+import { Building, HelpingHand, UserCircle, Users } from "lucide-react";
 import FunilLeads from "./gestao-comercial/FunilLeads";
 import Distribuidores from "./gestao-comercial/Distribuidores";
 import Parceiros from "./gestao-comercial/Parceiros";
 import Representantes from "./gestao-comercial/Representantes";
-import AnaliseGiroTab from "./gestao-comercial/AnaliseGiroTab";
 import { useGestaoComercialUiStore } from "@/hooks/useGestaoComercialUiStore";
 
 export default function GestaoComercial() {
@@ -66,10 +65,6 @@ export default function GestaoComercial() {
             <Users className="h-4 w-4" />
             Dashboard
           </TabsTrigger>
-          <TabsTrigger value="analise-giro" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Análise de Giro
-          </TabsTrigger>
           <TabsTrigger value="funil-leads" className="flex items-center gap-2">
             <UserCircle className="h-4 w-4" />
             Funil de Leads
@@ -86,10 +81,6 @@ export default function GestaoComercial() {
 
         <TabsContent value="representantes" className="space-y-6 mt-6" forceMount={activeTab === "representantes" ? true : undefined}>
           {activeTab === "representantes" && <Representantes />}
-        </TabsContent>
-
-        <TabsContent value="analise-giro" className="space-y-6 mt-6" forceMount={activeTab === "analise-giro" ? true : undefined}>
-          {activeTab === "analise-giro" && <AnaliseGiroTab />}
         </TabsContent>
 
         <TabsContent value="funil-leads" className="space-y-6 mt-6" forceMount={activeTab === "funil-leads" ? true : undefined}>
