@@ -12,11 +12,10 @@ interface GiroMedioPorPDVResult {
 }
 
 /**
- * Hook unificado para cálculo do Giro Médio por PDV
+ * Hook unificado para cálculo do Giro Semanal Total e Médio por PDV
  * 
- * Fórmula: Soma(giro_real_por_cliente) / Total de Clientes Ativos
- * 
- * Onde giro_real_por_cliente = soma de entregas dos últimos 84 dias / número de semanas (min 1, max 12)
+ * Fórmula Giro Semanal Total: Total de entregas (84 dias) ÷ 12 semanas
+ * Fórmula Giro Médio por PDV: Giro Semanal Total ÷ Total de Clientes Ativos
  * 
  * Este hook é usado em: Home, Gestão Comercial e Insights PDV
  */
@@ -36,12 +35,12 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
 
   const clienteIds = useMemo(() => clientesAtivos.map(c => c.id), [clientesAtivos]);
 
-  // Query para buscar entregas dos últimos 84 dias
+  // Query para buscar entregas dos últimos 84 dias (12 semanas)
   const { data, isLoading, error } = useQuery({
     queryKey: ['giro-medio-por-pdv', clienteIds.join(','), representanteId],
     queryFn: async () => {
       if (clienteIds.length === 0) {
-        return { giroTotal: 0, clientesComGiro: 0 };
+        return { giroSemanalTotal: 0, totalEntregas: 0 };
       }
 
       const dataLimite = new Date();
@@ -49,53 +48,20 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
 
       const { data: entregas, error: entregasError } = await supabase
         .from('historico_entregas')
-        .select('cliente_id, quantidade, data')
+        .select('quantidade')
         .in('cliente_id', clienteIds)
         .gte('data', dataLimite.toISOString())
         .eq('tipo', 'entrega');
 
       if (entregasError) throw entregasError;
 
-      // Agrupar entregas por cliente e calcular giro individual
-      const entregasPorCliente: Record<string, { total: number; primeiraEntrega: Date }> = {};
-
-      entregas?.forEach(entrega => {
-        const clienteId = entrega.cliente_id;
-        const dataEntrega = new Date(entrega.data);
-        
-        if (!entregasPorCliente[clienteId]) {
-          entregasPorCliente[clienteId] = {
-            total: 0,
-            primeiraEntrega: dataEntrega
-          };
-        }
-        
-        entregasPorCliente[clienteId].total += entrega.quantidade;
-        
-        if (dataEntrega < entregasPorCliente[clienteId].primeiraEntrega) {
-          entregasPorCliente[clienteId].primeiraEntrega = dataEntrega;
-        }
-      });
-
-      // Calcular giro semanal de cada cliente
-      const hoje = new Date();
-      let giroTotalCalculado = 0;
-
-      Object.entries(entregasPorCliente).forEach(([_, dados]) => {
-        // Calcular número de semanas desde a primeira entrega (min 1, max 12)
-        const diasDesdeInicio = Math.floor(
-          (hoje.getTime() - dados.primeiraEntrega.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        const semanasReais = Math.max(1, Math.min(12, Math.ceil(diasDesdeInicio / 7)));
-        
-        // Giro semanal do cliente = total / semanas
-        const giroSemanalCliente = dados.total / semanasReais;
-        giroTotalCalculado += giroSemanalCliente;
-      });
+      // Cálculo simples: total de entregas / 12 semanas
+      const totalEntregas = entregas?.reduce((sum, e) => sum + e.quantidade, 0) || 0;
+      const giroSemanalTotal = Math.round(totalEntregas / 12);
 
       return {
-        giroTotal: Math.round(giroTotalCalculado),
-        clientesComGiro: Object.keys(entregasPorCliente).length
+        giroSemanalTotal,
+        totalEntregas
       };
     },
     enabled: !clientesLoading && clienteIds.length > 0,
@@ -106,12 +72,12 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
 
   const giroMedioPorPDV = useMemo(() => {
     if (!data || clientesAtivos.length === 0) return 0;
-    return Math.round(data.giroTotal / clientesAtivos.length);
+    return Math.round(data.giroSemanalTotal / clientesAtivos.length);
   }, [data, clientesAtivos.length]);
 
   return {
     giroMedioPorPDV,
-    giroTotal: data?.giroTotal || 0,
+    giroTotal: data?.giroSemanalTotal || 0,
     totalClientesAtivos: clientesAtivos.length,
     isLoading: isLoading || clientesLoading,
     error: error as Error | null
