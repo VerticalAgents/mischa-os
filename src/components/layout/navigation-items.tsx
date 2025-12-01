@@ -93,7 +93,7 @@ export const menuGroups: MenuGroup[] = [
         icon: <BarChart3 className="h-4 w-4" />,
       },
       {
-        label: "Análise de Giro",
+        label: "Insights PDV",
         path: "/analise-giro",
         icon: <TrendingUp className="h-4 w-4" />,
       },

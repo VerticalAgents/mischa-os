@@ -50,9 +50,9 @@ export default function AnaliseGiro() {
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Análise de Giro</h1>
+          <h1 className="text-3xl font-bold">Insights PDV</h1>
           <p className="text-muted-foreground">
-            Gestão inteligente do giro de produtos por cliente
+            Análises e métricas dos pontos de venda
           </p>
         </div>
       </div>
@@ -77,15 +77,15 @@ export default function AnaliseGiro() {
           </TabsTrigger>
           <TabsTrigger value="ranking" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Ranking de Clientes
+            Curva ABC
           </TabsTrigger>
           <TabsTrigger value="visao-geral" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
-            Visão Geral
+            Rotas
           </TabsTrigger>
           <TabsTrigger value="categoria" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
-            Giro por Categoria
+            Categorias
           </TabsTrigger>
         </TabsList>
 
