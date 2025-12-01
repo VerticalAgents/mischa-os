@@ -107,11 +107,7 @@ export default function AnaliseGiro() {
         </TabsContent>
 
         <TabsContent value="ranking" className="space-y-6">
-          <GiroRankingClientes
-            dadosConsolidados={dadosConsolidados}
-            ranking={ranking}
-            isLoading={isLoading}
-          />
+          <GiroRankingClientes />
         </TabsContent>
 
         <TabsContent value="visao-geral" className="space-y-6">
