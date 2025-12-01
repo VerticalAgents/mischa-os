@@ -1,8 +1,9 @@
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users, TrendingUp, Activity } from 'lucide-react';
 import { useClienteStore } from '@/hooks/useClienteStore';
+import { useGiroMedioPorPDV } from '@/hooks/useGiroMedioPorPDV';
 import { useNavigate } from 'react-router-dom';
 
 const IndicadorCard = memo(({ 
@@ -56,55 +57,41 @@ IndicadorCard.displayName = 'IndicadorCard';
 
 export default function HomeIndicadoresClientes() {
   const navigate = useNavigate();
-  const { clientes, loading } = useClienteStore();
+  const { clientes, loading: clientesLoading } = useClienteStore();
+  const { giroTotal, giroMedioPorPDV, isLoading: giroLoading } = useGiroMedioPorPDV();
 
-  const indicadores = useMemo(() => {
-    const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo');
-    const totalClientes = clientes.length;
-    const totalAtivos = clientesAtivos.length;
-    
-    // Giro semanal total (soma dos giros médios semanais dos clientes ativos)
-    const giroSemanalTotal = clientesAtivos.reduce((acc, c) => acc + (c.giroMedioSemanal || 0), 0);
-    
-    // Giro médio por PDV
-    const giroMedioPorPDV = totalAtivos > 0 
-      ? Math.round(giroSemanalTotal / totalAtivos) 
-      : 0;
+  const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo');
+  const totalClientes = clientes.length;
+  const totalAtivos = clientesAtivos.length;
 
-    return {
-      totalClientes,
-      totalAtivos,
-      giroSemanalTotal,
-      giroMedioPorPDV
-    };
-  }, [clientes]);
+  const isLoading = clientesLoading || giroLoading;
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <IndicadorCard
         title="Clientes Ativos"
-        value={indicadores.totalAtivos}
-        subtitle={`${indicadores.totalClientes} total`}
+        value={totalAtivos}
+        subtitle={`${totalClientes} total`}
         icon={Users}
-        isLoading={loading}
+        isLoading={isLoading}
         onClick={() => navigate('/clientes')}
       />
       
       <IndicadorCard
         title="Giro Semanal Total"
-        value={indicadores.giroSemanalTotal.toLocaleString()}
+        value={giroTotal.toLocaleString()}
         subtitle="Soma dos PDVs ativos"
         icon={TrendingUp}
-        isLoading={loading}
+        isLoading={isLoading}
         onClick={() => navigate('/gestao-comercial?tab=representantes')}
       />
       
       <IndicadorCard
         title="Giro Médio por PDV"
-        value={indicadores.giroMedioPorPDV.toLocaleString()}
+        value={giroMedioPorPDV.toLocaleString()}
         subtitle="Apenas PDVs ativos"
         icon={Activity}
-        isLoading={loading}
+        isLoading={isLoading}
         onClick={() => navigate('/gestao-comercial?tab=representantes')}
       />
     </div>

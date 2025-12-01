@@ -1,15 +1,14 @@
-
 import { useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useClienteStore } from '@/hooks/useClienteStore';
 import { useSupabaseRepresentantes } from '@/hooks/useSupabaseRepresentantes';
-import { useMediaVendasSemanais } from '@/hooks/useMediaVendasSemanais';
+import { useGiroMedioPorPDV } from '@/hooks/useGiroMedioPorPDV';
 
 export const useOptimizedRepresentantesData = (representanteSelecionado: string, isActive: boolean) => {
   // Only load data when tab is active
   const { clientes, loading: clientesLoading } = useClienteStore();
   const { representantes, loading: representantesLoading } = useSupabaseRepresentantes();
-  const { mediaVendasPorProduto, loading: mediaVendasLoading } = useMediaVendasSemanais();
+  const { giroTotal, giroMedioPorPDV, isLoading: giroLoading } = useGiroMedioPorPDV(representanteSelecionado);
 
   // Memoized calculations for better performance
   const filteredClientes = useMemo(() => {
@@ -30,16 +29,9 @@ export const useOptimizedRepresentantesData = (representanteSelecionado: string,
 
   // Use React Query for better caching and loading states
   const { data: optimizedData, isLoading, error, refetch } = useQuery({
-    queryKey: ['representantes-data', representanteSelecionado, clientes.length, Object.keys(mediaVendasPorProduto).length],
+    queryKey: ['representantes-data', representanteSelecionado, clientes.length, giroTotal],
     queryFn: useCallback(async () => {
-      if (!isActive || !clientes.length || mediaVendasLoading) return null;
-
-      // Calcular giro total usando as médias de vendas semanais (mais apurado)
-      const giroTotalReal = Object.values(mediaVendasPorProduto).reduce((sum, media) => sum + media, 0);
-
-      const giroMedioPorPDV = categorizedClientes.ativos.length > 0 
-        ? Math.round(giroTotalReal / categorizedClientes.ativos.length)
-        : 0;
+      if (!isActive || !clientes.length) return null;
 
       const taxaConversao = filteredClientes.length > 0 
         ? (categorizedClientes.ativos.length / filteredClientes.length) * 100 
@@ -55,19 +47,11 @@ export const useOptimizedRepresentantesData = (representanteSelecionado: string,
       ].filter(item => item.value > 0);
 
       // Improved bar chart with better performance
-      // Para o gráfico, manter o cálculo por cliente usando médias de vendas
       const dadosGiroBar = categorizedClientes.ativos
         .map(cliente => {
-          // Calcular giro do cliente baseado nas categorias habilitadas
-          let giroCliente = 0;
-          if (cliente.categoriasHabilitadas && Array.isArray(cliente.categoriasHabilitadas)) {
-            // Somar as médias dos produtos das categorias habilitadas
-            // Por enquanto, usar um valor aproximado baseado no giro médio
-            giroCliente = cliente.giroMedioSemanal || 0;
-          }
           return {
             nome: cliente.nome.substring(0, 15) + (cliente.nome.length > 15 ? '...' : ''),
-            giro: giroCliente,
+            giro: cliente.giroMedioSemanal || 0,
             clienteId: cliente.id
           };
         })
@@ -82,14 +66,14 @@ export const useOptimizedRepresentantesData = (representanteSelecionado: string,
         clientesAtivar: categorizedClientes.ativar,
         clientesInativos: categorizedClientes.inativos,
         clientesStandby: categorizedClientes.standby,
-        giroTotalReal,
+        giroTotalReal: giroTotal,
         giroMedioPorPDV,
         taxaConversao,
         dadosStatusPie,
         dadosGiroBar
       };
-    }, [isActive, clientes, categorizedClientes, filteredClientes, mediaVendasPorProduto, mediaVendasLoading]),
-    enabled: isActive && !clientesLoading && !representantesLoading && !mediaVendasLoading,
+    }, [isActive, clientes, categorizedClientes, filteredClientes, giroTotal, giroMedioPorPDV]),
+    enabled: isActive && !clientesLoading && !representantesLoading && !giroLoading,
     staleTime: 5 * 60 * 1000, // 5 minutes cache
     gcTime: 15 * 60 * 1000, // 15 minutes garbage collection
     refetchOnWindowFocus: false,
@@ -118,7 +102,7 @@ export const useOptimizedRepresentantesData = (representanteSelecionado: string,
       dadosGiroBar: []
     },
     representanteNome,
-    isLoading: isLoading || clientesLoading || representantesLoading || mediaVendasLoading,
+    isLoading: isLoading || clientesLoading || representantesLoading || giroLoading,
     error,
     representantes,
     refetch
