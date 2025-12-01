@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, TrendingUp, Users, Package, Settings, Target } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, Package } from 'lucide-react';
 import { useGiroAnalysisConsolidated } from '@/hooks/useGiroAnalysisConsolidated';
 import { GiroAnalysisFiltersComponent } from '@/components/analytics/giro/GiroAnalysisFilters';
 import { GiroOverviewCards } from '@/components/analytics/giro/GiroOverviewCards';
@@ -10,8 +10,6 @@ import { GiroDashboardGeral } from '@/components/analytics/giro/GiroDashboardGer
 import { GiroOverviewGeneral } from '@/components/analytics/giro/GiroOverviewGeneral';
 import { GiroRankingClientes } from '@/components/analytics/giro/GiroRankingClientes';
 import { GiroPorCategoria } from '@/components/analytics/giro/GiroPorCategoria';
-import { GiroSimuladorCenarios } from '@/components/analytics/giro/GiroSimuladorCenarios';
-import { GiroOtimizacaoPeriodicidade } from '@/components/analytics/giro/GiroOtimizacaoPeriodicidade';
 import { GiroAnalysisFilters } from '@/types/giroAnalysis';
 
 export default function AnaliseGiro() {
@@ -72,7 +70,7 @@ export default function AnaliseGiro() {
       {overview && <GiroOverviewCards overview={overview} />}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Dashboard
@@ -88,14 +86,6 @@ export default function AnaliseGiro() {
           <TabsTrigger value="categoria" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
             Giro por Categoria
-          </TabsTrigger>
-          <TabsTrigger value="simulador" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Simulador de Cenários
-          </TabsTrigger>
-          <TabsTrigger value="otimizacao" className="flex items-center gap-2">
-            <Target className="h-4 w-4" />
-            Otimização de Periodicidade
           </TabsTrigger>
         </TabsList>
 
@@ -122,20 +112,6 @@ export default function AnaliseGiro() {
 
         <TabsContent value="categoria" className="space-y-6">
           <GiroPorCategoria
-            dadosConsolidados={dadosConsolidados}
-            isLoading={isLoading}
-          />
-        </TabsContent>
-
-        <TabsContent value="simulador" className="space-y-6">
-          <GiroSimuladorCenarios
-            dadosConsolidados={dadosConsolidados}
-            isLoading={isLoading}
-          />
-        </TabsContent>
-
-        <TabsContent value="otimizacao" className="space-y-6">
-          <GiroOtimizacaoPeriodicidade
             dadosConsolidados={dadosConsolidados}
             isLoading={isLoading}
           />

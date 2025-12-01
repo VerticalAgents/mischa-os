@@ -426,15 +426,19 @@ export function GiroPorCategoria({ dadosConsolidados, isLoading }: GiroPorCatego
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis 
                     dataKey="categoriaShort" 
-                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
                     angle={-45}
                     textAnchor="end"
                     height={60}
                     interval={0}
                   />
                   <YAxis 
-                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                    tickFormatter={(value) => value.toFixed(0)}
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => String(Math.round(value))}
                   />
                   <Tooltip content={<GiroBarTooltip />} />
                   <Bar 
@@ -465,15 +469,19 @@ export function GiroPorCategoria({ dadosConsolidados, isLoading }: GiroPorCatego
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="categoriaShort" 
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
                   angle={-45}
                   textAnchor="end"
                   height={60}
                   interval={0}
                 />
                 <YAxis 
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                  tickFormatter={(value) => `${value}%`}
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `${Math.round(value)}%`}
                   domain={[0, 'dataMax']}
                 />
                 <Tooltip content={<AchievementBarTooltip />} />
