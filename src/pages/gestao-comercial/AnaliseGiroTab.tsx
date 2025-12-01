@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart3, TrendingUp, Users, Package } from 'lucide-react';
 import { useGiroAnalysisConsolidated } from '@/hooks/useGiroAnalysisConsolidated';
+import { useClienteStore } from '@/hooks/useClienteStore';
 import { GiroAnalysisFiltersComponent } from '@/components/analytics/giro/GiroAnalysisFilters';
 import { GiroOverviewCards } from '@/components/analytics/giro/GiroOverviewCards';
 import { GiroDashboardGeral } from '@/components/analytics/giro/GiroDashboardGeral';
@@ -26,14 +27,22 @@ export default function AnaliseGiroTab() {
     refreshAll
   } = useGiroAnalysisConsolidated(filtros);
 
+  // Usar useClienteStore para obter dados corretos de clientes (mesmo que a página Início)
+  const { clientes } = useClienteStore();
+
   // Extrair listas únicas para filtros
   const representantes = [...new Set(dadosConsolidados.map(d => d.representante_nome).filter(Boolean))];
   const rotas = [...new Set(dadosConsolidados.map(d => d.rota_entrega_nome).filter(Boolean))];
   const categorias = [...new Set(dadosConsolidados.map(d => d.categoria_estabelecimento_nome).filter(Boolean))];
   
-  // Calcular clientes ativos e total
-  const totalClientes = dadosConsolidados.length;
-  const clientesAtivos = dadosConsolidados.filter(d => d.status_cliente === 'Ativo').length;
+  // Calcular clientes ativos e total usando a mesma lógica da página Início
+  const { totalClientes, clientesAtivos } = useMemo(() => {
+    const ativos = clientes.filter(c => c.statusCliente === 'Ativo').length;
+    return {
+      totalClientes: clientes.length,
+      clientesAtivos: ativos
+    };
+  }, [clientes]);
 
   if (error) {
     return (
