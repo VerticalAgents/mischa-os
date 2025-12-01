@@ -1,6 +1,4 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Users, TrendingUp, Target, DollarSign } from 'lucide-react';
 import { GiroOverview } from '@/types/giroAnalysis';
 
@@ -9,15 +7,6 @@ interface GiroOverviewCardsProps {
 }
 
 export function GiroOverviewCards({ overview }: GiroOverviewCardsProps) {
-  const getSemaforoIcon = (tipo: string) => {
-    switch (tipo) {
-      case 'verde': return '🟢';
-      case 'amarelo': return '🟡';
-      case 'vermelho': return '🔴';
-      default: return '⚪';
-    }
-  };
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -82,23 +71,6 @@ export function GiroOverviewCards({ overview }: GiroOverviewCardsProps) {
           <p className="text-xs text-muted-foreground">
             Semanal
           </p>
-        </CardContent>
-      </Card>
-
-      {/* Distribuição por Semáforo */}
-      <Card className="md:col-span-2 lg:col-span-4">
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Distribuição por Performance</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            {Object.entries(overview.distribuicaoSemaforo).map(([tipo, count]) => (
-              <Badge key={tipo} variant="outline" className="flex items-center gap-1">
-                {getSemaforoIcon(tipo)}
-                {tipo.charAt(0).toUpperCase() + tipo.slice(1)}: {count}
-              </Badge>
-            ))}
-          </div>
         </CardContent>
       </Card>
     </div>

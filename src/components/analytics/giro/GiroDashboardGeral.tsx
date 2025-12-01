@@ -105,8 +105,8 @@ LoadingState.displayName = 'LoadingState';
 const GiroDashboardGeralContent = memo(({ dados }: { dados: any }) => {
   const {
     historicoSemanas,
-    ultimas4Semanas,
-    mediaUltimas4,
+    totalUltimos30Dias,
+    mediaUltimas4Consolidadas,
     mediaGeral,
     tendencia12Semanas,
     picoSemanal,
@@ -148,44 +148,47 @@ const GiroDashboardGeralContent = memo(({ dados }: { dados: any }) => {
     <div className="space-y-6">
       {/* Cards de Indicadores - Linha 1 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Card 1: Total Últimas 4 Semanas */}
+        {/* Card 1: Total Últimos 30 Dias */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              Total Últimas 4 Semanas
+              Total Últimos 30 Dias
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{Math.round(ultimas4Semanas)}</div>
+            <div className="text-3xl font-bold">{Math.round(totalUltimos30Dias)}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Apenas entregas confirmadas
+              Entregas confirmadas (30 dias)
             </p>
           </CardContent>
         </Card>
 
-        {/* Card 2: Média Últimas 4 Semanas */}
+        {/* Card 2: Giro Médio Semanal */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Activity className="h-4 w-4 text-muted-foreground" />
-              Média Últimas 4 Semanas
+              Giro Médio Semanal
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{Math.round(mediaUltimas4)}</div>
+            <div className="text-3xl font-bold">{Math.round(mediaUltimas4Consolidadas)}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {mediaUltimas4 > mediaGeral ? (
+              {mediaUltimas4Consolidadas > mediaGeral ? (
                 <span className="text-green-600 font-medium">
-                  +{((mediaUltimas4 / mediaGeral - 1) * 100).toFixed(1)}% vs histórico
+                  +{((mediaUltimas4Consolidadas / mediaGeral - 1) * 100).toFixed(1)}% vs histórico
                 </span>
-              ) : mediaUltimas4 < mediaGeral ? (
+              ) : mediaUltimas4Consolidadas < mediaGeral ? (
                 <span className="text-red-600 font-medium">
-                  {((mediaUltimas4 / mediaGeral - 1) * 100).toFixed(1)}% vs histórico
+                  {((mediaUltimas4Consolidadas / mediaGeral - 1) * 100).toFixed(1)}% vs histórico
                 </span>
               ) : (
                 <span>Igual ao histórico</span>
               )}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Últimas 4 semanas consolidadas
             </p>
           </CardContent>
         </Card>
