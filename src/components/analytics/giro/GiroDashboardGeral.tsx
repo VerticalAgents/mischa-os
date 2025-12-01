@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle, TrendingUp, TrendingDown, Activity, Minus, BarChart3, Target, Users } from "lucide-react";
 import { useGiroDashboardGeral } from "@/hooks/useGiroDashboardGeral";
 import { useClienteStore } from "@/hooks/useClienteStore";
+import { useGiroMedioPorPDV } from "@/hooks/useGiroMedioPorPDV";
 import {
   ComposedChart,
   Line,
@@ -489,17 +490,12 @@ GiroDashboardGeralContent.displayName = 'GiroDashboardGeralContent';
 export function GiroDashboardGeral() {
   const { dados, loading, error } = useGiroDashboardGeral();
   const { clientes, loading: clientesLoading } = useClienteStore();
+  const { giroMedioPorPDV, isLoading: giroLoading } = useGiroMedioPorPDV();
 
   // Calcular dados de clientes
   const clienteData = useMemo(() => {
     const ativos = clientes.filter(c => c.statusCliente === 'Ativo').length;
     const total = clientes.length;
-    
-    // Calcular giro médio dos clientes ativos
-    const clientesAtivosComGiro = clientes.filter(c => c.statusCliente === 'Ativo' && c.giroMedioSemanal);
-    const giroMedio = clientesAtivosComGiro.length > 0
-      ? Math.round(clientesAtivosComGiro.reduce((sum, c) => sum + (c.giroMedioSemanal || 0), 0) / clientesAtivosComGiro.length)
-      : 0;
 
     // Calcular distribuição por status
     const statusCount: Record<string, number> = {};
@@ -519,12 +515,12 @@ export function GiroDashboardGeral() {
     return {
       totalClientes: total,
       clientesAtivos: ativos,
-      giroMedio,
+      giroMedio: giroMedioPorPDV,
       statusDistribution
     };
-  }, [clientes]);
+  }, [clientes, giroMedioPorPDV]);
 
-  if (loading || clientesLoading) {
+  if (loading || clientesLoading || giroLoading) {
     return <LoadingState />;
   }
 
