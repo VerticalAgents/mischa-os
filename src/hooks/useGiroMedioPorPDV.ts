@@ -56,15 +56,15 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
       if (entregasError) throw entregasError;
 
       // Cálculo simples: total de entregas / 12 semanas
-      const totalEntregas = entregas?.reduce((sum, e) => sum + e.quantidade, 0) || 0;
-      const giroSemanalTotal = Math.round(totalEntregas / 12);
+      const totalEntregas = entregas?.reduce((sum, e) => sum + (e.quantidade || 0), 0) ?? 0;
+      const giroSemanalTotal = Math.round(totalEntregas / 12) || 0;
 
       return {
         giroSemanalTotal,
         totalEntregas
       };
     },
-    enabled: !clientesLoading && clienteIds.length > 0,
+    enabled: !clientesLoading && clientes.length > 0 && clienteIds.length > 0,
     staleTime: 5 * 60 * 1000, // 5 minutos de cache
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false
@@ -72,12 +72,20 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
 
   const giroMedioPorPDV = useMemo(() => {
     if (!data || clientesAtivos.length === 0) return 0;
-    return Math.round(data.giroSemanalTotal / clientesAtivos.length);
+    const giro = data.giroSemanalTotal ?? 0;
+    if (typeof giro !== 'number' || isNaN(giro)) return 0;
+    return Math.round(giro / clientesAtivos.length);
   }, [data, clientesAtivos.length]);
+
+  const giroTotal = useMemo(() => {
+    const value = data?.giroSemanalTotal;
+    if (typeof value !== 'number' || isNaN(value)) return 0;
+    return value;
+  }, [data?.giroSemanalTotal]);
 
   return {
     giroMedioPorPDV,
-    giroTotal: data?.giroSemanalTotal || 0,
+    giroTotal,
     totalClientesAtivos: clientesAtivos.length,
     isLoading: isLoading || clientesLoading,
     error: error as Error | null
