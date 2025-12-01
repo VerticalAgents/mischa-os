@@ -31,6 +31,10 @@ export default function AnaliseGiro() {
   const representantes = [...new Set(dadosConsolidados.map(d => d.representante_nome).filter(Boolean))];
   const rotas = [...new Set(dadosConsolidados.map(d => d.rota_entrega_nome).filter(Boolean))];
   const categorias = [...new Set(dadosConsolidados.map(d => d.categoria_estabelecimento_nome).filter(Boolean))];
+  
+  // Calcular clientes ativos e total
+  const totalClientes = dadosConsolidados.length;
+  const clientesAtivos = dadosConsolidados.filter(d => d.status_cliente === 'Ativo').length;
 
   if (error) {
     return (
@@ -67,7 +71,7 @@ export default function AnaliseGiro() {
         categorias={categorias}
       />
 
-      {overview && <GiroOverviewCards overview={overview} />}
+      {overview && <GiroOverviewCards overview={overview} totalClientes={totalClientes} clientesAtivos={clientesAtivos} />}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
