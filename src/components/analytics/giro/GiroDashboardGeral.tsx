@@ -121,6 +121,9 @@ interface ClienteData {
   totalClientes: number;
   clientesAtivos: number;
   giroMedio: number;
+  giroMedio4Semanas: number;
+  giroMedio12Semanas: number;
+  variacaoGiroMedio: number;
   statusDistribution: Array<{ name: string; value: number; color: string }>;
 }
 
@@ -271,13 +274,37 @@ const GiroDashboardGeralContent = memo(({ dados, clienteData }: { dados: any; cl
           <TooltipExplicativo explicacao={GIRO_TOOLTIPS.giroMedioPorPDV} variant="indicator">
             <Card className="cursor-help hover:shadow-md transition-all duration-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Giro Médio</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Giro Médio por PDV</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{clienteData.giroMedio}</div>
+                <div className="text-2xl font-bold">{clienteData.giroMedio4Semanas}</div>
+                <div className="flex items-center gap-1 mt-1 mb-1">
+                  {clienteData.variacaoGiroMedio > 0 ? (
+                    <>
+                      <TrendingUp className="h-3 w-3 text-green-600" />
+                      <span className="text-xs font-semibold text-green-600">
+                        +{clienteData.variacaoGiroMedio.toFixed(1)}%
+                      </span>
+                    </>
+                  ) : clienteData.variacaoGiroMedio < 0 ? (
+                    <>
+                      <TrendingDown className="h-3 w-3 text-red-600" />
+                      <span className="text-xs font-semibold text-red-600">
+                        {clienteData.variacaoGiroMedio.toFixed(1)}%
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      Estável
+                    </span>
+                  )}
+                  <span className="text-xs text-muted-foreground ml-1">
+                    vs histórico
+                  </span>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Unidades/semana
+                  Média das últimas 4 semanas
                 </p>
               </CardContent>
             </Card>
@@ -514,7 +541,13 @@ interface GiroDashboardGeralProps {
 export function GiroDashboardGeral({ filtros }: GiroDashboardGeralProps = {}) {
   const { dados, loading, error } = useGiroDashboardGeral();
   const { clientes, loading: clientesLoading } = useClienteStore();
-  const { giroMedioPorPDV, isLoading: giroLoading } = useGiroMedioPorPDV();
+  const { 
+    giroMedioPorPDV, 
+    giroMedio4Semanas,
+    giroMedio12Semanas,
+    variacaoGiroMedio,
+    isLoading: giroLoading 
+  } = useGiroMedioPorPDV();
 
   // Calcular dados de clientes
   const clienteData = useMemo(() => {
@@ -540,9 +573,12 @@ export function GiroDashboardGeral({ filtros }: GiroDashboardGeralProps = {}) {
       totalClientes: total,
       clientesAtivos: ativos,
       giroMedio: giroMedioPorPDV,
+      giroMedio4Semanas,
+      giroMedio12Semanas,
+      variacaoGiroMedio,
       statusDistribution
     };
-  }, [clientes, giroMedioPorPDV]);
+  }, [clientes, giroMedioPorPDV, giroMedio4Semanas, giroMedio12Semanas, variacaoGiroMedio]);
 
   if (loading || clientesLoading || giroLoading) {
     return <LoadingState />;
