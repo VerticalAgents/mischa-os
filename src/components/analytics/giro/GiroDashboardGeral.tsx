@@ -7,6 +7,8 @@ import { AlertCircle, TrendingUp, TrendingDown, Activity, Minus, BarChart3, Targ
 import { useGiroDashboardGeral } from "@/hooks/useGiroDashboardGeral";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useGiroMedioPorPDV } from "@/hooks/useGiroMedioPorPDV";
+import TooltipExplicativo from "@/components/common/TooltipExplicativo";
+import { GIRO_TOOLTIPS } from "@/data/indicadoresTooltips";
 import {
   ComposedChart,
   Line,
@@ -170,73 +172,79 @@ const GiroDashboardGeralContent = memo(({ dados, clienteData }: { dados: any; cl
       {/* Cards de Indicadores - Linha 1 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Card 1: Total Últimos 30 Dias */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              Total Últimos 30 Dias
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{Math.round(totalUltimos30Dias)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Entregas confirmadas (30 dias)
-            </p>
-          </CardContent>
-        </Card>
+        <TooltipExplicativo explicacao={GIRO_TOOLTIPS.totalUltimos30Dias} variant="indicator">
+          <Card className="cursor-help hover:shadow-md transition-all duration-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                Total Últimos 30 Dias
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{Math.round(totalUltimos30Dias)}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Entregas confirmadas (30 dias)
+              </p>
+            </CardContent>
+          </Card>
+        </TooltipExplicativo>
 
         {/* Card 2: Giro Médio Semanal */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Activity className="h-4 w-4 text-muted-foreground" />
-              Giro Médio Semanal
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{Math.round(mediaUltimas4Consolidadas)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {mediaUltimas4Consolidadas > mediaGeral ? (
-                <span className="text-green-600 font-medium">
-                  +{((mediaUltimas4Consolidadas / mediaGeral - 1) * 100).toFixed(1)}% vs histórico
-                </span>
-              ) : mediaUltimas4Consolidadas < mediaGeral ? (
-                <span className="text-red-600 font-medium">
-                  {((mediaUltimas4Consolidadas / mediaGeral - 1) * 100).toFixed(1)}% vs histórico
-                </span>
-              ) : (
-                <span>Igual ao histórico</span>
-              )}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Últimas 4 semanas consolidadas
-            </p>
-          </CardContent>
-        </Card>
+        <TooltipExplicativo explicacao={GIRO_TOOLTIPS.giroMedioSemanal} variant="indicator">
+          <Card className="cursor-help hover:shadow-md transition-all duration-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                Giro Médio Semanal
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{Math.round(mediaUltimas4Consolidadas)}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {mediaUltimas4Consolidadas > mediaGeral ? (
+                  <span className="text-green-600 font-medium">
+                    +{((mediaUltimas4Consolidadas / mediaGeral - 1) * 100).toFixed(1)}% vs histórico
+                  </span>
+                ) : mediaUltimas4Consolidadas < mediaGeral ? (
+                  <span className="text-red-600 font-medium">
+                    {((mediaUltimas4Consolidadas / mediaGeral - 1) * 100).toFixed(1)}% vs histórico
+                  </span>
+                ) : (
+                  <span>Igual ao histórico</span>
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Últimas 4 semanas consolidadas
+              </p>
+            </CardContent>
+          </Card>
+        </TooltipExplicativo>
 
         {/* Card 3: Tendência 12 Semanas */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              Tendência (12 semanas)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <Badge className={getTendenciaColor(tendencia12Semanas.tipo)}>
-                {getTendenciaIcon(tendencia12Semanas.tipo)}
-                <span className="ml-1">
-                  {tendencia12Semanas.tipo === 'crescimento' ? 'Crescimento' :
-                   tendencia12Semanas.tipo === 'queda' ? 'Queda' : 'Estável'}
-                </span>
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              {Math.abs(tendencia12Semanas.percentual).toFixed(1)}% de variação
-            </p>
-          </CardContent>
-        </Card>
+        <TooltipExplicativo explicacao={GIRO_TOOLTIPS.tendencia12Semanas} variant="indicator">
+          <Card className="cursor-help hover:shadow-md transition-all duration-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                Tendência (12 semanas)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-2">
+                <Badge className={getTendenciaColor(tendencia12Semanas.tipo)}>
+                  {getTendenciaIcon(tendencia12Semanas.tipo)}
+                  <span className="ml-1">
+                    {tendencia12Semanas.tipo === 'crescimento' ? 'Crescimento' :
+                     tendencia12Semanas.tipo === 'queda' ? 'Queda' : 'Estável'}
+                  </span>
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {Math.abs(tendencia12Semanas.percentual).toFixed(1)}% de variação
+              </p>
+            </CardContent>
+          </Card>
+        </TooltipExplicativo>
       </div>
 
       {/* Seção: Cards Clientes + Pie Chart */}
@@ -244,32 +252,36 @@ const GiroDashboardGeralContent = memo(({ dados, clienteData }: { dados: any; cl
         {/* Coluna esquerda: Cards empilhados */}
         <div className="space-y-4">
           {/* Card: Clientes Ativos */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{clienteData.clientesAtivos}</div>
-              <p className="text-xs text-muted-foreground">
-                ({clienteData.totalClientes} total)
-              </p>
-            </CardContent>
-          </Card>
+          <TooltipExplicativo explicacao={GIRO_TOOLTIPS.clientesAtivos} variant="indicator">
+            <Card className="cursor-help hover:shadow-md transition-all duration-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{clienteData.clientesAtivos}</div>
+                <p className="text-xs text-muted-foreground">
+                  ({clienteData.totalClientes} total)
+                </p>
+              </CardContent>
+            </Card>
+          </TooltipExplicativo>
 
           {/* Card: Giro Médio */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Giro Médio</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{clienteData.giroMedio}</div>
-              <p className="text-xs text-muted-foreground">
-                Unidades/semana
-              </p>
-            </CardContent>
-          </Card>
+          <TooltipExplicativo explicacao={GIRO_TOOLTIPS.giroMedioPorPDV} variant="indicator">
+            <Card className="cursor-help hover:shadow-md transition-all duration-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Giro Médio</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{clienteData.giroMedio}</div>
+                <p className="text-xs text-muted-foreground">
+                  Unidades/semana
+                </p>
+              </CardContent>
+            </Card>
+          </TooltipExplicativo>
         </div>
 
         {/* Coluna direita: Pie Chart */}
@@ -314,98 +326,102 @@ const GiroDashboardGeralContent = memo(({ dados, clienteData }: { dados: any; cl
       {/* Cards de Indicadores - Linha 2 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Card 4: Semana Atual (Projeção) */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Target className="h-4 w-4 text-muted-foreground" />
-              Semana Atual (Projeção)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between items-baseline">
-                <span className="text-sm text-muted-foreground">Real:</span>
-                <span className="text-2xl font-bold">{giroRealAtual}</span>
-              </div>
-              {giroAgendadoAtual > 0 && (
+        <TooltipExplicativo explicacao={GIRO_TOOLTIPS.semanaAtualProjecao} variant="indicator">
+          <Card className="cursor-help hover:shadow-md transition-all duration-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Target className="h-4 w-4 text-muted-foreground" />
+                Semana Atual (Projeção)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
                 <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-primary">
-                    + Agendado:
-                  </span>
-                  <span className="text-xl font-semibold text-primary">
-                    {giroAgendadoAtual}
-                  </span>
+                  <span className="text-sm text-muted-foreground">Real:</span>
+                  <span className="text-2xl font-bold">{giroRealAtual}</span>
                 </div>
-              )}
-              <div className="border-t pt-2 flex justify-between items-baseline">
-                <span className="text-sm font-medium">Projetado:</span>
-                <span className="text-3xl font-bold">{giroProjetado}</span>
+                {giroAgendadoAtual > 0 && (
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-sm text-primary">
+                      + Agendado:
+                    </span>
+                    <span className="text-xl font-semibold text-primary">
+                      {giroAgendadoAtual}
+                    </span>
+                  </div>
+                )}
+                <div className="border-t pt-2 flex justify-between items-baseline">
+                  <span className="text-sm font-medium">Projetado:</span>
+                  <span className="text-3xl font-bold">{giroProjetado}</span>
+                </div>
               </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              {performanceVsMedia > 0 ? (
-                <span className="text-green-600 font-medium">
-                  +{performanceVsMedia.toFixed(1)}% vs média
-                </span>
-              ) : performanceVsMedia < 0 ? (
-                <span className="text-red-600 font-medium">
-                  {performanceVsMedia.toFixed(1)}% vs média
-                </span>
-              ) : (
-                <span>Igual à média</span>
-              )}
-            </p>
-            <div className="mt-3">
-              <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                <span>{percentualSemanaPassado.toFixed(0)}% da semana</span>
-                <span>{diasRestantes} dias restantes</span>
+              <p className="text-xs text-muted-foreground mt-2">
+                {performanceVsMedia > 0 ? (
+                  <span className="text-green-600 font-medium">
+                    +{performanceVsMedia.toFixed(1)}% vs média
+                  </span>
+                ) : performanceVsMedia < 0 ? (
+                  <span className="text-red-600 font-medium">
+                    {performanceVsMedia.toFixed(1)}% vs média
+                  </span>
+                ) : (
+                  <span>Igual à média</span>
+                )}
+              </p>
+              <div className="mt-3">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                  <span>{percentualSemanaPassado.toFixed(0)}% da semana</span>
+                  <span>{diasRestantes} dias restantes</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-1.5">
+                  <div 
+                    className="bg-primary rounded-full h-1.5 transition-all"
+                    style={{ width: `${percentualSemanaPassado}%` }}
+                  />
+                </div>
               </div>
-              <div className="w-full bg-muted rounded-full h-1.5">
-                <div 
-                  className="bg-primary rounded-full h-1.5 transition-all"
-                  style={{ width: `${percentualSemanaPassado}%` }}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </TooltipExplicativo>
 
         {/* Card 5: Amplitude (Pico/Vale) */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Activity className="h-4 w-4 text-muted-foreground" />
-              Amplitude (Últimas 12 sem)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Pico:</span>
-                <span className="text-xl font-bold text-green-600">
-                  {picoSemanal}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Vale:</span>
-                <span className="text-xl font-bold text-red-600">
-                  {valeSemanal}
-                </span>
-              </div>
-              <div className="border-t pt-2">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-xs text-muted-foreground">Variação:</span>
-                  <span className="text-lg font-semibold">
-                    {amplitudeVariacao}
+        <TooltipExplicativo explicacao={GIRO_TOOLTIPS.amplitude} variant="indicator">
+          <Card className="cursor-help hover:shadow-md transition-all duration-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                Amplitude (Últimas 12 sem)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Pico:</span>
+                  <span className="text-xl font-bold text-green-600">
+                    {picoSemanal}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {mediaGeral > 0 ? `${((amplitudeVariacao / mediaGeral) * 100).toFixed(0)}% da média` : 'N/A'}
-                </p>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Vale:</span>
+                  <span className="text-xl font-bold text-red-600">
+                    {valeSemanal}
+                  </span>
+                </div>
+                <div className="border-t pt-2">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs text-muted-foreground">Variação:</span>
+                    <span className="text-lg font-semibold">
+                      {amplitudeVariacao}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {mediaGeral > 0 ? `${((amplitudeVariacao / mediaGeral) * 100).toFixed(0)}% da média` : 'N/A'}
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </TooltipExplicativo>
       </div>
 
       {/* Gráfico */}
