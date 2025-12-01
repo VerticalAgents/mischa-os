@@ -128,7 +128,17 @@ interface ClienteData {
 }
 
 // Componente principal memoizado
-const GiroDashboardGeralContent = memo(({ dados, clienteData }: { dados: any; clienteData: ClienteData }) => {
+const GiroDashboardGeralContent = memo(({ 
+  dados, 
+  clienteData, 
+  giro4Semanas, 
+  variacaoGiroTotal 
+}: { 
+  dados: any; 
+  clienteData: ClienteData;
+  giro4Semanas: number;
+  variacaoGiroTotal: number;
+}) => {
   const {
     historicoSemanas,
     totalUltimos30Dias,
@@ -202,15 +212,15 @@ const GiroDashboardGeralContent = memo(({ dados, clienteData }: { dados: any; cl
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{Math.round(mediaUltimas4Consolidadas)}</div>
+              <div className="text-3xl font-bold">{Math.round(giro4Semanas)}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {mediaUltimas4Consolidadas > mediaGeral ? (
+                {variacaoGiroTotal > 0 ? (
                   <span className="text-green-600 font-medium">
-                    +{((mediaUltimas4Consolidadas / mediaGeral - 1) * 100).toFixed(1)}% vs histórico
+                    +{variacaoGiroTotal.toFixed(1)}% vs histórico
                   </span>
-                ) : mediaUltimas4Consolidadas < mediaGeral ? (
+                ) : variacaoGiroTotal < 0 ? (
                   <span className="text-red-600 font-medium">
-                    {((mediaUltimas4Consolidadas / mediaGeral - 1) * 100).toFixed(1)}% vs histórico
+                    {variacaoGiroTotal.toFixed(1)}% vs histórico
                   </span>
                 ) : (
                   <span>Igual ao histórico</span>
@@ -546,6 +556,8 @@ export function GiroDashboardGeral({ filtros }: GiroDashboardGeralProps = {}) {
     giroMedio4Semanas,
     giroMedio12Semanas,
     variacaoGiroMedio,
+    giro4Semanas,
+    variacaoGiroTotal,
     isLoading: giroLoading 
   } = useGiroMedioPorPDV();
 
@@ -599,5 +611,5 @@ export function GiroDashboardGeral({ filtros }: GiroDashboardGeralProps = {}) {
     return null;
   }
 
-  return <GiroDashboardGeralContent dados={dados} clienteData={clienteData} />;
+  return <GiroDashboardGeralContent dados={dados} clienteData={clienteData} giro4Semanas={giro4Semanas} variacaoGiroTotal={variacaoGiroTotal} />;
 }
