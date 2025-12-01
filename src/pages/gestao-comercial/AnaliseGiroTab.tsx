@@ -63,13 +63,13 @@ export default function AnaliseGiroTab() {
             <BarChart3 className="h-4 w-4" />
             Dashboard
           </TabsTrigger>
-          <TabsTrigger value="visao-geral" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Visão Geral
-          </TabsTrigger>
           <TabsTrigger value="ranking" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Ranking de Clientes
+          </TabsTrigger>
+          <TabsTrigger value="visao-geral" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Visão Geral
           </TabsTrigger>
           <TabsTrigger value="categoria" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
@@ -81,19 +81,19 @@ export default function AnaliseGiroTab() {
           <GiroDashboardGeral />
         </TabsContent>
 
+        <TabsContent value="ranking" className="space-y-6 mt-6">
+          <GiroRankingClientes
+            dadosConsolidados={dadosConsolidados}
+            ranking={ranking}
+            isLoading={isLoading}
+          />
+        </TabsContent>
+
         <TabsContent value="visao-geral" className="space-y-6 mt-6">
           <GiroOverviewGeneral 
             dadosConsolidados={dadosConsolidados}
             overview={overview}
             regional={regional}
-            isLoading={isLoading}
-          />
-        </TabsContent>
-
-        <TabsContent value="ranking" className="space-y-6 mt-6">
-          <GiroRankingClientes
-            dadosConsolidados={dadosConsolidados}
-            ranking={ranking}
             isLoading={isLoading}
           />
         </TabsContent>

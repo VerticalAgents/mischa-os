@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfWeek, endOfWeek, subWeeks } from 'date-fns';
+import { format, startOfWeek, endOfWeek, subWeeks, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface HistoricoSemana {
@@ -14,8 +14,8 @@ interface HistoricoSemana {
 
 interface DadosDashboard {
   historicoSemanas: HistoricoSemana[];
-  ultimas4Semanas: number;
-  mediaUltimas4: number;
+  totalUltimos30Dias: number;
+  mediaUltimas4Consolidadas: number;
   mediaGeral: number;
   variacao: number;
   tendencia: 'crescimento' | 'queda' | 'estavel';
@@ -119,17 +119,35 @@ export const useGiroDashboardGeral = () => {
           ? girosCompletos.reduce((sum, val) => sum + val, 0) / girosCompletos.length
           : 0;
 
-        // Calcular total e média das últimas 4 semanas
-        const ultimas4 = historicoSemanas.slice(-4).map(s => s.giroReal);
-        const ultimas4Semanas = ultimas4.reduce((sum, val) => sum + val, 0);
-        const mediaUltimas4 = ultimas4Semanas / 4;
+        // Buscar entregas dos últimos 30 dias para o total
+        const data30DiasAtras = subDays(hoje, 30);
+        const { data: entregas30Dias, error: entregas30Error } = await supabase
+          .from('historico_entregas')
+          .select('quantidade')
+          .gte('data', format(data30DiasAtras, 'yyyy-MM-dd'))
+          .lte('data', format(hoje, 'yyyy-MM-dd'))
+          .eq('tipo', 'entrega');
 
-        // Calcular variação (última semana vs média das 3 anteriores)
+        if (entregas30Error) throw entregas30Error;
+
+        const totalUltimos30Dias = entregas30Dias?.reduce(
+          (sum, e) => sum + (e.quantidade || 0), 0
+        ) || 0;
+
+        // Calcular média das últimas 4 semanas CONSOLIDADAS (excluindo semana atual)
+        // Semanas: -4, -3, -2, -1 (índices 7, 8, 9, 10 no array de 12)
+        const ultimas4Consolidadas = historicoSemanas.slice(-5, -1).map(s => s.giroReal);
+        const mediaUltimas4Consolidadas = ultimas4Consolidadas.length > 0
+          ? ultimas4Consolidadas.reduce((sum, val) => sum + val, 0) / ultimas4Consolidadas.length
+          : 0;
+
+        // Calcular variação (semana passada vs média das 3 anteriores a ela)
+        const ultimas4 = historicoSemanas.slice(-5, -1).map(s => s.giroReal);
         const ultimas3Semanas = ultimas4.slice(0, 3);
         const media3Anteriores = ultimas3Semanas.reduce((a, b) => a + b, 0) / 3;
-        const ultimaSemana = ultimas4[3];
+        const ultimaSemanaConsolidada = ultimas4[3];
         const variacao = media3Anteriores > 0
-          ? ((ultimaSemana - media3Anteriores) / media3Anteriores) * 100
+          ? ((ultimaSemanaConsolidada - media3Anteriores) / media3Anteriores) * 100
           : 0;
 
         // Determinar tendência básica
@@ -180,8 +198,8 @@ export const useGiroDashboardGeral = () => {
 
         setDados({
           historicoSemanas,
-          ultimas4Semanas,
-          mediaUltimas4,
+          totalUltimos30Dias,
+          mediaUltimas4Consolidadas,
           mediaGeral,
           variacao,
           tendencia,
