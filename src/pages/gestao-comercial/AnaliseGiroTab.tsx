@@ -65,15 +65,15 @@ export default function AnaliseGiroTab() {
           </TabsTrigger>
           <TabsTrigger value="ranking" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Ranking de Clientes
+            Curva ABC
           </TabsTrigger>
           <TabsTrigger value="visao-geral" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
-            Visão Geral
+            Rotas
           </TabsTrigger>
           <TabsTrigger value="categoria" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
-            Giro por Categoria
+            Categorias
           </TabsTrigger>
         </TabsList>
 
