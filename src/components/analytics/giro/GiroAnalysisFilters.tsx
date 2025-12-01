@@ -34,8 +34,7 @@ export function GiroAnalysisFiltersComponent({
     const defaultValues = {
       representante: 'todos',
       rota: 'todas',
-      categoria_estabelecimento: 'todas',
-      semaforo: 'todas'
+      categoria_estabelecimento: 'todas'
     };
     
     const defaultValue = defaultValues[key as keyof typeof defaultValues];
@@ -142,7 +141,7 @@ export function GiroAnalysisFiltersComponent({
       
       {isOpen && (
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Representante */}
             <div className="space-y-2">
               <Label htmlFor="representante">Representante</Label>
@@ -156,12 +155,8 @@ export function GiroAnalysisFiltersComponent({
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
                   {validRepresentantes.map((rep) => {
-                    // Final safety check with guaranteed non-empty value
                     const safeValue = rep && rep.trim() ? rep.trim() : null;
-                    if (!safeValue) {
-                      console.warn('Skipping invalid representante:', rep);
-                      return null;
-                    }
+                    if (!safeValue) return null;
                     return (
                       <SelectItem key={safeValue} value={safeValue}>
                         {safeValue}
@@ -185,12 +180,8 @@ export function GiroAnalysisFiltersComponent({
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
                   {validRotas.map((rota) => {
-                    // Final safety check with guaranteed non-empty value
                     const safeValue = rota && rota.trim() ? rota.trim() : null;
-                    if (!safeValue) {
-                      console.warn('Skipping invalid rota:', rota);
-                      return null;
-                    }
+                    if (!safeValue) return null;
                     return (
                       <SelectItem key={safeValue} value={safeValue}>
                         {safeValue}
@@ -214,12 +205,8 @@ export function GiroAnalysisFiltersComponent({
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
                   {validCategorias.map((cat) => {
-                    // Final safety check with guaranteed non-empty value
                     const safeValue = cat && cat.trim() ? cat.trim() : null;
-                    if (!safeValue) {
-                      console.warn('Skipping invalid categoria:', cat);
-                      return null;
-                    }
+                    if (!safeValue) return null;
                     return (
                       <SelectItem key={safeValue} value={safeValue}>
                         {safeValue}
@@ -228,53 +215,6 @@ export function GiroAnalysisFiltersComponent({
                   }).filter(Boolean)}
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Semáforo */}
-            <div className="space-y-2">
-              <Label htmlFor="semaforo">Performance</Label>
-              <Select
-                value={filtros.semaforo || 'todas'}
-                onValueChange={(value) => handleFilterChange('semaforo', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todas</SelectItem>
-                  <SelectItem value="verde">🟢 Verde</SelectItem>
-                  <SelectItem value="amarelo">🟡 Amarelo</SelectItem>
-                  <SelectItem value="vermelho">🔴 Vermelho</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Achievement Mínimo */}
-            <div className="space-y-2">
-              <Label htmlFor="achievement-min">Achievement Min (%)</Label>
-              <Input
-                id="achievement-min"
-                type="number"
-                min="0"
-                max="100"
-                placeholder="0"
-                value={filtros.achievement_min || ''}
-                onChange={(e) => handleFilterChange('achievement_min', Number(e.target.value) || undefined)}
-              />
-            </div>
-
-            {/* Achievement Máximo */}
-            <div className="space-y-2">
-              <Label htmlFor="achievement-max">Achievement Max (%)</Label>
-              <Input
-                id="achievement-max"
-                type="number"
-                min="0"
-                max="100"
-                placeholder="100"
-                value={filtros.achievement_max || ''}
-                onChange={(e) => handleFilterChange('achievement_max', Number(e.target.value) || undefined)}
-              />
             </div>
           </div>
           

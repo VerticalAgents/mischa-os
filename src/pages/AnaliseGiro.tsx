@@ -2,13 +2,14 @@
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, TrendingUp, Users, Package } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, Package, ListChecks } from 'lucide-react';
 import { useGiroAnalysisConsolidated } from '@/hooks/useGiroAnalysisConsolidated';
 import { GiroAnalysisFiltersComponent } from '@/components/analytics/giro/GiroAnalysisFilters';
 import { GiroDashboardGeral } from '@/components/analytics/giro/GiroDashboardGeral';
 import { GiroOverviewGeneral } from '@/components/analytics/giro/GiroOverviewGeneral';
 import { GiroRankingClientes } from '@/components/analytics/giro/GiroRankingClientes';
 import { GiroPorCategoria } from '@/components/analytics/giro/GiroPorCategoria';
+import { StatusDetalhamento } from '@/components/analytics/giro/StatusDetalhamento';
 import { GiroAnalysisFilters } from '@/types/giroAnalysis';
 
 export default function AnaliseGiro() {
@@ -66,7 +67,7 @@ export default function AnaliseGiro() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Dashboard
@@ -74,6 +75,10 @@ export default function AnaliseGiro() {
           <TabsTrigger value="ranking" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Curva ABC
+          </TabsTrigger>
+          <TabsTrigger value="status" className="flex items-center gap-2">
+            <ListChecks className="h-4 w-4" />
+            Status
           </TabsTrigger>
           <TabsTrigger value="visao-geral" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
@@ -86,11 +91,15 @@ export default function AnaliseGiro() {
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
-          <GiroDashboardGeral />
+          <GiroDashboardGeral filtros={filtros} />
         </TabsContent>
 
         <TabsContent value="ranking" className="space-y-6">
-          <GiroRankingClientes />
+          <GiroRankingClientes filtros={filtros} />
+        </TabsContent>
+
+        <TabsContent value="status" className="space-y-6">
+          <StatusDetalhamento filtros={filtros} />
         </TabsContent>
 
         <TabsContent value="visao-geral" className="space-y-6">

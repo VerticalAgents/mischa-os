@@ -503,7 +503,15 @@ const GiroDashboardGeralContent = memo(({ dados, clienteData }: { dados: any; cl
 
 GiroDashboardGeralContent.displayName = 'GiroDashboardGeralContent';
 
-export function GiroDashboardGeral() {
+interface GiroDashboardGeralProps {
+  filtros?: {
+    representante?: string;
+    rota?: string;
+    categoria_estabelecimento?: string;
+  };
+}
+
+export function GiroDashboardGeral({ filtros }: GiroDashboardGeralProps = {}) {
   const { dados, loading, error } = useGiroDashboardGeral();
   const { clientes, loading: clientesLoading } = useClienteStore();
   const { giroMedioPorPDV, isLoading: giroLoading } = useGiroMedioPorPDV();

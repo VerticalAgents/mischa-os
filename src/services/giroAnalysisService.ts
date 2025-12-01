@@ -41,9 +41,6 @@ export interface GiroAnalysisFilters {
   representante?: string;
   rota?: string;
   categoria_estabelecimento?: string;
-  semaforo?: 'verde' | 'amarelo' | 'vermelho';
-  achievement_min?: number;
-  achievement_max?: number;
 }
 
 export interface GiroRanking {
@@ -302,15 +299,6 @@ export class GiroAnalysisService {
     }
     if (filtros.categoria_estabelecimento) {
       filteredData = filteredData.filter(row => row.categoria_estabelecimento_nome === filtros.categoria_estabelecimento);
-    }
-    if (filtros.semaforo) {
-      filteredData = filteredData.filter(row => row.semaforo_performance === filtros.semaforo);
-    }
-    if (filtros.achievement_min) {
-      filteredData = filteredData.filter(row => (row.achievement_meta || 0) >= filtros.achievement_min!);
-    }
-    if (filtros.achievement_max) {
-      filteredData = filteredData.filter(row => (row.achievement_meta || 0) <= filtros.achievement_max!);
     }
 
     // Sort by client name
