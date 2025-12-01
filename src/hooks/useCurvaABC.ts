@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMemo } from 'react';
+import { GiroAnalysisFilters } from '@/types/giroAnalysis';
 
 export interface ClienteCurvaABC {
   cliente_id: string;
@@ -61,7 +62,7 @@ interface ProdutoFinal {
   categoria_id: number | null;
 }
 
-export function useCurvaABC(periodo: string = '90d') {
+export function useCurvaABC(periodo: string = '90d', filtros: GiroAnalysisFilters = {}) {
   // Fetch historico_entregas
   const { data: entregas, isLoading: loadingEntregas } = useQuery({
     queryKey: ['curva-abc-entregas', periodo],
@@ -173,6 +174,36 @@ export function useCurvaABC(periodo: string = '90d') {
       return { clientesABC: [], resumoCategorias: [], dadosGraficos: { pie: [], bar: [] }, faturamentoTotal: 0 };
     }
 
+    // Criar mapas de representantes e rotas primeiro para aplicar filtros
+    const repMap = new Map<number, string>();
+    representantes?.forEach(r => repMap.set(r.id, r.nome));
+    
+    const rotaMap = new Map<number, string>();
+    rotas?.forEach(r => rotaMap.set(r.id, r.nome));
+
+    // Criar mapa de clientes e filtrar baseado nos filtros
+    const clientesFiltrados = clientes.filter(c => {
+      // Filtrar por representante
+      if (filtros.representante) {
+        const repNome = c.representante_id ? repMap.get(c.representante_id) : null;
+        if (repNome !== filtros.representante) return false;
+      }
+      
+      // Filtrar por rota
+      if (filtros.rota) {
+        const rotaNome = c.rota_entrega_id ? rotaMap.get(c.rota_entrega_id) : null;
+        if (rotaNome !== filtros.rota) return false;
+      }
+      
+      return true;
+    });
+
+    // Criar set de IDs de clientes filtrados para filtrar entregas
+    const clienteIdsFiltrados = new Set(clientesFiltrados.map(c => c.id));
+
+    // Filtrar entregas apenas de clientes filtrados
+    const entregasFiltradas = entregas.filter(e => clienteIdsFiltrados.has(e.cliente_id));
+
     console.log('[CurvaABC] Processando dados:', {
       entregas: entregas.length,
       clientes: clientes.length,
@@ -221,13 +252,6 @@ export function useCurvaABC(periodo: string = '90d') {
       return 4.50;
     };
 
-    // Criar mapas de representantes e rotas
-    const repMap = new Map<number, string>();
-    representantes?.forEach(r => repMap.set(r.id, r.nome));
-    
-    const rotaMap = new Map<number, string>();
-    rotas?.forEach(r => rotaMap.set(r.id, r.nome));
-
     // Criar mapa de clientes
     const clientesMap = new Map<string, Cliente>();
     clientes.forEach(c => clientesMap.set(c.id, c));
@@ -239,7 +263,7 @@ export function useCurvaABC(periodo: string = '90d') {
     let totalItensProcessados = 0;
     let totalFaturamentoCalculado = 0;
     
-    entregas.forEach(entrega => {
+    entregasFiltradas.forEach(entrega => {
       const itens = entrega.itens as any[];
       
       if (!Array.isArray(itens) || itens.length === 0) {
@@ -382,7 +406,7 @@ export function useCurvaABC(periodo: string = '90d') {
       dadosGraficos: { pie: dadosPie, bar: dadosBar },
       faturamentoTotal: totalFaturamento
     };
-  }, [entregas, precos, clientes, representantes, rotas, produtos, configPrecificacao]);
+  }, [entregas, precos, clientes, representantes, rotas, produtos, configPrecificacao, filtros]);
 
   const isLoading = loadingEntregas || loadingPrecos || loadingClientes || loadingProdutos || loadingConfig;
 

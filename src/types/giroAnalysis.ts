@@ -32,9 +32,6 @@ export interface GiroAnalysisFilters {
   representante?: string;
   rota?: string;
   categoria_estabelecimento?: string;
-  semaforo?: 'verde' | 'amarelo' | 'vermelho';
-  achievement_min?: number;
-  achievement_max?: number;
 }
 
 export interface GiroOverview {

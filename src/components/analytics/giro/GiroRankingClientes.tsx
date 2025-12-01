@@ -9,13 +9,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { AlertCircle, Calendar } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useCurvaABC } from '@/hooks/useCurvaABC';
 import { CurvaABCCards } from './components/CurvaABCCards';
 import { CurvaABCCharts } from './components/CurvaABCCharts';
 import { CurvaABCTable } from './components/CurvaABCTable';
+import { GiroAnalysisFilters } from '@/types/giroAnalysis';
 
-export function GiroRankingClientes() {
+interface GiroRankingClientesProps {
+  filtros?: GiroAnalysisFilters;
+}
+
+export function GiroRankingClientes({ filtros = {} }: GiroRankingClientesProps) {
   const [periodo, setPeriodo] = useState('90d');
   
   const { 
@@ -24,7 +28,7 @@ export function GiroRankingClientes() {
     dadosGraficos, 
     isLoading,
     faturamentoTotal
-  } = useCurvaABC(periodo);
+  } = useCurvaABC(periodo, filtros);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -99,3 +103,4 @@ export function GiroRankingClientes() {
     </div>
   );
 }
+
