@@ -35,21 +35,18 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
 
   const clienteIds = useMemo(() => clientesAtivos.map(c => c.id), [clientesAtivos]);
 
-  // Query para buscar entregas dos últimos 84 dias (12 semanas)
+  // Query para buscar TODAS as entregas dos últimos 84 dias (12 semanas)
+  // Considera todas as entregas, independente do status atual do cliente
   const { data, isLoading, error } = useQuery({
-    queryKey: ['giro-medio-por-pdv', clienteIds.join(','), representanteId],
+    queryKey: ['giro-semanal-total', representanteId],
     queryFn: async () => {
-      if (clienteIds.length === 0) {
-        return { giroSemanalTotal: 0, totalEntregas: 0 };
-      }
-
       const dataLimite = new Date();
       dataLimite.setDate(dataLimite.getDate() - 84);
 
+      // Busca todas as entregas - dado histórico considera tudo
       const { data: entregas, error: entregasError } = await supabase
         .from('historico_entregas')
         .select('quantidade')
-        .in('cliente_id', clienteIds)
         .gte('data', dataLimite.toISOString())
         .eq('tipo', 'entrega');
 
@@ -64,7 +61,7 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
         totalEntregas
       };
     },
-    enabled: !clientesLoading && clientes.length > 0 && clienteIds.length > 0,
+    enabled: !clientesLoading,
     staleTime: 5 * 60 * 1000, // 5 minutos de cache
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false

@@ -40,13 +40,13 @@ export const GIRO_TOOLTIPS: Record<string, ExplicacaoCalculoProps> = {
   // === INDICADORES DE GIRO ===
   giroSemanalTotal: {
     titulo: "Giro Semanal Total",
-    explicacao: "Média semanal de entregas baseada no total dos últimos 84 dias (12 semanas).",
+    explicacao: "Média semanal de todas as entregas realizadas nos últimos 84 dias (12 semanas).",
     formula: "Total de entregas (84 dias) ÷ 12 semanas",
     exemplo: "22.122 entregas em 84 dias = 1.844/semana",
     observacoes: [
       "Cálculo simples: total dividido por 12 semanas fixas",
-      "Representa o giro real médio do período",
-      "Considera apenas entregas de clientes ativos"
+      "Representa o giro real histórico do período",
+      "Considera todas as entregas realizadas, independente do status atual do cliente"
     ],
     fontes: ["Histórico de Entregas"]
   },
