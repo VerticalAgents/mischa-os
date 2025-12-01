@@ -95,11 +95,7 @@ export default function AnaliseGiroTab() {
         </TabsContent>
 
         <TabsContent value="ranking" className="space-y-6 mt-6">
-          <GiroRankingClientes
-            dadosConsolidados={dadosConsolidados}
-            ranking={ranking}
-            isLoading={isLoading}
-          />
+          <GiroRankingClientes />
         </TabsContent>
 
         <TabsContent value="visao-geral" className="space-y-6 mt-6">

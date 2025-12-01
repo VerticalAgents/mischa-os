@@ -1,92 +1,101 @@
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy } from 'lucide-react';
-import { DadosAnaliseGiroConsolidados, GiroRanking } from '@/types/giroAnalysis';
-import { RankingFilters } from './components/RankingFilters';
-import { TopClientesCards } from './components/TopClientesCards';
-import { RankingClientesTable } from './components/RankingClientesTable';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { AlertCircle, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useCurvaABC } from '@/hooks/useCurvaABC';
+import { CurvaABCCards } from './components/CurvaABCCards';
+import { CurvaABCCharts } from './components/CurvaABCCharts';
+import { CurvaABCTable } from './components/CurvaABCTable';
 
-interface GiroRankingClientesProps {
-  dadosConsolidados: DadosAnaliseGiroConsolidados[];
-  ranking: GiroRanking[];
-  isLoading: boolean;
-}
+export function GiroRankingClientes() {
+  const [periodo, setPeriodo] = useState('todo');
+  
+  const { 
+    clientesABC, 
+    resumoCategorias, 
+    dadosGraficos, 
+    isLoading,
+    faturamentoTotal
+  } = useCurvaABC(periodo);
 
-export function GiroRankingClientes({ 
-  dadosConsolidados, 
-  ranking, 
-  isLoading 
-}: GiroRankingClientesProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('giro_historico');
-  const [filterPerformance, setFilterPerformance] = useState('todos');
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2
+    }).format(value);
+  };
 
-  if (isLoading) {
+  // Estado de erro (se não houver dados após carregamento)
+  if (!isLoading && clientesABC.length === 0) {
     return (
       <Card>
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            {[...Array(10)].map((_, i) => (
-              <div key={i} className="h-16 bg-gray-200 rounded"></div>
-            ))}
-          </div>
+        <CardContent className="p-6 text-center">
+          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">Nenhum dado de faturamento encontrado para o período selecionado.</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Verifique se existem entregas registradas no histórico.
+          </p>
         </CardContent>
       </Card>
     );
   }
 
-  // Filtrar e ordenar dados
-  const dadosFiltrados = dadosConsolidados
-    .filter(item => 
-      item.cliente_nome.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (filterPerformance === 'todos' || item.semaforo_performance === filterPerformance)
-    )
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'giro_historico':
-          return b.giro_medio_historico - a.giro_medio_historico;
-        case 'achievement':
-          return b.achievement_meta - a.achievement_meta;
-        case 'variacao':
-          return b.variacao_percentual - a.variacao_percentual;
-        default:
-          return 0;
-      }
-    })
-    .slice(0, 50);
-
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-yellow-600" />
-            Ranking de Clientes por Giro Histórico
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RankingFilters
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            filterPerformance={filterPerformance}
-            onFilterPerformanceChange={setFilterPerformance}
-          />
-        </CardContent>
-      </Card>
+      {/* Header com Filtro de Período */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Análise Curva ABC</h2>
+          <p className="text-sm text-muted-foreground">
+            Classificação de clientes por faturamento (Pareto 80/15/5)
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Select value={periodo} onValueChange={setPeriodo}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="30d">Últimos 30 dias</SelectItem>
+              <SelectItem value="90d">Últimos 90 dias</SelectItem>
+              <SelectItem value="ano">Ano atual</SelectItem>
+              <SelectItem value="todo">Todo o período</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
-      <TopClientesCards dados={dadosFiltrados} />
+      {/* Faturamento Total */}
+      {!isLoading && (
+        <div className="text-center py-4 bg-muted/30 rounded-lg">
+          <p className="text-sm text-muted-foreground">Faturamento Total no Período</p>
+          <p className="text-2xl font-bold text-foreground">{formatCurrency(faturamentoTotal)}</p>
+        </div>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Ranking Completo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RankingClientesTable dados={dadosFiltrados} />
-        </CardContent>
-      </Card>
+      {/* Cards de KPIs */}
+      <CurvaABCCards resumoCategorias={resumoCategorias} isLoading={isLoading} />
+
+      {/* Gráficos */}
+      <CurvaABCCharts 
+        dadosPie={dadosGraficos.pie} 
+        dadosBar={dadosGraficos.bar} 
+        isLoading={isLoading} 
+      />
+
+      {/* Tabela Detalhada */}
+      <CurvaABCTable clientes={clientesABC} isLoading={isLoading} />
     </div>
   );
 }
