@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 import { mainMenuItems, secondaryMenuItems, menuGroups } from "@/components/layout/navigation-items";
 import { useAlertaStore } from "@/hooks/useAlertaStore";
 import AlertaIndicator from "@/components/common/AlertaIndicator";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 const sidebarVariants = {
   open: {
@@ -71,9 +72,20 @@ export function SessionNavBar() {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const location = useLocation();
   const pathname = location.pathname;
+  const { isAdmin } = useUserRoles();
   
   // Use state to store the alert count instead of directly accessing the store
   const [alertCount, setAlertCount] = useState(0);
+  
+  // Filter menu groups - hide admin groups for non-admin users
+  const filteredMenuGroups = useMemo(() => {
+    return menuGroups.filter(group => {
+      if (group.variant === 'admin') {
+        return isAdmin();
+      }
+      return true;
+    });
+  }, [isAdmin]);
   
   // Update alert count when component mounts and when alerts change - with proper cleanup
   useEffect(() => {
@@ -126,7 +138,7 @@ export function SessionNavBar() {
                 <ScrollArea className="h-16 grow p-2">
                   <div className={cn("flex w-full flex-col gap-1")}>
                     {/* Menu por grupos funcionais com indicadores visuais de cor */}
-                    {menuGroups.map((group, index) => (
+                    {filteredMenuGroups.map((group, index) => (
                       <div key={group.title} className="mt-2 first:mt-0">
                         {/* Cabeçalho do grupo com indicador de cor */}
                         <div className={cn(
@@ -139,7 +151,8 @@ export function SessionNavBar() {
                             group.variant === "operational" && "bg-purple-500",
                             group.variant === "tactical" && "bg-blue-500",
                             group.variant === "strategic" && "bg-green-500",
-                            group.variant === "system" && "bg-gray-400"
+                            group.variant === "system" && "bg-gray-400",
+                            group.variant === "admin" && "bg-red-500"
                           )}/>
                           {!isCollapsed && (
                             <span className="ml-2 text-xs font-medium uppercase text-muted-foreground text-left">
@@ -168,7 +181,7 @@ export function SessionNavBar() {
                         </div>
                         
                         {/* Separator between groups */}
-                        {index < menuGroups.length - 1 && (
+                        {index < filteredMenuGroups.length - 1 && (
                           <Separator className="my-2 mx-2" />
                         )}
                       </div>
