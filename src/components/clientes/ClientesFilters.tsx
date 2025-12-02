@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
+import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
 
 // Define the available columns for the table
 export interface ColumnOption {
@@ -19,10 +20,12 @@ interface ClientesFiltersProps {
     termo: string;
     status: StatusCliente | 'Todos' | '';
     representanteId: number | 'Todos' | null;
+    rotaEntregaId: number | 'Todas' | null;
   };
   setFiltroTermo: (termo: string) => void;
   setFiltroStatus: (status: StatusCliente | 'Todos' | '') => void;
   setFiltroRepresentante: (representanteId: number | 'Todos' | null) => void;
+  setFiltroRotaEntrega: (rotaEntregaId: number | 'Todas' | null) => void;
   visibleColumns: string[];
   setVisibleColumns: React.Dispatch<React.SetStateAction<string[]>>;
   columnOptions: ColumnOption[];
@@ -33,11 +36,13 @@ export default function ClientesFilters({
   setFiltroTermo,
   setFiltroStatus,
   setFiltroRepresentante,
+  setFiltroRotaEntrega,
   visibleColumns,
   setVisibleColumns,
   columnOptions
 }: ClientesFiltersProps) {
   const { representantes } = useSupabaseRepresentantes();
+  const { rotasEntrega } = useSupabaseRotasEntrega();
 
   // Toggle column visibility
   const toggleColumn = (columnId: string, isVisible: boolean) => {
@@ -72,6 +77,21 @@ export default function ClientesFilters({
         <option value="Standby">Standby</option>
       </select>
       <select 
+        className="h-10 rounded-md border border-input bg-background px-3 py-2 min-w-[150px]" 
+        value={filtros.rotaEntregaId === null ? '' : filtros.rotaEntregaId} 
+        onChange={e => {
+          const value = e.target.value;
+          setFiltroRotaEntrega(value === '' ? null : value === 'Todas' ? 'Todas' : Number(value));
+        }}
+      >
+        <option value="">Todas as rotas</option>
+        {rotasEntrega.map(rota => (
+          <option key={rota.id} value={rota.id}>
+            {rota.nome}
+          </option>
+        ))}
+      </select>
+      <select
         className="h-10 rounded-md border border-input bg-background px-3 py-2 min-w-[180px]" 
         value={filtros.representanteId === null ? '' : filtros.representanteId} 
         onChange={e => {
