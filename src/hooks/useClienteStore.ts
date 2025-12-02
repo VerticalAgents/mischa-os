@@ -13,6 +13,7 @@ interface ClienteState {
     termo: string;
     status: StatusCliente | 'Todos' | '';
     representanteId: number | 'Todos' | null;
+    rotaEntregaId: number | 'Todas' | null;
   };
   adicionarCliente: (cliente: Omit<Cliente, 'id' | 'dataCadastro'>) => Promise<Cliente>;
   atualizarCliente: (id: string, cliente: Partial<Cliente>) => Promise<void>;
@@ -26,6 +27,7 @@ interface ClienteState {
   setFiltroTermo: (termo: string) => void;
   setFiltroStatus: (status: StatusCliente | 'Todos' | '') => void;
   setFiltroRepresentante: (representanteId: number | 'Todos' | null) => void;
+  setFiltroRotaEntrega: (rotaEntregaId: number | 'Todas' | null) => void;
 }
 
 import { sanitizeClienteData, createSafeClienteDefaults } from '@/utils/clienteDataSanitizer';
@@ -186,6 +188,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
     termo: '',
     status: '',
     representanteId: null,
+    rotaEntregaId: null,
   },
   adicionarCliente: async (cliente) => {
     set({ loading: true });
@@ -448,7 +451,11 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
         filtros.representanteId === 'Todos' || 
         cliente.representanteId === filtros.representanteId;
 
-      return matchesTermo && matchesStatus && matchesRepresentante;
+      const matchesRotaEntrega = !filtros.rotaEntregaId || 
+        filtros.rotaEntregaId === 'Todas' || 
+        cliente.rotaEntregaId === filtros.rotaEntregaId;
+
+      return matchesTermo && matchesStatus && matchesRepresentante && matchesRotaEntrega;
     });
   },
   setFiltroTermo: (termo: string) => {
@@ -464,6 +471,11 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
   setFiltroRepresentante: (representanteId: number | 'Todos' | null) => {
     set((state) => ({
       filtros: { ...state.filtros, representanteId },
+    }));
+  },
+  setFiltroRotaEntrega: (rotaEntregaId: number | 'Todas' | null) => {
+    set((state) => ({
+      filtros: { ...state.filtros, rotaEntregaId },
     }));
   },
 }));

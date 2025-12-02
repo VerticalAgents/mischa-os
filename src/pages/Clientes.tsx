@@ -31,6 +31,7 @@ export default function Clientes() {
     setFiltroTermo,
     setFiltroStatus,
     setFiltroRepresentante,
+    setFiltroRotaEntrega,
     getClientesFiltrados,
     clienteAtual,
     selecionarCliente,
@@ -239,6 +240,7 @@ export default function Clientes() {
         setFiltroTermo={setFiltroTermo}
         setFiltroStatus={setFiltroStatus}
         setFiltroRepresentante={setFiltroRepresentante}
+        setFiltroRotaEntrega={setFiltroRotaEntrega}
         visibleColumns={visibleColumns}
         setVisibleColumns={setVisibleColumns}
         columnOptions={columnOptions}
