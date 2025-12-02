@@ -72,7 +72,7 @@ export function SessionNavBar() {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const location = useLocation();
   const pathname = location.pathname;
-  const { isAdmin } = useUserRoles();
+  const { userRole } = useUserRoles();
   
   // Use state to store the alert count instead of directly accessing the store
   const [alertCount, setAlertCount] = useState(0);
@@ -81,11 +81,11 @@ export function SessionNavBar() {
   const filteredMenuGroups = useMemo(() => {
     return menuGroups.filter(group => {
       if (group.variant === 'admin') {
-        return isAdmin();
+        return userRole === 'admin';
       }
       return true;
     });
-  }, [isAdmin]);
+  }, [userRole]);
   
   // Update alert count when component mounts and when alerts change - with proper cleanup
   useEffect(() => {
