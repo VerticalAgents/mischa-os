@@ -3,17 +3,23 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useClienteStore } from '@/hooks/useClienteStore';
 
+const CATEGORIA_DISTRIBUIDOR_ID = 16;
+
 interface GiroMedioPorPDVResult {
   giroMedioPorPDV: number;
   giroTotal: number;
   totalClientesAtivos: number;
+  // PDVs calculation
+  totalPDVs: number;                // Total PDVs (diretos + via distribuidores)
+  pdvsDiretos: number;              // Clientes ativos não-distribuidores
+  pdvsViaDistribuidores: number;    // Total de expositores dos distribuidores ativos
   // Comparação de tendência (4 semanas vs histórico)
-  giro4Semanas: number;           // Média últimas 4 semanas consolidadas
-  giro12Semanas: number;          // Média histórica (primeiras 8 semanas)
-  giroMedio4Semanas: number;      // Média 4 semanas ÷ clientes ativos
-  giroMedio12Semanas: number;     // Média 12 semanas ÷ clientes ativos
-  variacaoGiroTotal: number;      // % variação (4sem vs 12sem)
-  variacaoGiroMedio: number;      // % variação (4sem vs 12sem)
+  giro4Semanas: number;             // Média últimas 4 semanas consolidadas
+  giro12Semanas: number;            // Média histórica (primeiras 8 semanas)
+  giroMedio4Semanas: number;        // Média 4 semanas ÷ total PDVs
+  giroMedio12Semanas: number;       // Média 12 semanas ÷ total PDVs
+  variacaoGiroTotal: number;        // % variação (4sem vs 12sem)
+  variacaoGiroMedio: number;        // % variação (4sem vs 12sem)
   isLoading: boolean;
   error: Error | null;
 }
@@ -21,8 +27,9 @@ interface GiroMedioPorPDVResult {
 /**
  * Hook unificado para cálculo do Giro Semanal Total e Médio por PDV
  * 
+ * Fórmula Total PDVs: (Clientes Ativos Não-Distribuidores) + (Expositores de Distribuidores Ativos)
  * Fórmula Giro Semanal Total: Total de entregas (84 dias) ÷ 12 semanas
- * Fórmula Giro Médio por PDV: Giro Semanal Total ÷ Total de Clientes Ativos
+ * Fórmula Giro Médio por PDV: Giro Semanal Total ÷ Total de PDVs
  * 
  * Este hook é usado em: Home, Gestão Comercial e Insights PDV
  */
@@ -40,7 +47,21 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
     return filtered;
   }, [clientes, representanteId]);
 
-  const clienteIds = useMemo(() => clientesAtivos.map(c => c.id), [clientesAtivos]);
+  // Separar distribuidores dos demais clientes ativos
+  const { distribuidoresAtivosIds, pdvsDiretos } = useMemo(() => {
+    const distribuidores: string[] = [];
+    let diretos = 0;
+    
+    clientesAtivos.forEach(c => {
+      if (c.categoriaEstabelecimentoId === CATEGORIA_DISTRIBUIDOR_ID) {
+        distribuidores.push(c.id);
+      } else {
+        diretos++;
+      }
+    });
+    
+    return { distribuidoresAtivosIds: distribuidores, pdvsDiretos: diretos };
+  }, [clientesAtivos]);
 
   // Helper para obter número da semana ISO
   const getISOWeek = (date: Date): string => {
@@ -52,21 +73,30 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
     return `${tempDate.getFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
   };
 
-  // Query para buscar entregas dos últimos 84 dias agrupadas por semana
+  // Query para buscar entregas e expositores
   const { data, isLoading, error } = useQuery({
     queryKey: ['giro-semanal-total', representanteId],
     queryFn: async () => {
       const dataLimite = new Date();
       dataLimite.setDate(dataLimite.getDate() - 84);
 
-      // Busca todas as entregas
-      const { data: entregas, error: entregasError } = await supabase
-        .from('historico_entregas')
-        .select('quantidade, data')
-        .gte('data', dataLimite.toISOString())
-        .eq('tipo', 'entrega');
+      // Buscar entregas e expositores em paralelo
+      const [entregasResult, expositoresResult] = await Promise.all([
+        supabase
+          .from('historico_entregas')
+          .select('quantidade, data')
+          .gte('data', dataLimite.toISOString())
+          .eq('tipo', 'entrega'),
+        supabase
+          .from('distribuidores_expositores')
+          .select('cliente_id, numero_expositores')
+      ]);
 
-      if (entregasError) throw entregasError;
+      if (entregasResult.error) throw entregasResult.error;
+      if (expositoresResult.error) throw expositoresResult.error;
+
+      const entregas = entregasResult.data;
+      const expositores = expositoresResult.data;
 
       // Agrupar entregas por semana
       const entregasPorSemana: Record<string, number> = {};
@@ -100,7 +130,8 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
         giroSemanalTotal,
         totalEntregas,
         giro4Semanas,
-        giro12Semanas
+        giro12Semanas,
+        expositores: expositores || []
       };
     },
     enabled: !clientesLoading,
@@ -109,12 +140,26 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
     refetchOnWindowFocus: false
   });
 
+  // Calcular PDVs via distribuidores (apenas distribuidores ATIVOS)
+  const pdvsViaDistribuidores = useMemo(() => {
+    if (!data?.expositores || distribuidoresAtivosIds.length === 0) return 0;
+    
+    return data.expositores
+      .filter(e => distribuidoresAtivosIds.includes(e.cliente_id))
+      .reduce((sum, e) => sum + (e.numero_expositores || 0), 0);
+  }, [data?.expositores, distribuidoresAtivosIds]);
+
+  // Total de PDVs = diretos + via distribuidores
+  const totalPDVs = useMemo(() => {
+    return pdvsDiretos + pdvsViaDistribuidores;
+  }, [pdvsDiretos, pdvsViaDistribuidores]);
+
   const giroMedioPorPDV = useMemo(() => {
-    if (!data || clientesAtivos.length === 0) return 0;
+    if (!data || totalPDVs === 0) return 0;
     const giro = data.giroSemanalTotal ?? 0;
     if (typeof giro !== 'number' || isNaN(giro)) return 0;
-    return Math.round(giro / clientesAtivos.length);
-  }, [data, clientesAtivos.length]);
+    return Math.round(giro / totalPDVs);
+  }, [data, totalPDVs]);
 
   const giroTotal = useMemo(() => {
     const value = data?.giroSemanalTotal;
@@ -136,18 +181,18 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
   }, [data?.giro12Semanas]);
 
   const giroMedio4Semanas = useMemo(() => {
-    if (!data || clientesAtivos.length === 0) return 0;
+    if (!data || totalPDVs === 0) return 0;
     const giro = data.giro4Semanas ?? 0;
     if (typeof giro !== 'number' || isNaN(giro)) return 0;
-    return Math.round(giro / clientesAtivos.length);
-  }, [data, clientesAtivos.length]);
+    return Math.round(giro / totalPDVs);
+  }, [data, totalPDVs]);
 
   const giroMedio12Semanas = useMemo(() => {
-    if (!data || clientesAtivos.length === 0) return 0;
+    if (!data || totalPDVs === 0) return 0;
     const giro = data.giro12Semanas ?? 0;
     if (typeof giro !== 'number' || isNaN(giro)) return 0;
-    return Math.round(giro / clientesAtivos.length);
-  }, [data, clientesAtivos.length]);
+    return Math.round(giro / totalPDVs);
+  }, [data, totalPDVs]);
 
   const variacaoGiroTotal = useMemo(() => {
     if (giro12Semanas === 0) return 0;
@@ -163,6 +208,9 @@ export const useGiroMedioPorPDV = (representanteId?: string): GiroMedioPorPDVRes
     giroMedioPorPDV,
     giroTotal,
     totalClientesAtivos: clientesAtivos.length,
+    totalPDVs,
+    pdvsDiretos,
+    pdvsViaDistribuidores,
     giro4Semanas,
     giro12Semanas,
     giroMedio4Semanas,

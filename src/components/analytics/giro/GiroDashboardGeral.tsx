@@ -120,6 +120,9 @@ LoadingState.displayName = 'LoadingState';
 interface ClienteData {
   totalClientes: number;
   clientesAtivos: number;
+  totalPDVs: number;
+  pdvsDiretos: number;
+  pdvsViaDistribuidores: number;
   giroMedio: number;
   giroMedio4Semanas: number;
   giroMedio12Semanas: number;
@@ -264,17 +267,20 @@ const GiroDashboardGeralContent = memo(({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Coluna esquerda: Cards empilhados */}
         <div className="space-y-4">
-          {/* Card: Clientes Ativos */}
+          {/* Card: Total de PDVs */}
           <TooltipExplicativo explicacao={GIRO_TOOLTIPS.clientesAtivos} variant="indicator">
             <Card className="cursor-help hover:shadow-md transition-all duration-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
+                <CardTitle className="text-sm font-medium">Total de PDVs</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{clienteData.clientesAtivos}</div>
+                <div className="text-2xl font-bold">{clienteData.totalPDVs}</div>
                 <p className="text-xs text-muted-foreground">
-                  ({clienteData.totalClientes} total)
+                  {clienteData.pdvsViaDistribuidores > 0 
+                    ? `${clienteData.pdvsDiretos} diretos + ${clienteData.pdvsViaDistribuidores} via distribuidores`
+                    : `${clienteData.pdvsDiretos} diretos`
+                  }
                 </p>
               </CardContent>
             </Card>
@@ -558,6 +564,9 @@ export function GiroDashboardGeral({ filtros }: GiroDashboardGeralProps = {}) {
     variacaoGiroMedio,
     giro4Semanas,
     variacaoGiroTotal,
+    totalPDVs,
+    pdvsDiretos,
+    pdvsViaDistribuidores,
     isLoading: giroLoading 
   } = useGiroMedioPorPDV();
 
@@ -584,13 +593,16 @@ export function GiroDashboardGeral({ filtros }: GiroDashboardGeralProps = {}) {
     return {
       totalClientes: total,
       clientesAtivos: ativos,
+      totalPDVs,
+      pdvsDiretos,
+      pdvsViaDistribuidores,
       giroMedio: giroMedioPorPDV,
       giroMedio4Semanas,
       giroMedio12Semanas,
       variacaoGiroMedio,
       statusDistribution
     };
-  }, [clientes, giroMedioPorPDV, giroMedio4Semanas, giroMedio12Semanas, variacaoGiroMedio]);
+  }, [clientes, giroMedioPorPDV, giroMedio4Semanas, giroMedio12Semanas, variacaoGiroMedio, totalPDVs, pdvsDiretos, pdvsViaDistribuidores]);
 
   if (loading || clientesLoading || giroLoading) {
     return <LoadingState />;
