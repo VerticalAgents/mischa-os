@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Factory, Calendar, CheckCircle, Clock } from 'lucide-react';
 import { useSupabaseHistoricoProducao } from '@/hooks/useSupabaseHistoricoProducao';
 import { useNavigate } from 'react-router-dom';
@@ -128,30 +129,44 @@ export default function HomeProducaoSemana() {
             </div>
 
             {/* Barra por dia */}
-            <div className="flex gap-1">
-              {diasOrdenados.map(dia => {
-                const dados = dadosSemana.porDia[dia];
-                const temDados = dados && dados.formas > 0;
-                return (
-                  <div 
-                    key={dia} 
-                    className="flex-1 text-center"
-                    title={temDados ? `${dados.formas} formas · ${dados.unidades} un` : 'Sem produção'}
-                  >
-                    <div 
-                      className={`h-2 rounded-full mb-1 transition-all ${
-                        temDados ? 'bg-primary' : 'bg-muted'
-                      }`}
-                    />
-                    <span className={`text-[10px] uppercase ${
-                      temDados ? 'text-foreground font-medium' : 'text-muted-foreground'
-                    }`}>
-                      {dia}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+            <TooltipProvider delayDuration={100}>
+              <div className="flex gap-1">
+                {diasOrdenados.map(dia => {
+                  const dados = dadosSemana.porDia[dia];
+                  const temDados = dados && dados.formas > 0;
+                  return (
+                    <Tooltip key={dia}>
+                      <TooltipTrigger asChild>
+                        <div className="flex-1 text-center cursor-default">
+                          <div 
+                            className={`h-2 rounded-full mb-1 transition-all ${
+                              temDados ? 'bg-primary' : 'bg-muted'
+                            }`}
+                          />
+                          <span className={`text-[10px] uppercase ${
+                            temDados ? 'text-foreground font-medium' : 'text-muted-foreground'
+                          }`}>
+                            {dia}
+                          </span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">
+                        {temDados ? (
+                          <div className="space-y-1">
+                            <p className="font-medium capitalize">{dia}</p>
+                            <p>{dados.formas} formas</p>
+                            <p>{dados.unidades} unidades</p>
+                            <p className="text-muted-foreground">{dados.registros} registro{dados.registros > 1 ? 's' : ''}</p>
+                          </div>
+                        ) : (
+                          <p>Sem produção</p>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            </TooltipProvider>
 
             {/* Status Detalhado */}
             <div className="space-y-2 pt-2 border-t">
