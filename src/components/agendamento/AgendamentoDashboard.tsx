@@ -15,6 +15,7 @@ import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import ReagendamentoEmMassaDialog from "./ReagendamentoEmMassaDialog";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
+import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import jsPDF from 'jspdf';
 import QuantidadesProdutosSemanal from "./QuantidadesProdutosSemanal";
@@ -35,6 +36,7 @@ export default function AgendamentoDashboard() {
     toast
   } = useToast();
   const { representantes } = useSupabaseRepresentantes();
+  const { rotasEntrega } = useSupabaseRotasEntrega();
   const { registros: entregasHistorico, carregarHistorico: carregarHistoricoEntregas } = useHistoricoEntregasStore();
   const [isLoading, setIsLoading] = useState(false);
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
@@ -42,6 +44,7 @@ export default function AgendamentoDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [semanaAtual, setSemanaAtual] = useState<Date>(new Date());
   const [representanteFiltro, setRepresentanteFiltro] = useState<string>("todos");
+  const [rotaFiltro, setRotaFiltro] = useState<string>("todas");
   const [agendamentosSelecionados, setAgendamentosSelecionados] = useState<Set<string>>(new Set());
   const [modalReagendarAberto, setModalReagendarAberto] = useState(false);
 
@@ -74,16 +77,28 @@ export default function AgendamentoDashboard() {
   };
 
   const agendamentosFiltrados = useMemo(() => {
-    if (representanteFiltro === "todos") return agendamentos;
+    let filtrados = agendamentos;
+    
+    // Filtro por representante
     if (representanteFiltro === "sem_representante") {
-      return agendamentos.filter(agendamento => 
-        !agendamento.cliente.representanteId
+      filtrados = filtrados.filter(agendamento => !agendamento.cliente.representanteId);
+    } else if (representanteFiltro !== "todos") {
+      filtrados = filtrados.filter(agendamento => 
+        agendamento.cliente.representanteId?.toString() === representanteFiltro
       );
     }
-    return agendamentos.filter(agendamento => 
-      agendamento.cliente.representanteId?.toString() === representanteFiltro
-    );
-  }, [agendamentos, representanteFiltro]);
+    
+    // Filtro por rota
+    if (rotaFiltro === "sem_rota") {
+      filtrados = filtrados.filter(agendamento => !agendamento.cliente.rotaEntregaId);
+    } else if (rotaFiltro !== "todas") {
+      filtrados = filtrados.filter(agendamento => 
+        agendamento.cliente.rotaEntregaId?.toString() === rotaFiltro
+      );
+    }
+    
+    return filtrados;
+  }, [agendamentos, representanteFiltro, rotaFiltro]);
 
   const indicadoresSemana = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, {
@@ -552,6 +567,21 @@ export default function AgendamentoDashboard() {
             {representantes.filter(r => r.ativo).map((rep) => (
               <SelectItem key={rep.id} value={rep.id.toString()}>
                 {rep.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={rotaFiltro} onValueChange={setRotaFiltro}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filtrar por rota" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas as rotas</SelectItem>
+            <SelectItem value="sem_rota">Sem rota</SelectItem>
+            {rotasEntrega.map((rota) => (
+              <SelectItem key={rota.id} value={rota.id.toString()}>
+                {rota.nome}
               </SelectItem>
             ))}
           </SelectContent>
