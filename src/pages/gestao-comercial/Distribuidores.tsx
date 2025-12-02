@@ -1,169 +1,110 @@
-
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Building, Phone, Mail, MapPin, Truck, DollarSign } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-interface Distribuidor {
-  id: string;
-  nome: string;
-  cnpj?: string;
-  endereco?: string;
-  cidade?: string;
-  estado?: string;
-  telefone?: string;
-  email?: string;
-  contatoPrincipal?: string;
-  status: 'Ativo' | 'Inativo' | 'Em Negociação' | 'Suspenso';
-  tipoDistribuicao: 'Regional' | 'Nacional' | 'Local';
-  comissao?: number;
-  volumeMinimo?: number;
-  observacoes?: string;
-  dataContrato?: Date;
-}
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Users, Package, Store, TrendingUp, Check, X, Loader2 } from "lucide-react";
+import { useDistribuidoresExpositores } from "@/hooks/useDistribuidoresExpositores";
 
 export default function Distribuidores() {
-  const [distribuidores, setDistribuidores] = useState<Distribuidor[]>([
-    {
-      id: '1',
-      nome: 'Distribuição Centro-Oeste',
-      cnpj: '12.345.678/0001-90',
-      endereco: 'Rua das Empresas, 123',
-      cidade: 'Goiânia',
-      estado: 'GO',
-      telefone: '(62) 3333-4444',
-      email: 'contato@distco.com',
-      contatoPrincipal: 'Carlos Silva',
-      status: 'Ativo',
-      tipoDistribuicao: 'Regional',
-      comissao: 15,
-      volumeMinimo: 1000,
-      observacoes: 'Principal distribuidor da região Centro-Oeste',
-      dataContrato: new Date('2023-06-01')
-    },
-    {
-      id: '2',
-      nome: 'Alimentos do Norte Ltda',
-      cnpj: '98.765.432/0001-10',
-      endereco: 'Av. Principal, 456',
-      cidade: 'Manaus',
-      estado: 'AM',
-      telefone: '(92) 2222-3333',
-      email: 'vendas@alimentosnorte.com',
-      contatoPrincipal: 'Ana Costa',
-      status: 'Em Negociação',
-      tipoDistribuicao: 'Regional',
-      comissao: 12,
-      volumeMinimo: 800,
-      observacoes: 'Negociando expansão para toda a região Norte',
-      dataContrato: undefined
-    }
-  ]);
+  const { distribuidores, isLoading, metricas, updateExpositores, isUpdating } =
+    useDistribuidoresExpositores();
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [novoDistribuidor, setNovoDistribuidor] = useState<Partial<Distribuidor>>({
-    status: 'Em Negociação',
-    tipoDistribuicao: 'Local'
-  });
+  // Estado para edição inline
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<number>(0);
 
-  const adicionarDistribuidor = () => {
-    if (!novoDistribuidor.nome) return;
-    
-    const distribuidor: Distribuidor = {
-      id: Date.now().toString(),
-      nome: novoDistribuidor.nome,
-      cnpj: novoDistribuidor.cnpj,
-      endereco: novoDistribuidor.endereco,
-      cidade: novoDistribuidor.cidade,
-      estado: novoDistribuidor.estado,
-      telefone: novoDistribuidor.telefone,
-      email: novoDistribuidor.email,
-      contatoPrincipal: novoDistribuidor.contatoPrincipal,
-      status: novoDistribuidor.status as Distribuidor['status'] || 'Em Negociação',
-      tipoDistribuicao: novoDistribuidor.tipoDistribuicao as Distribuidor['tipoDistribuicao'] || 'Local',
-      comissao: novoDistribuidor.comissao,
-      volumeMinimo: novoDistribuidor.volumeMinimo,
-      observacoes: novoDistribuidor.observacoes,
-      dataContrato: novoDistribuidor.status === 'Ativo' ? new Date() : undefined
-    };
-
-    setDistribuidores([...distribuidores, distribuidor]);
-    setNovoDistribuidor({ status: 'Em Negociação', tipoDistribuicao: 'Local' });
-    setIsModalOpen(false);
+  const handleStartEdit = (clienteId: string, currentValue: number) => {
+    setEditingId(clienteId);
+    setEditValue(currentValue);
   };
 
-  const getStatusColor = (status: Distribuidor['status']) => {
+  const handleSaveEdit = (clienteId: string) => {
+    updateExpositores({ clienteId, numeroExpositores: editValue });
+    setEditingId(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditValue(0);
+  };
+
+  const getStatusColor = (status: string | null) => {
     switch (status) {
-      case 'Ativo': return 'bg-green-100 text-green-800';
-      case 'Em Negociação': return 'bg-yellow-100 text-yellow-800';
-      case 'Inativo': return 'bg-gray-100 text-gray-800';
-      case 'Suspenso': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "Ativo":
+        return "bg-emerald-500/10 text-emerald-600 border-emerald-200";
+      case "Inativo":
+        return "bg-red-500/10 text-red-600 border-red-200";
+      case "Standby":
+        return "bg-amber-500/10 text-amber-600 border-amber-200";
+      default:
+        return "bg-muted text-muted-foreground";
     }
   };
 
-  const getTipoColor = (tipo: Distribuidor['tipoDistribuicao']) => {
-    switch (tipo) {
-      case 'Nacional': return 'bg-blue-100 text-blue-800';
-      case 'Regional': return 'bg-purple-100 text-purple-800';
-      case 'Local': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Cards de Resumo */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-600">Distribuidores Ativos</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Distribuidores Ativos</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {distribuidores.filter(d => d.status === 'Ativo').length}
-            </div>
+            <div className="text-2xl font-bold">{metricas.distribuidoresAtivos}</div>
+            <p className="text-xs text-muted-foreground">
+              de {distribuidores.length} cadastrados
+            </p>
           </CardContent>
         </Card>
-        
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-600">Em Negociação</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total de Expositores</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {distribuidores.filter(d => d.status === 'Em Negociação').length}
-            </div>
+            <div className="text-2xl font-bold">{metricas.totalExpositores}</div>
+            <p className="text-xs text-muted-foreground">em uso pelos distribuidores</p>
           </CardContent>
         </Card>
-        
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-600">Regionais</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">PDVs Estimados</CardTitle>
+            <Store className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {distribuidores.filter(d => d.tipoDistribuicao === 'Regional').length}
-            </div>
+            <div className="text-2xl font-bold">{metricas.totalExpositores}</div>
+            <p className="text-xs text-muted-foreground">1 expositor = 1 PDV</p>
           </CardContent>
         </Card>
-        
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-purple-600">Volume Mensal (mil unidades)</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Giro Semanal Total</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {distribuidores.filter(d => d.status === 'Ativo')
-                .reduce((acc, d) => acc + (d.volumeMinimo || 0), 0)}
-            </div>
+            <div className="text-2xl font-bold">{metricas.giroSemanalTotal}</div>
+            <p className="text-xs text-muted-foreground">unidades/semana</p>
           </CardContent>
         </Card>
       </div>
@@ -171,287 +112,117 @@ export default function Distribuidores() {
       {/* Tabela de Distribuidores */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Rede de Distribuidores</CardTitle>
-              <CardDescription>Gerencie sua rede de distribuição e parcerias comerciais</CardDescription>
-            </div>
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Distribuidor
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Adicionar Novo Distribuidor</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <Label htmlFor="nome">Razão Social *</Label>
-                      <Input
-                        id="nome"
-                        value={novoDistribuidor.nome || ''}
-                        onChange={(e) => setNovoDistribuidor({ ...novoDistribuidor, nome: e.target.value })}
-                        placeholder="Nome da empresa distribuidora"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="cnpj">CNPJ</Label>
-                      <Input
-                        id="cnpj"
-                        value={novoDistribuidor.cnpj || ''}
-                        onChange={(e) => setNovoDistribuidor({ ...novoDistribuidor, cnpj: e.target.value })}
-                        placeholder="00.000.000/0000-00"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="contatoPrincipal">Contato Principal</Label>
-                      <Input
-                        id="contatoPrincipal"
-                        value={novoDistribuidor.contatoPrincipal || ''}
-                        onChange={(e) => setNovoDistribuidor({ ...novoDistribuidor, contatoPrincipal: e.target.value })}
-                        placeholder="Nome do contato"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="endereco">Endereço</Label>
-                    <Input
-                      id="endereco"
-                      value={novoDistribuidor.endereco || ''}
-                      onChange={(e) => setNovoDistribuidor({ ...novoDistribuidor, endereco: e.target.value })}
-                      placeholder="Endereço completo"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="cidade">Cidade</Label>
-                      <Input
-                        id="cidade"
-                        value={novoDistribuidor.cidade || ''}
-                        onChange={(e) => setNovoDistribuidor({ ...novoDistribuidor, cidade: e.target.value })}
-                        placeholder="Nome da cidade"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="estado">Estado</Label>
-                      <Input
-                        id="estado"
-                        value={novoDistribuidor.estado || ''}
-                        onChange={(e) => setNovoDistribuidor({ ...novoDistribuidor, estado: e.target.value })}
-                        placeholder="UF"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="telefone">Telefone</Label>
-                      <Input
-                        id="telefone"
-                        value={novoDistribuidor.telefone || ''}
-                        onChange={(e) => setNovoDistribuidor({ ...novoDistribuidor, telefone: e.target.value })}
-                        placeholder="(00) 0000-0000"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={novoDistribuidor.email || ''}
-                        onChange={(e) => setNovoDistribuidor({ ...novoDistribuidor, email: e.target.value })}
-                        placeholder="contato@distribuidor.com"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="status">Status</Label>
-                      <Select value={novoDistribuidor.status} onValueChange={(value) => setNovoDistribuidor({ ...novoDistribuidor, status: value as Distribuidor['status'] })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Em Negociação">Em Negociação</SelectItem>
-                          <SelectItem value="Ativo">Ativo</SelectItem>
-                          <SelectItem value="Inativo">Inativo</SelectItem>
-                          <SelectItem value="Suspenso">Suspenso</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="tipoDistribuicao">Tipo de Distribuição</Label>
-                      <Select value={novoDistribuidor.tipoDistribuicao} onValueChange={(value) => setNovoDistribuidor({ ...novoDistribuidor, tipoDistribuicao: value as Distribuidor['tipoDistribuicao'] })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Local">Local</SelectItem>
-                          <SelectItem value="Regional">Regional</SelectItem>
-                          <SelectItem value="Nacional">Nacional</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="comissao">Comissão (%)</Label>
-                      <Input
-                        id="comissao"
-                        type="number"
-                        value={novoDistribuidor.comissao || ''}
-                        onChange={(e) => setNovoDistribuidor({ ...novoDistribuidor, comissao: Number(e.target.value) })}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="volumeMinimo">Volume Mínimo (unidades/mês)</Label>
-                    <Input
-                      id="volumeMinimo"
-                      type="number"
-                      value={novoDistribuidor.volumeMinimo || ''}
-                      onChange={(e) => setNovoDistribuidor({ ...novoDistribuidor, volumeMinimo: Number(e.target.value) })}
-                      placeholder="0"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="observacoes">Observações</Label>
-                    <Textarea
-                      id="observacoes"
-                      value={novoDistribuidor.observacoes || ''}
-                      onChange={(e) => setNovoDistribuidor({ ...novoDistribuidor, observacoes: e.target.value })}
-                      placeholder="Observações sobre o distribuidor..."
-                      rows={3}
-                    />
-                  </div>
-                  
-                  <div className="flex gap-2 pt-4">
-                    <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-                      Cancelar
-                    </Button>
-                    <Button onClick={adicionarDistribuidor}>
-                      Adicionar Distribuidor
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <CardTitle>Distribuidores</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Distribuidor</TableHead>
-                <TableHead>Localização</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Comissão</TableHead>
-                <TableHead className="text-right">Vol. Mínimo</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {distribuidores.map((distribuidor) => (
-                <TableRow key={distribuidor.id}>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="font-medium flex items-center gap-2">
-                        <Building className="h-4 w-4" />
-                        {distribuidor.nome}
-                      </div>
-                      {distribuidor.cnpj && (
-                        <div className="text-sm text-muted-foreground">
-                          CNPJ: {distribuidor.cnpj}
-                        </div>
-                      )}
-                      {distribuidor.contatoPrincipal && (
-                        <div className="text-sm text-muted-foreground">
-                          Contato: {distribuidor.contatoPrincipal}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      {distribuidor.endereco && (
-                        <div className="text-sm flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {distribuidor.endereco}
-                        </div>
-                      )}
-                      {(distribuidor.cidade || distribuidor.estado) && (
-                        <div className="text-sm text-muted-foreground">
-                          {distribuidor.cidade}{distribuidor.cidade && distribuidor.estado ? ', ' : ''}{distribuidor.estado}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      {distribuidor.email && (
-                        <div className="text-sm flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          {distribuidor.email}
-                        </div>
-                      )}
-                      {distribuidor.telefone && (
-                        <div className="text-sm flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {distribuidor.telefone}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getTipoColor(distribuidor.tipoDistribuicao)}>
-                      {distribuidor.tipoDistribuicao}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(distribuidor.status)}>
-                      {distribuidor.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {distribuidor.comissao && (
-                      <div className="flex items-center justify-end gap-1">
-                        <DollarSign className="h-3 w-3" />
-                        {distribuidor.comissao}%
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {distribuidor.volumeMinimo && (
-                      <div className="flex items-center justify-end gap-1">
-                        <Truck className="h-3 w-3" />
-                        {distribuidor.volumeMinimo.toLocaleString()}
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          
-          {distribuidores.length === 0 && (
+          {distribuidores.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              Nenhum distribuidor cadastrado ainda.
+              <Store className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Nenhum distribuidor cadastrado</p>
+              <p className="text-sm">
+                Cadastre clientes com a categoria "Distribuidor" para visualizá-los aqui
+              </p>
             </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Distribuidor</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-center">Expositores</TableHead>
+                  <TableHead className="text-center">PDVs Est.</TableHead>
+                  <TableHead className="text-center">Giro Médio</TableHead>
+                  <TableHead className="text-center">Giro/Expositor</TableHead>
+                  <TableHead>Contato</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {distribuidores.map((distribuidor) => {
+                  const giroExpositor =
+                    distribuidor.numero_expositores > 0
+                      ? ((distribuidor.giro_medio_semanal ?? 0) /
+                          distribuidor.numero_expositores).toFixed(1)
+                      : "-";
+
+                  return (
+                    <TableRow key={distribuidor.cliente_id}>
+                      <TableCell className="font-medium">{distribuidor.nome}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={getStatusColor(distribuidor.status_cliente)}
+                        >
+                          {distribuidor.status_cliente ?? "N/A"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {editingId === distribuidor.cliente_id ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={editValue}
+                              onChange={(e) => setEditValue(parseInt(e.target.value) || 0)}
+                              className="w-16 h-8 text-center"
+                              autoFocus
+                            />
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() => handleSaveEdit(distribuidor.cliente_id)}
+                              disabled={isUpdating}
+                            >
+                              <Check className="h-4 w-4 text-emerald-600" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={handleCancelEdit}
+                            >
+                              <X className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            className="h-8 px-3 font-mono"
+                            onClick={() =>
+                              handleStartEdit(
+                                distribuidor.cliente_id,
+                                distribuidor.numero_expositores
+                              )
+                            }
+                          >
+                            {distribuidor.numero_expositores}
+                          </Button>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center font-mono">
+                        {distribuidor.numero_expositores}
+                      </TableCell>
+                      <TableCell className="text-center font-mono">
+                        {distribuidor.giro_medio_semanal ?? 0}
+                      </TableCell>
+                      <TableCell className="text-center font-mono">{giroExpositor}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {distribuidor.contato_nome && (
+                            <div className="text-foreground">{distribuidor.contato_nome}</div>
+                          )}
+                          {distribuidor.contato_telefone && (
+                            <div className="text-muted-foreground">
+                              {distribuidor.contato_telefone}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
