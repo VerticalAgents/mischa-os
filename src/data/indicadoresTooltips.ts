@@ -5,15 +5,19 @@ import { ExplicacaoCalculoProps } from "@/components/common/TooltipExplicativo";
  * Usado em todo o sistema para garantir consistência nas explicações.
  */
 export const GIRO_TOOLTIPS: Record<string, ExplicacaoCalculoProps> = {
-  // === INDICADORES DE CLIENTES ===
+  // === INDICADORES DE CLIENTES/PDVs ===
   clientesAtivos: {
-    titulo: "Clientes Ativos",
-    explicacao: "Número de clientes com status 'Ativo', representando PDVs que recebem entregas regularmente.",
+    titulo: "Total de PDVs",
+    explicacao: "Número total de pontos de venda atendidos, incluindo clientes diretos e PDVs estimados via distribuidores.",
+    formula: "Clientes Ativos (não-distribuidores) + Expositores de Distribuidores Ativos",
+    exemplo: "20 clientes diretos + 11 expositores de distribuidores = 31 PDVs",
     observacoes: [
-      "Exclui clientes inativos, em análise, standby e pipeline",
-      "Base para cálculos de giro médio"
+      "PDVs diretos: clientes ativos que não são distribuidores",
+      "PDVs indiretos: expositores cadastrados nos distribuidores ativos",
+      "Distribuidores não contam como PDV, apenas seus expositores",
+      "Base para cálculo do giro médio por PDV"
     ],
-    fontes: ["Cadastro de Clientes"]
+    fontes: ["Cadastro de Clientes", "Distribuidores/Expositores"]
   },
   
   totalClientes: {
@@ -54,16 +58,16 @@ export const GIRO_TOOLTIPS: Record<string, ExplicacaoCalculoProps> = {
   
   giroMedioPorPDV: {
     titulo: "Giro Médio por PDV",
-    explicacao: "Média de unidades por PDV ativo, calculada com base nas últimas 4 semanas e comparada ao histórico.",
-    formula: "Giro Total (4 semanas) ÷ Número de Clientes Ativos",
-    exemplo: "Giro 4 sem. = 1.920, 10 ativos = 192 unidades/PDV/mês (48/semana)",
+    explicacao: "Média de unidades por PDV, incluindo PDVs diretos e indiretos (via distribuidores).",
+    formula: "Giro Total (4 semanas) ÷ Total de PDVs",
+    exemplo: "Giro 4 sem. = 1.920, 31 PDVs = ~62 unidades/PDV/semana",
     observacoes: [
-      "Considera apenas clientes com status Ativo",
+      "Total de PDVs = clientes diretos + expositores de distribuidores",
       "Verde (+) indica melhora, vermelho (-) indica queda",
-      "Útil para comparar performance entre períodos",
+      "Considera toda a rede de distribuição estimada",
       "Cálculo unificado em todo o sistema"
     ],
-    fontes: ["Histórico de Entregas", "Cadastro de Clientes"]
+    fontes: ["Histórico de Entregas", "Cadastro de Clientes", "Distribuidores/Expositores"]
   },
   
   totalUltimos30Dias: {
