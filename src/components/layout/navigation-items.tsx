@@ -4,7 +4,8 @@ import {
   BarChart3, Users, Tag, Clipboard, 
   ShoppingBag, Settings, Layers, Truck, FileText,
   Cpu, PackageCheck, DollarSign, LineChart, Receipt,
-  BarChart, Building, HelpingHand, UserCircle, TrendingUp, Calculator, Home, BookOpen, MapPin
+  BarChart, Building, HelpingHand, UserCircle, TrendingUp, Calculator, Home, BookOpen, MapPin,
+  Shield
 } from "lucide-react";
 
 export type MenuItem = {
@@ -16,7 +17,7 @@ export type MenuItem = {
 export type MenuGroup = {
   title: string;
   items: MenuItem[];
-  variant: 'operational' | 'tactical' | 'strategic' | 'system' | 'main';
+  variant: 'operational' | 'tactical' | 'strategic' | 'system' | 'main' | 'admin';
 };
 
 export const menuGroups: MenuGroup[] = [
@@ -122,6 +123,17 @@ export const menuGroups: MenuGroup[] = [
         label: "Configurações",
         path: "/configuracoes",
         icon: <Settings className="h-4 w-4" />,
+      },
+    ]
+  },
+  {
+    title: "Administração",
+    variant: "admin",
+    items: [
+      {
+        label: "Segurança",
+        path: "/seguranca",
+        icon: <Shield className="h-4 w-4" />,
       },
     ]
   }

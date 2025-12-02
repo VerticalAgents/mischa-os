@@ -48,6 +48,7 @@ const AuthPage = lazy(() => import('@/pages/auth/AuthPage'));
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const FichaPreview = lazy(() => import('@/pages/fichas-tecnicas/Preview'));
+const Security = lazy(() => import('@/pages/Security'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -257,6 +258,13 @@ function App() {
                      <Route path="/fichas-tecnicas/preview" element={
                        <ProtectedRoute>
                          <FichaPreview />
+                       </ProtectedRoute>
+                     } />
+                     <Route path="/seguranca" element={
+                       <ProtectedRoute>
+                         <AppLayout>
+                           <Security />
+                         </AppLayout>
                        </ProtectedRoute>
                      } />
                        <Route path="*" element={<NotFound />} />
