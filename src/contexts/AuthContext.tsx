@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -119,6 +119,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const navigate = useNavigate();
+  
+  // Refs para evitar loops infinitos em useEffects
+  const userRef = useRef<User | null>(null);
+  const sessionRef = useRef<Session | null>(null);
+  
+  // Manter refs atualizados
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+  
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   // Função para renovar sessão
   const refreshSession = async () => {
@@ -228,25 +241,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         if (event === 'SIGNED_OUT') {
-          // Log logout
-          if (user) {
+          // Log logout - usar ref para evitar dependência de estado
+          const currentUser = userRef.current;
+          if (currentUser) {
             setTimeout(() => {
               logAuditEvent(
-                user.id,
+                currentUser.id,
                 'LOGOUT',
                 'auth',
-                user.id,
+                currentUser.id,
                 {
-                  user_id: user.id,
-                  email: user.email,
+                  user_id: currentUser.id,
+                  email: currentUser.email,
                   timestamp: new Date().toISOString()
                 }
               );
               
               logSecurityEvent('USER_LOGOUT', {
-                user_id: user.id,
-                email: user.email
-              }, user.id);
+                user_id: currentUser.id,
+                email: currentUser.email
+              }, currentUser.id);
             }, 0);
           }
 
@@ -281,10 +295,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     });
 
-    // Set up periodic session check (every 2 minutes)
+    // Set up periodic session check (every 2 minutes) - usar ref para evitar recriação
     const sessionCheckInterval = setInterval(() => {
-      if (session) {
-        checkSessionExpiry(session);
+      const currentSession = sessionRef.current;
+      if (currentSession) {
+        checkSessionExpiry(currentSession);
       }
     }, 2 * 60 * 1000);
 
@@ -292,7 +307,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       subscription.unsubscribe();
       clearInterval(sessionCheckInterval);
     };
-  }, [navigate, isInitialized, user]);
+  }, [navigate, isInitialized]); // Removido 'user' das dependências
 
   const signInWithEmail = async (email: string, password: string): Promise<void> => {
     try {
