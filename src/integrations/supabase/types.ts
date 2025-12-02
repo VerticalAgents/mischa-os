@@ -632,6 +632,48 @@ export type Database = {
         }
         Relationships: []
       }
+      distribuidores_expositores: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          id: string
+          numero_expositores: number
+          observacoes: string | null
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          id?: string
+          numero_expositores?: number
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          id?: string
+          numero_expositores?: number
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distribuidores_expositores_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "distribuidores_expositores_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: true
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       formas_pagamento: {
         Row: {
           ativo: boolean
