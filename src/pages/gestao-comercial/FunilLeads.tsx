@@ -124,8 +124,7 @@ export default function FunilLeads() {
     const totalEfetivados = leads.filter(l => 
       l.status === 'efetivado_imediato' ||
       l.status === 'efetivado_wpp' ||
-      l.status === 'efetivado_presencial' ||
-      l.status === 'efetivado_inbound'
+      l.status === 'efetivado_presencial'
     ).length;
     
     const totalPerdidos = leads.filter(l =>
