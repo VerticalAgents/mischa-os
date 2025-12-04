@@ -97,6 +97,13 @@ export default function LeadStatusChanger({ onStatusChange, currentStatus }: Lea
         >
           ✅ Fechado Presencial → Cadastrar Cliente
         </DropdownMenuItem>
+        <DropdownMenuItem 
+          onClick={() => onStatusChange('efetivado_inbound')} 
+          disabled={currentStatus === 'efetivado_inbound'}
+          className="text-cyan-600 font-medium"
+        >
+          ✅ Fechado Inbound → Cadastrar Cliente
+        </DropdownMenuItem>
         
         <DropdownMenuSeparator />
         
