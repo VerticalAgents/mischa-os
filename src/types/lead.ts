@@ -17,6 +17,7 @@ export type LeadStatus =
   | 'efetivado_imediato'
   | 'efetivado_wpp'
   | 'efetivado_presencial'
+  | 'efetivado_inbound'
 
   // Estágio 4: Perda (Fim)
   | 'perdido_imediato'
@@ -78,6 +79,7 @@ export const STATUS_LABELS: Record<LeadStatus, string> = {
   'efetivado_imediato': '✅ Fechado na Hora',
   'efetivado_wpp': '✅ Fechado WhatsApp',
   'efetivado_presencial': '✅ Fechado Presencial',
+  'efetivado_inbound': '✅ Fechado Inbound',
   
   // Perda
   'perdido_imediato': '❌ Perdido Imediato',
@@ -104,6 +106,7 @@ export const STATUS_COLORS: Record<LeadStatus, string> = {
   'efetivado_imediato': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
   'efetivado_wpp': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400',
   'efetivado_presencial': 'bg-teal-100 text-teal-800 dark:bg-teal-900/20 dark:text-teal-400',
+  'efetivado_inbound': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-400',
   
   // Perda (FRACASSO) - Vermelho/Cinza
   'perdido_imediato': 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',

@@ -124,7 +124,8 @@ export default function FunilLeads() {
     const totalEfetivados = leads.filter(l => 
       l.status === 'efetivado_imediato' ||
       l.status === 'efetivado_wpp' ||
-      l.status === 'efetivado_presencial'
+      l.status === 'efetivado_presencial' ||
+      l.status === 'efetivado_inbound'
     ).length;
     
     const totalPerdidos = leads.filter(l =>
@@ -142,6 +143,7 @@ export default function FunilLeads() {
     const efetivadosImediato = leads.filter(l => l.status === 'efetivado_imediato').length;
     const efetivadosWpp = leads.filter(l => l.status === 'efetivado_wpp').length;
     const efetivadosPresencial = leads.filter(l => l.status === 'efetivado_presencial').length;
+    const efetivadosInbound = leads.filter(l => l.status === 'efetivado_inbound').length;
     
     // Contatos capturados (leads com telefone preenchido)
     const contatosCapturados = leads.filter(l => 
@@ -166,6 +168,7 @@ export default function FunilLeads() {
       efetivadosImediato,
       efetivadosWpp,
       efetivadosPresencial,
+      efetivadosInbound,
       totalPerdidos,
       
       // Extra
@@ -272,7 +275,7 @@ export default function FunilLeads() {
       </div>
 
       {/* === GRUPO 4: RESULTADOS === */}
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
+      <div className="grid gap-4 md:grid-cols-5 mb-6">
         <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Vendas Totais</CardTitle>
@@ -316,6 +319,17 @@ export default function FunilLeads() {
             <p className="text-xs text-muted-foreground">No retorno</p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Fechados Inbound</CardTitle>
+            <Phone className="h-4 w-4 text-cyan-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.efetivadosInbound}</div>
+            <p className="text-xs text-muted-foreground">Cliente veio até nós</p>
+          </CardContent>
+        </Card>
       </div>
       {/* Main Content */}
       <Card>
@@ -343,6 +357,7 @@ export default function FunilLeads() {
                   <SelectItem value="efetivado_imediato">Fechado na Hora</SelectItem>
                   <SelectItem value="efetivado_wpp">Fechado WhatsApp</SelectItem>
                   <SelectItem value="efetivado_presencial">Fechado Presencial</SelectItem>
+                  <SelectItem value="efetivado_inbound">Fechado Inbound</SelectItem>
                   <SelectItem value="perdido_imediato">Perdido Imediato</SelectItem>
                   <SelectItem value="perdido_wpp">Perdido WhatsApp</SelectItem>
                   <SelectItem value="perdido_presencial">Perdido Presencial</SelectItem>
