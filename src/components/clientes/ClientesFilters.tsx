@@ -58,8 +58,8 @@ export default function ClientesFilters({
       <div className="relative flex-1">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input 
-          placeholder="Buscar por nome ou CNPJ/CPF..." 
-          className="pl-8" 
+          placeholder="Buscar por nome, CNPJ/CPF ou endereço..." 
+          className="pl-8"
           value={filtros.termo} 
           onChange={e => setFiltroTermo(e.target.value)} 
         />
