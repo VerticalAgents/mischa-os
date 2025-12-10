@@ -3,7 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
@@ -47,6 +49,8 @@ export default function AgendamentoDashboard() {
   const [rotaFiltro, setRotaFiltro] = useState<string>("todas");
   const [agendamentosSelecionados, setAgendamentosSelecionados] = useState<Set<string>>(new Set());
   const [modalReagendarAberto, setModalReagendarAberto] = useState(false);
+  const [modoGraficoStatus, setModoGraficoStatus] = useState<'agendamentos' | 'unidades'>('agendamentos');
+  const [modoGraficoSemanal, setModoGraficoSemanal] = useState<'agendamentos' | 'unidades'>('agendamentos');
 
   useEffect(() => {
     const loadData = async () => {
@@ -137,15 +141,22 @@ export default function AgendamentoDashboard() {
       return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana;
     });
     
+    // Calcular contagem e unidades por status
     const contadores = agendamentosSemana.reduce((acc, agendamento) => {
       const status = agendamento.statusAgendamento;
-      acc[status] = (acc[status] || 0) + 1;
+      const unidades = agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0;
+      if (!acc[status]) {
+        acc[status] = { quantidade: 0, unidades: 0 };
+      }
+      acc[status].quantidade += 1;
+      acc[status].unidades += unidades;
       return acc;
-    }, {} as Record<string, number>);
+    }, {} as Record<string, { quantidade: number; unidades: number }>);
     
-    const data = Object.entries(contadores).map(([status, count]) => ({
+    const data = Object.entries(contadores).map(([status, valores]) => ({
       status,
-      quantidade: count,
+      quantidade: valores.quantidade,
+      unidades: valores.unidades,
       cor: status === "Previsto" ? "#F59E0B" : status === "Agendado" ? "#10B981" : "#EF4444"
     }));
     
@@ -153,12 +164,14 @@ export default function AgendamentoDashboard() {
     const entregasRealizadasSemana = entregasHistorico.filter(entrega => {
       const dataEntrega = new Date(entrega.data);
       return dataEntrega >= inicioSemana && dataEntrega <= fimSemana && entrega.tipo === 'entrega';
-    }).length;
+    });
     
-    if (entregasRealizadasSemana > 0) {
+    if (entregasRealizadasSemana.length > 0) {
+      const unidadesRealizadas = entregasRealizadasSemana.reduce((sum, e) => sum + (e.quantidade || 0), 0);
       data.push({
         status: "Realizadas",
-        quantidade: entregasRealizadasSemana,
+        quantidade: entregasRealizadasSemana.length,
+        unidades: unidadesRealizadas,
         cor: "#3B82F6"
       });
     }
@@ -167,37 +180,42 @@ export default function AgendamentoDashboard() {
   }, [agendamentosFiltrados, semanaAtual, entregasHistorico]);
 
   const dadosGraficoSemanal = useMemo(() => {
-    const inicioSemana = startOfWeek(semanaAtual, {
-      weekStartsOn: 1
-    });
-    const fimSemana = endOfWeek(semanaAtual, {
-      weekStartsOn: 1
-    });
-    const diasSemana = eachDayOfInterval({
-      start: inicioSemana,
-      end: fimSemana
-    });
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const diasSemana = eachDayOfInterval({ start: inicioSemana, end: fimSemana });
+    
     return diasSemana.map(dia => {
-      const agendamentosDia = agendamentosFiltrados.filter(agendamento => isSameDay(new Date(agendamento.dataReposicao), dia));
-      const previstos = agendamentosDia.filter(a => a.statusAgendamento === "Previsto").length;
-      const confirmados = agendamentosDia.filter(a => a.statusAgendamento === "Agendado").length;
+      const agendamentosDia = agendamentosFiltrados.filter(agendamento => 
+        isSameDay(new Date(agendamento.dataReposicao), dia)
+      );
       
-      // Adicionar entregas realizadas do dia
+      const agendamentosPrevistos = agendamentosDia.filter(a => a.statusAgendamento === "Previsto");
+      const agendamentosConfirmados = agendamentosDia.filter(a => a.statusAgendamento === "Agendado");
+      
+      // Calcular unidades
+      const unidadesPrevistos = agendamentosPrevistos.reduce((sum, a) => 
+        sum + (a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0), 0
+      );
+      const unidadesConfirmados = agendamentosConfirmados.reduce((sum, a) => 
+        sum + (a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0), 0
+      );
+      
+      // Entregas realizadas do dia
       const entregasRealizadasDia = entregasHistorico.filter(entrega => 
         isSameDay(new Date(entrega.data), dia) && entrega.tipo === 'entrega'
-      ).length;
+      );
+      const unidadesRealizadas = entregasRealizadasDia.reduce((sum, e) => sum + (e.quantidade || 0), 0);
       
       return {
-        dia: format(dia, 'dd/MM', {
-          locale: ptBR
-        }),
-        diaSemana: format(dia, 'EEEE', {
-          locale: ptBR
-        }),
-        previstos,
-        confirmados,
-        realizadas: entregasRealizadasDia,
-        total: previstos + confirmados,
+        dia: format(dia, 'dd/MM', { locale: ptBR }),
+        diaSemana: format(dia, 'EEEE', { locale: ptBR }),
+        previstos: agendamentosPrevistos.length,
+        confirmados: agendamentosConfirmados.length,
+        realizadas: entregasRealizadasDia.length,
+        previstosUnidades: unidadesPrevistos,
+        confirmadosUnidades: unidadesConfirmados,
+        realizadasUnidades: unidadesRealizadas,
+        total: agendamentosPrevistos.length + agendamentosConfirmados.length,
         isToday: isToday(dia),
         dataCompleta: dia
       };
@@ -661,21 +679,44 @@ export default function AgendamentoDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gráfico de Status */}
         <Card>
-          <CardHeader>
-            <CardTitle>Distribuição por Status</CardTitle>
-            <CardDescription className="text-left">Visão geral dos agendamentos por status</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Distribuição por Status</CardTitle>
+              <CardDescription className="text-left">
+                {modoGraficoStatus === 'unidades' ? 'Volume de unidades por status' : 'Visão geral dos agendamentos por status'}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="toggle-status" className="text-xs text-muted-foreground">
+                {modoGraficoStatus === 'unidades' ? 'Unidades' : 'Agendamentos'}
+              </Label>
+              <Switch
+                id="toggle-status"
+                checked={modoGraficoStatus === 'unidades'}
+                onCheckedChange={(checked) => setModoGraficoStatus(checked ? 'unidades' : 'agendamentos')}
+              />
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                  <PieChart>
-                  <Pie data={dadosGraficoStatus} cx="50%" cy="50%" labelLine={false} label={({
-                  status,
-                  quantidade
-                }) => `${status}: ${quantidade}`} outerRadius={80} fill="#8884d8" dataKey="quantidade">
+                  <Pie 
+                    data={dadosGraficoStatus} 
+                    cx="50%" 
+                    cy="50%" 
+                    labelLine={false} 
+                    label={({ status, quantidade, unidades }) => 
+                      `${status}: ${modoGraficoStatus === 'unidades' ? unidades : quantidade}`
+                    } 
+                    outerRadius={80} 
+                    fill="#8884d8" 
+                    dataKey={modoGraficoStatus === 'unidades' ? 'unidades' : 'quantidade'}
+                  >
                     {dadosGraficoStatus.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip formatter={(value: number) => [value, modoGraficoStatus === 'unidades' ? 'Unidades' : 'Agendamentos']} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -684,9 +725,24 @@ export default function AgendamentoDashboard() {
 
         {/* Gráfico Semanal */}
         <Card>
-          <CardHeader>
-            <CardTitle>Agendamentos por Dia da Semana</CardTitle>
-            <CardDescription className="text-left">Distribuição dos agendamentos ao longo da semana</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Agendamentos por Dia da Semana</CardTitle>
+              <CardDescription className="text-left">
+                {modoGraficoSemanal === 'unidades' ? 'Volume de unidades ao longo da semana' : 'Distribuição dos agendamentos ao longo da semana'}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="toggle-semanal" className="text-xs text-muted-foreground">
+                {modoGraficoSemanal === 'unidades' ? 'Unidades' : 'Agendamentos'}
+              </Label>
+              <Switch
+                id="toggle-semanal"
+                checked={modoGraficoSemanal === 'unidades'}
+                onCheckedChange={(checked) => setModoGraficoSemanal(checked ? 'unidades' : 'agendamentos')}
+              />
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="h-80">
@@ -695,10 +751,25 @@ export default function AgendamentoDashboard() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="dia" />
                   <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="previstos" stackId="a" fill="#F59E0B" name="Previstos" />
-                  <Bar dataKey="confirmados" stackId="a" fill="#10B981" name="Confirmados" />
-                  <Bar dataKey="realizadas" stackId="a" fill="#3B82F6" name="Realizadas" />
+                  <Tooltip formatter={(value: number) => [value, modoGraficoSemanal === 'unidades' ? 'Unidades' : 'Agendamentos']} />
+                  <Bar 
+                    dataKey={modoGraficoSemanal === 'unidades' ? 'previstosUnidades' : 'previstos'} 
+                    stackId="a" 
+                    fill="#F59E0B" 
+                    name="Previstos" 
+                  />
+                  <Bar 
+                    dataKey={modoGraficoSemanal === 'unidades' ? 'confirmadosUnidades' : 'confirmados'} 
+                    stackId="a" 
+                    fill="#10B981" 
+                    name="Confirmados" 
+                  />
+                  <Bar 
+                    dataKey={modoGraficoSemanal === 'unidades' ? 'realizadasUnidades' : 'realizadas'} 
+                    stackId="a" 
+                    fill="#3B82F6" 
+                    name="Realizadas" 
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
