@@ -206,14 +206,17 @@ export default function AgendamentoDashboard() {
 
   const agendamentosDiaSelecionado = useMemo(() => {
     if (!diaSelecionado) return [];
-    const agendamentosFiltered = agendamentosFiltrados.filter(agendamento => isSameDay(new Date(agendamento.dataReposicao), diaSelecionado));
+    
+    // Filtrar agendamentos do dia, excluindo status "Agendar"
+    const agendamentosFiltered = agendamentosFiltrados.filter(agendamento => 
+      isSameDay(new Date(agendamento.dataReposicao), diaSelecionado) &&
+      agendamento.statusAgendamento !== "Agendar"
+    );
 
     // Ordenar: Agendados primeiro, depois Previstos
     return agendamentosFiltered.sort((a, b) => {
-      // Primeiro critério: status (Agendado > Previsto)
-      if (a.statusAgendamento === "Agendado" && b.statusAgendamento === "Previsto") return -1;
-      if (a.statusAgendamento === "Previsto" && b.statusAgendamento === "Agendado") return 1;
-      
+      if (a.statusAgendamento === "Agendado" && b.statusAgendamento !== "Agendado") return -1;
+      if (a.statusAgendamento !== "Agendado" && b.statusAgendamento === "Agendado") return 1;
       return 0;
     });
   }, [agendamentosFiltrados, diaSelecionado]);
