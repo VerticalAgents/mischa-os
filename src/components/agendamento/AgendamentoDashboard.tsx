@@ -49,8 +49,7 @@ export default function AgendamentoDashboard() {
   const [rotaFiltro, setRotaFiltro] = useState<string>("todas");
   const [agendamentosSelecionados, setAgendamentosSelecionados] = useState<Set<string>>(new Set());
   const [modalReagendarAberto, setModalReagendarAberto] = useState(false);
-  const [modoGraficoStatus, setModoGraficoStatus] = useState<'agendamentos' | 'unidades'>('agendamentos');
-  const [modoGraficoSemanal, setModoGraficoSemanal] = useState<'agendamentos' | 'unidades'>('agendamentos');
+  const [modoGraficos, setModoGraficos] = useState<'agendamentos' | 'unidades'>('agendamentos');
 
   useEffect(() => {
     const loadData = async () => {
@@ -141,22 +140,24 @@ export default function AgendamentoDashboard() {
       return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana;
     });
     
-    // Calcular contagem e unidades por status
+    // Calcular contagem, unidades e lista de clientes por status
     const contadores = agendamentosSemana.reduce((acc, agendamento) => {
       const status = agendamento.statusAgendamento;
       const unidades = agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0;
       if (!acc[status]) {
-        acc[status] = { quantidade: 0, unidades: 0 };
+        acc[status] = { quantidade: 0, unidades: 0, clientes: [] as string[] };
       }
       acc[status].quantidade += 1;
       acc[status].unidades += unidades;
+      acc[status].clientes.push(agendamento.cliente.nome);
       return acc;
-    }, {} as Record<string, { quantidade: number; unidades: number }>);
+    }, {} as Record<string, { quantidade: number; unidades: number; clientes: string[] }>);
     
     const data = Object.entries(contadores).map(([status, valores]) => ({
       status,
       quantidade: valores.quantidade,
       unidades: valores.unidades,
+      clientes: valores.clientes,
       cor: status === "Previsto" ? "#F59E0B" : status === "Agendado" ? "#10B981" : "#EF4444"
     }));
     
@@ -168,16 +169,22 @@ export default function AgendamentoDashboard() {
     
     if (entregasRealizadasSemana.length > 0) {
       const unidadesRealizadas = entregasRealizadasSemana.reduce((sum, e) => sum + (e.quantidade || 0), 0);
+      // Buscar nomes dos clientes das entregas realizadas
+      const clientesRealizadas = entregasRealizadasSemana.map(e => {
+        const cliente = clientes.find(c => c.id === e.cliente_id);
+        return cliente?.nome || 'Cliente';
+      });
       data.push({
         status: "Realizadas",
         quantidade: entregasRealizadasSemana.length,
         unidades: unidadesRealizadas,
+        clientes: clientesRealizadas,
         cor: "#3B82F6"
       });
     }
     
     return data;
-  }, [agendamentosFiltrados, semanaAtual, entregasHistorico]);
+  }, [agendamentosFiltrados, semanaAtual, entregasHistorico, clientes]);
 
   const dadosGraficoSemanal = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
@@ -206,6 +213,14 @@ export default function AgendamentoDashboard() {
       );
       const unidadesRealizadas = entregasRealizadasDia.reduce((sum, e) => sum + (e.quantidade || 0), 0);
       
+      // Lista de clientes
+      const clientesPrevistos = agendamentosPrevistos.map(a => a.cliente.nome);
+      const clientesConfirmados = agendamentosConfirmados.map(a => a.cliente.nome);
+      const clientesRealizadas = entregasRealizadasDia.map(e => {
+        const cliente = clientes.find(c => c.id === e.cliente_id);
+        return cliente?.nome || 'Cliente';
+      });
+      
       return {
         dia: format(dia, 'dd/MM', { locale: ptBR }),
         diaSemana: format(dia, 'EEEE', { locale: ptBR }),
@@ -215,12 +230,15 @@ export default function AgendamentoDashboard() {
         previstosUnidades: unidadesPrevistos,
         confirmadosUnidades: unidadesConfirmados,
         realizadasUnidades: unidadesRealizadas,
+        clientesPrevistos,
+        clientesConfirmados,
+        clientesRealizadas,
         total: agendamentosPrevistos.length + agendamentosConfirmados.length,
         isToday: isToday(dia),
         dataCompleta: dia
       };
     });
-  }, [agendamentosFiltrados, semanaAtual, entregasHistorico]);
+  }, [agendamentosFiltrados, semanaAtual, entregasHistorico, clientes]);
 
   const agendamentosDiaSelecionado = useMemo(() => {
     if (!diaSelecionado) return [];
@@ -683,17 +701,17 @@ export default function AgendamentoDashboard() {
             <div>
               <CardTitle>Distribuição por Status</CardTitle>
               <CardDescription className="text-left">
-                {modoGraficoStatus === 'unidades' ? 'Volume de unidades por status' : 'Visão geral dos agendamentos por status'}
+                {modoGraficos === 'unidades' ? 'Volume de unidades por status' : 'Visão geral dos agendamentos por status'}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Label htmlFor="toggle-status" className="text-xs text-muted-foreground">
-                {modoGraficoStatus === 'unidades' ? 'Unidades' : 'Agendamentos'}
+              <Label htmlFor="toggle-graficos" className="text-xs text-muted-foreground">
+                {modoGraficos === 'unidades' ? 'Unidades' : 'Agendamentos'}
               </Label>
               <Switch
-                id="toggle-status"
-                checked={modoGraficoStatus === 'unidades'}
-                onCheckedChange={(checked) => setModoGraficoStatus(checked ? 'unidades' : 'agendamentos')}
+                id="toggle-graficos"
+                checked={modoGraficos === 'unidades'}
+                onCheckedChange={(checked) => setModoGraficos(checked ? 'unidades' : 'agendamentos')}
               />
               <Package className="h-4 w-4 text-muted-foreground" />
             </div>
@@ -708,15 +726,43 @@ export default function AgendamentoDashboard() {
                     cy="50%" 
                     labelLine={false} 
                     label={({ status, quantidade, unidades }) => 
-                      `${status}: ${modoGraficoStatus === 'unidades' ? unidades : quantidade}`
+                      `${status}: ${modoGraficos === 'unidades' ? unidades : quantidade}`
                     } 
                     outerRadius={80} 
                     fill="#8884d8" 
-                    dataKey={modoGraficoStatus === 'unidades' ? 'unidades' : 'quantidade'}
+                    dataKey={modoGraficos === 'unidades' ? 'unidades' : 'quantidade'}
                   >
                     {dadosGraficoStatus.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
                   </Pie>
-                  <Tooltip formatter={(value: number) => [value, modoGraficoStatus === 'unidades' ? 'Unidades' : 'Agendamentos']} />
+                  <Tooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-background border rounded-lg shadow-lg p-3 max-w-xs">
+                            <p className="font-semibold text-sm mb-1">{data.status}</p>
+                            <p className="text-xs text-muted-foreground mb-2">
+                              {modoGraficos === 'unidades' ? `${data.unidades} unidades` : `${data.quantidade} agendamentos`}
+                            </p>
+                            {data.clientes && data.clientes.length > 0 && (
+                              <div className="border-t pt-2">
+                                <p className="text-xs font-medium mb-1">Clientes:</p>
+                                <ul className="text-xs text-muted-foreground max-h-32 overflow-y-auto">
+                                  {data.clientes.slice(0, 10).map((cliente: string, i: number) => (
+                                    <li key={i} className="truncate">• {cliente}</li>
+                                  ))}
+                                  {data.clientes.length > 10 && (
+                                    <li className="text-muted-foreground/70">... +{data.clientes.length - 10} outros</li>
+                                  )}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -725,24 +771,11 @@ export default function AgendamentoDashboard() {
 
         {/* Gráfico Semanal */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <div>
-              <CardTitle>Agendamentos por Dia da Semana</CardTitle>
-              <CardDescription className="text-left">
-                {modoGraficoSemanal === 'unidades' ? 'Volume de unidades ao longo da semana' : 'Distribuição dos agendamentos ao longo da semana'}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="toggle-semanal" className="text-xs text-muted-foreground">
-                {modoGraficoSemanal === 'unidades' ? 'Unidades' : 'Agendamentos'}
-              </Label>
-              <Switch
-                id="toggle-semanal"
-                checked={modoGraficoSemanal === 'unidades'}
-                onCheckedChange={(checked) => setModoGraficoSemanal(checked ? 'unidades' : 'agendamentos')}
-              />
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </div>
+          <CardHeader>
+            <CardTitle>Agendamentos por Dia da Semana</CardTitle>
+            <CardDescription className="text-left">
+              {modoGraficos === 'unidades' ? 'Volume de unidades ao longo da semana' : 'Distribuição dos agendamentos ao longo da semana'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-80">
@@ -751,21 +784,87 @@ export default function AgendamentoDashboard() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="dia" />
                   <YAxis />
-                  <Tooltip formatter={(value: number) => [value, modoGraficoSemanal === 'unidades' ? 'Unidades' : 'Agendamentos']} />
+                  <Tooltip 
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-background border rounded-lg shadow-lg p-3 max-w-xs">
+                            <p className="font-semibold text-sm mb-2">{data.diaSemana} ({label})</p>
+                            
+                            {(modoGraficos === 'unidades' ? data.previstosUnidades : data.previstos) > 0 && (
+                              <div className="mb-2">
+                                <p className="text-xs font-medium text-amber-600">
+                                  Previstos: {modoGraficos === 'unidades' ? data.previstosUnidades : data.previstos}
+                                </p>
+                                {data.clientesPrevistos?.length > 0 && (
+                                  <ul className="text-xs text-muted-foreground">
+                                    {data.clientesPrevistos.slice(0, 5).map((c: string, i: number) => (
+                                      <li key={i} className="truncate">• {c}</li>
+                                    ))}
+                                    {data.clientesPrevistos.length > 5 && (
+                                      <li className="text-muted-foreground/70">... +{data.clientesPrevistos.length - 5}</li>
+                                    )}
+                                  </ul>
+                                )}
+                              </div>
+                            )}
+                            
+                            {(modoGraficos === 'unidades' ? data.confirmadosUnidades : data.confirmados) > 0 && (
+                              <div className="mb-2">
+                                <p className="text-xs font-medium text-green-600">
+                                  Confirmados: {modoGraficos === 'unidades' ? data.confirmadosUnidades : data.confirmados}
+                                </p>
+                                {data.clientesConfirmados?.length > 0 && (
+                                  <ul className="text-xs text-muted-foreground">
+                                    {data.clientesConfirmados.slice(0, 5).map((c: string, i: number) => (
+                                      <li key={i} className="truncate">• {c}</li>
+                                    ))}
+                                    {data.clientesConfirmados.length > 5 && (
+                                      <li className="text-muted-foreground/70">... +{data.clientesConfirmados.length - 5}</li>
+                                    )}
+                                  </ul>
+                                )}
+                              </div>
+                            )}
+                            
+                            {(modoGraficos === 'unidades' ? data.realizadasUnidades : data.realizadas) > 0 && (
+                              <div>
+                                <p className="text-xs font-medium text-blue-600">
+                                  Realizadas: {modoGraficos === 'unidades' ? data.realizadasUnidades : data.realizadas}
+                                </p>
+                                {data.clientesRealizadas?.length > 0 && (
+                                  <ul className="text-xs text-muted-foreground">
+                                    {data.clientesRealizadas.slice(0, 5).map((c: string, i: number) => (
+                                      <li key={i} className="truncate">• {c}</li>
+                                    ))}
+                                    {data.clientesRealizadas.length > 5 && (
+                                      <li className="text-muted-foreground/70">... +{data.clientesRealizadas.length - 5}</li>
+                                    )}
+                                  </ul>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
                   <Bar 
-                    dataKey={modoGraficoSemanal === 'unidades' ? 'previstosUnidades' : 'previstos'} 
+                    dataKey={modoGraficos === 'unidades' ? 'previstosUnidades' : 'previstos'} 
                     stackId="a" 
                     fill="#F59E0B" 
                     name="Previstos" 
                   />
                   <Bar 
-                    dataKey={modoGraficoSemanal === 'unidades' ? 'confirmadosUnidades' : 'confirmados'} 
+                    dataKey={modoGraficos === 'unidades' ? 'confirmadosUnidades' : 'confirmados'} 
                     stackId="a" 
                     fill="#10B981" 
                     name="Confirmados" 
                   />
                   <Bar 
-                    dataKey={modoGraficoSemanal === 'unidades' ? 'realizadasUnidades' : 'realizadas'} 
+                    dataKey={modoGraficos === 'unidades' ? 'realizadasUnidades' : 'realizadas'} 
                     stackId="a" 
                     fill="#3B82F6" 
                     name="Realizadas" 
