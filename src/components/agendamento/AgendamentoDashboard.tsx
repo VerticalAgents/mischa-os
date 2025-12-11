@@ -852,10 +852,10 @@ export default function AgendamentoDashboard() {
                     }}
                   />
                   <Bar 
-                    dataKey={modoGraficos === 'unidades' ? 'previstosUnidades' : 'previstos'} 
+                    dataKey={modoGraficos === 'unidades' ? 'realizadasUnidades' : 'realizadas'} 
                     stackId="a" 
-                    fill="#F59E0B" 
-                    name="Previstos" 
+                    fill="#3B82F6" 
+                    name="Realizadas" 
                   />
                   <Bar 
                     dataKey={modoGraficos === 'unidades' ? 'confirmadosUnidades' : 'confirmados'} 
@@ -864,10 +864,10 @@ export default function AgendamentoDashboard() {
                     name="Confirmados" 
                   />
                   <Bar 
-                    dataKey={modoGraficos === 'unidades' ? 'realizadasUnidades' : 'realizadas'} 
+                    dataKey={modoGraficos === 'unidades' ? 'previstosUnidades' : 'previstos'} 
                     stackId="a" 
-                    fill="#3B82F6" 
-                    name="Realizadas" 
+                    fill="#F59E0B" 
+                    name="Previstos" 
                   />
                 </BarChart>
               </ResponsiveContainer>
