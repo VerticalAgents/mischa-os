@@ -6,98 +6,98 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// System prompts especializados para cada agente
-const systemPrompts: Record<string, string> = {
-  "projecoes-financeiras": `Você é um especialista em análise financeira da Mischa's Bakery, uma padaria artesanal.
+// System prompt aprimorado com persona, instruções e exemplos
+const MISCHA_SYSTEM_PROMPT = `Você é **Mischa**, a assistente virtual inteligente da Mischa's Bakery, uma padaria artesanal especializada em pães artesanais e produtos de confeitaria.
 
-Seu papel é:
-- Analisar dados históricos de vendas e custos
-- Criar projeções de faturamento precisas baseadas em tendências
-- Simular cenários financeiros (otimista, realista, pessimista)
-- Calcular ponto de equilíbrio e margens de contribuição
-- Identificar oportunidades de melhoria na rentabilidade
+## 🎯 SUA PERSONA
+- Você é simpática, objetiva e conhece profundamente todos os aspectos do negócio
+- Fale sempre em português brasileiro
+- Trate o usuário como "você" (informal mas profissional)
+- Seja uma parceira estratégica do gestor
 
-Responda sempre em português brasileiro, de forma clara e objetiva.
-Quando fizer cálculos, mostre o raciocínio passo a passo.
-Use dados concretos quando disponíveis no contexto.`,
+## 📋 COMO RESPONDER
 
-  "otimizacao-producao": `Você é um especialista em otimização de produção da Mischa's Bakery.
+**Estrutura das respostas:**
+1. Comece com uma resposta direta e objetiva à pergunta
+2. Use listas e formatação markdown quando houver múltiplos itens
+3. Inclua números e dados concretos sempre que disponíveis
+4. Finalize com uma observação útil ou sugestão quando apropriado
+5. Se não tiver dados suficientes, diga claramente
 
-Seu papel é:
-- Analisar a eficiência da linha de produção
-- Identificar gargalos e desperdícios
-- Sugerir melhorias no planejamento de produção (PCP)
-- Calcular capacidade produtiva e rendimentos de receitas
-- Balancear demanda vs capacidade instalada
+**Tom de voz:**
+- Profissional mas acolhedor
+- Use emojis moderadamente (📊, 🚚, ✅, ⚠️, 📦, 💰)
+- Seja concisa - evite parágrafos longos
+- Use **negrito** para destacar números importantes
 
-Responda sempre em português brasileiro.
-Foque em soluções práticas e implementáveis.
-Considere restrições de equipamentos, mão de obra e insumos.`,
+## 📊 INTERPRETAÇÃO DE MÉTRICAS
 
-  "logistica-roteirizacao": `Você é um especialista em logística e roteirização da Mischa's Bakery.
+Quando falar sobre dados, use estas definições:
+- **Clientes ativos** = clientes com status "ATIVO" e campo ativo=true
+- **PDVs** = Clientes diretos ativos + Expositores de distribuidores
+- **Giro semanal** = média de unidades vendidas/entregues por semana
+- **Agendamentos** = entregas planejadas ainda não realizadas
+- **Distribuidor** = cliente que revende para seus próprios PDVs
 
-Seu papel é:
-- Otimizar rotas de entrega para reduzir custos
-- Analisar eficiência das rotas atuais
-- Sugerir agrupamentos de clientes por região
-- Calcular custos logísticos e tempo de entrega
-- Identificar oportunidades de consolidação
+## ✅ EXEMPLOS DE BOAS RESPOSTAS
 
-Responda sempre em português brasileiro.
-Considere fatores como distância, janelas de entrega e capacidade dos veículos.`,
+**Pergunta:** "Quantos clientes ativos temos?"
+**Resposta:** 
+Atualmente temos **163 clientes diretos ativos** + **11 PDVs via distribuidores**, totalizando **174 pontos de venda** 📊
 
-  "reposicao-inteligente": `Você é um especialista em gestão de estoque e reposição da Mischa's Bakery.
+**Top 3 por giro semanal:**
+1. DCE UFCSPA - 120 un/sem
+2. Giulia Distribuidor - 95 un/sem  
+3. Bruno Distribuidor - 85 un/sem
 
-Seu papel é:
-- Prever demanda baseado em histórico de giro
-- Calcular níveis ideais de estoque
-- Sugerir quantidades de reposição por cliente
-- Identificar padrões sazonais e tendências
-- Evitar ruptura e excesso de estoque
+💡 *Os distribuidores representam 6% dos PDVs mas contribuem significativamente para o volume total.*
 
-Responda sempre em português brasileiro.
-Use médias móveis e análise de tendência quando apropriado.
-Considere a periodicidade de cada cliente.`,
+---
 
-  "comunicacao-clientes": `Você é um especialista em relacionamento com clientes da Mischa's Bakery.
+**Pergunta:** "Preciso repor estoque?"
+**Resposta:**
+⚠️ **3 produtos precisam de atenção:**
 
-Seu papel é:
-- Segmentar clientes por comportamento e valor
-- Sugerir estratégias de retenção e fidelização
-- Identificar clientes em risco de churn
-- Criar abordagens personalizadas de comunicação
-- Analisar satisfação e engajamento
+| Produto | Atual | Mínimo | Status |
+|---------|-------|--------|--------|
+| Pão Integral | 12 | 50 | 🔴 Crítico |
+| Croissant | 25 | 30 | 🟡 Baixo |
+| Baguete | 45 | 40 | 🟢 OK |
 
-Responda sempre em português brasileiro.
-Foque em ações práticas de relacionamento.
-Considere o histórico de compras e interações.`,
+📦 Sugiro priorizar a produção de **Pão Integral** hoje para evitar ruptura.
 
-  "alertas-estrategicos": `Você é um analista estratégico da Mischa's Bakery.
+---
 
-Seu papel é:
-- Monitorar KPIs críticos do negócio
-- Identificar anomalias e tendências preocupantes
-- Alertar sobre riscos e oportunidades
-- Priorizar ações baseado em impacto
-- Fornecer visão executiva consolidada
+**Pergunta:** "Como está a produção?"
+**Resposta:**
+📈 **Produção da última semana:**
+- **Total produzido:** 2.450 unidades
+- **Média diária:** 350 un/dia
+- **Eficiência:** ✅ Dentro da meta
 
-Responda sempre em português brasileiro.
-Seja direto e objetivo nas recomendações.
-Priorize informações acionáveis.`,
+**Por produto:**
+- Pão de Queijo: 800 un (32%)
+- Croissant: 650 un (27%)
+- Baguete: 500 un (20%)
+- Outros: 500 un (21%)
 
-  "diagnostico-geral": `Você é um consultor de negócios especializado na Mischa's Bakery.
+---
 
-Seu papel é:
-- Fornecer visão holística do negócio
-- Conectar diferentes áreas (produção, vendas, logística, finanças)
-- Identificar interdependências e impactos cruzados
-- Priorizar iniciativas de melhoria
-- Responder dúvidas gerais sobre a operação
+## ⚠️ LIMITAÇÕES
 
-Responda sempre em português brasileiro.
-Considere o contexto completo antes de responder.
-Seja um parceiro estratégico do gestor.`,
-};
+- Você NÃO pode alterar dados, apenas consultar e analisar
+- Se perguntarem sobre funções que não existem no sistema, sugira contatar o suporte
+- Se os dados parecerem inconsistentes, mencione isso na resposta
+- Se não souber algo, diga claramente em vez de inventar
+
+## 📝 FORMATO PREFERIDO
+
+Para listas de clientes/produtos, use tabelas markdown quando houver mais de 3 colunas.
+Para rankings curtos (top 3-5), use listas numeradas.
+Para alertas, use emojis de status: 🔴 Crítico, 🟡 Atenção, 🟢 OK
+
+Agora analise os dados abaixo e responda às perguntas do usuário:
+`;
 
 // Função para buscar contexto completo do negócio
 async function getFullContext(supabase: any): Promise<string> {
@@ -121,14 +121,11 @@ async function getFullContext(supabase: any): Promise<string> {
       representantesResult,
       distribuidoresResult,
     ] = await Promise.all([
-      // Clientes ativos com detalhes (sem limite para contar todos)
       supabase
         .from("clientes")
-        .select("id, nome, status_cliente, giro_medio_semanal, quantidade_padrao, periodicidade_padrao, proxima_data_reposicao, ultima_data_reposicao_efetiva, rota_entrega_id, representante_id, categoria_estabelecimento_id")
-        .eq("ativo", true)
+        .select("id, nome, status_cliente, ativo, giro_medio_semanal, quantidade_padrao, periodicidade_padrao, proxima_data_reposicao, ultima_data_reposicao_efetiva, rota_entrega_id, representante_id, categoria_estabelecimento_id")
         .order("giro_medio_semanal", { ascending: false }),
 
-      // Histórico de entregas últimas 4 semanas
       supabase
         .from("historico_entregas")
         .select("cliente_id, data, quantidade, tipo, itens")
@@ -136,7 +133,6 @@ async function getFullContext(supabase: any): Promise<string> {
         .order("data", { ascending: false })
         .limit(300),
 
-      // Agendamentos próximos 14 dias
       supabase
         .from("agendamentos_clientes")
         .select("cliente_id, data_proxima_reposicao, quantidade_total, status_agendamento, tipo_pedido, substatus_pedido")
@@ -145,21 +141,18 @@ async function getFullContext(supabase: any): Promise<string> {
         .order("data_proxima_reposicao", { ascending: true })
         .limit(100),
 
-      // Produtos ativos com estoque
       supabase
         .from("produtos_finais")
         .select("id, nome, estoque_atual, estoque_minimo, estoque_ideal, preco_venda, categoria_id")
         .eq("ativo", true)
         .order("nome"),
 
-      // Insumos com estoque
       supabase
         .from("insumos")
         .select("id, nome, estoque_atual, estoque_minimo, custo_medio, unidade_medida")
         .order("nome")
         .limit(50),
 
-      // Produção última semana
       supabase
         .from("historico_producao")
         .select("produto_nome, formas_producidas, unidades_calculadas, data_producao, status")
@@ -167,17 +160,14 @@ async function getFullContext(supabase: any): Promise<string> {
         .order("data_producao", { ascending: false })
         .limit(50),
 
-      // Custos fixos
       supabase
         .from("custos_fixos")
         .select("nome, valor, subcategoria, frequencia"),
 
-      // Custos variáveis
       supabase
         .from("custos_variaveis")
         .select("nome, valor, subcategoria, percentual_faturamento"),
 
-      // Leads ativos
       supabase
         .from("leads")
         .select("id, nome, status, origem, quantidade_estimada, data_visita")
@@ -185,19 +175,16 @@ async function getFullContext(supabase: any): Promise<string> {
         .order("created_at", { ascending: false })
         .limit(30),
 
-      // Rotas
       supabase
         .from("rotas_entrega")
         .select("id, nome")
         .eq("ativo", true),
 
-      // Representantes
       supabase
         .from("representantes")
         .select("id, nome")
         .eq("ativo", true),
 
-      // Distribuidores expositores (PDVs indiretos)
       supabase
         .from("distribuidores_expositores")
         .select("cliente_id, numero_expositores"),
@@ -216,13 +203,12 @@ async function getFullContext(supabase: any): Promise<string> {
     const representantes = representantesResult.data || [];
     const distribuidores = distribuidoresResult.data || [];
 
-    // Criar mapa de rotas e representantes para lookup
     const rotasMap = Object.fromEntries(rotas.map((r: any) => [r.id, r.nome]));
     const repMap = Object.fromEntries(representantes.map((r: any) => [r.id, r.nome]));
 
-    // Calcular métricas (case-insensitive para status)
+    // Calcular métricas (dual criteria: ativo=true E status_cliente='ATIVO')
     const clientesAtivos = clientes.filter((c: any) => 
-      c.status_cliente?.toUpperCase() === "ATIVO"
+      c.ativo === true && c.status_cliente?.toUpperCase() === "ATIVO"
     ).length;
     const totalExpositores = distribuidores.reduce((sum: number, d: any) => sum + (d.numero_expositores || 0), 0);
     const totalPDVs = clientesAtivos + totalExpositores;
@@ -231,6 +217,11 @@ async function getFullContext(supabase: any): Promise<string> {
     const totalCustosFixos = custosFixos.reduce((sum: number, c: any) => sum + (c.valor || 0), 0);
     const totalCustosVariaveis = custosVariaveis.reduce((sum: number, c: any) => sum + (c.valor || 0), 0);
     const unidadesProduzidas = producao.reduce((sum: number, p: any) => sum + (p.unidades_calculadas || 0), 0);
+
+    // Produtos com estoque crítico
+    const produtosCriticos = produtos.filter((p: any) => 
+      (p.estoque_atual || 0) < (p.estoque_minimo || 0)
+    );
 
     // Agrupar entregas por data
     const entregasPorDia: Record<string, number> = {};
@@ -260,21 +251,26 @@ async function getFullContext(supabase: any): Promise<string> {
 
     // Formatar contexto
     const context = `
-## 📊 DADOS DO NEGÓCIO - Mischa's Bakery
-📅 Data: ${new Date().toLocaleDateString("pt-BR")}
 
 ---
 
-### 👥 CLIENTES E PDVs
-- **Clientes diretos ativos:** ${clientesAtivos}
-- **PDVs via distribuidores (expositores):** ${totalExpositores}
-- **Total de PDVs:** ${totalPDVs}
-- **Total clientes cadastrados:** ${clientes.length}
-- **Giro semanal total estimado:** ${giroTotal} unidades
+## 📊 DADOS ATUAIS DO NEGÓCIO
+📅 Atualizado em: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
 
-**Top 20 clientes por giro:**
+---
+
+### 👥 CLIENTES E PONTOS DE VENDA
+- **Clientes diretos ativos:** ${clientesAtivos}
+- **PDVs via distribuidores:** ${totalExpositores}
+- **Total de PDVs:** ${totalPDVs}
+- **Total cadastrados:** ${clientes.length}
+- **Giro semanal estimado:** ${giroTotal} unidades
+
+**Top 20 clientes por giro semanal:**
+| Cliente | Giro/sem | Periodicidade | Status | Rota |
+|---------|----------|---------------|--------|------|
 ${clientes.slice(0, 20).map((c: any) => 
-  `- ${c.nome}: ${c.giro_medio_semanal || 0}/sem, periodicidade ${c.periodicidade_padrao || 7} dias, status: ${c.status_cliente}${c.rota_entrega_id ? `, rota: ${rotasMap[c.rota_entrega_id] || c.rota_entrega_id}` : ''}`
+  `| ${c.nome} | ${c.giro_medio_semanal || 0} | ${c.periodicidade_padrao || 7} dias | ${c.status_cliente} | ${rotasMap[c.rota_entrega_id] || '-'} |`
 ).join('\n')}
 
 ---
@@ -284,7 +280,7 @@ ${clientes.slice(0, 20).map((c: any) =>
 - **Volume total:** ${volumeEntregas} unidades
 - **Média por entrega:** ${entregas.length > 0 ? Math.round(volumeEntregas / entregas.length) : 0} unidades
 
-**Entregas por dia (últimos 10 dias com movimento):**
+**Últimos 10 dias com movimento:**
 ${Object.entries(entregasPorDia).slice(0, 10).map(([dia, vol]) => 
   `- ${new Date(dia).toLocaleDateString("pt-BR")}: ${vol} unidades`
 ).join('\n')}
@@ -303,26 +299,34 @@ ${Object.entries(agendamentosPorDia).slice(0, 10).map(([dia, info]) =>
 ---
 
 ### 🏭 ESTOQUE DE PRODUTOS
-${produtos.map((p: any) => 
-  `- ${p.nome}: ${p.estoque_atual || 0} un. (mín: ${p.estoque_minimo || 0}, ideal: ${p.estoque_ideal || 0})${p.preco_venda ? ` - R$ ${p.preco_venda}` : ''}`
-).join('\n')}
+${produtosCriticos.length > 0 ? `⚠️ **${produtosCriticos.length} produto(s) abaixo do mínimo!**\n` : ''}
+| Produto | Atual | Mínimo | Ideal | Preço | Status |
+|---------|-------|--------|-------|-------|--------|
+${produtos.map((p: any) => {
+  const status = (p.estoque_atual || 0) < (p.estoque_minimo || 0) ? '🔴 Crítico' : 
+                 (p.estoque_atual || 0) < (p.estoque_ideal || 0) ? '🟡 Baixo' : '🟢 OK';
+  return `| ${p.nome} | ${p.estoque_atual || 0} | ${p.estoque_minimo || 0} | ${p.estoque_ideal || 0} | R$ ${p.preco_venda || 0} | ${status} |`;
+}).join('\n')}
 
 ---
 
 ### 🧪 INSUMOS (matéria-prima)
+| Insumo | Atual | Mínimo | Unidade | Custo Médio |
+|--------|-------|--------|---------|-------------|
 ${insumos.slice(0, 20).map((i: any) => 
-  `- ${i.nome}: ${i.estoque_atual || 0} ${i.unidade_medida} (mín: ${i.estoque_minimo || 0}) - custo médio R$ ${i.custo_medio || 0}`
+  `| ${i.nome} | ${i.estoque_atual || 0} | ${i.estoque_minimo || 0} | ${i.unidade_medida} | R$ ${i.custo_medio || 0} |`
 ).join('\n')}
 
 ---
 
 ### 🍞 PRODUÇÃO (última semana)
 - **Total produzido:** ${unidadesProduzidas} unidades
-- **Registros de produção:** ${producao.length}
+- **Registros:** ${producao.length}
 
-**Detalhamento:**
+| Data | Produto | Unidades | Formas | Status |
+|------|---------|----------|--------|--------|
 ${producao.slice(0, 15).map((p: any) => 
-  `- ${p.data_producao}: ${p.produto_nome} - ${p.unidades_calculadas} un. (${p.formas_producidas} formas) - ${p.status}`
+  `| ${new Date(p.data_producao).toLocaleDateString("pt-BR")} | ${p.produto_nome} | ${p.unidades_calculadas} | ${p.formas_producidas} | ${p.status} |`
 ).join('\n')}
 
 ---
@@ -350,11 +354,9 @@ ${Object.entries(leadsPorStatus).map(([status, count]) =>
 
 ---
 
-### 🚚 ROTAS DE ENTREGA
-${rotas.map((r: any) => `- ${r.nome}`).join('\n')}
-
-### 👤 REPRESENTANTES
-${representantes.map((r: any) => `- ${r.nome}`).join('\n')}
+### 🚚 ROTAS E REPRESENTANTES
+**Rotas:** ${rotas.map((r: any) => r.nome).join(', ')}
+**Representantes:** ${representantes.map((r: any) => r.nome).join(', ')}
 `;
 
     console.log(`[agent-chat] Contexto carregado:`, {
@@ -378,7 +380,6 @@ ${representantes.map((r: any) => `- ${r.nome}`).join('\n')}
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -390,9 +391,6 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY não está configurada");
     }
-
-    // Obter system prompt baseado no agente
-    const systemPrompt = systemPrompts[agenteId] || systemPrompts["diagnostico-geral"];
 
     // Buscar contexto completo do banco
     let contextData = "";
@@ -409,7 +407,7 @@ serve(async (req) => {
       console.error("[agent-chat] Erro ao buscar contexto do banco:", dbError);
     }
 
-    const fullSystemPrompt = systemPrompt + contextData;
+    const fullSystemPrompt = MISCHA_SYSTEM_PROMPT + contextData;
 
     console.log(`[agent-chat] Agente: ${agenteId}, Mensagens: ${messages.length}, Contexto: ${contextData.length} chars`);
 
@@ -450,7 +448,6 @@ serve(async (req) => {
       );
     }
 
-    // Retornar stream SSE
     return new Response(response.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });

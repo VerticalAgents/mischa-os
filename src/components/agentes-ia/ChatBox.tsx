@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, Loader2, Send } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Bot, Loader2, Send, Sparkles } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { toast } from "sonner";
@@ -15,15 +16,17 @@ type Message = {
 type ChatBoxProps = {
   agenteId: string;
   sugestoes?: string[];
+  initialPrompt?: string | null;
 };
 
 const CHAT_URL = "https://ttguzgouurqopeccvzve.supabase.co/functions/v1/agent-chat";
 
-export function ChatBox({ agenteId, sugestoes = [] }: ChatBoxProps) {
+export function ChatBox({ agenteId, sugestoes = [], initialPrompt }: ChatBoxProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const hasInitialized = useRef(false);
 
   // Auto-scroll para última mensagem
   useEffect(() => {
@@ -31,6 +34,17 @@ export function ChatBox({ agenteId, sugestoes = [] }: ChatBoxProps) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Processar prompt inicial (de quick actions)
+  useEffect(() => {
+    if (initialPrompt && !hasInitialized.current) {
+      hasInitialized.current = true;
+      const userMessage: Message = { role: "user", content: initialPrompt };
+      setMessages([userMessage]);
+      setIsLoading(true);
+      streamChat([userMessage]).finally(() => setIsLoading(false));
+    }
+  }, [initialPrompt]);
 
   const streamChat = useCallback(
     async (userMessages: Message[]) => {
@@ -99,7 +113,6 @@ export function ChatBox({ agenteId, sugestoes = [] }: ChatBoxProps) {
               });
             }
           } catch {
-            // JSON incompleto, aguardar mais dados
             textBuffer = line + "\n" + textBuffer;
             break;
           }
@@ -138,35 +151,48 @@ export function ChatBox({ agenteId, sugestoes = [] }: ChatBoxProps) {
   };
 
   return (
-    <Card className="h-[500px] flex flex-col">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Bot className="h-5 w-5" />
-          Chat com o Agente
-        </CardTitle>
-      </CardHeader>
+    <Card className="h-[calc(100vh-280px)] min-h-[500px] flex flex-col">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b bg-muted/30">
+        <Avatar className="h-10 w-10 bg-primary">
+          <AvatarFallback className="bg-primary text-primary-foreground">
+            <Sparkles className="h-5 w-5" />
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <h3 className="font-semibold text-sm">Mischa IA</h3>
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+            Online • Acesso total aos dados
+          </p>
+        </div>
+      </div>
 
       <CardContent className="flex-grow overflow-hidden p-0">
         <ScrollArea className="h-full px-4" ref={scrollRef}>
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-6">
-              <Bot className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">
-                Olá! Sou seu assistente especializado. Como posso ajudar?
+            <div className="flex flex-col items-center justify-center h-full text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Bot className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Olá! Sou a Mischa IA 👋</h3>
+              <p className="text-muted-foreground text-sm max-w-md mb-6">
+                Sua assistente inteligente com acesso a clientes, entregas, produção, estoque, custos e muito mais. Pergunte qualquer coisa sobre seu negócio!
               </p>
+              
               {sugestoes.length > 0 && (
-                <div className="space-y-2 w-full max-w-md">
-                  <p className="text-sm text-muted-foreground">Sugestões:</p>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {sugestoes.slice(0, 3).map((sugestao, index) => (
+                <div className="w-full max-w-lg">
+                  <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wide">Sugestões de perguntas</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {sugestoes.map((sugestao, index) => (
                       <Button
                         key={index}
                         variant="outline"
                         size="sm"
-                        className="text-xs"
+                        className="justify-start text-left h-auto py-2 px-3 text-xs whitespace-normal"
                         onClick={() => handleSuggestionClick(sugestao)}
                       >
-                        {sugestao.length > 40 ? sugestao.slice(0, 40) + "..." : sugestao}
+                        {sugestao}
                       </Button>
                     ))}
                   </div>
@@ -179,9 +205,16 @@ export function ChatBox({ agenteId, sugestoes = [] }: ChatBoxProps) {
                 <ChatMessage key={index} role={message.role} content={message.content} />
               ))}
               {isLoading && messages[messages.length - 1]?.role === "user" && (
-                <div className="flex items-center gap-2 text-muted-foreground p-4">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Pensando...</span>
+                <div className="flex items-center gap-3 text-muted-foreground p-4">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-secondary">
+                      <Sparkles className="h-4 w-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Analisando dados...</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -192,7 +225,7 @@ export function ChatBox({ agenteId, sugestoes = [] }: ChatBoxProps) {
       <CardFooter className="border-t p-4">
         <form onSubmit={handleSubmit} className="flex w-full gap-2">
           <Input
-            placeholder="Digite sua mensagem..."
+            placeholder="Faça uma pergunta sobre seu negócio..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             disabled={isLoading}
