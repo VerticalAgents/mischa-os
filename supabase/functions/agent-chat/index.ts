@@ -99,6 +99,269 @@ Considere o contexto completo antes de responder.
 Seja um parceiro estratégico do gestor.`,
 };
 
+// Função para buscar contexto completo do negócio
+async function getFullContext(supabase: any): Promise<string> {
+  const hoje = new Date().toISOString().split('T')[0];
+  const data4Semanas = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString();
+  const data14Dias = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  try {
+    // Queries paralelas para performance
+    const [
+      clientesResult,
+      entregasResult,
+      agendamentosResult,
+      produtosResult,
+      insumosResult,
+      producaoResult,
+      custosFixosResult,
+      custosVariaveisResult,
+      leadsResult,
+      rotasResult,
+      representantesResult,
+    ] = await Promise.all([
+      // Clientes ativos com detalhes
+      supabase
+        .from("clientes")
+        .select("id, nome, status_cliente, giro_medio_semanal, quantidade_padrao, periodicidade_padrao, proxima_data_reposicao, ultima_data_reposicao_efetiva, rota_entrega_id, representante_id, categoria_estabelecimento_id")
+        .eq("ativo", true)
+        .order("giro_medio_semanal", { ascending: false })
+        .limit(100),
+
+      // Histórico de entregas últimas 4 semanas
+      supabase
+        .from("historico_entregas")
+        .select("cliente_id, data, quantidade, tipo, itens")
+        .gte("data", data4Semanas)
+        .order("data", { ascending: false })
+        .limit(300),
+
+      // Agendamentos próximos 14 dias
+      supabase
+        .from("agendamentos_clientes")
+        .select("cliente_id, data_proxima_reposicao, quantidade_total, status_agendamento, tipo_pedido, substatus_pedido")
+        .gte("data_proxima_reposicao", hoje)
+        .lte("data_proxima_reposicao", data14Dias)
+        .order("data_proxima_reposicao", { ascending: true })
+        .limit(100),
+
+      // Produtos ativos com estoque
+      supabase
+        .from("produtos_finais")
+        .select("id, nome, estoque_atual, estoque_minimo, estoque_ideal, preco_venda, categoria_id")
+        .eq("ativo", true)
+        .order("nome"),
+
+      // Insumos com estoque
+      supabase
+        .from("insumos")
+        .select("id, nome, estoque_atual, estoque_minimo, custo_medio, unidade_medida")
+        .order("nome")
+        .limit(50),
+
+      // Produção última semana
+      supabase
+        .from("historico_producao")
+        .select("produto_nome, formas_producidas, unidades_calculadas, data_producao, status")
+        .gte("data_producao", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .order("data_producao", { ascending: false })
+        .limit(50),
+
+      // Custos fixos
+      supabase
+        .from("custos_fixos")
+        .select("nome, valor, subcategoria, frequencia"),
+
+      // Custos variáveis
+      supabase
+        .from("custos_variaveis")
+        .select("nome, valor, subcategoria, percentual_faturamento"),
+
+      // Leads ativos
+      supabase
+        .from("leads")
+        .select("id, nome, status, origem, quantidade_estimada, data_visita")
+        .not("status", "ilike", "%perdido%")
+        .order("created_at", { ascending: false })
+        .limit(30),
+
+      // Rotas
+      supabase
+        .from("rotas_entrega")
+        .select("id, nome")
+        .eq("ativo", true),
+
+      // Representantes
+      supabase
+        .from("representantes")
+        .select("id, nome")
+        .eq("ativo", true),
+    ]);
+
+    const clientes = clientesResult.data || [];
+    const entregas = entregasResult.data || [];
+    const agendamentos = agendamentosResult.data || [];
+    const produtos = produtosResult.data || [];
+    const insumos = insumosResult.data || [];
+    const producao = producaoResult.data || [];
+    const custosFixos = custosFixosResult.data || [];
+    const custosVariaveis = custosVariaveisResult.data || [];
+    const leads = leadsResult.data || [];
+    const rotas = rotasResult.data || [];
+    const representantes = representantesResult.data || [];
+
+    // Criar mapa de rotas e representantes para lookup
+    const rotasMap = Object.fromEntries(rotas.map((r: any) => [r.id, r.nome]));
+    const repMap = Object.fromEntries(representantes.map((r: any) => [r.id, r.nome]));
+
+    // Calcular métricas
+    const clientesAtivos = clientes.filter((c: any) => c.status_cliente === "Ativo").length;
+    const giroTotal = clientes.reduce((sum: number, c: any) => sum + (c.giro_medio_semanal || 0), 0);
+    const volumeEntregas = entregas.reduce((sum: number, e: any) => sum + (e.quantidade || 0), 0);
+    const totalCustosFixos = custosFixos.reduce((sum: number, c: any) => sum + (c.valor || 0), 0);
+    const totalCustosVariaveis = custosVariaveis.reduce((sum: number, c: any) => sum + (c.valor || 0), 0);
+    const unidadesProduzidas = producao.reduce((sum: number, p: any) => sum + (p.unidades_calculadas || 0), 0);
+
+    // Agrupar entregas por data
+    const entregasPorDia: Record<string, number> = {};
+    entregas.forEach((e: any) => {
+      const dia = e.data?.split('T')[0];
+      if (dia) {
+        entregasPorDia[dia] = (entregasPorDia[dia] || 0) + (e.quantidade || 0);
+      }
+    });
+
+    // Agrupar agendamentos por dia
+    const agendamentosPorDia: Record<string, { count: number; volume: number }> = {};
+    agendamentos.forEach((a: any) => {
+      const dia = a.data_proxima_reposicao;
+      if (dia) {
+        if (!agendamentosPorDia[dia]) agendamentosPorDia[dia] = { count: 0, volume: 0 };
+        agendamentosPorDia[dia].count++;
+        agendamentosPorDia[dia].volume += a.quantidade_total || 0;
+      }
+    });
+
+    // Contar leads por status
+    const leadsPorStatus: Record<string, number> = {};
+    leads.forEach((l: any) => {
+      leadsPorStatus[l.status] = (leadsPorStatus[l.status] || 0) + 1;
+    });
+
+    // Formatar contexto
+    const context = `
+## 📊 DADOS DO NEGÓCIO - Mischa's Bakery
+📅 Data: ${new Date().toLocaleDateString("pt-BR")}
+
+---
+
+### 👥 CLIENTES
+- **Total cadastrados:** ${clientes.length}
+- **Clientes ativos:** ${clientesAtivos}
+- **Giro semanal total estimado:** ${giroTotal} unidades
+
+**Top 20 clientes por giro:**
+${clientes.slice(0, 20).map((c: any) => 
+  `- ${c.nome}: ${c.giro_medio_semanal || 0}/sem, periodicidade ${c.periodicidade_padrao || 7} dias, status: ${c.status_cliente}${c.rota_entrega_id ? `, rota: ${rotasMap[c.rota_entrega_id] || c.rota_entrega_id}` : ''}`
+).join('\n')}
+
+---
+
+### 📦 ENTREGAS (últimas 4 semanas)
+- **Total de entregas:** ${entregas.length}
+- **Volume total:** ${volumeEntregas} unidades
+- **Média por entrega:** ${entregas.length > 0 ? Math.round(volumeEntregas / entregas.length) : 0} unidades
+
+**Entregas por dia (últimos 10 dias com movimento):**
+${Object.entries(entregasPorDia).slice(0, 10).map(([dia, vol]) => 
+  `- ${new Date(dia).toLocaleDateString("pt-BR")}: ${vol} unidades`
+).join('\n')}
+
+---
+
+### 📅 AGENDAMENTOS (próximos 14 dias)
+- **Total agendamentos:** ${agendamentos.length}
+- **Volume previsto:** ${agendamentos.reduce((s: number, a: any) => s + (a.quantidade_total || 0), 0)} unidades
+
+**Por dia:**
+${Object.entries(agendamentosPorDia).slice(0, 10).map(([dia, info]) => 
+  `- ${new Date(dia).toLocaleDateString("pt-BR")}: ${info.count} entregas (${info.volume} un.)`
+).join('\n')}
+
+---
+
+### 🏭 ESTOQUE DE PRODUTOS
+${produtos.map((p: any) => 
+  `- ${p.nome}: ${p.estoque_atual || 0} un. (mín: ${p.estoque_minimo || 0}, ideal: ${p.estoque_ideal || 0})${p.preco_venda ? ` - R$ ${p.preco_venda}` : ''}`
+).join('\n')}
+
+---
+
+### 🧪 INSUMOS (matéria-prima)
+${insumos.slice(0, 20).map((i: any) => 
+  `- ${i.nome}: ${i.estoque_atual || 0} ${i.unidade_medida} (mín: ${i.estoque_minimo || 0}) - custo médio R$ ${i.custo_medio || 0}`
+).join('\n')}
+
+---
+
+### 🍞 PRODUÇÃO (última semana)
+- **Total produzido:** ${unidadesProduzidas} unidades
+- **Registros de produção:** ${producao.length}
+
+**Detalhamento:**
+${producao.slice(0, 15).map((p: any) => 
+  `- ${p.data_producao}: ${p.produto_nome} - ${p.unidades_calculadas} un. (${p.formas_producidas} formas) - ${p.status}`
+).join('\n')}
+
+---
+
+### 💰 CUSTOS
+**Custos Fixos (total mensal: R$ ${totalCustosFixos.toFixed(2)}):**
+${custosFixos.slice(0, 10).map((c: any) => 
+  `- ${c.nome}: R$ ${c.valor} (${c.subcategoria})`
+).join('\n')}
+
+**Custos Variáveis (total: R$ ${totalCustosVariaveis.toFixed(2)}):**
+${custosVariaveis.slice(0, 10).map((c: any) => 
+  `- ${c.nome}: R$ ${c.valor} (${c.percentual_faturamento}% do faturamento)`
+).join('\n')}
+
+---
+
+### 🎯 LEADS/PROSPECÇÃO
+- **Leads ativos:** ${leads.length}
+
+**Por status:**
+${Object.entries(leadsPorStatus).map(([status, count]) => 
+  `- ${status}: ${count}`
+).join('\n')}
+
+---
+
+### 🚚 ROTAS DE ENTREGA
+${rotas.map((r: any) => `- ${r.nome}`).join('\n')}
+
+### 👤 REPRESENTANTES
+${representantes.map((r: any) => `- ${r.nome}`).join('\n')}
+`;
+
+    console.log(`[agent-chat] Contexto carregado:`, {
+      clientes: clientes.length,
+      entregas: entregas.length,
+      agendamentos: agendamentos.length,
+      produtos: produtos.length,
+      insumos: insumos.length,
+      producao: producao.length,
+      leads: leads.length,
+    });
+
+    return context;
+  } catch (error) {
+    console.error("[agent-chat] Erro ao buscar contexto:", error);
+    return "\n\n⚠️ Não foi possível carregar todos os dados do sistema. Algumas informações podem estar indisponíveis.";
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -116,7 +379,7 @@ serve(async (req) => {
     // Obter system prompt baseado no agente
     const systemPrompt = systemPrompts[agenteId] || systemPrompts["diagnostico-geral"];
 
-    // Opcional: buscar dados contextuais do banco
+    // Buscar contexto completo do banco
     let contextData = "";
     
     try {
@@ -125,31 +388,15 @@ serve(async (req) => {
       
       if (supabaseUrl && supabaseKey) {
         const supabase = createClient(supabaseUrl, supabaseKey);
-        
-        // Buscar métricas básicas para contexto
-        const { data: clientes } = await supabase
-          .from("clientes")
-          .select("id, nome, status_cliente, giro_medio_semanal")
-          .eq("ativo", true)
-          .limit(100);
-
-        if (clientes) {
-          const clientesAtivos = clientes.filter(c => c.status_cliente === "Ativo").length;
-          const giroTotal = clientes.reduce((sum, c) => sum + (c.giro_medio_semanal || 0), 0);
-          
-          contextData = `\n\nContexto atual do negócio:
-- Clientes ativos: ${clientesAtivos}
-- Giro semanal total estimado: ${giroTotal} unidades
-- Data atual: ${new Date().toLocaleDateString("pt-BR")}`;
-        }
+        contextData = await getFullContext(supabase);
       }
     } catch (dbError) {
-      console.log("Não foi possível buscar contexto do banco:", dbError);
+      console.error("[agent-chat] Erro ao buscar contexto do banco:", dbError);
     }
 
     const fullSystemPrompt = systemPrompt + contextData;
 
-    console.log(`[agent-chat] Agente: ${agenteId}, Mensagens: ${messages.length}`);
+    console.log(`[agent-chat] Agente: ${agenteId}, Mensagens: ${messages.length}, Contexto: ${contextData.length} chars`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
