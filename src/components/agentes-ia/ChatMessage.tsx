@@ -2,6 +2,7 @@ import { Sparkles, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type ChatMessageProps = {
   role: "user" | "assistant";
@@ -31,6 +32,7 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
         </p>
         <div className="text-sm text-foreground prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:my-2 prose-table:my-2">
           <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
             components={{
               // Override para garantir que tabelas fiquem bonitas
               table: ({ children }) => (
