@@ -43,11 +43,11 @@ export function ChatBox({ agenteId, sugestoes = [], initialPrompt, onMessageSent
       const userMessage: Message = { role: "user", content: initialPrompt };
       setMessages([userMessage]);
       setIsLoading(true);
-      streamChat([userMessage]).finally(() => setIsLoading(false));
+      sendChat([userMessage]).finally(() => setIsLoading(false));
     }
   }, [initialPrompt]);
 
-  const streamChat = useCallback(
+  const sendChat = useCallback(
     async (userMessages: Message[]) => {
       const response = await fetch(CHAT_URL, {
         method: "POST",
@@ -71,54 +71,19 @@ export function ChatBox({ agenteId, sugestoes = [], initialPrompt, onMessageSent
         throw new Error("Payment required");
       }
 
-      if (!response.ok || !response.body) {
-        throw new Error("Falha ao iniciar stream");
+      if (!response.ok) {
+        throw new Error("Falha ao processar mensagem");
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let textBuffer = "";
-      let assistantContent = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        textBuffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") continue;
-          if (!line.startsWith("data: ")) continue;
-
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") break;
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) {
-              assistantContent += content;
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                if (last?.role === "assistant") {
-                  return prev.map((m, i) =>
-                    i === prev.length - 1 ? { ...m, content: assistantContent } : m
-                  );
-                }
-                return [...prev, { role: "assistant", content: assistantContent }];
-              });
-            }
-          } catch {
-            textBuffer = line + "\n" + textBuffer;
-            break;
-          }
-        }
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
       }
+
+      const assistantContent = data.content || "Desculpe, não consegui processar sua solicitação.";
+      
+      setMessages((prev) => [...prev, { role: "assistant", content: assistantContent }]);
     },
     [agenteId]
   );
@@ -135,7 +100,7 @@ export function ChatBox({ agenteId, sugestoes = [], initialPrompt, onMessageSent
     setIsLoading(true);
 
     try {
-      await streamChat(newMessages);
+      await sendChat(newMessages);
       onMessageSent?.();
     } catch (error) {
       console.error("Erro no chat:", error);
