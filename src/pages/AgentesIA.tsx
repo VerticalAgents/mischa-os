@@ -33,7 +33,10 @@ const QUICK_ACTIONS = [
 export default function AgentesIA() {
   const [chatKey, setChatKey] = useState(0);
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
+  const [showAllActions, setShowAllActions] = useState(false);
   const { stats, loading, limiteHoje, registrarUso } = useAIUsage();
+
+  const visibleActions = showAllActions ? QUICK_ACTIONS : QUICK_ACTIONS.slice(0, 4);
 
   const handleClearConversation = () => {
     setChatKey(prev => prev + 1);
@@ -69,7 +72,7 @@ export default function AgentesIA() {
 
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-2">
-          {QUICK_ACTIONS.map((action, idx) => (
+          {visibleActions.map((action, idx) => (
             <Button
               key={idx}
               variant="outline"
@@ -81,6 +84,14 @@ export default function AgentesIA() {
               {action.label}
             </Button>
           ))}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+            onClick={() => setShowAllActions(!showAllActions)}
+          >
+            {showAllActions ? "Ver menos" : `Ver mais (${QUICK_ACTIONS.length - 4})`}
+          </Button>
           <Button
             variant="ghost"
             size="sm"
