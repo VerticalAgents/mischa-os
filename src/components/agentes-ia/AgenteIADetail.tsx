@@ -18,8 +18,8 @@ export default function AgenteIADetail({ agente }: AgenteIADetailProps) {
           <h2 className="text-2xl font-bold">{agente.nome}</h2>
         </div>
         
-        <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-200 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-800">
-          Chat ainda não integrado – integração futura via n8n
+        <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-200 dark:bg-green-500/20 dark:text-green-400 dark:border-green-800">
+          Powered by Lovable AI
         </Badge>
       </div>
       
@@ -43,7 +43,7 @@ export default function AgenteIADetail({ agente }: AgenteIADetailProps) {
       
       <Separator />
       
-      <ChatBox />
+      <ChatBox agenteId={agente.id} sugestoes={agente.sugestoesPergunta} />
     </div>
   );
 }
