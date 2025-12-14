@@ -1,8 +1,10 @@
 import PageHeader from "@/components/common/PageHeader";
-import { Bot, Sparkles, RotateCcw, Package, Truck, TrendingUp, Users } from "lucide-react";
+import { Bot, RotateCcw, Package, Truck, TrendingUp, Users } from "lucide-react";
 import { ChatBox } from "@/components/agentes-ia/ChatBox";
+import { UsageMonitor } from "@/components/agentes-ia/UsageMonitor";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useAIUsage } from "@/hooks/useAIUsage";
 
 const SUGESTOES = [
   "Quantos clientes ativos temos hoje?",
@@ -23,6 +25,7 @@ const QUICK_ACTIONS = [
 export default function AgentesIA() {
   const [chatKey, setChatKey] = useState(0);
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
+  const { stats, loading, limiteHoje, registrarUso } = useAIUsage();
 
   const handleClearConversation = () => {
     setChatKey(prev => prev + 1);
@@ -34,6 +37,10 @@ export default function AgentesIA() {
     setChatKey(prev => prev + 1);
   };
 
+  const handleMessageSent = () => {
+    registrarUso();
+  };
+
   return (
     <>
       <PageHeader 
@@ -43,6 +50,15 @@ export default function AgentesIA() {
       />
       
       <div className="mt-6 space-y-4">
+        {/* Usage Monitor */}
+        <UsageMonitor
+          hoje={stats.hoje}
+          semana={stats.semana}
+          mes={stats.mes}
+          limiteHoje={limiteHoje}
+          loading={loading}
+        />
+
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-2">
           {QUICK_ACTIONS.map((action, idx) => (
@@ -74,6 +90,7 @@ export default function AgentesIA() {
           agenteId="diagnostico-geral" 
           sugestoes={SUGESTOES}
           initialPrompt={selectedPrompt}
+          onMessageSent={handleMessageSent}
         />
       </div>
     </>

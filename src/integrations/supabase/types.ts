@@ -71,6 +71,33 @@ export type Database = {
           },
         ]
       }
+      ai_usage_logs: {
+        Row: {
+          created_at: string | null
+          id: string
+          sucesso: boolean | null
+          tipo_requisicao: string | null
+          tokens_estimados: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          sucesso?: boolean | null
+          tipo_requisicao?: string | null
+          tokens_estimados?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          sucesso?: boolean | null
+          tipo_requisicao?: string | null
+          tokens_estimados?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
