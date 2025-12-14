@@ -17,11 +17,12 @@ type ChatBoxProps = {
   agenteId: string;
   sugestoes?: string[];
   initialPrompt?: string | null;
+  onMessageSent?: () => void;
 };
 
 const CHAT_URL = "https://ttguzgouurqopeccvzve.supabase.co/functions/v1/agent-chat";
 
-export function ChatBox({ agenteId, sugestoes = [], initialPrompt }: ChatBoxProps) {
+export function ChatBox({ agenteId, sugestoes = [], initialPrompt, onMessageSent }: ChatBoxProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -135,6 +136,7 @@ export function ChatBox({ agenteId, sugestoes = [], initialPrompt }: ChatBoxProp
 
     try {
       await streamChat(newMessages);
+      onMessageSent?.();
     } catch (error) {
       console.error("Erro no chat:", error);
       if (!(error instanceof Error) || !["Rate limit", "Payment required"].includes(error.message)) {
