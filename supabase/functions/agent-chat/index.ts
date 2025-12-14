@@ -661,38 +661,92 @@ async function executarTool(supabase: any, toolName: string, args: any): Promise
         const agruparPor = args.agrupar_por || 'dia';
         const dataInicio = new Date(Date.now() - periodoDias * 24 * 60 * 60 * 1000).toISOString();
         
+        // 1. Buscar entregas com itens
         const { data: entregas } = await supabase
           .from("historico_entregas")
           .select("cliente_id, quantidade, data, itens")
           .eq("tipo", "entrega")
           .gte("data", dataInicio);
         
+        // 2. Buscar clientes e rotas
         const { data: clientes } = await supabase
           .from("clientes")
           .select("id, nome, rota_entrega_id");
         
-        const { data: precos } = await supabase
-          .from("precos_categoria_cliente")
-          .select("cliente_id, preco_unitario");
-        
         const { data: rotas } = await supabase.from("rotas_entrega").select("id, nome");
         
+        // 3. Buscar produtos e suas categorias
+        const { data: produtos } = await supabase
+          .from("produtos_finais")
+          .select("id, nome, categoria_id");
+        
+        // 4. Buscar preços personalizados (cliente + categoria)
+        const { data: precosPersonalizados } = await supabase
+          .from("precos_categoria_cliente")
+          .select("cliente_id, categoria_id, preco_unitario");
+        
+        // 5. Buscar preços padrão da configuração
+        const { data: configPrecos } = await supabase
+          .from("configuracoes_sistema")
+          .select("configuracoes")
+          .eq("modulo", "precificacao")
+          .limit(1);
+        
+        const precosPadrao = configPrecos?.[0]?.configuracoes?.precosPorCategoria || {};
+        const precoFallback = 4.50;
+        
+        // Mapas auxiliares
         const clienteMap = Object.fromEntries(clientes?.map((c: any) => [c.id, c]) || []);
         const rotasMap = Object.fromEntries(rotas?.map((r: any) => [r.id, r.nome]) || []);
-        const precoMap = Object.fromEntries(precos?.map((p: any) => [p.cliente_id, p.preco_unitario]) || []);
-        const precoDefault = 4.50;
+        const produtoMap = Object.fromEntries(produtos?.map((p: any) => [p.id, p]) || []);
         
-        // Calcular faturamento por entrega
+        // Mapa de preços personalizados: chave = "clienteId_categoriaId"
+        const precosClienteCategoriaMap: Record<string, number> = {};
+        precosPersonalizados?.forEach((p: any) => {
+          precosClienteCategoriaMap[`${p.cliente_id}_${p.categoria_id}`] = p.preco_unitario;
+        });
+        
+        // Função para obter preço correto
+        const obterPreco = (clienteId: string, categoriaId: number): number => {
+          // 1. Preço personalizado por cliente/categoria
+          const chave = `${clienteId}_${categoriaId}`;
+          if (precosClienteCategoriaMap[chave]) {
+            return precosClienteCategoriaMap[chave];
+          }
+          // 2. Preço padrão por categoria (da configuração)
+          if (precosPadrao[categoriaId]) {
+            return parseFloat(precosPadrao[categoriaId]);
+          }
+          // 3. Fallback
+          return precoFallback;
+        };
+        
+        // Calcular faturamento por entrega com preços por categoria
         const faturamentos = entregas?.map((e: any) => {
-          const preco = precoMap[e.cliente_id] || precoDefault;
           const cliente = clienteMap[e.cliente_id];
+          let valorTotal = 0;
+          
+          // Processar itens se existirem
+          if (e.itens && Array.isArray(e.itens) && e.itens.length > 0) {
+            e.itens.forEach((item: any) => {
+              const produto = produtoMap[item.produto_id];
+              const categoriaId = produto?.categoria_id || 1;
+              const preco = obterPreco(e.cliente_id, categoriaId);
+              valorTotal += (item.quantidade || 0) * preco;
+            });
+          } else {
+            // Fallback: usar quantidade total com preço médio (categoria 1)
+            const precoMedio = obterPreco(e.cliente_id, 1);
+            valorTotal = (e.quantidade || 0) * precoMedio;
+          }
+          
           return {
             data: e.data.split('T')[0],
             cliente_id: e.cliente_id,
             cliente: cliente?.nome || 'Desconhecido',
             rota: rotasMap[cliente?.rota_entrega_id] || '-',
             quantidade: e.quantidade,
-            valor: (e.quantidade || 0) * preco
+            valor: valorTotal
           };
         }) || [];
         
