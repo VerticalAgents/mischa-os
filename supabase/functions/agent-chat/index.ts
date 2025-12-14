@@ -102,6 +102,7 @@ Agora analise os dados abaixo e responda às perguntas do usuário:
 // Função para buscar contexto completo do negócio
 async function getFullContext(supabase: any): Promise<string> {
   const hoje = new Date().toISOString().split('T')[0];
+  const data84Dias = new Date(Date.now() - 84 * 24 * 60 * 60 * 1000).toISOString();
   const data4Semanas = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString();
   const data14Dias = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -109,6 +110,7 @@ async function getFullContext(supabase: any): Promise<string> {
     // Queries paralelas para performance
     const [
       clientesResult,
+      entregasGiroResult,
       entregasResult,
       agendamentosResult,
       produtosResult,
@@ -125,6 +127,13 @@ async function getFullContext(supabase: any): Promise<string> {
         .from("clientes")
         .select("id, nome, status_cliente, ativo, giro_medio_semanal, quantidade_padrao, periodicidade_padrao, proxima_data_reposicao, ultima_data_reposicao_efetiva, rota_entrega_id, representante_id, categoria_estabelecimento_id")
         .order("giro_medio_semanal", { ascending: false }),
+
+      // Query para calcular giro real histórico (últimos 84 dias = 12 semanas)
+      supabase
+        .from("historico_entregas")
+        .select("cliente_id, data, quantidade")
+        .eq("tipo", "entrega")
+        .gte("data", data84Dias),
 
       supabase
         .from("historico_entregas")
@@ -191,6 +200,7 @@ async function getFullContext(supabase: any): Promise<string> {
     ]);
 
     const clientes = clientesResult.data || [];
+    const entregasGiro = entregasGiroResult.data || [];
     const entregas = entregasResult.data || [];
     const agendamentos = agendamentosResult.data || [];
     const produtos = produtosResult.data || [];
@@ -206,13 +216,41 @@ async function getFullContext(supabase: any): Promise<string> {
     const rotasMap = Object.fromEntries(rotas.map((r: any) => [r.id, r.nome]));
     const repMap = Object.fromEntries(representantes.map((r: any) => [r.id, r.nome]));
 
+    // Calcular giro real histórico por cliente (igual à função calcularGiroSemanalHistorico)
+    const giroRealPorCliente: Record<string, number> = {};
+    const entregasPorClienteMap: Record<string, { total: number; primeiraData: Date }> = {};
+
+    entregasGiro.forEach((e: any) => {
+      if (!e.cliente_id) return;
+      if (!entregasPorClienteMap[e.cliente_id]) {
+        entregasPorClienteMap[e.cliente_id] = { total: 0, primeiraData: new Date(e.data) };
+      }
+      entregasPorClienteMap[e.cliente_id].total += e.quantidade || 0;
+      const dataEntrega = new Date(e.data);
+      if (dataEntrega < entregasPorClienteMap[e.cliente_id].primeiraData) {
+        entregasPorClienteMap[e.cliente_id].primeiraData = dataEntrega;
+      }
+    });
+
+    // Calcular média semanal por cliente (igual à função calcularGiroSemanalHistorico)
+    const hojeDate = new Date();
+    Object.entries(entregasPorClienteMap).forEach(([clienteId, dados]) => {
+      const diferencaDias = Math.ceil((hojeDate.getTime() - dados.primeiraData.getTime()) / (1000 * 60 * 60 * 24));
+      const semanasDesdeprimeiraEntrega = Math.ceil(diferencaDias / 7);
+      const numeroSemanas = Math.max(1, Math.min(12, semanasDesdeprimeiraEntrega));
+      giroRealPorCliente[clienteId] = Math.round(dados.total / numeroSemanas);
+    });
+
     // Calcular métricas (dual criteria: ativo=true E status_cliente='ATIVO')
     const clientesAtivos = clientes.filter((c: any) => 
       c.ativo === true && c.status_cliente?.toUpperCase() === "ATIVO"
     ).length;
     const totalExpositores = distribuidores.reduce((sum: number, d: any) => sum + (d.numero_expositores || 0), 0);
     const totalPDVs = clientesAtivos + totalExpositores;
-    const giroTotal = clientes.reduce((sum: number, c: any) => sum + (c.giro_medio_semanal || 0), 0);
+    
+    // Giro total usando giro real histórico
+    const giroTotal = Object.values(giroRealPorCliente).reduce((sum, g) => sum + g, 0);
+    
     const volumeEntregas = entregas.reduce((sum: number, e: any) => sum + (e.quantidade || 0), 0);
     const totalCustosFixos = custosFixos.reduce((sum: number, c: any) => sum + (c.valor || 0), 0);
     const totalCustosVariaveis = custosVariaveis.reduce((sum: number, c: any) => sum + (c.valor || 0), 0);
@@ -249,6 +287,12 @@ async function getFullContext(supabase: any): Promise<string> {
       leadsPorStatus[l.status] = (leadsPorStatus[l.status] || 0) + 1;
     });
 
+    // Ordenar clientes por giro real (não pelo campo projetado)
+    const clientesComGiroReal = clientes.map((c: any) => ({
+      ...c,
+      giroReal: giroRealPorCliente[c.id] || 0
+    })).sort((a, b) => b.giroReal - a.giroReal);
+
     // Formatar contexto
     const context = `
 
@@ -264,13 +308,13 @@ async function getFullContext(supabase: any): Promise<string> {
 - **PDVs via distribuidores:** ${totalExpositores}
 - **Total de PDVs:** ${totalPDVs}
 - **Total cadastrados:** ${clientes.length}
-- **Giro semanal estimado:** ${giroTotal} unidades
+- **Giro semanal real (histórico):** ${giroTotal} unidades
 
-**Top 20 clientes por giro semanal:**
+**Top 20 clientes por giro semanal real (baseado em entregas):**
 | Cliente | Giro/sem | Periodicidade | Status | Rota |
 |---------|----------|---------------|--------|------|
-${clientes.slice(0, 20).map((c: any) => 
-  `| ${c.nome} | ${c.giro_medio_semanal || 0} | ${c.periodicidade_padrao || 7} dias | ${c.status_cliente} | ${rotasMap[c.rota_entrega_id] || '-'} |`
+${clientesComGiroReal.slice(0, 20).map((c: any) => 
+  `| ${c.nome} | ${c.giroReal} | ${c.periodicidade_padrao || 7} dias | ${c.status_cliente} | ${rotasMap[c.rota_entrega_id] || '-'} |`
 ).join('\n')}
 
 ---
