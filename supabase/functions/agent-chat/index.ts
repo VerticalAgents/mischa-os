@@ -119,14 +119,14 @@ async function getFullContext(supabase: any): Promise<string> {
       leadsResult,
       rotasResult,
       representantesResult,
+      distribuidoresResult,
     ] = await Promise.all([
-      // Clientes ativos com detalhes
+      // Clientes ativos com detalhes (sem limite para contar todos)
       supabase
         .from("clientes")
         .select("id, nome, status_cliente, giro_medio_semanal, quantidade_padrao, periodicidade_padrao, proxima_data_reposicao, ultima_data_reposicao_efetiva, rota_entrega_id, representante_id, categoria_estabelecimento_id")
         .eq("ativo", true)
-        .order("giro_medio_semanal", { ascending: false })
-        .limit(100),
+        .order("giro_medio_semanal", { ascending: false }),
 
       // Histórico de entregas últimas 4 semanas
       supabase
@@ -196,6 +196,11 @@ async function getFullContext(supabase: any): Promise<string> {
         .from("representantes")
         .select("id, nome")
         .eq("ativo", true),
+
+      // Distribuidores expositores (PDVs indiretos)
+      supabase
+        .from("distribuidores_expositores")
+        .select("cliente_id, numero_expositores"),
     ]);
 
     const clientes = clientesResult.data || [];
@@ -209,13 +214,18 @@ async function getFullContext(supabase: any): Promise<string> {
     const leads = leadsResult.data || [];
     const rotas = rotasResult.data || [];
     const representantes = representantesResult.data || [];
+    const distribuidores = distribuidoresResult.data || [];
 
     // Criar mapa de rotas e representantes para lookup
     const rotasMap = Object.fromEntries(rotas.map((r: any) => [r.id, r.nome]));
     const repMap = Object.fromEntries(representantes.map((r: any) => [r.id, r.nome]));
 
-    // Calcular métricas
-    const clientesAtivos = clientes.filter((c: any) => c.status_cliente === "Ativo").length;
+    // Calcular métricas (case-insensitive para status)
+    const clientesAtivos = clientes.filter((c: any) => 
+      c.status_cliente?.toUpperCase() === "ATIVO"
+    ).length;
+    const totalExpositores = distribuidores.reduce((sum: number, d: any) => sum + (d.numero_expositores || 0), 0);
+    const totalPDVs = clientesAtivos + totalExpositores;
     const giroTotal = clientes.reduce((sum: number, c: any) => sum + (c.giro_medio_semanal || 0), 0);
     const volumeEntregas = entregas.reduce((sum: number, e: any) => sum + (e.quantidade || 0), 0);
     const totalCustosFixos = custosFixos.reduce((sum: number, c: any) => sum + (c.valor || 0), 0);
@@ -255,9 +265,11 @@ async function getFullContext(supabase: any): Promise<string> {
 
 ---
 
-### 👥 CLIENTES
-- **Total cadastrados:** ${clientes.length}
-- **Clientes ativos:** ${clientesAtivos}
+### 👥 CLIENTES E PDVs
+- **Clientes diretos ativos:** ${clientesAtivos}
+- **PDVs via distribuidores (expositores):** ${totalExpositores}
+- **Total de PDVs:** ${totalPDVs}
+- **Total clientes cadastrados:** ${clientes.length}
 - **Giro semanal total estimado:** ${giroTotal} unidades
 
 **Top 20 clientes por giro:**
@@ -347,6 +359,9 @@ ${representantes.map((r: any) => `- ${r.nome}`).join('\n')}
 
     console.log(`[agent-chat] Contexto carregado:`, {
       clientes: clientes.length,
+      clientesAtivos,
+      totalExpositores,
+      totalPDVs,
       entregas: entregas.length,
       agendamentos: agendamentos.length,
       produtos: produtos.length,
