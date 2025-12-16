@@ -11,6 +11,8 @@ import ClientesTable from "@/components/clientes/ClientesTable";
 import ClienteDetailsView from "@/components/clientes/ClienteDetailsView";
 import ClientesBulkActions from "@/components/clientes/ClientesBulkActions";
 import DeleteClienteDialog from "@/components/clientes/DeleteClienteDialog";
+import { RelatorioClientesRevisaoModal } from "@/components/clientes/RelatorioClientesRevisaoModal";
+import { FileSpreadsheet } from "lucide-react";
 
 export default function Clientes() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -23,6 +25,7 @@ export default function Clientes() {
   const [clienteToDelete, setClienteToDelete] = useState<string | null>(null);
   const [processingUrlParam, setProcessingUrlParam] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [relatorioOpen, setRelatorioOpen] = useState(false);
   
   const {
     filtros,
@@ -226,7 +229,12 @@ export default function Clientes() {
           label: "Novo Cliente",
           onClick: handleOpenForm
         }} 
-      />
+      >
+        <Button variant="outline" size="sm" onClick={() => setRelatorioOpen(true)}>
+          <FileSpreadsheet className="h-4 w-4 mr-1" />
+          Revisão Clientes
+        </Button>
+      </PageHeader>
 
       <ClientesBulkActions 
         selectedClienteIds={selectedClienteIds}
@@ -275,6 +283,11 @@ export default function Clientes() {
         onOpenChange={setDeleteDialogOpen}
         cliente={clienteToDelete ? getClientePorId(clienteToDelete) : null}
         onConfirm={confirmDeleteCliente}
+      />
+
+      <RelatorioClientesRevisaoModal 
+        open={relatorioOpen} 
+        onOpenChange={setRelatorioOpen} 
       />
     </>
   );
