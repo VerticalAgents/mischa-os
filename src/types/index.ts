@@ -63,6 +63,9 @@ export interface Cliente {
   
   // New field for category selection
   categoriasHabilitadas?: number[]; // Array of category IDs that client can purchase
+  
+  // ID externo para integração com GestãoClick
+  gestaoClickClienteId?: string;
 }
 
 // Representantes, Rotas e Categorias para configuração

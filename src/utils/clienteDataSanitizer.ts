@@ -475,6 +475,7 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     tipo_logistica: sanitized.tipoLogistica,
     tipo_cobranca: sanitized.tipoCobranca,
     forma_pagamento: sanitized.formaPagamento,
+    gestaoclick_cliente_id: sanitized.gestaoClickClienteId || null,
     updated_at: new Date().toISOString(),
   };
 

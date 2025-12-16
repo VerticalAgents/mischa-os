@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Save } from "lucide-react";
+import { AlertCircle, Save, Lock, Unlock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -71,7 +71,8 @@ const getDefaultFormData = (): Partial<Cliente> => ({
   representanteId: undefined,
   rotaEntregaId: undefined,
   categoriaEstabelecimentoId: undefined,
-  instrucoesEntrega: ''
+  instrucoesEntrega: '',
+  gestaoClickClienteId: ''
 });
 
 export default function ClienteFormDialog({ 
@@ -96,6 +97,7 @@ export default function ClienteFormDialog({
   const [formData, setFormData] = useState<Partial<Cliente>>(getDefaultFormData());
   const [isSaving, setIsSaving] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [isIdUnlocked, setIsIdUnlocked] = useState(false);
   
   const initializedRef = useRef(false);
   const lastClienteIdRef = useRef<string | null>(null);
@@ -103,6 +105,7 @@ export default function ClienteFormDialog({
   useEffect(() => {
     if (!open) {
       initializedRef.current = false;
+      setIsIdUnlocked(false); // Reset lock state when dialog closes
       return;
     }
 
@@ -266,7 +269,8 @@ export default function ClienteFormDialog({
       new Date(),
     ativo: cliente?.ativo ?? true,
     categoriaId: cliente?.categoriaId || 0,
-    subcategoriaId: cliente?.subcategoriaId || 0
+    subcategoriaId: cliente?.subcategoriaId || 0,
+    gestaoClickClienteId: formData.gestaoClickClienteId || ''
   };
 
   return (
@@ -292,7 +296,41 @@ export default function ClienteFormDialog({
               <CardTitle className="text-lg">Dados Básicos</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="gestaoClickClienteId">ID do Cliente</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={() => {
+                        if (!isIdUnlocked) {
+                          const confirmed = window.confirm('Tem certeza que deseja editar o ID do cliente? Este campo vincula o cliente ao GestãoClick.');
+                          if (confirmed) setIsIdUnlocked(true);
+                        } else {
+                          setIsIdUnlocked(false);
+                        }
+                      }}
+                      title={isIdUnlocked ? "Bloquear edição" : "Desbloquear edição"}
+                    >
+                      {isIdUnlocked ? (
+                        <Unlock className="h-3.5 w-3.5 text-amber-500" />
+                      ) : (
+                        <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                  <Input
+                    id="gestaoClickClienteId"
+                    value={formData.gestaoClickClienteId || ''}
+                    onChange={(e) => handleInputChange('gestaoClickClienteId', e.target.value)}
+                    disabled={!isIdUnlocked}
+                    placeholder="Ex: 12345"
+                    className={!isIdUnlocked ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="nome">
                     Nome <span className="text-red-500">*</span>

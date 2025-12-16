@@ -348,6 +348,7 @@ export type Database = {
           endereco_entrega: string | null
           endereco_entrega_encrypted: string | null
           forma_pagamento: string | null
+          gestaoclick_cliente_id: string | null
           giro_medio_semanal: number | null
           id: string
           instrucoes_entrega: string | null
@@ -386,6 +387,7 @@ export type Database = {
           endereco_entrega?: string | null
           endereco_entrega_encrypted?: string | null
           forma_pagamento?: string | null
+          gestaoclick_cliente_id?: string | null
           giro_medio_semanal?: number | null
           id?: string
           instrucoes_entrega?: string | null
@@ -424,6 +426,7 @@ export type Database = {
           endereco_entrega?: string | null
           endereco_entrega_encrypted?: string | null
           forma_pagamento?: string | null
+          gestaoclick_cliente_id?: string | null
           giro_medio_semanal?: number | null
           id?: string
           instrucoes_entrega?: string | null
