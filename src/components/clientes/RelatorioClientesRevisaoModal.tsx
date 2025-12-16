@@ -244,22 +244,30 @@ export function RelatorioClientesRevisaoModal({ open, onOpenChange }: RelatorioC
   );
 }
 
-// Funções auxiliares
+// Funções auxiliares - valores canônicos padronizados
+const FORMAS_PAGAMENTO_VALIDAS = ['BOLETO', 'PIX', 'DINHEIRO'];
+const TIPOS_COBRANCA_VALIDOS = ['A_VISTA', 'CONSIGNADO'];
+
 function normalizarFormaPagamento(valor: string | undefined | null): string {
   if (!valor) return 'INDEFINIDO';
   const upper = valor.toUpperCase().trim();
+  // Valor já está no formato canônico
+  if (FORMAS_PAGAMENTO_VALIDAS.includes(upper)) return upper;
+  // Tentar normalizar valores legados
   if (upper.includes('BOLETO')) return 'BOLETO';
   if (upper.includes('PIX')) return 'PIX';
   if (upper.includes('DINHEIRO') || upper.includes('ESPÉCIE') || upper.includes('ESPECIE')) return 'DINHEIRO';
-  if (upper.includes('CARTAO') || upper.includes('CARTÃO')) return 'CARTAO';
   return 'INDEFINIDO';
 }
 
 function normalizarTipoCobranca(valor: string | undefined | null): string {
   if (!valor) return 'INDEFINIDO';
-  const upper = valor.toUpperCase().trim().replace(/[_\s]+/g, ' ');
-  if (upper.includes('VISTA') || upper.includes('À VISTA') || upper.includes('A VISTA')) return 'A_VISTA';
-  if (upper.includes('PRAZO')) return 'A_PRAZO';
+  const upper = valor.toUpperCase().trim().replace(/[_\s]+/g, '_');
+  // Valor já está no formato canônico
+  if (TIPOS_COBRANCA_VALIDOS.includes(upper)) return upper;
+  // Tentar normalizar valores legados
+  if (upper.includes('VISTA') || upper === 'À_VISTA') return 'A_VISTA';
+  if (upper.includes('CONSIGNA')) return 'CONSIGNADO';
   return 'INDEFINIDO';
 }
 
