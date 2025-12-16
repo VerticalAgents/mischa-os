@@ -177,6 +177,7 @@ const transformDbRowToCliente = (row: any): Cliente => {
     statusAgendamento: row.status_agendamento,
     categoriaId: row.categoria_id || 1,
     subcategoriaId: row.subcategoria_id || 1,
+    gestaoClickClienteId: row.gestaoclick_cliente_id || null,
   };
 };
 
