@@ -1,7 +1,7 @@
-
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import ResumoExpedicao from "@/components/expedicao/ResumoExpedicao";
 import SeparacaoPedidos from "@/components/expedicao/SeparacaoPedidos";
 import { Despacho } from "@/components/expedicao/Despacho";
@@ -9,13 +9,16 @@ import { HistoricoEntregas } from "@/components/expedicao/HistoricoEntregas";
 import { RotaEntrega } from "@/components/expedicao/RotaEntrega";
 import DashboardEntregasAnalytics from "@/components/expedicao/DashboardEntregasAnalytics";
 import { OrganizacaoEntregas } from "@/components/expedicao/organizacao/OrganizacaoEntregas";
+import { RelatorioClientesRevisaoModal } from "@/components/expedicao/RelatorioClientesRevisaoModal";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { FileSpreadsheet } from "lucide-react";
 
 export default function Expedicao() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [relatorioOpen, setRelatorioOpen] = useState(false);
 
   // Usar stores para persistir estado
   const {
@@ -76,7 +79,15 @@ export default function Expedicao() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Expedição" description="Gerenciamento de separação de pedidos e despacho de entregas" />
+      <PageHeader 
+        title="Expedição" 
+        description="Gerenciamento de separação de pedidos e despacho de entregas"
+      >
+        <Button variant="outline" size="sm" onClick={() => setRelatorioOpen(true)}>
+          <FileSpreadsheet className="h-4 w-4 mr-1" />
+          Revisão Clientes
+        </Button>
+      </PageHeader>
       
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList>
@@ -143,6 +154,11 @@ export default function Expedicao() {
           {activeTab === "historico" && <HistoricoEntregas />}
         </TabsContent>
       </Tabs>
+
+      <RelatorioClientesRevisaoModal 
+        open={relatorioOpen} 
+        onOpenChange={setRelatorioOpen} 
+      />
     </div>
   );
 }
