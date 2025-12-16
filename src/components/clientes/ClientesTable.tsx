@@ -132,6 +132,8 @@ export default function ClientesTable({
 
   const getColumnValue = (cliente: Cliente, columnId: string) => {
     switch (columnId) {
+      case "idGestaoClick":
+        return cliente.gestaoClickClienteId || "-";
       case "nome":
         return cliente.nome;
       case "giroSemanal":
