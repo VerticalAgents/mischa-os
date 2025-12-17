@@ -47,6 +47,7 @@ export default function IntegracoesGestaoClickTab() {
   const [showSecretToken, setShowSecretToken] = useState(false);
   const [situacaoId, setSituacaoId] = useState('');
   const [situacaoEdicaoId, setSituacaoEdicaoId] = useState('');
+  const [situacaoCanceladoId, setSituacaoCanceladoId] = useState('');
   const [formaPagamentoBoleto, setFormaPagamentoBoleto] = useState('');
   const [formaPagamentoPix, setFormaPagamentoPix] = useState('');
   const [formaPagamentoDinheiro, setFormaPagamentoDinheiro] = useState('');
@@ -73,6 +74,7 @@ export default function IntegracoesGestaoClickTab() {
       setSecretToken(config.secret_token || '');
       setSituacaoId(config.situacao_id || '');
       setSituacaoEdicaoId(config.situacao_edicao_id || '');
+      setSituacaoCanceladoId(config.situacao_cancelado_id || '');
       setFormaPagamentoBoleto(config.forma_pagamento_ids?.BOLETO || '');
       setFormaPagamentoPix(config.forma_pagamento_ids?.PIX || '');
       setFormaPagamentoDinheiro(config.forma_pagamento_ids?.DINHEIRO || '');
@@ -92,6 +94,7 @@ export default function IntegracoesGestaoClickTab() {
       secret_token: secretToken,
       situacao_id: situacaoId || undefined,
       situacao_edicao_id: situacaoEdicaoId || undefined,
+      situacao_cancelado_id: situacaoCanceladoId || undefined,
       forma_pagamento_ids: {
         BOLETO: formaPagamentoBoleto || undefined,
         PIX: formaPagamentoPix || undefined,
@@ -337,7 +340,7 @@ export default function IntegracoesGestaoClickTab() {
                 <h4 className="text-sm font-medium">Configurações de Venda</h4>
                 
                 {situacoes.length > 0 && (
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 md:grid-cols-3">
                     <div className="space-y-2">
                       <Label htmlFor="situacao">Situação de Venda (status inicial)</Label>
                       <Select value={situacaoId} onValueChange={setSituacaoId}>
@@ -353,15 +356,15 @@ export default function IntegracoesGestaoClickTab() {
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        Situação aplicada às vendas criadas automaticamente
+                        Situação aplicada às vendas criadas
                       </p>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="situacao-edicao">Situação "Edição" (para alterações)</Label>
+                      <Label htmlFor="situacao-edicao">Situação "Edição"</Label>
                       <Select value={situacaoEdicaoId} onValueChange={setSituacaoEdicaoId}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione a situação de edição" />
+                          <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
                           {situacoes.map((s) => (
@@ -372,7 +375,26 @@ export default function IntegracoesGestaoClickTab() {
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        Situação usada temporariamente para permitir edições na venda
+                        Status para permitir edições
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="situacao-cancelado">Situação "Cancelado"</Label>
+                      <Select value={situacaoCanceladoId} onValueChange={setSituacaoCanceladoId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {situacoes.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Status que permite exclusão da venda
                       </p>
                     </div>
                   </div>

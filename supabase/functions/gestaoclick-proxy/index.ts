@@ -12,6 +12,7 @@ interface GestaoClickConfig {
   secret_token: string;
   situacao_id?: string;
   situacao_edicao_id?: string;
+  situacao_cancelado_id?: string;
   vendedor_id?: string;
   forma_pagamento_ids?: {
     BOLETO?: string;
@@ -716,23 +717,32 @@ Deno.serve(async (req) => {
 
         const config = configData.config as unknown as GestaoClickConfig;
 
-        // 1. Check if sale exists and is accessible
-        console.log('[gestaoclick-proxy] Verificando venda existente:', venda_id);
-        const getVendaResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
-          method: 'GET',
+        // Verificar se temos a configuração de status "Cancelado"
+        if (!config.situacao_cancelado_id) {
+          return new Response(
+            JSON.stringify({ error: 'Configure a situação "Cancelado" em Configurações → Integrações → GestaoClick' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // 1. Alterar status da venda para "Cancelado" para permitir exclusão
+        console.log('[gestaoclick-proxy] Alterando status da venda para Cancelado:', venda_id, '→', config.situacao_cancelado_id);
+        const putStatusResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             'access-token': config.access_token,
             'secret-access-token': config.secret_token,
           },
+          body: JSON.stringify({ situacao_id: config.situacao_cancelado_id }),
         });
 
-        const getVendaText = await getVendaResponse.text();
-        console.log('[gestaoclick-proxy] GET venda response:', getVendaResponse.status, getVendaText.substring(0, 500));
+        const putStatusText = await putStatusResponse.text();
+        console.log('[gestaoclick-proxy] PUT status cancelado response:', putStatusResponse.status, putStatusText.substring(0, 500));
 
-        // Check for errors using helper
-        if (hasGCError(getVendaText, getVendaResponse.status)) {
-          console.log('[gestaoclick-proxy] Venda não acessível, limpando vínculo');
+        // Se falhou ao mudar status, a venda pode não existir ou não ser acessível
+        if (hasGCError(putStatusText, putStatusResponse.status)) {
+          console.log('[gestaoclick-proxy] Não foi possível alterar status, venda inacessível. Limpando vínculo.');
           await supabase
             .from('agendamentos_clientes')
             .update({ gestaoclick_venda_id: null, gestaoclick_sincronizado_em: null })
@@ -748,8 +758,8 @@ Deno.serve(async (req) => {
           );
         }
 
-        // 2. DELETE the existing sale
-        console.log('[gestaoclick-proxy] Deletando venda existente:', venda_id);
+        // 2. Agora sim, DELETE a venda (que está em status "cancelado")
+        console.log('[gestaoclick-proxy] Deletando venda em status cancelado:', venda_id);
         const deleteResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
           method: 'DELETE',
           headers: {
@@ -762,12 +772,10 @@ Deno.serve(async (req) => {
         const deleteText = await deleteResponse.text();
         console.log('[gestaoclick-proxy] DELETE response:', deleteResponse.status, deleteText.substring(0, 500));
 
-        if (hasGCError(deleteText, deleteResponse.status) && deleteResponse.status !== 200) {
-          console.error('[gestaoclick-proxy] Erro ao deletar venda:', deleteText);
-          return new Response(
-            JSON.stringify({ error: 'Erro ao excluir venda antiga no GestaoClick: ' + deleteText.substring(0, 200) }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+        // Mesmo se DELETE falhar com erro, continuamos para criar nova venda
+        // (a venda antiga já está cancelada)
+        if (hasGCError(deleteText, deleteResponse.status)) {
+          console.warn('[gestaoclick-proxy] Aviso: DELETE retornou erro, mas venda já está cancelada. Continuando...', deleteText.substring(0, 200));
         }
 
         // 3. Get client data

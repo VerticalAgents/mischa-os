@@ -9,6 +9,7 @@ export interface GestaoClickConfig {
   secret_token: string;
   situacao_id?: string;
   situacao_edicao_id?: string;
+  situacao_cancelado_id?: string;
   vendedor_id?: string;
   forma_pagamento_ids?: {
     BOLETO?: string;
