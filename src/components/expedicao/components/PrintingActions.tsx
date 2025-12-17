@@ -4,6 +4,14 @@ import { Printer, FileText } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 
+interface TrocaPendente {
+  produto_id: string;
+  produto_nome: string;
+  quantidade: number;
+  motivo_id: number;
+  motivo: string;
+}
+
 interface PrintingActionsProps {
   activeSubTab: string;
   pedidosPadrao: any[];
@@ -51,15 +59,22 @@ export const PrintingActions = ({
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
-            th { background-color: #f2f2f2; font-weight: bold; }
+            th, td { border: 1px solid #ddd; padding: 6px; text-align: left; vertical-align: top; }
+            th { background-color: #f2f2f2; font-weight: bold; font-size: 11px; }
             h1 { text-align: center; margin-bottom: 10px; }
             .header { text-align: center; margin-bottom: 20px; }
-            .produtos-lista { font-size: 11px; line-height: 1.3; }
-            .produto-item { margin-bottom: 2px; display: flex; justify-content: space-between; }
+            .produtos-lista { font-size: 10px; line-height: 1.2; }
+            .produto-item { margin-bottom: 1px; display: flex; justify-content: space-between; }
             .produto-nome { flex: 1; }
-            .produto-qtd { font-weight: bold; margin-left: 10px; }
-            .total-geral { border-top: 1px solid #ccc; padding-top: 2px; margin-top: 4px; font-weight: bold; }
+            .produto-qtd { font-weight: bold; margin-left: 8px; }
+            .total-geral { border-top: 1px solid #ccc; padding-top: 2px; margin-top: 3px; font-weight: bold; }
+            .observacoes { font-size: 9px; line-height: 1.2; }
+            .obs-item { margin-bottom: 2px; }
+            .obs-label { font-weight: bold; color: #555; }
+            .trocas-lista { font-size: 9px; line-height: 1.2; }
+            .troca-item { margin-bottom: 2px; padding: 2px; background-color: #fef3c7; border-left: 2px solid #d97706; padding-left: 4px; }
+            .troca-produto { font-weight: bold; }
+            .troca-motivo { color: #92400e; font-style: italic; }
           </style>
         </head>
         <body>
@@ -71,11 +86,13 @@ export const PrintingActions = ({
           <table>
             <thead>
               <tr>
-                <th style="width: 25%;">Cliente</th>
-                <th style="width: 15%;">Data Entrega</th>
-                <th style="width: 10%;">Tipo</th>
-                <th style="width: 40%;">Produtos e Quantidades</th>
-                <th style="width: 10%;">Total</th>
+                <th style="width: 18%;">Cliente</th>
+                <th style="width: 10%;">Data</th>
+                <th style="width: 7%;">Tipo</th>
+                <th style="width: 30%;">Produtos</th>
+                <th style="width: 6%;">Total</th>
+                <th style="width: 14%;">Observações</th>
+                <th style="width: 15%;">Trocas</th>
               </tr>
             </thead>
             <tbody>
@@ -116,6 +133,36 @@ export const PrintingActions = ({
       
       produtosHtml += '</div>';
       
+      // Montar HTML das observações
+      let observacoesHtml = '<div class="observacoes">';
+      if (pedido.observacoes_gerais) {
+        observacoesHtml += `<div class="obs-item"><span class="obs-label">Geral:</span> ${pedido.observacoes_gerais}</div>`;
+      }
+      if (pedido.observacoes_agendamento) {
+        observacoesHtml += `<div class="obs-item"><span class="obs-label">Pedido:</span> ${pedido.observacoes_agendamento}</div>`;
+      }
+      if (!pedido.observacoes_gerais && !pedido.observacoes_agendamento) {
+        observacoesHtml += '<span style="color: #999;">-</span>';
+      }
+      observacoesHtml += '</div>';
+      
+      // Montar HTML das trocas pendentes
+      let trocasHtml = '<div class="trocas-lista">';
+      const trocasPendentes: TrocaPendente[] = pedido.trocas_pendentes || [];
+      if (trocasPendentes.length > 0) {
+        trocasPendentes.forEach((troca) => {
+          trocasHtml += `
+            <div class="troca-item">
+              <span class="troca-produto">${troca.produto_nome}: ${troca.quantidade}</span>
+              <br/><span class="troca-motivo">${troca.motivo}</span>
+            </div>
+          `;
+        });
+      } else {
+        trocasHtml += '<span style="color: #999;">-</span>';
+      }
+      trocasHtml += '</div>';
+      
       printContent += `
         <tr>
           <td><strong>${pedido.cliente_nome}</strong></td>
@@ -123,6 +170,8 @@ export const PrintingActions = ({
           <td>${pedido.tipo_pedido}</td>
           <td>${produtosHtml}</td>
           <td style="text-align: center; font-weight: bold;">${pedido.quantidade_total}</td>
+          <td>${observacoesHtml}</td>
+          <td>${trocasHtml}</td>
         </tr>
       `;
     });
@@ -136,6 +185,7 @@ export const PrintingActions = ({
               <tr style="background-color: #f8f9fa; font-weight: bold;">
                 <td colspan="4" style="text-align: right; padding-right: 10px;">TOTAL GERAL:</td>
                 <td style="text-align: center; font-size: 14px;">${totalGeral}</td>
+                <td colspan="2"></td>
               </tr>
             </tfoot>
           </table>
@@ -197,10 +247,31 @@ export const PrintingActions = ({
             }
             .cliente { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
             .data { margin-bottom: 5px; font-size: 12px; }
-            .produtos { font-size: 10px; margin-bottom: 5px; max-height: 0.8in; overflow: hidden; }
+            .produtos { font-size: 10px; margin-bottom: 5px; max-height: 0.6in; overflow: hidden; }
             .produto-linha { display: flex; justify-content: space-between; margin-bottom: 1px; }
             .total-etiqueta { font-size: 12px; font-weight: bold; border-top: 1px solid #ccc; padding-top: 2px; }
             .detalhes { font-size: 10px; color: #666; }
+            .trocas-badge { 
+              background-color: #fef3c7; 
+              color: #92400e; 
+              font-size: 9px; 
+              padding: 2px 6px; 
+              border-radius: 3px; 
+              margin-top: 4px; 
+              display: inline-block;
+              border: 1px solid #d97706;
+            }
+            .obs-badge {
+              background-color: #e0f2fe;
+              color: #0369a1;
+              font-size: 8px;
+              padding: 2px 4px;
+              border-radius: 2px;
+              margin-top: 2px;
+              display: block;
+              max-height: 0.3in;
+              overflow: hidden;
+            }
           </style>
         </head>
         <body>
@@ -230,6 +301,22 @@ export const PrintingActions = ({
         `;
       });
       
+      // Indicador de trocas pendentes
+      const trocasPendentes: TrocaPendente[] = pedido.trocas_pendentes || [];
+      let trocasBadgeHtml = '';
+      if (trocasPendentes.length > 0) {
+        const totalTrocas = trocasPendentes.reduce((sum, t) => sum + t.quantidade, 0);
+        trocasBadgeHtml = `<div class="trocas-badge">⚠️ ${trocasPendentes.length} troca(s) - ${totalTrocas} un.</div>`;
+      }
+      
+      // Indicador de observações
+      let obsBadgeHtml = '';
+      const temObs = pedido.observacoes_gerais || pedido.observacoes_agendamento;
+      if (temObs) {
+        const obsTexto = (pedido.observacoes_agendamento || pedido.observacoes_gerais || '').substring(0, 50);
+        obsBadgeHtml = `<div class="obs-badge">📝 ${obsTexto}${obsTexto.length >= 50 ? '...' : ''}</div>`;
+      }
+      
       printContent += `
         <div class="etiqueta">
           <div class="cliente">${pedido.cliente_nome}</div>
@@ -237,6 +324,8 @@ export const PrintingActions = ({
           <div class="produtos">${produtosHtml}</div>
           <div class="total-etiqueta">Total: ${pedido.quantidade_total} unidades</div>
           <div class="detalhes">Pedido - ${pedido.tipo_pedido}</div>
+          ${trocasBadgeHtml}
+          ${obsBadgeHtml}
         </div>
       `;
     });
