@@ -185,6 +185,16 @@ Deno.serve(async (req) => {
           );
         }
 
+        const clienteIdGCStr = String(cliente.gestaoclick_cliente_id).trim();
+        const clienteIdGC = Number.parseInt(clienteIdGCStr, 10);
+
+        if (!Number.isFinite(clienteIdGC)) {
+          return new Response(
+            JSON.stringify({ error: `ID GestaoClick inválido para o cliente "${cliente.nome}": "${clienteIdGCStr}"` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         // 3. Get order items using database function
         const { data: itens, error: itensError } = await supabase
           .rpc('compute_entrega_itens_v2', { p_agendamento_id: agendamento_id });
@@ -285,7 +295,7 @@ Deno.serve(async (req) => {
           tipo: 'produto',
           codigo: codigo,
           data: new Date().toISOString().split('T')[0],
-          cliente_id: parseInt(cliente.gestaoclick_cliente_id, 10),
+          cliente_id: clienteIdGC,
           situacao_venda_id: config.situacao_id,
           forma_pagamento_id: formaPagamentoId,
           produtos: produtosVenda
@@ -315,6 +325,11 @@ Deno.serve(async (req) => {
           } catch {
             errorMessage = vendaResponseText || errorMessage;
           }
+
+          if (errorMessage.includes('cliente_id informado')) {
+            errorMessage = `ID GestaoClick do cliente inválido ("${clienteIdGCStr}") para "${cliente.nome}". Confirme o ID GC no cadastro do cliente no GestaoClick e atualize no Lovable.`;
+          }
+
           return new Response(
             JSON.stringify({ error: errorMessage }),
             { status: vendaResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
