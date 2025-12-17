@@ -2,3 +2,6 @@ project_id = "ttguzgouurqopeccvzve"
 
 [functions.agent-chat]
 verify_jwt = false
+
+[functions.gestaoclick-proxy]
+verify_jwt = false
