@@ -5,7 +5,7 @@ import {
   ShoppingBag, Settings, Layers, Truck, FileText,
   Cpu, PackageCheck, DollarSign, LineChart, Receipt,
   BarChart, Building, HelpingHand, UserCircle, TrendingUp, Calculator, Home, BookOpen, MapPin,
-  Shield
+  Shield, RefreshCw
 } from "lucide-react";
 
 export type MenuItem = {
@@ -55,6 +55,11 @@ export const menuGroups: MenuGroup[] = [
         label: "PCP",
         path: "/pcp",
         icon: <Layers className="h-4 w-4" />,
+      },
+      {
+        label: "Controle de Trocas",
+        path: "/controle-trocas",
+        icon: <RefreshCw className="h-4 w-4" />,
       },
     ]
   },

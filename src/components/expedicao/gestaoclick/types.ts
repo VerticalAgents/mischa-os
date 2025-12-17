@@ -27,6 +27,10 @@ export interface VendaGC {
   itens: ItemVendaGC[];
   valor_total: number;
   data_vencimento: string;
+  // Observações e trocas
+  observacoes_gerais?: string;
+  observacoes_agendamento?: string;
+  trocas_pendentes?: { produto_nome: string; quantidade: number; motivo_nome: string }[];
   // Status dos documentos (estado local)
   documentoA4Gerado?: boolean;
   boletoGerado?: boolean;

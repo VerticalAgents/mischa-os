@@ -154,6 +154,46 @@ export function useGerarDocumentoVenda() {
     doc.setFontSize(11);
     doc.text(`TOTAL: ${formatarMoeda(venda.valor_total)}`, pageWidth - margin, yPos, { align: "right" });
 
+    // Observações (se houver)
+    if (venda.observacoes_gerais || venda.observacoes_agendamento) {
+      yPos += 10;
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 10;
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("OBSERVAÇÕES", margin, yPos);
+      yPos += 8;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      
+      if (venda.observacoes_gerais) {
+        doc.text(`Gerais: ${venda.observacoes_gerais}`, margin, yPos);
+        yPos += 5;
+      }
+      if (venda.observacoes_agendamento) {
+        doc.text(`Pedido: ${venda.observacoes_agendamento}`, margin, yPos);
+        yPos += 5;
+      }
+    }
+
+    // Trocas a realizar (se houver)
+    if (venda.trocas_pendentes && venda.trocas_pendentes.length > 0) {
+      yPos += 5;
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 10;
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("TROCAS A REALIZAR", margin, yPos);
+      yPos += 8;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      
+      venda.trocas_pendentes.forEach((troca) => {
+        doc.text(`• ${troca.produto_nome} (${troca.quantidade} un) - ${troca.motivo_nome}`, margin, yPos);
+        yPos += 5;
+      });
+    }
+
     // Linha divisória
     yPos += 10;
     doc.line(margin, yPos, pageWidth - margin, yPos);
