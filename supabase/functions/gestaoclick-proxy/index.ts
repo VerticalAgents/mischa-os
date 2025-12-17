@@ -639,8 +639,11 @@ Deno.serve(async (req) => {
           vendaResponseText = await vendaResponse.text();
           console.log('[gestaoclick-proxy] Venda response:', vendaResponse.status, vendaResponseText);
 
-          // Check if error is duplicate codigo
-          if (vendaResponseText.includes('já está sendo utilizado')) {
+          // Check if error is duplicate codigo (handle Unicode escapes in response)
+          const isDuplicateCode = vendaResponseText.includes('sendo utilizado') || 
+                                  vendaResponseText.includes('already in use') ||
+                                  vendaResponseText.includes('j\\u00e1 est\\u00e1 sendo');
+          if (isDuplicateCode) {
             currentCodigo++;
             retryCount++;
             console.log(`[gestaoclick-proxy] Código duplicado, tentando próximo: ${currentCodigo}`);
@@ -956,8 +959,11 @@ Deno.serve(async (req) => {
           vendaResponseText = await vendaResponse.text();
           console.log('[gestaoclick-proxy] POST nova venda response:', vendaResponse.status, vendaResponseText.substring(0, 500));
 
-          // Check if error is duplicate codigo
-          if (vendaResponseText.includes('já está sendo utilizado')) {
+          // Check if error is duplicate codigo (handle Unicode escapes in response)
+          const isDuplicateCode = vendaResponseText.includes('sendo utilizado') || 
+                                  vendaResponseText.includes('already in use') ||
+                                  vendaResponseText.includes('j\\u00e1 est\\u00e1 sendo');
+          if (isDuplicateCode) {
             currentCodigo++;
             retryCount++;
             console.log(`[gestaoclick-proxy] Código duplicado, tentando próximo: ${currentCodigo}`);
