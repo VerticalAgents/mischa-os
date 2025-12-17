@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Send } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
@@ -30,9 +31,12 @@ interface PedidoCardProps {
     tipo_pedido: string;
     substatus_pedido?: string;
     itens_personalizados?: any;
+    gestaoclick_venda_id?: string;
   };
   onMarcarSeparado?: () => void;
   onEditarAgendamento?: () => void;
+  onGerarVendaGC?: () => void;
+  isGerandoVendaGC?: boolean;
   showDespachoActions?: boolean;
   showReagendarButton?: boolean;
   showProdutosList?: boolean;
@@ -47,6 +51,8 @@ const PedidoCard = ({
   pedido,
   onMarcarSeparado,
   onEditarAgendamento,
+  onGerarVendaGC,
+  isGerandoVendaGC = false,
   showDespachoActions = false,
   showReagendarButton = false,
   showProdutosList = false,
@@ -187,14 +193,39 @@ const PedidoCard = ({
           {!showDespachoActions && !showRetornarParaSeparacaoButton && (
             <>
               {(!pedido.substatus_pedido || pedido.substatus_pedido === 'Agendado') && (
-                <Button 
-                  onClick={onMarcarSeparado} 
-                  size="sm" 
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle2 className="h-4 w-4 mr-1" />
-                  Marcar Separado
-                </Button>
+                <>
+                  <Button 
+                    onClick={onMarcarSeparado} 
+                    size="sm" 
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                    Marcar Separado
+                  </Button>
+                  
+                  {onGerarVendaGC && !pedido.gestaoclick_venda_id && (
+                    <Button 
+                      onClick={onGerarVendaGC} 
+                      size="sm" 
+                      variant="outline"
+                      disabled={isGerandoVendaGC}
+                      className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+                    >
+                      {isGerandoVendaGC ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4 mr-1" />
+                      )}
+                      Gerar Venda GC
+                    </Button>
+                  )}
+                  
+                  {pedido.gestaoclick_venda_id && (
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                      GC: #{pedido.gestaoclick_venda_id}
+                    </Badge>
+                  )}
+                </>
               )}
             </>
           )}
