@@ -1285,18 +1285,11 @@ Deno.serve(async (req) => {
 
         const dataVencimento = calcularDataVencimento(formaPagamento, cliente.prazo_pagamento_dias);
 
-        // Validate fornecedor_id is configured (required for NF-e model 55)
-        if (!config.fornecedor_id) {
-          return new Response(
-            JSON.stringify({ error: 'ID do Fornecedor não configurado. Vá em Configurações → GestaoClick → Lojas/Fornecedores e configure o Fornecedor para NF.' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
         // Build NF payload
+        // Para NF-e de saída (venda), id_fornecedor = destinatário/cliente
         const nfPayload: Record<string, any> = {
           tipo_nf: 55,          // Modelo NF-e (modelo 55)
-          id_fornecedor: parseInt(config.fornecedor_id, 10), // ID do fornecedor/empresa emitente (obrigatório para NF-e)
+          id_fornecedor: parseInt(cliente.gestaoclick_cliente_id, 10), // Para NF de saída, fornecedor = cliente destinatário
           loja_id: config.loja_id,
           envio_automatico: 1,  // Criar e emitir automaticamente
           indicador_final: 0,   // Não é consumidor final (revenda B2B)
