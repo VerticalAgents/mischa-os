@@ -1,0 +1,370 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const GESTAOCLICK_BASE_URL = 'https://api.gestaoclick.com';
+
+interface GestaoClickConfig {
+  access_token: string;
+  secret_token: string;
+  situacao_id?: string;
+  forma_pagamento_ids?: {
+    BOLETO?: string;
+    PIX?: string;
+    DINHEIRO?: string;
+  };
+}
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { action, ...params } = await req.json();
+    console.log(`[gestaoclick-proxy] Action: ${action}`, params);
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get user from auth header
+    const authHeader = req.headers.get('Authorization');
+    let userId: string | null = null;
+    
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      if (!error && user) {
+        userId = user.id;
+      }
+    }
+
+    switch (action) {
+      case 'test_connection': {
+        // Test connection with provided tokens
+        const { access_token, secret_token } = params;
+        
+        if (!access_token || !secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Fetch situacoes_vendas
+        const situacoesResponse = await fetch(`${GESTAOCLICK_BASE_URL}/situacoes_vendas`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': access_token,
+            'secret-access-token': secret_token,
+          },
+        });
+
+        if (!situacoesResponse.ok) {
+          const errorText = await situacoesResponse.text();
+          console.error('[gestaoclick-proxy] situacoes_vendas error:', errorText);
+          return new Response(
+            JSON.stringify({ error: `Erro ao conectar: ${situacoesResponse.status}` }),
+            { status: situacoesResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const situacoesData = await situacoesResponse.json();
+        console.log('[gestaoclick-proxy] situacoes_vendas response:', situacoesData);
+
+        // Fetch formas_pagamentos
+        const formasResponse = await fetch(`${GESTAOCLICK_BASE_URL}/formas_pagamentos`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': access_token,
+            'secret-access-token': secret_token,
+          },
+        });
+
+        if (!formasResponse.ok) {
+          const errorText = await formasResponse.text();
+          console.error('[gestaoclick-proxy] formas_pagamentos error:', errorText);
+          return new Response(
+            JSON.stringify({ error: `Erro ao buscar formas de pagamento: ${formasResponse.status}` }),
+            { status: formasResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const formasData = await formasResponse.json();
+        console.log('[gestaoclick-proxy] formas_pagamentos response:', formasData);
+
+        // Parse responses - API returns { data: [...] }
+        const situacoes = situacoesData.data || situacoesData.situacoes_vendas || situacoesData || [];
+        const formasPagamento = formasData.data || formasData.formas_pagamentos || formasData || [];
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            situacoes: Array.isArray(situacoes) ? situacoes.map((s: any) => ({
+              id: s.id || s.situacao_venda_id,
+              nome: s.nome || s.situacao_venda
+            })) : [],
+            formas_pagamento: Array.isArray(formasPagamento) ? formasPagamento.map((f: any) => ({
+              id: f.id || f.forma_pagamento_id,
+              nome: f.nome || f.forma_pagamento
+            })) : []
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'criar_venda': {
+        const { agendamento_id, cliente_id } = params;
+
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: 'Usuário não autenticado' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // 1. Get GestaoClick config
+        const { data: configData, error: configError } = await supabase
+          .from('integracoes_config')
+          .select('config')
+          .eq('user_id', userId)
+          .eq('integracao', 'gestaoclick')
+          .maybeSingle();
+
+        if (configError || !configData?.config) {
+          console.error('[gestaoclick-proxy] Config not found:', configError);
+          return new Response(
+            JSON.stringify({ error: 'Configure as credenciais do GestaoClick em Configurações → Integrações' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const config = configData.config as unknown as GestaoClickConfig;
+        
+        if (!config.access_token || !config.secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens do GestaoClick não configurados' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!config.situacao_id) {
+          return new Response(
+            JSON.stringify({ error: 'Situação de venda não configurada' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // 2. Get client data
+        const { data: cliente, error: clienteError } = await supabase
+          .from('clientes')
+          .select('gestaoclick_cliente_id, forma_pagamento, prazo_pagamento_dias, nome')
+          .eq('id', cliente_id)
+          .single();
+
+        if (clienteError || !cliente) {
+          console.error('[gestaoclick-proxy] Client not found:', clienteError);
+          return new Response(
+            JSON.stringify({ error: 'Cliente não encontrado' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!cliente.gestaoclick_cliente_id) {
+          return new Response(
+            JSON.stringify({ error: `Cliente "${cliente.nome}" não possui ID GestaoClick configurado` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // 3. Get order items using database function
+        const { data: itens, error: itensError } = await supabase
+          .rpc('compute_entrega_itens_v2', { p_agendamento_id: agendamento_id });
+
+        if (itensError || !itens || itens.length === 0) {
+          console.error('[gestaoclick-proxy] Items error:', itensError);
+          return new Response(
+            JSON.stringify({ error: 'Não foi possível calcular os itens do pedido' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // 4. Get products with GestaoClick IDs
+        const produtoIds = itens.map((i: { produto_id: string }) => i.produto_id);
+        const { data: produtos, error: produtosError } = await supabase
+          .from('produtos_finais')
+          .select('id, nome, gestaoclick_produto_id, categoria_id')
+          .in('id', produtoIds);
+
+        if (produtosError) {
+          console.error('[gestaoclick-proxy] Products error:', produtosError);
+          return new Response(
+            JSON.stringify({ error: 'Erro ao buscar produtos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // 5. Get client custom prices
+        const categoriaIds = [...new Set(produtos?.map(p => p.categoria_id).filter(Boolean))];
+        const { data: precosCliente } = await supabase
+          .from('precos_categoria_cliente')
+          .select('categoria_id, preco_unitario')
+          .eq('cliente_id', cliente_id)
+          .in('categoria_id', categoriaIds as number[]);
+
+        // 6. Get default category prices
+        const { data: configSistema } = await supabase
+          .from('configuracoes_sistema')
+          .select('configuracoes')
+          .eq('modulo', 'precificacao')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        const precosDefault = (configSistema?.configuracoes as { precosPorCategoria?: Record<string, number> })?.precosPorCategoria || {};
+
+        // 7. Build items with prices - using correct GestaoClick structure
+        const produtosVenda: any[] = [];
+        
+        for (const item of itens) {
+          const produto = produtos?.find(p => p.id === item.produto_id);
+          if (!produto?.gestaoclick_produto_id) {
+            return new Response(
+              JSON.stringify({ error: `Produto "${produto?.nome || item.produto_id}" não possui ID GestaoClick` }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Determine price: custom → default category → fallback
+          let precoUnitario = 4.50;
+          const categoriaId = produto.categoria_id;
+          
+          if (categoriaId) {
+            const precoPersonalizado = precosCliente?.find(p => p.categoria_id === categoriaId);
+            if (precoPersonalizado) {
+              precoUnitario = precoPersonalizado.preco_unitario;
+            } else if (precosDefault[categoriaId.toString()]) {
+              precoUnitario = precosDefault[categoriaId.toString()];
+            }
+          }
+
+          // GestaoClick expects nested structure: produtos: [{ produto: { ... } }]
+          produtosVenda.push({
+            produto: {
+              produto_id: produto.gestaoclick_produto_id,
+              quantidade: item.quantidade.toString(),
+              valor_venda: precoUnitario.toFixed(2)
+            }
+          });
+        }
+
+        // 8. Determine payment method
+        const formaPagamento = cliente.forma_pagamento || 'BOLETO';
+        const formaPagamentoId = config.forma_pagamento_ids?.[formaPagamento as keyof typeof config.forma_pagamento_ids];
+        
+        if (!formaPagamentoId) {
+          return new Response(
+            JSON.stringify({ error: `Forma de pagamento "${formaPagamento}" não mapeada em Configurações → GestaoClick` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // 9. Generate unique code
+        const codigo = `LOV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+        // 10. Build sale payload according to GestaoClick API docs
+        const vendaPayload = {
+          tipo: 'produto',
+          codigo: codigo,
+          data: new Date().toISOString().split('T')[0],
+          cliente_id: cliente.gestaoclick_cliente_id,
+          situacao_venda_id: config.situacao_id,
+          forma_pagamento_id: formaPagamentoId,
+          produtos: produtosVenda
+        };
+
+        console.log('[gestaoclick-proxy] Sending venda payload:', JSON.stringify(vendaPayload, null, 2));
+
+        // 11. Create sale in GestaoClick
+        const vendaResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': config.access_token,
+            'secret-access-token': config.secret_token,
+          },
+          body: JSON.stringify(vendaPayload),
+        });
+
+        const vendaResponseText = await vendaResponse.text();
+        console.log('[gestaoclick-proxy] Venda response:', vendaResponse.status, vendaResponseText);
+
+        if (!vendaResponse.ok) {
+          let errorMessage = `Erro ${vendaResponse.status}`;
+          try {
+            const errorData = JSON.parse(vendaResponseText);
+            errorMessage = errorData.message || errorData.error || errorMessage;
+          } catch {
+            errorMessage = vendaResponseText || errorMessage;
+          }
+          return new Response(
+            JSON.stringify({ error: errorMessage }),
+            { status: vendaResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        let vendaCriada;
+        try {
+          vendaCriada = JSON.parse(vendaResponseText);
+        } catch {
+          vendaCriada = { venda_id: codigo };
+        }
+
+        const vendaId = vendaCriada.data?.venda_id || vendaCriada.venda_id || vendaCriada.id || codigo;
+        console.log('[gestaoclick-proxy] Venda created with ID:', vendaId);
+
+        // 12. Update agendamento with sale ID
+        const { error: updateError } = await supabase
+          .from('agendamentos_clientes')
+          .update({
+            gestaoclick_venda_id: vendaId.toString(),
+            gestaoclick_sincronizado_em: new Date().toISOString()
+          })
+          .eq('id', agendamento_id);
+
+        if (updateError) {
+          console.error('[gestaoclick-proxy] Failed to update agendamento:', updateError);
+          // Don't fail the whole operation, just log
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            venda_id: vendaId,
+            codigo: codigo
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      default:
+        return new Response(
+          JSON.stringify({ error: `Ação desconhecida: ${action}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+    }
+  } catch (error) {
+    console.error('[gestaoclick-proxy] Error:', error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Erro interno' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

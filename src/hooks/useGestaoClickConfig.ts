@@ -121,41 +121,40 @@ export function useGestaoClickConfig() {
     }
   }, [user?.id]);
 
-  // Testar conexão com a API do GestaoClick
+  // Testar conexão com a API do GestaoClick via Edge Function
   const testConnection = useCallback(async (accessToken: string, secretToken: string) => {
     setTesting(true);
     setConnectionStatus('unknown');
     
     try {
-      // Chamada à API GestaoClick para listar situações (teste de conexão)
-      const response = await fetch('https://api.gestaoclick.com/situacoes', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'access-token': accessToken,
-          'secret-access-token': secretToken
+      const { data, error } = await supabase.functions.invoke('gestaoclick-proxy', {
+        body: {
+          action: 'test_connection',
+          access_token: accessToken,
+          secret_token: secretToken
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+      if (error) {
+        throw new Error(error.message || 'Erro ao conectar');
       }
 
-      const data = await response.json();
-      
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
       // Salvar situações encontradas
       if (data?.situacoes && Array.isArray(data.situacoes)) {
-        setSituacoes(data.situacoes.map((s: { situacao_id: string; situacao: string }) => ({
-          id: s.situacao_id,
-          nome: s.situacao
-        })));
+        setSituacoes(data.situacoes);
+      }
+
+      // Salvar formas de pagamento
+      if (data?.formas_pagamento && Array.isArray(data.formas_pagamento)) {
+        setFormasPagamento(data.formas_pagamento);
       }
       
       setConnectionStatus('connected');
       toast.success('Conexão com GestaoClick estabelecida!');
-      
-      // Buscar formas de pagamento também
-      await fetchFormasPagamento(accessToken, secretToken);
       
       return true;
     } catch (error) {
@@ -165,35 +164,6 @@ export function useGestaoClickConfig() {
       return false;
     } finally {
       setTesting(false);
-    }
-  }, []);
-
-  // Buscar formas de pagamento
-  const fetchFormasPagamento = useCallback(async (accessToken: string, secretToken: string) => {
-    try {
-      const response = await fetch('https://api.gestaoclick.com/formas_pagamento', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'access-token': accessToken,
-          'secret-access-token': secretToken
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erro ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (data?.formas_pagamento && Array.isArray(data.formas_pagamento)) {
-        setFormasPagamento(data.formas_pagamento.map((f: { forma_pagamento_id: string; forma_pagamento: string }) => ({
-          id: f.forma_pagamento_id,
-          nome: f.forma_pagamento
-        })));
-      }
-    } catch (error) {
-      console.error('Erro ao buscar formas de pagamento:', error);
     }
   }, []);
 
