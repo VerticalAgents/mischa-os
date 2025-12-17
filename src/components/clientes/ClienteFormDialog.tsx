@@ -63,6 +63,7 @@ const getDefaultFormData = (): Partial<Cliente> => ({
   tipoLogistica: 'Própria',
   tipoCobranca: 'À vista',
   formaPagamento: 'Boleto',
+  prazoPagamentoDias: 7,
   emiteNotaFiscal: true,
   contabilizarGiroMedio: true,
   observacoes: '',
@@ -255,6 +256,7 @@ export default function ClienteFormDialog({
     tipoLogistica: formData.tipoLogistica || 'Própria',
     tipoCobranca: formData.tipoCobranca || 'À vista',
     formaPagamento: formData.formaPagamento || 'Boleto',
+    prazoPagamentoDias: formData.prazoPagamentoDias || 7,
     emiteNotaFiscal: formData.emiteNotaFiscal || true,
     contabilizarGiroMedio: formData.contabilizarGiroMedio || true,
     observacoes: formData.observacoes || '',
@@ -597,6 +599,24 @@ export default function ClienteFormDialog({
                       </SelectContent>
                     </Select>
                   </div>
+                  {(formData.formaPagamento === 'Boleto' || String(formData.formaPagamento).toUpperCase() === 'BOLETO') && (
+                    <div className="space-y-2">
+                      <Label htmlFor="prazoPagamentoDias">Prazo de Pagamento (dias)</Label>
+                      <Select 
+                        value={String(formData.prazoPagamentoDias || 7)} 
+                        onValueChange={(value) => handleInputChange('prazoPagamentoDias', parseInt(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="7">7 dias</SelectItem>
+                          <SelectItem value="14">14 dias</SelectItem>
+                          <SelectItem value="21">21 dias</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 <div className="space-y-2">
                   <Label htmlFor="emiteNotaFiscal">Emite Nota Fiscal</Label>
                   <Select 

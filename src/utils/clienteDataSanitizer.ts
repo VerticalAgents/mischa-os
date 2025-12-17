@@ -210,6 +210,7 @@ export function createSafeClienteDefaults(): Partial<Cliente> {
     tipoLogistica: 'Própria',
     tipoCobranca: 'À vista', 
     formaPagamento: 'Boleto',
+    prazoPagamentoDias: 7,
     categoriasHabilitadas: [],
     janelasEntrega: [],
     quantidadePadrao: 0,
@@ -416,6 +417,7 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
   sanitized.representanteId = intOrNull(sanitized.representanteId);
   sanitized.rotaEntregaId = intOrNull(sanitized.rotaEntregaId);
   sanitized.categoriaEstabelecimentoId = intOrNull(sanitized.categoriaEstabelecimentoId);
+  sanitized.prazoPagamentoDias = intOrNull(sanitized.prazoPagamentoDias) ?? 7;
 
   // 7. Sanitizar valores booleanos
   sanitized.ativo = boolOr(sanitized.ativo, true);
@@ -475,6 +477,7 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     tipo_logistica: sanitized.tipoLogistica,
     tipo_cobranca: sanitized.tipoCobranca,
     forma_pagamento: sanitized.formaPagamento,
+    prazo_pagamento_dias: sanitized.prazoPagamentoDias,
     gestaoclick_cliente_id: sanitized.gestaoClickClienteId || null,
     updated_at: new Date().toISOString(),
   };

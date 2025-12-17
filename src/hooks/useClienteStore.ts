@@ -173,6 +173,7 @@ const transformDbRowToCliente = (row: any): Cliente => {
     tipoLogistica: canonicalToUiLogistica[row.tipo_logistica] || row.tipo_logistica || 'Própria',
     tipoCobranca: canonicalToUiCobranca[row.tipo_cobranca] || row.tipo_cobranca || 'À vista',
     formaPagamento: canonicalToUiPagamento[row.forma_pagamento] || row.forma_pagamento || 'Boleto',
+    prazoPagamentoDias: row.prazo_pagamento_dias || 7,
     dataCadastro: row.created_at ? new Date(row.created_at) : new Date(),
     statusAgendamento: row.status_agendamento,
     categoriaId: row.categoria_id || 1,
