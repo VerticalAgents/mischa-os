@@ -37,8 +37,7 @@ export default function IntegracoesGestaoClickTab() {
     fetchClientesGestaoClick,
     fetchProdutosGestaoClick,
     fetchFuncionariosGestaoClick,
-    fetchLojasGestaoClick,
-    fetchFornecedoresGestaoClick
+    fetchLojasGestaoClick
   } = useGestaoClickConfig();
 
   const { representantes, carregarRepresentantes, atualizarRepresentante } = useSupabaseRepresentantes();
@@ -75,10 +74,6 @@ export default function IntegracoesGestaoClickTab() {
   const [lojaId, setLojaId] = useState('');
   const [empresaId, setEmpresaId] = useState('');
 
-  // Estado para fornecedores GestaoClick (para NF-e)
-  const [fornecedoresGC, setFornecedoresGC] = useState<{ id: string; nome: string; cnpj_cpf?: string }[]>([]);
-  const [loadingFornecedores, setLoadingFornecedores] = useState(false);
-  const [fornecedorId, setFornecedorId] = useState('');
 
   // Carregar valores salvos
   useEffect(() => {
@@ -93,7 +88,6 @@ export default function IntegracoesGestaoClickTab() {
       setFormaPagamentoDinheiro(config.forma_pagamento_ids?.DINHEIRO || '');
       setLojaId(config.loja_id || '');
       setEmpresaId(config.empresa_id || '');
-      setFornecedorId(config.fornecedor_id || '');
     }
   }, [config]);
 
@@ -113,7 +107,6 @@ export default function IntegracoesGestaoClickTab() {
       situacao_cancelado_id: situacaoCanceladoId || undefined,
       loja_id: lojaId || undefined,
       empresa_id: empresaId || undefined,
-      fornecedor_id: fornecedorId || undefined,
       forma_pagamento_ids: {
         BOLETO: formaPagamentoBoleto || undefined,
         PIX: formaPagamentoPix || undefined,
@@ -123,19 +116,6 @@ export default function IntegracoesGestaoClickTab() {
     await saveConfig(newConfig);
   };
 
-  const handleFetchFornecedores = async () => {
-    if (!accessToken || !secretToken) {
-      toast.error('Configure os tokens primeiro');
-      return;
-    }
-    setLoadingFornecedores(true);
-    const fornecedores = await fetchFornecedoresGestaoClick(accessToken, secretToken);
-    setFornecedoresGC(fornecedores);
-    setLoadingFornecedores(false);
-    if (fornecedores.length > 0) {
-      toast.success(`${fornecedores.length} fornecedor(es) encontrado(s)`);
-    }
-  };
 
   const handleFetchLojas = async () => {
     if (!accessToken || !secretToken) {
@@ -547,64 +527,6 @@ export default function IntegracoesGestaoClickTab() {
                     </div>
                   )}
 
-                  {/* Fornecedor para NF-e (obrigatório) */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Label>Fornecedor para NF-e</Label>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleFetchFornecedores}
-                        disabled={loadingFornecedores || !accessToken || !secretToken}
-                      >
-                        {loadingFornecedores ? (
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        ) : (
-                          <Users className="h-3 w-3 mr-1" />
-                        )}
-                        Buscar Fornecedores
-                      </Button>
-                      {fornecedoresGC.length > 0 && (
-                        <Badge variant="secondary">
-                          {fornecedoresGC.length} fornecedor(es)
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    {fornecedoresGC.length > 0 && (
-                      <div className="space-y-2">
-                        <Select value={fornecedorId} onValueChange={setFornecedorId}>
-                          <SelectTrigger className="w-full md:w-[400px]">
-                            <SelectValue placeholder="Selecione o fornecedor (sua empresa) para emissão de NF" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {fornecedoresGC.map((f) => (
-                              <SelectItem key={f.id} value={f.id}>
-                                {f.nome} {f.cnpj_cpf && `(${f.cnpj_cpf})`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          Selecione sua empresa cadastrada como fornecedor no GestaoClick (obrigatório para NF-e modelo 55)
-                        </p>
-                      </div>
-                    )}
-
-                    {fornecedoresGC.length === 0 && fornecedorId && (
-                      <div className="space-y-2">
-                        <Input
-                          value={fornecedorId}
-                          onChange={(e) => setFornecedorId(e.target.value)}
-                          placeholder="ID do fornecedor"
-                          className="w-full md:w-[200px] font-mono"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          ID do fornecedor configurado: {fornecedorId}
-                        </p>
-                      </div>
-                    )}
-                  </div>
 
                   {/* Tabela de lojas disponíveis */}
                   {lojasGC.length > 0 && (
