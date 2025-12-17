@@ -280,11 +280,12 @@ Deno.serve(async (req) => {
         const codigo = Math.floor(Date.now() / 1000);
 
         // 10. Build sale payload according to GestaoClick API docs
+        // Note: cliente_id must be an integer for GestaoClick API
         const vendaPayload = {
           tipo: 'produto',
           codigo: codigo,
           data: new Date().toISOString().split('T')[0],
-          cliente_id: cliente.gestaoclick_cliente_id,
+          cliente_id: parseInt(cliente.gestaoclick_cliente_id, 10),
           situacao_venda_id: config.situacao_id,
           forma_pagamento_id: formaPagamentoId,
           produtos: produtosVenda
