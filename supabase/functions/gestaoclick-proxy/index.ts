@@ -615,24 +615,46 @@ Deno.serve(async (req) => {
 
         console.log('[gestaoclick-proxy] Sending venda payload:', JSON.stringify(vendaPayload, null, 2));
 
-        // 12. Create sale in GestaoClick
-        const vendaResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'access-token': config.access_token,
-            'secret-access-token': config.secret_token,
-          },
-          body: JSON.stringify(vendaPayload),
-        });
+        // 12. Create sale in GestaoClick with retry for duplicate codigo
+        let vendaResponse;
+        let vendaResponseText;
+        let currentCodigo = codigo;
+        let retryCount = 0;
+        const maxRetries = 5;
 
-        const vendaResponseText = await vendaResponse.text();
-        console.log('[gestaoclick-proxy] Venda response:', vendaResponse.status, vendaResponseText);
+        while (retryCount < maxRetries) {
+          vendaPayload.codigo = currentCodigo;
+          console.log(`[gestaoclick-proxy] Tentativa ${retryCount + 1}: criando venda com código ${currentCodigo}`);
 
-        if (!vendaResponse.ok) {
-          let errorMessage = `Erro ${vendaResponse.status}`;
+          vendaResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'access-token': config.access_token,
+              'secret-access-token': config.secret_token,
+            },
+            body: JSON.stringify(vendaPayload),
+          });
+
+          vendaResponseText = await vendaResponse.text();
+          console.log('[gestaoclick-proxy] Venda response:', vendaResponse.status, vendaResponseText);
+
+          // Check if error is duplicate codigo
+          if (vendaResponseText.includes('já está sendo utilizado')) {
+            currentCodigo++;
+            retryCount++;
+            console.log(`[gestaoclick-proxy] Código duplicado, tentando próximo: ${currentCodigo}`);
+            continue;
+          }
+
+          // If not duplicate error, break the loop
+          break;
+        }
+
+        if (!vendaResponse!.ok) {
+          let errorMessage = `Erro ${vendaResponse!.status}`;
           try {
-            const errorData = JSON.parse(vendaResponseText);
+            const errorData = JSON.parse(vendaResponseText!);
             errorMessage = errorData.message || errorData.error || errorMessage;
           } catch {
             errorMessage = vendaResponseText || errorMessage;
@@ -644,18 +666,18 @@ Deno.serve(async (req) => {
 
           return new Response(
             JSON.stringify({ error: errorMessage }),
-            { status: vendaResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: vendaResponse!.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
         let vendaCriada;
         try {
-          vendaCriada = JSON.parse(vendaResponseText);
+          vendaCriada = JSON.parse(vendaResponseText!);
         } catch {
-          vendaCriada = { venda_id: codigo };
+          vendaCriada = { venda_id: currentCodigo };
         }
 
-        const vendaId = vendaCriada.data?.venda_id || vendaCriada.venda_id || vendaCriada.id || codigo;
+        const vendaId = vendaCriada.data?.venda_id || vendaCriada.venda_id || vendaCriada.id || currentCodigo;
         console.log('[gestaoclick-proxy] Venda created with ID:', vendaId);
 
         // 13. Update agendamento with sale ID
@@ -910,35 +932,57 @@ Deno.serve(async (req) => {
 
         console.log('[gestaoclick-proxy] Criando nova venda:', JSON.stringify(vendaPayload, null, 2));
 
-        // 12. POST new sale
-        const vendaResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'access-token': config.access_token,
-            'secret-access-token': config.secret_token,
-          },
-          body: JSON.stringify(vendaPayload),
-        });
+        // 12. POST new sale with retry for duplicate codigo
+        let vendaResponse;
+        let vendaResponseText;
+        let currentCodigo = novoCodigo;
+        let retryCount = 0;
+        const maxRetries = 5;
 
-        const vendaResponseText = await vendaResponse.text();
-        console.log('[gestaoclick-proxy] POST nova venda response:', vendaResponse.status, vendaResponseText.substring(0, 500));
+        while (retryCount < maxRetries) {
+          vendaPayload.codigo = currentCodigo;
+          console.log(`[gestaoclick-proxy] Tentativa ${retryCount + 1}: criando venda com código ${currentCodigo}`);
 
-        if (hasGCError(vendaResponseText, vendaResponse.status)) {
+          vendaResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'access-token': config.access_token,
+              'secret-access-token': config.secret_token,
+            },
+            body: JSON.stringify(vendaPayload),
+          });
+
+          vendaResponseText = await vendaResponse.text();
+          console.log('[gestaoclick-proxy] POST nova venda response:', vendaResponse.status, vendaResponseText.substring(0, 500));
+
+          // Check if error is duplicate codigo
+          if (vendaResponseText.includes('já está sendo utilizado')) {
+            currentCodigo++;
+            retryCount++;
+            console.log(`[gestaoclick-proxy] Código duplicado, tentando próximo: ${currentCodigo}`);
+            continue;
+          }
+
+          // If not duplicate error, break the loop
+          break;
+        }
+
+        if (hasGCError(vendaResponseText!, vendaResponse!.status)) {
           return new Response(
-            JSON.stringify({ error: 'Erro ao criar nova venda no GestaoClick: ' + vendaResponseText.substring(0, 200) }),
+            JSON.stringify({ error: 'Erro ao criar nova venda no GestaoClick: ' + vendaResponseText!.substring(0, 200) }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
         let vendaCriada;
         try {
-          vendaCriada = JSON.parse(vendaResponseText);
+          vendaCriada = JSON.parse(vendaResponseText!);
         } catch {
-          vendaCriada = { venda_id: novoCodigo };
+          vendaCriada = { venda_id: currentCodigo };
         }
 
-        const novoVendaId = vendaCriada.data?.venda_id || vendaCriada.venda_id || vendaCriada.id || novoCodigo;
+        const novoVendaId = vendaCriada.data?.venda_id || vendaCriada.venda_id || vendaCriada.id || currentCodigo;
         console.log('[gestaoclick-proxy] Nova venda criada com ID:', novoVendaId);
 
         // 13. Update agendamento with new sale ID
