@@ -1710,6 +1710,7 @@ export type Database = {
           ativo: boolean
           created_at: string
           email: string | null
+          gestaoclick_funcionario_id: string | null
           id: number
           nome: string
           telefone: string | null
@@ -1720,6 +1721,7 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           email?: string | null
+          gestaoclick_funcionario_id?: string | null
           id?: number
           nome: string
           telefone?: string | null
@@ -1730,6 +1732,7 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           email?: string | null
+          gestaoclick_funcionario_id?: string | null
           id?: number
           nome?: string
           telefone?: string | null

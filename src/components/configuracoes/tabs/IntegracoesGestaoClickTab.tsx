@@ -8,9 +8,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Eye, EyeOff, Save, Plug, CheckCircle2, XCircle, Loader2, ExternalLink, Users, Copy, Search, Package } from 'lucide-react';
+import { Eye, EyeOff, Save, Plug, CheckCircle2, XCircle, Loader2, ExternalLink, Users, Copy, Search, Package, UserCheck, RefreshCw } from 'lucide-react';
 import { useGestaoClickConfig, GestaoClickConfig, GestaoClickCliente, GestaoClickProduto } from '@/hooks/useGestaoClickConfig';
+import { useSupabaseRepresentantes } from '@/hooks/useSupabaseRepresentantes';
 import { toast } from 'sonner';
+
+// Função para normalizar nomes para comparação
+const normalizeString = (str: string) => {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+};
 
 export default function IntegracoesGestaoClickTab() {
   const {
@@ -25,18 +35,25 @@ export default function IntegracoesGestaoClickTab() {
     saveConfig,
     testConnection,
     fetchClientesGestaoClick,
-    fetchProdutosGestaoClick
+    fetchProdutosGestaoClick,
+    fetchFuncionariosGestaoClick
   } = useGestaoClickConfig();
+
+  const { representantes, carregarRepresentantes, atualizarRepresentante } = useSupabaseRepresentantes();
 
   const [accessToken, setAccessToken] = useState('');
   const [secretToken, setSecretToken] = useState('');
   const [showAccessToken, setShowAccessToken] = useState(false);
   const [showSecretToken, setShowSecretToken] = useState(false);
   const [situacaoId, setSituacaoId] = useState('');
-  const [vendedorId, setVendedorId] = useState('');
   const [formaPagamentoBoleto, setFormaPagamentoBoleto] = useState('');
   const [formaPagamentoPix, setFormaPagamentoPix] = useState('');
   const [formaPagamentoDinheiro, setFormaPagamentoDinheiro] = useState('');
+
+  // Estado para vendedores/funcionários GC (para mapeamento de representantes)
+  const [vendedoresGC, setVendedoresGC] = useState<{ id: string; nome: string }[]>([]);
+  const [loadingVendedores, setLoadingVendedores] = useState(false);
+  const [syncingVendedores, setSyncingVendedores] = useState(false);
   
   // Estado para clientes GestaoClick
   const [clientesGC, setClientesGC] = useState<GestaoClickCliente[]>([]);
@@ -54,7 +71,6 @@ export default function IntegracoesGestaoClickTab() {
       setAccessToken(config.access_token || '');
       setSecretToken(config.secret_token || '');
       setSituacaoId(config.situacao_id || '');
-      setVendedorId(config.vendedor_id || '');
       setFormaPagamentoBoleto(config.forma_pagamento_ids?.BOLETO || '');
       setFormaPagamentoPix(config.forma_pagamento_ids?.PIX || '');
       setFormaPagamentoDinheiro(config.forma_pagamento_ids?.DINHEIRO || '');
@@ -73,7 +89,6 @@ export default function IntegracoesGestaoClickTab() {
       access_token: accessToken,
       secret_token: secretToken,
       situacao_id: situacaoId || undefined,
-      vendedor_id: vendedorId || undefined,
       forma_pagamento_ids: {
         BOLETO: formaPagamentoBoleto || undefined,
         PIX: formaPagamentoPix || undefined,
@@ -111,6 +126,71 @@ export default function IntegracoesGestaoClickTab() {
     }
   };
 
+  const handleFetchVendedores = async () => {
+    if (!accessToken || !secretToken) {
+      toast.error('Configure os tokens primeiro');
+      return;
+    }
+    setLoadingVendedores(true);
+    const vendedores = await fetchFuncionariosGestaoClick(accessToken, secretToken);
+    setVendedoresGC(vendedores);
+    setLoadingVendedores(false);
+    if (vendedores.length > 0) {
+      toast.success(`${vendedores.length} vendedores encontrados`);
+    }
+  };
+
+  const handleVendedorChange = async (representanteId: number, gestaoClickFuncionarioId: string) => {
+    const success = await atualizarRepresentante(representanteId, {
+      gestaoclick_funcionario_id: gestaoClickFuncionarioId === 'none' ? null : gestaoClickFuncionarioId
+    } as any);
+    if (success) {
+      await carregarRepresentantes();
+    }
+  };
+
+  const handleSyncVendedores = async () => {
+    if (vendedoresGC.length === 0) {
+      toast.error('Carregue os vendedores do GestaoClick primeiro');
+      return;
+    }
+
+    setSyncingVendedores(true);
+    let updated = 0;
+    let notFound = 0;
+
+    for (const rep of representantes) {
+      if (rep.gestaoclick_funcionario_id) continue; // Já mapeado
+
+      const normalizedRepName = normalizeString(rep.nome);
+      const matchingVendedor = vendedoresGC.find(v => 
+        normalizeString(v.nome) === normalizedRepName
+      );
+
+      if (matchingVendedor) {
+        const success = await atualizarRepresentante(rep.id, {
+          gestaoclick_funcionario_id: matchingVendedor.id
+        } as any);
+        if (success) updated++;
+      } else {
+        notFound++;
+      }
+    }
+
+    await carregarRepresentantes();
+    setSyncingVendedores(false);
+
+    if (updated > 0) {
+      toast.success(`${updated} representante(s) mapeado(s) automaticamente`);
+    }
+    if (notFound > 0) {
+      toast.info(`${notFound} representante(s) sem correspondência por nome`);
+    }
+    if (updated === 0 && notFound === 0) {
+      toast.info('Todos os representantes já estão mapeados');
+    }
+  };
+
   const handleCopyId = (id: string, nome: string) => {
     navigator.clipboard.writeText(id);
     toast.success(`ID ${id} copiado (${nome})`);
@@ -135,6 +215,12 @@ export default function IntegracoesGestaoClickTab() {
       p.id?.includes(search)
     );
   });
+
+  // Obter nome do vendedor GC pelo ID
+  const getVendedorNome = (id: string | undefined | null) => {
+    if (!id) return null;
+    return vendedoresGC.find(v => v.id === id)?.nome || funcionarios.find(f => f.id === id)?.nome;
+  };
 
   if (loading) {
     return (
@@ -240,7 +326,7 @@ export default function IntegracoesGestaoClickTab() {
           </div>
 
           {/* Configurações adicionais - só aparecem após conectar */}
-          {connectionStatus === 'connected' && (situacoes.length > 0 || formasPagamento.length > 0 || funcionarios.length > 0) && (
+          {connectionStatus === 'connected' && (situacoes.length > 0 || formasPagamento.length > 0) && (
             <>
               <Separator />
               
@@ -264,28 +350,6 @@ export default function IntegracoesGestaoClickTab() {
                     </Select>
                     <p className="text-xs text-muted-foreground">
                       Situação aplicada às vendas criadas automaticamente
-                    </p>
-                  </div>
-                )}
-
-                {funcionarios.length > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="vendedor">Vendedor Padrão</Label>
-                    <Select value={vendedorId || "none"} onValueChange={(val) => setVendedorId(val === "none" ? "" : val)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o vendedor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum (não vincular vendedor)</SelectItem>
-                        {funcionarios.map((f) => (
-                          <SelectItem key={f.id} value={f.id}>
-                            {f.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Vendedor vinculado às vendas criadas automaticamente
                     </p>
                   </div>
                 )}
@@ -361,6 +425,122 @@ export default function IntegracoesGestaoClickTab() {
               Salvar Configuração
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Mapeamento de Vendedores (Representantes ↔ Funcionários GC) */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+              <UserCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Vendedores no GestaoClick</CardTitle>
+              <CardDescription>
+                Vincule os representantes do Lovable aos vendedores do GestaoClick para atribuição automática nas vendas
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              onClick={handleFetchVendedores}
+              disabled={!accessToken || !secretToken || loadingVendedores}
+              variant="outline"
+            >
+              {loadingVendedores ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <UserCheck className="h-4 w-4 mr-2" />
+              )}
+              Buscar Vendedores
+            </Button>
+            {vendedoresGC.length > 0 && (
+              <>
+                <Badge variant="secondary" className="self-center">
+                  {vendedoresGC.length} vendedores
+                </Badge>
+                <Button
+                  onClick={handleSyncVendedores}
+                  disabled={syncingVendedores || vendedoresGC.length === 0}
+                  variant="outline"
+                  size="sm"
+                >
+                  {syncingVendedores ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Sincronizar IDs GC
+                </Button>
+              </>
+            )}
+          </div>
+
+          {representantes.length > 0 && (
+            <ScrollArea className="h-[300px] border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Representante (Lovable)</TableHead>
+                    <TableHead className="w-24">ID GC</TableHead>
+                    <TableHead className="w-64">Vendedor (GestaoClick)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {representantes.filter(r => r.ativo).map((rep) => (
+                    <TableRow key={rep.id}>
+                      <TableCell className="font-medium">{rep.nome}</TableCell>
+                      <TableCell className="font-mono text-sm text-muted-foreground">
+                        {rep.gestaoclick_funcionario_id || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {vendedoresGC.length > 0 ? (
+                          <Select
+                            value={rep.gestaoclick_funcionario_id || 'none'}
+                            onValueChange={(val) => handleVendedorChange(rep.id, val)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Selecione o vendedor" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Não vinculado</SelectItem>
+                              {vendedoresGC.map((v) => (
+                                <SelectItem key={v.id} value={v.id}>
+                                  {v.nome}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            {rep.gestaoclick_funcionario_id 
+                              ? getVendedorNome(rep.gestaoclick_funcionario_id) || `ID: ${rep.gestaoclick_funcionario_id}`
+                              : 'Carregue os vendedores'}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {representantes.filter(r => r.ativo).length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                        Nenhum representante ativo cadastrado
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          )}
+
+          {representantes.length === 0 && (
+            <div className="text-center text-muted-foreground py-8 border rounded-md">
+              Nenhum representante cadastrado. Cadastre representantes em Configurações → Clientes → Representantes.
+            </div>
+          )}
         </CardContent>
       </Card>
 

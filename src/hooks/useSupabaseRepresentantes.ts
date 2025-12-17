@@ -9,6 +9,7 @@ interface Representante {
   email?: string;
   telefone?: string;
   ativo: boolean;
+  gestaoclick_funcionario_id?: string;
 }
 
 interface UseSupabaseRepresentantesReturn {
@@ -16,7 +17,7 @@ interface UseSupabaseRepresentantesReturn {
   loading: boolean;
   error: string | null;
   carregarRepresentantes: () => Promise<void>;
-  adicionarRepresentante: (data: Omit<Representante, 'id' | 'ativo'>) => Promise<boolean>;
+  adicionarRepresentante: (data: Omit<Representante, 'id' | 'ativo' | 'gestaoclick_funcionario_id'>) => Promise<boolean>;
   atualizarRepresentante: (id: number, data: Partial<Omit<Representante, 'id'>>) => Promise<boolean>;
   removerRepresentante: (id: number) => Promise<boolean>;
 }
