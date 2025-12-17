@@ -1285,11 +1285,20 @@ Deno.serve(async (req) => {
 
         const dataVencimento = calcularDataVencimento(formaPagamento, cliente.prazo_pagamento_dias);
 
+        // Para NF-e (modelo 55), o GestaoClick exige um cadastro de FORNECEDOR (emitente).
+        // Isso NÃO é o cliente destinatário (esse vai em destinatario_id).
+        const fornecedorEmitenteId = config.fornecedor_id || config.empresa_id;
+        if (!fornecedorEmitenteId) {
+          return new Response(
+            JSON.stringify({ error: 'Fornecedor (emitente) para NF-e não configurado em Configurações → GestaoClick' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         // Build NF payload
-        // Para NF-e de saída (venda), id_fornecedor = destinatário/cliente
         const nfPayload: Record<string, any> = {
           tipo_nf: 55,          // Modelo NF-e (modelo 55)
-          id_fornecedor: parseInt(cliente.gestaoclick_cliente_id, 10), // Para NF de saída, fornecedor = cliente destinatário
+          id_fornecedor: parseInt(fornecedorEmitenteId, 10),
           loja_id: config.loja_id,
           envio_automatico: 1,  // Criar e emitir automaticamente
           indicador_final: 0,   // Não é consumidor final (revenda B2B)
