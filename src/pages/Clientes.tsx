@@ -1,9 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useColumnVisibility } from "@/hooks/useColumnVisibility";
+import { useGestaoClickConfig } from "@/hooks/useGestaoClickConfig";
+import { supabase } from "@/integrations/supabase/client";
 import PageHeader from "@/components/common/PageHeader";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import ClientesFilters, { ColumnOption } from "@/components/clientes/ClientesFilters";
@@ -12,7 +13,8 @@ import ClienteDetailsView from "@/components/clientes/ClienteDetailsView";
 import ClientesBulkActions from "@/components/clientes/ClientesBulkActions";
 import DeleteClienteDialog from "@/components/clientes/DeleteClienteDialog";
 import { RelatorioClientesRevisaoModal } from "@/components/clientes/RelatorioClientesRevisaoModal";
-import { FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet, Link2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function Clientes() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -26,6 +28,7 @@ export default function Clientes() {
   const [processingUrlParam, setProcessingUrlParam] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [relatorioOpen, setRelatorioOpen] = useState(false);
+  const [isSyncingGC, setIsSyncingGC] = useState(false);
   
   const {
     filtros,
@@ -39,8 +42,86 @@ export default function Clientes() {
     clienteAtual,
     selecionarCliente,
     removerCliente,
-    getClientePorId
+    getClientePorId,
+    clientes: todosClientes
   } = useClienteStore();
+
+  const { config, fetchClientesGestaoClick } = useGestaoClickConfig();
+
+  // Normalizar nome para comparação
+  const normalizeName = (name: string) => {
+    return name.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  };
+
+  // Sincronizar IDs do GestaoClick
+  const handleSyncGestaoClickIds = async () => {
+    if (!config?.access_token || !config?.secret_token) {
+      toast.error('Configure as credenciais do GestaoClick em Configurações → Integrações');
+      return;
+    }
+
+    setIsSyncingGC(true);
+    try {
+      const clientesGC = await fetchClientesGestaoClick(config.access_token, config.secret_token);
+      
+      if (clientesGC.length === 0) {
+        toast.warning('Nenhum cliente encontrado no GestaoClick');
+        return;
+      }
+
+      // Criar mapa de clientes GC por nome normalizado
+      const gcMap = new Map<string, string>();
+      clientesGC.forEach(c => {
+        gcMap.set(normalizeName(c.nome), c.id);
+      });
+
+      // Mapeamentos especiais (nomes diferentes entre sistemas)
+      const mercadoQuadradoId = gcMap.get(normalizeName("MERCADO QUADRADO"));
+      if (mercadoQuadradoId) {
+        gcMap.set(normalizeName("Quadrado Express"), mercadoQuadradoId);
+      }
+
+      // Atualizar clientes do Lovable
+      let atualizados = 0;
+      const semCorrespondencia: string[] = [];
+
+      for (const cliente of todosClientes) {
+        const nomeNormalizado = normalizeName(cliente.nome);
+        const gcId = gcMap.get(nomeNormalizado);
+        
+        if (gcId && cliente.gestaoClickClienteId !== gcId) {
+          const { error } = await supabase
+            .from('clientes')
+            .update({ gestaoclick_cliente_id: gcId })
+            .eq('id', cliente.id);
+          
+          if (!error) {
+            atualizados++;
+          }
+        } else if (!gcId && cliente.nome !== 'AMOSTRAS' && cliente.nome !== 'Paulo Eduardo') {
+          semCorrespondencia.push(cliente.nome);
+        }
+      }
+
+      await carregarClientes();
+      
+      if (atualizados > 0) {
+        toast.success(`${atualizados} cliente(s) atualizado(s) com ID GC`);
+      } else {
+        toast.info('Nenhum cliente precisou de atualização');
+      }
+      
+      if (semCorrespondencia.length > 0) {
+        console.log('Clientes sem correspondência no GC:', semCorrespondencia);
+        toast.warning(`${semCorrespondencia.length} cliente(s) sem correspondência no GestaoClick`);
+      }
+    } catch (error) {
+      console.error('Erro ao sincronizar IDs GC:', error);
+      toast.error('Erro ao sincronizar IDs do GestaoClick');
+    } finally {
+      setIsSyncingGC(false);
+    }
+  };
 
   // Handle URL parameter for direct client selection
   const clienteIdFromUrl = searchParams.get('clienteId');
@@ -231,6 +312,16 @@ export default function Clientes() {
           onClick: handleOpenForm
         }} 
       >
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSyncGestaoClickIds}
+          disabled={isSyncingGC || !config?.access_token}
+          title={!config?.access_token ? "Configure o GestaoClick em Configurações → Integrações" : "Sincronizar IDs do GestaoClick por nome"}
+        >
+          <Link2 className={`h-4 w-4 mr-1 ${isSyncingGC ? 'animate-pulse' : ''}`} />
+          {isSyncingGC ? 'Sincronizando...' : 'Sincronizar IDs GC'}
+        </Button>
         <Button variant="outline" size="sm" onClick={() => setRelatorioOpen(true)}>
           <FileSpreadsheet className="h-4 w-4 mr-1" />
           Revisão Clientes
