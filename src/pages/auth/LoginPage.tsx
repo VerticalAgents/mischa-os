@@ -1,4 +1,4 @@
-// Login page component
+// Login page component - Mischa's Bakery
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
