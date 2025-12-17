@@ -36,7 +36,7 @@ interface PedidoCardProps {
   onMarcarSeparado?: () => void;
   onEditarAgendamento?: () => void;
   onGerarVendaGC?: () => Promise<{ success: boolean; vendaId: string | null }>;
-  onAtualizarVendaGC?: () => Promise<boolean>;
+  onAtualizarVendaGC?: () => Promise<{ success: boolean; vendaExcluida: boolean }>;
   isGerandoVendaGC?: boolean;
   showDespachoActions?: boolean;
   showReagendarButton?: boolean;
@@ -126,8 +126,8 @@ const PedidoCard = ({
     if (!onAtualizarVendaGC) return;
     setIsAtualizandoVenda(true);
     try {
-      const success = await onAtualizarVendaGC();
-      if (success) {
+      const result = await onAtualizarVendaGC();
+      if (result.success) {
         // Update original data reference
         dadosOriginaisRef.current = {
           quantidade: pedido.quantidade_total,
@@ -135,6 +135,7 @@ const PedidoCard = ({
         };
         setVendaDesatualizada(false);
       }
+      // If vendaExcluida, the UI will refresh and show the generate button again
     } finally {
       setIsAtualizandoVenda(false);
     }
@@ -157,8 +158,8 @@ const PedidoCard = ({
     if (onAtualizarVendaGC) {
       setIsAtualizandoVenda(true);
       try {
-        const success = await onAtualizarVendaGC();
-        if (success) {
+        const result = await onAtualizarVendaGC();
+        if (result.success || result.vendaExcluida) {
           setDialogVendaDesatualizadaAberto(false);
           onMarcarSeparado?.();
         }

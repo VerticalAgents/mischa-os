@@ -37,6 +37,7 @@ const SeparacaoPedidos = () => {
   } = useExpedicaoUiStore();
 
   const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
+  const [pedidoEditandoOriginal, setPedidoEditandoOriginal] = useState<any | null>(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
   
   const { gerarVendaGC, atualizarVendaGC, loading: loadingGC, pedidoEmProcessamento } = useGestaoClickSync();
@@ -67,6 +68,9 @@ const SeparacaoPedidos = () => {
   };
 
   const handleEditarPedido = (pedido: any) => {
+    // Store original pedido reference for GestaoClick update
+    setPedidoEditandoOriginal(pedido);
+    
     const agendamentoFormatado: AgendamentoItem = {
       cliente: {
         id: pedido.cliente_id,
@@ -112,6 +116,7 @@ const SeparacaoPedidos = () => {
     carregarPedidos();
     setModalEditarAberto(false);
     setPedidoEditando(null);
+    setPedidoEditandoOriginal(null);
   };
 
   const pedidosParaSeparacao = pedidos.filter(pedido => 
@@ -250,8 +255,21 @@ const SeparacaoPedidos = () => {
       <AgendamentoEditModal
         agendamento={pedidoEditando}
         open={modalEditarAberto}
-        onOpenChange={setModalEditarAberto}
+        onOpenChange={(open) => {
+          setModalEditarAberto(open);
+          if (!open) setPedidoEditandoOriginal(null);
+        }}
         onSalvar={handleSalvarAgendamento}
+        gestaoclick_venda_id={pedidoEditandoOriginal?.gestaoclick_venda_id}
+        onAtualizarVendaGC={
+          pedidoEditandoOriginal?.gestaoclick_venda_id
+            ? () => atualizarVendaGC(
+                pedidoEditandoOriginal.id,
+                pedidoEditandoOriginal.cliente_id,
+                pedidoEditandoOriginal.gestaoclick_venda_id!
+              )
+            : undefined
+        }
       />
     </div>
   );
