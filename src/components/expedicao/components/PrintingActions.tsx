@@ -52,6 +52,29 @@ export const PrintingActions = ({
       return;
     }
     
+    // Verificar se há observações ou trocas em algum pedido
+    const temAlgumaObservacao = listaAtual.some(p => p.observacoes_gerais || p.observacoes_agendamento);
+    const temAlgumaTroca = listaAtual.some(p => p.trocas_pendentes && p.trocas_pendentes.length > 0);
+    
+    // Calcular larguras das colunas dinamicamente
+    let colWidths = {
+      cliente: '22%',
+      data: '12%',
+      tipo: '10%',
+      produtos: '40%',
+      total: '8%',
+      obs: '0%',
+      trocas: '0%'
+    };
+    
+    if (temAlgumaObservacao && temAlgumaTroca) {
+      colWidths = { cliente: '18%', data: '10%', tipo: '7%', produtos: '30%', total: '6%', obs: '14%', trocas: '15%' };
+    } else if (temAlgumaObservacao) {
+      colWidths = { cliente: '20%', data: '10%', tipo: '8%', produtos: '32%', total: '8%', obs: '22%', trocas: '0%' };
+    } else if (temAlgumaTroca) {
+      colWidths = { cliente: '20%', data: '10%', tipo: '8%', produtos: '32%', total: '8%', obs: '0%', trocas: '22%' };
+    }
+    
     let printContent = `
       <html>
         <head>
@@ -68,13 +91,13 @@ export const PrintingActions = ({
             .produto-nome { flex: 1; }
             .produto-qtd { font-weight: bold; margin-left: 8px; }
             .total-geral { border-top: 1px solid #ccc; padding-top: 2px; margin-top: 3px; font-weight: bold; }
-            .observacoes { font-size: 9px; line-height: 1.2; }
-            .obs-item { margin-bottom: 2px; }
-            .obs-label { font-weight: bold; color: #555; }
+            .observacoes { font-size: 9px; line-height: 1.3; }
+            .obs-geral { font-weight: bold; margin-bottom: 3px; }
+            .obs-temp { font-style: normal; color: #333; }
             .trocas-lista { font-size: 9px; line-height: 1.2; }
-            .troca-item { margin-bottom: 2px; padding: 2px; background-color: #fef3c7; border-left: 2px solid #d97706; padding-left: 4px; }
+            .troca-item { margin-bottom: 3px; padding: 2px 4px; background-color: #fef3c7; border-left: 2px solid #d97706; }
             .troca-produto { font-weight: bold; }
-            .troca-motivo { color: #92400e; font-style: italic; }
+            .troca-motivo { color: #92400e; font-style: italic; font-size: 8px; }
           </style>
         </head>
         <body>
@@ -86,13 +109,13 @@ export const PrintingActions = ({
           <table>
             <thead>
               <tr>
-                <th style="width: 18%;">Cliente</th>
-                <th style="width: 10%;">Data</th>
-                <th style="width: 7%;">Tipo</th>
-                <th style="width: 30%;">Produtos</th>
-                <th style="width: 6%;">Total</th>
-                <th style="width: 14%;">Observações</th>
-                <th style="width: 15%;">Trocas</th>
+                <th style="width: ${colWidths.cliente};">Cliente</th>
+                <th style="width: ${colWidths.data};">Data</th>
+                <th style="width: ${colWidths.tipo};">Tipo</th>
+                <th style="width: ${colWidths.produtos};">Produtos</th>
+                <th style="width: ${colWidths.total};">Total</th>
+                ${temAlgumaObservacao ? `<th style="width: ${colWidths.obs};">Observações</th>` : ''}
+                ${temAlgumaTroca ? `<th style="width: ${colWidths.trocas};">Trocas</th>` : ''}
               </tr>
             </thead>
             <tbody>
@@ -133,35 +156,41 @@ export const PrintingActions = ({
       
       produtosHtml += '</div>';
       
-      // Montar HTML das observações
-      let observacoesHtml = '<div class="observacoes">';
-      if (pedido.observacoes_gerais) {
-        observacoesHtml += `<div class="obs-item"><span class="obs-label">Geral:</span> ${pedido.observacoes_gerais}</div>`;
+      // Montar HTML das observações (fixas em negrito, temporárias normal)
+      let observacoesHtml = '';
+      if (temAlgumaObservacao) {
+        observacoesHtml = '<td><div class="observacoes">';
+        if (pedido.observacoes_gerais) {
+          observacoesHtml += `<div class="obs-geral">${pedido.observacoes_gerais}</div>`;
+        }
+        if (pedido.observacoes_agendamento) {
+          observacoesHtml += `<div class="obs-temp">${pedido.observacoes_agendamento}</div>`;
+        }
+        if (!pedido.observacoes_gerais && !pedido.observacoes_agendamento) {
+          observacoesHtml += '<span style="color: #999;">-</span>';
+        }
+        observacoesHtml += '</div></td>';
       }
-      if (pedido.observacoes_agendamento) {
-        observacoesHtml += `<div class="obs-item"><span class="obs-label">Pedido:</span> ${pedido.observacoes_agendamento}</div>`;
-      }
-      if (!pedido.observacoes_gerais && !pedido.observacoes_agendamento) {
-        observacoesHtml += '<span style="color: #999;">-</span>';
-      }
-      observacoesHtml += '</div>';
       
       // Montar HTML das trocas pendentes
-      let trocasHtml = '<div class="trocas-lista">';
-      const trocasPendentes: TrocaPendente[] = pedido.trocas_pendentes || [];
-      if (trocasPendentes.length > 0) {
-        trocasPendentes.forEach((troca) => {
-          trocasHtml += `
-            <div class="troca-item">
-              <span class="troca-produto">${troca.produto_nome}: ${troca.quantidade}</span>
-              <br/><span class="troca-motivo">${troca.motivo}</span>
-            </div>
-          `;
-        });
-      } else {
-        trocasHtml += '<span style="color: #999;">-</span>';
+      let trocasHtml = '';
+      if (temAlgumaTroca) {
+        const trocasPendentes: TrocaPendente[] = pedido.trocas_pendentes || [];
+        trocasHtml = '<td><div class="trocas-lista">';
+        if (trocasPendentes.length > 0) {
+          trocasPendentes.forEach((troca) => {
+            trocasHtml += `
+              <div class="troca-item">
+                <span class="troca-produto">${troca.produto_nome}: ${troca.quantidade}</span>
+                <br/><span class="troca-motivo">${troca.motivo}</span>
+              </div>
+            `;
+          });
+        } else {
+          trocasHtml += '<span style="color: #999;">-</span>';
+        }
+        trocasHtml += '</div></td>';
       }
-      trocasHtml += '</div>';
       
       printContent += `
         <tr>
@@ -170,22 +199,24 @@ export const PrintingActions = ({
           <td>${pedido.tipo_pedido}</td>
           <td>${produtosHtml}</td>
           <td style="text-align: center; font-weight: bold;">${pedido.quantidade_total}</td>
-          <td>${observacoesHtml}</td>
-          <td>${trocasHtml}</td>
+          ${observacoesHtml}
+          ${trocasHtml}
         </tr>
       `;
     });
     
     // Adicionar resumo total
     const totalGeral = listaAtual.reduce((sum, pedido) => sum + pedido.quantidade_total, 0);
+    const colspanTotal = 4;
+    const colspanVazio = (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0);
     
     printContent += `
             </tbody>
             <tfoot>
               <tr style="background-color: #f8f9fa; font-weight: bold;">
-                <td colspan="4" style="text-align: right; padding-right: 10px;">TOTAL GERAL:</td>
+                <td colspan="${colspanTotal}" style="text-align: right; padding-right: 10px;">TOTAL GERAL:</td>
                 <td style="text-align: center; font-size: 14px;">${totalGeral}</td>
-                <td colspan="2"></td>
+                ${colspanVazio > 0 ? `<td colspan="${colspanVazio}"></td>` : ''}
               </tr>
             </tfoot>
           </table>
