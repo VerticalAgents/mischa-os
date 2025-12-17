@@ -276,8 +276,8 @@ Deno.serve(async (req) => {
           );
         }
 
-        // 9. Generate unique code
-        const codigo = `LOV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+        // 9. Generate unique integer code (GestaoClick requires integer)
+        const codigo = Math.floor(Date.now() / 1000);
 
         // 10. Build sale payload according to GestaoClick API docs
         const vendaPayload = {
