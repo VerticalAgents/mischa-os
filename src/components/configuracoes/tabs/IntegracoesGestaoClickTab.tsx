@@ -37,8 +37,7 @@ export default function IntegracoesGestaoClickTab() {
     fetchClientesGestaoClick,
     fetchProdutosGestaoClick,
     fetchFuncionariosGestaoClick,
-    fetchLojasGestaoClick,
-    fetchFornecedoresGestaoClick
+    fetchLojasGestaoClick
   } = useGestaoClickConfig();
 
   const { representantes, carregarRepresentantes, atualizarRepresentante } = useSupabaseRepresentantes();
@@ -73,12 +72,6 @@ export default function IntegracoesGestaoClickTab() {
   const [lojasGC, setLojasGC] = useState<GestaoClickLoja[]>([]);
   const [loadingLojas, setLoadingLojas] = useState(false);
   const [lojaId, setLojaId] = useState('');
-  const [empresaId, setEmpresaId] = useState('');
-
-  // Estado para fornecedores GestaoClick (emitente NF-e)
-  const [fornecedoresGC, setFornecedoresGC] = useState<{ id: string; nome: string; cnpj_cpf?: string }[]>([]);
-  const [loadingFornecedores, setLoadingFornecedores] = useState(false);
-  const [fornecedorId, setFornecedorId] = useState('');
 
 
   // Carregar valores salvos
@@ -93,8 +86,6 @@ export default function IntegracoesGestaoClickTab() {
       setFormaPagamentoPix(config.forma_pagamento_ids?.PIX || '');
       setFormaPagamentoDinheiro(config.forma_pagamento_ids?.DINHEIRO || '');
       setLojaId(config.loja_id || '');
-      setEmpresaId(config.empresa_id || '');
-      setFornecedorId(config.fornecedor_id || '');
     }
   }, [config]);
 
@@ -113,8 +104,6 @@ export default function IntegracoesGestaoClickTab() {
       situacao_edicao_id: situacaoEdicaoId || undefined,
       situacao_cancelado_id: situacaoCanceladoId || undefined,
       loja_id: lojaId || undefined,
-      empresa_id: empresaId || undefined,
-      fornecedor_id: fornecedorId || undefined,
       forma_pagamento_ids: {
         BOLETO: formaPagamentoBoleto || undefined,
         PIX: formaPagamentoPix || undefined,
@@ -124,19 +113,6 @@ export default function IntegracoesGestaoClickTab() {
     await saveConfig(newConfig);
   };
 
-  const handleFetchFornecedores = async () => {
-    if (!accessToken || !secretToken) {
-      toast.error('Configure os tokens primeiro');
-      return;
-    }
-    setLoadingFornecedores(true);
-    const fornecedores = await fetchFornecedoresGestaoClick(accessToken, secretToken);
-    setFornecedoresGC(fornecedores);
-    setLoadingFornecedores(false);
-    if (fornecedores.length > 0) {
-      toast.success(`${fornecedores.length} fornecedor(es) encontrado(s)`);
-    }
-  };
   const handleFetchLojas = async () => {
     if (!accessToken || !secretToken) {
       toast.error('Configure os tokens primeiro');
@@ -546,51 +522,6 @@ export default function IntegracoesGestaoClickTab() {
                       </p>
                     </div>
                   )}
-
-                  {/* Emitente (Fornecedor) para NF-e */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Label>Emitente (Fornecedor) para NF-e</Label>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleFetchFornecedores}
-                        disabled={loadingFornecedores || !accessToken || !secretToken}
-                      >
-                        {loadingFornecedores ? (
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        ) : (
-                          <Users className="h-3 w-3 mr-1" />
-                        )}
-                        Buscar Fornecedores
-                      </Button>
-                      {fornecedoresGC.length > 0 && (
-                        <Badge variant="secondary">
-                          {fornecedoresGC.length} fornecedor(es)
-                        </Badge>
-                      )}
-                    </div>
-
-                    {fornecedoresGC.length > 0 && (
-                      <div className="space-y-2">
-                        <Select value={fornecedorId} onValueChange={setFornecedorId}>
-                          <SelectTrigger className="w-full md:w-[400px]">
-                            <SelectValue placeholder="Selecione o emitente para emissão de NF" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {fornecedoresGC.map((f) => (
-                              <SelectItem key={f.id} value={f.id}>
-                                {f.nome} {f.cnpj_cpf && `(${f.cnpj_cpf})`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          Este é o cadastro de fornecedor/emitente exigido pelo GestaoClick para NF-e (modelo 55).
-                        </p>
-                      </div>
-                    )}
-                  </div>
 
 
                   {/* Tabela de lojas disponíveis */}

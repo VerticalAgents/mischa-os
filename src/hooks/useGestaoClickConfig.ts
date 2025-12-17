@@ -12,8 +12,6 @@ export interface GestaoClickConfig {
   situacao_cancelado_id?: string;
   vendedor_id?: string;
   loja_id?: string;
-  empresa_id?: string;
-  fornecedor_id?: string; // ID do fornecedor para NF-e (emissor da nota)
   forma_pagamento_ids?: {
     BOLETO?: string;
     PIX?: string;
@@ -56,11 +54,6 @@ export interface GestaoClickLoja {
   ativo?: string;
 }
 
-export interface GestaoClickFornecedor {
-  id: string;
-  nome: string;
-  cnpj_cpf?: string;
-}
 
 export function useGestaoClickConfig() {
   const { user } = useAuth();
@@ -312,33 +305,6 @@ export function useGestaoClickConfig() {
     }
   }, []);
 
-  // Buscar fornecedores do GestaoClick (para NF-e)
-  const fetchFornecedoresGestaoClick = useCallback(async (accessToken: string, secretToken: string): Promise<GestaoClickFornecedor[]> => {
-    try {
-      const { data, error } = await supabase.functions.invoke('gestaoclick-proxy', {
-        body: {
-          action: 'listar_fornecedores_gc',
-          access_token: accessToken,
-          secret_token: secretToken
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Erro ao buscar fornecedores');
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      return data?.fornecedores || [];
-    } catch (error) {
-      console.error('Erro ao buscar fornecedores GestaoClick:', error);
-      toast.error('Erro ao buscar fornecedores do GestaoClick');
-      return [];
-    }
-  }, []);
-
   return {
     config,
     loading,
@@ -354,7 +320,6 @@ export function useGestaoClickConfig() {
     fetchClientesGestaoClick,
     fetchFuncionariosGestaoClick,
     fetchProdutosGestaoClick,
-    fetchLojasGestaoClick,
-    fetchFornecedoresGestaoClick
+    fetchLojasGestaoClick
   };
 }
