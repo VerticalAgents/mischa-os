@@ -50,6 +50,48 @@ function calcularDataVencimento(formaPagamento: string, prazoPagamentoDias: numb
   }
 }
 
+// Helper: Get next sequential sale code from GestaoClick
+async function getProximoCodigoVenda(accessToken: string, secretToken: string): Promise<number> {
+  try {
+    // Fetch most recent sale ordered by codigo descending
+    const response = await fetch(`${GESTAOCLICK_BASE_URL}/vendas?limite=1&ordenar_por=codigo&ordem=desc`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'access-token': accessToken,
+        'secret-access-token': secretToken,
+      },
+    });
+
+    if (!response.ok) {
+      console.log('[gestaoclick-proxy] Erro ao buscar última venda, usando timestamp como fallback');
+      return Math.floor(Date.now() / 1000);
+    }
+
+    const data = await response.json();
+    
+    // Extract highest codigo from returned sales
+    if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+      // Handle both direct and nested response structures
+      const venda = data.data[0];
+      const codigoStr = venda.codigo || venda.Venda?.codigo;
+      const ultimoCodigo = parseInt(codigoStr, 10);
+      
+      if (!isNaN(ultimoCodigo)) {
+        console.log(`[gestaoclick-proxy] Último código encontrado: ${ultimoCodigo}, próximo: ${ultimoCodigo + 1}`);
+        return ultimoCodigo + 1;
+      }
+    }
+    
+    // If no sales found, start from 1
+    console.log('[gestaoclick-proxy] Nenhuma venda encontrada, começando do 1');
+    return 1;
+  } catch (error) {
+    console.error('[gestaoclick-proxy] Erro ao buscar próximo código:', error);
+    return Math.floor(Date.now() / 1000);
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -530,8 +572,9 @@ Deno.serve(async (req) => {
           );
         }
 
-        // 9. Generate unique integer code (GestaoClick requires integer)
-        const codigo = Math.floor(Date.now() / 1000);
+        // 9. Get next sequential code from GestaoClick
+        const codigo = await getProximoCodigoVenda(config.access_token, config.secret_token);
+        console.log(`[gestaoclick-proxy] Código da nova venda: ${codigo}`);
         const dataVenda = formatDate(new Date());
         
         // 10. Calculate data_vencimento based on payment method
