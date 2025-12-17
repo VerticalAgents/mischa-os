@@ -11,6 +11,7 @@ interface GestaoClickConfig {
   access_token: string;
   secret_token: string;
   situacao_id?: string;
+  situacao_edicao_id?: string;
   vendedor_id?: string;
   forma_pagamento_ids?: {
     BOLETO?: string;
@@ -703,6 +704,66 @@ Deno.serve(async (req) => {
 
         const config = configData.config as unknown as GestaoClickConfig;
 
+        // Verificar se temos situacao_edicao_id configurado
+        if (!config.situacao_edicao_id) {
+          return new Response(
+            JSON.stringify({ error: 'Status "Edição" não configurado. Vá em Configurações → Integrações → GestaoClick e selecione a situação de edição.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // 1. Obter venda atual no GestaoClick para pegar a situação original
+        console.log('[gestaoclick-proxy] Buscando venda atual:', venda_id);
+        const getVendaResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': config.access_token,
+            'secret-access-token': config.secret_token,
+          },
+        });
+
+        const getVendaText = await getVendaResponse.text();
+        console.log('[gestaoclick-proxy] GET venda response:', getVendaResponse.status, getVendaText);
+
+        // Detectar venda excluída
+        const vendaExcluidaGet = 
+          getVendaResponse.status === 404 ||
+          getVendaText.includes('não possui permissão para acessar este pedido') ||
+          getVendaText.includes('cake-error') ||
+          getVendaText.includes('Pedido não encontrado') ||
+          (getVendaText.includes('"ok":false') && getVendaText.includes('"dados":null'));
+
+        if (vendaExcluidaGet) {
+          console.log('[gestaoclick-proxy] Venda excluída detectada no GET, limpando vínculo');
+          await supabase
+            .from('agendamentos_clientes')
+            .update({ gestaoclick_venda_id: null, gestaoclick_sincronizado_em: null })
+            .eq('id', agendamento_id);
+
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              vendaExcluida: true, 
+              error: 'Venda excluída no GestaoClick. Vínculo removido - você pode gerar uma nova venda.' 
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        let situacaoOriginal = config.situacao_id || '';
+        try {
+          const vendaData = JSON.parse(getVendaText);
+          // Tentar extrair situacao_id da venda
+          const venda = vendaData.data?.[0]?.Venda || vendaData.data?.[0] || vendaData.dados || {};
+          if (venda.situacao_id) {
+            situacaoOriginal = venda.situacao_id.toString();
+          }
+          console.log('[gestaoclick-proxy] Situação original da venda:', situacaoOriginal);
+        } catch (e) {
+          console.log('[gestaoclick-proxy] Não foi possível extrair situacao_id, usando config:', situacaoOriginal);
+        }
+
         // Get client data
         const { data: cliente } = await supabase
           .from('clientes')
@@ -778,67 +839,59 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Update sale in GestaoClick (PUT)
-        const updatePayload = {
-          produtos: produtosVenda
-        };
-
-        console.log('[gestaoclick-proxy] Updating venda:', venda_id, JSON.stringify(updatePayload, null, 2));
-
-        const updateResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
+        // 2. Alterar status para "edição"
+        console.log('[gestaoclick-proxy] Alterando status para edição:', config.situacao_edicao_id);
+        const statusEdicaoResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             'access-token': config.access_token,
             'secret-access-token': config.secret_token,
           },
-          body: JSON.stringify(updatePayload),
+          body: JSON.stringify({ situacao_id: parseInt(config.situacao_edicao_id, 10) }),
         });
 
-        const updateResponseText = await updateResponse.text();
-        console.log('[gestaoclick-proxy] Update response:', updateResponse.status, updateResponseText);
+        const statusEdicaoText = await statusEdicaoResponse.text();
+        console.log('[gestaoclick-proxy] Status edição response:', statusEdicaoResponse.status, statusEdicaoText);
 
-        // Detectar venda excluída - GC pode retornar 200 com erro no corpo
-        const vendaExcluida = 
-          updateResponse.status === 404 ||
-          updateResponseText.includes('não possui permissão para acessar este pedido') ||
-          updateResponseText.includes('cake-error') ||
-          updateResponseText.includes('Pedido não encontrado') ||
-          (updateResponseText.includes('"ok":false') && updateResponseText.includes('"dados":null'));
-
-        if (vendaExcluida) {
-          console.log('[gestaoclick-proxy] Venda excluída detectada no GestaoClick, limpando vínculo');
-          
-          // Clear the link in Lovable
-          await supabase
-            .from('agendamentos_clientes')
-            .update({ 
-              gestaoclick_venda_id: null, 
-              gestaoclick_sincronizado_em: null 
-            })
-            .eq('id', agendamento_id);
-
+        if (!statusEdicaoResponse.ok) {
           return new Response(
-            JSON.stringify({ 
-              success: false, 
-              vendaExcluida: true, 
-              error: 'Venda excluída no GestaoClick. Vínculo removido - você pode gerar uma nova venda.' 
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: 'Não foi possível colocar a venda em modo edição: ' + statusEdicaoText }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        if (!updateResponse.ok) {
-          let errorMessage = `Erro ${updateResponse.status}`;
-          try {
-            const errorData = JSON.parse(updateResponseText);
-            errorMessage = errorData.message || errorData.error || errorMessage;
-          } catch {
-            errorMessage = updateResponseText || errorMessage;
-          }
+        // 3. Atualizar os produtos
+        console.log('[gestaoclick-proxy] Atualizando produtos:', JSON.stringify({ produtos: produtosVenda }, null, 2));
+        const updateProdutosResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': config.access_token,
+            'secret-access-token': config.secret_token,
+          },
+          body: JSON.stringify({ produtos: produtosVenda }),
+        });
+
+        const updateProdutosText = await updateProdutosResponse.text();
+        console.log('[gestaoclick-proxy] Update produtos response:', updateProdutosResponse.status, updateProdutosText);
+
+        // 4. Restaurar status original (mesmo em caso de erro nos produtos)
+        console.log('[gestaoclick-proxy] Restaurando status original:', situacaoOriginal);
+        await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': config.access_token,
+            'secret-access-token': config.secret_token,
+          },
+          body: JSON.stringify({ situacao_id: parseInt(situacaoOriginal, 10) }),
+        });
+
+        if (!updateProdutosResponse.ok) {
           return new Response(
-            JSON.stringify({ error: errorMessage }),
-            { status: updateResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: 'Erro ao atualizar produtos: ' + updateProdutosText }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 

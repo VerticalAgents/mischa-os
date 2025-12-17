@@ -46,6 +46,7 @@ export default function IntegracoesGestaoClickTab() {
   const [showAccessToken, setShowAccessToken] = useState(false);
   const [showSecretToken, setShowSecretToken] = useState(false);
   const [situacaoId, setSituacaoId] = useState('');
+  const [situacaoEdicaoId, setSituacaoEdicaoId] = useState('');
   const [formaPagamentoBoleto, setFormaPagamentoBoleto] = useState('');
   const [formaPagamentoPix, setFormaPagamentoPix] = useState('');
   const [formaPagamentoDinheiro, setFormaPagamentoDinheiro] = useState('');
@@ -71,6 +72,7 @@ export default function IntegracoesGestaoClickTab() {
       setAccessToken(config.access_token || '');
       setSecretToken(config.secret_token || '');
       setSituacaoId(config.situacao_id || '');
+      setSituacaoEdicaoId(config.situacao_edicao_id || '');
       setFormaPagamentoBoleto(config.forma_pagamento_ids?.BOLETO || '');
       setFormaPagamentoPix(config.forma_pagamento_ids?.PIX || '');
       setFormaPagamentoDinheiro(config.forma_pagamento_ids?.DINHEIRO || '');
@@ -89,6 +91,7 @@ export default function IntegracoesGestaoClickTab() {
       access_token: accessToken,
       secret_token: secretToken,
       situacao_id: situacaoId || undefined,
+      situacao_edicao_id: situacaoEdicaoId || undefined,
       forma_pagamento_ids: {
         BOLETO: formaPagamentoBoleto || undefined,
         PIX: formaPagamentoPix || undefined,
@@ -334,23 +337,44 @@ export default function IntegracoesGestaoClickTab() {
                 <h4 className="text-sm font-medium">Configurações de Venda</h4>
                 
                 {situacoes.length > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="situacao">Situação de Venda (status inicial)</Label>
-                    <Select value={situacaoId} onValueChange={setSituacaoId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a situação" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {situacoes.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Situação aplicada às vendas criadas automaticamente
-                    </p>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="situacao">Situação de Venda (status inicial)</Label>
+                      <Select value={situacaoId} onValueChange={setSituacaoId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a situação" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {situacoes.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Situação aplicada às vendas criadas automaticamente
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="situacao-edicao">Situação "Edição" (para alterações)</Label>
+                      <Select value={situacaoEdicaoId} onValueChange={setSituacaoEdicaoId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a situação de edição" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {situacoes.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Situação usada temporariamente para permitir edições na venda
+                      </p>
+                    </div>
                   </div>
                 )}
 
