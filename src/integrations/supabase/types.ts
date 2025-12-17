@@ -358,6 +358,7 @@ export type Database = {
           nome: string
           observacoes: string | null
           periodicidade_padrao: number | null
+          prazo_pagamento_dias: number | null
           proxima_data_reposicao: string | null
           quantidade_padrao: number | null
           representante_id: number | null
@@ -397,6 +398,7 @@ export type Database = {
           nome: string
           observacoes?: string | null
           periodicidade_padrao?: number | null
+          prazo_pagamento_dias?: number | null
           proxima_data_reposicao?: string | null
           quantidade_padrao?: number | null
           representante_id?: number | null
@@ -436,6 +438,7 @@ export type Database = {
           nome?: string
           observacoes?: string | null
           periodicidade_padrao?: number | null
+          prazo_pagamento_dias?: number | null
           proxima_data_reposicao?: string | null
           quantidade_padrao?: number | null
           representante_id?: number | null
