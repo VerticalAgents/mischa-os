@@ -14,6 +14,9 @@ interface GestaoClickConfig {
   situacao_edicao_id?: string;
   situacao_cancelado_id?: string;
   vendedor_id?: string;
+  loja_id?: string;
+  empresa_id?: string;
+  fornecedor_id?: string;
   forma_pagamento_ids?: {
     BOLETO?: string;
     PIX?: string;
@@ -449,6 +452,58 @@ Deno.serve(async (req) => {
                 nome: loja.nome || loja.fantasia,
                 cnpj: loja.cnpj,
                 ativo: loja.ativo
+              };
+            }) : []
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'listar_fornecedores_gc': {
+        // List ALL suppliers from GestaoClick (used for NF-e emitter)
+        const { access_token, secret_token } = params;
+        
+        if (!access_token || !secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('[gestaoclick-proxy] Buscando fornecedores...');
+
+        const fornecedoresResponse = await fetch(`${GESTAOCLICK_BASE_URL}/fornecedores`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': access_token,
+            'secret-access-token': secret_token,
+          },
+        });
+
+        if (!fornecedoresResponse.ok) {
+          const errorText = await fornecedoresResponse.text();
+          console.error('[gestaoclick-proxy] fornecedores error:', errorText);
+          return new Response(
+            JSON.stringify({ error: `Erro ao buscar fornecedores: ${fornecedoresResponse.status}` }),
+            { status: fornecedoresResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const fornecedoresData = await fornecedoresResponse.json();
+        console.log('[gestaoclick-proxy] fornecedores response:', JSON.stringify(fornecedoresData).substring(0, 500));
+
+        const fornecedores = fornecedoresData.data || [];
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            fornecedores: Array.isArray(fornecedores) ? fornecedores.map((f: any) => {
+              const fornecedor = f.Fornecedor || f;
+              return {
+                id: fornecedor.id,
+                nome: fornecedor.nome || fornecedor.razao_social || fornecedor.fantasia,
+                cnpj_cpf: fornecedor.cnpj_cpf || fornecedor.cnpj
               };
             }) : []
           }),
@@ -1230,10 +1285,10 @@ Deno.serve(async (req) => {
 
         const dataVencimento = calcularDataVencimento(formaPagamento, cliente.prazo_pagamento_dias);
 
-        // Validate empresa_id is configured
-        if (!config.empresa_id) {
+        // Validate fornecedor_id is configured (required for NF-e model 55)
+        if (!config.fornecedor_id) {
           return new Response(
-            JSON.stringify({ error: 'ID da Empresa não configurado. Vá em Configurações → GestaoClick e configure o ID da Empresa.' }),
+            JSON.stringify({ error: 'ID do Fornecedor não configurado. Vá em Configurações → GestaoClick → Lojas/Fornecedores e configure o Fornecedor para NF.' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -1241,7 +1296,7 @@ Deno.serve(async (req) => {
         // Build NF payload
         const nfPayload: Record<string, any> = {
           tipo_nf: 55,          // Modelo NF-e (modelo 55)
-          id_fornecedor: parseInt(config.empresa_id, 10), // ID da empresa emitente (obrigatório para NF-e)
+          id_fornecedor: parseInt(config.fornecedor_id, 10), // ID do fornecedor/empresa emitente (obrigatório para NF-e)
           loja_id: config.loja_id,
           envio_automatico: 1,  // Criar e emitir automaticamente
           indicador_final: 0,   // Não é consumidor final (revenda B2B)
