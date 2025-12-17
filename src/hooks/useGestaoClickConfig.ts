@@ -25,6 +25,12 @@ export interface GestaoClickFormaPagamento {
   nome: string;
 }
 
+export interface GestaoClickCliente {
+  id: string;
+  nome: string;
+  cnpj_cpf?: string;
+}
+
 export function useGestaoClickConfig() {
   const { user } = useAuth();
   const [config, setConfig] = useState<GestaoClickConfig | null>(null);
@@ -167,6 +173,33 @@ export function useGestaoClickConfig() {
     }
   }, []);
 
+  // Buscar clientes do GestaoClick
+  const fetchClientesGestaoClick = useCallback(async (accessToken: string, secretToken: string): Promise<GestaoClickCliente[]> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('gestaoclick-proxy', {
+        body: {
+          action: 'listar_clientes_gc',
+          access_token: accessToken,
+          secret_token: secretToken
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Erro ao buscar clientes');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      return data?.clientes || [];
+    } catch (error) {
+      console.error('Erro ao buscar clientes GestaoClick:', error);
+      toast.error('Erro ao buscar clientes do GestaoClick');
+      return [];
+    }
+  }, []);
+
   return {
     config,
     loading,
@@ -177,6 +210,7 @@ export function useGestaoClickConfig() {
     formasPagamento,
     saveConfig,
     testConnection,
-    loadConfig
+    loadConfig,
+    fetchClientesGestaoClick
   };
 }

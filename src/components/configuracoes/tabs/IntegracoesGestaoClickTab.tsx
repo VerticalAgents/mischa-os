@@ -6,8 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, Save, Plug, CheckCircle2, XCircle, Loader2, ExternalLink } from 'lucide-react';
-import { useGestaoClickConfig, GestaoClickConfig } from '@/hooks/useGestaoClickConfig';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Eye, EyeOff, Save, Plug, CheckCircle2, XCircle, Loader2, ExternalLink, Users, Copy, Search } from 'lucide-react';
+import { useGestaoClickConfig, GestaoClickConfig, GestaoClickCliente } from '@/hooks/useGestaoClickConfig';
+import { toast } from 'sonner';
 
 export default function IntegracoesGestaoClickTab() {
   const {
@@ -19,7 +22,8 @@ export default function IntegracoesGestaoClickTab() {
     situacoes,
     formasPagamento,
     saveConfig,
-    testConnection
+    testConnection,
+    fetchClientesGestaoClick
   } = useGestaoClickConfig();
 
   const [accessToken, setAccessToken] = useState('');
@@ -30,6 +34,11 @@ export default function IntegracoesGestaoClickTab() {
   const [formaPagamentoBoleto, setFormaPagamentoBoleto] = useState('');
   const [formaPagamentoPix, setFormaPagamentoPix] = useState('');
   const [formaPagamentoDinheiro, setFormaPagamentoDinheiro] = useState('');
+  
+  // Estado para clientes GestaoClick
+  const [clientesGC, setClientesGC] = useState<GestaoClickCliente[]>([]);
+  const [loadingClientes, setLoadingClientes] = useState(false);
+  const [searchClientes, setSearchClientes] = useState('');
 
   // Carregar valores salvos
   useEffect(() => {
@@ -63,6 +72,35 @@ export default function IntegracoesGestaoClickTab() {
     };
     await saveConfig(newConfig);
   };
+
+  const handleFetchClientes = async () => {
+    if (!accessToken || !secretToken) {
+      toast.error('Configure os tokens primeiro');
+      return;
+    }
+    setLoadingClientes(true);
+    const clientes = await fetchClientesGestaoClick(accessToken, secretToken);
+    setClientesGC(clientes);
+    setLoadingClientes(false);
+    if (clientes.length > 0) {
+      toast.success(`${clientes.length} clientes encontrados`);
+    }
+  };
+
+  const handleCopyId = (id: string, nome: string) => {
+    navigator.clipboard.writeText(id);
+    toast.success(`ID ${id} copiado (${nome})`);
+  };
+
+  // Filtrar clientes
+  const clientesFiltrados = clientesGC.filter(c => {
+    const search = searchClientes.toLowerCase();
+    return (
+      c.nome?.toLowerCase().includes(search) ||
+      c.cnpj_cpf?.includes(search) ||
+      c.id?.includes(search)
+    );
+  });
 
   if (loading) {
     return (
@@ -267,6 +305,99 @@ export default function IntegracoesGestaoClickTab() {
               Salvar Configuração
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Consulta de Clientes GestaoClick */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Clientes no GestaoClick</CardTitle>
+              <CardDescription>
+                Consulte os IDs dos clientes cadastrados no GestaoClick para mapeamento
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Button
+              onClick={handleFetchClientes}
+              disabled={!accessToken || !secretToken || loadingClientes}
+              variant="outline"
+            >
+              {loadingClientes ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Users className="h-4 w-4 mr-2" />
+              )}
+              Buscar Clientes
+            </Button>
+            {clientesGC.length > 0 && (
+              <Badge variant="secondary" className="self-center">
+                {clientesGC.length} clientes
+              </Badge>
+            )}
+          </div>
+
+          {clientesGC.length > 0 && (
+            <>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, CNPJ/CPF ou ID..."
+                  value={searchClientes}
+                  onChange={(e) => setSearchClientes(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              <ScrollArea className="h-[300px] border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-24">ID GC</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead className="w-40">CNPJ/CPF</TableHead>
+                      <TableHead className="w-16"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {clientesFiltrados.map((cliente) => (
+                      <TableRow key={cliente.id}>
+                        <TableCell className="font-mono text-sm">{cliente.id}</TableCell>
+                        <TableCell>{cliente.nome}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {cliente.cnpj_cpf || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleCopyId(cliente.id, cliente.nome)}
+                            title="Copiar ID"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {clientesFiltrados.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          {searchClientes ? 'Nenhum cliente encontrado' : 'Clique em "Buscar Clientes" para carregar'}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
