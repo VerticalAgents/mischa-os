@@ -773,6 +773,7 @@ export type Database = {
           created_at: string
           data: string
           editado_manualmente: boolean | null
+          gestaoclick_venda_id: string | null
           id: string
           itens: Json
           observacao: string | null
@@ -786,6 +787,7 @@ export type Database = {
           created_at?: string
           data?: string
           editado_manualmente?: boolean | null
+          gestaoclick_venda_id?: string | null
           id?: string
           itens?: Json
           observacao?: string | null
@@ -799,6 +801,7 @@ export type Database = {
           created_at?: string
           data?: string
           editado_manualmente?: boolean | null
+          gestaoclick_venda_id?: string | null
           id?: string
           itens?: Json
           observacao?: string | null
