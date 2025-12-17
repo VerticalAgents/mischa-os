@@ -755,30 +755,37 @@ Deno.serve(async (req) => {
         const updateResponseText = await updateResponse.text();
         console.log('[gestaoclick-proxy] Update response:', updateResponse.status, updateResponseText);
 
+        // Detectar venda excluída - GC pode retornar 200 com erro no corpo
+        const vendaExcluida = 
+          updateResponse.status === 404 ||
+          updateResponseText.includes('não possui permissão para acessar este pedido') ||
+          updateResponseText.includes('cake-error') ||
+          updateResponseText.includes('Pedido não encontrado') ||
+          (updateResponseText.includes('"ok":false') && updateResponseText.includes('"dados":null'));
+
+        if (vendaExcluida) {
+          console.log('[gestaoclick-proxy] Venda excluída detectada no GestaoClick, limpando vínculo');
+          
+          // Clear the link in Lovable
+          await supabase
+            .from('agendamentos_clientes')
+            .update({ 
+              gestaoclick_venda_id: null, 
+              gestaoclick_sincronizado_em: null 
+            })
+            .eq('id', agendamento_id);
+
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              vendaExcluida: true, 
+              error: 'Venda excluída no GestaoClick. Vínculo removido - você pode gerar uma nova venda.' 
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         if (!updateResponse.ok) {
-          // Check if sale was deleted in GestaoClick (404)
-          if (updateResponse.status === 404) {
-            console.log('[gestaoclick-proxy] Venda não encontrada no GestaoClick, limpando vínculo');
-            
-            // Clear the link in Lovable
-            await supabase
-              .from('agendamentos_clientes')
-              .update({ 
-                gestaoclick_venda_id: null, 
-                gestaoclick_sincronizado_em: null 
-              })
-              .eq('id', agendamento_id);
-
-            return new Response(
-              JSON.stringify({ 
-                success: false, 
-                vendaExcluida: true, 
-                error: 'Venda não encontrada no GestaoClick. Vínculo removido - você pode gerar uma nova venda.' 
-              }),
-              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-
           let errorMessage = `Erro ${updateResponse.status}`;
           try {
             const errorData = JSON.parse(updateResponseText);
