@@ -4,6 +4,8 @@ import { useOptimizedProdutoData, ProdutoOptimizado } from "@/hooks/useOptimized
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useSupabaseSubcategoriasProduto } from "@/hooks/useSupabaseSubcategoriasProduto";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
+import { useGestaoClickConfig } from "@/hooks/useGestaoClickConfig";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -23,10 +25,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, RefreshCw, Search } from "lucide-react";
+import { Plus, RefreshCw, Search, Link2 } from "lucide-react";
 import { ProdutoTableRow } from "./ProdutoTableRow";
 import EditarProdutoModal from "./EditarProdutoModal";
 import CriarProdutoModal from "./CriarProdutoModal";
+import { toast } from "sonner";
 
 export default function ProdutosTab() {
   const { 
@@ -45,12 +48,83 @@ export default function ProdutosTab() {
   const { categorias } = useSupabaseCategoriasProduto();
   const { subcategorias } = useSupabaseSubcategoriasProduto();
   const { proporcoes } = useSupabaseProporoesPadrao();
+  const { config, fetchProdutosGestaoClick } = useGestaoClickConfig();
   
   const [editandoProduto, setEditandoProduto] = useState<ProdutoOptimizado | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLoadingAction, setIsLoadingAction] = useState(false);
   const [filtrarRevendaPorProporcao, setFiltrarRevendaPorProporcao] = useState(true);
+  const [isSyncingGC, setIsSyncingGC] = useState(false);
+
+  // Função para normalizar nome para comparação
+  const normalizeName = (name: string) => {
+    return name.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  };
+
+  // Sincronizar IDs do GestaoClick
+  const handleSyncGestaoClickIds = async () => {
+    if (!config?.access_token || !config?.secret_token) {
+      toast.error('Configure as credenciais do GestaoClick em Configurações → Integrações');
+      return;
+    }
+
+    setIsSyncingGC(true);
+    try {
+      // Buscar produtos do GestaoClick
+      const produtosGC = await fetchProdutosGestaoClick(config.access_token, config.secret_token);
+      
+      if (produtosGC.length === 0) {
+        toast.warning('Nenhum produto encontrado no GestaoClick');
+        return;
+      }
+
+      // Criar mapa de produtos GC por nome normalizado
+      const gcMap = new Map<string, string>();
+      produtosGC.forEach(p => {
+        gcMap.set(normalizeName(p.nome), p.id);
+      });
+
+      // Atualizar produtos do Lovable com IDs correspondentes
+      let atualizados = 0;
+      let semCorrespondencia = 0;
+
+      for (const produto of produtos) {
+        const nomeNormalizado = normalizeName(produto.nome);
+        const gcId = gcMap.get(nomeNormalizado);
+        
+        if (gcId && produto.gestaoclick_produto_id !== gcId) {
+          const { error } = await supabase
+            .from('produtos_finais')
+            .update({ gestaoclick_produto_id: gcId })
+            .eq('id', produto.id);
+          
+          if (!error) {
+            atualizados++;
+          }
+        } else if (!gcId) {
+          semCorrespondencia++;
+        }
+      }
+
+      await refresh();
+      
+      if (atualizados > 0) {
+        toast.success(`${atualizados} produto(s) atualizado(s) com ID GC`);
+      } else {
+        toast.info('Nenhum produto precisou de atualização');
+      }
+      
+      if (semCorrespondencia > 0) {
+        toast.warning(`${semCorrespondencia} produto(s) sem correspondência no GestaoClick`);
+      }
+    } catch (error) {
+      console.error('Erro ao sincronizar IDs GC:', error);
+      toast.error('Erro ao sincronizar IDs do GestaoClick');
+    } finally {
+      setIsSyncingGC(false);
+    }
+  };
 
   // Funções para buscar nomes de categoria e subcategoria
   const getNomeCategoria = (categoriaId?: number) => {
@@ -205,6 +279,16 @@ export default function ProdutosTab() {
               )}
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncGestaoClickIds}
+                disabled={isSyncingGC || !config?.access_token}
+                title={!config?.access_token ? "Configure o GestaoClick em Configurações → Integrações" : "Sincronizar IDs do GestaoClick por nome"}
+              >
+                <Link2 className={`h-4 w-4 mr-2 ${isSyncingGC ? 'animate-pulse' : ''}`} />
+                {isSyncingGC ? 'Sincronizando...' : 'Sincronizar IDs GC'}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
