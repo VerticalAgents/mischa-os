@@ -12,6 +12,7 @@ export interface GestaoClickConfig {
   situacao_cancelado_id?: string;
   vendedor_id?: string;
   loja_id?: string;
+  empresa_id?: string;
   forma_pagamento_ids?: {
     BOLETO?: string;
     PIX?: string;

@@ -72,6 +72,7 @@ export default function IntegracoesGestaoClickTab() {
   const [lojasGC, setLojasGC] = useState<GestaoClickLoja[]>([]);
   const [loadingLojas, setLoadingLojas] = useState(false);
   const [lojaId, setLojaId] = useState('');
+  const [empresaId, setEmpresaId] = useState('');
 
   // Carregar valores salvos
   useEffect(() => {
@@ -85,6 +86,7 @@ export default function IntegracoesGestaoClickTab() {
       setFormaPagamentoPix(config.forma_pagamento_ids?.PIX || '');
       setFormaPagamentoDinheiro(config.forma_pagamento_ids?.DINHEIRO || '');
       setLojaId(config.loja_id || '');
+      setEmpresaId(config.empresa_id || '');
     }
   }, [config]);
 
@@ -103,6 +105,7 @@ export default function IntegracoesGestaoClickTab() {
       situacao_edicao_id: situacaoEdicaoId || undefined,
       situacao_cancelado_id: situacaoCanceladoId || undefined,
       loja_id: lojaId || undefined,
+      empresa_id: empresaId || undefined,
       forma_pagamento_ids: {
         BOLETO: formaPagamentoBoleto || undefined,
         PIX: formaPagamentoPix || undefined,
@@ -521,6 +524,21 @@ export default function IntegracoesGestaoClickTab() {
                       </p>
                     </div>
                   )}
+
+                  {/* ID da Empresa (obrigatório para NF-e) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="empresaId">ID da Empresa (Fornecedor)</Label>
+                    <Input
+                      id="empresaId"
+                      value={empresaId}
+                      onChange={(e) => setEmpresaId(e.target.value)}
+                      placeholder="Ex: 436334"
+                      className="w-full md:w-[200px] font-mono"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      ID da empresa emitente no GestaoClick (obrigatório para NF-e modelo 55)
+                    </p>
+                  </div>
 
                   {/* Tabela de lojas disponíveis */}
                   {lojasGC.length > 0 && (

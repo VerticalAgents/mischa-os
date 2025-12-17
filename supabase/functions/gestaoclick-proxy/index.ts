@@ -1230,9 +1230,18 @@ Deno.serve(async (req) => {
 
         const dataVencimento = calcularDataVencimento(formaPagamento, cliente.prazo_pagamento_dias);
 
+        // Validate empresa_id is configured
+        if (!config.empresa_id) {
+          return new Response(
+            JSON.stringify({ error: 'ID da Empresa não configurado. Vá em Configurações → GestaoClick e configure o ID da Empresa.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         // Build NF payload
         const nfPayload: Record<string, any> = {
           tipo_nf: 55,          // Modelo NF-e (modelo 55)
+          id_fornecedor: parseInt(config.empresa_id, 10), // ID da empresa emitente (obrigatório para NF-e)
           loja_id: config.loja_id,
           envio_automatico: 1,  // Criar e emitir automaticamente
           indicador_final: 0,   // Não é consumidor final (revenda B2B)
