@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ResumoExpedicao from "@/components/expedicao/ResumoExpedicao";
@@ -9,6 +9,8 @@ import { RotaEntrega } from "@/components/expedicao/RotaEntrega";
 import DashboardEntregasAnalytics from "@/components/expedicao/DashboardEntregasAnalytics";
 import { OrganizacaoEntregas } from "@/components/expedicao/organizacao/OrganizacaoEntregas";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
+
+const GestaoClickTab = lazy(() => import("@/components/expedicao/GestaoClickTab"));
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
@@ -85,6 +87,7 @@ export default function Expedicao() {
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="separacao">Separação de Pedidos</TabsTrigger>
+          <TabsTrigger value="gestaoclick">GestaoClick</TabsTrigger>
           <TabsTrigger value="despacho">Despacho de Pedidos</TabsTrigger>
           <TabsTrigger value="organizacao">Organização</TabsTrigger>
           <TabsTrigger value="rota">Rota de Entrega</TabsTrigger>
@@ -101,6 +104,14 @@ export default function Expedicao() {
         
         <TabsContent value="separacao" className="space-y-4" forceMount={activeTab === "separacao" ? true : undefined}>
           {activeTab === "separacao" && <SeparacaoPedidos />}
+        </TabsContent>
+
+        <TabsContent value="gestaoclick" className="space-y-4" forceMount={activeTab === "gestaoclick" ? true : undefined}>
+          {activeTab === "gestaoclick" && (
+            <Suspense fallback={<div className="h-64 bg-muted/50 rounded-lg animate-pulse" />}>
+              <GestaoClickTab />
+            </Suspense>
+          )}
         </TabsContent>
         
         <TabsContent value="despacho" className="space-y-4" forceMount={activeTab === "despacho" ? true : undefined}>
