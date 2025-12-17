@@ -1232,6 +1232,7 @@ Deno.serve(async (req) => {
 
         // Build NF payload
         const nfPayload: Record<string, any> = {
+          tipo_nf: 55,          // Modelo NF-e (modelo 55)
           loja_id: config.loja_id,
           envio_automatico: 1,  // Criar e emitir automaticamente
           indicador_final: 0,   // Não é consumidor final (revenda B2B)
