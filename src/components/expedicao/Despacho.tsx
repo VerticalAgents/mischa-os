@@ -7,6 +7,7 @@ import { usePedidoConverter } from "./hooks/usePedidoConverter";
 import { useAgendamentoActions } from "./hooks/useAgendamentoActions";
 import { useConfirmacaoEntrega } from "@/hooks/useConfirmacaoEntrega";
 import { useExportacao } from "@/hooks/useExportacao";
+import { useGestaoClickSync } from "@/hooks/useGestaoClickSync";
 import { DebugInfo } from "./components/DebugInfo";
 import { DespachoFilters } from "./components/DespachoFilters";
 import { ResumoStatusCard } from "./components/ResumoStatusCard";
@@ -44,6 +45,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   const { converterPedidoParaCard } = usePedidoConverter();
   const { confirmarEntregaEmMassa: confirmarEntregaEmMassaHook, loading: loadingConfirmacao } = useConfirmacaoEntrega();
   const { exportarEntregasCSV } = useExportacao();
+  const { gerarVendaGC, atualizarVendaGC, loading: loadingGC, pedidoEmProcessamento } = useGestaoClickSync();
   const {
     modalEditarAberto,
     setModalEditarAberto,
@@ -66,6 +68,23 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   useEffect(() => {
     carregarPedidos();
   }, [carregarPedidos]);
+
+  // Handlers para GestaoClick
+  const handleGerarVendaGC = async (pedidoId: string, clienteId: string) => {
+    const result = await gerarVendaGC(pedidoId, clienteId);
+    if (result.success) {
+      await recarregarSilencioso();
+    }
+    return result;
+  };
+
+  const handleAtualizarVendaGC = async (pedidoId: string, clienteId: string, vendaId: string) => {
+    const result = await atualizarVendaGC(pedidoId, clienteId, vendaId);
+    if (result.success) {
+      await recarregarSilencioso();
+    }
+    return result;
+  };
 
   // Obter pedidos filtrados baseado no tipo
   const pedidosBase = tipoFiltro === "hoje" 
@@ -304,6 +323,17 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 onConfirmarEntrega={(observacao) => handleConfirmarEntregaIndividual(String(pedido.id), observacao)}
                 onConfirmarRetorno={(observacao) => confirmarRetorno(String(pedido.id), observacao)}
                 onRetornarParaSeparacao={() => handleRetornarParaSeparacao(String(pedido.id))}
+                onGerarVendaGC={
+                  tipoFiltro !== "antecipada"
+                    ? () => handleGerarVendaGC(String(pedido.id), String(pedido.cliente_id))
+                    : undefined
+                }
+                onAtualizarVendaGC={
+                  tipoFiltro !== "antecipada" && pedido.gestaoclick_venda_id
+                    ? () => handleAtualizarVendaGC(String(pedido.id), String(pedido.cliente_id), pedido.gestaoclick_venda_id!)
+                    : undefined
+                }
+                isGerandoVendaGC={loadingGC && pedidoEmProcessamento === String(pedido.id)}
               />
             ))}
           </div>
