@@ -55,6 +55,7 @@ export interface Cliente {
   emiteNotaFiscal: boolean;
   tipoCobranca: TipoCobranca;
   formaPagamento: FormaPagamentoNome;
+  prazoPagamentoDias?: number; // Prazo de pagamento para boleto (7, 14 ou 21 dias)
   observacoes?: string;
   
   // Added missing category fields
