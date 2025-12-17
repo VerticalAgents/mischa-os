@@ -5,11 +5,12 @@ import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface TrocaPendente {
-  produto_id: string;
+  produto_id?: string;
   produto_nome: string;
   quantidade: number;
-  motivo_id: number;
-  motivo: string;
+  motivo_id?: number;
+  motivo_nome?: string;
+  motivo?: string; // Fallback para dados antigos
 }
 
 interface PrintingActionsProps {
@@ -182,7 +183,7 @@ export const PrintingActions = ({
             trocasHtml += `
               <div class="troca-item">
                 <span class="troca-produto">${troca.produto_nome}: ${troca.quantidade}</span>
-                <br/><span class="troca-motivo">${troca.motivo}</span>
+                <br/><span class="troca-motivo">${troca.motivo_nome || troca.motivo}</span>
               </div>
             `;
           });

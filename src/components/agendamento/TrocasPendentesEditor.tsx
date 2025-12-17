@@ -100,7 +100,7 @@ export default function TrocasPendentesEditor({ value, onChange }: TrocasPendent
       <div className="flex gap-2 items-end">
         <div className="flex-1">
           <Select
-            value={novaTroca.produto_id || ""}
+            value={novaTroca.produto_id ?? undefined}
             onValueChange={handleProdutoChange}
           >
             <SelectTrigger className="h-9">
@@ -120,8 +120,8 @@ export default function TrocasPendentesEditor({ value, onChange }: TrocasPendent
           <Input
             type="number"
             min={1}
-            value={novaTroca.quantidade || ""}
-            onChange={(e) => setNovaTroca(prev => ({ ...prev, quantidade: Number(e.target.value) }))}
+            value={novaTroca.quantidade || 1}
+            onChange={(e) => setNovaTroca(prev => ({ ...prev, quantidade: Number(e.target.value) || 1 }))}
             placeholder="Qtd"
             className="h-9 text-center"
           />
@@ -129,7 +129,7 @@ export default function TrocasPendentesEditor({ value, onChange }: TrocasPendent
         
         <div className="flex-1">
           <Select
-            value={novaTroca.motivo_id?.toString() || ""}
+            value={novaTroca.motivo_id?.toString() ?? undefined}
             onValueChange={handleMotivoChange}
           >
             <SelectTrigger className="h-9">
