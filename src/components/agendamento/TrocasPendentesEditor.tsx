@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Plus, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { useMotivosTroca } from "@/hooks/useMotivosTroca";
 import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 
@@ -20,44 +21,111 @@ interface TrocasPendentesEditorProps {
 }
 
 export default function TrocasPendentesEditor({ value, onChange }: TrocasPendentesEditorProps) {
-  const { motivos } = useMotivosTroca();
-  const { produtos } = useSupabaseProdutos();
+  const { motivos, loading: loadingMotivos } = useMotivosTroca();
+  const { produtos, loading: loadingProdutos } = useSupabaseProdutos();
   const [novaTroca, setNovaTroca] = useState<Partial<TrocaPendente>>({
     quantidade: 1
   });
 
+  const produtosAtivos = produtos.filter(p => p.ativo);
+
+  // Debug - logs para diagnóstico
+  useEffect(() => {
+    console.log('🔄 TrocasPendentesEditor - Produtos carregados:', produtos.length, 'Ativos:', produtosAtivos.length);
+    console.log('🔄 TrocasPendentesEditor - Motivos carregados:', motivos.length);
+    if (motivos.length > 0) {
+      console.log('🔄 TrocasPendentesEditor - Motivos disponíveis:', motivos.map(m => `${m.id}: ${m.nome}`));
+    }
+  }, [produtos, produtosAtivos.length, motivos]);
+
   const handleAdicionarTroca = () => {
-    if (!novaTroca.produto_nome || !novaTroca.motivo_nome || !novaTroca.quantidade) return;
+    console.log('➕ Tentando adicionar troca:', novaTroca);
     
-    onChange([...value, novaTroca as TrocaPendente]);
+    if (!novaTroca.produto_nome || !novaTroca.motivo_nome || !novaTroca.quantidade) {
+      console.log('❌ Validação falhou - campos faltando:', {
+        produto_nome: novaTroca.produto_nome,
+        motivo_nome: novaTroca.motivo_nome,
+        quantidade: novaTroca.quantidade
+      });
+      return;
+    }
+    
+    const trocaCompleta: TrocaPendente = {
+      produto_id: novaTroca.produto_id,
+      produto_nome: novaTroca.produto_nome,
+      quantidade: novaTroca.quantidade,
+      motivo_id: novaTroca.motivo_id,
+      motivo_nome: novaTroca.motivo_nome
+    };
+    
+    console.log('✅ Adicionando troca completa:', trocaCompleta);
+    onChange([...value, trocaCompleta]);
     setNovaTroca({ quantidade: 1 });
   };
 
   const handleRemoverTroca = (index: number) => {
+    console.log('🗑️ Removendo troca no índice:', index);
     onChange(value.filter((_, i) => i !== index));
   };
 
   const handleProdutoChange = (produtoId: string) => {
+    console.log('📦 Produto selecionado ID:', produtoId);
     const produto = produtos.find(p => p.id === produtoId);
+    console.log('📦 Produto encontrado:', produto);
+    
     if (produto) {
-      setNovaTroca(prev => ({
-        ...prev,
-        produto_id: produto.id,
-        produto_nome: produto.nome
-      }));
+      setNovaTroca(prev => {
+        const updated = {
+          ...prev,
+          produto_id: produto.id,
+          produto_nome: produto.nome
+        };
+        console.log('📦 Estado novaTroca atualizado:', updated);
+        return updated;
+      });
     }
   };
 
   const handleMotivoChange = (motivoId: string) => {
+    console.log('🏷️ Motivo selecionado ID:', motivoId);
     const motivo = motivos.find(m => m.id === Number(motivoId));
+    console.log('🏷️ Motivo encontrado:', motivo);
+    
     if (motivo) {
-      setNovaTroca(prev => ({
-        ...prev,
-        motivo_id: motivo.id,
-        motivo_nome: motivo.nome
-      }));
+      setNovaTroca(prev => {
+        const updated = {
+          ...prev,
+          motivo_id: motivo.id,
+          motivo_nome: motivo.nome
+        };
+        console.log('🏷️ Estado novaTroca atualizado:', updated);
+        return updated;
+      });
     }
   };
+
+  // Loading state
+  if (loadingProdutos || loadingMotivos) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Carregando opções...
+      </div>
+    );
+  }
+
+  // Verificar se há dados disponíveis
+  if (produtosAtivos.length === 0 || motivos.length === 0) {
+    return (
+      <Alert className="bg-amber-50 border-amber-200">
+        <AlertTriangle className="h-4 w-4 text-amber-600" />
+        <AlertDescription className="text-amber-800">
+          {produtosAtivos.length === 0 && "Nenhum produto ativo encontrado. "}
+          {motivos.length === 0 && "Nenhum motivo de troca configurado."}
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -107,7 +175,7 @@ export default function TrocasPendentesEditor({ value, onChange }: TrocasPendent
               <SelectValue placeholder="Produto" />
             </SelectTrigger>
             <SelectContent>
-              {produtos.filter(p => p.ativo).map(produto => (
+              {produtosAtivos.map(produto => (
                 <SelectItem key={produto.id} value={produto.id}>
                   {produto.nome}
                 </SelectItem>
