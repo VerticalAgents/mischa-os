@@ -165,7 +165,7 @@ export default function ProdutosTab() {
     if (produtosCategoria.length === 0) {
       return (
         <TableRow>
-          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
             Nenhum produto nesta categoria
           </TableCell>
         </TableRow>
@@ -310,6 +310,7 @@ export default function ProdutosTab() {
                           <Table>
                             <TableHeader>
                               <TableRow>
+                                <TableHead className="w-[60px]">ID GC</TableHead>
                                 <TableHead className="w-[80px]">Ordem</TableHead>
                                 <TableHead className="min-w-[150px]">Nome</TableHead>
                                 <TableHead className="min-w-[100px]">Categoria</TableHead>

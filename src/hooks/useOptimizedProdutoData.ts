@@ -23,6 +23,7 @@ export interface ProdutoOptimizado {
   margem_lucro?: number;
   ordem_categoria?: number;
   user_id: string;
+  gestaoclick_produto_id?: string;
   // Dados calculados otimizados
   custo_unitario_calculado: number;
   margem_real: number;

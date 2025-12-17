@@ -1471,6 +1471,7 @@ export type Database = {
           estoque_atual: number | null
           estoque_ideal: number | null
           estoque_minimo: number | null
+          gestaoclick_produto_id: string | null
           id: string
           margem_lucro: number | null
           nome: string
@@ -1492,6 +1493,7 @@ export type Database = {
           estoque_atual?: number | null
           estoque_ideal?: number | null
           estoque_minimo?: number | null
+          gestaoclick_produto_id?: string | null
           id?: string
           margem_lucro?: number | null
           nome: string
@@ -1513,6 +1515,7 @@ export type Database = {
           estoque_atual?: number | null
           estoque_ideal?: number | null
           estoque_minimo?: number | null
+          gestaoclick_produto_id?: string | null
           id?: string
           margem_lucro?: number | null
           nome?: string

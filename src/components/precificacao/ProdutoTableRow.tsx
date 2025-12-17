@@ -57,6 +57,9 @@ export const ProdutoTableRow: React.FC<ProdutoTableRowProps> = ({
 
   return (
     <TableRow key={produto.id}>
+      <TableCell className="w-[60px] text-center text-muted-foreground">
+        {produto.gestaoclick_produto_id || "-"}
+      </TableCell>
       <TableCell className="w-[80px]">
         <Input
           type="text"
