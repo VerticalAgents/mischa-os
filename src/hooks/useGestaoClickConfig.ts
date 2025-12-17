@@ -8,6 +8,7 @@ export interface GestaoClickConfig {
   access_token: string;
   secret_token: string;
   situacao_id?: string;
+  vendedor_id?: string;
   forma_pagamento_ids?: {
     BOLETO?: string;
     PIX?: string;
@@ -31,6 +32,18 @@ export interface GestaoClickCliente {
   cnpj_cpf?: string;
 }
 
+export interface GestaoClickFuncionario {
+  id: string;
+  nome: string;
+}
+
+export interface GestaoClickProduto {
+  id: string;
+  nome: string;
+  codigo?: string;
+  preco?: string;
+}
+
 export function useGestaoClickConfig() {
   const { user } = useAuth();
   const [config, setConfig] = useState<GestaoClickConfig | null>(null);
@@ -40,6 +53,7 @@ export function useGestaoClickConfig() {
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'error'>('unknown');
   const [situacoes, setSituacoes] = useState<GestaoClickSituacao[]>([]);
   const [formasPagamento, setFormasPagamento] = useState<GestaoClickFormaPagamento[]>([]);
+  const [funcionarios, setFuncionarios] = useState<GestaoClickFuncionario[]>([]);
 
   // Carregar configuração salva
   const loadConfig = useCallback(async () => {
@@ -83,7 +97,6 @@ export function useGestaoClickConfig() {
 
     setSaving(true);
     try {
-      // First try to update existing record
       const { data: existing } = await supabase
         .from('integracoes_config')
         .select('id')
@@ -92,7 +105,6 @@ export function useGestaoClickConfig() {
         .maybeSingle();
 
       if (existing) {
-        // Update existing
         const { error } = await supabase
           .from('integracoes_config')
           .update({
@@ -103,7 +115,6 @@ export function useGestaoClickConfig() {
         
         if (error) throw error;
       } else {
-        // Insert new
         const { error } = await supabase
           .from('integracoes_config')
           .insert({
@@ -149,18 +160,19 @@ export function useGestaoClickConfig() {
         throw new Error(data.error);
       }
 
-      // Salvar situações encontradas
       if (data?.situacoes && Array.isArray(data.situacoes)) {
         setSituacoes(data.situacoes);
       }
 
-      // Salvar formas de pagamento
       if (data?.formas_pagamento && Array.isArray(data.formas_pagamento)) {
         setFormasPagamento(data.formas_pagamento);
       }
       
       setConnectionStatus('connected');
       toast.success('Conexão com GestaoClick estabelecida!');
+      
+      // Buscar funcionários automaticamente após conexão bem-sucedida
+      fetchFuncionariosGestaoClick(accessToken, secretToken);
       
       return true;
     } catch (error) {
@@ -170,6 +182,34 @@ export function useGestaoClickConfig() {
       return false;
     } finally {
       setTesting(false);
+    }
+  }, []);
+
+  // Buscar funcionários do GestaoClick
+  const fetchFuncionariosGestaoClick = useCallback(async (accessToken: string, secretToken: string): Promise<GestaoClickFuncionario[]> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('gestaoclick-proxy', {
+        body: {
+          action: 'listar_funcionarios_gc',
+          access_token: accessToken,
+          secret_token: secretToken
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Erro ao buscar funcionários');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      const funcs = data?.funcionarios || [];
+      setFuncionarios(funcs);
+      return funcs;
+    } catch (error) {
+      console.error('Erro ao buscar funcionários GestaoClick:', error);
+      return [];
     }
   }, []);
 
@@ -200,6 +240,33 @@ export function useGestaoClickConfig() {
     }
   }, []);
 
+  // Buscar produtos do GestaoClick
+  const fetchProdutosGestaoClick = useCallback(async (accessToken: string, secretToken: string): Promise<GestaoClickProduto[]> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('gestaoclick-proxy', {
+        body: {
+          action: 'listar_produtos_gc',
+          access_token: accessToken,
+          secret_token: secretToken
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Erro ao buscar produtos');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      return data?.produtos || [];
+    } catch (error) {
+      console.error('Erro ao buscar produtos GestaoClick:', error);
+      toast.error('Erro ao buscar produtos do GestaoClick');
+      return [];
+    }
+  }, []);
+
   return {
     config,
     loading,
@@ -208,9 +275,12 @@ export function useGestaoClickConfig() {
     connectionStatus,
     situacoes,
     formasPagamento,
+    funcionarios,
     saveConfig,
     testConnection,
     loadConfig,
-    fetchClientesGestaoClick
+    fetchClientesGestaoClick,
+    fetchFuncionariosGestaoClick,
+    fetchProdutosGestaoClick
   };
 }

@@ -11,6 +11,7 @@ interface GestaoClickConfig {
   access_token: string;
   secret_token: string;
   situacao_id?: string;
+  vendedor_id?: string;
   forma_pagamento_ids?: {
     BOLETO?: string;
     PIX?: string;
@@ -136,7 +137,6 @@ Deno.serve(async (req) => {
         let paginaAtual = 1;
         let totalPaginas = 1;
 
-        // Loop through all pages
         do {
           const clientesResponse = await fetch(`${GESTAOCLICK_BASE_URL}/clientes?pagina=${paginaAtual}`, {
             method: 'GET',
@@ -159,12 +159,10 @@ Deno.serve(async (req) => {
           const clientesData = await clientesResponse.json();
           console.log(`[gestaoclick-proxy] clientes page ${paginaAtual}/${clientesData?.meta?.total_paginas || 1}, count: ${clientesData?.data?.length || 0}`);
 
-          // Get pagination info from meta
           if (clientesData?.meta?.total_paginas) {
             totalPaginas = clientesData.meta.total_paginas;
           }
 
-          // Add clients from this page
           const clientes = clientesData.data || [];
           todosClientes.push(...clientes);
 
@@ -182,6 +180,136 @@ Deno.serve(async (req) => {
                 id: cliente.id,
                 nome: cliente.nome || cliente.razao_social,
                 cnpj_cpf: cliente.cnpj || cliente.cpf || cliente.cnpj_cpf
+              };
+            })
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'listar_funcionarios_gc': {
+        // List ALL employees from GestaoClick with pagination
+        const { access_token, secret_token } = params;
+        
+        if (!access_token || !secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const todosFuncionarios: any[] = [];
+        let paginaAtual = 1;
+        let totalPaginas = 1;
+
+        do {
+          const funcionariosResponse = await fetch(`${GESTAOCLICK_BASE_URL}/funcionarios?pagina=${paginaAtual}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'access-token': access_token,
+              'secret-access-token': secret_token,
+            },
+          });
+
+          if (!funcionariosResponse.ok) {
+            const errorText = await funcionariosResponse.text();
+            console.error('[gestaoclick-proxy] funcionarios error:', errorText);
+            return new Response(
+              JSON.stringify({ error: `Erro ao buscar funcionários: ${funcionariosResponse.status}` }),
+              { status: funcionariosResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          const funcionariosData = await funcionariosResponse.json();
+          console.log(`[gestaoclick-proxy] funcionarios page ${paginaAtual}/${funcionariosData?.meta?.total_paginas || 1}, count: ${funcionariosData?.data?.length || 0}`);
+
+          if (funcionariosData?.meta?.total_paginas) {
+            totalPaginas = funcionariosData.meta.total_paginas;
+          }
+
+          const funcionarios = funcionariosData.data || [];
+          todosFuncionarios.push(...funcionarios);
+
+          paginaAtual++;
+        } while (paginaAtual <= totalPaginas);
+
+        console.log('[gestaoclick-proxy] total funcionarios fetched:', todosFuncionarios.length);
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            funcionarios: todosFuncionarios.map((f: any) => {
+              const func = f.Funcionario || f;
+              return {
+                id: func.id,
+                nome: func.nome
+              };
+            })
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'listar_produtos_gc': {
+        // List ALL products from GestaoClick with pagination
+        const { access_token, secret_token } = params;
+        
+        if (!access_token || !secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const todosProdutos: any[] = [];
+        let paginaAtual = 1;
+        let totalPaginas = 1;
+
+        do {
+          const produtosResponse = await fetch(`${GESTAOCLICK_BASE_URL}/produtos?pagina=${paginaAtual}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'access-token': access_token,
+              'secret-access-token': secret_token,
+            },
+          });
+
+          if (!produtosResponse.ok) {
+            const errorText = await produtosResponse.text();
+            console.error('[gestaoclick-proxy] produtos error:', errorText);
+            return new Response(
+              JSON.stringify({ error: `Erro ao buscar produtos: ${produtosResponse.status}` }),
+              { status: produtosResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          const produtosData = await produtosResponse.json();
+          console.log(`[gestaoclick-proxy] produtos page ${paginaAtual}/${produtosData?.meta?.total_paginas || 1}, count: ${produtosData?.data?.length || 0}`);
+
+          if (produtosData?.meta?.total_paginas) {
+            totalPaginas = produtosData.meta.total_paginas;
+          }
+
+          const produtos = produtosData.data || [];
+          todosProdutos.push(...produtos);
+
+          paginaAtual++;
+        } while (paginaAtual <= totalPaginas);
+
+        console.log('[gestaoclick-proxy] total produtos fetched:', todosProdutos.length);
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            produtos: todosProdutos.map((p: any) => {
+              const produto = p.Produto || p;
+              return {
+                id: produto.id,
+                nome: produto.nome,
+                codigo: produto.codigo,
+                preco: produto.preco_venda || produto.preco
               };
             })
           }),
@@ -356,18 +484,26 @@ Deno.serve(async (req) => {
 
         // 9. Generate unique integer code (GestaoClick requires integer)
         const codigo = Math.floor(Date.now() / 1000);
+        const dataVenda = new Date().toISOString().split('T')[0];
 
         // 10. Build sale payload according to GestaoClick API docs
         // Note: cliente_id must be an integer for GestaoClick API
-        const vendaPayload = {
+        // Fixed: situacao_id (not situacao_venda_id), added prazo_entrega and vendedor_id
+        const vendaPayload: Record<string, any> = {
           tipo: 'produto',
           codigo: codigo,
-          data: new Date().toISOString().split('T')[0],
+          data: dataVenda,
+          prazo_entrega: dataVenda,
           cliente_id: clienteIdGC,
-          situacao_venda_id: config.situacao_id,
+          situacao_id: config.situacao_id,
           forma_pagamento_id: formaPagamentoId,
           produtos: produtosVenda
         };
+
+        // Add vendedor_id if configured
+        if (config.vendedor_id) {
+          vendaPayload.vendedor_id = config.vendedor_id;
+        }
 
         console.log('[gestaoclick-proxy] Sending venda payload:', JSON.stringify(vendaPayload, null, 2));
 

@@ -8,8 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Eye, EyeOff, Save, Plug, CheckCircle2, XCircle, Loader2, ExternalLink, Users, Copy, Search } from 'lucide-react';
-import { useGestaoClickConfig, GestaoClickConfig, GestaoClickCliente } from '@/hooks/useGestaoClickConfig';
+import { Eye, EyeOff, Save, Plug, CheckCircle2, XCircle, Loader2, ExternalLink, Users, Copy, Search, Package } from 'lucide-react';
+import { useGestaoClickConfig, GestaoClickConfig, GestaoClickCliente, GestaoClickProduto } from '@/hooks/useGestaoClickConfig';
 import { toast } from 'sonner';
 
 export default function IntegracoesGestaoClickTab() {
@@ -21,9 +21,11 @@ export default function IntegracoesGestaoClickTab() {
     connectionStatus,
     situacoes,
     formasPagamento,
+    funcionarios,
     saveConfig,
     testConnection,
-    fetchClientesGestaoClick
+    fetchClientesGestaoClick,
+    fetchProdutosGestaoClick
   } = useGestaoClickConfig();
 
   const [accessToken, setAccessToken] = useState('');
@@ -31,6 +33,7 @@ export default function IntegracoesGestaoClickTab() {
   const [showAccessToken, setShowAccessToken] = useState(false);
   const [showSecretToken, setShowSecretToken] = useState(false);
   const [situacaoId, setSituacaoId] = useState('');
+  const [vendedorId, setVendedorId] = useState('');
   const [formaPagamentoBoleto, setFormaPagamentoBoleto] = useState('');
   const [formaPagamentoPix, setFormaPagamentoPix] = useState('');
   const [formaPagamentoDinheiro, setFormaPagamentoDinheiro] = useState('');
@@ -40,12 +43,18 @@ export default function IntegracoesGestaoClickTab() {
   const [loadingClientes, setLoadingClientes] = useState(false);
   const [searchClientes, setSearchClientes] = useState('');
 
+  // Estado para produtos GestaoClick
+  const [produtosGC, setProdutosGC] = useState<GestaoClickProduto[]>([]);
+  const [loadingProdutos, setLoadingProdutos] = useState(false);
+  const [searchProdutos, setSearchProdutos] = useState('');
+
   // Carregar valores salvos
   useEffect(() => {
     if (config) {
       setAccessToken(config.access_token || '');
       setSecretToken(config.secret_token || '');
       setSituacaoId(config.situacao_id || '');
+      setVendedorId(config.vendedor_id || '');
       setFormaPagamentoBoleto(config.forma_pagamento_ids?.BOLETO || '');
       setFormaPagamentoPix(config.forma_pagamento_ids?.PIX || '');
       setFormaPagamentoDinheiro(config.forma_pagamento_ids?.DINHEIRO || '');
@@ -64,6 +73,7 @@ export default function IntegracoesGestaoClickTab() {
       access_token: accessToken,
       secret_token: secretToken,
       situacao_id: situacaoId || undefined,
+      vendedor_id: vendedorId || undefined,
       forma_pagamento_ids: {
         BOLETO: formaPagamentoBoleto || undefined,
         PIX: formaPagamentoPix || undefined,
@@ -87,6 +97,20 @@ export default function IntegracoesGestaoClickTab() {
     }
   };
 
+  const handleFetchProdutos = async () => {
+    if (!accessToken || !secretToken) {
+      toast.error('Configure os tokens primeiro');
+      return;
+    }
+    setLoadingProdutos(true);
+    const produtos = await fetchProdutosGestaoClick(accessToken, secretToken);
+    setProdutosGC(produtos);
+    setLoadingProdutos(false);
+    if (produtos.length > 0) {
+      toast.success(`${produtos.length} produtos encontrados`);
+    }
+  };
+
   const handleCopyId = (id: string, nome: string) => {
     navigator.clipboard.writeText(id);
     toast.success(`ID ${id} copiado (${nome})`);
@@ -99,6 +123,16 @@ export default function IntegracoesGestaoClickTab() {
       c.nome?.toLowerCase().includes(search) ||
       c.cnpj_cpf?.includes(search) ||
       c.id?.includes(search)
+    );
+  });
+
+  // Filtrar produtos
+  const produtosFiltrados = produtosGC.filter(p => {
+    const search = searchProdutos.toLowerCase();
+    return (
+      p.nome?.toLowerCase().includes(search) ||
+      p.codigo?.toLowerCase().includes(search) ||
+      p.id?.includes(search)
     );
   });
 
@@ -206,7 +240,7 @@ export default function IntegracoesGestaoClickTab() {
           </div>
 
           {/* Configurações adicionais - só aparecem após conectar */}
-          {connectionStatus === 'connected' && (situacoes.length > 0 || formasPagamento.length > 0) && (
+          {connectionStatus === 'connected' && (situacoes.length > 0 || formasPagamento.length > 0 || funcionarios.length > 0) && (
             <>
               <Separator />
               
@@ -230,6 +264,28 @@ export default function IntegracoesGestaoClickTab() {
                     </Select>
                     <p className="text-xs text-muted-foreground">
                       Situação aplicada às vendas criadas automaticamente
+                    </p>
+                  </div>
+                )}
+
+                {funcionarios.length > 0 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="vendedor">Vendedor Padrão</Label>
+                    <Select value={vendedorId} onValueChange={setVendedorId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o vendedor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Nenhum (não vincular vendedor)</SelectItem>
+                        {funcionarios.map((f) => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Vendedor vinculado às vendas criadas automaticamente
                     </p>
                   </div>
                 )}
@@ -390,6 +446,103 @@ export default function IntegracoesGestaoClickTab() {
                       <TableRow>
                         <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                           {searchClientes ? 'Nenhum cliente encontrado' : 'Clique em "Buscar Clientes" para carregar'}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Consulta de Produtos GestaoClick */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+              <Package className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Produtos no GestaoClick</CardTitle>
+              <CardDescription>
+                Consulte os IDs dos produtos cadastrados no GestaoClick para mapeamento
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Button
+              onClick={handleFetchProdutos}
+              disabled={!accessToken || !secretToken || loadingProdutos}
+              variant="outline"
+            >
+              {loadingProdutos ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Package className="h-4 w-4 mr-2" />
+              )}
+              Buscar Produtos
+            </Button>
+            {produtosGC.length > 0 && (
+              <Badge variant="secondary" className="self-center">
+                {produtosGC.length} produtos
+              </Badge>
+            )}
+          </div>
+
+          {produtosGC.length > 0 && (
+            <>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, código ou ID..."
+                  value={searchProdutos}
+                  onChange={(e) => setSearchProdutos(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              <ScrollArea className="h-[300px] border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-24">ID GC</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead className="w-32">Código</TableHead>
+                      <TableHead className="w-24">Preço</TableHead>
+                      <TableHead className="w-16"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {produtosFiltrados.map((produto) => (
+                      <TableRow key={produto.id}>
+                        <TableCell className="font-mono text-sm">{produto.id}</TableCell>
+                        <TableCell>{produto.nome}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {produto.codigo || '-'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {produto.preco ? `R$ ${produto.preco}` : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleCopyId(produto.id, produto.nome)}
+                            title="Copiar ID"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {produtosFiltrados.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          {searchProdutos ? 'Nenhum produto encontrado' : 'Clique em "Buscar Produtos" para carregar'}
                         </TableCell>
                       </TableRow>
                     )}
