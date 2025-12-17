@@ -39,7 +39,7 @@ const SeparacaoPedidos = () => {
   const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
   
-  const { gerarVendaGC, loading: loadingGC, pedidoEmProcessamento } = useGestaoClickSync();
+  const { gerarVendaGC, atualizarVendaGC, loading: loadingGC, pedidoEmProcessamento } = useGestaoClickSync();
 
   useEffect(() => {
     carregarPedidos();
@@ -47,6 +47,23 @@ const SeparacaoPedidos = () => {
 
   const handleMarcarSeparado = async (pedidoId: string) => {
     await confirmarSeparacao(pedidoId);
+  };
+
+  const handleGerarVendaGC = async (pedidoId: string, clienteId: string) => {
+    const result = await gerarVendaGC(pedidoId, clienteId);
+    // Recarregar para atualizar o estado com o novo gestaoclick_venda_id
+    if (result.success) {
+      await carregarPedidos();
+    }
+    return result;
+  };
+
+  const handleAtualizarVendaGC = async (pedidoId: string, clienteId: string, vendaId: string) => {
+    const success = await atualizarVendaGC(pedidoId, clienteId, vendaId);
+    if (success) {
+      await carregarPedidos();
+    }
+    return success;
   };
 
   const handleEditarPedido = (pedido: any) => {
@@ -217,7 +234,12 @@ const SeparacaoPedidos = () => {
               pedido={pedido}
               onMarcarSeparado={() => handleMarcarSeparado(pedido.id)}
               onEditarAgendamento={() => handleEditarPedido(pedido)}
-              onGerarVendaGC={() => gerarVendaGC(pedido.id, pedido.cliente_id)}
+              onGerarVendaGC={() => handleGerarVendaGC(pedido.id, pedido.cliente_id)}
+              onAtualizarVendaGC={
+                pedido.gestaoclick_venda_id 
+                  ? () => handleAtualizarVendaGC(pedido.id, pedido.cliente_id, pedido.gestaoclick_venda_id!)
+                  : undefined
+              }
               isGerandoVendaGC={loadingGC && pedidoEmProcessamento === pedido.id}
               showProdutosList={true}
             />

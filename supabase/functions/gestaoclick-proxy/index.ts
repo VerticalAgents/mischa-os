@@ -19,6 +19,37 @@ interface GestaoClickConfig {
   };
 }
 
+// Helper: Add days to a date
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+// Helper: Format date as YYYY-MM-DD
+function formatDate(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+// Helper: Calculate data_vencimento based on payment method
+function calcularDataVencimento(formaPagamento: string, prazoPagamentoDias: number | null): string {
+  const dataVenda = new Date();
+  
+  switch (formaPagamento) {
+    case 'DINHEIRO':
+      // Same day
+      return formatDate(dataVenda);
+    case 'PIX':
+      // +1 day
+      return formatDate(addDays(dataVenda, 1));
+    case 'BOLETO':
+    default:
+      // Use prazo_pagamento_dias (default 7)
+      const prazo = prazoPagamentoDias || 7;
+      return formatDate(addDays(dataVenda, prazo));
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -327,6 +358,23 @@ Deno.serve(async (req) => {
           );
         }
 
+        // Check if agendamento already has a venda
+        const { data: agendamentoExistente } = await supabase
+          .from('agendamentos_clientes')
+          .select('gestaoclick_venda_id')
+          .eq('id', agendamento_id)
+          .single();
+
+        if (agendamentoExistente?.gestaoclick_venda_id) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Este pedido já possui uma venda GestaoClick vinculada',
+              venda_id: agendamentoExistente.gestaoclick_venda_id
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         // 1. Get GestaoClick config
         const { data: configData, error: configError } = await supabase
           .from('integracoes_config')
@@ -484,30 +532,34 @@ Deno.serve(async (req) => {
 
         // 9. Generate unique integer code (GestaoClick requires integer)
         const codigo = Math.floor(Date.now() / 1000);
-        const dataVenda = new Date().toISOString().split('T')[0];
+        const dataVenda = formatDate(new Date());
+        
+        // 10. Calculate data_vencimento based on payment method
+        const dataVencimento = calcularDataVencimento(formaPagamento, cliente.prazo_pagamento_dias);
+        console.log(`[gestaoclick-proxy] Payment: ${formaPagamento}, Prazo: ${cliente.prazo_pagamento_dias}, Data Vencimento: ${dataVencimento}`);
 
-        // 10. Build sale payload according to GestaoClick API docs
-        // Note: cliente_id must be an integer for GestaoClick API
-        // Fixed: situacao_id (not situacao_venda_id), added prazo_entrega and vendedor_id
+        // 11. Build sale payload according to GestaoClick API docs
         const vendaPayload: Record<string, any> = {
           tipo: 'produto',
           codigo: codigo,
           data: dataVenda,
           prazo_entrega: dataVenda,
+          data_vencimento: dataVencimento,
           cliente_id: clienteIdGC,
           situacao_id: config.situacao_id,
           forma_pagamento_id: formaPagamentoId,
           produtos: produtosVenda
         };
 
-        // Add vendedor_id if configured
+        // Add vendedor_id AND funcionario_id if configured (some APIs use one or the other)
         if (config.vendedor_id) {
           vendaPayload.vendedor_id = config.vendedor_id;
+          vendaPayload.funcionario_id = config.vendedor_id;
         }
 
         console.log('[gestaoclick-proxy] Sending venda payload:', JSON.stringify(vendaPayload, null, 2));
 
-        // 11. Create sale in GestaoClick
+        // 12. Create sale in GestaoClick
         const vendaResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas`, {
           method: 'POST',
           headers: {
@@ -550,7 +602,7 @@ Deno.serve(async (req) => {
         const vendaId = vendaCriada.data?.venda_id || vendaCriada.venda_id || vendaCriada.id || codigo;
         console.log('[gestaoclick-proxy] Venda created with ID:', vendaId);
 
-        // 12. Update agendamento with sale ID
+        // 13. Update agendamento with sale ID
         const { error: updateError } = await supabase
           .from('agendamentos_clientes')
           .update({
@@ -570,6 +622,161 @@ Deno.serve(async (req) => {
             venda_id: vendaId,
             codigo: codigo
           }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'atualizar_venda': {
+        const { agendamento_id, cliente_id, venda_id } = params;
+
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: 'Usuário não autenticado' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!venda_id) {
+          return new Response(
+            JSON.stringify({ error: 'ID da venda não fornecido' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get config
+        const { data: configData } = await supabase
+          .from('integracoes_config')
+          .select('config')
+          .eq('user_id', userId)
+          .eq('integracao', 'gestaoclick')
+          .maybeSingle();
+
+        if (!configData?.config) {
+          return new Response(
+            JSON.stringify({ error: 'Configure as credenciais do GestaoClick' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const config = configData.config as unknown as GestaoClickConfig;
+
+        // Get client data
+        const { data: cliente } = await supabase
+          .from('clientes')
+          .select('gestaoclick_cliente_id, forma_pagamento, prazo_pagamento_dias, nome')
+          .eq('id', cliente_id)
+          .single();
+
+        if (!cliente?.gestaoclick_cliente_id) {
+          return new Response(
+            JSON.stringify({ error: 'Cliente não possui ID GestaoClick' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get order items
+        const { data: itens } = await supabase
+          .rpc('compute_entrega_itens_v2', { p_agendamento_id: agendamento_id });
+
+        if (!itens || itens.length === 0) {
+          return new Response(
+            JSON.stringify({ error: 'Não foi possível calcular os itens do pedido' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get products
+        const produtoIds = itens.map((i: { produto_id: string }) => i.produto_id);
+        const { data: produtos } = await supabase
+          .from('produtos_finais')
+          .select('id, nome, gestaoclick_produto_id, categoria_id')
+          .in('id', produtoIds);
+
+        // Get prices
+        const categoriaIds = [...new Set(produtos?.map(p => p.categoria_id).filter(Boolean))];
+        const { data: precosCliente } = await supabase
+          .from('precos_categoria_cliente')
+          .select('categoria_id, preco_unitario')
+          .eq('cliente_id', cliente_id)
+          .in('categoria_id', categoriaIds as number[]);
+
+        const { data: configSistema } = await supabase
+          .from('configuracoes_sistema')
+          .select('configuracoes')
+          .eq('modulo', 'precificacao')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        const precosDefault = (configSistema?.configuracoes as { precosPorCategoria?: Record<string, number> })?.precosPorCategoria || {};
+
+        // Build products
+        const produtosVenda: any[] = [];
+        for (const item of itens) {
+          const produto = produtos?.find(p => p.id === item.produto_id);
+          if (!produto?.gestaoclick_produto_id) continue;
+
+          let precoUnitario = 4.50;
+          const categoriaId = produto.categoria_id;
+          if (categoriaId) {
+            const precoPersonalizado = precosCliente?.find(p => p.categoria_id === categoriaId);
+            if (precoPersonalizado) {
+              precoUnitario = precoPersonalizado.preco_unitario;
+            } else if (precosDefault[categoriaId.toString()]) {
+              precoUnitario = precosDefault[categoriaId.toString()];
+            }
+          }
+
+          produtosVenda.push({
+            produto: {
+              produto_id: produto.gestaoclick_produto_id,
+              quantidade: item.quantidade.toString(),
+              valor_venda: precoUnitario.toFixed(2)
+            }
+          });
+        }
+
+        // Update sale in GestaoClick (PUT)
+        const updatePayload = {
+          produtos: produtosVenda
+        };
+
+        console.log('[gestaoclick-proxy] Updating venda:', venda_id, JSON.stringify(updatePayload, null, 2));
+
+        const updateResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': config.access_token,
+            'secret-access-token': config.secret_token,
+          },
+          body: JSON.stringify(updatePayload),
+        });
+
+        const updateResponseText = await updateResponse.text();
+        console.log('[gestaoclick-proxy] Update response:', updateResponse.status, updateResponseText);
+
+        if (!updateResponse.ok) {
+          let errorMessage = `Erro ${updateResponse.status}`;
+          try {
+            const errorData = JSON.parse(updateResponseText);
+            errorMessage = errorData.message || errorData.error || errorMessage;
+          } catch {
+            errorMessage = updateResponseText || errorMessage;
+          }
+          return new Response(
+            JSON.stringify({ error: errorMessage }),
+            { status: updateResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Update sync timestamp
+        await supabase
+          .from('agendamentos_clientes')
+          .update({ gestaoclick_sincronizado_em: new Date().toISOString() })
+          .eq('id', agendamento_id);
+
+        return new Response(
+          JSON.stringify({ success: true, venda_id }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

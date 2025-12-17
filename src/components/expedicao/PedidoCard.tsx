@@ -1,12 +1,11 @@
-
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Send } from "lucide-react";
+import { Send, RefreshCw, AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar, MapPin, Phone, User, Package, ArrowLeft, CheckCircle2, XCircle, Truck, Loader2, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
@@ -32,10 +31,12 @@ interface PedidoCardProps {
     substatus_pedido?: string;
     itens_personalizados?: any;
     gestaoclick_venda_id?: string;
+    gestaoclick_sincronizado_em?: string;
   };
   onMarcarSeparado?: () => void;
   onEditarAgendamento?: () => void;
-  onGerarVendaGC?: () => void;
+  onGerarVendaGC?: () => Promise<{ success: boolean; vendaId: string | null }>;
+  onAtualizarVendaGC?: () => Promise<boolean>;
   isGerandoVendaGC?: boolean;
   showDespachoActions?: boolean;
   showReagendarButton?: boolean;
@@ -52,6 +53,7 @@ const PedidoCard = ({
   onMarcarSeparado,
   onEditarAgendamento,
   onGerarVendaGC,
+  onAtualizarVendaGC,
   isGerandoVendaGC = false,
   showDespachoActions = false,
   showReagendarButton = false,
@@ -68,10 +70,103 @@ const PedidoCard = ({
   const [dataEntrega, setDataEntrega] = useState<Date>(new Date());
   const [dialogEntregaAberto, setDialogEntregaAberto] = useState(false);
   const [dialogRetornoAberto, setDialogRetornoAberto] = useState(false);
+  const [dialogVendaDesatualizadaAberto, setDialogVendaDesatualizadaAberto] = useState(false);
+  const [isAtualizandoVenda, setIsAtualizandoVenda] = useState(false);
+  
+  // Track if order was modified after GC sale was created
+  const [vendaDesatualizada, setVendaDesatualizada] = useState(false);
+  const ultimaSincronizacaoRef = useRef<string | null>(null);
+  const dadosOriginaisRef = useRef<{ quantidade: number; itens: any } | null>(null);
+  
   const {
     confirmarEntrega,
     loading: loadingConfirmacao
   } = useConfirmacaoEntrega();
+
+  // Track original data when venda is created
+  useEffect(() => {
+    if (pedido.gestaoclick_venda_id && pedido.gestaoclick_sincronizado_em) {
+      // If sync timestamp changed, reset tracking
+      if (ultimaSincronizacaoRef.current !== pedido.gestaoclick_sincronizado_em) {
+        ultimaSincronizacaoRef.current = pedido.gestaoclick_sincronizado_em;
+        dadosOriginaisRef.current = {
+          quantidade: pedido.quantidade_total,
+          itens: JSON.stringify(pedido.itens_personalizados || [])
+        };
+        setVendaDesatualizada(false);
+      } else if (dadosOriginaisRef.current) {
+        // Check if data changed since sync
+        const itensAtuais = JSON.stringify(pedido.itens_personalizados || []);
+        const mudouQuantidade = pedido.quantidade_total !== dadosOriginaisRef.current.quantidade;
+        const mudouItens = itensAtuais !== dadosOriginaisRef.current.itens;
+        setVendaDesatualizada(mudouQuantidade || mudouItens);
+      }
+    } else {
+      // No venda yet, reset tracking
+      ultimaSincronizacaoRef.current = null;
+      dadosOriginaisRef.current = null;
+      setVendaDesatualizada(false);
+    }
+  }, [pedido.gestaoclick_venda_id, pedido.gestaoclick_sincronizado_em, pedido.quantidade_total, pedido.itens_personalizados]);
+
+  const handleGerarVendaGC = async () => {
+    if (!onGerarVendaGC) return;
+    const result = await onGerarVendaGC();
+    if (result.success && result.vendaId) {
+      // Store original data after successful creation
+      dadosOriginaisRef.current = {
+        quantidade: pedido.quantidade_total,
+        itens: JSON.stringify(pedido.itens_personalizados || [])
+      };
+      setVendaDesatualizada(false);
+    }
+  };
+
+  const handleAtualizarVendaGC = async () => {
+    if (!onAtualizarVendaGC) return;
+    setIsAtualizandoVenda(true);
+    try {
+      const success = await onAtualizarVendaGC();
+      if (success) {
+        // Update original data reference
+        dadosOriginaisRef.current = {
+          quantidade: pedido.quantidade_total,
+          itens: JSON.stringify(pedido.itens_personalizados || [])
+        };
+        setVendaDesatualizada(false);
+      }
+    } finally {
+      setIsAtualizandoVenda(false);
+    }
+  };
+
+  const handleMarcarSeparado = () => {
+    if (vendaDesatualizada && pedido.gestaoclick_venda_id) {
+      setDialogVendaDesatualizadaAberto(true);
+    } else {
+      onMarcarSeparado?.();
+    }
+  };
+
+  const handleContinuarSemAtualizar = () => {
+    setDialogVendaDesatualizadaAberto(false);
+    onMarcarSeparado?.();
+  };
+
+  const handleAtualizarEContinuar = async () => {
+    if (onAtualizarVendaGC) {
+      setIsAtualizandoVenda(true);
+      try {
+        const success = await onAtualizarVendaGC();
+        if (success) {
+          setDialogVendaDesatualizadaAberto(false);
+          onMarcarSeparado?.();
+        }
+      } finally {
+        setIsAtualizandoVenda(false);
+      }
+    }
+  };
 
   const handleConfirmarEntrega = async () => {
     try {
@@ -79,8 +174,7 @@ const PedidoCard = ({
       if (sucesso) {
         setDialogEntregaAberto(false);
         setObservacaoEntrega("");
-        setDataEntrega(new Date()); // Reset para data atual
-        // Chamar callback se existir para atualizar o estado do componente pai
+        setDataEntrega(new Date());
         if (onConfirmarEntrega) {
           onConfirmarEntrega(observacaoEntrega);
         }
@@ -100,9 +194,10 @@ const PedidoCard = ({
 
   const handleRedirectToCliente = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Navigate with client ID as URL parameter
     navigate(`/clientes?clienteId=${pedido.cliente_id}`);
   };
+
+  const temVendaGC = !!pedido.gestaoclick_venda_id;
 
   return (
     <Card className="mb-4 shadow-sm border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
@@ -195,7 +290,7 @@ const PedidoCard = ({
               {(!pedido.substatus_pedido || pedido.substatus_pedido === 'Agendado') && (
                 <>
                   <Button 
-                    onClick={onMarcarSeparado} 
+                    onClick={handleMarcarSeparado} 
                     size="sm" 
                     className="bg-green-600 hover:bg-green-700"
                   >
@@ -203,9 +298,10 @@ const PedidoCard = ({
                     Marcar Separado
                   </Button>
                   
-                  {onGerarVendaGC && !pedido.gestaoclick_venda_id && (
+                  {/* GestaoClick buttons */}
+                  {onGerarVendaGC && !temVendaGC && (
                     <Button 
-                      onClick={onGerarVendaGC} 
+                      onClick={handleGerarVendaGC} 
                       size="sm" 
                       variant="outline"
                       disabled={isGerandoVendaGC}
@@ -220,10 +316,42 @@ const PedidoCard = ({
                     </Button>
                   )}
                   
-                  {pedido.gestaoclick_venda_id && (
-                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                      GC: #{pedido.gestaoclick_venda_id}
-                    </Badge>
+                  {temVendaGC && (
+                    <>
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          "flex items-center gap-1",
+                          vendaDesatualizada 
+                            ? "bg-amber-50 text-amber-700 border-amber-300" 
+                            : "bg-green-50 text-green-700 border-green-300"
+                        )}
+                      >
+                        {vendaDesatualizada ? (
+                          <AlertTriangle className="h-3 w-3" />
+                        ) : (
+                          <CheckCircle2 className="h-3 w-3" />
+                        )}
+                        GC #{pedido.gestaoclick_venda_id}
+                      </Badge>
+                      
+                      {vendaDesatualizada && onAtualizarVendaGC && (
+                        <Button 
+                          onClick={handleAtualizarVendaGC} 
+                          size="sm" 
+                          variant="outline"
+                          disabled={isAtualizandoVenda}
+                          className="bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-300"
+                        >
+                          {isAtualizandoVenda ? (
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4 mr-1" />
+                          )}
+                          Atualizar GC
+                        </Button>
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -426,6 +554,53 @@ const PedidoCard = ({
           </Button>
         </div>
       </CardContent>
+
+      {/* Dialog: Venda desatualizada */}
+      <Dialog open={dialogVendaDesatualizadaAberto} onOpenChange={setDialogVendaDesatualizadaAberto}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              Venda GC Desatualizada
+            </DialogTitle>
+            <DialogDescription>
+              Foram detectadas alterações no pedido desde a criação da venda no GestaoClick.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              A venda <strong>#{pedido.gestaoclick_venda_id}</strong> pode estar desatualizada. 
+              Deseja atualizar a venda no GestaoClick antes de marcar como separado?
+            </p>
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleContinuarSemAtualizar}
+              disabled={isAtualizandoVenda}
+            >
+              Continuar sem atualizar
+            </Button>
+            <Button 
+              onClick={handleAtualizarEContinuar}
+              disabled={isAtualizandoVenda}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {isAtualizandoVenda ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Atualizando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Atualizar e Continuar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

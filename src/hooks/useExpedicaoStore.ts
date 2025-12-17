@@ -21,6 +21,8 @@ interface PedidoExpedicao {
   status_agendamento: string;
   substatus_pedido?: SubstatusPedidoAgendado;
   itens_personalizados?: any;
+  gestaoclick_venda_id?: string;
+  gestaoclick_sincronizado_em?: string;
   created_at: Date;
 }
 
@@ -177,6 +179,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               status_agendamento: agendamento.status_agendamento,
               substatus_pedido: (agendamento.substatus_pedido || 'Agendado') as SubstatusPedidoAgendado,
               itens_personalizados: agendamento.itens_personalizados,
+              gestaoclick_venda_id: agendamento.gestaoclick_venda_id || undefined,
+              gestaoclick_sincronizado_em: agendamento.gestaoclick_sincronizado_em || undefined,
               created_at: agendamento.created_at ? new Date(agendamento.created_at) : new Date()
             };
           });
@@ -261,6 +265,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               status_agendamento: agendamento.status_agendamento,
               substatus_pedido: agendamento.substatus_pedido as SubstatusPedidoAgendado,
               itens_personalizados: agendamento.itens_personalizados,
+              gestaoclick_venda_id: agendamento.gestaoclick_venda_id || undefined,
+              gestaoclick_sincronizado_em: agendamento.gestaoclick_sincronizado_em || undefined,
               created_at: new Date(agendamento.created_at)
             };
           });
