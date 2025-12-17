@@ -49,6 +49,7 @@ const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const FichaPreview = lazy(() => import('@/pages/fichas-tecnicas/Preview'));
 const Security = lazy(() => import('@/pages/Security'));
+const ControleTrocas = lazy(() => import('@/pages/ControleTrocas'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -264,6 +265,13 @@ function App() {
                        <ProtectedRoute>
                          <AppLayout>
                            <Security />
+                         </AppLayout>
+                       </ProtectedRoute>
+                     } />
+                     <Route path="/controle-trocas" element={
+                       <ProtectedRoute>
+                         <AppLayout>
+                           <ControleTrocas />
                          </AppLayout>
                        </ProtectedRoute>
                      } />

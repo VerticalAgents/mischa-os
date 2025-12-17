@@ -5,12 +5,11 @@ import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CalendarIcon, Save, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { CalendarIcon, Save, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -22,9 +21,13 @@ import {
 } from "@/components/ui/dialog";
 import { AgendamentoItem } from "./types";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
+import { useClienteStore } from "@/hooks/useClienteStore";
 import { useToast } from "@/hooks/use-toast";
 import { TipoPedidoAgendamento } from "@/types";
 import ProdutoQuantidadeSelector from "./ProdutoQuantidadeSelector";
+import ObservacoesAgendamentoSection from "./ObservacoesAgendamentoSection";
+import { TrocaPendente } from "./TrocasPendentesEditor";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AgendamentoEditModalProps {
   open: boolean;
@@ -52,12 +55,17 @@ export default function AgendamentoEditModal({
   const [statusAgendamento, setStatusAgendamento] = useState<"Agendar" | "Previsto" | "Agendado">("Previsto");
   const [tipoPedido, setTipoPedido] = useState<TipoPedidoAgendamento>("Padrão");
   const [quantidadeTotal, setQuantidadeTotal] = useState<number>(0);
-  const [observacoes, setObservacoes] = useState<string>("");
   const [itensPersonalizados, setItensPersonalizados] = useState<ItemPedidoCustomizado[]>([]);
   const [dadosCarregados, setDadosCarregados] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
+  // Novos estados para observações e trocas
+  const [observacoesGerais, setObservacoesGerais] = useState<string>("");
+  const [observacoesAgendamento, setObservacoesAgendamento] = useState<string>("");
+  const [trocasPendentes, setTrocasPendentes] = useState<TrocaPendente[]>([]);
+  
   const { salvarAgendamento, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
+  const { atualizarCliente } = useClienteStore();
   const { toast } = useToast();
 
   // Carrega dados apenas uma vez quando o agendamento muda
@@ -71,7 +79,20 @@ export default function AgendamentoEditModal({
         const validTipoPedido = agendamento.pedido?.tipoPedido === "Único" ? "Padrão" : (agendamento.pedido?.tipoPedido || "Padrão");
         setTipoPedido(validTipoPedido as TipoPedidoAgendamento);
         setQuantidadeTotal(agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao);
-        setObservacoes("");
+        
+        // Carregar observações gerais do cliente
+        try {
+          const { data: clienteData } = await supabase
+            .from('clientes')
+            .select('observacoes')
+            .eq('id', agendamento.cliente.id)
+            .single();
+          
+          setObservacoesGerais(clienteData?.observacoes || "");
+        } catch (error) {
+          console.error('Erro ao carregar observações do cliente:', error);
+          setObservacoesGerais("");
+        }
         
         // Carregar dados salvos do banco para garantir que estão atualizados
         try {
@@ -92,6 +113,25 @@ export default function AgendamentoEditModal({
           } else {
             setItensPersonalizados([]);
           }
+
+          // Carregar observações do agendamento e trocas pendentes
+          if (agendamentoAtual) {
+            const { data: agendamentoDb } = await supabase
+              .from('agendamentos_clientes')
+              .select('observacoes_agendamento, trocas_pendentes')
+              .eq('cliente_id', agendamento.cliente.id)
+              .single();
+            
+            setObservacoesAgendamento(agendamentoDb?.observacoes_agendamento || "");
+            
+            // Parse trocas_pendentes (pode ser string JSON ou array)
+            const trocas = agendamentoDb?.trocas_pendentes;
+            if (trocas && Array.isArray(trocas)) {
+              setTrocasPendentes(trocas as unknown as TrocaPendente[]);
+            } else {
+              setTrocasPendentes([]);
+            }
+          }
         } catch (error) {
           console.error('❌ Erro ao carregar dados do banco, usando dados do prop:', error);
           
@@ -105,6 +145,8 @@ export default function AgendamentoEditModal({
           } else {
             setItensPersonalizados([]);
           }
+          setObservacoesAgendamento("");
+          setTrocasPendentes([]);
         }
 
         setDadosCarregados(true);
@@ -144,6 +186,13 @@ export default function AgendamentoEditModal({
     setIsSaving(true);
     
     try {
+      // Salvar observações gerais no cliente (permanentes)
+      await supabase
+        .from('clientes')
+        .update({ observacoes: observacoesGerais })
+        .eq('id', agendamento.cliente.id);
+
+      // Salvar agendamento com observações temporárias e trocas
       await salvarAgendamento(agendamento.cliente.id, {
         status_agendamento: statusAgendamento,
         data_proxima_reposicao: dataReposicao,
@@ -151,6 +200,15 @@ export default function AgendamentoEditModal({
         quantidade_total: quantidadeTotal,
         itens_personalizados: tipoPedido === "Alterado" ? itensPersonalizados : null
       });
+
+      // Salvar observações do agendamento e trocas pendentes separadamente
+      await supabase
+        .from('agendamentos_clientes')
+        .update({
+          observacoes_agendamento: observacoesAgendamento || null,
+          trocas_pendentes: trocasPendentes.length > 0 ? JSON.parse(JSON.stringify(trocasPendentes)) : []
+        })
+        .eq('cliente_id', agendamento.cliente.id);
 
       // Auto-update GestaoClick if sale exists
       if (gestaoclick_venda_id && onAtualizarVendaGC) {
@@ -332,16 +390,15 @@ export default function AgendamentoEditModal({
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="observacoes">Observações</Label>
-            <Textarea
-              id="observacoes"
-              value={observacoes}
-              onChange={(e) => setObservacoes(e.target.value)}
-              placeholder="Observações adicionais..."
-              rows={3}
-            />
-          </div>
+          {/* Nova seção de observações e trocas */}
+          <ObservacoesAgendamentoSection
+            observacoesGerais={observacoesGerais}
+            onObservacoesGeraisChange={setObservacoesGerais}
+            observacoesAgendamento={observacoesAgendamento}
+            onObservacoesAgendamentoChange={setObservacoesAgendamento}
+            trocasPendentes={trocasPendentes}
+            onTrocasPendentesChange={setTrocasPendentes}
+          />
         </div>
 
         <DialogFooter>

@@ -24,10 +24,12 @@ export type Database = {
           gestaoclick_venda_id: string | null
           id: string
           itens_personalizados: Json | null
+          observacoes_agendamento: string | null
           quantidade_total: number
           status_agendamento: string
           substatus_pedido: string | null
           tipo_pedido: string
+          trocas_pendentes: Json | null
           updated_at: string
         }
         Insert: {
@@ -39,10 +41,12 @@ export type Database = {
           gestaoclick_venda_id?: string | null
           id?: string
           itens_personalizados?: Json | null
+          observacoes_agendamento?: string | null
           quantidade_total?: number
           status_agendamento?: string
           substatus_pedido?: string | null
           tipo_pedido?: string
+          trocas_pendentes?: Json | null
           updated_at?: string
         }
         Update: {
@@ -54,10 +58,12 @@ export type Database = {
           gestaoclick_venda_id?: string | null
           id?: string
           itens_personalizados?: Json | null
+          observacoes_agendamento?: string | null
           quantidade_total?: number
           status_agendamento?: string
           substatus_pedido?: string | null
           tipo_pedido?: string
+          trocas_pendentes?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -780,6 +786,7 @@ export type Database = {
           quantidade: number
           status_anterior: string | null
           tipo: string
+          trocas_realizadas: Json | null
           updated_at: string
         }
         Insert: {
@@ -794,6 +801,7 @@ export type Database = {
           quantidade: number
           status_anterior?: string | null
           tipo: string
+          trocas_realizadas?: Json | null
           updated_at?: string
         }
         Update: {
@@ -808,6 +816,7 @@ export type Database = {
           quantidade?: number
           status_anterior?: string | null
           tipo?: string
+          trocas_realizadas?: Json | null
           updated_at?: string
         }
         Relationships: []
@@ -1136,6 +1145,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      motivos_troca: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          id: number
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          id?: number
+          nome: string
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          id?: number
+          nome?: string
+        }
+        Relationships: []
       }
       movimentacoes_estoque_insumos: {
         Row: {
@@ -2009,6 +2039,81 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      trocas: {
+        Row: {
+          cliente_id: string
+          created_at: string | null
+          data_troca: string | null
+          historico_entrega_id: string | null
+          id: string
+          motivo_id: number | null
+          motivo_nome: string
+          produto_id: string | null
+          produto_nome: string
+          quantidade: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string | null
+          data_troca?: string | null
+          historico_entrega_id?: string | null
+          id?: string
+          motivo_id?: number | null
+          motivo_nome: string
+          produto_id?: string | null
+          produto_nome: string
+          quantidade: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string | null
+          data_troca?: string | null
+          historico_entrega_id?: string | null
+          id?: string
+          motivo_id?: number | null
+          motivo_nome?: string
+          produto_id?: string | null
+          produto_nome?: string
+          quantidade?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trocas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
+          },
+          {
+            foreignKeyName: "trocas_historico_entrega_id_fkey"
+            columns: ["historico_entrega_id"]
+            isOneToOne: false
+            referencedRelation: "historico_entregas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_motivo_id_fkey"
+            columns: ["motivo_id"]
+            isOneToOne: false
+            referencedRelation: "motivos_troca"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos_finais"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
