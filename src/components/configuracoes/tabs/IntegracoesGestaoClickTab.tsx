@@ -271,12 +271,12 @@ export default function IntegracoesGestaoClickTab() {
                 {funcionarios.length > 0 && (
                   <div className="space-y-2">
                     <Label htmlFor="vendedor">Vendedor Padrão</Label>
-                    <Select value={vendedorId} onValueChange={setVendedorId}>
+                    <Select value={vendedorId || "none"} onValueChange={(val) => setVendedorId(val === "none" ? "" : val)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o vendedor" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nenhum (não vincular vendedor)</SelectItem>
+                        <SelectItem value="none">Nenhum (não vincular vendedor)</SelectItem>
                         {funcionarios.map((f) => (
                           <SelectItem key={f.id} value={f.id}>
                             {f.nome}
