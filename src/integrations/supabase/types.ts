@@ -20,6 +20,7 @@ export type Database = {
           contatar_cliente: boolean | null
           created_at: string
           data_proxima_reposicao: string | null
+          gestaoclick_nf_id: string | null
           gestaoclick_sincronizado_em: string | null
           gestaoclick_venda_id: string | null
           id: string
@@ -37,6 +38,7 @@ export type Database = {
           contatar_cliente?: boolean | null
           created_at?: string
           data_proxima_reposicao?: string | null
+          gestaoclick_nf_id?: string | null
           gestaoclick_sincronizado_em?: string | null
           gestaoclick_venda_id?: string | null
           id?: string
@@ -54,6 +56,7 @@ export type Database = {
           contatar_cliente?: boolean | null
           created_at?: string
           data_proxima_reposicao?: string | null
+          gestaoclick_nf_id?: string | null
           gestaoclick_sincronizado_em?: string | null
           gestaoclick_venda_id?: string | null
           id?: string

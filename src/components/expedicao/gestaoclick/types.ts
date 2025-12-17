@@ -12,6 +12,7 @@ export interface VendaGC {
   id: string; // agendamento_id
   gestaoclick_venda_id: string;
   gestaoclick_sincronizado_em: string;
+  gestaoclick_nf_id?: string; // ID da NF gerada no GestaoClick
   cliente_id: string;
   cliente_nome: string;
   cliente_razao_social?: string;

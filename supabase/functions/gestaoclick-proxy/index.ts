@@ -1064,6 +1064,262 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'criar_nf': {
+        // CREATE NF (Nota Fiscal) in GestaoClick
+        const { agendamento_id, cliente_id } = params;
+
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: 'Usuário não autenticado' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check if agendamento already has an NF
+        const { data: agendamentoCheck } = await supabase
+          .from('agendamentos_clientes')
+          .select('gestaoclick_nf_id, gestaoclick_venda_id')
+          .eq('id', agendamento_id)
+          .single();
+
+        if (agendamentoCheck?.gestaoclick_nf_id) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Este pedido já possui uma NF vinculada',
+              nf_id: agendamentoCheck.gestaoclick_nf_id
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get GestaoClick config
+        const { data: configData } = await supabase
+          .from('integracoes_config')
+          .select('config')
+          .eq('user_id', userId)
+          .eq('integracao', 'gestaoclick')
+          .maybeSingle();
+
+        if (!configData?.config) {
+          return new Response(
+            JSON.stringify({ error: 'Configure as credenciais do GestaoClick em Configurações → Integrações' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const config = configData.config as unknown as GestaoClickConfig & { loja_id?: string };
+        
+        if (!config.access_token || !config.secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens do GestaoClick não configurados' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!config.loja_id) {
+          return new Response(
+            JSON.stringify({ error: 'Loja para NF-e não configurada em Configurações → GestaoClick' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get client data
+        const { data: cliente, error: clienteError } = await supabase
+          .from('clientes')
+          .select('gestaoclick_cliente_id, forma_pagamento, prazo_pagamento_dias, nome')
+          .eq('id', cliente_id)
+          .single();
+
+        if (clienteError || !cliente) {
+          return new Response(
+            JSON.stringify({ error: 'Cliente não encontrado' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!cliente.gestaoclick_cliente_id) {
+          return new Response(
+            JSON.stringify({ error: `Cliente "${cliente.nome}" não possui ID GestaoClick configurado` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get order items using database function
+        const { data: itens, error: itensError } = await supabase
+          .rpc('compute_entrega_itens_v2', { p_agendamento_id: agendamento_id });
+
+        if (itensError || !itens || itens.length === 0) {
+          console.error('[gestaoclick-proxy] NF Items error:', itensError);
+          return new Response(
+            JSON.stringify({ error: 'Não foi possível calcular os itens do pedido para NF' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get products with GestaoClick IDs
+        const produtoIds = itens.map((i: { produto_id: string }) => i.produto_id);
+        const { data: produtos } = await supabase
+          .from('produtos_finais')
+          .select('id, nome, gestaoclick_produto_id, categoria_id')
+          .in('id', produtoIds);
+
+        // Get client custom prices
+        const categoriaIds = [...new Set(produtos?.map(p => p.categoria_id).filter(Boolean))];
+        const { data: precosCliente } = await supabase
+          .from('precos_categoria_cliente')
+          .select('categoria_id, preco_unitario')
+          .eq('cliente_id', cliente_id)
+          .in('categoria_id', categoriaIds as number[]);
+
+        // Get default category prices
+        const { data: configSistema } = await supabase
+          .from('configuracoes_sistema')
+          .select('configuracoes')
+          .eq('modulo', 'precificacao')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        const precosDefault = (configSistema?.configuracoes as { precosPorCategoria?: Record<string, number> })?.precosPorCategoria || {};
+
+        // Build products array for NF
+        const produtosNF: any[] = [];
+        let valorTotal = 0;
+        
+        for (const item of itens) {
+          const produto = produtos?.find(p => p.id === item.produto_id);
+          if (!produto?.gestaoclick_produto_id) {
+            return new Response(
+              JSON.stringify({ error: `Produto "${produto?.nome || item.produto_id}" não possui ID GestaoClick` }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Determine price: custom → default category → fallback
+          let precoUnitario = 4.50;
+          const categoriaId = produto.categoria_id;
+          
+          if (categoriaId) {
+            const precoPersonalizado = precosCliente?.find(p => p.categoria_id === categoriaId);
+            if (precoPersonalizado) {
+              precoUnitario = precoPersonalizado.preco_unitario;
+            } else if (precosDefault[categoriaId.toString()]) {
+              precoUnitario = precosDefault[categoriaId.toString()];
+            }
+          }
+
+          const subtotal = item.quantidade * precoUnitario;
+          valorTotal += subtotal;
+
+          produtosNF.push({
+            produto_id: produto.gestaoclick_produto_id,
+            quantidade: item.quantidade.toString(),
+            valor_venda: precoUnitario.toFixed(2)
+          });
+        }
+
+        // Determine payment method and due date
+        const formaPagamento = cliente.forma_pagamento || 'BOLETO';
+        const formaPagamentoId = config.forma_pagamento_ids?.[formaPagamento as keyof typeof config.forma_pagamento_ids];
+        
+        if (!formaPagamentoId) {
+          return new Response(
+            JSON.stringify({ error: `Forma de pagamento "${formaPagamento}" não mapeada em Configurações → GestaoClick` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const dataVencimento = calcularDataVencimento(formaPagamento, cliente.prazo_pagamento_dias);
+
+        // Build NF payload
+        const nfPayload: Record<string, any> = {
+          loja_id: config.loja_id,
+          envio_automatico: 1,  // Criar e emitir automaticamente
+          indicador_final: 0,   // Não é consumidor final (revenda B2B)
+          destinatario_id: parseInt(cliente.gestaoclick_cliente_id, 10),
+          produtos: produtosNF,
+          pagamento: [{
+            forma_pagamento_id: formaPagamentoId,
+            valor_pagamento: valorTotal.toFixed(2),
+            data_vencimento: dataVencimento
+          }]
+        };
+
+        // Link to sale order if exists
+        if (agendamentoCheck?.gestaoclick_venda_id) {
+          nfPayload.pedido_id = agendamentoCheck.gestaoclick_venda_id;
+        }
+
+        console.log('[gestaoclick-proxy] Creating NF with payload:', JSON.stringify(nfPayload, null, 2));
+
+        // Create NF in GestaoClick
+        const nfResponse = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais_produtos`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': config.access_token,
+            'secret-access-token': config.secret_token,
+          },
+          body: JSON.stringify(nfPayload),
+        });
+
+        const nfResponseText = await nfResponse.text();
+        console.log('[gestaoclick-proxy] NF response:', nfResponse.status, nfResponseText);
+
+        if (!nfResponse.ok || hasGCError(nfResponseText, nfResponse.status)) {
+          let errorMessage = `Erro ao criar NF: ${nfResponse.status}`;
+          try {
+            const errorData = JSON.parse(nfResponseText);
+            errorMessage = errorData.message || errorData.error || JSON.stringify(errorData);
+          } catch {
+            errorMessage = nfResponseText || errorMessage;
+          }
+          
+          return new Response(
+            JSON.stringify({ error: errorMessage }),
+            { status: nfResponse.status >= 400 ? nfResponse.status : 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        let nfCriada;
+        try {
+          nfCriada = JSON.parse(nfResponseText);
+        } catch {
+          nfCriada = {};
+        }
+
+        const nfId = nfCriada.data?.nota_fiscal_id || nfCriada.nota_fiscal_id || nfCriada.id || nfCriada.data?.id;
+        
+        if (!nfId) {
+          console.error('[gestaoclick-proxy] NF created but no ID returned:', nfCriada);
+          return new Response(
+            JSON.stringify({ error: 'NF criada mas ID não retornado pelo GestaoClick' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('[gestaoclick-proxy] NF created with ID:', nfId);
+
+        // Update agendamento with NF ID
+        const { error: updateError } = await supabase
+          .from('agendamentos_clientes')
+          .update({
+            gestaoclick_nf_id: nfId.toString()
+          })
+          .eq('id', agendamento_id);
+
+        if (updateError) {
+          console.error('[gestaoclick-proxy] Failed to update agendamento with NF ID:', updateError);
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            nf_id: nfId
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: `Ação desconhecida: ${action}` }),

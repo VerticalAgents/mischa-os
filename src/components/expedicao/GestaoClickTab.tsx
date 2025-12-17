@@ -8,6 +8,7 @@ import { VendaGC, DocumentosStatus } from "./gestaoclick/types";
 import { VendaGCCard } from "./gestaoclick/VendaGCCard";
 import { AcoesMassaGC } from "./gestaoclick/AcoesMassaGC";
 import { useGerarDocumentoVenda } from "./gestaoclick/useGerarDocumentoVenda";
+import { useGestaoClickNF } from "./gestaoclick/useGestaoClickNF";
 
 const STORAGE_KEY = "gestaoclick_documentos_status";
 
@@ -18,6 +19,7 @@ export default function GestaoClickTab() {
   const [documentosStatus, setDocumentosStatus] = useState<Record<string, DocumentosStatus>>({});
   
   const { gerarDocumentoA4, gerarPDFConsolidado } = useGerarDocumentoVenda();
+  const { gerarNF, gerarNFsEmMassa, abrirNF, loading: loadingNF } = useGestaoClickNF();
 
   // Carregar status dos documentos do localStorage
   useEffect(() => {
@@ -49,6 +51,7 @@ export default function GestaoClickTab() {
           cliente_id,
           gestaoclick_venda_id,
           gestaoclick_sincronizado_em,
+          gestaoclick_nf_id,
           data_proxima_reposicao,
           quantidade_total,
           itens_personalizados
@@ -153,6 +156,7 @@ export default function GestaoClickTab() {
           id: ag.id,
           gestaoclick_venda_id: ag.gestaoclick_venda_id!,
           gestaoclick_sincronizado_em: ag.gestaoclick_sincronizado_em || "",
+          gestaoclick_nf_id: ag.gestaoclick_nf_id || undefined,
           cliente_id: ag.cliente_id,
           cliente_nome: cliente?.nome || "Cliente",
           cliente_cnpj_cpf: cliente?.cnpj_cpf || undefined,
@@ -193,7 +197,7 @@ export default function GestaoClickTab() {
     );
   }, [vendas, searchTerm]);
 
-  // Calcular pendências
+  // Calcular pendências - usar gestaoclick_nf_id para NF status
   const { pendentesA4, pendentesBoleto, pendentesNF, tudoGerado } = useMemo(() => {
     let a4 = 0, boleto = 0, nf = 0;
     
@@ -201,7 +205,8 @@ export default function GestaoClickTab() {
       const status = documentosStatus[v.id] || { a4: false, boleto: false, nf: false };
       if (!status.a4) a4++;
       if (v.forma_pagamento === 'BOLETO' && !status.boleto) boleto++;
-      if (!status.nf) nf++;
+      // NF pendente se não tem gestaoclick_nf_id E não está marcado localmente
+      if (!v.gestaoclick_nf_id && !status.nf) nf++;
     });
 
     const tudo = vendasFiltradas.length > 0 && a4 === 0 && boleto === 0 && nf === 0;
@@ -228,13 +233,28 @@ export default function GestaoClickTab() {
     toast.info(`Boleto marcado como gerado (integração pendente)`);
   };
 
-  const handleGerarNF = (venda: VendaGC) => {
-    // UI only - marcar como gerado
-    setDocumentosStatus(prev => ({
-      ...prev,
-      [venda.id]: { ...prev[venda.id], a4: prev[venda.id]?.a4 || false, boleto: prev[venda.id]?.boleto || false, nf: true }
-    }));
-    toast.info(`NF marcada como gerada (integração pendente)`);
+  const handleGerarNF = async (venda: VendaGC) => {
+    // Se já tem NF, abrir no GestaoClick
+    if (venda.gestaoclick_nf_id) {
+      abrirNF(venda.gestaoclick_nf_id);
+      return;
+    }
+
+    // Gerar NF via API
+    const result = await gerarNF(venda.id, venda.cliente_id);
+    
+    if (result.success && result.nfId) {
+      toast.success(`NF #${result.nfId} gerada e emitida para ${venda.cliente_nome}`);
+      // Atualizar status local
+      setDocumentosStatus(prev => ({
+        ...prev,
+        [venda.id]: { ...prev[venda.id], a4: prev[venda.id]?.a4 || false, boleto: prev[venda.id]?.boleto || false, nf: true }
+      }));
+      // Recarregar vendas para obter o nf_id atualizado
+      carregarVendas();
+    } else {
+      toast.error(result.error || "Erro ao gerar NF");
+    }
   };
 
   const handleGerarTodosA4 = () => {
@@ -255,11 +275,26 @@ export default function GestaoClickTab() {
     }
   };
 
-  const handleGerarTodasNFs = () => {
-    const pendentes = vendasFiltradas.filter(v => !documentosStatus[v.id]?.nf);
-    pendentes.forEach(v => handleGerarNF(v));
-    if (pendentes.length > 0) {
-      toast.info(`${pendentes.length} NFs marcadas (integração pendente)`);
+  const handleGerarTodasNFs = async () => {
+    const pendentes = vendasFiltradas.filter(v => !v.gestaoclick_nf_id && !documentosStatus[v.id]?.nf);
+    
+    if (pendentes.length === 0) {
+      toast.info("Todas as NFs já foram geradas");
+      return;
+    }
+
+    toast.info(`Gerando ${pendentes.length} NFs...`);
+    
+    const result = await gerarNFsEmMassa(
+      pendentes.map(v => ({ id: v.id, clienteId: v.cliente_id }))
+    );
+    
+    if (result.sucesso > 0) {
+      toast.success(`${result.sucesso} NFs geradas com sucesso`);
+      carregarVendas();
+    }
+    if (result.falha > 0) {
+      toast.error(`${result.falha} NFs falharam: ${result.erros[0] || 'Erro desconhecido'}`);
     }
   };
 
@@ -330,6 +365,7 @@ export default function GestaoClickTab() {
               onGerarA4={() => handleGerarA4(venda)}
               onGerarBoleto={() => handleGerarBoleto(venda)}
               onGerarNF={() => handleGerarNF(venda)}
+              loadingNF={loadingNF}
             />
           ))}
         </div>
