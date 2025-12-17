@@ -1265,11 +1265,11 @@ Deno.serve(async (req) => {
           const subtotal = item.quantidade * precoUnitario;
           valorTotal += subtotal;
 
-          produtosNF.push({
-            produto_id: produto.gestaoclick_produto_id,
-            quantidade: item.quantidade.toString(),
-            valor_venda: precoUnitario.toFixed(2)
-          });
+        produtosNF.push({
+          produto_id: parseInt(produto.gestaoclick_produto_id, 10),
+          quantidade: item.quantidade,
+          valor_venda: parseFloat(precoUnitario.toFixed(2))
+        });
         }
 
         // Determine payment method and due date
@@ -1284,6 +1284,12 @@ Deno.serve(async (req) => {
         }
 
         const dataVencimento = calcularDataVencimento(formaPagamento, cliente.prazo_pagamento_dias);
+        
+        // Helper to format date as DD/MM/YYYY for GestaoClick
+        const formatDateBR = (dateStr: string): string => {
+          const [year, month, day] = dateStr.split('-');
+          return `${day}/${month}/${year}`;
+        };
 
         // Build NF payload - para NF de SAÍDA (venda)
         // tipo_nf: 1 = SAÍDA, id_destinatario = cliente
@@ -1295,15 +1301,15 @@ Deno.serve(async (req) => {
           id_destinatario: parseInt(cliente.gestaoclick_cliente_id, 10),
           produtos: produtosNF,
           pagamento: [{
-            forma_pagamento_id: formaPagamentoId,
-            valor_pagamento: valorTotal.toFixed(2),
-            data_vencimento: dataVencimento
+            forma_pagamento_id: parseInt(formaPagamentoId, 10),
+            valor_pagamento: parseFloat(valorTotal.toFixed(2)),
+            data_vencimento: formatDateBR(dataVencimento)
           }]
         };
 
         // Link to sale order if exists
         if (agendamentoCheck?.gestaoclick_venda_id) {
-          nfPayload.pedido_id = agendamentoCheck.gestaoclick_venda_id;
+          nfPayload.pedido_id = parseInt(agendamentoCheck.gestaoclick_venda_id, 10);
         }
 
         console.log('[gestaoclick-proxy] Creating NF with payload:', JSON.stringify(nfPayload, null, 2));
@@ -1344,7 +1350,7 @@ Deno.serve(async (req) => {
           nfCriada = {};
         }
 
-        const nfId = nfCriada.data?.nota_fiscal_id || nfCriada.nota_fiscal_id || nfCriada.id || nfCriada.data?.id;
+        const nfId = nfCriada.data?.dados || nfCriada.data?.nota_fiscal_id || nfCriada.nota_fiscal_id || nfCriada.id || nfCriada.data?.id;
         
         if (!nfId) {
           console.error('[gestaoclick-proxy] NF created but no ID returned:', nfCriada);
