@@ -403,6 +403,59 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'listar_lojas_gc': {
+        // List ALL stores from GestaoClick
+        const { access_token, secret_token } = params;
+        
+        if (!access_token || !secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('[gestaoclick-proxy] Buscando lojas...');
+
+        const lojasResponse = await fetch(`${GESTAOCLICK_BASE_URL}/lojas`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': access_token,
+            'secret-access-token': secret_token,
+          },
+        });
+
+        if (!lojasResponse.ok) {
+          const errorText = await lojasResponse.text();
+          console.error('[gestaoclick-proxy] lojas error:', errorText);
+          return new Response(
+            JSON.stringify({ error: `Erro ao buscar lojas: ${lojasResponse.status}` }),
+            { status: lojasResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const lojasData = await lojasResponse.json();
+        console.log('[gestaoclick-proxy] lojas response:', JSON.stringify(lojasData).substring(0, 500));
+
+        const lojas = lojasData.data || [];
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            lojas: Array.isArray(lojas) ? lojas.map((l: any) => {
+              const loja = l.Loja || l;
+              return {
+                id: loja.id,
+                nome: loja.nome || loja.fantasia,
+                cnpj: loja.cnpj,
+                ativo: loja.ativo
+              };
+            }) : []
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'criar_venda': {
         const { agendamento_id, cliente_id } = params;
 

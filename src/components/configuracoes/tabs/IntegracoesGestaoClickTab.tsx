@@ -8,8 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Eye, EyeOff, Save, Plug, CheckCircle2, XCircle, Loader2, ExternalLink, Users, Copy, Search, Package, UserCheck, RefreshCw } from 'lucide-react';
-import { useGestaoClickConfig, GestaoClickConfig, GestaoClickCliente, GestaoClickProduto } from '@/hooks/useGestaoClickConfig';
+import { Eye, EyeOff, Save, Plug, CheckCircle2, XCircle, Loader2, ExternalLink, Users, Copy, Search, Package, UserCheck, RefreshCw, Store } from 'lucide-react';
+import { useGestaoClickConfig, GestaoClickConfig, GestaoClickCliente, GestaoClickProduto, GestaoClickLoja } from '@/hooks/useGestaoClickConfig';
 import { useSupabaseRepresentantes } from '@/hooks/useSupabaseRepresentantes';
 import { toast } from 'sonner';
 
@@ -36,7 +36,8 @@ export default function IntegracoesGestaoClickTab() {
     testConnection,
     fetchClientesGestaoClick,
     fetchProdutosGestaoClick,
-    fetchFuncionariosGestaoClick
+    fetchFuncionariosGestaoClick,
+    fetchLojasGestaoClick
   } = useGestaoClickConfig();
 
   const { representantes, carregarRepresentantes, atualizarRepresentante } = useSupabaseRepresentantes();
@@ -67,6 +68,11 @@ export default function IntegracoesGestaoClickTab() {
   const [loadingProdutos, setLoadingProdutos] = useState(false);
   const [searchProdutos, setSearchProdutos] = useState('');
 
+  // Estado para lojas GestaoClick
+  const [lojasGC, setLojasGC] = useState<GestaoClickLoja[]>([]);
+  const [loadingLojas, setLoadingLojas] = useState(false);
+  const [lojaId, setLojaId] = useState('');
+
   // Carregar valores salvos
   useEffect(() => {
     if (config) {
@@ -78,6 +84,7 @@ export default function IntegracoesGestaoClickTab() {
       setFormaPagamentoBoleto(config.forma_pagamento_ids?.BOLETO || '');
       setFormaPagamentoPix(config.forma_pagamento_ids?.PIX || '');
       setFormaPagamentoDinheiro(config.forma_pagamento_ids?.DINHEIRO || '');
+      setLojaId(config.loja_id || '');
     }
   }, [config]);
 
@@ -95,6 +102,7 @@ export default function IntegracoesGestaoClickTab() {
       situacao_id: situacaoId || undefined,
       situacao_edicao_id: situacaoEdicaoId || undefined,
       situacao_cancelado_id: situacaoCanceladoId || undefined,
+      loja_id: lojaId || undefined,
       forma_pagamento_ids: {
         BOLETO: formaPagamentoBoleto || undefined,
         PIX: formaPagamentoPix || undefined,
@@ -102,6 +110,20 @@ export default function IntegracoesGestaoClickTab() {
       }
     };
     await saveConfig(newConfig);
+  };
+
+  const handleFetchLojas = async () => {
+    if (!accessToken || !secretToken) {
+      toast.error('Configure os tokens primeiro');
+      return;
+    }
+    setLoadingLojas(true);
+    const lojas = await fetchLojasGestaoClick(accessToken, secretToken);
+    setLojasGC(lojas);
+    setLoadingLojas(false);
+    if (lojas.length > 0) {
+      toast.success(`${lojas.length} loja(s) encontrada(s)`);
+    }
   };
 
   const handleFetchClientes = async () => {
@@ -455,6 +477,85 @@ export default function IntegracoesGestaoClickTab() {
                     </div>
                   </div>
                 )}
+
+                {/* Seção de Lojas para NF-e */}
+                <div className="space-y-4">
+                  <Label>Loja para Nota Fiscal</Label>
+                  <div className="flex gap-2 items-start">
+                    <Button
+                      onClick={handleFetchLojas}
+                      disabled={!accessToken || !secretToken || loadingLojas}
+                      variant="outline"
+                      size="sm"
+                    >
+                      {loadingLojas ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Store className="h-4 w-4 mr-2" />
+                      )}
+                      Buscar Lojas
+                    </Button>
+                    {lojasGC.length > 0 && (
+                      <Badge variant="secondary">
+                        {lojasGC.length} loja(s)
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {lojasGC.length > 0 && (
+                    <div className="space-y-2">
+                      <Select value={lojaId} onValueChange={setLojaId}>
+                        <SelectTrigger className="w-full md:w-[400px]">
+                          <SelectValue placeholder="Selecione a loja para emissão de NF" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {lojasGC.map((l) => (
+                            <SelectItem key={l.id} value={l.id}>
+                              {l.nome} {l.cnpj && `(${l.cnpj})`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Loja vinculada às Notas Fiscais geradas automaticamente
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Tabela de lojas disponíveis */}
+                  {lojasGC.length > 0 && (
+                    <ScrollArea className="h-[150px] border rounded-md">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-24">ID</TableHead>
+                            <TableHead>Nome</TableHead>
+                            <TableHead>CNPJ</TableHead>
+                            <TableHead className="w-16"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {lojasGC.map((loja) => (
+                            <TableRow key={loja.id}>
+                              <TableCell className="font-mono text-sm">{loja.id}</TableCell>
+                              <TableCell>{loja.nome}</TableCell>
+                              <TableCell className="font-mono text-sm text-muted-foreground">{loja.cnpj || '-'}</TableCell>
+                              <TableCell>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleCopyId(loja.id, loja.nome)}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  )}
+                </div>
               </div>
             </>
           )}

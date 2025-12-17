@@ -11,6 +11,7 @@ export interface GestaoClickConfig {
   situacao_edicao_id?: string;
   situacao_cancelado_id?: string;
   vendedor_id?: string;
+  loja_id?: string;
   forma_pagamento_ids?: {
     BOLETO?: string;
     PIX?: string;
@@ -44,6 +45,13 @@ export interface GestaoClickProduto {
   nome: string;
   codigo?: string;
   preco?: string;
+}
+
+export interface GestaoClickLoja {
+  id: string;
+  nome: string;
+  cnpj?: string;
+  ativo?: string;
 }
 
 export function useGestaoClickConfig() {
@@ -269,6 +277,33 @@ export function useGestaoClickConfig() {
     }
   }, []);
 
+  // Buscar lojas do GestaoClick
+  const fetchLojasGestaoClick = useCallback(async (accessToken: string, secretToken: string): Promise<GestaoClickLoja[]> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('gestaoclick-proxy', {
+        body: {
+          action: 'listar_lojas_gc',
+          access_token: accessToken,
+          secret_token: secretToken
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Erro ao buscar lojas');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      return data?.lojas || [];
+    } catch (error) {
+      console.error('Erro ao buscar lojas GestaoClick:', error);
+      toast.error('Erro ao buscar lojas do GestaoClick');
+      return [];
+    }
+  }, []);
+
   return {
     config,
     loading,
@@ -283,6 +318,7 @@ export function useGestaoClickConfig() {
     loadConfig,
     fetchClientesGestaoClick,
     fetchFuncionariosGestaoClick,
-    fetchProdutosGestaoClick
+    fetchProdutosGestaoClick,
+    fetchLojasGestaoClick
   };
 }
