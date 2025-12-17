@@ -14,6 +14,7 @@ import { AgendamentoItem } from "@/components/agendamento/types";
 import { PrintingActions } from "./components/PrintingActions";
 import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
 import { RepresentantesFilter } from "./components/RepresentantesFilter";
+import { useGestaoClickSync } from "@/hooks/useGestaoClickSync";
 
 const SeparacaoPedidos = () => {
   const { 
@@ -37,6 +38,8 @@ const SeparacaoPedidos = () => {
 
   const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
+  
+  const { gerarVendaGC, loading: loadingGC, pedidoEmProcessamento } = useGestaoClickSync();
 
   useEffect(() => {
     carregarPedidos();
@@ -214,6 +217,8 @@ const SeparacaoPedidos = () => {
               pedido={pedido}
               onMarcarSeparado={() => handleMarcarSeparado(pedido.id)}
               onEditarAgendamento={() => handleEditarPedido(pedido)}
+              onGerarVendaGC={() => gerarVendaGC(pedido.id, pedido.cliente_id)}
+              isGerandoVendaGC={loadingGC && pedidoEmProcessamento === pedido.id}
               showProdutosList={true}
             />
           ))
