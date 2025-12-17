@@ -955,6 +955,33 @@ export type Database = {
         }
         Relationships: []
       }
+      integracoes_config: {
+        Row: {
+          config: Json
+          created_at: string | null
+          id: string
+          integracao: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string | null
+          id?: string
+          integracao: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          id?: string
+          integracao?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       itens_receita: {
         Row: {
           created_at: string

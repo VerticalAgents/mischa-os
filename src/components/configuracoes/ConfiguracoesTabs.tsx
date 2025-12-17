@@ -19,6 +19,7 @@ import ClientesTab from "./tabs/ClientesTab";
 import AgendamentoTab from "./tabs/AgendamentoTab";
 import ProducaoTab from "./tabs/ProducaoTab";
 import ParametrosEstoqueTab from "./tabs/ParametrosEstoqueTab";
+import IntegracoesGestaoClickTab from "./tabs/IntegracoesGestaoClickTab";
 
 const configGroups = [
   {
@@ -53,6 +54,12 @@ const configGroups = [
       { id: "clientes", label: "Clientes", component: ClientesTab },
       { id: "agendamento", label: "Agendamento", component: AgendamentoTab },
       { id: "producao", label: "Produção", component: ProducaoTab },
+    ]
+  },
+  {
+    title: "Integrações",
+    tabs: [
+      { id: "gestaoclick", label: "GestaoClick", component: IntegracoesGestaoClickTab },
     ]
   }
 ];
