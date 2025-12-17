@@ -79,7 +79,15 @@ export function useGestaoClickSync() {
         return { success: false, vendaExcluida: false };
       }
 
-      toast.success(`Venda #${vendaId} atualizada no GestaoClick!`);
+      // Nova lógica: DELETE + POST retorna novo ID
+      const novoId = data.venda_id;
+      const vendaAnterior = data.venda_anterior_excluida;
+      
+      if (vendaAnterior) {
+        toast.success(`Venda atualizada! Nova venda #${novoId} criada (anterior #${vendaAnterior} excluída)`);
+      } else {
+        toast.success(`Venda #${novoId} atualizada no GestaoClick!`);
+      }
       return { success: true, vendaExcluida: false };
 
     } catch (error) {

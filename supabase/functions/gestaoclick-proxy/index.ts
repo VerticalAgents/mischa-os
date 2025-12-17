@@ -51,6 +51,17 @@ function calcularDataVencimento(formaPagamento: string, prazoPagamentoDias: numb
   }
 }
 
+// Helper: Detect GestaoClick error in response (even with 200 status)
+function hasGCError(responseText: string, status: number): boolean {
+  if (status >= 400) return true;
+  if (responseText.includes('cake-error')) return true;
+  if (responseText.includes('"status":"error"')) return true;
+  if (responseText.includes('"ok":false')) return true;
+  if (responseText.includes('não possui permissão')) return true;
+  if (responseText.includes('Pedido não encontrado')) return true;
+  return false;
+}
+
 // Helper: Get next sequential sale code from GestaoClick
 async function getProximoCodigoVenda(accessToken: string, secretToken: string): Promise<number> {
   try {
@@ -671,6 +682,7 @@ Deno.serve(async (req) => {
       }
 
       case 'atualizar_venda': {
+        // UPDATE SALE: DELETE existing + POST new (because PUT doesn't work reliably)
         const { agendamento_id, cliente_id, venda_id } = params;
 
         if (!userId) {
@@ -704,16 +716,8 @@ Deno.serve(async (req) => {
 
         const config = configData.config as unknown as GestaoClickConfig;
 
-        // Verificar se temos situacao_edicao_id configurado
-        if (!config.situacao_edicao_id) {
-          return new Response(
-            JSON.stringify({ error: 'Status "Edição" não configurado. Vá em Configurações → Integrações → GestaoClick e selecione a situação de edição.' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // 1. Obter venda atual no GestaoClick para pegar a situação original
-        console.log('[gestaoclick-proxy] Buscando venda atual:', venda_id);
+        // 1. Check if sale exists and is accessible
+        console.log('[gestaoclick-proxy] Verificando venda existente:', venda_id);
         const getVendaResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
           method: 'GET',
           headers: {
@@ -724,18 +728,11 @@ Deno.serve(async (req) => {
         });
 
         const getVendaText = await getVendaResponse.text();
-        console.log('[gestaoclick-proxy] GET venda response:', getVendaResponse.status, getVendaText);
+        console.log('[gestaoclick-proxy] GET venda response:', getVendaResponse.status, getVendaText.substring(0, 500));
 
-        // Detectar venda excluída
-        const vendaExcluidaGet = 
-          getVendaResponse.status === 404 ||
-          getVendaText.includes('não possui permissão para acessar este pedido') ||
-          getVendaText.includes('cake-error') ||
-          getVendaText.includes('Pedido não encontrado') ||
-          (getVendaText.includes('"ok":false') && getVendaText.includes('"dados":null'));
-
-        if (vendaExcluidaGet) {
-          console.log('[gestaoclick-proxy] Venda excluída detectada no GET, limpando vínculo');
+        // Check for errors using helper
+        if (hasGCError(getVendaText, getVendaResponse.status)) {
+          console.log('[gestaoclick-proxy] Venda não acessível, limpando vínculo');
           await supabase
             .from('agendamentos_clientes')
             .update({ gestaoclick_venda_id: null, gestaoclick_sincronizado_em: null })
@@ -745,29 +742,38 @@ Deno.serve(async (req) => {
             JSON.stringify({ 
               success: false, 
               vendaExcluida: true, 
-              error: 'Venda excluída no GestaoClick. Vínculo removido - você pode gerar uma nova venda.' 
+              error: 'Venda não encontrada ou sem permissão no GestaoClick. Vínculo removido - você pode gerar uma nova venda.' 
             }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        let situacaoOriginal = config.situacao_id || '';
-        try {
-          const vendaData = JSON.parse(getVendaText);
-          // Tentar extrair situacao_id da venda
-          const venda = vendaData.data?.[0]?.Venda || vendaData.data?.[0] || vendaData.dados || {};
-          if (venda.situacao_id) {
-            situacaoOriginal = venda.situacao_id.toString();
-          }
-          console.log('[gestaoclick-proxy] Situação original da venda:', situacaoOriginal);
-        } catch (e) {
-          console.log('[gestaoclick-proxy] Não foi possível extrair situacao_id, usando config:', situacaoOriginal);
+        // 2. DELETE the existing sale
+        console.log('[gestaoclick-proxy] Deletando venda existente:', venda_id);
+        const deleteResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': config.access_token,
+            'secret-access-token': config.secret_token,
+          },
+        });
+
+        const deleteText = await deleteResponse.text();
+        console.log('[gestaoclick-proxy] DELETE response:', deleteResponse.status, deleteText.substring(0, 500));
+
+        if (hasGCError(deleteText, deleteResponse.status) && deleteResponse.status !== 200) {
+          console.error('[gestaoclick-proxy] Erro ao deletar venda:', deleteText);
+          return new Response(
+            JSON.stringify({ error: 'Erro ao excluir venda antiga no GestaoClick: ' + deleteText.substring(0, 200) }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
 
-        // Get client data
+        // 3. Get client data
         const { data: cliente } = await supabase
           .from('clientes')
-          .select('gestaoclick_cliente_id, forma_pagamento, prazo_pagamento_dias, nome')
+          .select('gestaoclick_cliente_id, forma_pagamento, prazo_pagamento_dias, nome, representante_id')
           .eq('id', cliente_id)
           .single();
 
@@ -778,7 +784,9 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Get order items
+        const clienteIdGC = parseInt(String(cliente.gestaoclick_cliente_id).trim(), 10);
+
+        // 4. Get order items
         const { data: itens } = await supabase
           .rpc('compute_entrega_itens_v2', { p_agendamento_id: agendamento_id });
 
@@ -789,14 +797,14 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Get products
+        // 5. Get products with GestaoClick IDs
         const produtoIds = itens.map((i: { produto_id: string }) => i.produto_id);
         const { data: produtos } = await supabase
           .from('produtos_finais')
           .select('id, nome, gestaoclick_produto_id, categoria_id')
           .in('id', produtoIds);
 
-        // Get prices
+        // 6. Get prices
         const categoriaIds = [...new Set(produtos?.map(p => p.categoria_id).filter(Boolean))];
         const { data: precosCliente } = await supabase
           .from('precos_categoria_cliente')
@@ -813,11 +821,16 @@ Deno.serve(async (req) => {
 
         const precosDefault = (configSistema?.configuracoes as { precosPorCategoria?: Record<string, number> })?.precosPorCategoria || {};
 
-        // Build products
+        // 7. Build products array
         const produtosVenda: any[] = [];
         for (const item of itens) {
           const produto = produtos?.find(p => p.id === item.produto_id);
-          if (!produto?.gestaoclick_produto_id) continue;
+          if (!produto?.gestaoclick_produto_id) {
+            return new Response(
+              JSON.stringify({ error: `Produto "${produto?.nome || item.produto_id}" não possui ID GestaoClick` }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
 
           let precoUnitario = 4.50;
           const categoriaId = produto.categoria_id;
@@ -839,70 +852,103 @@ Deno.serve(async (req) => {
           });
         }
 
-        // 2. Alterar status para "edição"
-        console.log('[gestaoclick-proxy] Alterando status para edição:', config.situacao_edicao_id);
-        const statusEdicaoResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'access-token': config.access_token,
-            'secret-access-token': config.secret_token,
-          },
-          body: JSON.stringify({ situacao_id: parseInt(config.situacao_edicao_id, 10) }),
-        });
-
-        const statusEdicaoText = await statusEdicaoResponse.text();
-        console.log('[gestaoclick-proxy] Status edição response:', statusEdicaoResponse.status, statusEdicaoText);
-
-        if (!statusEdicaoResponse.ok) {
+        // 8. Determine payment method
+        const formaPagamento = cliente.forma_pagamento || 'BOLETO';
+        const formaPagamentoId = config.forma_pagamento_ids?.[formaPagamento as keyof typeof config.forma_pagamento_ids];
+        
+        if (!formaPagamentoId) {
           return new Response(
-            JSON.stringify({ error: 'Não foi possível colocar a venda em modo edição: ' + statusEdicaoText }),
+            JSON.stringify({ error: `Forma de pagamento "${formaPagamento}" não mapeada` }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // 3. Atualizar os produtos
-        console.log('[gestaoclick-proxy] Atualizando produtos:', JSON.stringify({ produtos: produtosVenda }, null, 2));
-        const updateProdutosResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
-          method: 'PUT',
+        // 9. Get vendedor_id from representante if mapped
+        let vendedorId = config.vendedor_id;
+        if (cliente.representante_id) {
+          const { data: representante } = await supabase
+            .from('representantes')
+            .select('gestaoclick_funcionario_id')
+            .eq('id', cliente.representante_id)
+            .single();
+          
+          if (representante?.gestaoclick_funcionario_id) {
+            vendedorId = representante.gestaoclick_funcionario_id;
+          }
+        }
+
+        // 10. Get next sequential code
+        const novoCodigo = await getProximoCodigoVenda(config.access_token, config.secret_token);
+        const dataVenda = formatDate(new Date());
+        const dataVencimento = calcularDataVencimento(formaPagamento, cliente.prazo_pagamento_dias);
+
+        // 11. Build new sale payload
+        const vendaPayload: Record<string, any> = {
+          tipo: 'produto',
+          codigo: novoCodigo,
+          data: dataVenda,
+          prazo_entrega: dataVenda,
+          data_vencimento: dataVencimento,
+          cliente_id: clienteIdGC,
+          situacao_id: config.situacao_id,
+          forma_pagamento_id: formaPagamentoId,
+          produtos: produtosVenda
+        };
+
+        if (vendedorId) {
+          vendaPayload.vendedor_id = vendedorId;
+          vendaPayload.funcionario_id = vendedorId;
+        }
+
+        console.log('[gestaoclick-proxy] Criando nova venda:', JSON.stringify(vendaPayload, null, 2));
+
+        // 12. POST new sale
+        const vendaResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas`, {
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'access-token': config.access_token,
             'secret-access-token': config.secret_token,
           },
-          body: JSON.stringify({ produtos: produtosVenda }),
+          body: JSON.stringify(vendaPayload),
         });
 
-        const updateProdutosText = await updateProdutosResponse.text();
-        console.log('[gestaoclick-proxy] Update produtos response:', updateProdutosResponse.status, updateProdutosText);
+        const vendaResponseText = await vendaResponse.text();
+        console.log('[gestaoclick-proxy] POST nova venda response:', vendaResponse.status, vendaResponseText.substring(0, 500));
 
-        // 4. Restaurar status original (mesmo em caso de erro nos produtos)
-        console.log('[gestaoclick-proxy] Restaurando status original:', situacaoOriginal);
-        await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${venda_id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'access-token': config.access_token,
-            'secret-access-token': config.secret_token,
-          },
-          body: JSON.stringify({ situacao_id: parseInt(situacaoOriginal, 10) }),
-        });
-
-        if (!updateProdutosResponse.ok) {
+        if (hasGCError(vendaResponseText, vendaResponse.status)) {
           return new Response(
-            JSON.stringify({ error: 'Erro ao atualizar produtos: ' + updateProdutosText }),
+            JSON.stringify({ error: 'Erro ao criar nova venda no GestaoClick: ' + vendaResponseText.substring(0, 200) }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Update sync timestamp
+        let vendaCriada;
+        try {
+          vendaCriada = JSON.parse(vendaResponseText);
+        } catch {
+          vendaCriada = { venda_id: novoCodigo };
+        }
+
+        const novoVendaId = vendaCriada.data?.venda_id || vendaCriada.venda_id || vendaCriada.id || novoCodigo;
+        console.log('[gestaoclick-proxy] Nova venda criada com ID:', novoVendaId);
+
+        // 13. Update agendamento with new sale ID
         await supabase
           .from('agendamentos_clientes')
-          .update({ gestaoclick_sincronizado_em: new Date().toISOString() })
+          .update({
+            gestaoclick_venda_id: novoVendaId.toString(),
+            gestaoclick_sincronizado_em: new Date().toISOString()
+          })
           .eq('id', agendamento_id);
 
         return new Response(
-          JSON.stringify({ success: true, venda_id }),
+          JSON.stringify({ 
+            success: true, 
+            venda_id: novoVendaId,
+            codigo: novoCodigo,
+            venda_anterior_excluida: venda_id
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
