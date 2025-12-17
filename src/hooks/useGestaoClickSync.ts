@@ -48,7 +48,7 @@ export function useGestaoClickSync() {
     }
   }, []);
 
-  const atualizarVendaGC = useCallback(async (agendamentoId: string, clienteId: string, vendaId: string) => {
+  const atualizarVendaGC = useCallback(async (agendamentoId: string, clienteId: string, vendaId: string): Promise<{ success: boolean; vendaExcluida: boolean }> => {
     setLoading(true);
     setPedidoEmProcessamento(agendamentoId);
     
@@ -65,21 +65,27 @@ export function useGestaoClickSync() {
       if (error) {
         console.error('Erro ao atualizar venda GC:', error);
         toast.error(error.message || 'Erro ao atualizar venda no GestaoClick');
-        return false;
+        return { success: false, vendaExcluida: false };
+      }
+
+      // Check if sale was deleted in GestaoClick
+      if (data?.vendaExcluida) {
+        toast.warning('Venda excluída no GestaoClick. Vínculo removido - você pode gerar uma nova venda.');
+        return { success: false, vendaExcluida: true };
       }
 
       if (data?.error) {
         toast.error(data.error);
-        return false;
+        return { success: false, vendaExcluida: false };
       }
 
       toast.success(`Venda #${vendaId} atualizada no GestaoClick!`);
-      return true;
+      return { success: true, vendaExcluida: false };
 
     } catch (error) {
       console.error('Erro ao atualizar venda GestaoClick:', error);
       toast.error(error instanceof Error ? error.message : 'Erro ao atualizar venda no GestaoClick');
-      return false;
+      return { success: false, vendaExcluida: false };
     } finally {
       setLoading(false);
       setPedidoEmProcessamento(null);

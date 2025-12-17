@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CalendarIcon, Save, AlertTriangle } from "lucide-react";
+import { CalendarIcon, Save, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -31,6 +31,8 @@ interface AgendamentoEditModalProps {
   onOpenChange: (open: boolean) => void;
   agendamento: AgendamentoItem | null;
   onSalvar: (agendamento: AgendamentoItem) => void;
+  gestaoclick_venda_id?: string;
+  onAtualizarVendaGC?: () => Promise<{ success: boolean; vendaExcluida: boolean }>;
 }
 
 interface ItemPedidoCustomizado {
@@ -42,7 +44,9 @@ export default function AgendamentoEditModal({
   open,
   onOpenChange,
   agendamento,
-  onSalvar
+  onSalvar,
+  gestaoclick_venda_id,
+  onAtualizarVendaGC
 }: AgendamentoEditModalProps) {
   const [dataReposicao, setDataReposicao] = useState<Date>();
   const [statusAgendamento, setStatusAgendamento] = useState<"Agendar" | "Previsto" | "Agendado">("Previsto");
@@ -51,6 +55,7 @@ export default function AgendamentoEditModal({
   const [observacoes, setObservacoes] = useState<string>("");
   const [itensPersonalizados, setItensPersonalizados] = useState<ItemPedidoCustomizado[]>([]);
   const [dadosCarregados, setDadosCarregados] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   const { salvarAgendamento, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
   const { toast } = useToast();
@@ -136,6 +141,8 @@ export default function AgendamentoEditModal({
       return;
     }
 
+    setIsSaving(true);
+    
     try {
       await salvarAgendamento(agendamento.cliente.id, {
         status_agendamento: statusAgendamento,
@@ -144,6 +151,35 @@ export default function AgendamentoEditModal({
         quantidade_total: quantidadeTotal,
         itens_personalizados: tipoPedido === "Alterado" ? itensPersonalizados : null
       });
+
+      // Auto-update GestaoClick if sale exists
+      if (gestaoclick_venda_id && onAtualizarVendaGC) {
+        const result = await onAtualizarVendaGC();
+        
+        if (result.vendaExcluida) {
+          toast({
+            title: "Atenção",
+            description: "Agendamento salvo. Venda foi excluída no GestaoClick - você pode gerar uma nova.",
+            variant: "default"
+          });
+        } else if (result.success) {
+          toast({
+            title: "Sucesso",
+            description: `Agendamento e venda GC #${gestaoclick_venda_id} atualizados`
+          });
+        } else {
+          toast({
+            title: "Atenção",
+            description: "Agendamento salvo, mas erro ao atualizar GestaoClick",
+            variant: "destructive"
+          });
+        }
+      } else {
+        toast({
+          title: "Sucesso",
+          description: "Agendamento atualizado com sucesso"
+        });
+      }
 
       const agendamentoAtualizado: AgendamentoItem = {
         ...agendamento,
@@ -172,11 +208,6 @@ export default function AgendamentoEditModal({
 
       onSalvar(agendamentoAtualizado);
       onOpenChange(false);
-
-      toast({
-        title: "Sucesso",
-        description: "Agendamento atualizado com sucesso"
-      });
     } catch (error) {
       console.error('Erro ao salvar agendamento:', error);
       toast({
@@ -184,6 +215,8 @@ export default function AgendamentoEditModal({
         description: "Erro ao salvar agendamento",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -200,6 +233,18 @@ export default function AgendamentoEditModal({
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
+          {gestaoclick_venda_id && (
+            <Alert className="bg-green-50 border-green-200">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                Venda GestaoClick vinculada: <strong>#{gestaoclick_venda_id}</strong>
+                <span className="text-sm text-green-600 ml-2">
+                  (será atualizada automaticamente ao salvar)
+                </span>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">Status do Agendamento</Label>
@@ -300,16 +345,20 @@ export default function AgendamentoEditModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancelar
           </Button>
           <Button 
             onClick={handleSalvar} 
             className="flex items-center gap-2"
-            disabled={hasValidationError}
+            disabled={hasValidationError || isSaving}
           >
-            <Save className="h-4 w-4" />
-            Salvar Alterações
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {isSaving ? 'Salvando...' : 'Salvar Alterações'}
           </Button>
         </DialogFooter>
       </DialogContent>

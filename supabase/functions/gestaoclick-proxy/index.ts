@@ -756,6 +756,29 @@ Deno.serve(async (req) => {
         console.log('[gestaoclick-proxy] Update response:', updateResponse.status, updateResponseText);
 
         if (!updateResponse.ok) {
+          // Check if sale was deleted in GestaoClick (404)
+          if (updateResponse.status === 404) {
+            console.log('[gestaoclick-proxy] Venda não encontrada no GestaoClick, limpando vínculo');
+            
+            // Clear the link in Lovable
+            await supabase
+              .from('agendamentos_clientes')
+              .update({ 
+                gestaoclick_venda_id: null, 
+                gestaoclick_sincronizado_em: null 
+              })
+              .eq('id', agendamento_id);
+
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                vendaExcluida: true, 
+                error: 'Venda não encontrada no GestaoClick. Vínculo removido - você pode gerar uma nova venda.' 
+              }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
           let errorMessage = `Erro ${updateResponse.status}`;
           try {
             const errorData = JSON.parse(updateResponseText);
