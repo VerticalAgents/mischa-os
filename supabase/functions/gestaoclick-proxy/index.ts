@@ -113,8 +113,8 @@ Deno.serve(async (req) => {
               nome: s.nome || s.situacao_venda
             })) : [],
             formas_pagamento: Array.isArray(formasPagamento) ? formasPagamento.map((f: any) => ({
-              id: f.id || f.forma_pagamento_id,
-              nome: f.nome || f.forma_pagamento
+              id: f.FormasPagamento?.id || f.id || f.forma_pagamento_id,
+              nome: f.FormasPagamento?.nome || f.nome || f.forma_pagamento
             })) : []
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
