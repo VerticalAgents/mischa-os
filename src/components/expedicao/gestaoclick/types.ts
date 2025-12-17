@@ -5,6 +5,7 @@ export interface ItemVendaGC {
   preco_unitario: number;
   subtotal: number;
   categoria_id?: number;
+  ordem_categoria?: number;
 }
 
 export interface VendaGC {
