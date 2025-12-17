@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Receipt, FileCheck, Check, Calendar, MapPin, Phone, CreditCard } from "lucide-react";
+import { FileText, Receipt, FileCheck, Check, Calendar, MapPin, Phone, CreditCard, ExternalLink, Loader2 } from "lucide-react";
 import { VendaGC, DocumentosStatus } from "./types";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -12,6 +12,7 @@ interface VendaGCCardProps {
   onGerarA4: () => void;
   onGerarBoleto: () => void;
   onGerarNF: () => void;
+  loadingNF?: boolean;
 }
 
 export function VendaGCCard({
@@ -19,14 +20,17 @@ export function VendaGCCard({
   documentosStatus,
   onGerarA4,
   onGerarBoleto,
-  onGerarNF
+  onGerarNF,
+  loadingNF = false
 }: VendaGCCardProps) {
   const formatarMoeda = (valor: number) => {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
   const isBoleto = venda.forma_pagamento === 'BOLETO';
-  const todosGerados = documentosStatus.a4 && documentosStatus.nf && (!isBoleto || documentosStatus.boleto);
+  // NF está gerada se tem gestaoclick_nf_id ou está marcada localmente
+  const nfGerada = !!venda.gestaoclick_nf_id || documentosStatus.nf;
+  const todosGerados = documentosStatus.a4 && nfGerada && (!isBoleto || documentosStatus.boleto);
 
   return (
     <Card className={`transition-all ${todosGerados ? 'border-green-500/50 bg-green-50/30' : ''}`}>
@@ -88,9 +92,12 @@ export function VendaGCCard({
               Boleto
             </Badge>
           )}
-          <Badge variant={documentosStatus.nf ? "default" : "outline"} className="gap-1">
-            {documentosStatus.nf ? <Check className="h-3 w-3" /> : <FileCheck className="h-3 w-3" />}
-            NF
+          <Badge 
+            variant={nfGerada ? "default" : "outline"} 
+            className={`gap-1 ${venda.gestaoclick_nf_id ? 'bg-green-600 hover:bg-green-700' : ''}`}
+          >
+            {nfGerada ? <Check className="h-3 w-3" /> : <FileCheck className="h-3 w-3" />}
+            {venda.gestaoclick_nf_id ? `NF #${venda.gestaoclick_nf_id}` : 'NF'}
           </Badge>
         </div>
 
@@ -119,13 +126,20 @@ export function VendaGCCard({
           )}
           
           <Button
-            variant={documentosStatus.nf ? "outline" : "secondary"}
+            variant={nfGerada ? "outline" : "secondary"}
             size="sm"
             onClick={onGerarNF}
-            className="gap-1.5"
+            disabled={loadingNF}
+            className={`gap-1.5 ${venda.gestaoclick_nf_id ? 'text-green-700 border-green-300 hover:bg-green-50' : ''}`}
           >
-            <FileCheck className="h-4 w-4" />
-            {documentosStatus.nf ? "Ver NF" : "Gerar NF"}
+            {loadingNF ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : venda.gestaoclick_nf_id ? (
+              <ExternalLink className="h-4 w-4" />
+            ) : (
+              <FileCheck className="h-4 w-4" />
+            )}
+            {venda.gestaoclick_nf_id ? "Ver NF" : nfGerada ? "Ver NF" : "Gerar NF"}
           </Button>
         </div>
 
