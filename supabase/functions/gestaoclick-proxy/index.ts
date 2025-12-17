@@ -1285,14 +1285,14 @@ Deno.serve(async (req) => {
 
         const dataVencimento = calcularDataVencimento(formaPagamento, cliente.prazo_pagamento_dias);
 
-        // Build NF payload - para NF de SAÍDA (venda), não usar id_fornecedor
-        // O emitente é identificado pela loja_id, o cliente vai em destinatario_id
+        // Build NF payload - para NF de SAÍDA (venda)
+        // tipo_nf: 1 = SAÍDA, id_destinatario = cliente
         const nfPayload: Record<string, any> = {
-          tipo_nf: 55,          // Modelo NF-e (modelo 55)
+          tipo_nf: 1,           // 1 = NF de SAÍDA (venda)
           loja_id: config.loja_id,
           envio_automatico: 1,  // Criar e emitir automaticamente
           indicador_final: 0,   // Não é consumidor final (revenda B2B)
-          destinatario_id: parseInt(cliente.gestaoclick_cliente_id, 10),
+          id_destinatario: parseInt(cliente.gestaoclick_cliente_id, 10),
           produtos: produtosNF,
           pagamento: [{
             forma_pagamento_id: formaPagamentoId,
