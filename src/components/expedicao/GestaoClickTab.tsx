@@ -87,12 +87,10 @@ export default function GestaoClickTab() {
         precosMap.get(p.cliente_id)!.set(p.categoria_id, p.preco_unitario);
       });
 
-      // Buscar produtos para mapear categoria
+      // Buscar produtos para mapear categoria pelo nome
       const { data: produtos } = await supabase
         .from("produtos_finais")
         .select("id, nome, categoria_id");
-
-      const produtosMap = new Map(produtos?.map(p => [p.id, p]) || []);
 
       // Buscar configuração de preços padrão
       const { data: configPrecificacao } = await supabase
@@ -117,10 +115,13 @@ export default function GestaoClickTab() {
         const cliente = clientesMap.get(ag.cliente_id);
         const precosCliente = precosMap.get(ag.cliente_id);
         
-        // Processar itens
+        // Processar itens - estrutura: { produto: "Nome do Produto", quantidade: X }
         const itensRaw = ag.itens_personalizados as any[] || [];
         const itens = itensRaw.map(item => {
-          const produto = produtosMap.get(item.produto_id);
+          const nomeProduto = item.produto || item.nome || "Produto";
+          
+          // Buscar produto pelo nome para obter categoria
+          const produto = produtos?.find(p => p.nome === nomeProduto);
           const categoriaId = produto?.categoria_id;
           
           // Determinar preço: personalizado > padrão categoria > fallback
@@ -132,8 +133,8 @@ export default function GestaoClickTab() {
           }
 
           return {
-            produto_id: item.produto_id,
-            produto_nome: item.nome || produto?.nome || "Produto",
+            produto_id: produto?.id || "",
+            produto_nome: nomeProduto,
             quantidade: item.quantidade || 0,
             preco_unitario: precoUnitario,
             subtotal: (item.quantidade || 0) * precoUnitario,
