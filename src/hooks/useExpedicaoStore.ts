@@ -24,6 +24,10 @@ interface PedidoExpedicao {
   gestaoclick_venda_id?: string;
   gestaoclick_sincronizado_em?: string;
   created_at: Date;
+  // Observações e trocas
+  observacoes_gerais?: string;
+  observacoes_agendamento?: string;
+  trocas_pendentes?: any[];
 }
 
 interface ExpedicaoStore {
@@ -132,7 +136,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           try {
             const { data: clientesComLink, error: clientesError } = await supabase
               .from('clientes')
-              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id');
+              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes');
 
             if (clientesError) {
               console.warn('Coluna link_google_maps não encontrada, carregando sem ela:', clientesError);
@@ -140,7 +144,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               // Fallback: carregar sem a coluna link_google_maps
               const { data: clientesSemLink, error: fallbackError } = await supabase
                 .from('clientes')
-                .select('id, nome, endereco_entrega, contato_telefone, representante_id');
+                .select('id, nome, endereco_entrega, contato_telefone, representante_id, observacoes');
 
               if (fallbackError) {
                 throw fallbackError;
@@ -181,7 +185,11 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               itens_personalizados: agendamento.itens_personalizados,
               gestaoclick_venda_id: agendamento.gestaoclick_venda_id || undefined,
               gestaoclick_sincronizado_em: agendamento.gestaoclick_sincronizado_em || undefined,
-              created_at: agendamento.created_at ? new Date(agendamento.created_at) : new Date()
+              created_at: agendamento.created_at ? new Date(agendamento.created_at) : new Date(),
+              // Observações e trocas
+              observacoes_gerais: cliente?.observacoes || undefined,
+              observacoes_agendamento: agendamento.observacoes_agendamento || undefined,
+              trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : []
             };
           });
 
@@ -227,12 +235,12 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           try {
             const { data: clientesComLink, error: clientesError } = await supabase
               .from('clientes')
-              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id');
+              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes');
 
             if (clientesError) {
               const { data: clientesSemLink, error: fallbackError } = await supabase
                 .from('clientes')
-                .select('id, nome, endereco_entrega, contato_telefone, representante_id');
+                .select('id, nome, endereco_entrega, contato_telefone, representante_id, observacoes');
 
               if (fallbackError) {
                 throw fallbackError;
@@ -267,7 +275,11 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               itens_personalizados: agendamento.itens_personalizados,
               gestaoclick_venda_id: agendamento.gestaoclick_venda_id || undefined,
               gestaoclick_sincronizado_em: agendamento.gestaoclick_sincronizado_em || undefined,
-              created_at: new Date(agendamento.created_at)
+              created_at: new Date(agendamento.created_at),
+              // Observações e trocas
+              observacoes_gerais: cliente?.observacoes || undefined,
+              observacoes_agendamento: agendamento.observacoes_agendamento || undefined,
+              trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : []
             };
           });
 
