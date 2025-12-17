@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
       }
 
       case 'listar_clientes_gc': {
-        // List clients from GestaoClick
+        // List ALL clients from GestaoClick with pagination
         const { access_token, secret_token } = params;
         
         if (!access_token || !secret_token) {
@@ -132,41 +132,58 @@ Deno.serve(async (req) => {
           );
         }
 
-        const clientesResponse = await fetch(`${GESTAOCLICK_BASE_URL}/clientes`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'access-token': access_token,
-            'secret-access-token': secret_token,
-          },
-        });
+        const todosClientes: any[] = [];
+        let paginaAtual = 1;
+        let totalPaginas = 1;
 
-        if (!clientesResponse.ok) {
-          const errorText = await clientesResponse.text();
-          console.error('[gestaoclick-proxy] clientes error:', errorText);
-          return new Response(
-            JSON.stringify({ error: `Erro ao buscar clientes: ${clientesResponse.status}` }),
-            { status: clientesResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
+        // Loop through all pages
+        do {
+          const clientesResponse = await fetch(`${GESTAOCLICK_BASE_URL}/clientes?pagina=${paginaAtual}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'access-token': access_token,
+              'secret-access-token': secret_token,
+            },
+          });
 
-        const clientesData = await clientesResponse.json();
-        console.log('[gestaoclick-proxy] clientes response count:', clientesData?.data?.length || 0);
+          if (!clientesResponse.ok) {
+            const errorText = await clientesResponse.text();
+            console.error('[gestaoclick-proxy] clientes error:', errorText);
+            return new Response(
+              JSON.stringify({ error: `Erro ao buscar clientes: ${clientesResponse.status}` }),
+              { status: clientesResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
 
-        // Parse response - API returns { data: [{ Cliente: { ... } }] }
-        const clientes = clientesData.data || clientesData.clientes || clientesData || [];
-        
+          const clientesData = await clientesResponse.json();
+          console.log(`[gestaoclick-proxy] clientes page ${paginaAtual}/${clientesData?.meta?.total_paginas || 1}, count: ${clientesData?.data?.length || 0}`);
+
+          // Get pagination info from meta
+          if (clientesData?.meta?.total_paginas) {
+            totalPaginas = clientesData.meta.total_paginas;
+          }
+
+          // Add clients from this page
+          const clientes = clientesData.data || [];
+          todosClientes.push(...clientes);
+
+          paginaAtual++;
+        } while (paginaAtual <= totalPaginas);
+
+        console.log('[gestaoclick-proxy] total clientes fetched:', todosClientes.length);
+
         return new Response(
           JSON.stringify({ 
             success: true, 
-            clientes: Array.isArray(clientes) ? clientes.map((c: any) => {
+            clientes: todosClientes.map((c: any) => {
               const cliente = c.Cliente || c;
               return {
                 id: cliente.id,
                 nome: cliente.nome || cliente.razao_social,
                 cnpj_cpf: cliente.cnpj || cliente.cpf || cliente.cnpj_cpf
               };
-            }) : []
+            })
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
