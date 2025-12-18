@@ -1383,6 +1383,126 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'sincronizar_status': {
+        // Verify which sales and NFs still exist in GestaoClick
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: 'Usuário não autenticado' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get user's GestaoClick config
+        const { data: configData, error: configError } = await supabase
+          .from('integracoes_config')
+          .select('config')
+          .eq('user_id', userId)
+          .eq('integracao', 'gestaoclick')
+          .single();
+
+        if (configError || !configData) {
+          return new Response(
+            JSON.stringify({ error: 'Configuração GestaoClick não encontrada' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const config = configData.config as GestaoClickConfig;
+        const { agendamentos } = params as { agendamentos: Array<{ id: string; gestaoclick_venda_id: string; gestaoclick_nf_id?: string }> };
+
+        if (!agendamentos || agendamentos.length === 0) {
+          return new Response(
+            JSON.stringify({ success: true, vendasExcluidas: [], nfsExcluidas: [] }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const vendasExcluidas: string[] = [];
+        const nfsExcluidas: string[] = [];
+
+        // Check each venda
+        for (const ag of agendamentos) {
+          // Check if venda exists
+          if (ag.gestaoclick_venda_id) {
+            try {
+              const vendaResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${ag.gestaoclick_venda_id}`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'access-token': config.access_token,
+                  'secret-access-token': config.secret_token,
+                },
+              });
+
+              const vendaText = await vendaResponse.text();
+              
+              // If error response or doesn't exist
+              if (hasGCError(vendaText, vendaResponse.status) || vendaResponse.status === 404) {
+                console.log(`[gestaoclick-proxy] Venda ${ag.gestaoclick_venda_id} não existe mais no GC`);
+                vendasExcluidas.push(ag.id);
+                
+                // Clear the venda_id from database
+                await supabase
+                  .from('agendamentos_clientes')
+                  .update({ 
+                    gestaoclick_venda_id: null,
+                    gestaoclick_sincronizado_em: null
+                  })
+                  .eq('id', ag.id);
+              }
+            } catch (error) {
+              console.error(`[gestaoclick-proxy] Error checking venda ${ag.gestaoclick_venda_id}:`, error);
+            }
+          }
+
+          // Check if NF exists (only if venda still exists)
+          if (ag.gestaoclick_nf_id && !vendasExcluidas.includes(ag.id)) {
+            try {
+              const nfResponse = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais/${ag.gestaoclick_nf_id}`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'access-token': config.access_token,
+                  'secret-access-token': config.secret_token,
+                },
+              });
+
+              const nfText = await nfResponse.text();
+              
+              // If error response or doesn't exist
+              if (hasGCError(nfText, nfResponse.status) || nfResponse.status === 404) {
+                console.log(`[gestaoclick-proxy] NF ${ag.gestaoclick_nf_id} não existe mais no GC`);
+                nfsExcluidas.push(ag.id);
+                
+                // Clear the nf_id from database
+                await supabase
+                  .from('agendamentos_clientes')
+                  .update({ gestaoclick_nf_id: null })
+                  .eq('id', ag.id);
+              }
+            } catch (error) {
+              console.error(`[gestaoclick-proxy] Error checking NF ${ag.gestaoclick_nf_id}:`, error);
+            }
+          } else if (ag.gestaoclick_nf_id && vendasExcluidas.includes(ag.id)) {
+            // If venda was deleted, NF is also invalid
+            nfsExcluidas.push(ag.id);
+            await supabase
+              .from('agendamentos_clientes')
+              .update({ gestaoclick_nf_id: null })
+              .eq('id', ag.id);
+          }
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            vendasExcluidas,
+            nfsExcluidas
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: `Ação desconhecida: ${action}` }),
