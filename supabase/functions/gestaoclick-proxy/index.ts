@@ -1422,10 +1422,11 @@ Deno.serve(async (req) => {
 
         // Check each venda
         for (const ag of agendamentos) {
-          // Check if venda exists
+          // Check if venda exists by searching with codigo filter
           if (ag.gestaoclick_venda_id) {
             try {
-              const vendaResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas/${ag.gestaoclick_venda_id}`, {
+              // Use codigo filter since gestaoclick_venda_id stores the codigo, not the internal ID
+              const vendaResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas?codigo=${ag.gestaoclick_venda_id}`, {
                 method: 'GET',
                 headers: {
                   'Content-Type': 'application/json',
@@ -1435,9 +1436,20 @@ Deno.serve(async (req) => {
               });
 
               const vendaText = await vendaResponse.text();
+              let vendaExists = false;
               
-              // If error response or doesn't exist
-              if (hasGCError(vendaText, vendaResponse.status) || vendaResponse.status === 404) {
+              try {
+                const vendaData = JSON.parse(vendaText);
+                // Check if the response has valid data array with at least one result
+                if (vendaData.code === 200 && vendaData.data && Array.isArray(vendaData.data) && vendaData.data.length > 0) {
+                  vendaExists = true;
+                }
+              } catch {
+                // Parse error means invalid response
+              }
+              
+              // If venda doesn't exist
+              if (!vendaExists) {
                 console.log(`[gestaoclick-proxy] Venda ${ag.gestaoclick_venda_id} não existe mais no GC`);
                 vendasExcluidas.push(ag.id);
                 
@@ -1468,9 +1480,20 @@ Deno.serve(async (req) => {
               });
 
               const nfText = await nfResponse.text();
+              let nfExists = false;
               
-              // If error response or doesn't exist
-              if (hasGCError(nfText, nfResponse.status) || nfResponse.status === 404) {
+              try {
+                const nfData = JSON.parse(nfText);
+                // Check if the response has valid data with an id
+                if (nfData.code === 200 && nfData.data && nfData.data.id) {
+                  nfExists = true;
+                }
+              } catch {
+                // Parse error means invalid response
+              }
+              
+              // If NF doesn't exist
+              if (!nfExists) {
                 console.log(`[gestaoclick-proxy] NF ${ag.gestaoclick_nf_id} não existe mais no GC`);
                 nfsExcluidas.push(ag.id);
                 
