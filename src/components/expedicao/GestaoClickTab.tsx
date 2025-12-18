@@ -40,6 +40,51 @@ export default function GestaoClickTab() {
     }
   }, [documentosStatus]);
 
+  const [syncing, setSyncing] = useState(false);
+
+  // Sincronizar status com GestaoClick (verificar exclusões)
+  const sincronizarComGestaoClick = useCallback(async () => {
+    setSyncing(true);
+    try {
+      // Buscar agendamentos para verificar
+      const { data: agendamentos } = await supabase
+        .from("agendamentos_clientes")
+        .select("id, gestaoclick_venda_id, gestaoclick_nf_id")
+        .not("gestaoclick_venda_id", "is", null);
+
+      if (!agendamentos || agendamentos.length === 0) {
+        return { vendasExcluidas: 0, nfsExcluidas: 0 };
+      }
+
+      // Chamar edge function para verificar cada venda/NF
+      const { data, error } = await supabase.functions.invoke('gestaoclick-proxy', {
+        body: {
+          action: 'sincronizar_status',
+          agendamentos: agendamentos.map(a => ({
+            id: a.id,
+            gestaoclick_venda_id: a.gestaoclick_venda_id,
+            gestaoclick_nf_id: a.gestaoclick_nf_id
+          }))
+        }
+      });
+
+      if (error) {
+        console.error("Erro ao sincronizar:", error);
+        return { vendasExcluidas: 0, nfsExcluidas: 0 };
+      }
+
+      return {
+        vendasExcluidas: data?.vendasExcluidas?.length || 0,
+        nfsExcluidas: data?.nfsExcluidas?.length || 0
+      };
+    } catch (error) {
+      console.error("Erro ao sincronizar:", error);
+      return { vendasExcluidas: 0, nfsExcluidas: 0 };
+    } finally {
+      setSyncing(false);
+    }
+  }, []);
+
   const carregarVendas = useCallback(async () => {
     setLoading(true);
     try {
@@ -303,6 +348,21 @@ export default function GestaoClickTab() {
     toast.success("PDF consolidado gerado para impressão");
   };
 
+  // Handler de atualização com sincronização
+  const handleRefresh = async () => {
+    toast.info("Sincronizando com GestaoClick...");
+    const { vendasExcluidas, nfsExcluidas } = await sincronizarComGestaoClick();
+    
+    if (vendasExcluidas > 0 || nfsExcluidas > 0) {
+      toast.warning(`${vendasExcluidas} vendas e ${nfsExcluidas} NFs foram removidas do GC`);
+      // Limpar status local dos documentos excluídos
+      setDocumentosStatus({});
+    }
+    
+    await carregarVendas();
+    toast.success("Dados atualizados");
+  };
+
   const getDocumentosStatus = (vendaId: string): DocumentosStatus => {
     return documentosStatus[vendaId] || { a4: false, boleto: false, nf: false };
   };
@@ -336,10 +396,10 @@ export default function GestaoClickTab() {
         <Button
           variant="outline"
           size="icon"
-          onClick={carregarVendas}
-          disabled={loading}
+          onClick={handleRefresh}
+          disabled={loading || syncing}
         >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${loading || syncing ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
