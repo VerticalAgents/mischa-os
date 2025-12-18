@@ -79,7 +79,7 @@ export function useGestaoClickNF() {
   };
 
   const abrirNF = (nfId: string) => {
-    const url = `https://app.gestaoclick.com/notas_fiscais_produtos/view/${nfId}`;
+    const url = `https://app.gestaoclick.com/notas_fiscais/visualizar/${nfId}`;
     window.open(url, "_blank");
     toast.info("Abrindo NF no GestaoClick...");
   };
