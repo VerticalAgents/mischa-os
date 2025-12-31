@@ -1310,8 +1310,8 @@ Deno.serve(async (req) => {
 
           produtosNF.push({
             produto_id: parseInt(produto.gestaoclick_produto_id, 10),
-            quantidade: item.quantidade.toString(),
-            valor_venda: precoUnitario.toFixed(2)
+            quantidade: Number(item.quantidade),
+            valor_venda: Number(precoUnitario.toFixed(2))
           });
         }
 
@@ -1352,7 +1352,7 @@ Deno.serve(async (req) => {
           produtos: produtosNF,
           pagamento: [{
             forma_pagamento_id: parseInt(formaPagamentoId, 10),
-            valor_pagamento: valorTotal.toFixed(2),
+            valor_pagamento: Number(valorTotal.toFixed(2)),
             data_vencimento: formatDateBR(dataVencimento)
           }]
         };
@@ -1463,7 +1463,7 @@ Deno.serve(async (req) => {
                   produtos: produtosNF,
                   pagamento: [{
                     forma_pagamento_id: parseInt(formaPagamentoId, 10),
-                    valor_pagamento: valorTotal.toFixed(2),
+                    valor_pagamento: Number(valorTotal.toFixed(2)),
                     data_vencimento: formatDateBR(dataVencimento)
                   }]
                 };
