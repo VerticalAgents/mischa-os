@@ -1273,6 +1273,7 @@ Deno.serve(async (req) => {
         const precosDefault = (configSistema?.configuracoes as { precosPorCategoria?: Record<string, number> })?.precosPorCategoria || {};
 
         // Build products array for NF with detailed logging
+        // IMPORTANTE: Usar formato ANINHADO igual ao de vendas para que o GestaoClick aceite os preços
         const produtosNF: any[] = [];
         let valorTotal = 0;
         
@@ -1308,10 +1309,14 @@ Deno.serve(async (req) => {
 
           console.log(`[gestaoclick-proxy]   - ${produto.nome}: qtd=${item.quantidade}, preco=${precoUnitario.toFixed(2)} (${precoOrigem}), subtotal=${subtotal.toFixed(2)}`);
 
+          // Formato ANINHADO com "produto" wrapper - igual ao usado em vendas
+          // Usar strings para quantidade e valor como esperado pelo GestaoClick
           produtosNF.push({
-            produto_id: parseInt(produto.gestaoclick_produto_id, 10),
-            quantidade: Number(item.quantidade),
-            valor_venda: Number(precoUnitario.toFixed(2))
+            produto: {
+              produto_id: produto.gestaoclick_produto_id,
+              quantidade: item.quantidade.toString(),
+              valor_venda: precoUnitario.toFixed(2)
+            }
           });
         }
 
@@ -1352,7 +1357,7 @@ Deno.serve(async (req) => {
           produtos: produtosNF,
           pagamento: [{
             forma_pagamento_id: parseInt(formaPagamentoId, 10),
-            valor_pagamento: Number(valorTotal.toFixed(2)),
+            valor_pagamento: valorTotal.toFixed(2),
             data_vencimento: formatDateBR(dataVencimento)
           }]
         };
@@ -1454,6 +1459,7 @@ Deno.serve(async (req) => {
                 // ========== STEP 4: Correct via PUT if values are wrong ==========
                 console.log('[gestaoclick-proxy] NF com valores incorretos, tentando corrigir via PUT...');
 
+                // PUT também usa formato aninhado para consistência
                 const nfUpdatePayload: Record<string, any> = {
                   tipo_nf: 1,
                   loja_id: parseInt(config.loja_id, 10),
@@ -1463,7 +1469,7 @@ Deno.serve(async (req) => {
                   produtos: produtosNF,
                   pagamento: [{
                     forma_pagamento_id: parseInt(formaPagamentoId, 10),
-                    valor_pagamento: Number(valorTotal.toFixed(2)),
+                    valor_pagamento: valorTotal.toFixed(2),
                     data_vencimento: formatDateBR(dataVencimento)
                   }]
                 };
