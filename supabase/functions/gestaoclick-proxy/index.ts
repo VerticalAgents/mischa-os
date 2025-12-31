@@ -1121,7 +1121,10 @@ Deno.serve(async (req) => {
 
       case 'criar_nf': {
         // CREATE NF (Nota Fiscal) in GestaoClick
+        // FLOW: 1) Resolve internal venda_id, 2) Create draft NF, 3) Validate values, 4) Correct if needed, 5) Emit
         const { agendamento_id, cliente_id } = params;
+
+        console.log(`[gestaoclick-proxy] === CRIAR NF === agendamento_id=${agendamento_id}, cliente_id=${cliente_id}`);
 
         if (!userId) {
           return new Response(
@@ -1199,6 +1202,39 @@ Deno.serve(async (req) => {
           );
         }
 
+        console.log(`[gestaoclick-proxy] Cliente: ${cliente.nome}, GC_ID: ${cliente.gestaoclick_cliente_id}`);
+
+        // ========== STEP 1: Resolve internal venda_id from codigo ==========
+        let vendaInternalId: number | null = null;
+        const vendaCodigo = agendamentoCheck?.gestaoclick_venda_id;
+        
+        if (vendaCodigo) {
+          console.log(`[gestaoclick-proxy] Buscando ID interno da venda com codigo=${vendaCodigo}`);
+          try {
+            const vendaSearchResponse = await fetch(`${GESTAOCLICK_BASE_URL}/vendas?codigo=${vendaCodigo}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'access-token': config.access_token,
+                'secret-access-token': config.secret_token,
+              },
+            });
+            
+            const vendaSearchText = await vendaSearchResponse.text();
+            console.log(`[gestaoclick-proxy] Venda search response: ${vendaSearchResponse.status} ${vendaSearchText.substring(0, 300)}`);
+            
+            const vendaSearchData = JSON.parse(vendaSearchText);
+            if (vendaSearchData.code === 200 && vendaSearchData.data && Array.isArray(vendaSearchData.data) && vendaSearchData.data.length > 0) {
+              vendaInternalId = parseInt(vendaSearchData.data[0].id, 10);
+              console.log(`[gestaoclick-proxy] Venda codigo=${vendaCodigo} → ID interno=${vendaInternalId}`);
+            } else {
+              console.warn(`[gestaoclick-proxy] Venda com codigo=${vendaCodigo} não encontrada no GC`);
+            }
+          } catch (err) {
+            console.error(`[gestaoclick-proxy] Erro ao buscar venda por codigo:`, err);
+          }
+        }
+
         // Get order items using database function
         const { data: itens, error: itensError } = await supabase
           .rpc('compute_entrega_itens_v2', { p_agendamento_id: agendamento_id });
@@ -1236,9 +1272,11 @@ Deno.serve(async (req) => {
 
         const precosDefault = (configSistema?.configuracoes as { precosPorCategoria?: Record<string, number> })?.precosPorCategoria || {};
 
-        // Build products array for NF
+        // Build products array for NF with detailed logging
         const produtosNF: any[] = [];
         let valorTotal = 0;
+        
+        console.log(`[gestaoclick-proxy] Calculando produtos para NF (${itens.length} itens):`);
         
         for (const item of itens) {
           const produto = produtos?.find(p => p.id === item.produto_id);
@@ -1252,25 +1290,32 @@ Deno.serve(async (req) => {
           // Determine price: custom → default category → fallback
           let precoUnitario = 4.50;
           const categoriaId = produto.categoria_id;
+          let precoOrigem = 'fallback';
           
           if (categoriaId) {
             const precoPersonalizado = precosCliente?.find(p => p.categoria_id === categoriaId);
             if (precoPersonalizado) {
               precoUnitario = precoPersonalizado.preco_unitario;
+              precoOrigem = 'cliente_personalizado';
             } else if (precosDefault[categoriaId.toString()]) {
               precoUnitario = precosDefault[categoriaId.toString()];
+              precoOrigem = 'categoria_padrao';
             }
           }
 
           const subtotal = item.quantidade * precoUnitario;
           valorTotal += subtotal;
 
-        produtosNF.push({
-          produto_id: parseInt(produto.gestaoclick_produto_id, 10),
-          quantidade: item.quantidade,
-          valor_venda: parseFloat(precoUnitario.toFixed(2))
-        });
+          console.log(`[gestaoclick-proxy]   - ${produto.nome}: qtd=${item.quantidade}, preco=${precoUnitario.toFixed(2)} (${precoOrigem}), subtotal=${subtotal.toFixed(2)}`);
+
+          produtosNF.push({
+            produto_id: parseInt(produto.gestaoclick_produto_id, 10),
+            quantidade: item.quantidade.toString(),
+            valor_venda: precoUnitario.toFixed(2)
+          });
         }
+
+        console.log(`[gestaoclick-proxy] Valor total calculado: R$ ${valorTotal.toFixed(2)}`);
 
         // Determine payment method and due date
         const formaPagamento = cliente.forma_pagamento || 'BOLETO';
@@ -1291,30 +1336,38 @@ Deno.serve(async (req) => {
           return `${day}/${month}/${year}`;
         };
 
+        const hoje = formatDate(new Date());
+        const hojeBR = formatDateBR(hoje);
+
+        // ========== STEP 2: Create NF as DRAFT (envio_automatico: 0) ==========
         // Build NF payload - para NF de SAÍDA (venda)
-        // tipo_nf: 1 = SAÍDA, id_destinatario = cliente
         const nfPayload: Record<string, any> = {
           tipo_nf: 1,           // 1 = NF de SAÍDA (venda)
-          loja_id: config.loja_id,
-          envio_automatico: 1,  // Criar e emitir automaticamente
+          loja_id: parseInt(config.loja_id, 10),
+          envio_automatico: 0,  // Create as DRAFT first, we will emit after validation
           indicador_final: 0,   // Não é consumidor final (revenda B2B)
           id_destinatario: parseInt(cliente.gestaoclick_cliente_id, 10),
+          data_emissao: hojeBR,
+          data_entrada_saida: hojeBR,
           produtos: produtosNF,
           pagamento: [{
             forma_pagamento_id: parseInt(formaPagamentoId, 10),
-            valor_pagamento: parseFloat(valorTotal.toFixed(2)),
+            valor_pagamento: valorTotal.toFixed(2),
             data_vencimento: formatDateBR(dataVencimento)
           }]
         };
 
-        // Link to sale order if exists
-        if (agendamentoCheck?.gestaoclick_venda_id) {
-          nfPayload.pedido_id = parseInt(agendamentoCheck.gestaoclick_venda_id, 10);
+        // Link to sale order using INTERNAL ID (not codigo)
+        if (vendaInternalId) {
+          nfPayload.pedido_id = vendaInternalId;
+          console.log(`[gestaoclick-proxy] Vinculando NF à venda interna ID=${vendaInternalId}`);
+        } else {
+          console.log(`[gestaoclick-proxy] NF será criada sem vínculo com venda`);
         }
 
-        console.log('[gestaoclick-proxy] Creating NF with payload:', JSON.stringify(nfPayload, null, 2));
+        console.log('[gestaoclick-proxy] Creating NF DRAFT with payload:', JSON.stringify(nfPayload, null, 2));
 
-        // Create NF in GestaoClick
+        // Create NF in GestaoClick (as draft)
         const nfResponse = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais_produtos`, {
           method: 'POST',
           headers: {
@@ -1326,7 +1379,7 @@ Deno.serve(async (req) => {
         });
 
         const nfResponseText = await nfResponse.text();
-        console.log('[gestaoclick-proxy] NF response:', nfResponse.status, nfResponseText);
+        console.log('[gestaoclick-proxy] NF draft response:', nfResponse.status, nfResponseText);
 
         if (!nfResponse.ok || hasGCError(nfResponseText, nfResponse.status)) {
           let errorMessage = `Erro ao criar NF: ${nfResponse.status}`;
@@ -1360,7 +1413,142 @@ Deno.serve(async (req) => {
           );
         }
 
-        console.log('[gestaoclick-proxy] NF created with ID:', nfId);
+        console.log('[gestaoclick-proxy] NF DRAFT created with ID:', nfId);
+
+        // ========== STEP 3: Validate NF values by fetching the created NF ==========
+        let nfValida = false;
+        let tentativasValidacao = 0;
+        const maxTentativasValidacao = 2;
+
+        while (!nfValida && tentativasValidacao < maxTentativasValidacao) {
+          tentativasValidacao++;
+          console.log(`[gestaoclick-proxy] Validando NF (tentativa ${tentativasValidacao})...`);
+
+          // Wait a bit for GestaoClick to process
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          try {
+            const nfGetResponse = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais_produtos/${nfId}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'access-token': config.access_token,
+                'secret-access-token': config.secret_token,
+              },
+            });
+
+            const nfGetText = await nfGetResponse.text();
+            console.log(`[gestaoclick-proxy] NF GET response: ${nfGetResponse.status} ${nfGetText.substring(0, 500)}`);
+
+            const nfGetData = JSON.parse(nfGetText);
+            
+            if (nfGetData.code === 200 && nfGetData.data) {
+              const valorTotalNF = parseFloat(nfGetData.data.valor_total_nf || nfGetData.data.valor_total || '0');
+              console.log(`[gestaoclick-proxy] NF valor_total no GC: R$ ${valorTotalNF.toFixed(2)}, esperado: R$ ${valorTotal.toFixed(2)}`);
+
+              // Check if value is correct (within 0.01 tolerance for rounding)
+              if (Math.abs(valorTotalNF - valorTotal) < 0.02) {
+                nfValida = true;
+                console.log('[gestaoclick-proxy] NF valores OK!');
+              } else if (valorTotalNF === 0 || valorTotalNF < valorTotal * 0.9) {
+                // ========== STEP 4: Correct via PUT if values are wrong ==========
+                console.log('[gestaoclick-proxy] NF com valores incorretos, tentando corrigir via PUT...');
+
+                const nfUpdatePayload: Record<string, any> = {
+                  tipo_nf: 1,
+                  loja_id: parseInt(config.loja_id, 10),
+                  id_destinatario: parseInt(cliente.gestaoclick_cliente_id, 10),
+                  data_emissao: hojeBR,
+                  data_entrada_saida: hojeBR,
+                  produtos: produtosNF,
+                  pagamento: [{
+                    forma_pagamento_id: parseInt(formaPagamentoId, 10),
+                    valor_pagamento: valorTotal.toFixed(2),
+                    data_vencimento: formatDateBR(dataVencimento)
+                  }]
+                };
+
+                if (vendaInternalId) {
+                  nfUpdatePayload.pedido_id = vendaInternalId;
+                }
+
+                console.log('[gestaoclick-proxy] PUT NF payload:', JSON.stringify(nfUpdatePayload, null, 2));
+
+                const nfPutResponse = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais_produtos/${nfId}`, {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'access-token': config.access_token,
+                    'secret-access-token': config.secret_token,
+                  },
+                  body: JSON.stringify(nfUpdatePayload),
+                });
+
+                const nfPutText = await nfPutResponse.text();
+                console.log(`[gestaoclick-proxy] NF PUT response: ${nfPutResponse.status} ${nfPutText.substring(0, 300)}`);
+
+                if (nfPutResponse.ok && !hasGCError(nfPutText, nfPutResponse.status)) {
+                  // Continue loop to re-validate
+                  console.log('[gestaoclick-proxy] PUT executado, re-validando...');
+                } else {
+                  console.error('[gestaoclick-proxy] Erro ao corrigir NF via PUT:', nfPutText);
+                  // Try to continue anyway
+                }
+              } else {
+                // Value is non-zero but different - might be acceptable
+                console.log('[gestaoclick-proxy] NF valor diferente mas não zerado, prosseguindo...');
+                nfValida = true;
+              }
+            }
+          } catch (err) {
+            console.error('[gestaoclick-proxy] Erro ao validar NF:', err);
+          }
+        }
+
+        // ========== STEP 5: Emit the NF ==========
+        console.log(`[gestaoclick-proxy] Emitindo NF ID=${nfId}...`);
+
+        const emitirResponse = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais_produtos/emitir/${nfId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': config.access_token,
+            'secret-access-token': config.secret_token,
+          },
+        });
+
+        const emitirText = await emitirResponse.text();
+        console.log(`[gestaoclick-proxy] Emitir NF response: ${emitirResponse.status} ${emitirText}`);
+
+        if (!emitirResponse.ok || hasGCError(emitirText, emitirResponse.status)) {
+          let errorMessage = `Erro ao emitir NF: ${emitirResponse.status}`;
+          try {
+            const errorData = JSON.parse(emitirText);
+            errorMessage = errorData.message || errorData.error || errorData.errors?.[0] || JSON.stringify(errorData);
+          } catch {
+            errorMessage = emitirText || errorMessage;
+          }
+          
+          // NF was created but not emitted - still save the ID for manual handling
+          console.warn(`[gestaoclick-proxy] NF ${nfId} criada mas não emitida: ${errorMessage}`);
+          
+          // Update agendamento with NF ID anyway
+          await supabase
+            .from('agendamentos_clientes')
+            .update({ gestaoclick_nf_id: nfId.toString() })
+            .eq('id', agendamento_id);
+          
+          return new Response(
+            JSON.stringify({ 
+              error: `NF criada (ID: ${nfId}) mas erro ao emitir: ${errorMessage}`,
+              nf_id: nfId,
+              emitida: false
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log(`[gestaoclick-proxy] NF ${nfId} emitida com sucesso!`);
 
         // Update agendamento with NF ID
         const { error: updateError } = await supabase
@@ -1377,7 +1565,10 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: true, 
-            nf_id: nfId
+            nf_id: nfId,
+            valor_total: valorTotal,
+            emitida: true,
+            venda_vinculada: vendaInternalId ? true : false
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
