@@ -5,7 +5,14 @@ import { toast } from "sonner";
 interface GerarNFResult {
   success: boolean;
   nfId: string | null;
-  emitida?: boolean;
+  status?: 'em_aberto' | 'emitida';
+  warning?: string;
+  error?: string;
+}
+
+interface EmitirNFResult {
+  success: boolean;
+  emitida: boolean;
   warning?: string;
   error?: string;
 }
@@ -18,8 +25,11 @@ interface GerarNFsEmMassaResult {
 
 export function useGestaoClickNF() {
   const [loading, setLoading] = useState(false);
+  const [loadingEmitir, setLoadingEmitir] = useState(false);
 
+  // Gerar NF como rascunho (em_aberto) - NÃO emite automaticamente
   const gerarNF = async (agendamentoId: string, clienteId: string): Promise<GerarNFResult> => {
+    setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -39,29 +49,65 @@ export function useGestaoClickNF() {
         return { success: false, nfId: null, error: error.message };
       }
 
-      // Tratamento para NF criada mas não emitida (HTTP 200 com emitida: false)
-      if (data?.success && data?.nf_id && data?.emitida === false) {
-        console.warn("[useGestaoClickNF] NF criada mas não emitida:", data);
-        return { 
-          success: true, 
-          nfId: data.nf_id,
-          emitida: false,
-          warning: data.warning || data.motivo_nao_emitida || "NF criada mas não emitida"
-        };
-      }
-
       if (data?.error) {
         return { success: false, nfId: data?.nf_id || null, error: data.error };
       }
 
+      // Sucesso - NF criada como rascunho
       return { 
         success: true, 
         nfId: data?.nf_id || null,
-        emitida: data?.emitida ?? true
+        status: data?.status || 'em_aberto',
+        warning: data?.warning
       };
     } catch (err: any) {
       console.error("[useGestaoClickNF] Exception:", err);
       return { success: false, nfId: null, error: err.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Emitir NF existente (segunda etapa)
+  const emitirNF = async (nfId: string, agendamentoId: string): Promise<EmitirNFResult> => {
+    setLoadingEmitir(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return { success: false, emitida: false, error: "Usuário não autenticado" };
+      }
+
+      const { data, error } = await supabase.functions.invoke("gestaoclick-proxy", {
+        body: {
+          action: "emitir_nf",
+          nf_id: nfId,
+          agendamento_id: agendamentoId
+        }
+      });
+
+      if (error) {
+        console.error("[useGestaoClickNF] Emitir error:", error);
+        return { success: false, emitida: false, error: error.message };
+      }
+
+      if (data?.error) {
+        return { success: false, emitida: false, error: data.error };
+      }
+
+      if (data?.emitida === false) {
+        return { 
+          success: true, 
+          emitida: false, 
+          warning: data?.warning || data?.motivo_nao_emitida || "NF não pôde ser emitida"
+        };
+      }
+
+      return { success: true, emitida: true };
+    } catch (err: any) {
+      console.error("[useGestaoClickNF] Emitir exception:", err);
+      return { success: false, emitida: false, error: err.message };
+    } finally {
+      setLoadingEmitir(false);
     }
   };
 
@@ -78,8 +124,8 @@ export function useGestaoClickNF() {
       const result = await gerarNF(ag.id, ag.clienteId);
       if (result.success) {
         sucesso++;
-        if (result.emitida === false && result.warning) {
-          erros.push(`${result.warning} (ID: ${result.nfId})`);
+        if (result.warning) {
+          erros.push(result.warning);
         }
       } else {
         falha++;
@@ -103,8 +149,10 @@ export function useGestaoClickNF() {
 
   return {
     gerarNF,
+    emitirNF,
     gerarNFsEmMassa,
     abrirNF,
-    loading
+    loading,
+    loadingEmitir
   };
 }

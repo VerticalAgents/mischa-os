@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Search, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { VendaGC, DocumentosStatus } from "./gestaoclick/types";
+import { VendaGC, DocumentosStatus, NfStatus } from "./gestaoclick/types";
 import { VendaGCCard } from "./gestaoclick/VendaGCCard";
 import { AcoesMassaGC } from "./gestaoclick/AcoesMassaGC";
 import { useGerarDocumentoVenda } from "./gestaoclick/useGerarDocumentoVenda";
@@ -19,7 +19,7 @@ export default function GestaoClickTab() {
   const [documentosStatus, setDocumentosStatus] = useState<Record<string, DocumentosStatus>>({});
   
   const { gerarDocumentoA4, gerarPDFConsolidado } = useGerarDocumentoVenda();
-  const { gerarNF, gerarNFsEmMassa, abrirNF, loading: loadingNF } = useGestaoClickNF();
+  const { gerarNF, emitirNF, gerarNFsEmMassa, abrirNF, loading: loadingNF, loadingEmitir } = useGestaoClickNF();
 
   // Carregar status dos documentos do localStorage
   useEffect(() => {
@@ -97,6 +97,7 @@ export default function GestaoClickTab() {
           gestaoclick_venda_id,
           gestaoclick_sincronizado_em,
           gestaoclick_nf_id,
+          gestaoclick_nf_status,
           data_proxima_reposicao,
           quantidade_total,
           itens_personalizados
@@ -202,6 +203,7 @@ export default function GestaoClickTab() {
           gestaoclick_venda_id: ag.gestaoclick_venda_id!,
           gestaoclick_sincronizado_em: ag.gestaoclick_sincronizado_em || "",
           gestaoclick_nf_id: ag.gestaoclick_nf_id || undefined,
+          gestaoclick_nf_status: (ag as any).gestaoclick_nf_status as NfStatus || null,
           cliente_id: ag.cliente_id,
           cliente_nome: cliente?.nome || "Cliente",
           cliente_cnpj_cpf: cliente?.cnpj_cpf || undefined,
@@ -278,41 +280,47 @@ export default function GestaoClickTab() {
     toast.info(`Boleto marcado como gerado (integração pendente)`);
   };
 
+  // Gerar NF (cria rascunho em aberto)
   const handleGerarNF = async (venda: VendaGC) => {
-    // Se já tem NF, abrir no GestaoClick
-    if (venda.gestaoclick_nf_id) {
-      abrirNF(venda.gestaoclick_nf_id);
-      return;
-    }
-
-    // Gerar NF via API
     const result = await gerarNF(venda.id, venda.cliente_id);
     
     if (result.success && result.nfId) {
-      if (result.emitida === false) {
-        // NF criada mas não emitida - mostrar warning
-        toast.warning(`NF #${result.nfId} criada mas não emitida. ${result.warning || 'Verifique no GestaoClick.'}`);
-      } else {
-        toast.success(`NF #${result.nfId} gerada e emitida para ${venda.cliente_nome}`);
-      }
-      // Atualizar status local
-      setDocumentosStatus(prev => ({
-        ...prev,
-        [venda.id]: { ...prev[venda.id], a4: prev[venda.id]?.a4 || false, boleto: prev[venda.id]?.boleto || false, nf: true }
-      }));
-      // Recarregar vendas para obter o nf_id atualizado
+      toast.success(`NF #${result.nfId} criada (em aberto). Clique em "Emitir NF" para emitir.`);
       carregarVendas();
     } else {
       toast.error(result.error || "Erro ao gerar NF");
     }
   };
 
-  // Handler para regenerar NF (limpa o nf_id e gera nova)
+  // Emitir NF existente
+  const handleEmitirNF = async (venda: VendaGC) => {
+    if (!venda.gestaoclick_nf_id) {
+      toast.error("Nenhuma NF para emitir. Gere a NF primeiro.");
+      return;
+    }
+
+    const result = await emitirNF(venda.gestaoclick_nf_id, venda.id);
+    
+    if (result.success && result.emitida) {
+      toast.success(`NF #${venda.gestaoclick_nf_id} emitida com sucesso!`);
+      carregarVendas();
+    } else if (result.success && !result.emitida) {
+      toast.warning(`NF não pôde ser emitida: ${result.warning || 'Verifique no GestaoClick.'}`);
+      carregarVendas();
+    } else {
+      toast.error(result.error || "Erro ao emitir NF");
+    }
+  };
+
+  // Regenerar NF (limpa a anterior e cria nova)
   const handleRegenerarNF = async (venda: VendaGC) => {
     // Limpar NF no banco primeiro
     const { error } = await supabase
       .from('agendamentos_clientes')
-      .update({ gestaoclick_nf_id: null })
+      .update({ 
+        gestaoclick_nf_id: null,
+        gestaoclick_nf_status: null 
+      })
       .eq('id', venda.id);
 
     if (error) {
@@ -320,26 +328,15 @@ export default function GestaoClickTab() {
       return;
     }
 
-    // Atualizar venda localmente para refletir que não tem mais NF
-    const vendaAtualizada = { ...venda, gestaoclick_nf_id: null };
-    
     // Gerar nova NF
-    const result = await gerarNF(vendaAtualizada.id, vendaAtualizada.cliente_id);
+    const result = await gerarNF(venda.id, venda.cliente_id);
     
     if (result.success && result.nfId) {
-      if (result.emitida === false) {
-        toast.warning(`Nova NF #${result.nfId} criada mas não emitida. ${result.warning || 'Verifique no GestaoClick.'}`);
-      } else {
-        toast.success(`Nova NF #${result.nfId} gerada para ${venda.cliente_nome}`);
-      }
-      setDocumentosStatus(prev => ({
-        ...prev,
-        [venda.id]: { ...prev[venda.id], a4: prev[venda.id]?.a4 || false, boleto: prev[venda.id]?.boleto || false, nf: true }
-      }));
+      toast.success(`Nova NF #${result.nfId} criada (em aberto). Clique em "Emitir NF" para emitir.`);
       carregarVendas();
     } else {
       toast.error(result.error || "Erro ao gerar nova NF");
-      carregarVendas(); // Recarregar mesmo assim para mostrar estado atual
+      carregarVendas();
     }
   };
 
@@ -466,8 +463,10 @@ export default function GestaoClickTab() {
               onGerarA4={() => handleGerarA4(venda)}
               onGerarBoleto={() => handleGerarBoleto(venda)}
               onGerarNF={() => handleGerarNF(venda)}
+              onEmitirNF={() => handleEmitirNF(venda)}
               onRegenerarNF={() => handleRegenerarNF(venda)}
               loadingNF={loadingNF}
+              loadingEmitir={loadingEmitir}
             />
           ))}
         </div>
