@@ -1573,9 +1573,12 @@ Deno.serve(async (req) => {
 
         console.log(`[gestaoclick-proxy] Emitindo NF ID=${nf_id}...`);
 
-        // First, get the NF to check its value using notas_fiscais_produtos endpoint (the one that works)
+        // FASE 1: Sempre tentar emitir, não bloquear por pré-check inconsistente
+        // O pré-check é apenas informativo - se falhar, tentamos emitir mesmo assim
         let valorTotalGC = 0;
         let checkFailed = false;
+        let checkErrorReason = '';
+        
         try {
           const nfCheckResponse = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais_produtos/${nf_id}`, {
             method: 'GET',
@@ -1586,40 +1589,64 @@ Deno.serve(async (req) => {
             },
           });
           const nfCheckText = await nfCheckResponse.text();
-          console.log(`[gestaoclick-proxy] NF check (notas_fiscais_produtos): ${nfCheckResponse.status} ${nfCheckText.substring(0, 500)}`);
+          console.log(`[gestaoclick-proxy] NF pré-check: status=${nfCheckResponse.status} body=${nfCheckText.substring(0, 500)}`);
           
-          if (nfCheckResponse.ok) {
-            const nfCheckData = JSON.parse(nfCheckText);
-            if (nfCheckData.code === 200 && nfCheckData.data) {
-              valorTotalGC = parseFloat(nfCheckData.data.valor_total_nf || nfCheckData.data.valor_total || nfCheckData.data.vNF || '0');
-              console.log(`[gestaoclick-proxy] Valor total no GC: R$ ${valorTotalGC.toFixed(2)}`);
-            } else {
-              console.warn('[gestaoclick-proxy] Resposta NF sem data válida, tentando emitir mesmo assim');
+          // Usar hasGCError para detectar erros lógicos (ex: "ok":false, "não possui permissão")
+          if (hasGCError(nfCheckText, nfCheckResponse.status)) {
+            checkFailed = true;
+            try {
+              const errorData = JSON.parse(nfCheckText);
+              checkErrorReason = errorData.data?.mensagem || errorData.mensagem || errorData.message || 'Erro no pré-check';
+            } catch {
+              checkErrorReason = nfCheckText.substring(0, 200);
+            }
+            console.warn(`[gestaoclick-proxy] Pré-check falhou (${checkErrorReason}), tentando emitir mesmo assim...`);
+          } else if (nfCheckResponse.ok) {
+            try {
+              const nfCheckData = JSON.parse(nfCheckText);
+              if (nfCheckData.code === 200 && nfCheckData.data) {
+                valorTotalGC = parseFloat(nfCheckData.data.valor_total_nf || nfCheckData.data.valor_total || nfCheckData.data.vNF || '0');
+                console.log(`[gestaoclick-proxy] Valor total confirmado no GC: R$ ${valorTotalGC.toFixed(2)}`);
+              } else {
+                checkFailed = true;
+                checkErrorReason = 'Resposta sem dados válidos';
+                console.warn('[gestaoclick-proxy] Resposta NF sem data válida, tentando emitir mesmo assim');
+              }
+            } catch (parseErr) {
               checkFailed = true;
+              checkErrorReason = 'Erro ao parsear resposta';
+              console.warn('[gestaoclick-proxy] Erro ao parsear resposta do pré-check');
             }
           } else {
-            console.warn(`[gestaoclick-proxy] Falha ao verificar NF (${nfCheckResponse.status}), tentando emitir mesmo assim`);
             checkFailed = true;
+            checkErrorReason = `HTTP ${nfCheckResponse.status}`;
+            console.warn(`[gestaoclick-proxy] Falha HTTP no pré-check (${nfCheckResponse.status}), tentando emitir mesmo assim`);
           }
         } catch (err) {
-          console.error('[gestaoclick-proxy] Erro ao verificar NF:', err);
           checkFailed = true;
+          checkErrorReason = err instanceof Error ? err.message : 'Erro desconhecido';
+          console.error('[gestaoclick-proxy] Exceção no pré-check:', err);
         }
 
-        // If value is zero AND check succeeded, don't emit (it's really zero)
-        // If check failed, we try to emit anyway
+        // IMPORTANTE: Só bloquear por TOTAL_ZERADO se o check foi bem-sucedido E valor é realmente 0
+        // Se o check falhou (por permissão, erro de rede, etc), tentamos emitir mesmo assim
         if (!checkFailed && valorTotalGC < 0.01) {
-          console.warn(`[gestaoclick-proxy] NF ${nf_id} com valor zerado confirmado, não será emitida`);
+          console.warn(`[gestaoclick-proxy] NF ${nf_id} com valor zerado CONFIRMADO (pré-check OK), não será emitida`);
           return new Response(
             JSON.stringify({ 
               success: true,
               emitida: false,
               motivo_nao_emitida: 'TOTAL_ZERADO',
               valor_total_gc: valorTotalGC,
-              warning: `NF com valor R$ 0,00 no GestaoClick. Verifique a configuração de produtos.`
+              warning: `NF com valor R$ 0,00 no GestaoClick. Verifique a configuração de produtos/preços.`
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
+        }
+
+        // Log se estamos tentando emitir apesar de check ter falhado
+        if (checkFailed) {
+          console.log(`[gestaoclick-proxy] Pré-check falhou (${checkErrorReason}), mas vamos tentar emitir NF ${nf_id} mesmo assim...`);
         }
 
         // Emit the NF
