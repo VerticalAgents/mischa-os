@@ -289,7 +289,12 @@ export default function GestaoClickTab() {
     const result = await gerarNF(venda.id, venda.cliente_id);
     
     if (result.success && result.nfId) {
-      toast.success(`NF #${result.nfId} gerada e emitida para ${venda.cliente_nome}`);
+      if (result.emitida === false) {
+        // NF criada mas não emitida - mostrar warning
+        toast.warning(`NF #${result.nfId} criada mas não emitida. ${result.warning || 'Verifique no GestaoClick.'}`);
+      } else {
+        toast.success(`NF #${result.nfId} gerada e emitida para ${venda.cliente_nome}`);
+      }
       // Atualizar status local
       setDocumentosStatus(prev => ({
         ...prev,
@@ -322,7 +327,11 @@ export default function GestaoClickTab() {
     const result = await gerarNF(vendaAtualizada.id, vendaAtualizada.cliente_id);
     
     if (result.success && result.nfId) {
-      toast.success(`Nova NF #${result.nfId} gerada para ${venda.cliente_nome}`);
+      if (result.emitida === false) {
+        toast.warning(`Nova NF #${result.nfId} criada mas não emitida. ${result.warning || 'Verifique no GestaoClick.'}`);
+      } else {
+        toast.success(`Nova NF #${result.nfId} gerada para ${venda.cliente_nome}`);
+      }
       setDocumentosStatus(prev => ({
         ...prev,
         [venda.id]: { ...prev[venda.id], a4: prev[venda.id]?.a4 || false, boleto: prev[venda.id]?.boleto || false, nf: true }

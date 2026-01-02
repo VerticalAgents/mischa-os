@@ -5,6 +5,8 @@ import { toast } from "sonner";
 interface GerarNFResult {
   success: boolean;
   nfId: string | null;
+  emitida?: boolean;
+  warning?: string;
   error?: string;
 }
 
@@ -37,13 +39,25 @@ export function useGestaoClickNF() {
         return { success: false, nfId: null, error: error.message };
       }
 
+      // Tratamento para NF criada mas não emitida (HTTP 200 com emitida: false)
+      if (data?.success && data?.nf_id && data?.emitida === false) {
+        console.warn("[useGestaoClickNF] NF criada mas não emitida:", data);
+        return { 
+          success: true, 
+          nfId: data.nf_id,
+          emitida: false,
+          warning: data.warning || data.motivo_nao_emitida || "NF criada mas não emitida"
+        };
+      }
+
       if (data?.error) {
-        return { success: false, nfId: null, error: data.error };
+        return { success: false, nfId: data?.nf_id || null, error: data.error };
       }
 
       return { 
         success: true, 
-        nfId: data?.nf_id || null 
+        nfId: data?.nf_id || null,
+        emitida: data?.emitida ?? true
       };
     } catch (err: any) {
       console.error("[useGestaoClickNF] Exception:", err);
@@ -64,6 +78,9 @@ export function useGestaoClickNF() {
       const result = await gerarNF(ag.id, ag.clienteId);
       if (result.success) {
         sucesso++;
+        if (result.emitida === false && result.warning) {
+          erros.push(`${result.warning} (ID: ${result.nfId})`);
+        }
       } else {
         falha++;
         if (result.error) {
