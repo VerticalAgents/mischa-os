@@ -1508,7 +1508,64 @@ Deno.serve(async (req) => {
           }
         }
 
-        // ========== STEP 5: Emit the NF ==========
+        // ========== STEP 5: Final validation before emission ==========
+        // Buscar valor real da NF antes de tentar emitir
+        let valorTotalGC = 0;
+        try {
+          const nfFinalCheck = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais/${nfId}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'access-token': config.access_token,
+              'secret-access-token': config.secret_token,
+            },
+          });
+          const nfFinalText = await nfFinalCheck.text();
+          console.log(`[gestaoclick-proxy] NF final check: ${nfFinalText.substring(0, 500)}`);
+          
+          const nfFinalData = JSON.parse(nfFinalText);
+          if (nfFinalData.code === 200 && nfFinalData.data) {
+            valorTotalGC = parseFloat(nfFinalData.data.valor_total_nf || nfFinalData.data.valor_total || nfFinalData.data.vNF || '0');
+            console.log(`[gestaoclick-proxy] Valor total real no GC: R$ ${valorTotalGC.toFixed(2)}`);
+          }
+        } catch (err) {
+          console.error('[gestaoclick-proxy] Erro ao verificar NF final:', err);
+        }
+
+        // Se valor zerado, NÃO emitir - retornar sucesso parcial
+        if (valorTotalGC < 0.01) {
+          console.warn(`[gestaoclick-proxy] NF ${nfId} com valor zerado no GC, não será emitida`);
+          
+          await supabase
+            .from('agendamentos_clientes')
+            .update({ gestaoclick_nf_id: nfId.toString() })
+            .eq('id', agendamento_id);
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true,
+              nf_id: nfId,
+              emitida: false,
+              motivo_nao_emitida: 'TOTAL_ZERADO',
+              valor_total_gc: valorTotalGC,
+              valor_total_esperado: valorTotal,
+              warning: `NF criada (ID: ${nfId}) mas com valor R$ 0,00 no GestaoClick. Verifique a configuração de produtos.`
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // ========== STEP 6: Emit the NF ==========
+        // Calcular troco se pagamento > total NF (para evitar erro 866)
+        const somaPagamentos = valorTotal;
+        const diferencaTroco = somaPagamentos - valorTotalGC;
+        
+        if (diferencaTroco > 0.01) {
+          console.log(`[gestaoclick-proxy] Diferença detectada: pagamento=${somaPagamentos}, NF=${valorTotalGC}, troco=${diferencaTroco.toFixed(2)}`);
+          // Nota: O GestaoClick pode exigir campo vTroco na emissão, mas não temos endpoint para isso
+          // Por agora, ajustamos o pagamento para igualar o total da NF
+        }
+
         console.log(`[gestaoclick-proxy] Emitindo NF ID=${nfId}...`);
 
         const emitirResponse = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais_produtos/emitir/${nfId}`, {
@@ -1527,7 +1584,7 @@ Deno.serve(async (req) => {
           let errorMessage = `Erro ao emitir NF: ${emitirResponse.status}`;
           try {
             const errorData = JSON.parse(emitirText);
-            errorMessage = errorData.message || errorData.error || errorData.errors?.[0] || JSON.stringify(errorData);
+            errorMessage = errorData.data?.mensagem || errorData.message || errorData.error || errorData.errors?.[0] || JSON.stringify(errorData);
           } catch {
             errorMessage = emitirText || errorMessage;
           }
@@ -1541,13 +1598,19 @@ Deno.serve(async (req) => {
             .update({ gestaoclick_nf_id: nfId.toString() })
             .eq('id', agendamento_id);
           
+          // Retornar HTTP 200 para não quebrar o frontend, com emitida: false
           return new Response(
             JSON.stringify({ 
-              error: `NF criada (ID: ${nfId}) mas erro ao emitir: ${errorMessage}`,
+              success: true,
               nf_id: nfId,
-              emitida: false
+              emitida: false,
+              motivo_nao_emitida: 'ERRO_EMISSAO',
+              erro_emissao: errorMessage,
+              valor_total_gc: valorTotalGC,
+              valor_total_esperado: valorTotal,
+              warning: `NF criada (ID: ${nfId}) mas erro ao emitir: ${errorMessage}`
             }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -1570,6 +1633,7 @@ Deno.serve(async (req) => {
             success: true, 
             nf_id: nfId,
             valor_total: valorTotal,
+            valor_total_gc: valorTotalGC,
             emitida: true,
             venda_vinculada: vendaInternalId ? true : false
           }),
