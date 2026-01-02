@@ -302,6 +302,38 @@ export default function GestaoClickTab() {
     }
   };
 
+  // Handler para regenerar NF (limpa o nf_id e gera nova)
+  const handleRegenerarNF = async (venda: VendaGC) => {
+    // Limpar NF no banco primeiro
+    const { error } = await supabase
+      .from('agendamentos_clientes')
+      .update({ gestaoclick_nf_id: null })
+      .eq('id', venda.id);
+
+    if (error) {
+      toast.error("Erro ao limpar NF anterior");
+      return;
+    }
+
+    // Atualizar venda localmente para refletir que não tem mais NF
+    const vendaAtualizada = { ...venda, gestaoclick_nf_id: null };
+    
+    // Gerar nova NF
+    const result = await gerarNF(vendaAtualizada.id, vendaAtualizada.cliente_id);
+    
+    if (result.success && result.nfId) {
+      toast.success(`Nova NF #${result.nfId} gerada para ${venda.cliente_nome}`);
+      setDocumentosStatus(prev => ({
+        ...prev,
+        [venda.id]: { ...prev[venda.id], a4: prev[venda.id]?.a4 || false, boleto: prev[venda.id]?.boleto || false, nf: true }
+      }));
+      carregarVendas();
+    } else {
+      toast.error(result.error || "Erro ao gerar nova NF");
+      carregarVendas(); // Recarregar mesmo assim para mostrar estado atual
+    }
+  };
+
   const handleGerarTodosA4 = () => {
     const pendentes = vendasFiltradas.filter(v => !documentosStatus[v.id]?.a4);
     pendentes.forEach(v => handleGerarA4(v));
@@ -425,6 +457,7 @@ export default function GestaoClickTab() {
               onGerarA4={() => handleGerarA4(venda)}
               onGerarBoleto={() => handleGerarBoleto(venda)}
               onGerarNF={() => handleGerarNF(venda)}
+              onRegenerarNF={() => handleRegenerarNF(venda)}
               loadingNF={loadingNF}
             />
           ))}

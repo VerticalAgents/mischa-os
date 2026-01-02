@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Receipt, FileCheck, Check, Calendar, MapPin, Phone, CreditCard, ExternalLink, Loader2 } from "lucide-react";
+import { FileText, Receipt, FileCheck, Check, Calendar, MapPin, Phone, CreditCard, ExternalLink, Loader2, RotateCcw } from "lucide-react";
 import { VendaGC, DocumentosStatus } from "./types";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface VendaGCCardProps {
   venda: VendaGC;
@@ -12,6 +13,7 @@ interface VendaGCCardProps {
   onGerarA4: () => void;
   onGerarBoleto: () => void;
   onGerarNF: () => void;
+  onRegenerarNF?: () => void;
   loadingNF?: boolean;
 }
 
@@ -21,6 +23,7 @@ export function VendaGCCard({
   onGerarA4,
   onGerarBoleto,
   onGerarNF,
+  onRegenerarNF,
   loadingNF = false
 }: VendaGCCardProps) {
   const formatarMoeda = (valor: number) => {
@@ -125,22 +128,52 @@ export function VendaGCCard({
             </Button>
           )}
           
-          <Button
-            variant={nfGerada ? "outline" : "secondary"}
-            size="sm"
-            onClick={onGerarNF}
-            disabled={loadingNF}
-            className={`gap-1.5 ${venda.gestaoclick_nf_id ? 'text-green-700 border-green-300 hover:bg-green-50' : ''}`}
-          >
-            {loadingNF ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : venda.gestaoclick_nf_id ? (
-              <ExternalLink className="h-4 w-4" />
-            ) : (
-              <FileCheck className="h-4 w-4" />
-            )}
-            {venda.gestaoclick_nf_id ? "Ver NF" : nfGerada ? "Ver NF" : "Gerar NF"}
-          </Button>
+          {venda.gestaoclick_nf_id ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={loadingNF}
+                  className="gap-1.5 text-green-700 border-green-300 hover:bg-green-50"
+                >
+                  {loadingNF ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ExternalLink className="h-4 w-4" />
+                  )}
+                  Ver NF
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onGerarNF}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Ver NF #{venda.gestaoclick_nf_id}
+                </DropdownMenuItem>
+                {onRegenerarNF && (
+                  <DropdownMenuItem onClick={onRegenerarNF} className="text-orange-600">
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Regenerar NF
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              variant={nfGerada ? "outline" : "secondary"}
+              size="sm"
+              onClick={onGerarNF}
+              disabled={loadingNF}
+              className="gap-1.5"
+            >
+              {loadingNF ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileCheck className="h-4 w-4" />
+              )}
+              {nfGerada ? "Ver NF" : "Gerar NF"}
+            </Button>
+          )}
         </div>
 
         {/* Lista de Itens Resumida */}

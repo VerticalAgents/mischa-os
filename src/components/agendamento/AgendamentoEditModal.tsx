@@ -193,6 +193,7 @@ export default function AgendamentoEditModal({
         .eq('id', agendamento.cliente.id);
 
       // Salvar agendamento com observações temporárias e trocas
+      // IMPORTANTE: Ao editar agendamento, limpar gestaoclick_nf_id para permitir regenerar NF
       await salvarAgendamento(agendamento.cliente.id, {
         status_agendamento: statusAgendamento,
         data_proxima_reposicao: dataReposicao,
@@ -200,6 +201,12 @@ export default function AgendamentoEditModal({
         quantidade_total: quantidadeTotal,
         itens_personalizados: tipoPedido === "Alterado" ? itensPersonalizados : null
       });
+
+      // Limpar gestaoclick_nf_id para permitir regenerar NF após edição
+      await supabase
+        .from('agendamentos_clientes')
+        .update({ gestaoclick_nf_id: null })
+        .eq('cliente_id', agendamento.cliente.id);
 
       // Salvar observações do agendamento e trocas pendentes separadamente
       await supabase

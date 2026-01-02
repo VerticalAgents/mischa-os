@@ -1309,14 +1309,11 @@ Deno.serve(async (req) => {
 
           console.log(`[gestaoclick-proxy]   - ${produto.nome}: qtd=${item.quantidade}, preco=${precoUnitario.toFixed(2)} (${precoOrigem}), subtotal=${subtotal.toFixed(2)}`);
 
-          // Formato ANINHADO com "produto" wrapper - igual ao usado em vendas
-          // Usar strings para quantidade e valor como esperado pelo GestaoClick
+          // Formato PLANO para NF - produto_id como INT, quantidade e valor_venda como números
           produtosNF.push({
-            produto: {
-              produto_id: produto.gestaoclick_produto_id,
-              quantidade: item.quantidade.toString(),
-              valor_venda: precoUnitario.toFixed(2)
-            }
+            produto_id: parseInt(produto.gestaoclick_produto_id, 10),
+            quantidade: Math.round(item.quantidade),
+            valor_venda: Math.round(precoUnitario * 100) / 100
           });
         }
 
@@ -1357,7 +1354,7 @@ Deno.serve(async (req) => {
           produtos: produtosNF,
           pagamento: [{
             forma_pagamento_id: parseInt(formaPagamentoId, 10),
-            valor_pagamento: valorTotal.toFixed(2),
+            valor_pagamento: Math.round(valorTotal * 100) / 100,
             data_vencimento: formatDateBR(dataVencimento)
           }]
         };
@@ -1469,7 +1466,7 @@ Deno.serve(async (req) => {
                   produtos: produtosNF,
                   pagamento: [{
                     forma_pagamento_id: parseInt(formaPagamentoId, 10),
-                    valor_pagamento: valorTotal.toFixed(2),
+                    valor_pagamento: Math.round(valorTotal * 100) / 100,
                     data_vencimento: formatDateBR(dataVencimento)
                   }]
                 };
