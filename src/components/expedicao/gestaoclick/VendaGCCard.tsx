@@ -1,11 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Receipt, FileCheck, Check, Calendar, MapPin, Phone, CreditCard, ExternalLink, Loader2, RotateCcw } from "lucide-react";
+import { FileText, Receipt, FileCheck, Check, Calendar, MapPin, Phone, CreditCard, ExternalLink, Loader2, RotateCcw, Send } from "lucide-react";
 import { VendaGC, DocumentosStatus } from "./types";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface VendaGCCardProps {
   venda: VendaGC;
@@ -13,8 +12,10 @@ interface VendaGCCardProps {
   onGerarA4: () => void;
   onGerarBoleto: () => void;
   onGerarNF: () => void;
+  onEmitirNF?: () => void;
   onRegenerarNF?: () => void;
   loadingNF?: boolean;
+  loadingEmitir?: boolean;
 }
 
 export function VendaGCCard({
@@ -23,17 +24,26 @@ export function VendaGCCard({
   onGerarA4,
   onGerarBoleto,
   onGerarNF,
+  onEmitirNF,
   onRegenerarNF,
-  loadingNF = false
+  loadingNF = false,
+  loadingEmitir = false
 }: VendaGCCardProps) {
   const formatarMoeda = (valor: number) => {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
   const isBoleto = venda.forma_pagamento === 'BOLETO';
-  // NF está gerada se tem gestaoclick_nf_id ou está marcada localmente
-  const nfGerada = !!venda.gestaoclick_nf_id || documentosStatus.nf;
-  const todosGerados = documentosStatus.a4 && nfGerada && (!isBoleto || documentosStatus.boleto);
+  
+  // Estados da NF:
+  // - Sem NF: não tem gestaoclick_nf_id
+  // - Em aberto: tem gestaoclick_nf_id e status é 'em_aberto' ou null (para compatibilidade)
+  // - Emitida: tem gestaoclick_nf_id e status é 'emitida'
+  const temNF = !!venda.gestaoclick_nf_id;
+  const nfEmitida = temNF && venda.gestaoclick_nf_status === 'emitida';
+  const nfEmAberto = temNF && !nfEmitida;
+  
+  const todosGerados = documentosStatus.a4 && nfEmitida && (!isBoleto || documentosStatus.boleto);
 
   return (
     <Card className={`transition-all ${todosGerados ? 'border-green-500/50 bg-green-50/30' : ''}`}>
@@ -95,17 +105,28 @@ export function VendaGCCard({
               Boleto
             </Badge>
           )}
-          <Badge 
-            variant={nfGerada ? "default" : "outline"} 
-            className={`gap-1 ${venda.gestaoclick_nf_id ? 'bg-green-600 hover:bg-green-700' : ''}`}
-          >
-            {nfGerada ? <Check className="h-3 w-3" /> : <FileCheck className="h-3 w-3" />}
-            {venda.gestaoclick_nf_id ? `NF #${venda.gestaoclick_nf_id}` : 'NF'}
-          </Badge>
+          {/* Badge da NF com status claro */}
+          {nfEmitida ? (
+            <Badge className="gap-1 bg-green-600 hover:bg-green-700">
+              <Check className="h-3 w-3" />
+              NF #{venda.gestaoclick_nf_id} Emitida
+            </Badge>
+          ) : nfEmAberto ? (
+            <Badge variant="secondary" className="gap-1 bg-amber-100 text-amber-800 border-amber-300">
+              <FileCheck className="h-3 w-3" />
+              NF #{venda.gestaoclick_nf_id} Em Aberto
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1">
+              <FileCheck className="h-3 w-3" />
+              NF
+            </Badge>
+          )}
         </div>
 
         {/* Botões de Ação */}
         <div className="flex flex-wrap gap-2">
+          {/* Doc A4 */}
           <Button
             variant={documentosStatus.a4 ? "outline" : "default"}
             size="sm"
@@ -116,6 +137,7 @@ export function VendaGCCard({
             {documentosStatus.a4 ? "Reimprimir A4" : "Gerar Doc A4"}
           </Button>
           
+          {/* Boleto */}
           {isBoleto && (
             <Button
               variant={documentosStatus.boleto ? "outline" : "secondary"}
@@ -128,39 +150,11 @@ export function VendaGCCard({
             </Button>
           )}
           
-          {venda.gestaoclick_nf_id ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={loadingNF}
-                  className="gap-1.5 text-green-700 border-green-300 hover:bg-green-50"
-                >
-                  {loadingNF ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ExternalLink className="h-4 w-4" />
-                  )}
-                  Ver NF
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onGerarNF}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Ver NF #{venda.gestaoclick_nf_id}
-                </DropdownMenuItem>
-                {onRegenerarNF && (
-                  <DropdownMenuItem onClick={onRegenerarNF} className="text-orange-600">
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Regenerar NF
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
+          {/* Botões de NF - Separados e claros */}
+          {!temNF ? (
+            // Sem NF - Botão para gerar
             <Button
-              variant={nfGerada ? "outline" : "secondary"}
+              variant="secondary"
               size="sm"
               onClick={onGerarNF}
               disabled={loadingNF}
@@ -171,8 +165,86 @@ export function VendaGCCard({
               ) : (
                 <FileCheck className="h-4 w-4" />
               )}
-              {nfGerada ? "Ver NF" : "Gerar NF"}
+              Gerar NF
             </Button>
+          ) : nfEmAberto ? (
+            // NF em aberto - Botões: Emitir, Ver, Regenerar
+            <>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={onEmitirNF}
+                disabled={loadingEmitir}
+                className="gap-1.5 bg-amber-600 hover:bg-amber-700"
+              >
+                {loadingEmitir ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Emitir NF
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const url = `https://app.gestaoclick.com/notas_fiscais/visualizar/${venda.gestaoclick_nf_id}`;
+                  window.open(url, "_blank");
+                }}
+                className="gap-1.5"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Ver NF
+              </Button>
+              {onRegenerarNF && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onRegenerarNF}
+                  disabled={loadingNF}
+                  className="gap-1.5 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                >
+                  {loadingNF ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="h-4 w-4" />
+                  )}
+                  Regenerar
+                </Button>
+              )}
+            </>
+          ) : (
+            // NF emitida - Botões: Ver, Regenerar
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const url = `https://app.gestaoclick.com/notas_fiscais/visualizar/${venda.gestaoclick_nf_id}`;
+                  window.open(url, "_blank");
+                }}
+                className="gap-1.5 text-green-700 border-green-300 hover:bg-green-50"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Ver NF
+              </Button>
+              {onRegenerarNF && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onRegenerarNF}
+                  disabled={loadingNF}
+                  className="gap-1.5 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                >
+                  {loadingNF ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="h-4 w-4" />
+                  )}
+                  Regenerar
+                </Button>
+              )}
+            </>
           )}
         </div>
 

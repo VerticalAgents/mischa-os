@@ -8,11 +8,14 @@ export interface ItemVendaGC {
   ordem_categoria?: number;
 }
 
+export type NfStatus = 'em_aberto' | 'emitida' | null;
+
 export interface VendaGC {
   id: string; // agendamento_id
   gestaoclick_venda_id: string;
   gestaoclick_sincronizado_em: string;
   gestaoclick_nf_id?: string; // ID da NF gerada no GestaoClick
+  gestaoclick_nf_status?: NfStatus; // Status da NF: em_aberto, emitida, ou null
   cliente_id: string;
   cliente_nome: string;
   cliente_razao_social?: string;

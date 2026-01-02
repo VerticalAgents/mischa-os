@@ -1508,11 +1508,75 @@ Deno.serve(async (req) => {
           }
         }
 
-        // ========== STEP 5: Final validation before emission ==========
-        // Buscar valor real da NF antes de tentar emitir
+        // ========== STEP 5: Save NF as draft (em_aberto) - DO NOT EMIT ==========
+        // Update agendamento with NF ID and status
+        const { error: updateError } = await supabase
+          .from('agendamentos_clientes')
+          .update({
+            gestaoclick_nf_id: nfId.toString(),
+            gestaoclick_nf_status: 'em_aberto'
+          })
+          .eq('id', agendamento_id);
+
+        if (updateError) {
+          console.error('[gestaoclick-proxy] Failed to update agendamento with NF ID:', updateError);
+        }
+
+        console.log(`[gestaoclick-proxy] NF ${nfId} criada como rascunho (em_aberto)`);
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            nf_id: nfId,
+            status: 'em_aberto',
+            valor_total: valorTotal,
+            nf_valida: nfValida
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'emitir_nf': {
+        // EMIT an existing NF (second step)
+        const { nf_id, agendamento_id } = params as { nf_id: string; agendamento_id: string };
+
+        if (!nf_id) {
+          return new Response(
+            JSON.stringify({ error: 'nf_id não fornecido' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: 'Usuário não autenticado' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get user's GestaoClick config
+        const { data: configData, error: configError } = await supabase
+          .from('integracoes_config')
+          .select('config')
+          .eq('user_id', userId)
+          .eq('integracao', 'gestaoclick')
+          .single();
+
+        if (configError || !configData) {
+          return new Response(
+            JSON.stringify({ error: 'Configuração GestaoClick não encontrada' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const config = configData.config as GestaoClickConfig;
+
+        console.log(`[gestaoclick-proxy] Emitindo NF ID=${nf_id}...`);
+
+        // First, get the NF to check its value
         let valorTotalGC = 0;
         try {
-          const nfFinalCheck = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais/${nfId}`, {
+          const nfCheckResponse = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais/${nf_id}`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -1520,55 +1584,35 @@ Deno.serve(async (req) => {
               'secret-access-token': config.secret_token,
             },
           });
-          const nfFinalText = await nfFinalCheck.text();
-          console.log(`[gestaoclick-proxy] NF final check: ${nfFinalText.substring(0, 500)}`);
+          const nfCheckText = await nfCheckResponse.text();
+          console.log(`[gestaoclick-proxy] NF check: ${nfCheckText.substring(0, 500)}`);
           
-          const nfFinalData = JSON.parse(nfFinalText);
-          if (nfFinalData.code === 200 && nfFinalData.data) {
-            valorTotalGC = parseFloat(nfFinalData.data.valor_total_nf || nfFinalData.data.valor_total || nfFinalData.data.vNF || '0');
-            console.log(`[gestaoclick-proxy] Valor total real no GC: R$ ${valorTotalGC.toFixed(2)}`);
+          const nfCheckData = JSON.parse(nfCheckText);
+          if (nfCheckData.code === 200 && nfCheckData.data) {
+            valorTotalGC = parseFloat(nfCheckData.data.valor_total_nf || nfCheckData.data.valor_total || nfCheckData.data.vNF || '0');
+            console.log(`[gestaoclick-proxy] Valor total no GC: R$ ${valorTotalGC.toFixed(2)}`);
           }
         } catch (err) {
-          console.error('[gestaoclick-proxy] Erro ao verificar NF final:', err);
+          console.error('[gestaoclick-proxy] Erro ao verificar NF:', err);
         }
 
-        // Se valor zerado, NÃO emitir - retornar sucesso parcial
+        // If value is zero, don't emit
         if (valorTotalGC < 0.01) {
-          console.warn(`[gestaoclick-proxy] NF ${nfId} com valor zerado no GC, não será emitida`);
-          
-          await supabase
-            .from('agendamentos_clientes')
-            .update({ gestaoclick_nf_id: nfId.toString() })
-            .eq('id', agendamento_id);
-          
+          console.warn(`[gestaoclick-proxy] NF ${nf_id} com valor zerado, não será emitida`);
           return new Response(
             JSON.stringify({ 
               success: true,
-              nf_id: nfId,
               emitida: false,
               motivo_nao_emitida: 'TOTAL_ZERADO',
               valor_total_gc: valorTotalGC,
-              valor_total_esperado: valorTotal,
-              warning: `NF criada (ID: ${nfId}) mas com valor R$ 0,00 no GestaoClick. Verifique a configuração de produtos.`
+              warning: `NF com valor R$ 0,00 no GestaoClick. Verifique a configuração de produtos.`
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // ========== STEP 6: Emit the NF ==========
-        // Calcular troco se pagamento > total NF (para evitar erro 866)
-        const somaPagamentos = valorTotal;
-        const diferencaTroco = somaPagamentos - valorTotalGC;
-        
-        if (diferencaTroco > 0.01) {
-          console.log(`[gestaoclick-proxy] Diferença detectada: pagamento=${somaPagamentos}, NF=${valorTotalGC}, troco=${diferencaTroco.toFixed(2)}`);
-          // Nota: O GestaoClick pode exigir campo vTroco na emissão, mas não temos endpoint para isso
-          // Por agora, ajustamos o pagamento para igualar o total da NF
-        }
-
-        console.log(`[gestaoclick-proxy] Emitindo NF ID=${nfId}...`);
-
-        const emitirResponse = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais_produtos/emitir/${nfId}`, {
+        // Emit the NF
+        const emitirResponse = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais_produtos/emitir/${nf_id}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1589,53 +1633,40 @@ Deno.serve(async (req) => {
             errorMessage = emitirText || errorMessage;
           }
           
-          // NF was created but not emitted - still save the ID for manual handling
-          console.warn(`[gestaoclick-proxy] NF ${nfId} criada mas não emitida: ${errorMessage}`);
+          console.warn(`[gestaoclick-proxy] NF ${nf_id} não emitida: ${errorMessage}`);
           
-          // Update agendamento with NF ID anyway
-          await supabase
-            .from('agendamentos_clientes')
-            .update({ gestaoclick_nf_id: nfId.toString() })
-            .eq('id', agendamento_id);
-          
-          // Retornar HTTP 200 para não quebrar o frontend, com emitida: false
           return new Response(
             JSON.stringify({ 
               success: true,
-              nf_id: nfId,
               emitida: false,
               motivo_nao_emitida: 'ERRO_EMISSAO',
               erro_emissao: errorMessage,
               valor_total_gc: valorTotalGC,
-              valor_total_esperado: valorTotal,
-              warning: `NF criada (ID: ${nfId}) mas erro ao emitir: ${errorMessage}`
+              warning: `Erro ao emitir: ${errorMessage}`
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        console.log(`[gestaoclick-proxy] NF ${nfId} emitida com sucesso!`);
+        console.log(`[gestaoclick-proxy] NF ${nf_id} emitida com sucesso!`);
 
-        // Update agendamento with NF ID
-        const { error: updateError } = await supabase
-          .from('agendamentos_clientes')
-          .update({
-            gestaoclick_nf_id: nfId.toString()
-          })
-          .eq('id', agendamento_id);
+        // Update agendamento status to 'emitida'
+        if (agendamento_id) {
+          const { error: updateError } = await supabase
+            .from('agendamentos_clientes')
+            .update({ gestaoclick_nf_status: 'emitida' })
+            .eq('id', agendamento_id);
 
-        if (updateError) {
-          console.error('[gestaoclick-proxy] Failed to update agendamento with NF ID:', updateError);
+          if (updateError) {
+            console.error('[gestaoclick-proxy] Failed to update agendamento NF status:', updateError);
+          }
         }
 
         return new Response(
           JSON.stringify({ 
             success: true, 
-            nf_id: nfId,
-            valor_total: valorTotal,
-            valor_total_gc: valorTotalGC,
             emitida: true,
-            venda_vinculada: vendaInternalId ? true : false
+            valor_total_gc: valorTotalGC
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
