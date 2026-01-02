@@ -1573,10 +1573,11 @@ Deno.serve(async (req) => {
 
         console.log(`[gestaoclick-proxy] Emitindo NF ID=${nf_id}...`);
 
-        // First, get the NF to check its value
+        // First, get the NF to check its value using notas_fiscais_produtos endpoint (the one that works)
         let valorTotalGC = 0;
+        let checkFailed = false;
         try {
-          const nfCheckResponse = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais/${nf_id}`, {
+          const nfCheckResponse = await fetch(`${GESTAOCLICK_BASE_URL}/notas_fiscais_produtos/${nf_id}`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -1585,20 +1586,30 @@ Deno.serve(async (req) => {
             },
           });
           const nfCheckText = await nfCheckResponse.text();
-          console.log(`[gestaoclick-proxy] NF check: ${nfCheckText.substring(0, 500)}`);
+          console.log(`[gestaoclick-proxy] NF check (notas_fiscais_produtos): ${nfCheckResponse.status} ${nfCheckText.substring(0, 500)}`);
           
-          const nfCheckData = JSON.parse(nfCheckText);
-          if (nfCheckData.code === 200 && nfCheckData.data) {
-            valorTotalGC = parseFloat(nfCheckData.data.valor_total_nf || nfCheckData.data.valor_total || nfCheckData.data.vNF || '0');
-            console.log(`[gestaoclick-proxy] Valor total no GC: R$ ${valorTotalGC.toFixed(2)}`);
+          if (nfCheckResponse.ok) {
+            const nfCheckData = JSON.parse(nfCheckText);
+            if (nfCheckData.code === 200 && nfCheckData.data) {
+              valorTotalGC = parseFloat(nfCheckData.data.valor_total_nf || nfCheckData.data.valor_total || nfCheckData.data.vNF || '0');
+              console.log(`[gestaoclick-proxy] Valor total no GC: R$ ${valorTotalGC.toFixed(2)}`);
+            } else {
+              console.warn('[gestaoclick-proxy] Resposta NF sem data válida, tentando emitir mesmo assim');
+              checkFailed = true;
+            }
+          } else {
+            console.warn(`[gestaoclick-proxy] Falha ao verificar NF (${nfCheckResponse.status}), tentando emitir mesmo assim`);
+            checkFailed = true;
           }
         } catch (err) {
           console.error('[gestaoclick-proxy] Erro ao verificar NF:', err);
+          checkFailed = true;
         }
 
-        // If value is zero, don't emit
-        if (valorTotalGC < 0.01) {
-          console.warn(`[gestaoclick-proxy] NF ${nf_id} com valor zerado, não será emitida`);
+        // If value is zero AND check succeeded, don't emit (it's really zero)
+        // If check failed, we try to emit anyway
+        if (!checkFailed && valorTotalGC < 0.01) {
+          console.warn(`[gestaoclick-proxy] NF ${nf_id} com valor zerado confirmado, não será emitida`);
           return new Response(
             JSON.stringify({ 
               success: true,
