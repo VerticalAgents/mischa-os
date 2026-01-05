@@ -1853,6 +1853,176 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'criar_cliente_gc': {
+        // Create client in GestaoClick when creating in Lovable
+        const { 
+          nome, 
+          cnpj_cpf, 
+          endereco, 
+          contato_nome, 
+          contato_telefone, 
+          contato_email, 
+          observacoes,
+          cidade_nome,
+          estado
+        } = params;
+        
+        console.log('[gestaoclick-proxy] Criando cliente no GC:', { nome, cnpj_cpf });
+        
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: 'Usuário não autenticado' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Fetch GestaoClick config
+        const { data: configData } = await supabase
+          .from('integracoes_config')
+          .select('config')
+          .eq('user_id', userId)
+          .eq('integracao', 'gestaoclick')
+          .maybeSingle();
+
+        if (!configData?.config) {
+          return new Response(
+            JSON.stringify({ error: 'GestaoClick não configurado' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const config = configData.config as GestaoClickConfig;
+
+        // Determine tipo_pessoa based on document
+        const docLimpo = (cnpj_cpf || '').replace(/\D/g, '');
+        const tipoPessoa = docLimpo.length > 11 ? 'PJ' : 'PF';
+        
+        // Build request body for GestaoClick
+        const clienteGcBody: any = {
+          tipo_pessoa: tipoPessoa,
+          nome: nome || '',
+          ativo: '1',
+        };
+
+        // Add document based on type
+        if (tipoPessoa === 'PJ') {
+          clienteGcBody.cnpj = cnpj_cpf || '';
+          clienteGcBody.razao_social = nome || '';
+        } else {
+          clienteGcBody.cpf = cnpj_cpf || '';
+        }
+
+        // Add contact info
+        if (contato_telefone) {
+          clienteGcBody.celular = contato_telefone;
+        }
+        if (contato_email) {
+          clienteGcBody.email = contato_email;
+        }
+
+        // Add loja_id if configured
+        if (config.loja_id) {
+          clienteGcBody.loja_id = config.loja_id;
+        }
+
+        // Add contact as array if contato_nome provided
+        if (contato_nome) {
+          clienteGcBody.contatos = [{
+            contato: {
+              nome: contato_nome,
+              contato: contato_email || contato_telefone || '',
+              cargo: '',
+              observacao: observacoes || ''
+            }
+          }];
+        }
+
+        // Add address if provided
+        if (endereco) {
+          clienteGcBody.enderecos = [{
+            endereco: {
+              logradouro: endereco,
+              numero: '',
+              complemento: '',
+              bairro: '',
+              nome_cidade: cidade_nome || '',
+              estado: estado || ''
+            }
+          }];
+        }
+
+        console.log('[gestaoclick-proxy] Payload para criar cliente:', JSON.stringify(clienteGcBody));
+
+        // Call GestaoClick API to create client
+        const createResponse = await fetch(`${GESTAOCLICK_BASE_URL}/clientes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': config.access_token,
+            'secret-access-token': config.secret_token,
+          },
+          body: JSON.stringify(clienteGcBody),
+        });
+
+        const createText = await createResponse.text();
+        console.log('[gestaoclick-proxy] Resposta criar cliente GC:', createText);
+
+        // Parse response
+        let createData;
+        try {
+          createData = JSON.parse(createText);
+        } catch {
+          console.error('[gestaoclick-proxy] Erro ao parsear resposta:', createText);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'Resposta inválida do GestaoClick',
+              raw_response: createText.substring(0, 500)
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check for errors
+        if (hasGCError(createText, createResponse.status)) {
+          console.error('[gestaoclick-proxy] Erro ao criar cliente no GC:', createData);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: createData.mensagem || createData.message || 'Erro ao criar cliente no GestaoClick',
+              details: createData
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Extract client ID from response
+        const clienteGcId = createData.data?.id || createData.id;
+        
+        if (!clienteGcId) {
+          console.error('[gestaoclick-proxy] ID do cliente não retornado:', createData);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'ID do cliente não retornado pelo GestaoClick',
+              response: createData
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('[gestaoclick-proxy] Cliente criado no GC com ID:', clienteGcId);
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            gestaoclick_cliente_id: clienteGcId,
+            message: `Cliente criado no GestaoClick com ID ${clienteGcId}`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: `Ação desconhecida: ${action}` }),
