@@ -50,6 +50,9 @@ interface ExpedicaoStore {
   confirmarEntregaEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
   confirmarRetornoEmMassa: (pedidos: PedidoExpedicao[]) => Promise<void>;
   
+  // Remoção imediata de pedido da lista (para atualização otimista)
+  removerPedidoDaLista: (pedidoId: string) => void;
+  
       // Getters estabilizados
       getPedidosParaSeparacao: () => PedidoExpedicao[];
       getPedidosParaDespacho: () => PedidoExpedicao[];
@@ -103,6 +106,14 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         atrasados: [],
         separadosAntecipados: [],
         lastUpdate: 0
+      },
+
+      // Remoção imediata de pedido da lista (atualização otimista)
+      removerPedidoDaLista: (pedidoId: string) => {
+        set(state => ({
+          pedidos: state.pedidos.filter(p => p.id !== pedidoId),
+          _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
+        }));
       },
       
       atualizarDataReferencia: async () => {
