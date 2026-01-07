@@ -39,7 +39,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     getPedidosAtrasados,
     getPedidosSeparadosAntecipados,
     carregarPedidos,
-    recarregarSilencioso
+    recarregarSilencioso,
+    removerPedidoDaLista
   } = useExpedicaoStore();
 
   const { converterPedidoParaCard } = usePedidoConverter();
@@ -159,8 +160,12 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
       const sucesso = await confirmarEntregaEmMassaHook(pedidosParaEntrega);
       if (sucesso) {
-        // Recarregar os dados após confirmação bem-sucedida sem bloquear a UI
-        await recarregarSilencioso();
+        // Remover todos os pedidos entregues da lista imediatamente
+        pedidosDespachados.forEach(pedido => {
+          removerPedidoDaLista(String(pedido.id));
+        });
+        // Recarregar dados em background para sincronizar
+        recarregarSilencioso();
       }
     } catch (error) {
       console.error('Erro ao confirmar entregas em massa:', error);
@@ -181,9 +186,10 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   };
 
   const handleConfirmarEntregaIndividual = async (pedidoId: string, observacao?: string) => {
-    // A confirmação já é feita pelo PedidoCard usando o hook useConfirmacaoEntrega
-    // Recarregar os dados silenciosamente sem bloquear a UI
-    await recarregarSilencioso();
+    // Remover o pedido da lista imediatamente (atualização otimista)
+    removerPedidoDaLista(pedidoId);
+    // Recarregar dados em background para sincronizar com o banco
+    recarregarSilencioso();
   };
 
   const handleDownloadCSV = () => {
