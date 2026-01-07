@@ -1,5 +1,5 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,9 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
 const AuthPage = () => {
+  const navigate = useNavigate();
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, isAuthenticated, loading } = useAuth();
+  
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
@@ -17,8 +20,27 @@ const AuthPage = () => {
   const [signupFullName, setSignupFullName] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth();
 
+  // Redirecionar automaticamente se já estiver autenticado
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      navigate('/home', { replace: true });
+    }
+  }, [isAuthenticated, loading, navigate]);
+
+  // Mostrar loading enquanto verifica autenticação
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Se já está autenticado, não mostrar o form (evita flash)
+  if (isAuthenticated) {
+    return null;
+  }
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginEmail || !loginPassword) {
