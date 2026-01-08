@@ -30,6 +30,9 @@ interface PedidoExpedicao {
   observacoes_gerais?: string;
   observacoes_agendamento?: string;
   trocas_pendentes?: any[];
+  // Campos para lista de documentos
+  emite_nota_fiscal?: boolean;
+  forma_pagamento?: string;
 }
 
 interface ExpedicaoStore {
@@ -149,7 +152,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           try {
             const { data: clientesComLink, error: clientesError } = await supabase
               .from('clientes')
-              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes, gestaoclick_cliente_id');
+              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes, gestaoclick_cliente_id, emite_nota_fiscal, forma_pagamento');
 
             if (clientesError) {
               console.warn('Erro ao carregar clientes:', clientesError);
@@ -248,7 +251,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               // Observações e trocas
               observacoes_gerais: cliente?.observacoes || undefined,
               observacoes_agendamento: agendamento.observacoes_agendamento || undefined,
-              trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : []
+              trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : [],
+              // Campos para lista de documentos
+              emite_nota_fiscal: cliente?.emite_nota_fiscal ?? true,
+              forma_pagamento: cliente?.forma_pagamento || 'PIX'
             };
           });
 
@@ -294,7 +300,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           try {
             const { data: clientesComLink, error: clientesError } = await supabase
               .from('clientes')
-              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes, gestaoclick_cliente_id');
+              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes, gestaoclick_cliente_id, emite_nota_fiscal, forma_pagamento');
 
             if (clientesError) {
               const { data: clientesSemLink, error: fallbackError } = await supabase
@@ -381,7 +387,10 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               // Observações e trocas
               observacoes_gerais: cliente?.observacoes || undefined,
               observacoes_agendamento: agendamento.observacoes_agendamento || undefined,
-              trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : []
+              trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : [],
+              // Campos para lista de documentos
+              emite_nota_fiscal: cliente?.emite_nota_fiscal ?? true,
+              forma_pagamento: cliente?.forma_pagamento || 'PIX'
             };
           });
 

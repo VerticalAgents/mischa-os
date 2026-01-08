@@ -1,8 +1,9 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Printer, FileText } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
+import { ExpedicaoListasModal } from "./ExpedicaoListasModal";
 
 interface TrocaPendente {
   produto_id?: string;
@@ -29,24 +30,22 @@ export const PrintingActions = ({
   todosPedidos 
 }: PrintingActionsProps) => {
   const printFrameRef = useRef<HTMLIFrameElement>(null);
+  const [modalListasAberto, setModalListasAberto] = useState(false);
+
+  const getListaAtual = () => {
+    if (activeSubTab === "padrao") {
+      return { lista: pedidosPadrao, tipo: "Pedidos Padrão" };
+    } else if (activeSubTab === "alterados") {
+      return { lista: pedidosAlterados, tipo: "Pedidos Alterados" };
+    } else if (activeSubTab === "proximos") {
+      return { lista: pedidosProximoDia, tipo: "Próximas Separações" };
+    } else {
+      return { lista: todosPedidos, tipo: "Todos os Pedidos" };
+    }
+  };
 
   const imprimirListaSeparacao = () => {
-    let listaAtual: any[] = [];
-    let tipoLista = "";
-    
-    if (activeSubTab === "padrao") {
-      listaAtual = pedidosPadrao;
-      tipoLista = "Pedidos Padrão";
-    } else if (activeSubTab === "alterados") {
-      listaAtual = pedidosAlterados;
-      tipoLista = "Pedidos Alterados";
-    } else if (activeSubTab === "proximos") {
-      listaAtual = pedidosProximoDia;
-      tipoLista = "Próximas Separações";
-    } else {
-      listaAtual = todosPedidos;
-      tipoLista = "Todos os Pedidos";
-    }
+    const { lista: listaAtual, tipo: tipoLista } = getListaAtual();
     
     if (listaAtual.length === 0) {
       toast.error("Não há pedidos para separar nesta categoria.");
@@ -351,17 +350,163 @@ export const PrintingActions = ({
       }
     }
   };
+
+  const imprimirListaDocumentos = () => {
+    const { lista: listaAtual, tipo: tipoLista } = getListaAtual();
+    
+    if (listaAtual.length === 0) {
+      toast.error("Não há pedidos para gerar lista de documentos nesta categoria.");
+      return;
+    }
+
+    // Calcular totais
+    let totalNF = 0;
+    let totalBoleto = 0;
+    let totalFichaA4 = 0;
+
+    listaAtual.forEach(pedido => {
+      const precisaNF = pedido.emite_nota_fiscal === true;
+      const precisaBoleto = pedido.forma_pagamento?.toUpperCase() === 'BOLETO';
+      const precisaFichaA4 = !precisaNF && !precisaBoleto;
+      
+      if (precisaNF) totalNF++;
+      if (precisaBoleto) totalBoleto++;
+      if (precisaFichaA4) totalFichaA4++;
+    });
+
+    let printContent = `
+      <html>
+        <head>
+          <title>Lista de Documentos - ${tipoLista}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: middle; }
+            th { background-color: #f2f2f2; font-weight: bold; font-size: 12px; }
+            h1 { text-align: center; margin-bottom: 10px; }
+            .header { text-align: center; margin-bottom: 20px; }
+            .check { text-align: center; font-size: 16px; color: #16a34a; font-weight: bold; }
+            .dash { text-align: center; color: #9ca3af; }
+            .instrucoes {
+              background-color: #dbeafe;
+              border: 2px solid #3b82f6;
+              border-radius: 8px;
+              padding: 12px 16px;
+              margin-bottom: 20px;
+            }
+            .instrucoes-titulo {
+              font-weight: bold;
+              color: #1e40af;
+              font-size: 13px;
+              margin-bottom: 8px;
+            }
+            .instrucoes-texto {
+              font-size: 11px;
+              color: #1e3a8a;
+            }
+            .totais {
+              background-color: #f8f9fa;
+              font-weight: bold;
+            }
+            .razao-social {
+              font-size: 10px;
+              color: #555;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Lista de Documentos - ${tipoLista}</h1>
+            <p>Data de impressão: ${new Date().toLocaleDateString()} às ${new Date().toLocaleTimeString()}</p>
+            <p>Total de pedidos: ${listaAtual.length}</p>
+          </div>
+          
+          <div class="instrucoes">
+            <div class="instrucoes-titulo">
+              📋 INSTRUÇÕES DE IMPRESSÃO
+            </div>
+            <div class="instrucoes-texto">
+              Esta lista indica quais documentos devem ser impressos para cada cliente no GestãoClick.<br/>
+              <strong>• NF:</strong> Imprimir Nota Fiscal se marcado com ✓<br/>
+              <strong>• Boleto:</strong> Imprimir Boleto se marcado com ✓<br/>
+              <strong>• Ficha A4:</strong> Imprimir a Ficha da Venda (A4) somente quando não há NF nem Boleto, para ter um documento no pacote.
+            </div>
+          </div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 35%;">Cliente</th>
+                <th style="width: 35%;">Razão Social</th>
+                <th style="width: 10%; text-align: center;">NF</th>
+                <th style="width: 10%; text-align: center;">Boleto</th>
+                <th style="width: 10%; text-align: center;">Ficha A4</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
+    listaAtual.forEach(pedido => {
+      const precisaNF = pedido.emite_nota_fiscal === true;
+      const precisaBoleto = pedido.forma_pagamento?.toUpperCase() === 'BOLETO';
+      const precisaFichaA4 = !precisaNF && !precisaBoleto;
+      
+      printContent += `
+        <tr>
+          <td><strong>${pedido.cliente_nome}</strong></td>
+          <td class="razao-social">${pedido.cliente_razao_social || '-'}</td>
+          <td class="${precisaNF ? 'check' : 'dash'}">${precisaNF ? '✓' : '-'}</td>
+          <td class="${precisaBoleto ? 'check' : 'dash'}">${precisaBoleto ? '✓' : '-'}</td>
+          <td class="${precisaFichaA4 ? 'check' : 'dash'}">${precisaFichaA4 ? '✓' : '-'}</td>
+        </tr>
+      `;
+    });
+
+    printContent += `
+            </tbody>
+            <tfoot>
+              <tr class="totais">
+                <td colspan="2" style="text-align: right; padding-right: 10px;">TOTAIS:</td>
+                <td style="text-align: center;">${totalNF}</td>
+                <td style="text-align: center;">${totalBoleto}</td>
+                <td style="text-align: center;">${totalFichaA4}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </body>
+      </html>
+    `;
+
+    if (printFrameRef.current) {
+      const iframe = printFrameRef.current;
+      const iframeWindow = iframe.contentWindow;
+      if (iframeWindow) {
+        iframe.style.height = "0px";
+        iframe.style.width = "0px";
+        iframe.style.position = "absolute";
+        
+        iframeWindow.document.open();
+        iframeWindow.document.write(printContent);
+        iframeWindow.document.close();
+        
+        setTimeout(() => {
+          iframeWindow.print();
+          toast.success("A lista de documentos foi enviada para impressão.");
+        }, 500);
+      }
+    }
+  };
+
+  const handleSelectLista = (tipo: 'separacao' | 'documentos') => {
+    if (tipo === 'separacao') {
+      imprimirListaSeparacao();
+    } else {
+      imprimirListaDocumentos();
+    }
+  };
   
   const imprimirEtiquetas = () => {
-    let listaAtual: any[] = [];
-    
-    if (activeSubTab === "padrao") {
-      listaAtual = pedidosPadrao;
-    } else if (activeSubTab === "alterados") {
-      listaAtual = pedidosAlterados;
-    } else {
-      listaAtual = todosPedidos;
-    }
+    const { lista: listaAtual } = getListaAtual();
     
     if (listaAtual.length === 0) {
       toast.error("Não há pedidos para gerar etiquetas nesta categoria.");
@@ -500,16 +645,18 @@ export const PrintingActions = ({
     }
   };
 
+  const { lista: listaParaModal } = getListaAtual();
+
   return (
     <div className="flex items-center gap-2">
       <Button 
-        onClick={imprimirListaSeparacao}
+        onClick={() => setModalListasAberto(true)}
         size="sm"
         variant="outline"
         className="flex items-center gap-2"
       >
         <Printer className="h-4 w-4" />
-        Lista de Separação
+        Listas de Expedição
       </Button>
 
       <Button 
@@ -524,6 +671,14 @@ export const PrintingActions = ({
       
       {/* IFrame invisível para impressão */}
       <iframe ref={printFrameRef} style={{ display: 'none' }} />
+
+      {/* Modal de seleção de listas */}
+      <ExpedicaoListasModal
+        open={modalListasAberto}
+        onOpenChange={setModalListasAberto}
+        onSelectLista={handleSelectLista}
+        totalPedidos={listaParaModal.length}
+      />
     </div>
   );
 };
