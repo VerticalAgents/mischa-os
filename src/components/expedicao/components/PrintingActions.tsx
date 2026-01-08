@@ -76,6 +76,38 @@ export const PrintingActions = ({
       colWidths = { cliente: '20%', data: '10%', tipo: '8%', produtos: '32%', total: '8%', obs: '0%', trocas: '22%' };
     }
     
+    // Identificar grupos de clientes com mesma razão social
+    const razoesSociaisMap = new Map<string, { clientes: string[], nomes: string[] }>();
+    listaAtual.forEach(pedido => {
+      const razaoSocial = pedido.cliente_razao_social;
+      if (razaoSocial && razaoSocial !== '-' && razaoSocial.trim() !== '') {
+        const razaoNormalizada = razaoSocial.trim().toLowerCase();
+        if (!razoesSociaisMap.has(razaoNormalizada)) {
+          razoesSociaisMap.set(razaoNormalizada, { clientes: [], nomes: [] });
+        }
+        const grupo = razoesSociaisMap.get(razaoNormalizada)!;
+        if (!grupo.nomes.includes(pedido.cliente_nome)) {
+          grupo.clientes.push(pedido.cliente_nome);
+          grupo.nomes.push(pedido.cliente_nome);
+        }
+      }
+    });
+    
+    // Filtrar apenas grupos com mais de 1 cliente (razão social duplicada)
+    const gruposDuplicados: { razaoSocial: string, clientes: string[] }[] = [];
+    razoesSociaisMap.forEach((grupo, razaoNormalizada) => {
+      if (grupo.clientes.length > 1) {
+        // Buscar a razão social original (não normalizada) do primeiro pedido
+        const pedidoOriginal = listaAtual.find(p => 
+          p.cliente_razao_social?.trim().toLowerCase() === razaoNormalizada
+        );
+        gruposDuplicados.push({
+          razaoSocial: pedidoOriginal?.cliente_razao_social || razaoNormalizada,
+          clientes: grupo.clientes
+        });
+      }
+    });
+    
     let printContent = `
       <html>
         <head>
@@ -99,6 +131,53 @@ export const PrintingActions = ({
             .troca-item { margin-bottom: 3px; padding: 2px 4px; background-color: #fef3c7; border-left: 2px solid #d97706; }
             .troca-produto { font-weight: bold; }
             .troca-motivo { color: #92400e; font-style: italic; font-size: 8px; }
+            .aviso-duplicados {
+              background-color: #fef3c7;
+              border: 2px solid #d97706;
+              border-radius: 8px;
+              padding: 12px 16px;
+              margin-bottom: 20px;
+            }
+            .aviso-duplicados-titulo {
+              font-weight: bold;
+              color: #92400e;
+              font-size: 13px;
+              margin-bottom: 8px;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            }
+            .aviso-duplicados-instrucao {
+              font-size: 11px;
+              color: #78350f;
+              margin-bottom: 10px;
+              font-style: italic;
+            }
+            .grupo-duplicado {
+              background-color: #fff;
+              border: 1px solid #d97706;
+              border-radius: 4px;
+              padding: 8px 10px;
+              margin-bottom: 6px;
+            }
+            .grupo-razao {
+              font-weight: bold;
+              font-size: 11px;
+              color: #92400e;
+              margin-bottom: 4px;
+            }
+            .grupo-clientes {
+              font-size: 10px;
+              color: #1f2937;
+            }
+            .grupo-clientes span {
+              display: inline-block;
+              background-color: #fef3c7;
+              padding: 2px 6px;
+              border-radius: 3px;
+              margin-right: 6px;
+              margin-bottom: 3px;
+            }
           </style>
         </head>
         <body>
@@ -107,6 +186,26 @@ export const PrintingActions = ({
             <p>Data de impressão: ${new Date().toLocaleDateString()} às ${new Date().toLocaleTimeString()}</p>
             <p>Total de pedidos: ${listaAtual.length}</p>
           </div>
+          
+          ${gruposDuplicados.length > 0 ? `
+            <div class="aviso-duplicados">
+              <div class="aviso-duplicados-titulo">
+                ⚠️ ATENÇÃO: Clientes com mesma Razão Social
+              </div>
+              <div class="aviso-duplicados-instrucao">
+                Os clientes abaixo possuem a mesma razão social. Confira o CNPJ nas NFs e boletos antes de grampeá-los nos pacotes.
+              </div>
+              ${gruposDuplicados.map(grupo => `
+                <div class="grupo-duplicado">
+                  <div class="grupo-razao">${grupo.razaoSocial}</div>
+                  <div class="grupo-clientes">
+                    ${grupo.clientes.map(c => `<span>${c}</span>`).join('')}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+          
           <table>
             <thead>
               <tr>
