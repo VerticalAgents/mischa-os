@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,6 +12,7 @@ import { useClienteStore } from "@/hooks/useClienteStore";
 import { toast } from "@/hooks/use-toast";
 import ClienteFormDialog from "./ClienteFormDialog";
 import { calcularGiroSemanalPadrao } from "@/utils/giroCalculations";
+import { useRazaoSocialGC } from "@/hooks/useRazaoSocialGC";
 
 interface ColumnOption {
   id: string;
@@ -43,8 +44,20 @@ export default function ClientesTable({
   showSelectionControls
 }: ClientesTableProps) {
   const { duplicarCliente } = useClienteStore();
+  const { buscarRazoesSociaisLote, getRazaoSocial, loading: loadingRazaoSocial } = useRazaoSocialGC();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [clienteParaEditar, setClienteParaEditar] = useState<Cliente | null>(null);
+
+  // Buscar razões sociais quando os clientes carregarem
+  useEffect(() => {
+    const gcIds = clientes
+      .map(c => c.gestaoClickClienteId)
+      .filter((id): id is string => !!id);
+    
+    if (gcIds.length > 0) {
+      buscarRazoesSociaisLote(gcIds);
+    }
+  }, [clientes, buscarRazoesSociaisLote]);
 
   const formatarData = (data: Date | undefined) => {
     if (!data) return "-";
@@ -134,6 +147,8 @@ export default function ClientesTable({
     switch (columnId) {
       case "idGestaoClick":
         return cliente.gestaoClickClienteId || "-";
+      case "razaoSocial":
+        return getRazaoSocial(cliente.gestaoClickClienteId);
       case "nome":
         return cliente.nome;
       case "giroSemanal":

@@ -181,6 +181,7 @@ export default function Clientes() {
   // Available columns for the table
   const columnOptions: ColumnOption[] = [
     { id: "idGestaoClick", label: "ID GC", canToggle: true },
+    { id: "razaoSocial", label: "Razão Social", canToggle: true },
     { id: "nome", label: "Nome", canToggle: false },
     { id: "giroSemanal", label: "Giro Semanal", canToggle: false },
     { id: "cnpjCpf", label: "CNPJ/CPF", canToggle: true },
@@ -194,9 +195,9 @@ export default function Clientes() {
     { id: "acoes", label: "Ações", canToggle: false }
   ];
 
-  // Column visibility state with persistence - removed statusAgendamento and proximaDataReposicao
+  // Column visibility state with persistence
   const defaultColumns = [
-    "idGestaoClick", "nome", "giroSemanal", "cnpjCpf", "enderecoEntrega", "contato", "quantidadePadrao", 
+    "idGestaoClick", "razaoSocial", "nome", "giroSemanal", "cnpjCpf", "enderecoEntrega", "contato", "quantidadePadrao", 
     "periodicidade", "status", "acoes"
   ];
   
