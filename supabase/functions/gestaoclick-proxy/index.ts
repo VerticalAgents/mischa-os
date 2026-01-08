@@ -2023,6 +2023,77 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'buscar_razoes_sociais_lote': {
+        // Buscar razões sociais de múltiplos clientes em lote
+        const { gestaoclick_cliente_ids, access_token, secret_token } = params;
+        
+        if (!access_token || !secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!gestaoclick_cliente_ids || !Array.isArray(gestaoclick_cliente_ids) || gestaoclick_cliente_ids.length === 0) {
+          return new Response(
+            JSON.stringify({ error: 'IDs de clientes não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('[gestaoclick-proxy] Buscando razões sociais em lote:', gestaoclick_cliente_ids.length, 'clientes');
+
+        const resultados: Record<string, string> = {};
+        
+        // Buscar em paralelo (máximo 10 por vez para não sobrecarregar)
+        const batchSize = 10;
+        for (let i = 0; i < gestaoclick_cliente_ids.length; i += batchSize) {
+          const batch = gestaoclick_cliente_ids.slice(i, i + batchSize);
+          
+          const promises = batch.map(async (gcId: string) => {
+            try {
+              const response = await fetch(
+                `${GESTAOCLICK_BASE_URL}/clientes/${gcId}`,
+                {
+                  method: 'GET',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'access-token': access_token,
+                    'secret-access-token': secret_token,
+                  },
+                }
+              );
+              
+              if (!response.ok) {
+                console.warn(`[gestaoclick-proxy] Erro ao buscar cliente ${gcId}:`, response.status);
+                return { id: gcId, razao_social: '-' };
+              }
+              
+              const data = await response.json();
+              const cliente = data.data?.Cliente || data.Cliente || data.data || data;
+              
+              // Priorizar razao_social, depois nome/fantasia
+              const razaoSocial = cliente.razao_social || cliente.nome || cliente.fantasia || '-';
+              
+              return { id: gcId, razao_social: razaoSocial };
+            } catch (err) {
+              console.error(`[gestaoclick-proxy] Erro ao buscar cliente ${gcId}:`, err);
+              return { id: gcId, razao_social: '-' };
+            }
+          });
+          
+          const results = await Promise.all(promises);
+          results.forEach(r => { resultados[r.id] = r.razao_social; });
+        }
+
+        console.log('[gestaoclick-proxy] Razões sociais encontradas:', Object.keys(resultados).length);
+
+        return new Response(
+          JSON.stringify({ success: true, razoes_sociais: resultados }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: `Ação desconhecida: ${action}` }),

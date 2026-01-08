@@ -193,9 +193,17 @@ export const PrintingActions = ({
         trocasHtml += '</div></td>';
       }
       
+      // Montar HTML do cliente com razão social
+      const razaoSocialDiferente = pedido.cliente_razao_social && 
+        pedido.cliente_razao_social !== '-' && 
+        pedido.cliente_razao_social.toLowerCase() !== pedido.cliente_nome.toLowerCase();
+      
       printContent += `
         <tr>
-          <td><strong>${pedido.cliente_nome}</strong></td>
+          <td>
+            <strong>${pedido.cliente_nome}</strong>
+            ${razaoSocialDiferente ? `<br/><span style="font-size: 9px; color: #555;">${pedido.cliente_razao_social}</span>` : ''}
+          </td>
           <td>${formatDate(new Date(pedido.data_prevista_entrega))}</td>
           <td>${pedido.tipo_pedido}</td>
           <td>${produtosHtml}</td>
@@ -349,9 +357,15 @@ export const PrintingActions = ({
         obsBadgeHtml = `<div class="obs-badge">📝 ${obsTexto}${obsTexto.length >= 50 ? '...' : ''}</div>`;
       }
       
+      // Verificar se razão social é diferente do nome
+      const razaoSocialDiferente = pedido.cliente_razao_social && 
+        pedido.cliente_razao_social !== '-' && 
+        pedido.cliente_razao_social.toLowerCase() !== pedido.cliente_nome.toLowerCase();
+      
       printContent += `
         <div class="etiqueta">
           <div class="cliente">${pedido.cliente_nome}</div>
+          ${razaoSocialDiferente ? `<div style="font-size: 10px; color: #555; margin-bottom: 3px;">${pedido.cliente_razao_social}</div>` : ''}
           <div class="data">Entrega: ${formatDate(new Date(pedido.data_prevista_entrega))}</div>
           <div class="produtos">${produtosHtml}</div>
           <div class="total-etiqueta">Total: ${pedido.quantidade_total} unidades</div>
