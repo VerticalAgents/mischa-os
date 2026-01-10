@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Lead, LeadStatus, ORIGENS } from "@/types/lead";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { useSupabaseCategoriasEstabelecimento } from "@/hooks/useSupabaseCategoriasEstabelecimento";
+import { toast } from "sonner";
 
 interface LeadFormDialogProps {
   open: boolean;
@@ -43,6 +44,7 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<{ nome?: boolean; origem?: boolean; motivoPerda?: boolean }>({});
 
   useEffect(() => {
     if (open && lead) {
@@ -66,6 +68,7 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
         dataResposta: lead.dataResposta || '',
         motivoPerda: lead.motivoPerda || ''
       });
+      setErrors({});
     } else if (open && !lead) {
       setFormData({
         nome: '',
@@ -87,17 +90,28 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
         dataResposta: '',
         motivoPerda: ''
       });
+      setErrors({});
     }
   }, [open, lead]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome || !formData.origem) {
-      return;
+    const newErrors: { nome?: boolean; origem?: boolean; motivoPerda?: boolean } = {};
+    
+    if (!formData.nome.trim()) {
+      newErrors.nome = true;
     }
-
-    if (formData.status.startsWith('perdido_') && !formData.motivoPerda) {
+    if (!formData.origem) {
+      newErrors.origem = true;
+    }
+    if (formData.status.startsWith('perdido_') && !formData.motivoPerda.trim()) {
+      newErrors.motivoPerda = true;
+    }
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toast.error("Preencha os campos obrigatórios: Nome e Origem");
       return;
     }
 
@@ -105,6 +119,9 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
     try {
       await onSave(formData);
       onOpenChange(false);
+    } catch (error) {
+      console.error("Erro ao salvar lead:", error);
+      toast.error("Erro ao salvar lead. Tente novamente.");
     } finally {
       setIsSaving(false);
     }
@@ -134,9 +151,14 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
                   <Input
                     id="nome"
                     value={formData.nome}
-                    onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, nome: e.target.value });
+                      if (errors.nome) setErrors({ ...errors, nome: false });
+                    }}
+                    className={errors.nome ? "border-red-500" : ""}
                     required
                   />
+                  {errors.nome && <span className="text-sm text-red-500">Campo obrigatório</span>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cnpjCpf">CNPJ/CPF</Label>
@@ -217,8 +239,14 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
                   <Label htmlFor="origem">
                     Origem <span className="text-red-500">*</span>
                   </Label>
-                  <Select value={formData.origem} onValueChange={(value) => setFormData({ ...formData, origem: value })}>
-                    <SelectTrigger>
+                  <Select 
+                    value={formData.origem} 
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, origem: value });
+                      if (errors.origem) setErrors({ ...errors, origem: false });
+                    }}
+                  >
+                    <SelectTrigger className={errors.origem ? "border-red-500" : ""}>
                       <SelectValue placeholder="Selecione a origem" />
                     </SelectTrigger>
                     <SelectContent>
@@ -227,6 +255,7 @@ export default function LeadFormDialog({ open, onOpenChange, lead, onSave }: Lea
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.origem && <span className="text-sm text-red-500">Campo obrigatório</span>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
