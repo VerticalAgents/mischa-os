@@ -47,6 +47,7 @@ interface ExpedicaoStore {
   confirmarSeparacao: (pedidoId: string) => Promise<void>;
   desfazerSeparacao: (pedidoId: string) => Promise<void>;
   retornarParaSeparacao: (pedidoId: string) => Promise<void>;
+  desfazerDespacho: (pedidoId: string) => Promise<void>;
   confirmarDespacho: (pedidoId: string) => Promise<void>;
   confirmarEntrega: (pedidoId: string, observacao?: string) => Promise<void>;
   confirmarRetorno: (pedidoId: string, observacao?: string) => Promise<void>;
@@ -512,6 +513,42 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         } catch (error) {
           console.error('Erro ao retornar para separação:', error);
           toast.error("Erro ao retornar pedido para separação");
+        }
+      },
+
+      desfazerDespacho: async (pedidoId: string) => {
+        try {
+          const pedido = get().pedidos.find(p => p.id === pedidoId);
+          
+          // Atualiza o estado local primeiro (Despachado -> Separado)
+          set(state => ({
+            pedidos: state.pedidos.map(p => 
+              p.id === pedidoId ? { ...p, substatus_pedido: 'Separado' as SubstatusPedidoAgendado } : p
+            ),
+            _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
+          }));
+
+          // Atualiza no banco de dados
+          const { error } = await supabase
+            .from('agendamentos_clientes')
+            .update({ substatus_pedido: 'Separado' })
+            .eq('id', pedidoId);
+
+          if (error) {
+            // Reverte se houver erro
+            set(state => ({
+              pedidos: state.pedidos.map(p => 
+                p.id === pedidoId ? { ...p, substatus_pedido: 'Despachado' as SubstatusPedidoAgendado } : p
+              ),
+              _cachePedidos: { ...state._cachePedidos, lastUpdate: 0 }
+            }));
+            throw error;
+          }
+
+          toast.success(`Despacho desfeito para ${pedido?.cliente_nome}`);
+        } catch (error) {
+          console.error('Erro ao desfazer despacho:', error);
+          toast.error("Erro ao desfazer despacho");
         }
       },
 

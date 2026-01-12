@@ -32,6 +32,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     confirmarEntrega,
     confirmarRetorno,
     retornarParaSeparacao,
+    desfazerDespacho,
     confirmarDespachoEmMassa,
     confirmarEntregaEmMassa,
     confirmarRetornoEmMassa,
@@ -185,6 +186,10 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     await retornarParaSeparacao(pedidoId);
   };
 
+  const handleDesfazerDespacho = async (pedidoId: string) => {
+    await desfazerDespacho(pedidoId);
+  };
+
   const handleConfirmarEntregaIndividual = async (pedidoId: string, observacao?: string) => {
     // Remover o pedido da lista imediatamente (atualização otimista)
     removerPedidoDaLista(pedidoId);
@@ -330,6 +335,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 onConfirmarEntrega={(observacao) => handleConfirmarEntregaIndividual(String(pedido.id), observacao)}
                 onConfirmarRetorno={(observacao) => confirmarRetorno(String(pedido.id), observacao)}
                 onRetornarParaSeparacao={() => handleRetornarParaSeparacao(String(pedido.id))}
+                onDesfazerDespacho={() => handleDesfazerDespacho(String(pedido.id))}
                 onGerarVendaGC={() => handleGerarVendaGC(String(pedido.id), String(pedido.cliente_id))}
                 onAtualizarVendaGC={
                   pedido.gestaoclick_venda_id
