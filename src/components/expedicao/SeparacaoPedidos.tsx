@@ -119,10 +119,21 @@ const SeparacaoPedidos = () => {
     setPedidoEditandoOriginal(null);
   };
 
-  const pedidosParaSeparacao = pedidos.filter(pedido => 
-    !pedido.substatus_pedido || 
-    pedido.substatus_pedido === 'Agendado'
-  );
+  // Filtrar pedidos com substatus Agendado E data de hoje ou atrasados
+  const hoje = new Date();
+  const hojeFormatado = format(hoje, 'yyyy-MM-dd');
+  
+  const pedidosParaSeparacao = pedidos.filter(pedido => {
+    const ehAgendado = !pedido.substatus_pedido || pedido.substatus_pedido === 'Agendado';
+    if (!ehAgendado) return false;
+    
+    const dataEntrega = pedido.data_prevista_entrega;
+    const dataEntregaFormatada = format(dataEntrega, 'yyyy-MM-dd');
+    const ehHoje = dataEntregaFormatada === hojeFormatado;
+    const ehAtrasado = dataEntrega < hoje && dataEntregaFormatada !== hojeFormatado;
+    
+    return ehHoje || ehAtrasado;
+  });
 
   const pedidosFiltrados = pedidosParaSeparacao.filter(pedido => {
     const matchTexto = !filtroTexto || 
