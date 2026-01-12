@@ -360,19 +360,114 @@ const PedidoCard = ({
           )}
 
           {showRetornarParaSeparacaoButton && (
-            <Button 
-              onClick={onRetornarParaSeparacao} 
-              size="sm" 
-              variant="outline"
-              className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Retornar p/ Separação
-            </Button>
+            <>
+              {/* GestaoClick badge/button for Antecipada view */}
+              {onGerarVendaGC && !temVendaGC && (
+                <Button 
+                  onClick={handleGerarVendaGC} 
+                  size="sm" 
+                  variant="outline"
+                  disabled={isGerandoVendaGC}
+                  className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+                >
+                  {isGerandoVendaGC ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-1" />
+                  )}
+                  Gerar Venda GC
+                </Button>
+              )}
+              
+              {temVendaGC && (
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "flex items-center gap-1",
+                    vendaDesatualizada 
+                      ? "bg-amber-50 text-amber-700 border-amber-300" 
+                      : "bg-green-50 text-green-700 border-green-300"
+                  )}
+                >
+                  {vendaDesatualizada ? (
+                    <AlertTriangle className="h-3 w-3" />
+                  ) : (
+                    <CheckCircle2 className="h-3 w-3" />
+                  )}
+                  GC #{pedido.gestaoclick_venda_id}
+                </Badge>
+              )}
+
+              <Button 
+                onClick={onRetornarParaSeparacao} 
+                size="sm" 
+                variant="outline"
+                className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Retornar p/ Separação
+              </Button>
+            </>
           )}
 
           {showDespachoActions && (
             <>
+              {/* GestaoClick badge/button for Despacho view */}
+              {onGerarVendaGC && !temVendaGC && (
+                <Button 
+                  onClick={handleGerarVendaGC} 
+                  size="sm" 
+                  variant="outline"
+                  disabled={isGerandoVendaGC}
+                  className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+                >
+                  {isGerandoVendaGC ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-1" />
+                  )}
+                  Gerar Venda GC
+                </Button>
+              )}
+              
+              {temVendaGC && (
+                <>
+                  <Badge 
+                    variant="outline" 
+                    className={cn(
+                      "flex items-center gap-1",
+                      vendaDesatualizada 
+                        ? "bg-amber-50 text-amber-700 border-amber-300" 
+                        : "bg-green-50 text-green-700 border-green-300"
+                    )}
+                  >
+                    {vendaDesatualizada ? (
+                      <AlertTriangle className="h-3 w-3" />
+                    ) : (
+                      <CheckCircle2 className="h-3 w-3" />
+                    )}
+                    GC #{pedido.gestaoclick_venda_id}
+                  </Badge>
+                  
+                  {vendaDesatualizada && onAtualizarVendaGC && (
+                    <Button 
+                      onClick={handleAtualizarVendaGC} 
+                      size="sm" 
+                      variant="outline"
+                      disabled={isAtualizandoVenda}
+                      className="bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-300"
+                    >
+                      {isAtualizandoVenda ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-1" />
+                      )}
+                      Atualizar GC
+                    </Button>
+                  )}
+                </>
+              )}
+
               {pedido.substatus_pedido === 'Separado' && (
                 <Button 
                   onClick={onConfirmarDespacho} 
