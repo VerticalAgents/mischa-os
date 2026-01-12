@@ -140,24 +140,24 @@ export default function FichaPreview(){
   const { meta, base, toppings, observacoes } = data;
 
   return (
-    <div className="p-6 print:p-0">
+    <div className="min-h-screen flex justify-center p-6 print:p-0 print:min-h-0">
       <style>{`
         @page { size: A4 portrait; margin: 12mm; }
         @media print {
           html, body { width: 210mm; height: 297mm; }
           .no-print { display: none !important; }
-          .page { box-shadow: none !important; border: none !important; margin: 0 !important; }
-          .print-area { max-width: 186mm; }
+          .page { box-shadow: none !important; border: none !important; margin: 0 auto !important; }
+          .print-area { max-width: 186mm; margin: 0 auto; }
           .no-break { break-inside: avoid; }
           .header-cards * { line-height: 1.1; }
-          .fit-a4 { transform: scale(0.95); transform-origin: top left; }
+          .fit-a4 { transform: scale(0.95); transform-origin: top center; }
           .hover\\:scale-\\[1\\.02\\] { transform: none !important; }
           .shadow-sm { box-shadow: none !important; }
           .bg-gradient-to-br { background: #f8fafc !important; }
         }
       `}</style>
 
-      <div className="page mx-auto max-w-[186mm] print:max-w-[186mm] bg-white">
+      <div className="page w-full max-w-[186mm] print:max-w-[186mm] bg-white">
         <div className="flex items-center justify-between mb-4 no-print">
           <h1 className="text-xl font-semibold">Ficha técnica — {meta.receita_nome} (×{meta.multiplicador})</h1>
           <div className="flex gap-2">
