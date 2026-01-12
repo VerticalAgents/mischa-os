@@ -325,6 +325,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 showDespachoActions={tipoFiltro !== "antecipada"}
                 showReagendarButton={tipoFiltro === "atrasadas" && pedido.substatus_pedido === 'Agendado'}
                 showRetornarParaSeparacaoButton={tipoFiltro === "antecipada"}
+                showProdutosList={true}
                 onConfirmarDespacho={() => confirmarDespacho(String(pedido.id))}
                 onConfirmarEntrega={(observacao) => handleConfirmarEntregaIndividual(String(pedido.id), observacao)}
                 onConfirmarRetorno={(observacao) => confirmarRetorno(String(pedido.id), observacao)}
