@@ -46,6 +46,7 @@ interface PedidoCardProps {
   onConfirmarEntrega?: (observacao?: string) => void;
   onConfirmarRetorno?: (observacao?: string) => void;
   onRetornarParaSeparacao?: () => void;
+  onDesfazerDespacho?: () => void;
 }
 
 const PedidoCard = ({
@@ -62,7 +63,8 @@ const PedidoCard = ({
   onConfirmarDespacho,
   onConfirmarEntrega,
   onConfirmarRetorno,
-  onRetornarParaSeparacao
+  onRetornarParaSeparacao,
+  onDesfazerDespacho
 }: PedidoCardProps) => {
   const navigate = useNavigate();
   const [observacaoEntrega, setObservacaoEntrega] = useState("");
@@ -469,14 +471,26 @@ const PedidoCard = ({
               )}
 
               {pedido.substatus_pedido === 'Separado' && (
-                <Button 
-                  onClick={onConfirmarDespacho} 
-                  size="sm" 
-                  variant="outline"
-                >
-                  <Truck className="h-4 w-4 mr-1" />
-                  Confirmar Despacho
-                </Button>
+                <>
+                  <Button 
+                    onClick={onConfirmarDespacho} 
+                    size="sm" 
+                    variant="outline"
+                  >
+                    <Truck className="h-4 w-4 mr-1" />
+                    Confirmar Despacho
+                  </Button>
+                  
+                  <Button 
+                    onClick={onRetornarParaSeparacao} 
+                    size="sm" 
+                    variant="outline"
+                    className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    Retornar p/ Separação
+                  </Button>
+                </>
               )}
 
               {pedido.substatus_pedido === 'Despachado' && (
@@ -627,12 +641,13 @@ const PedidoCard = ({
                   </Dialog>
 
                   <Button 
-                    onClick={onRetornarParaSeparacao} 
+                    onClick={onDesfazerDespacho} 
                     size="sm" 
                     variant="outline"
+                    className="bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200"
                   >
                     <ArrowLeft className="h-4 w-4 mr-1" />
-                    Retornar p/ Separação
+                    Desfazer Despacho
                   </Button>
                 </>
               )}
