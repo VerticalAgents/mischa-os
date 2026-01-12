@@ -329,13 +329,9 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 onConfirmarEntrega={(observacao) => handleConfirmarEntregaIndividual(String(pedido.id), observacao)}
                 onConfirmarRetorno={(observacao) => confirmarRetorno(String(pedido.id), observacao)}
                 onRetornarParaSeparacao={() => handleRetornarParaSeparacao(String(pedido.id))}
-                onGerarVendaGC={
-                  tipoFiltro !== "antecipada"
-                    ? () => handleGerarVendaGC(String(pedido.id), String(pedido.cliente_id))
-                    : undefined
-                }
+                onGerarVendaGC={() => handleGerarVendaGC(String(pedido.id), String(pedido.cliente_id))}
                 onAtualizarVendaGC={
-                  tipoFiltro !== "antecipada" && pedido.gestaoclick_venda_id
+                  pedido.gestaoclick_venda_id
                     ? () => handleAtualizarVendaGC(String(pedido.id), String(pedido.cliente_id), pedido.gestaoclick_venda_id!)
                     : undefined
                 }
