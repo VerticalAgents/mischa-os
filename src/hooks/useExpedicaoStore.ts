@@ -394,7 +394,19 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
             };
           });
 
-          set({ pedidos: pedidosFormatados, ultimaAtualizacao: new Date() });
+          // Invalidar cache e atualizar pedidos
+          set({ 
+            pedidos: pedidosFormatados, 
+            ultimaAtualizacao: new Date(),
+            _cachePedidos: {
+              separacao: [],
+              despacho: [],
+              proximoDia: [],
+              atrasados: [],
+              separadosAntecipados: [],
+              lastUpdate: 0
+            }
+          });
           console.log('✅ Dados recarregados silenciosamente');
         } catch (error) {
           console.error('❌ Erro ao recarregar dados:', error);
