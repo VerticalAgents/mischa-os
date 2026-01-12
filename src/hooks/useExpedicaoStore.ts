@@ -1056,14 +1056,15 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         
         const hoje = startOfDay(new Date());
         
+        // CORREÇÃO: Mostrar apenas pedidos Separado/Despachado atrasados
+        // Pedidos "Agendado" (não separados) ficam SOMENTE na aba Separação
         const resultado = state.pedidos.filter(p => {
           const dataEntrega = parseDataSegura(p.data_prevista_entrega);
           const dataEntregaComparacao = startOfDay(dataEntrega);
           
           return p.status_agendamento === 'Agendado' &&
                  isBefore(dataEntregaComparacao, hoje) &&
-                 p.substatus_pedido !== 'Entregue' && 
-                 p.substatus_pedido !== 'Retorno';
+                 (p.substatus_pedido === 'Separado' || p.substatus_pedido === 'Despachado');
         });
         
         set(prevState => ({

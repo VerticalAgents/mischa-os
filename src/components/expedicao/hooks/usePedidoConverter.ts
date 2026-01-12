@@ -32,8 +32,10 @@ export const usePedidoConverter = () => {
     console.log('📦 Itens do pedido convertidos:', itens);
 
     // Retornar objeto que corresponde à interface PedidoCardData
+    // IMPORTANTE: Preservar campos do GestaoClick para exibição consistente
     return {
       id: pedidoExpedicao.id,
+      cliente_id: pedidoExpedicao.cliente_id,
       cliente_nome: pedidoExpedicao.cliente_nome,
       cliente_endereco: pedidoExpedicao.cliente_endereco,
       cliente_telefone: pedidoExpedicao.cliente_telefone,
@@ -41,7 +43,12 @@ export const usePedidoConverter = () => {
       quantidade_total: pedidoExpedicao.quantidade_total,
       tipo_pedido: pedidoExpedicao.tipo_pedido,
       substatus_pedido: pedidoExpedicao.substatus_pedido || 'Agendado',
-      itens: itens
+      itens: itens,
+      itens_personalizados: pedidoExpedicao.itens_personalizados,
+      gestaoclick_venda_id: pedidoExpedicao.gestaoclick_venda_id,
+      gestaoclick_sincronizado_em: pedidoExpedicao.gestaoclick_sincronizado_em,
+      observacoes_agendamento: pedidoExpedicao.observacoes_agendamento,
+      trocas_pendentes: pedidoExpedicao.trocas_pendentes
     };
   };
 
