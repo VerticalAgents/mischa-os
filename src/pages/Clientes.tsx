@@ -53,8 +53,8 @@ export default function Clientes() {
     return name.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   };
 
-  // Sincronizar IDs do GestaoClick
-  const handleSyncGestaoClickIds = async () => {
+  // Sincronizar com GestaoClick (atualizar IDs existentes e criar novos clientes)
+  const handleSyncGestaoClick = async () => {
     if (!config?.access_token || !config?.secret_token) {
       toast.error('Configure as credenciais do GestaoClick em Configurações → Integrações');
       return;
@@ -64,11 +64,6 @@ export default function Clientes() {
     try {
       const clientesGC = await fetchClientesGestaoClick(config.access_token, config.secret_token);
       
-      if (clientesGC.length === 0) {
-        toast.warning('Nenhum cliente encontrado no GestaoClick');
-        return;
-      }
-
       // Criar mapa de clientes GC por nome normalizado
       const gcMap = new Map<string, string>();
       clientesGC.forEach(c => {
@@ -81,43 +76,115 @@ export default function Clientes() {
         gcMap.set(normalizeName("Quadrado Express"), mercadoQuadradoId);
       }
 
-      // Atualizar clientes do Lovable
-      let atualizados = 0;
-      const semCorrespondencia: string[] = [];
+      // Clientes internos que não precisam de sincronização
+      const clientesInternos = ['AMOSTRAS', 'Paulo Eduardo'];
 
+      // Contadores de resultados
+      let sincronizados = 0;
+      let criados = 0;
+      let erros = 0;
+      const clientesSemCorrespondencia: { id: string; nome: string; cliente: typeof todosClientes[0] }[] = [];
+
+      // Fase 1: Identificar clientes existentes e sem correspondência
       for (const cliente of todosClientes) {
+        if (clientesInternos.includes(cliente.nome)) continue;
+        
         const nomeNormalizado = normalizeName(cliente.nome);
         const gcId = gcMap.get(nomeNormalizado);
         
-        if (gcId && cliente.gestaoClickClienteId !== gcId) {
-          const { error } = await supabase
-            .from('clientes')
-            .update({ gestaoclick_cliente_id: gcId })
-            .eq('id', cliente.id);
-          
-          if (!error) {
-            atualizados++;
+        if (gcId) {
+          // Cliente existe no GC - atualizar ID se necessário
+          if (cliente.gestaoClickClienteId !== gcId) {
+            const { error } = await supabase
+              .from('clientes')
+              .update({ gestaoclick_cliente_id: gcId })
+              .eq('id', cliente.id);
+            
+            if (!error) {
+              sincronizados++;
+            }
           }
-        } else if (!gcId && cliente.nome !== 'AMOSTRAS' && cliente.nome !== 'Paulo Eduardo') {
-          semCorrespondencia.push(cliente.nome);
+        } else {
+          // Cliente não existe no GC - adicionar à lista para criação
+          clientesSemCorrespondencia.push({ id: cliente.id, nome: cliente.nome, cliente });
+        }
+      }
+
+      // Fase 2: Criar clientes que não existem no GestaoClick
+      if (clientesSemCorrespondencia.length > 0) {
+        console.log(`[SyncGC] Criando ${clientesSemCorrespondencia.length} clientes no GestaoClick...`);
+        
+        for (const { id, nome, cliente } of clientesSemCorrespondencia) {
+          try {
+            console.log(`[SyncGC] Criando cliente: ${nome}`);
+            
+            const { data: gcResult, error: gcError } = await supabase.functions.invoke('gestaoclick-proxy', {
+              body: {
+                action: 'criar_cliente_gc',
+                nome: cliente.nome,
+                tipo_pessoa: cliente.tipoPessoa || 'PJ',
+                cnpj_cpf: cliente.cnpjCpf,
+                inscricao_estadual: cliente.tipoPessoa === 'PJ' ? cliente.inscricaoEstadual : undefined,
+                endereco: cliente.enderecoEntrega,
+                contato_nome: cliente.contatoNome,
+                contato_telefone: cliente.contatoTelefone,
+                contato_email: cliente.contatoEmail,
+                observacoes: cliente.observacoes
+              }
+            });
+
+            if (gcError) {
+              console.error(`[SyncGC] Erro ao criar ${nome}:`, gcError);
+              erros++;
+              continue;
+            }
+
+            if (gcResult?.success && gcResult?.gestaoclick_cliente_id) {
+              // Salvar ID retornado no Lovable
+              const gcClienteId = gcResult.gestaoclick_cliente_id;
+              console.log(`[SyncGC] Cliente ${nome} criado com ID: ${gcClienteId}`);
+
+              const { error: updateError } = await supabase
+                .from('clientes')
+                .update({ gestaoclick_cliente_id: gcClienteId })
+                .eq('id', id);
+
+              if (!updateError) {
+                criados++;
+              } else {
+                console.error(`[SyncGC] Erro ao salvar ID GC para ${nome}:`, updateError);
+                erros++;
+              }
+            } else {
+              console.error(`[SyncGC] Resposta inesperada ao criar ${nome}:`, gcResult);
+              erros++;
+            }
+          } catch (createError) {
+            console.error(`[SyncGC] Exceção ao criar ${nome}:`, createError);
+            erros++;
+          }
         }
       }
 
       await carregarClientes();
       
-      if (atualizados > 0) {
-        toast.success(`${atualizados} cliente(s) atualizado(s) com ID GC`);
-      } else {
-        toast.info('Nenhum cliente precisou de atualização');
+      // Exibir resumo
+      const mensagens: string[] = [];
+      if (sincronizados > 0) mensagens.push(`${sincronizados} sincronizado(s)`);
+      if (criados > 0) mensagens.push(`${criados} criado(s) no GC`);
+      
+      if (mensagens.length > 0) {
+        toast.success(mensagens.join(', '));
+      } else if (erros === 0) {
+        toast.info('Todos os clientes já estão sincronizados');
       }
       
-      if (semCorrespondencia.length > 0) {
-        console.log('Clientes sem correspondência no GC:', semCorrespondencia);
-        toast.warning(`${semCorrespondencia.length} cliente(s) sem correspondência no GestaoClick`);
+      if (erros > 0) {
+        toast.warning(`${erros} cliente(s) não puderam ser criados no GestaoClick`);
       }
     } catch (error) {
-      console.error('Erro ao sincronizar IDs GC:', error);
-      toast.error('Erro ao sincronizar IDs do GestaoClick');
+      console.error('Erro ao sincronizar com GestaoClick:', error);
+      toast.error('Erro ao sincronizar com GestaoClick');
     } finally {
       setIsSyncingGC(false);
     }
@@ -316,12 +383,12 @@ export default function Clientes() {
         <Button
           variant="outline"
           size="sm"
-          onClick={handleSyncGestaoClickIds}
+          onClick={handleSyncGestaoClick}
           disabled={isSyncingGC || !config?.access_token}
-          title={!config?.access_token ? "Configure o GestaoClick em Configurações → Integrações" : "Sincronizar IDs do GestaoClick por nome"}
+          title={!config?.access_token ? "Configure o GestaoClick em Configurações → Integrações" : "Sincronizar clientes com GestaoClick (criar e vincular)"}
         >
           <Link2 className={`h-4 w-4 mr-1 ${isSyncingGC ? 'animate-pulse' : ''}`} />
-          {isSyncingGC ? 'Sincronizando...' : 'Sincronizar IDs GC'}
+          {isSyncingGC ? 'Sincronizando...' : 'Sincronizar com Gestão Click'}
         </Button>
         <Button variant="outline" size="sm" onClick={() => setRelatorioOpen(true)}>
           <FileSpreadsheet className="h-4 w-4 mr-1" />
