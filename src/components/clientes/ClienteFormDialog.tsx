@@ -650,6 +650,7 @@ export default function ClienteFormDialog({
                           <SelectItem value="7">7 dias</SelectItem>
                           <SelectItem value="14">14 dias</SelectItem>
                           <SelectItem value="21">21 dias</SelectItem>
+                          <SelectItem value="28">28 dias</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
