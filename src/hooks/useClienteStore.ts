@@ -147,7 +147,9 @@ const transformDbRowToCliente = (row: any): Cliente => {
   return {
     id: row.id,
     nome: row.nome || '',
+    tipoPessoa: row.tipo_pessoa || 'PJ',
     cnpjCpf: row.cnpj_cpf || '',
+    inscricaoEstadual: row.inscricao_estadual || '',
     enderecoEntrega: row.endereco_entrega || '',
     linkGoogleMaps: row.link_google_maps || '',
     contatoNome: row.contato_nome || '',
@@ -231,7 +233,9 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
             body: {
               action: 'criar_cliente_gc',
               nome: cliente.nome,
+              tipo_pessoa: cliente.tipoPessoa || 'PJ',
               cnpj_cpf: cliente.cnpjCpf,
+              inscricao_estadual: cliente.tipoPessoa === 'PJ' ? cliente.inscricaoEstadual : undefined,
               endereco: cliente.enderecoEntrega,
               contato_nome: cliente.contatoNome,
               contato_telefone: cliente.contatoTelefone,
@@ -353,6 +357,41 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
 
       const clienteAtualizado = transformDbRowToCliente(data);
       console.log('✅ CLIENTE ATUALIZADO COM SUCESSO:', clienteAtualizado.id);
+
+      // Sincronizar com GestaoClick se cliente tiver ID vinculado
+      if (clienteAtualizado.gestaoClickClienteId) {
+        try {
+          console.log('🔄 Sincronizando atualização com GestaoClick...');
+          const { data: gcResult, error: gcError } = await supabase.functions.invoke('gestaoclick-proxy', {
+            body: {
+              action: 'atualizar_cliente_gc',
+              gestaoclick_cliente_id: clienteAtualizado.gestaoClickClienteId,
+              nome: cliente.nome,
+              tipo_pessoa: cliente.tipoPessoa || 'PJ',
+              cnpj_cpf: cliente.cnpjCpf,
+              inscricao_estadual: cliente.tipoPessoa === 'PJ' ? cliente.inscricaoEstadual : undefined,
+              endereco: cliente.enderecoEntrega,
+              contato_nome: cliente.contatoNome,
+              contato_telefone: cliente.contatoTelefone,
+              contato_email: cliente.contatoEmail,
+              observacoes: cliente.observacoes
+            }
+          });
+
+          if (gcError) {
+            console.warn('⚠️ Erro ao sincronizar com GestaoClick:', gcError);
+            toast.warning('Cliente atualizado, mas erro na sincronização com GestaoClick');
+          } else if (gcResult?.success) {
+            console.log('✅ Cliente sincronizado com GestaoClick');
+            toast.success('Cliente atualizado e sincronizado com GestaoClick');
+          } else if (gcResult?.error) {
+            console.warn('⚠️ GestaoClick retornou erro:', gcResult.error);
+            toast.warning(`Cliente atualizado localmente. GestaoClick: ${gcResult.error}`);
+          }
+        } catch (gcSyncError: any) {
+          console.warn('⚠️ Falha na sincronização com GestaoClick (não bloqueante):', gcSyncError);
+        }
+      }
 
       set((state) => ({
         clientes: state.clientes.map((c) => (c.id === id ? clienteAtualizado : c)),

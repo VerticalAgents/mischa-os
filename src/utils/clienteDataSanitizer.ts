@@ -95,6 +95,7 @@ const VALID_STATUS = ['ATIVO', 'INATIVO', 'EM_ANALISE', 'A_ATIVAR', 'STANDBY'];
 const VALID_LOGISTICA = ['PROPRIA', 'TERCEIRIZADA'];
 const VALID_COBRANCA = ['A_VISTA', 'PARCELADO', 'A_PRAZO', 'CONSIGNADO'];
 const VALID_PAGAMENTO = ['BOLETO', 'PIX', 'DINHEIRO', 'CARTAO_CREDITO', 'CARTAO_DEBITO'];
+const VALID_TIPO_PESSOA = ['PF', 'PJ'];
 
 // Mapear valores antigos para novos valores canônicos
 const STATUS_TO_CANONICAL = {
@@ -240,9 +241,9 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
   
   // 0. INTERCEPTAÇÃO AGRESSIVA - Verificar tokens problemáticos em TODOS os campos
   const allFields = [
-    'nome', 'cnpjCpf', 'enderecoEntrega', 'linkGoogleMaps', 'contatoNome',
+    'nome', 'cnpjCpf', 'inscricaoEstadual', 'enderecoEntrega', 'linkGoogleMaps', 'contatoNome',
     'contatoTelefone', 'contatoEmail', 'instrucoesEntrega', 'observacoes',
-    'statusCliente', 'tipoLogistica', 'tipoCobranca', 'formaPagamento'
+    'statusCliente', 'tipoLogistica', 'tipoCobranca', 'formaPagamento', 'tipoPessoa'
   ];
   
   allFields.forEach(field => {
@@ -262,8 +263,22 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
   if (sanitized.nome) {
     sanitized.nome = sanitized.nome.toString().trim();
   }
+  if (sanitized.tipoPessoa) {
+    const tipoPessoaUpper = sanitized.tipoPessoa.toString().trim().toUpperCase();
+    sanitized.tipoPessoa = (tipoPessoaUpper === 'PF' || tipoPessoaUpper === 'PJ') ? tipoPessoaUpper as any : 'PJ';
+  } else {
+    sanitized.tipoPessoa = 'PJ' as any; // Default para PJ
+  }
   if (sanitized.cnpjCpf) {
     sanitized.cnpjCpf = sanitized.cnpjCpf.toString().trim();
+  }
+  if (sanitized.inscricaoEstadual) {
+    // Inscrição estadual só faz sentido para PJ
+    if (sanitized.tipoPessoa === 'PJ') {
+      sanitized.inscricaoEstadual = sanitized.inscricaoEstadual.toString().trim();
+    } else {
+      sanitized.inscricaoEstadual = undefined; // Limpar IE para PF
+    }
   }
   if (sanitized.enderecoEntrega) {
     sanitized.enderecoEntrega = sanitized.enderecoEntrega.toString().trim();
@@ -449,9 +464,18 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     categoriasSeguras,
     janelasSeguras
   });
+
+  // Validar tipoPessoa
+  let tipoPessoaFinal = 'PJ';
+  if (sanitized.tipoPessoa && VALID_TIPO_PESSOA.includes(sanitized.tipoPessoa as string)) {
+    tipoPessoaFinal = sanitized.tipoPessoa as string;
+  }
+
   const dbData = {
     nome: sanitized.nome || '',
+    tipo_pessoa: tipoPessoaFinal,
     cnpj_cpf: sanitized.cnpjCpf || null,
+    inscricao_estadual: tipoPessoaFinal === 'PJ' ? (sanitized.inscricaoEstadual || null) : null,
     endereco_entrega: sanitized.enderecoEntrega || null,
     link_google_maps: sanitized.linkGoogleMaps || null,
     contato_nome: sanitized.contatoNome || null,

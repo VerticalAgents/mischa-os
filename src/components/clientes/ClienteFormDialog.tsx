@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AlertCircle, Save, Lock, Unlock } from "lucide-react";
 import {
   Dialog,
@@ -16,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Cliente, StatusCliente, DiaSemana } from "@/types";
+import { Cliente, StatusCliente, DiaSemana, TipoPessoa } from "@/types";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
@@ -51,7 +52,9 @@ interface ClienteFormDialogProps {
 
 const getDefaultFormData = (): Partial<Cliente> => ({
   nome: '',
+  tipoPessoa: 'PJ',
   cnpjCpf: '',
+  inscricaoEstadual: '',
   enderecoEntrega: '',
   linkGoogleMaps: '',
   contatoNome: '',
@@ -244,7 +247,9 @@ export default function ClienteFormDialog({
   const clienteTemp: Cliente = {
     id: cliente?.id || '',
     nome: formData.nome || '',
+    tipoPessoa: formData.tipoPessoa || 'PJ',
     cnpjCpf: formData.cnpjCpf || '',
+    inscricaoEstadual: formData.inscricaoEstadual || '',
     enderecoEntrega: formData.enderecoEntrega || '',
     linkGoogleMaps: formData.linkGoogleMaps || '',
     contatoNome: formData.contatoNome || '',
@@ -335,7 +340,7 @@ export default function ClienteFormDialog({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="nome">
-                    Nome <span className="text-red-500">*</span>
+                    Nome <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="nome"
@@ -345,13 +350,45 @@ export default function ClienteFormDialog({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cnpjCpf">CNPJ/CPF</Label>
+                  <Label>Tipo de Pessoa</Label>
+                  <RadioGroup
+                    value={formData.tipoPessoa || 'PJ'}
+                    onValueChange={(value: TipoPessoa) => handleInputChange('tipoPessoa', value)}
+                    className="flex items-center gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="PJ" id="tipoPessoa-pj" />
+                      <Label htmlFor="tipoPessoa-pj" className="font-normal cursor-pointer">Pessoa Jurídica</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="PF" id="tipoPessoa-pf" />
+                      <Label htmlFor="tipoPessoa-pf" className="font-normal cursor-pointer">Pessoa Física</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cnpjCpf">{formData.tipoPessoa === 'PF' ? 'CPF' : 'CNPJ'}</Label>
                   <Input
                     id="cnpjCpf"
                     value={formData.cnpjCpf || ''}
                     onChange={(e) => handleInputChange('cnpjCpf', e.target.value)}
+                    placeholder={formData.tipoPessoa === 'PF' ? '000.000.000-00' : '00.000.000/0000-00'}
                   />
                 </div>
+                {formData.tipoPessoa === 'PJ' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="inscricaoEstadual">Inscrição Estadual</Label>
+                    <Input
+                      id="inscricaoEstadual"
+                      value={formData.inscricaoEstadual || ''}
+                      onChange={(e) => handleInputChange('inscricaoEstadual', e.target.value)}
+                      placeholder="Ex: 123456789"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
