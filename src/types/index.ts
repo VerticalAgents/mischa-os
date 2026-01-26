@@ -1,5 +1,8 @@
 export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby';
 
+// Tipo de pessoa para clientes
+export type TipoPessoa = 'PF' | 'PJ';
+
 // Adding new types for client configuration
 export type DiaSemana = 'Dom' | 'Seg' | 'Ter' | 'Qua' | 'Qui' | 'Sex' | 'Sáb';
 
@@ -27,7 +30,9 @@ export type StatusAgendamentoCliente = 'Agendar' | 'Previsto' | 'Agendado' | 'Se
 export interface Cliente {
   id: string; // UUID from Supabase
   nome: string;
+  tipoPessoa?: TipoPessoa; // PF (Pessoa Física) ou PJ (Pessoa Jurídica)
   cnpjCpf?: string;
+  inscricaoEstadual?: string; // Apenas para PJ
   enderecoEntrega?: string;
   linkGoogleMaps?: string; // New field for Google Maps link
   contatoNome?: string;

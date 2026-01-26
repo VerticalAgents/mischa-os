@@ -369,6 +369,7 @@ export type Database = {
           gestaoclick_cliente_id: string | null
           giro_medio_semanal: number | null
           id: string
+          inscricao_estadual: string | null
           instrucoes_entrega: string | null
           janelas_entrega: Json | null
           link_google_maps: string | null
@@ -385,6 +386,7 @@ export type Database = {
           status_cliente: string | null
           tipo_cobranca: string | null
           tipo_logistica: string | null
+          tipo_pessoa: string | null
           ultima_data_reposicao_efetiva: string | null
           updated_at: string
         }
@@ -409,6 +411,7 @@ export type Database = {
           gestaoclick_cliente_id?: string | null
           giro_medio_semanal?: number | null
           id?: string
+          inscricao_estadual?: string | null
           instrucoes_entrega?: string | null
           janelas_entrega?: Json | null
           link_google_maps?: string | null
@@ -425,6 +428,7 @@ export type Database = {
           status_cliente?: string | null
           tipo_cobranca?: string | null
           tipo_logistica?: string | null
+          tipo_pessoa?: string | null
           ultima_data_reposicao_efetiva?: string | null
           updated_at?: string
         }
@@ -449,6 +453,7 @@ export type Database = {
           gestaoclick_cliente_id?: string | null
           giro_medio_semanal?: number | null
           id?: string
+          inscricao_estadual?: string | null
           instrucoes_entrega?: string | null
           janelas_entrega?: Json | null
           link_google_maps?: string | null
@@ -465,6 +470,7 @@ export type Database = {
           status_cliente?: string | null
           tipo_cobranca?: string | null
           tipo_logistica?: string | null
+          tipo_pessoa?: string | null
           ultima_data_reposicao_efetiva?: string | null
           updated_at?: string
         }

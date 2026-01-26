@@ -1857,7 +1857,9 @@ Deno.serve(async (req) => {
         // Create client in GestaoClick when creating in Lovable
         const { 
           nome, 
+          tipo_pessoa,
           cnpj_cpf, 
+          inscricao_estadual,
           endereco, 
           contato_nome, 
           contato_telefone, 
@@ -1867,7 +1869,7 @@ Deno.serve(async (req) => {
           estado
         } = params;
         
-        console.log('[gestaoclick-proxy] Criando cliente no GC:', { nome, cnpj_cpf });
+        console.log('[gestaoclick-proxy] Criando cliente no GC:', { nome, tipo_pessoa, cnpj_cpf, inscricao_estadual });
         
         if (!userId) {
           return new Response(
@@ -1893,9 +1895,9 @@ Deno.serve(async (req) => {
 
         const config = configData.config as GestaoClickConfig;
 
-        // Determine tipo_pessoa based on document
+        // Use tipo_pessoa from params, or determine from document length
         const docLimpo = (cnpj_cpf || '').replace(/\D/g, '');
-        const tipoPessoa = docLimpo.length > 11 ? 'PJ' : 'PF';
+        const tipoPessoa = tipo_pessoa || (docLimpo.length > 11 ? 'PJ' : 'PF');
         
         // Build request body for GestaoClick
         const clienteGcBody: any = {
@@ -1908,6 +1910,10 @@ Deno.serve(async (req) => {
         if (tipoPessoa === 'PJ') {
           clienteGcBody.cnpj = cnpj_cpf || '';
           clienteGcBody.razao_social = nome || '';
+          // Add inscricao_estadual (IE) for PJ
+          if (inscricao_estadual) {
+            clienteGcBody.ie = inscricao_estadual;
+          }
         } else {
           clienteGcBody.cpf = cnpj_cpf || '';
         }
@@ -2018,6 +2024,172 @@ Deno.serve(async (req) => {
             success: true, 
             gestaoclick_cliente_id: clienteGcId,
             message: `Cliente criado no GestaoClick com ID ${clienteGcId}`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'atualizar_cliente_gc': {
+        // Update client in GestaoClick when updating in Lovable
+        const { 
+          gestaoclick_cliente_id,
+          nome, 
+          tipo_pessoa,
+          cnpj_cpf, 
+          inscricao_estadual,
+          endereco, 
+          contato_nome, 
+          contato_telefone, 
+          contato_email, 
+          observacoes
+        } = params;
+        
+        console.log('[gestaoclick-proxy] Atualizando cliente no GC:', { gestaoclick_cliente_id, nome, tipo_pessoa, inscricao_estadual });
+        
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: 'Usuário não autenticado' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!gestaoclick_cliente_id) {
+          return new Response(
+            JSON.stringify({ error: 'ID do cliente GestaoClick não fornecido' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Fetch GestaoClick config
+        const { data: configData } = await supabase
+          .from('integracoes_config')
+          .select('config')
+          .eq('user_id', userId)
+          .eq('integracao', 'gestaoclick')
+          .maybeSingle();
+
+        if (!configData?.config) {
+          return new Response(
+            JSON.stringify({ error: 'GestaoClick não configurado' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const config = configData.config as GestaoClickConfig;
+
+        // Use tipo_pessoa from params, or determine from document length
+        const docLimpo = (cnpj_cpf || '').replace(/\D/g, '');
+        const tipoPessoa = tipo_pessoa || (docLimpo.length > 11 ? 'PJ' : 'PF');
+        
+        // Build request body for GestaoClick
+        const clienteGcBody: any = {
+          tipo_pessoa: tipoPessoa,
+          nome: nome || '',
+        };
+
+        // Add document based on type
+        if (tipoPessoa === 'PJ') {
+          clienteGcBody.cnpj = cnpj_cpf || '';
+          clienteGcBody.razao_social = nome || '';
+          // Add inscricao_estadual (IE) for PJ
+          if (inscricao_estadual) {
+            clienteGcBody.ie = inscricao_estadual;
+          }
+        } else {
+          clienteGcBody.cpf = cnpj_cpf || '';
+        }
+
+        // Add contact info
+        if (contato_telefone) {
+          clienteGcBody.celular = contato_telefone;
+        }
+        if (contato_email) {
+          clienteGcBody.email = contato_email;
+        }
+
+        // Add loja_id if configured
+        if (config.loja_id) {
+          clienteGcBody.loja_id = config.loja_id;
+        }
+
+        // Add contact as array if contato_nome provided
+        if (contato_nome) {
+          clienteGcBody.contatos = [{
+            contato: {
+              nome: contato_nome,
+              contato: contato_email || contato_telefone || '',
+              cargo: '',
+              observacao: observacoes || ''
+            }
+          }];
+        }
+
+        // Add address if provided
+        if (endereco) {
+          clienteGcBody.enderecos = [{
+            endereco: {
+              logradouro: endereco,
+              numero: '',
+              complemento: '',
+              bairro: '',
+              nome_cidade: '',
+              estado: ''
+            }
+          }];
+        }
+
+        console.log('[gestaoclick-proxy] Payload para atualizar cliente:', JSON.stringify(clienteGcBody));
+
+        // Call GestaoClick API to update client (PUT)
+        const updateResponse = await fetch(`${GESTAOCLICK_BASE_URL}/clientes/${gestaoclick_cliente_id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': config.access_token,
+            'secret-access-token': config.secret_token,
+          },
+          body: JSON.stringify(clienteGcBody),
+        });
+
+        const updateText = await updateResponse.text();
+        console.log('[gestaoclick-proxy] Resposta atualizar cliente GC:', updateText);
+
+        // Parse response
+        let updateData;
+        try {
+          updateData = JSON.parse(updateText);
+        } catch {
+          console.error('[gestaoclick-proxy] Erro ao parsear resposta:', updateText);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'Resposta inválida do GestaoClick',
+              raw_response: updateText.substring(0, 500)
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check for errors
+        if (hasGCError(updateText, updateResponse.status)) {
+          console.error('[gestaoclick-proxy] Erro ao atualizar cliente no GC:', updateData);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: updateData.mensagem || updateData.message || 'Erro ao atualizar cliente no GestaoClick',
+              details: updateData
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('[gestaoclick-proxy] Cliente atualizado no GC:', gestaoclick_cliente_id);
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            gestaoclick_cliente_id: gestaoclick_cliente_id,
+            message: `Cliente atualizado no GestaoClick`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

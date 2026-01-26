@@ -5,18 +5,22 @@ export const StatusCliente = z.enum(['ATIVO', 'INATIVO', 'EM_ANALISE', 'A_ATIVAR
 export const TipoLogistica = z.enum(['PROPRIA', 'TERCEIRIZADA']);
 export const TipoCobranca = z.enum(['A_VISTA', 'PARCELADO', 'A_PRAZO']);
 export const FormaPagamento = z.enum(['BOLETO', 'PIX', 'DINHEIRO', 'CARTAO_CREDITO', 'CARTAO_DEBITO']);
+export const TipoPessoa = z.enum(['PF', 'PJ']);
 
 // Tipos derivados dos enums
 export type StatusClienteType = z.infer<typeof StatusCliente>;
 export type TipoLogisticaType = z.infer<typeof TipoLogistica>;
 export type TipoCobrancaType = z.infer<typeof TipoCobranca>;
 export type FormaPagamentoType = z.infer<typeof FormaPagamento>;
+export type TipoPessoaType = z.infer<typeof TipoPessoa>;
 
 // Schema completo do DTO do cliente
 export const ClienteDTO = z.object({
   id: z.string().optional(),
   nome: z.string().min(1, 'Nome é obrigatório'),
+  tipoPessoa: TipoPessoa.default('PJ'),
   cnpjCpf: z.string().optional(),
+  inscricaoEstadual: z.string().optional(),
   enderecoEntrega: z.string().optional(),
   linkGoogleMaps: z.string().optional(),
   contatoNome: z.string().optional(),
@@ -112,6 +116,11 @@ export const FORMA_PAGAMENTO_LABELS: Record<FormaPagamentoType, string> = {
   'DINHEIRO': 'Dinheiro',
   'CARTAO_CREDITO': 'Cartão de crédito',
   'CARTAO_DEBITO': 'Cartão de débito',
+};
+
+export const TIPO_PESSOA_LABELS: Record<TipoPessoaType, string> = {
+  'PF': 'Pessoa Física',
+  'PJ': 'Pessoa Jurídica',
 };
 
 // Função para normalizar tokens corrompidos (feature flag)
