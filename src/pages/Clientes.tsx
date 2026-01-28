@@ -13,7 +13,7 @@ import ClienteDetailsView from "@/components/clientes/ClienteDetailsView";
 import ClientesBulkActions from "@/components/clientes/ClientesBulkActions";
 import DeleteClienteDialog from "@/components/clientes/DeleteClienteDialog";
 import { RelatorioClientesRevisaoModal } from "@/components/clientes/RelatorioClientesRevisaoModal";
-import { FileSpreadsheet, Link2 } from "lucide-react";
+import { FileSpreadsheet, Link2, FileDown } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Clientes() {
@@ -51,6 +51,48 @@ export default function Clientes() {
   // Normalizar nome para comparação
   const normalizeName = (name: string) => {
     return name.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  };
+
+  // Download do formulário de cadastro de clientes
+  const handleDownloadFormularioCadastro = () => {
+    const headers = [
+      'Nome Fantasia',
+      'Razão Social', 
+      'Tipo Pessoa (PF/PJ)',
+      'CNPJ ou CPF',
+      'Inscrição Estadual',
+      'Endereço Completo',
+      'Nome do Contato',
+      'Telefone',
+      'Email',
+      'Observações'
+    ];
+
+    const exemploLinha = [
+      'NOME DO CLIENTE',
+      'RAZÃO SOCIAL COMPLETA LTDA',
+      'PJ',
+      '00.000.000/0001-00',
+      '000/0000000',
+      'Rua Exemplo, 123 - Bairro - Cidade/RS - CEP 00000-000',
+      'Nome do Responsável',
+      '(51) 99999-9999',
+      'email@exemplo.com',
+      ''
+    ];
+
+    const BOM = '\uFEFF';
+    const csvContent = BOM + headers.join(';') + '\n' + exemploLinha.join(';');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = 'formulario_cadastro_clientes.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success('Formulário de cadastro baixado!');
   };
 
   // Sincronizar com GestaoClick (atualizar IDs existentes e criar novos clientes)
@@ -389,6 +431,15 @@ export default function Clientes() {
         >
           <Link2 className={`h-4 w-4 mr-1 ${isSyncingGC ? 'animate-pulse' : ''}`} />
           {isSyncingGC ? 'Sincronizando...' : 'Sincronizar com Gestão Click'}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownloadFormularioCadastro}
+          title="Baixar formulário CSV para cadastro de novos clientes"
+        >
+          <FileDown className="h-4 w-4 mr-1" />
+          Formulário Cadastro
         </Button>
         <Button variant="outline" size="sm" onClick={() => setRelatorioOpen(true)}>
           <FileSpreadsheet className="h-4 w-4 mr-1" />
