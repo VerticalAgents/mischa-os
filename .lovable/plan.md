@@ -1,163 +1,225 @@
 
-# Plano: Melhorias nos Filtros e Acoes em Massa da Expedicao
 
-## 1. Novo Filtro "Ver Todos" na Aba Entregas Pendentes
+# Plano: Melhorar Seção Superior da Página de Separação
 
-### Alteracao no WeekNavigator.tsx
-Adicionar botao "Ver Todos" ao lado do botao "Semana Atual" para permitir visualizar todos os agendamentos pendentes de confirmacao sem filtro de semana.
-
-**Nova prop:**
-- `modoVisualizacao: 'semana' | 'todos'`
-- `onMudarModoVisualizacao: (modo: 'semana' | 'todos') => void`
-
-**Novo visual:**
-```
-+------------------------------------------------------------+
-| < | 20/01 - 26/01/2026 | > | [Semana Atual] | [Ver Todos] |
-+------------------------------------------------------------+
-```
-
-### Alteracao no useExpedicaoUiStore.ts
-Adicionar novo estado:
-- `modoVisualizacaoAtrasados: 'semana' | 'todos'`
-- `setModoVisualizacaoAtrasados: (modo: 'semana' | 'todos') => void`
-
-### Alteracao no Despacho.tsx
-Quando `modoVisualizacaoAtrasados === 'todos'`:
-- Desabilitar navegacao por semana (setas)
-- Mostrar todos os pedidos atrasados sem filtro de data
+## Objetivo
+Reorganizar a parte superior da página de Separação para:
+1. Reduzir o card de produtos necessários (metade esquerda) com layout igual ao PCP
+2. Mover botões de ação para a metade direita
+3. Adicionar seletor de semana ao filtro de data
 
 ---
 
-## 2. Botoes de Acoes em Massa na Aba Separacao de Pedidos
+## 1. Redesign do Card de Produtos Necessários
 
-### Novos Componentes a Criar
+### Componente: `ResumoQuantidadeProdutos.tsx`
 
-**SeparacaoEmMassaDialog.tsx**
-Modal similar ao DespachoEmMassaDialog para separacao em massa:
-- Lista de pedidos com status 'Agendado' com checkbox
-- Checkbox "Selecionar todos"
-- Contador de selecionados
-- Botao "Confirmar Separacao"
+Substituir o layout atual (grid horizontal largo) pelo design do PCP:
 
-**GerarVendasEmMassaDialog.tsx**
-Modal para gerar vendas no GestaoClick em massa:
-- Lista de pedidos com checkbox (filtrar os que NAO tem gestaoclick_venda_id)
-- Checkbox "Selecionar todos"
-- Contador de selecionados
-- Botao "Gerar Vendas"
+**Layout Atual:**
+```
++------------------------------------------------------------------+
+| Produtos necessários para separação          Total: X unidades   |
+| [Grid horizontal com 5 cards de produtos lado a lado]            |
++------------------------------------------------------------------+
+```
 
-### Alteracao no SeparacaoPedidos.tsx
-Adicionar toolbar com botoes:
-- **"Separar em Massa"** - Abre SeparacaoEmMassaDialog
-- **"Gerar Vendas"** - Abre GerarVendasEmMassaDialog (nome atualizado)
+**Novo Layout (igual ao PCP):**
+```
++--------------------------------+
+| Quantidade Total Necessária    |
+| 1378                           |
+| [38 pedidos]                   |
++--------------------------------+
+| Detalhes por Produto      [^]  |
++--------------------------------+
+| 📦 Brownie Avelã         [358] |
+| 📦 Brownie Stikadinho    [352] |
+| 📦 Brownie Choco Duo     [267] |
+| 📦 Brownie Oreo Cream    [180] |
++--------------------------------+
+```
 
-### Alteracao no PedidoCard.tsx
-Renomear botao "Gerar Venda GC" para **"Gerar Venda"** (linha ~318)
+**Estrutura:**
+- Card compacto com largura de 50% (lado esquerdo)
+- Bloco de destaque com total e badge de pedidos
+- Collapsible para detalhes por produto (igual ProjecaoProducaoTab)
+- Lista vertical de produtos com nome e quantidade em Badge
 
 ---
 
-## 3. Melhorar Layout dos Filtros
+## 2. Card de Ações à Direita
 
-### Alteracao no DespachoFilters.tsx
-Redesign para layout mais funcional:
-- Organizar em grupos logicos
-- Melhor responsividade
-- Indicadores visuais de filtros ativos
+### Novo Componente: `SeparacaoActionsCard.tsx`
 
-**Novo layout:**
+Card que agrupa todos os botões de ação no lado direito:
+
 ```
-+--------------------------------------------------------------+
-| Busca                   | Status      | Representante | Total |
-| [________________🔍]    | [Dropdown]  | [Dropdown]    | X ped |
-+--------------------------------------------------------------+
++--------------------------------+
+| Ações                          |
++--------------------------------+
+| [📋 Separar em Massa]          |
+| [📤 Gerar Vendas]              |
+| [🖨️ Listas de Expedição]       |
+| [🏷️ Etiquetas]                 |
+| [🔄 Atualizar]                 |
++--------------------------------+
 ```
 
-### Criar SeparacaoFilters.tsx
-Novo componente de filtros para aba Separacao com mesmo padrao:
-- Campo de busca por texto
-- Filtro por tipo de pedido (Padrao/Alterado)
-- Filtro por data
-- Filtro por representante
+**Props:**
+- onSepararEmMassa
+- onGerarVendas
+- pedidosFiltrados (para PrintingActions)
+- onAtualizar
+- isLoading
+
+---
+
+## 3. Seletor de Período (Dia ou Semana)
+
+### Alterações no `useExpedicaoUiStore.ts`
+
+Adicionar estados para controlar modo de visualização na separação:
+
+```typescript
+// Novos estados
+modoDataSeparacao: 'dia' | 'semana';
+semanaSeparacao: string; // ISO date
+
+// Novas ações
+setModoDataSeparacao: (modo: 'dia' | 'semana') => void;
+setSemanaSeparacao: (data: Date) => void;
+```
+
+### Alterações no `SeparacaoFilters.tsx`
+
+Substituir o input de data simples por um seletor combinado:
+
+**Novo Layout do Filtro de Data:**
+```
++------------------------------------------------+
+| [Dia ▼] [Semana ▼]                             |
+| [<] 26/01 - 01/02/2026 [>] | [Semana Atual]   |
++------------------------------------------------+
+```
+
+**Comportamento:**
+- Modo "Dia": Input de data como está hoje
+- Modo "Semana": WeekNavigator com navegação por setas
+
+### Integração com WeekNavigator
+
+Reutilizar o componente `WeekNavigator` existente dentro do SeparacaoFilters quando o modo for "semana".
+
+---
+
+## 4. Alterações no `SeparacaoPedidos.tsx`
+
+### Layout Principal
+
+Reorganizar para:
+
+```
++-------------------------------------------------------+
+|  [Card Produtos Necessários]  |  [Card Ações]         |
+|  (50% largura)                |  (50% largura)        |
++-------------------------------------------------------+
+| Título: Separação de Pedidos  | Badge: X pedidos      |
++-------------------------------------------------------+
+| [Filtros com seletor de semana]                       |
++-------------------------------------------------------+
+| Lista de Pedidos...                                   |
++-------------------------------------------------------+
+```
+
+### Lógica de Filtragem por Semana
+
+```typescript
+// Quando modoDataSeparacao === 'semana'
+const matchData = modoDataSeparacao === 'dia'
+  ? (!filtroData || format(pedido.data_prevista_entrega, "yyyy-MM-dd") === filtroData)
+  : (dataPedido >= inicioSemana && dataPedido <= fimSemana);
+```
 
 ---
 
 ## Arquivos a Modificar
 
-| Arquivo | Acao |
+| Arquivo | Ação |
 |---------|------|
-| `src/components/expedicao/components/WeekNavigator.tsx` | Adicionar botao "Ver Todos" |
-| `src/hooks/useExpedicaoUiStore.ts` | Adicionar estado modoVisualizacaoAtrasados |
-| `src/components/expedicao/Despacho.tsx` | Integrar modo "Ver Todos" |
-| `src/components/expedicao/components/SeparacaoEmMassaDialog.tsx` | Criar |
-| `src/components/expedicao/components/GerarVendasEmMassaDialog.tsx` | Criar |
-| `src/components/expedicao/SeparacaoPedidos.tsx` | Adicionar toolbar e modais |
-| `src/components/expedicao/PedidoCard.tsx` | Renomear botao para "Gerar Venda" |
-| `src/components/expedicao/components/DespachoFilters.tsx` | Melhorar layout |
-| `src/components/expedicao/components/SeparacaoFilters.tsx` | Criar |
+| `src/components/expedicao/components/ResumoQuantidadeProdutos.tsx` | Redesign completo com layout estilo PCP |
+| `src/components/expedicao/components/SeparacaoActionsCard.tsx` | Criar novo componente |
+| `src/components/expedicao/components/SeparacaoFilters.tsx` | Adicionar seletor dia/semana com WeekNavigator |
+| `src/hooks/useExpedicaoUiStore.ts` | Adicionar estados para modo semana na separação |
+| `src/components/expedicao/SeparacaoPedidos.tsx` | Reorganizar layout e integrar novos componentes |
 
 ---
 
-## Detalhes Tecnicos
+## Detalhes de Implementação
 
-### SeparacaoEmMassaDialog Props
+### ResumoQuantidadeProdutos (novo design)
+
 ```typescript
-interface SeparacaoEmMassaDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  pedidosDisponiveis: PedidoExpedicao[]; // Pedidos com status 'Agendado'
-  onConfirm: (pedidoIds: string[]) => Promise<void>;
+interface ResumoQuantidadeProdutosProps {
+  pedidos: any[];
+  className?: string; // Para controlar largura externamente
+}
+
+// Estrutura interna:
+// - Collapsible para detalhes
+// - Badge com total de pedidos
+// - Lista vertical com ícones Package
+// - Indicadores de estoque mantidos
+```
+
+### SeparacaoActionsCard
+
+```typescript
+interface SeparacaoActionsCardProps {
+  onSepararEmMassa: () => void;
+  onGerarVendas: () => void;
+  onAtualizar: () => void;
+  isLoading: boolean;
+  pedidosFiltrados: any[]; // Para passar ao PrintingActions
 }
 ```
 
-### GerarVendasEmMassaDialog Props
-```typescript
-interface GerarVendasEmMassaDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  pedidosDisponiveis: PedidoExpedicao[]; // Pedidos sem gestaoclick_venda_id
-  onConfirm: (pedidoIds: string[]) => Promise<void>;
-  loading: boolean;
-}
-```
+### SeparacaoFilters (com seletor de período)
 
-### Handler para Gerar Vendas em Massa (SeparacaoPedidos.tsx)
+Novas props:
 ```typescript
-const handleGerarVendasEmMassa = async (pedidoIds: string[]) => {
-  for (const pedidoId of pedidoIds) {
-    const pedido = pedidosFiltrados.find(p => p.id === pedidoId);
-    if (pedido && !pedido.gestaoclick_venda_id) {
-      await gerarVendaGC(pedidoId, pedido.cliente_id);
-    }
-  }
-  await carregarPedidos();
-};
+interface SeparacaoFiltersProps {
+  // ... props existentes
+  modoData: 'dia' | 'semana';
+  semanaSelecionada: Date;
+  onModoDataChange: (modo: 'dia' | 'semana') => void;
+  onSemanaSelecionadaChange: (data: Date) => void;
+}
 ```
 
 ---
 
-## Fluxo de Usuario
+## Fluxo de Usuário
 
-### Separacao em Massa
-1. Usuario acessa Expedicao > Separacao de Pedidos
-2. Clica em "Separar em Massa"
-3. Modal abre com pedidos 'Agendado'
-4. Seleciona pedidos desejados
-5. Clica "Confirmar Separacao"
-6. Pedidos selecionados sao marcados como 'Separado'
+### Visualizar por Dia (padrão atual)
+1. Modo "Dia" selecionado
+2. Input de data aparece normalmente
+3. Filtro mostra pedidos do dia selecionado
 
-### Gerar Vendas em Massa
-1. Usuario acessa Expedicao > Separacao de Pedidos
-2. Clica em "Gerar Vendas"
-3. Modal abre com pedidos que NAO tem venda GC
-4. Seleciona pedidos desejados
-5. Clica "Gerar Vendas"
-6. Sistema processa vendas sequencialmente no GestaoClick
+### Visualizar por Semana
+1. Usuário clica em "Semana"
+2. Input de data é substituído pelo WeekNavigator
+3. Navegação por setas para mudar semana
+4. Filtro mostra pedidos de toda a semana selecionada
+5. Botão "Semana Atual" volta para semana corrente
 
-### Ver Todos os Pendentes
-1. Usuario acessa Expedicao > Despacho > Entregas Pendentes
-2. Visualiza por semana (padrao)
-3. Clica em "Ver Todos"
-4. Navegacao por semana e desabilitada
-5. Exibe todos os pedidos pendentes
-6. Clica em "Semana Atual" para voltar ao modo filtrado
+---
+
+## Considerações de Design
+
+- Card de produtos usa cores primary/10 para destaque (igual PCP)
+- Collapsible fechado por padrão para economizar espaço
+- Botões de ação agrupados verticalmente com espaçamento consistente
+- Grid responsivo: em mobile os cards ficam empilhados
+- Transição suave entre modos dia/semana no filtro
+
