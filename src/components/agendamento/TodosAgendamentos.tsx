@@ -194,10 +194,10 @@ export default function TodosAgendamentos() {
     setAgendamentosSelecionados(new Set());
   };
 
-  const handleReagendarEmMassa = async (novaData: Date) => {
+  const handleReagendarEmMassa = async (clienteIds: string[], novaData: Date) => {
     try {
       const agendamentosParaReagendar = sortedAgendamentos.filter(a => 
-        agendamentosSelecionados.has(a.cliente.id)
+        clienteIds.includes(a.cliente.id)
       );
 
       await Promise.all(
@@ -258,11 +258,11 @@ export default function TodosAgendamentos() {
         </div>
         <Button
           onClick={() => setModalReagendarAberto(true)}
-          disabled={agendamentosSelecionados.size === 0}
+          disabled={sortedAgendamentos.length === 0}
           className="whitespace-nowrap"
         >
           <Calendar className="mr-2 h-4 w-4" />
-          Reagendar Selecionados ({agendamentosSelecionados.size})
+          Reagendar em Massa
         </Button>
       </div>
 
@@ -364,9 +364,7 @@ export default function TodosAgendamentos() {
       <ReagendamentoEmMassaDialog
         open={modalReagendarAberto}
         onOpenChange={setModalReagendarAberto}
-        agendamentosSelecionados={sortedAgendamentos.filter(a => 
-          agendamentosSelecionados.has(a.cliente.id)
-        )}
+        agendamentosDisponiveis={sortedAgendamentos}
         onConfirm={handleReagendarEmMassa}
       />
     </div>
