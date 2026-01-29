@@ -82,7 +82,8 @@ export const SeparacaoFilters = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Linha 1: Busca, Tipo, Representante */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Busca por texto */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -106,62 +107,57 @@ export const SeparacaoFilters = ({
           </SelectContent>
         </Select>
 
-        {/* Seletor de Período: Dia ou Semana */}
-        <div className="lg:col-span-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Toggle Dia/Semana */}
-            <div className="flex rounded-md border overflow-hidden">
-              <Button
-                variant={modoData === 'dia' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => onModoDataChange('dia')}
-                className="rounded-none border-0 px-3"
-              >
-                <Calendar className="h-4 w-4 mr-1" />
-                Dia
-              </Button>
-              <Button
-                variant={modoData === 'semana' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => onModoDataChange('semana')}
-                className="rounded-none border-0 px-3"
-              >
-                <CalendarDays className="h-4 w-4 mr-1" />
-                Semana
-              </Button>
-            </div>
-
-            {/* Conteúdo do filtro de data */}
-            {modoData === 'dia' ? (
-              <div className="relative flex-1 min-w-[150px]">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 pointer-events-none" />
-                <Input
-                  type="date"
-                  value={filtroData}
-                  onChange={(e) => onFiltroDataChange(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            ) : (
-              <WeekNavigator
-                semanaAtual={semanaSelecionada}
-                onSemanaAnterior={handleSemanaAnterior}
-                onProximaSemana={handleProximaSemana}
-                onVoltarHoje={handleVoltarHoje}
-                ehSemanaAtual={ehSemanaAtual}
-              />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Filtro de Representante - linha separada para melhor visualização */}
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-muted-foreground">Representante:</span>
+        {/* Filtro de Representante */}
         <RepresentantesFilter
           selectedIds={filtroRepresentantes}
           onSelectionChange={onFiltroRepresentantesChange}
         />
+      </div>
+
+      {/* Linha 2: Seletor de Período */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* Toggle Dia/Semana */}
+        <div className="flex rounded-md border overflow-hidden">
+          <Button
+            variant={modoData === 'dia' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => onModoDataChange('dia')}
+            className="rounded-none border-0 px-3"
+          >
+            <Calendar className="h-4 w-4 mr-1" />
+            Dia
+          </Button>
+          <Button
+            variant={modoData === 'semana' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => onModoDataChange('semana')}
+            className="rounded-none border-0 px-3"
+          >
+            <CalendarDays className="h-4 w-4 mr-1" />
+            Semana
+          </Button>
+        </div>
+
+        {/* Conteúdo do filtro de data */}
+        {modoData === 'dia' ? (
+          <div className="relative flex-1 min-w-[150px] max-w-[200px]">
+            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 pointer-events-none" />
+            <Input
+              type="date"
+              value={filtroData}
+              onChange={(e) => onFiltroDataChange(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        ) : (
+          <WeekNavigator
+            semanaAtual={semanaSelecionada}
+            onSemanaAnterior={handleSemanaAnterior}
+            onProximaSemana={handleProximaSemana}
+            onVoltarHoje={handleVoltarHoje}
+            ehSemanaAtual={ehSemanaAtual}
+          />
+        )}
       </div>
     </div>
   );

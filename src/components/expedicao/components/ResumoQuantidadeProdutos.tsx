@@ -193,10 +193,10 @@ export const ResumoQuantidadeProdutos = ({
       <CardContent>
         <div className="space-y-4">
           {/* Total Geral */}
-          <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
+          <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-muted-foreground mb-1">Quantidade Total Necessária</p>
-            <p className="text-3xl font-bold text-primary">{totalGeral}</p>
-            <Badge variant="default" className="mt-2">
+            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{totalGeral}</p>
+            <Badge className="mt-2 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-200">
               {pedidos.length} {pedidos.length === 1 ? 'pedido' : 'pedidos'}
             </Badge>
           </div>
