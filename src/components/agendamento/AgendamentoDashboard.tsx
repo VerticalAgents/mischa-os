@@ -924,7 +924,7 @@ export default function AgendamentoDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-7 gap-2">
-            {dadosGraficoSemanal.map((dia, index) => <div key={index} className={`p-4 border rounded-lg text-center cursor-pointer transition-colors hover:bg-muted/50 ${dia.isToday ? 'border-primary bg-primary/10' : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado) ? 'border-primary bg-primary/20' : 'border-border'}`} onClick={() => handleDiaClick(dia.dataCompleta)}>
+            {dadosGraficoSemanal.map((dia, index) => <div key={index} className={`p-4 border rounded-lg text-center cursor-pointer transition-colors hover:bg-muted/50 ${dia.isToday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado) ? 'border-primary bg-primary/20' : 'border-border'}`} onClick={() => handleDiaClick(dia.dataCompleta)}>
                 <div className="font-medium text-sm mb-2">{dia.diaSemana}</div>
                 <div className="text-lg font-bold mb-1">{dia.dia}</div>
                 
