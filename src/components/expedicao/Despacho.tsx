@@ -12,6 +12,8 @@ import { DebugInfo } from "./components/DebugInfo";
 import { DespachoFilters } from "./components/DespachoFilters";
 import { ResumoStatusCard } from "./components/ResumoStatusCard";
 import { WeekNavigator } from "./components/WeekNavigator";
+import { DespachoEmMassaDialog } from "./components/DespachoEmMassaDialog";
+import { EntregaEmMassaDialog } from "./components/EntregaEmMassaDialog";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
 import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
@@ -59,6 +61,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
   const [filtroTexto, setFiltroTexto] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("todos");
+  const [despachoEmMassaOpen, setDespachoEmMassaOpen] = useState(false);
+  const [entregaEmMassaOpen, setEntregaEmMassaOpen] = useState(false);
   
   const {
     filtroRepresentantes,
@@ -175,24 +179,36 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   const pedidosDespachados = pedidosFiltrados.filter(p => p.substatus_pedido === 'Despachado');
   const todosDespachados = pedidosFiltrados.length > 0 && pedidosDespachados.length === pedidosFiltrados.length;
 
-  const handleDespachoEmMassa = async () => {
-    if (pedidosFiltrados.length === 0) {
-      toast.error("Não há pedidos para despachar.");
+  // Handlers para abrir modais de ação em massa
+  const handleAbrirDespachoEmMassa = () => {
+    const pedidosSeparados = pedidosFiltrados.filter(p => p.substatus_pedido === 'Separado');
+    if (pedidosSeparados.length === 0) {
+      toast.error("Não há pedidos separados para despachar.");
       return;
     }
-    
-    await confirmarDespachoEmMassa(pedidosFiltrados);
+    setDespachoEmMassaOpen(true);
   };
 
-  const handleEntregaEmMassa = async () => {
-    if (!todosDespachados) {
-      toast.error("Todos os pedidos devem estar despachados para confirmar entrega em massa.");
+  const handleAbrirEntregaEmMassa = () => {
+    if (pedidosDespachados.length === 0) {
+      toast.error("Não há pedidos despachados para confirmar entrega.");
       return;
     }
-    
+    setEntregaEmMassaOpen(true);
+  };
+
+  // Handler para confirmar despacho em massa
+  const handleConfirmarDespachoEmMassa = async (pedidoIds: string[]) => {
+    const pedidosSelecionados = pedidosFiltrados.filter(p => pedidoIds.includes(String(p.id)));
+    await confirmarDespachoEmMassa(pedidosSelecionados);
+    recarregarSilencioso();
+  };
+
+  // Handler para confirmar entrega em massa com data
+  const handleConfirmarEntregaEmMassa = async (pedidoIds: string[], dataEntrega: Date) => {
     try {
-      // Transformar pedidos despachados no formato correto para o hook
-      const pedidosParaEntrega = pedidosDespachados.map(pedido => ({
+      const pedidosSelecionados = pedidosFiltrados.filter(p => pedidoIds.includes(String(p.id)));
+      const pedidosParaEntrega = pedidosSelecionados.map(pedido => ({
         id: String(pedido.id),
         cliente_id: String(pedido.cliente_id),
         cliente_nome: pedido.cliente_nome,
@@ -201,13 +217,11 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
         itens_personalizados: pedido.itens_personalizados
       }));
 
-      const sucesso = await confirmarEntregaEmMassaHook(pedidosParaEntrega);
+      const sucesso = await confirmarEntregaEmMassaHook(pedidosParaEntrega, dataEntrega);
       if (sucesso) {
-        // Remover todos os pedidos entregues da lista imediatamente
-        pedidosDespachados.forEach(pedido => {
+        pedidosSelecionados.forEach(pedido => {
           removerPedidoDaLista(String(pedido.id));
         });
-        // Recarregar dados em background para sincronizar
         recarregarSilencioso();
       }
     } catch (error) {
@@ -215,14 +229,6 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     }
   };
 
-  const handleRetornoEmMassa = async () => {
-    if (!todosDespachados) {
-      toast.error("Todos os pedidos devem estar despachados para confirmar retorno em massa.");
-      return;
-    }
-    
-    await confirmarRetornoEmMassa(pedidosFiltrados);
-  };
 
   const handleRetornarParaSeparacao = async (pedidoId: string) => {
     await retornarParaSeparacao(pedidoId);
@@ -327,40 +333,22 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
                 <Download className="h-4 w-4" /> Download CSV
               </Button>
               <Button 
-                onClick={handleDespachoEmMassa} 
+                onClick={handleAbrirDespachoEmMassa} 
                 size="sm" 
                 variant="outline"
                 className="flex items-center gap-1"
               >
-                <Truck className="h-4 w-4" /> Despachar Todos
+                <Truck className="h-4 w-4" /> Despachar em Massa
               </Button>
               <Button 
-                onClick={handleEntregaEmMassa} 
+                onClick={handleAbrirEntregaEmMassa} 
                 size="sm" 
                 className="bg-green-600 hover:bg-green-700"
-                disabled={!todosDespachados || loadingConfirmacao}
-                title={!todosDespachados ? "Todos os pedidos devem estar despachados" : ""}
+                disabled={pedidosDespachados.length === 0}
+                title={pedidosDespachados.length === 0 ? "Não há pedidos despachados" : ""}
               >
-                {loadingConfirmacao ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    Confirmando...
-                  </>
-                ) : (
-                  <>
-                    <Package className="h-4 w-4 mr-1" /> 
-                    Entregar Todos
-                  </>
-                )}
-              </Button>
-              <Button 
-                onClick={handleRetornoEmMassa} 
-                size="sm" 
-                variant="destructive"
-                disabled={!todosDespachados}
-                title={!todosDespachados ? "Todos os pedidos devem estar despachados" : ""}
-              >
-                Retorno em Massa
+                <Package className="h-4 w-4 mr-1" /> 
+                Entregar em Massa
               </Button>
             </div>
           )}
@@ -436,6 +424,22 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
         onExport={exportDialog.handleExport}
         totalSelecionadas={exportDialog.totalSelecionadas}
         totalFiltradas={exportDialog.totalFiltradas}
+      />
+
+      {/* Modal de Despacho em Massa */}
+      <DespachoEmMassaDialog
+        open={despachoEmMassaOpen}
+        onOpenChange={setDespachoEmMassaOpen}
+        pedidosDisponiveis={pedidosFiltrados}
+        onConfirm={handleConfirmarDespachoEmMassa}
+      />
+
+      {/* Modal de Entrega em Massa */}
+      <EntregaEmMassaDialog
+        open={entregaEmMassaOpen}
+        onOpenChange={setEntregaEmMassaOpen}
+        pedidosDisponiveis={pedidosFiltrados}
+        onConfirm={handleConfirmarEntregaEmMassa}
       />
 
     </div>
