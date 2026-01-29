@@ -1,128 +1,211 @@
 
-# Plano: Remover Abas e Corrigir Cálculo do Total da Semana
+# Plano: Adicionar Filtro por Status no Dialog "Reagendar em Massa"
 
 ## Objetivo
-1. Remover as abas "Representantes" e "Confirmação de Reposição" do menu Agendamentos
-2. Filtrar a aba "Sem Agendamento" para mostrar apenas clientes com status "Ativo"
-3. Corrigir o cálculo do card "Total da Semana" para somar apenas unidades de agendamentos **AGENDADOS** (não Previstos) + entregas realizadas
+Permitir que o usuário filtre a lista de agendamentos por status ("Agendado" e/ou "Previsto") dentro do modal de reagendamento em massa.
 
 ---
 
-## 1. Remover Abas em Agendamento.tsx
+## Implementação
 
-### Remover do TabsList:
-```tsx
-// REMOVER estas linhas:
-<TabsTrigger value="representantes">Representantes</TabsTrigger>
-<TabsTrigger value="confirmacao">Confirmação de Reposição</TabsTrigger>
-```
+### Localização
+**Arquivo:** `src/components/agendamento/ReagendamentoEmMassaDialog.tsx`
 
-### Remover do TabsContent:
-```tsx
-// REMOVER estas linhas:
-<TabsContent value="representantes" className="space-y-4">
-  <AgendamentoRepresentantes />
-</TabsContent>
+### Novo Estado para Filtros de Status
 
-<TabsContent value="confirmacao" className="space-y-4">
-  <NovaConfirmacaoReposicaoTab />
-</TabsContent>
-```
-
-### Remover imports não utilizados:
-```tsx
-// REMOVER:
-import AgendamentoRepresentantes from "@/components/agendamento/AgendamentoRepresentantes";
-import NovaConfirmacaoReposicaoTab from "@/components/agendamento/NovaConfirmacaoReposicaoTab";
-```
-
-### Atualizar validação de tabs na URL:
 ```typescript
-// DE:
-if (tab && ["dashboard", "agendamentos", "positivacao", "despachados", "representantes", "confirmacao", "pendentes", "atrasados", "sem-data"].includes(tab))
-
-// PARA:
-if (tab && ["dashboard", "agendamentos", "positivacao", "despachados", "pendentes", "atrasados", "sem-data"].includes(tab))
+const [filtroStatus, setFiltroStatus] = useState<Set<string>>(
+  new Set(["Agendado", "Previsto"])
+);
 ```
 
----
+### Lista Filtrada de Agendamentos
 
-## 2. Filtrar Clientes Ativos em AgendamentosSemData.tsx
-
-### Lógica Atual:
 ```typescript
-const agendamentosSemData = useMemo(() => {
-  return agendamentos.filter(agendamento => 
-    agendamento.statusAgendamento === "Agendar"
+const agendamentosFiltrados = useMemo(() => {
+  return agendamentosDisponiveis.filter(a => 
+    filtroStatus.has(a.statusAgendamento)
   );
-}, [agendamentos]);
+}, [agendamentosDisponiveis, filtroStatus]);
 ```
 
-### Nova Lógica:
-```typescript
-const agendamentosSemData = useMemo(() => {
-  return agendamentos.filter(agendamento => 
-    agendamento.statusAgendamento === "Agendar" &&
-    agendamento.cliente.ativo === true  // Apenas clientes ativos
-  );
-}, [agendamentos]);
+### Novo Componente de Filtro (após o DialogDescription)
+
+Layout visual:
+```
++------------------------------------------+
+| 📅 Reagendar em Massa                    |
+| Selecione os agendamentos...             |
++------------------------------------------+
+| Filtrar por status:                      |
+| [x] Agendado   [x] Previsto              |
++------------------------------------------+
+| [x] Selecionar todos   3 de 5 selecion.  |
++------------------------------------------+
+| ... lista de agendamentos ...            |
+```
+
+### Código do Filtro
+
+```tsx
+{/* Filtro por Status */}
+<div className="flex items-center gap-4 pb-2">
+  <span className="text-sm text-muted-foreground">Filtrar por status:</span>
+  <div className="flex items-center gap-4">
+    <div className="flex items-center gap-2">
+      <Checkbox
+        id="filtro-agendado"
+        checked={filtroStatus.has("Agendado")}
+        onCheckedChange={(checked) => {
+          setFiltroStatus(prev => {
+            const next = new Set(prev);
+            if (checked) {
+              next.add("Agendado");
+            } else {
+              next.delete("Agendado");
+            }
+            return next;
+          });
+        }}
+      />
+      <label htmlFor="filtro-agendado" className="text-sm cursor-pointer">
+        Agendado
+      </label>
+    </div>
+    <div className="flex items-center gap-2">
+      <Checkbox
+        id="filtro-previsto"
+        checked={filtroStatus.has("Previsto")}
+        onCheckedChange={(checked) => {
+          setFiltroStatus(prev => {
+            const next = new Set(prev);
+            if (checked) {
+              next.add("Previsto");
+            } else {
+              next.delete("Previsto");
+            }
+            return next;
+          });
+        }}
+      />
+      <label htmlFor="filtro-previsto" className="text-sm cursor-pointer">
+        Previsto
+      </label>
+    </div>
+  </div>
+</div>
 ```
 
 ---
 
-## 3. Corrigir Cálculo do Total da Semana
+## Ajustes Necessários
 
-### Localização:
-`AgendamentoDashboard.tsx` - função `totalUnidadesSemana`
+### 1. Atualizar Lógica de "Selecionar Todos"
 
-### Lógica Atual (INCORRETA):
+O "Selecionar todos" deve considerar apenas os agendamentos filtrados:
+
 ```typescript
-// Considera TODOS os agendamentos (Previstos + Agendados)
-const agendamentosSemana = agendamentosFiltrados.filter(agendamento => {
-  const dataAgendamento = new Date(agendamento.dataReposicao);
-  return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana;
-});
+const toggleAll = () => {
+  const idsFiltrados = agendamentosFiltrados.map((a) => a.cliente.id);
+  if (selecionados.size === idsFiltrados.length) {
+    setSelecionados(new Set());
+  } else {
+    setSelecionados(new Set(idsFiltrados));
+  }
+};
 ```
 
-### Nova Lógica (CORRETA):
+### 2. Atualizar Contador e Estado
+
 ```typescript
-// Considera apenas agendamentos com status "Agendado"
-const agendamentosSemana = agendamentosFiltrados.filter(agendamento => {
-  const dataAgendamento = new Date(agendamento.dataReposicao);
-  return dataAgendamento >= inicioSemana && 
-         dataAgendamento <= fimSemana &&
-         agendamento.statusAgendamento === "Agendado";  // Apenas confirmados
-});
+const todosSelecionados = 
+  agendamentosFiltrados.length > 0 && 
+  selecionados.size === agendamentosFiltrados.length;
+
+const algumSelecionado = 
+  selecionados.size > 0 && 
+  selecionados.size < agendamentosFiltrados.length;
+```
+
+### 3. Atualizar Badge de Contagem
+
+```tsx
+<Badge variant="secondary">
+  {selecionados.size} de {agendamentosFiltrados.length} selecionados
+</Badge>
+```
+
+### 4. Resetar ao Abrir Modal
+
+```typescript
+useEffect(() => {
+  if (open) {
+    setFiltroStatus(new Set(["Agendado", "Previsto"])); // Ambos ativos
+    setSelecionados(new Set(agendamentosDisponiveis.map((a) => a.cliente.id)));
+    setDataSelecionada(undefined);
+  }
+}, [open, agendamentosDisponiveis]);
+```
+
+### 5. Atualizar Seleção ao Mudar Filtro
+
+Quando o filtro muda, selecionar automaticamente os itens visíveis:
+
+```typescript
+useEffect(() => {
+  // Quando o filtro de status muda, atualizar a seleção para os itens filtrados
+  const idsFiltrados = agendamentosFiltrados.map((a) => a.cliente.id);
+  setSelecionados(new Set(idsFiltrados));
+}, [filtroStatus]);
+```
+
+### 6. Renderizar Lista Filtrada
+
+```tsx
+{agendamentosFiltrados.map((agendamento) => (
+  // ... item da lista
+))}
 ```
 
 ---
 
-## Arquivos a Modificar
+## Arquivo a Modificar
 
 | Arquivo | Ação |
 |---------|------|
-| `src/pages/Agendamento.tsx` | Remover abas "Representantes" e "Confirmação de Reposição" |
-| `src/components/agendamento/AgendamentosSemData.tsx` | Filtrar apenas clientes com `ativo === true` |
-| `src/components/agendamento/AgendamentoDashboard.tsx` | Corrigir cálculo para considerar apenas status "Agendado" |
+| `src/components/agendamento/ReagendamentoEmMassaDialog.tsx` | Adicionar filtro por status (Agendado/Previsto) |
 
 ---
 
-## Resultado Final
+## Resultado Visual Esperado
 
-### Abas do Menu Agendamentos:
-- Dashboard
-- Agendamentos
-- Positivação
-- Despachado (condicional)
-- Pendente (condicional)
-- Atrasado (condicional)
-- Sem Agendamento (condicional)
+```
++------------------------------------------+
+| 📅 Reagendar em Massa                    |
+| Selecione os agendamentos e a nova data  |
++------------------------------------------+
+| Filtrar por status:                      |
+| [x] Agendado   [x] Previsto              |
++------------------------------------------+
+| [x] Selecionar todos    15 de 15 selecion.|
++------------------------------------------+
+| [x] Cliente A           30 un   Agendado |
+| [x] Cliente B           25 un   Previsto |
+| [x] Cliente C           40 un   Previsto |
++------------------------------------------+
+| Nova Data: [Calendário]                  |
++------------------------------------------+
+| [Cancelar]        [Confirmar (15)]       |
++------------------------------------------+
+```
 
-### Card "Total da Semana":
-- Soma de unidades de agendamentos **confirmados** (status "Agendado")
-- Soma de unidades de entregas **já realizadas** na semana
-- **Não inclui** unidades de agendamentos "Previstos"
+---
 
-### Aba "Sem Agendamento":
-- Mostra apenas clientes com status "Agendar" **E** com `ativo === true`
-- Clientes inativos não aparecerão na lista
+## Fluxo de Usuário
+
+1. Usuário clica em "Reagendar em Massa"
+2. Modal abre com **ambos os filtros ativos** por padrão
+3. Usuário pode desmarcar "Agendado" para ver apenas "Previsto" (ou vice-versa)
+4. A lista atualiza mostrando apenas os agendamentos do(s) status selecionado(s)
+5. "Selecionar todos" seleciona apenas os itens visíveis (filtrados)
+6. Usuário escolhe a nova data e confirma
