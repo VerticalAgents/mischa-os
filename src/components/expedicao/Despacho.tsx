@@ -68,7 +68,9 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     filtroRepresentantes,
     setFiltroRepresentantes,
     semanaAtrasados,
-    setSemanaAtrasados
+    setSemanaAtrasados,
+    modoVisualizacaoAtrasados,
+    setModoVisualizacaoAtrasados
   } = useExpedicaoUiStore();
 
   // Parse semana selecionada
@@ -133,8 +135,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   const pedidosFiltrados = useMemo(() => {
     let resultado = pedidosBase;
 
-    // Filtro por semana (apenas para entregas pendentes/atrasadas)
-    if (tipoFiltro === "atrasadas") {
+    // Filtro por semana (apenas para entregas pendentes/atrasadas no modo 'semana')
+    if (tipoFiltro === "atrasadas" && modoVisualizacaoAtrasados === 'semana') {
       const inicioSemana = startOfWeek(semanaAtrasadosDate, { weekStartsOn: 0 });
       const fimSemana = endOfWeek(semanaAtrasadosDate, { weekStartsOn: 0 });
       
@@ -169,7 +171,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     }
 
     return resultado;
-  }, [pedidosBase, filtroTexto, filtroTipo, filtroRepresentantes, tipoFiltro, semanaAtrasadosDate]);
+  }, [pedidosBase, filtroTexto, filtroTipo, filtroRepresentantes, tipoFiltro, semanaAtrasadosDate, modoVisualizacaoAtrasados]);
   
   // Hook para o modal de exportação CSV (após pedidosFiltrados estar definido)
   const exportDialog = useExportCSVDialog(pedidosFiltrados);
@@ -294,6 +296,8 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
           onProximaSemana={navegarProximaSemana}
           onVoltarHoje={voltarSemanaAtual}
           ehSemanaAtual={ehSemanaAtual}
+          modoVisualizacao={modoVisualizacaoAtrasados}
+          onMudarModoVisualizacao={setModoVisualizacaoAtrasados}
         />
       )}
 

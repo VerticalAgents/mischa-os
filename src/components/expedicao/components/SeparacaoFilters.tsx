@@ -1,32 +1,38 @@
 import React from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Calendar } from "lucide-react";
 import { RepresentantesFilter } from "./RepresentantesFilter";
 import { Badge } from "@/components/ui/badge";
 
-interface DespachoFiltersProps {
+interface SeparacaoFiltersProps {
   filtroTexto: string;
-  filtroTipo: string;
-  totalPedidos: number;
+  filtroTipoPedido: string;
+  filtroData: string;
   filtroRepresentantes: number[];
+  totalFiltrados: number;
+  totalGeral: number;
   onFiltroTextoChange: (value: string) => void;
-  onFiltroTipoChange: (value: string) => void;
+  onFiltroTipoPedidoChange: (value: string) => void;
+  onFiltroDataChange: (value: string) => void;
   onFiltroRepresentantesChange: (ids: number[]) => void;
 }
 
-export const DespachoFilters = ({
+export const SeparacaoFilters = ({
   filtroTexto,
-  filtroTipo,
-  totalPedidos,
+  filtroTipoPedido,
+  filtroData,
   filtroRepresentantes,
+  totalFiltrados,
+  totalGeral,
   onFiltroTextoChange,
-  onFiltroTipoChange,
-  onFiltroRepresentantesChange
-}: DespachoFiltersProps) => {
+  onFiltroTipoPedidoChange,
+  onFiltroDataChange,
+  onFiltroRepresentantesChange,
+}: SeparacaoFiltersProps) => {
   const filtrosAtivos = [
     filtroTexto && "texto",
-    filtroTipo !== "todos" && "status",
+    filtroTipoPedido !== "todos" && "tipo",
     filtroRepresentantes.length > 0 && "representante",
   ].filter(Boolean).length;
 
@@ -43,11 +49,14 @@ export const DespachoFilters = ({
           )}
         </div>
         <div className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{totalPedidos}</span> pedidos
+          <span className="font-medium text-foreground">{totalFiltrados}</span>
+          {totalFiltrados !== totalGeral && (
+            <span> de {totalGeral}</span>
+          )} pedidos
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Busca por texto */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -59,17 +68,28 @@ export const DespachoFilters = ({
           />
         </div>
 
-        {/* Status */}
-        <Select value={filtroTipo} onValueChange={onFiltroTipoChange}>
+        {/* Tipo de Pedido */}
+        <Select value={filtroTipoPedido} onValueChange={onFiltroTipoPedidoChange}>
           <SelectTrigger>
-            <SelectValue placeholder="Todos os status" />
+            <SelectValue placeholder="Tipo de Pedido" />
           </SelectTrigger>
-          <SelectContent className="bg-background border shadow-lg z-50">
-            <SelectItem value="todos">Todos os status</SelectItem>
-            <SelectItem value="Separado">Separado</SelectItem>
-            <SelectItem value="Despachado">Despachado</SelectItem>
+          <SelectContent>
+            <SelectItem value="todos">Todos os tipos</SelectItem>
+            <SelectItem value="padrao">Padrão</SelectItem>
+            <SelectItem value="alterado">Alterado</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* Data */}
+        <div className="relative">
+          <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 pointer-events-none" />
+          <Input
+            type="date"
+            value={filtroData}
+            onChange={(e) => onFiltroDataChange(e.target.value)}
+            className="pl-9"
+          />
+        </div>
 
         {/* Representante */}
         <RepresentantesFilter
