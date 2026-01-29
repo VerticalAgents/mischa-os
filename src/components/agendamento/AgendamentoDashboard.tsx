@@ -587,48 +587,7 @@ export default function AgendamentoDashboard() {
   };
 
   return <div className="space-y-6">
-      {/* Navegador de Semana */}
-      <div className="bg-muted/30 border rounded-lg p-3">
-        <div className="flex items-center justify-center gap-4 flex-wrap">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={navegarSemanaAnterior}
-            className="h-8 w-8 p-0"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          
-          <div className="flex items-center gap-2 px-3 min-w-[180px] justify-center">
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium whitespace-nowrap">
-              {format(startOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })} - {format(endOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM/yyyy', { locale: ptBR })}
-            </span>
-          </div>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={navegarProximaSemana}
-            className="h-8 w-8 p-0"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          
-          {!ehSemanaAtual && (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={voltarSemanaAtual}
-              className="text-xs"
-            >
-              Semana Atual
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Barra de Filtros */}
+      {/* Barra de Filtros Unificada */}
       <div className="bg-muted/30 border rounded-lg p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -646,6 +605,45 @@ export default function AgendamentoDashboard() {
         </div>
         
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Navegador de Semana */}
+          <div className="flex items-center gap-1 bg-background border rounded-md px-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={navegarSemanaAnterior}
+              className="h-8 w-8 p-0"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <div className="flex items-center gap-2 px-2 min-w-[160px] justify-center">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium whitespace-nowrap">
+                {format(startOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })} - {format(endOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM/yyyy', { locale: ptBR })}
+              </span>
+            </div>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={navegarProximaSemana}
+              className="h-8 w-8 p-0"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            
+            {!ehSemanaAtual && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={voltarSemanaAtual}
+                className="text-xs h-8"
+              >
+                Semana Atual
+              </Button>
+            )}
+          </div>
+
           <RepresentantesFilter
             selectedIds={representanteFiltro}
             onSelectionChange={setRepresentanteFiltro}
