@@ -1,105 +1,157 @@
 
-# Plano: Filtro por Semana na Aba "Entregas Pendentes"
+# Plano: Aprimorar Botoes de Acoes em Massa na Expedicao
 
 ## Objetivo
-Adicionar um navegador de semanas na aba "Entregas Pendentes" (despacho > atrasadas), similar ao existente no Dashboard de Agendamentos, permitindo filtrar os pedidos pendentes por período semanal.
+Melhorar a experiencia das acoes em massa nas abas "Entregas Hoje" e "Entregas Pendentes", adicionando modais com selecao individual e seletor de data para confirmacao de entrega.
 
-## Componentes Afetados
+## Alteracoes de Nomenclatura
 
-### 1. Criar Componente de Navegação de Semana
-**Novo arquivo:** `src/components/expedicao/components/WeekNavigator.tsx`
+| Atual | Novo |
+|-------|------|
+| Despachar Todos | Despachar em Massa |
+| Entregar Todos | Entregar em Massa |
+| Retorno em Massa | *(Remover)* |
 
-Componente reutilizável para navegação entre semanas, seguindo o padrão do AgendamentoDashboard:
-- Botões de navegação (semana anterior / próxima)
-- Botão "Hoje" para voltar à semana atual
-- Display do período selecionado (ex: "20/01 - 26/01/2026")
-- Indicador visual quando está na semana atual
+## Novos Componentes
 
-```
-┌──────────────────────────────────────────────────────────┐
-│  ◀  │  20/01 - 26/01/2026  │  ▶  │  [Semana Atual]      │
-└──────────────────────────────────────────────────────────┘
-```
+### 1. DespachoEmMassaDialog
+**Novo arquivo:** `src/components/expedicao/components/DespachoEmMassaDialog.tsx`
 
-### 2. Modificar Store de UI da Expedição
-**Arquivo:** `src/hooks/useExpedicaoUiStore.ts`
-
-Adicionar estado persistente para a semana selecionada nas entregas pendentes:
-- `semanaAtrasados: Date` - data de referência da semana
-- `setSemanaAtrasados: (date: Date) => void`
-
-### 3. Atualizar Componente Despacho
-**Arquivo:** `src/components/expedicao/Despacho.tsx`
-
-Para o `tipoFiltro === "atrasadas"`:
-- Importar e renderizar o `WeekNavigator`
-- Consumir `semanaAtrasados` do store de UI
-- Filtrar os pedidos atrasados pela semana selecionada usando `startOfWeek` e `endOfWeek`
-- Manter comportamento "todos os atrasados" como padrão, com opção de filtrar por semana
-
-### 4. Atualizar Filtros de Despacho
-**Arquivo:** `src/components/expedicao/components/DespachoFilters.tsx`
-
-Adicionar prop opcional para integrar o navegador de semana no layout de filtros existente.
-
-## Lógica de Filtragem
+Modal para despacho em massa com:
+- Lista de pedidos com checkbox para selecao individual
+- Checkbox "Selecionar todos" no cabecalho
+- Contador de selecionados/total
+- Botoes Cancelar e Confirmar Despacho
 
 ```text
-Pedidos Atrasados (antes de hoje)
-        │
-        ▼
-┌─────────────────────────────┐
-│  Filtro por Semana          │
-│  (startOfWeek ≤ data ≤      │
-│   endOfWeek da semana       │
-│   selecionada)              │
-└─────────────────────────────┘
-        │
-        ▼
-Pedidos da semana selecionada
++--------------------------------------------------+
+| Despachar em Massa                               |
+| Selecione os pedidos que deseja despachar        |
++--------------------------------------------------+
+| [x] Selecionar todos              3 de 5 selecionados |
++--------------------------------------------------+
+| [x] Cliente A                                    |
+| [x] Cliente B                                    |
+| [ ] Cliente C                                    |
+| [x] Cliente D                                    |
+| [ ] Cliente E                                    |
++--------------------------------------------------+
+|                    [Cancelar] [Confirmar (3)]    |
++--------------------------------------------------+
 ```
 
-## Implementação Detalhada
+### 2. EntregaEmMassaDialog
+**Novo arquivo:** `src/components/expedicao/components/EntregaEmMassaDialog.tsx`
 
-### WeekNavigator.tsx
+Modal para entrega em massa com:
+- Seletor de data para confirmacao (padrao: hoje)
+- Lista de pedidos com checkbox para selecao individual
+- Checkbox "Selecionar todos" no cabecalho
+- Contador de selecionados/total
+- Botoes Cancelar e Confirmar Entrega
+
+```text
++--------------------------------------------------+
+| Entregar em Massa                                |
+| Selecione os pedidos e a data de entrega         |
++--------------------------------------------------+
+| Data de Entrega: [29 de Janeiro de 2026]    [v]  |
++--------------------------------------------------+
+| [x] Selecionar todos              4 de 4 selecionados |
++--------------------------------------------------+
+| [x] Cliente A - Despachado                       |
+| [x] Cliente B - Despachado                       |
+| [x] Cliente C - Despachado                       |
+| [x] Cliente D - Despachado                       |
++--------------------------------------------------+
+|                    [Cancelar] [Confirmar (4)]    |
++--------------------------------------------------+
+```
+
+### 3. Hook useAcaoEmMassaDialog
+**Novo arquivo:** `src/hooks/useAcaoEmMassaDialog.ts`
+
+Hook reutilizavel para gerenciar estado dos modais:
+- Estado de abertura do modal
+- Conjunto de IDs selecionados
+- Funcoes toggleEntrega, toggleAll
+- Data selecionada (para entrega)
+- Loading state
+
+## Modificacoes em Arquivos Existentes
+
+### src/components/expedicao/Despacho.tsx
+
+**Remover:**
+- Botao "Retorno em Massa" (linhas 356-364)
+
+**Renomear:**
+- "Despachar Todos" para "Despachar em Massa"
+- "Entregar Todos" para "Entregar em Massa"
+
+**Adicionar:**
+- Estado para controlar abertura dos modais
+- Importacao dos novos componentes Dialog
+- Handler para abrir modal de despacho em massa
+- Handler para abrir modal de entrega em massa
+- Renderizacao dos modais no final do componente
+
+**Logica de Filtragem nos Modais:**
+- DespachoEmMassaDialog: Mostra pedidos com `substatus_pedido === 'Separado'`
+- EntregaEmMassaDialog: Mostra pedidos com `substatus_pedido === 'Despachado'`
+
+## Fluxo de Usuario
+
+### Despacho em Massa
+1. Usuario clica em "Despachar em Massa"
+2. Modal abre com lista de pedidos SEPARADOS (prontos para despacho)
+3. Usuario seleciona/deseleciona pedidos individuais
+4. Usuario clica "Confirmar Despacho"
+5. Sistema processa despacho para pedidos selecionados
+6. Modal fecha e lista atualiza
+
+### Entrega em Massa
+1. Usuario clica em "Entregar em Massa"
+2. Modal abre com lista de pedidos DESPACHADOS
+3. Usuario seleciona data de entrega (padrao: hoje)
+4. Usuario seleciona/deseleciona pedidos individuais
+5. Usuario clica "Confirmar Entrega"
+6. Sistema processa entrega para pedidos selecionados com a data escolhida
+7. Modal fecha e lista atualiza
+
+## Detalhes Tecnicos
+
+### DespachoEmMassaDialog Props
 ```typescript
-interface WeekNavigatorProps {
-  semanaAtual: Date;
-  onSemanaChange: (data: Date) => void;
-  onVoltarHoje: () => void;
-  ehSemanaAtual: boolean;
+interface DespachoEmMassaDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  pedidosDisponiveis: PedidoExpedicao[]; // Pedidos com status 'Separado'
+  onConfirm: (pedidoIds: string[]) => Promise<void>;
 }
 ```
 
-Props:
-- `semanaAtual`: Data de referência para a semana atual
-- `onSemanaChange`: Callback ao navegar para outra semana
-- `onVoltarHoje`: Callback para voltar à semana atual
-- `ehSemanaAtual`: Boolean indicando se está na semana atual (para desabilitar botão)
-
-### useExpedicaoUiStore.ts (adições)
+### EntregaEmMassaDialog Props
 ```typescript
-// Novo estado
-semanaAtrasados: Date;
-
-// Nova ação  
-setSemanaAtrasados: (data: Date) => void;
+interface EntregaEmMassaDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  pedidosDisponiveis: PedidoExpedicao[]; // Pedidos com status 'Despachado'
+  onConfirm: (pedidoIds: string[], dataEntrega: Date) => Promise<void>;
+}
 ```
 
-### Despacho.tsx (modificações)
-1. Importar `startOfWeek`, `endOfWeek`, `subWeeks`, `addWeeks`, `isSameDay` do date-fns
-2. Consumir `semanaAtrasados` e `setSemanaAtrasados` do store
-3. Criar funções `navegarSemanaAnterior` e `navegarProximaSemana`
-4. Aplicar filtro adicional nos `pedidosBase` quando `tipoFiltro === "atrasadas"`
-5. Renderizar `WeekNavigator` apenas para entregas pendentes
+### Modificacao no useConfirmacaoEntrega
+O hook `useConfirmacaoEntrega` ja aceita `dataEntrega` como parametro opcional na funcao `confirmarEntrega`. Para a entrega em massa, precisaremos:
+1. Modificar `confirmarEntregaEmMassa` para aceitar uma data de entrega
+2. Passar essa data para cada chamada de `process_entrega_safe`
 
-## Fluxo de Usuário
+## Arquivos Afetados
 
-1. Usuário acessa Expedição > Despacho > Entregas Pendentes
-2. Por padrão, vê a semana atual (ou últimos 7 dias de atraso)
-3. Pode navegar para semanas anteriores usando as setas
-4. Ao clicar em "Semana Atual", volta para a visualização padrão
-5. O filtro de semana funciona em conjunto com os filtros existentes (texto, status, representante)
-
-## Persistência
-O estado da semana selecionada será persistido no localStorage através do `useExpedicaoUiStore` que já usa `zustand/persist`, garantindo que o usuário mantenha sua seleção ao navegar entre abas.
+| Arquivo | Acao |
+|---------|------|
+| `src/components/expedicao/components/DespachoEmMassaDialog.tsx` | Criar |
+| `src/components/expedicao/components/EntregaEmMassaDialog.tsx` | Criar |
+| `src/hooks/useAcaoEmMassaDialog.ts` | Criar |
+| `src/components/expedicao/Despacho.tsx` | Modificar |
+| `src/hooks/useConfirmacaoEntrega.ts` | Modificar (adicionar dataEntrega ao massa) |
