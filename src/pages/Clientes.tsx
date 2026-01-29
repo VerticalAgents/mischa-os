@@ -167,11 +167,7 @@ export default function Clientes() {
                 tipo_pessoa: cliente.tipoPessoa || 'PJ',
                 cnpj_cpf: cliente.cnpjCpf,
                 inscricao_estadual: cliente.tipoPessoa === 'PJ' ? cliente.inscricaoEstadual : undefined,
-                endereco: cliente.enderecoEntrega,
-                contato_nome: cliente.contatoNome,
-                contato_telefone: cliente.contatoTelefone,
-                contato_email: cliente.contatoEmail,
-                observacoes: cliente.observacoes
+                contato_email: cliente.contatoEmail
               }
             });
 
