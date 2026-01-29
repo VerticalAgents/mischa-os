@@ -351,10 +351,10 @@ export default function AgendamentoDashboard() {
     setAgendamentosSelecionados(new Set());
   };
 
-  const handleReagendarEmMassa = async (novaData: Date) => {
+  const handleReagendarEmMassa = async (clienteIds: string[], novaData: Date) => {
     try {
       const agendamentosParaReagendar = agendamentosDiaSelecionado.filter(
-        a => agendamentosSelecionados.has(a.cliente.id)
+        a => clienteIds.includes(a.cliente.id)
       );
 
       await Promise.all(
@@ -389,6 +389,34 @@ export default function AgendamentoDashboard() {
       });
     }
   };
+
+  // Calcular total de unidades da semana (agendadas + entregues)
+  const totalUnidadesSemana = useMemo(() => {
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    
+    // Unidades de agendamentos pendentes (Previstos + Agendados)
+    const agendamentosSemana = agendamentosFiltrados.filter(agendamento => {
+      const dataAgendamento = new Date(agendamento.dataReposicao);
+      return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana;
+    });
+    
+    const unidadesAgendadas = agendamentosSemana.reduce((sum, a) => 
+      sum + (a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0), 0
+    );
+    
+    // Unidades de entregas realizadas na semana
+    const entregasRealizadasSemana = entregasHistorico.filter(entrega => {
+      const dataEntrega = new Date(entrega.data);
+      return dataEntrega >= inicioSemana && dataEntrega <= fimSemana && entrega.tipo === 'entrega';
+    });
+    
+    const unidadesEntregues = entregasRealizadasSemana.reduce((sum, e) => 
+      sum + (e.quantidade || 0), 0
+    );
+    
+    return unidadesAgendadas + unidadesEntregues;
+  }, [agendamentosFiltrados, semanaAtual, entregasHistorico]);
 
 
   const ehSemanaAtual = useMemo(() => {
@@ -638,7 +666,18 @@ export default function AgendamentoDashboard() {
       </div>
 
       {/* Cards de Indicadores */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total da Semana</CardTitle>
+            <Package className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{totalUnidadesSemana}</div>
+            <p className="text-xs text-muted-foreground">Unidades agendadas + entregues</p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Agendamentos Restantes</CardTitle>
@@ -919,11 +958,11 @@ export default function AgendamentoDashboard() {
                   variant="default"
                   size="sm"
                   onClick={() => setModalReagendarAberto(true)}
-                  disabled={agendamentosSelecionados.size === 0}
+                  disabled={agendamentosDiaSelecionado.length === 0}
                   className="flex items-center gap-2"
                 >
                   <Calendar className="h-4 w-4" />
-                  Reagendar Selecionados ({agendamentosSelecionados.size})
+                  Reagendar em Massa
                 </Button>
               )}
             </div>
@@ -1029,7 +1068,7 @@ export default function AgendamentoDashboard() {
       <ReagendamentoEmMassaDialog
         open={modalReagendarAberto}
         onOpenChange={setModalReagendarAberto}
-        agendamentosSelecionados={agendamentosDiaSelecionado.filter(a => agendamentosSelecionados.has(a.cliente.id))}
+        agendamentosDisponiveis={agendamentosDiaSelecionado}
         onConfirm={handleReagendarEmMassa}
       />
     </div>;
