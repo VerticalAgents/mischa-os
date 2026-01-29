@@ -390,15 +390,17 @@ export default function AgendamentoDashboard() {
     }
   };
 
-  // Calcular total de unidades da semana (agendadas + entregues)
+  // Calcular total de unidades da semana (apenas AGENDADOS + entregas realizadas)
   const totalUnidadesSemana = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
     const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
     
-    // Unidades de agendamentos pendentes (Previstos + Agendados)
+    // Unidades de agendamentos com status "Agendado" (confirmados) - NÃO inclui Previstos
     const agendamentosSemana = agendamentosFiltrados.filter(agendamento => {
       const dataAgendamento = new Date(agendamento.dataReposicao);
-      return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana;
+      return dataAgendamento >= inicioSemana && 
+             dataAgendamento <= fimSemana &&
+             agendamento.statusAgendamento === "Agendado";
     });
     
     const unidadesAgendadas = agendamentosSemana.reduce((sum, a) => 

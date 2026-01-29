@@ -8,8 +8,6 @@ import AgendamentosPendentes from "@/components/agendamento/AgendamentosPendente
 import AgendamentosAtrasados from "@/components/agendamento/AgendamentosAtrasados";
 import AgendamentosDespachados from "@/components/agendamento/AgendamentosDespachados";
 import AgendamentosSemData from "@/components/agendamento/AgendamentosSemData";
-import AgendamentoRepresentantes from "@/components/agendamento/AgendamentoRepresentantes";
-import NovaConfirmacaoReposicaoTab from "@/components/agendamento/NovaConfirmacaoReposicaoTab";
 import AgendamentosPositivacao from "@/components/agendamento/AgendamentosPositivacao";
 import { useSearchParams } from "react-router-dom";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
@@ -38,7 +36,7 @@ export default function Agendamento() {
   useEffect(() => {
     // Verificar se há parâmetro de tab na URL e atualizar
     const tab = searchParams.get("tab");
-    if (tab && ["dashboard", "agendamentos", "positivacao", "despachados", "representantes", "confirmacao", "pendentes", "atrasados", "sem-data"].includes(tab)) {
+    if (tab && ["dashboard", "agendamentos", "positivacao", "despachados", "pendentes", "atrasados", "sem-data"].includes(tab)) {
       changeTab(tab);
     }
   }, [searchParams, changeTab]);
@@ -101,8 +99,6 @@ export default function Agendamento() {
           <TabsTrigger value="agendamentos">Agendamentos</TabsTrigger>
           <TabsTrigger value="positivacao">Positivação</TabsTrigger>
           {temAgendamentosDespachados && <TabsTrigger value="despachados">Despachado</TabsTrigger>}
-          <TabsTrigger value="representantes">Representantes</TabsTrigger>
-          <TabsTrigger value="confirmacao">Confirmação de Reposição</TabsTrigger>
           {temAgendamentosPendentes && <TabsTrigger value="pendentes">Pendente</TabsTrigger>}
           {temAgendamentosAtrasados && <TabsTrigger value="atrasados">Atrasado</TabsTrigger>}
           {temAgendamentosSemData && <TabsTrigger value="sem-data">Sem Agendamento</TabsTrigger>}
@@ -125,14 +121,6 @@ export default function Agendamento() {
             <AgendamentosDespachados />
           </TabsContent>
         )}
-        
-        <TabsContent value="representantes" className="space-y-4">
-          <AgendamentoRepresentantes />
-        </TabsContent>
-        
-        <TabsContent value="confirmacao" className="space-y-4">
-          <NovaConfirmacaoReposicaoTab />
-        </TabsContent>
         
         {temAgendamentosPendentes && (
           <TabsContent value="pendentes" className="space-y-4">
