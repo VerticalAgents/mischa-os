@@ -179,7 +179,7 @@ export const useConfirmacaoEntrega = () => {
     }
   };
 
-  const confirmarEntregaEmMassa = async (pedidos: PedidoEntrega[]): Promise<boolean> => {
+  const confirmarEntregaEmMassa = async (pedidos: PedidoEntrega[], dataEntrega?: Date): Promise<boolean> => {
     setLoading(true);
     try {
       console.log('🚚 Iniciando confirmação de entregas em massa:', pedidos.length);
@@ -264,7 +264,8 @@ export const useConfirmacaoEntrega = () => {
         try {
           const { error: procError } = await supabase.rpc('process_entrega_safe', {
             p_agendamento_id: pedido.id,
-            p_observacao: null
+            p_observacao: null,
+            p_data_entrega: dataEntrega ? dataEntrega.toISOString() : null
           });
 
           if (procError) {
