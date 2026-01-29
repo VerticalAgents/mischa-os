@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -19,6 +18,10 @@ interface ExpedicaoUiState {
   // Modo de visualização: 'semana' ou 'todos'
   modoVisualizacaoAtrasados: 'semana' | 'todos';
   
+  // Modo de data na Separação: 'dia' ou 'semana'
+  modoDataSeparacao: 'dia' | 'semana';
+  semanaSeparacao: string; // ISO date
+  
   // Ações
   setFiltroTexto: (texto: string) => void;
   setFiltroTipoPedido: (tipo: string) => void;
@@ -28,6 +31,8 @@ interface ExpedicaoUiState {
   setEntregasTab: (tab: string) => void;
   setSemanaAtrasados: (data: Date) => void;
   setModoVisualizacaoAtrasados: (modo: 'semana' | 'todos') => void;
+  setModoDataSeparacao: (modo: 'dia' | 'semana') => void;
+  setSemanaSeparacao: (data: Date) => void;
   clearFilters: () => void;
 }
 
@@ -43,6 +48,8 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
       entregasTab: "hoje",
       semanaAtrasados: new Date().toISOString(),
       modoVisualizacaoAtrasados: 'semana',
+      modoDataSeparacao: 'dia',
+      semanaSeparacao: new Date().toISOString(),
       
       // Ações
       setFiltroTexto: (texto) => set({ filtroTexto: texto }),
@@ -53,18 +60,22 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
       setEntregasTab: (tab) => set({ entregasTab: tab }),
       setSemanaAtrasados: (data) => set({ semanaAtrasados: data.toISOString() }),
       setModoVisualizacaoAtrasados: (modo) => set({ modoVisualizacaoAtrasados: modo }),
+      setModoDataSeparacao: (modo) => set({ modoDataSeparacao: modo }),
+      setSemanaSeparacao: (data) => set({ semanaSeparacao: data.toISOString() }),
       clearFilters: () => set({ 
         filtroTexto: "",
         filtroTipoPedido: "todos",
         filtroData: new Date().toISOString().split('T')[0],
         filtroRepresentantes: [],
         semanaAtrasados: new Date().toISOString(),
-        modoVisualizacaoAtrasados: 'semana'
+        modoVisualizacaoAtrasados: 'semana',
+        modoDataSeparacao: 'dia',
+        semanaSeparacao: new Date().toISOString()
       }),
     }),
     {
       name: 'expedicao-ui-state',
-      version: 3,
+      version: 4,
     }
   )
 );
