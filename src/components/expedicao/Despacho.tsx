@@ -11,6 +11,7 @@ import { useGestaoClickSync } from "@/hooks/useGestaoClickSync";
 import { DebugInfo } from "./components/DebugInfo";
 import { DespachoFilters } from "./components/DespachoFilters";
 import { ResumoStatusCard } from "./components/ResumoStatusCard";
+import { DespachoActionsCard } from "./components/DespachoActionsCard";
 import { WeekNavigator } from "./components/WeekNavigator";
 import { DespachoEmMassaDialog } from "./components/DespachoEmMassaDialog";
 import { EntregaEmMassaDialog } from "./components/EntregaEmMassaDialog";
@@ -280,13 +281,37 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     ? <Package className="h-5 w-5" />
     : <Package className="h-5 w-5" />;
 
+  // Verificar se há pedidos separados para despacho
+  const pedidosSeparados = pedidosFiltrados.filter(p => p.substatus_pedido === 'Separado');
+
+  const handleOtimizadorRota = () => {
+    window.open('https://web.lalamove.com/', '_blank');
+  };
+
+  const handleAtualizarDados = () => {
+    recarregarSilencioso();
+  };
+
   return (
     <div className="space-y-4">
-      {/* Card de Resumo de Status */}
-      <ResumoStatusCard 
-        tipo={tipoFiltro === "hoje" ? "hoje" : tipoFiltro === "atrasadas" ? "pendentes" : "antecipada"} 
-        pedidos={pedidosFiltrados} 
-      />
+      {/* Cards superiores lado a lado */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ResumoStatusCard 
+          tipo={tipoFiltro === "hoje" ? "hoje" : tipoFiltro === "atrasadas" ? "pendentes" : "antecipada"} 
+          pedidos={pedidosFiltrados} 
+        />
+        <DespachoActionsCard
+          tipoFiltro={tipoFiltro}
+          onDespacharEmMassa={handleAbrirDespachoEmMassa}
+          onEntregarEmMassa={handleAbrirEntregaEmMassa}
+          onDownloadCSV={handleDownloadCSV}
+          onOtimizadorRota={handleOtimizadorRota}
+          onAtualizarDados={handleAtualizarDados}
+          temPedidosSeparados={pedidosSeparados.length > 0}
+          temPedidosDespachados={pedidosDespachados.length > 0}
+          isLoading={isLoading}
+        />
+      </div>
 
       {/* Navegador de Semana (apenas para entregas pendentes) */}
       {tipoFiltro === "atrasadas" && (
@@ -313,49 +338,11 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
       />
       
       <Card className="p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             {icone}
             {titulo}
           </h2>
-          {tipoFiltro !== "antecipada" && (
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                onClick={() => window.open('https://web.lalamove.com/', '_blank')}
-                size="sm" 
-                variant="outline"
-                className="flex items-center gap-1"
-              >
-                <MapPin className="h-4 w-4" /> Otimizador de Rota
-              </Button>
-              <Button 
-                onClick={handleDownloadCSV} 
-                size="sm" 
-                variant="outline"
-                className="flex items-center gap-1"
-              >
-                <Download className="h-4 w-4" /> Download CSV
-              </Button>
-              <Button 
-                onClick={handleAbrirDespachoEmMassa} 
-                size="sm" 
-                variant="outline"
-                className="flex items-center gap-1"
-              >
-                <Truck className="h-4 w-4" /> Despachar em Massa
-              </Button>
-              <Button 
-                onClick={handleAbrirEntregaEmMassa} 
-                size="sm" 
-                className="bg-green-600 hover:bg-green-700"
-                disabled={pedidosDespachados.length === 0}
-                title={pedidosDespachados.length === 0 ? "Não há pedidos despachados" : ""}
-              >
-                <Package className="h-4 w-4 mr-1" /> 
-                Entregar em Massa
-              </Button>
-            </div>
-          )}
         </div>
         
         {/* Debug Info Component */}
