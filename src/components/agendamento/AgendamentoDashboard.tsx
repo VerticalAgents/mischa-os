@@ -670,9 +670,9 @@ export default function AgendamentoDashboard() {
       {/* Cards de Indicadores */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 min-h-[52px]">
             <CardTitle className="text-sm font-medium">Total da Semana</CardTitle>
-            <Package className="h-4 w-4 text-purple-500" />
+            <Package className="h-4 w-4 text-purple-500 shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">{totalUnidadesSemana}</div>
@@ -681,9 +681,9 @@ export default function AgendamentoDashboard() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 min-h-[52px]">
             <CardTitle className="text-sm font-medium">Agendamentos Restantes</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{indicadoresSemana.totalSemana}</div>
@@ -692,9 +692,9 @@ export default function AgendamentoDashboard() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 min-h-[52px]">
             <CardTitle className="text-sm font-medium">Confirmados</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
+            <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{indicadoresSemana.confirmados}</div>
@@ -703,9 +703,9 @@ export default function AgendamentoDashboard() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 min-h-[52px]">
             <CardTitle className="text-sm font-medium">Previstos</CardTitle>
-            <Clock className="h-4 w-4 text-amber-500" />
+            <Clock className="h-4 w-4 text-amber-500 shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber-600">{indicadoresSemana.previstos}</div>
@@ -714,9 +714,9 @@ export default function AgendamentoDashboard() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 min-h-[52px]">
             <CardTitle className="text-sm font-medium">Entregas Realizadas</CardTitle>
-            <Truck className="h-4 w-4 text-blue-500" />
+            <Truck className="h-4 w-4 text-blue-500 shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{indicadoresSemana.entregasRealizadas}</div>
