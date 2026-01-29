@@ -1,29 +1,49 @@
 
-# Plano: Cadastrar 5 Novos Clientes
+# Plano: Simplificar Sincronização com GestaoClick (incluindo Email)
 
-## Dados dos Clientes
+## Problema Identificado
+O botão "Sincronizar com Gestão Click" está enviando campos vazios para o GestaoClick ao criar clientes, o que está zerando informações no cadastro.
 
-| Nome | CNPJ | Email | Pagamento | Prazo |
-|------|------|-------|-----------|-------|
-| Bar do Darci | 97.174.130/0001-82 | anapaula.didomenico@outlook.com | BOLETO | 7 dias |
-| 087 Hamburgueria | 58.418.863/0001-63 | andiaracps@gmail.com | BOLETO | 14 dias |
-| Clóvis Coser | 40.476.286/034 | hiago.tqmc1500@gemail.com | BOLETO | 7 dias |
-| Cleunice Bueno Tonial | 44.789.823/0001-13 | cleonicebueno72@gmail.com | BOLETO | 7 dias |
-| Luan Renato | 50.786.667/0001-30 | luanlange@hotmail.com | BOLETO | 7 dias |
+## Solução
+Modificar a chamada `criar_cliente_gc` para enviar **apenas os campos essenciais**:
+- nome
+- tipo_pessoa (PF/PJ)
+- cnpj_cpf
+- inscricao_estadual (apenas para PJ)
+- email (contato_email)
 
-## Configuração Padrão
+## Alterações
 
-- **Representante**: Ítalo Bergenthal (ID: 14)
-- **Tipo Pessoa**: PJ
-- **Status**: Ativo
-- **Forma de Pagamento**: BOLETO (exceto Luan Renato que não informou)
+### Arquivo: `src/pages/Clientes.tsx`
 
-## Ação
+**Linha 163-176 - Simplificar payload:**
 
-Executar INSERT na tabela `clientes` com os 5 registros usando os dados fornecidos.
+```typescript
+const { data: gcResult, error: gcError } = await supabase.functions.invoke('gestaoclick-proxy', {
+  body: {
+    action: 'criar_cliente_gc',
+    nome: cliente.nome,
+    tipo_pessoa: cliente.tipoPessoa || 'PJ',
+    cnpj_cpf: cliente.cnpjCpf,
+    inscricao_estadual: cliente.tipoPessoa === 'PJ' ? cliente.inscricaoEstadual : undefined,
+    contato_email: cliente.contatoEmail
+  }
+});
+```
 
-## Observações
+## Campos Sincronizados
 
-- O CNPJ "40.476.286/034" (Clóvis Coser) parece incompleto - será cadastrado como informado
-- Luan Renato não informou condição de pagamento - será cadastrado como BOLETO 7 dias por padrão
-- Após cadastro, usar "Sincronizar com Gestão Click" para criar no GC automaticamente
+| Campo | Enviado? |
+|-------|----------|
+| nome | Sim |
+| tipo_pessoa (PF/PJ) | Sim |
+| cnpj_cpf | Sim |
+| inscricao_estadual | Sim (apenas PJ) |
+| email | Sim |
+| endereco | Não |
+| contato_nome | Não |
+| contato_telefone | Não |
+| observacoes | Não |
+
+## Resultado Esperado
+A sincronização criará clientes no GestaoClick apenas com os dados essenciais (nome, documento, tipo, IE e email), evitando sobrescrever outros campos com valores vazios.
