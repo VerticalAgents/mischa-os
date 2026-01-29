@@ -1,170 +1,67 @@
 
-# Plano: Adicionar Filtro por Status no Dialog "Reagendar em Massa"
+# Plano: Corrigir Badges do Calendário Semanal Quebrando em Duas Linhas
 
-## Objetivo
-Permitir que o usuário filtre a lista de agendamentos por status ("Agendado" e/ou "Previsto") dentro do modal de reagendamento em massa.
+## Problema Identificado
+Os badges que mostram "X Confirmados" estão quebrando o texto em duas linhas (número em cima, "Confirmados" embaixo) devido à largura restrita das colunas do grid de 7 dias. O texto "Confirmados" é mais longo que "Previstos", causando comportamento inconsistente.
+
+## Solução
+Adicionar `whitespace-nowrap` aos badges para impedir a quebra de linha e ajustar o tamanho do texto para garantir que caiba na largura da coluna.
 
 ---
 
-## Implementação
+## Alterações Necessárias
 
-### Localização
-**Arquivo:** `src/components/agendamento/ReagendamentoEmMassaDialog.tsx`
+### Arquivo: `src/components/agendamento/AgendamentoDashboard.tsx`
 
-### Novo Estado para Filtros de Status
+### Localização: Linhas 933-938 (Badges do Calendário Semanal)
 
-```typescript
-const [filtroStatus, setFiltroStatus] = useState<Set<string>>(
-  new Set(["Agendado", "Previsto"])
-);
-```
-
-### Lista Filtrada de Agendamentos
-
-```typescript
-const agendamentosFiltrados = useMemo(() => {
-  return agendamentosDisponiveis.filter(a => 
-    filtroStatus.has(a.statusAgendamento)
-  );
-}, [agendamentosDisponiveis, filtroStatus]);
-```
-
-### Novo Componente de Filtro (após o DialogDescription)
-
-Layout visual:
-```
-+------------------------------------------+
-| 📅 Reagendar em Massa                    |
-| Selecione os agendamentos...             |
-+------------------------------------------+
-| Filtrar por status:                      |
-| [x] Agendado   [x] Previsto              |
-+------------------------------------------+
-| [x] Selecionar todos   3 de 5 selecion.  |
-+------------------------------------------+
-| ... lista de agendamentos ...            |
-```
-
-### Código do Filtro
-
+### Código Atual:
 ```tsx
-{/* Filtro por Status */}
-<div className="flex items-center gap-4 pb-2">
-  <span className="text-sm text-muted-foreground">Filtrar por status:</span>
-  <div className="flex items-center gap-4">
-    <div className="flex items-center gap-2">
-      <Checkbox
-        id="filtro-agendado"
-        checked={filtroStatus.has("Agendado")}
-        onCheckedChange={(checked) => {
-          setFiltroStatus(prev => {
-            const next = new Set(prev);
-            if (checked) {
-              next.add("Agendado");
-            } else {
-              next.delete("Agendado");
-            }
-            return next;
-          });
-        }}
-      />
-      <label htmlFor="filtro-agendado" className="text-sm cursor-pointer">
-        Agendado
-      </label>
-    </div>
-    <div className="flex items-center gap-2">
-      <Checkbox
-        id="filtro-previsto"
-        checked={filtroStatus.has("Previsto")}
-        onCheckedChange={(checked) => {
-          setFiltroStatus(prev => {
-            const next = new Set(prev);
-            if (checked) {
-              next.add("Previsto");
-            } else {
-              next.delete("Previsto");
-            }
-            return next;
-          });
-        }}
-      />
-      <label htmlFor="filtro-previsto" className="text-sm cursor-pointer">
-        Previsto
-      </label>
-    </div>
-  </div>
-</div>
+{dia.previstos > 0 && <Badge variant="outline" className="text-xs w-full bg-amber-100 rounded-none">
+    {dia.previstos} Previstos
+  </Badge>}
+{dia.confirmados > 0 && <Badge variant="default" className="text-xs w-full bg-green-500">
+    {dia.confirmados} Confirmados
+  </Badge>}
+```
+
+### Novo Código:
+```tsx
+{dia.previstos > 0 && <Badge variant="outline" className="text-[10px] w-full bg-amber-100 rounded-none whitespace-nowrap justify-center">
+    {dia.previstos} Previstos
+  </Badge>}
+{dia.confirmados > 0 && <Badge variant="default" className="text-[10px] w-full bg-green-500 whitespace-nowrap justify-center">
+    {dia.confirmados} Confirmados
+  </Badge>}
 ```
 
 ---
 
-## Ajustes Necessários
+## Detalhes das Mudanças
 
-### 1. Atualizar Lógica de "Selecionar Todos"
+| Classe | Propósito |
+|--------|-----------|
+| `whitespace-nowrap` | Impede que o texto quebre em múltiplas linhas |
+| `text-[10px]` | Reduz o tamanho da fonte de `text-xs` (12px) para 10px, garantindo que "X Confirmados" caiba na largura da coluna |
+| `justify-center` | Centraliza o conteúdo do badge horizontalmente |
 
-O "Selecionar todos" deve considerar apenas os agendamentos filtrados:
+---
 
-```typescript
-const toggleAll = () => {
-  const idsFiltrados = agendamentosFiltrados.map((a) => a.cliente.id);
-  if (selecionados.size === idsFiltrados.length) {
-    setSelecionados(new Set());
-  } else {
-    setSelecionados(new Set(idsFiltrados));
-  }
-};
+## Comparação Visual
+
+**Antes:**
+```
++-------------+
+|     10      |
+| Confirmados |
++-------------+
 ```
 
-### 2. Atualizar Contador e Estado
-
-```typescript
-const todosSelecionados = 
-  agendamentosFiltrados.length > 0 && 
-  selecionados.size === agendamentosFiltrados.length;
-
-const algumSelecionado = 
-  selecionados.size > 0 && 
-  selecionados.size < agendamentosFiltrados.length;
+**Depois:**
 ```
-
-### 3. Atualizar Badge de Contagem
-
-```tsx
-<Badge variant="secondary">
-  {selecionados.size} de {agendamentosFiltrados.length} selecionados
-</Badge>
-```
-
-### 4. Resetar ao Abrir Modal
-
-```typescript
-useEffect(() => {
-  if (open) {
-    setFiltroStatus(new Set(["Agendado", "Previsto"])); // Ambos ativos
-    setSelecionados(new Set(agendamentosDisponiveis.map((a) => a.cliente.id)));
-    setDataSelecionada(undefined);
-  }
-}, [open, agendamentosDisponiveis]);
-```
-
-### 5. Atualizar Seleção ao Mudar Filtro
-
-Quando o filtro muda, selecionar automaticamente os itens visíveis:
-
-```typescript
-useEffect(() => {
-  // Quando o filtro de status muda, atualizar a seleção para os itens filtrados
-  const idsFiltrados = agendamentosFiltrados.map((a) => a.cliente.id);
-  setSelecionados(new Set(idsFiltrados));
-}, [filtroStatus]);
-```
-
-### 6. Renderizar Lista Filtrada
-
-```tsx
-{agendamentosFiltrados.map((agendamento) => (
-  // ... item da lista
-))}
++----------------+
+| 10 Confirmados |
++----------------+
 ```
 
 ---
@@ -173,39 +70,11 @@ useEffect(() => {
 
 | Arquivo | Ação |
 |---------|------|
-| `src/components/agendamento/ReagendamentoEmMassaDialog.tsx` | Adicionar filtro por status (Agendado/Previsto) |
+| `src/components/agendamento/AgendamentoDashboard.tsx` | Adicionar `whitespace-nowrap`, `justify-center` e ajustar tamanho da fonte nos badges |
 
 ---
 
-## Resultado Visual Esperado
-
-```
-+------------------------------------------+
-| 📅 Reagendar em Massa                    |
-| Selecione os agendamentos e a nova data  |
-+------------------------------------------+
-| Filtrar por status:                      |
-| [x] Agendado   [x] Previsto              |
-+------------------------------------------+
-| [x] Selecionar todos    15 de 15 selecion.|
-+------------------------------------------+
-| [x] Cliente A           30 un   Agendado |
-| [x] Cliente B           25 un   Previsto |
-| [x] Cliente C           40 un   Previsto |
-+------------------------------------------+
-| Nova Data: [Calendário]                  |
-+------------------------------------------+
-| [Cancelar]        [Confirmar (15)]       |
-+------------------------------------------+
-```
-
----
-
-## Fluxo de Usuário
-
-1. Usuário clica em "Reagendar em Massa"
-2. Modal abre com **ambos os filtros ativos** por padrão
-3. Usuário pode desmarcar "Agendado" para ver apenas "Previsto" (ou vice-versa)
-4. A lista atualiza mostrando apenas os agendamentos do(s) status selecionado(s)
-5. "Selecionar todos" seleciona apenas os itens visíveis (filtrados)
-6. Usuário escolhe a nova data e confirma
+## Resultado Esperado
+- Badges sempre exibem número e texto na mesma linha
+- Layout do grid de 7 dias permanece intacto
+- Consistência visual entre "Previstos" e "Confirmados"
