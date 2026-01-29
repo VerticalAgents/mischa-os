@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, Filter } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, differenceInDays } from "date-fns";
@@ -18,10 +18,11 @@ import AgendamentoEditModal from "./AgendamentoEditModal";
 import ReagendamentoEmMassaDialog from "./ReagendamentoEmMassaDialog";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import jsPDF from 'jspdf';
 import QuantidadesProdutosSemanal from "./QuantidadesProdutosSemanal";
 import EntregasRealizadasSemanal from "./EntregasRealizadasSemanal";
+import { RepresentantesFilter } from "@/components/expedicao/components/RepresentantesFilter";
+import { RotasFilter } from "./RotasFilter";
 
 export default function AgendamentoDashboard() {
   const {
@@ -45,8 +46,8 @@ export default function AgendamentoDashboard() {
   const [selectedAgendamento, setSelectedAgendamento] = useState<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [semanaAtual, setSemanaAtual] = useState<Date>(new Date());
-  const [representanteFiltro, setRepresentanteFiltro] = useState<string>("todos");
-  const [rotaFiltro, setRotaFiltro] = useState<string>("todas");
+  const [representanteFiltro, setRepresentanteFiltro] = useState<number[]>([]);
+  const [rotaFiltro, setRotaFiltro] = useState<number[]>([]);
   const [agendamentosSelecionados, setAgendamentosSelecionados] = useState<Set<string>>(new Set());
   const [modalReagendarAberto, setModalReagendarAberto] = useState(false);
   const [modoGraficos, setModoGraficos] = useState<'agendamentos' | 'unidades'>('agendamentos');
@@ -82,21 +83,19 @@ export default function AgendamentoDashboard() {
   const agendamentosFiltrados = useMemo(() => {
     let filtrados = agendamentos;
     
-    // Filtro por representante
-    if (representanteFiltro === "sem_representante") {
-      filtrados = filtrados.filter(agendamento => !agendamento.cliente.representanteId);
-    } else if (representanteFiltro !== "todos") {
+    // Filtro por representante (multi-select)
+    if (representanteFiltro.length > 0) {
       filtrados = filtrados.filter(agendamento => 
-        agendamento.cliente.representanteId?.toString() === representanteFiltro
+        agendamento.cliente.representanteId && 
+        representanteFiltro.includes(agendamento.cliente.representanteId)
       );
     }
     
-    // Filtro por rota
-    if (rotaFiltro === "sem_rota") {
-      filtrados = filtrados.filter(agendamento => !agendamento.cliente.rotaEntregaId);
-    } else if (rotaFiltro !== "todas") {
+    // Filtro por rota (multi-select)
+    if (rotaFiltro.length > 0) {
       filtrados = filtrados.filter(agendamento => 
-        agendamento.cliente.rotaEntregaId?.toString() === rotaFiltro
+        agendamento.cliente.rotaEntregaId && 
+        rotaFiltro.includes(agendamento.cliente.rotaEntregaId)
       );
     }
     
@@ -447,11 +446,11 @@ export default function AgendamentoDashboard() {
     // Informações do representante e período
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    const nomeRepresentante = representanteFiltro === "todos" 
+    const nomeRepresentante = representanteFiltro.length === 0 
       ? "Todos os representantes" 
-      : representanteFiltro === "sem_representante"
-      ? "Sem representante"
-      : representantes.find(r => r.id.toString() === representanteFiltro)?.nome || "Representante";
+      : representanteFiltro.length === 1
+      ? representantes.find(r => r.id === representanteFiltro[0])?.nome || "Representante"
+      : `${representanteFiltro.length} representantes`;
     
     doc.text(`Representante: ${nomeRepresentante}`, 20, 35);
     doc.text(`Período: ${format(inicioSemana, 'dd/MM/yyyy')} - ${format(fimSemana, 'dd/MM/yyyy')}`, 20, 42);
@@ -588,83 +587,85 @@ export default function AgendamentoDashboard() {
   };
 
   return <div className="space-y-6">
-      {/* Navegação de Semanas */}
-      <div className="flex items-center justify-center gap-4 mb-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={navegarSemanaAnterior}
-          className="flex items-center gap-2"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Semana Anterior
-        </Button>
-        
-        <div className="text-center">
-          <div className="font-medium text-lg">
-            {format(startOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })} - {format(endOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM/yyyy', { locale: ptBR })}
+      {/* Navegador de Semana */}
+      <div className="bg-muted/30 border rounded-lg p-3">
+        <div className="flex items-center justify-center gap-4 flex-wrap">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={navegarSemanaAnterior}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <div className="flex items-center gap-2 px-3 min-w-[180px] justify-center">
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium whitespace-nowrap">
+              {format(startOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })} - {format(endOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM/yyyy', { locale: ptBR })}
+            </span>
           </div>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={navegarProximaSemana}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          
           {!ehSemanaAtual && (
             <Button
-              variant="link"
+              variant="default"
               size="sm"
               onClick={voltarSemanaAtual}
-              className="text-xs text-muted-foreground"
+              className="text-xs"
             >
-              Voltar para semana atual
+              Semana Atual
             </Button>
           )}
         </div>
+      </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={navegarProximaSemana}
-          className="flex items-center gap-2"
-        >
-          Próxima Semana
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-
-        <Select value={representanteFiltro} onValueChange={setRepresentanteFiltro}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filtrar por representante" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os representantes</SelectItem>
-            <SelectItem value="sem_representante">Sem representante</SelectItem>
-            {representantes.filter(r => r.ativo).map((rep) => (
-              <SelectItem key={rep.id} value={rep.id.toString()}>
-                {rep.nome}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={rotaFiltro} onValueChange={setRotaFiltro}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filtrar por rota" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todas">Todas as rotas</SelectItem>
-            <SelectItem value="sem_rota">Sem rota</SelectItem>
-            {rotasEntrega.map((rota) => (
-              <SelectItem key={rota.id} value={rota.id.toString()}>
-                {rota.nome}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={exportarPDFRepresentante}
-          className="flex items-center gap-2"
-        >
-          <FileDown className="h-4 w-4" />
-          Exportar PDF
-        </Button>
+      {/* Barra de Filtros */}
+      <div className="bg-muted/30 border rounded-lg p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            Filtros
+            {(representanteFiltro.length > 0 || rotaFiltro.length > 0) && (
+              <Badge variant="secondary" className="text-xs">
+                {[representanteFiltro.length > 0, rotaFiltro.length > 0].filter(Boolean).length} ativo(s)
+              </Badge>
+            )}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{agendamentosFiltrados.length}</span> agendamentos
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3 flex-wrap">
+          <RepresentantesFilter
+            selectedIds={representanteFiltro}
+            onSelectionChange={setRepresentanteFiltro}
+          />
+          
+          <RotasFilter
+            selectedIds={rotaFiltro}
+            onSelectionChange={setRotaFiltro}
+          />
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportarPDFRepresentante}
+            className="flex items-center gap-2 ml-auto"
+          >
+            <FileDown className="h-4 w-4" />
+            Exportar PDF
+          </Button>
+        </div>
       </div>
 
       {/* Cards de Indicadores */}
