@@ -9,6 +9,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import AppLayout from '@/components/layout/AppLayout';
 import { RouteGuard } from '@/components/navigation/RouteGuard';
 import { lazy, Suspense } from 'react';
+import LazyErrorBoundary from '@/components/error/LazyErrorBoundary';
 
 // Loading fallback component
 const PageLoader = () => (
@@ -68,9 +69,10 @@ function App() {
           <AuthProvider>
             <RouteGuard>
               <SidebarProvider>
-                <Suspense fallback={<PageLoader />}>
-                  <main className="min-h-screen w-full">
-                    <Routes>
+                <LazyErrorBoundary>
+                  <Suspense fallback={<PageLoader />}>
+                    <main className="min-h-screen w-full">
+                      <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/login" element={<LoginPage />} />
@@ -276,9 +278,10 @@ function App() {
                        </ProtectedRoute>
                      } />
                        <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </main>
-                </Suspense>
+                      </Routes>
+                    </main>
+                  </Suspense>
+                </LazyErrorBoundary>
               </SidebarProvider>
             </RouteGuard>
             <Toaster />
