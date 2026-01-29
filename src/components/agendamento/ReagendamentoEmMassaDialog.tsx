@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon, Package, Loader2 } from "lucide-react";
@@ -39,14 +39,31 @@ export default function ReagendamentoEmMassaDialog({
   const [dataSelecionada, setDataSelecionada] = useState<Date | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [filtroStatus, setFiltroStatus] = useState<Set<string>>(
+    new Set(["Agendado", "Previsto"])
+  );
+
+  // Lista filtrada de agendamentos baseada no status selecionado
+  const agendamentosFiltrados = useMemo(() => {
+    return agendamentosDisponiveis.filter(a => 
+      filtroStatus.has(a.statusAgendamento)
+    );
+  }, [agendamentosDisponiveis, filtroStatus]);
 
   // Resetar seleção quando o dialog abre - todos selecionados por padrão
   useEffect(() => {
     if (open) {
+      setFiltroStatus(new Set(["Agendado", "Previsto"]));
       setSelecionados(new Set(agendamentosDisponiveis.map((a) => a.cliente.id)));
       setDataSelecionada(undefined);
     }
   }, [open, agendamentosDisponiveis]);
+
+  // Atualizar seleção quando o filtro muda
+  useEffect(() => {
+    const idsFiltrados = agendamentosFiltrados.map((a) => a.cliente.id);
+    setSelecionados(new Set(idsFiltrados));
+  }, [filtroStatus, agendamentosFiltrados]);
 
   const disableWeekends = (date: Date) => {
     const day = date.getDay();
@@ -66,10 +83,11 @@ export default function ReagendamentoEmMassaDialog({
   };
 
   const toggleAll = () => {
-    if (selecionados.size === agendamentosDisponiveis.length) {
+    const idsFiltrados = agendamentosFiltrados.map((a) => a.cliente.id);
+    if (selecionados.size === idsFiltrados.length && idsFiltrados.every(id => selecionados.has(id))) {
       setSelecionados(new Set());
     } else {
-      setSelecionados(new Set(agendamentosDisponiveis.map((a) => a.cliente.id)));
+      setSelecionados(new Set(idsFiltrados));
     }
   };
 
@@ -95,8 +113,10 @@ export default function ReagendamentoEmMassaDialog({
     setSelecionados(new Set());
   };
 
-  const todosSelecionados = agendamentosDisponiveis.length > 0 && selecionados.size === agendamentosDisponiveis.length;
-  const algumSelecionado = selecionados.size > 0 && selecionados.size < agendamentosDisponiveis.length;
+  const todosSelecionados = agendamentosFiltrados.length > 0 && 
+    selecionados.size === agendamentosFiltrados.length &&
+    agendamentosFiltrados.every(a => selecionados.has(a.cliente.id));
+  const algumSelecionado = selecionados.size > 0 && selecionados.size < agendamentosFiltrados.length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -118,6 +138,53 @@ export default function ReagendamentoEmMassaDialog({
             </div>
           ) : (
             <>
+              {/* Filtro por Status */}
+              <div className="flex items-center gap-4 pb-2 border-b">
+                <span className="text-sm text-muted-foreground">Filtrar por status:</span>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="filtro-agendado"
+                      checked={filtroStatus.has("Agendado")}
+                      onCheckedChange={(checked) => {
+                        setFiltroStatus(prev => {
+                          const next = new Set(prev);
+                          if (checked) {
+                            next.add("Agendado");
+                          } else {
+                            next.delete("Agendado");
+                          }
+                          return next;
+                        });
+                      }}
+                    />
+                    <label htmlFor="filtro-agendado" className="text-sm cursor-pointer">
+                      Agendado
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="filtro-previsto"
+                      checked={filtroStatus.has("Previsto")}
+                      onCheckedChange={(checked) => {
+                        setFiltroStatus(prev => {
+                          const next = new Set(prev);
+                          if (checked) {
+                            next.add("Previsto");
+                          } else {
+                            next.delete("Previsto");
+                          }
+                          return next;
+                        });
+                      }}
+                    />
+                    <label htmlFor="filtro-previsto" className="text-sm cursor-pointer">
+                      Previsto
+                    </label>
+                  </div>
+                </div>
+              </div>
+
               {/* Header com Selecionar Todos e Contador */}
               <div className="flex items-center justify-between border-b pb-2">
                 <div className="flex items-center gap-2">
@@ -133,14 +200,14 @@ export default function ReagendamentoEmMassaDialog({
                   <span className="text-sm font-medium">Selecionar todos</span>
                 </div>
                 <Badge variant="secondary">
-                  {selecionados.size} de {agendamentosDisponiveis.length} selecionados
+                  {selecionados.size} de {agendamentosFiltrados.length} selecionados
                 </Badge>
               </div>
 
               {/* Lista de Agendamentos com Checkboxes */}
               <ScrollArea className="h-[200px] pr-4">
                 <div className="space-y-2">
-                  {agendamentosDisponiveis.map((agendamento) => (
+                  {agendamentosFiltrados.map((agendamento) => (
                     <div
                       key={agendamento.cliente.id}
                       className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
