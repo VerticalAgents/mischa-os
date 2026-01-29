@@ -1,49 +1,55 @@
 
-# Plano: Simplificar Sincronização com GestaoClick (incluindo Email)
+# Plano: Remover Razão Social da Sincronização Lovable → GestaoClick
 
 ## Problema Identificado
-O botão "Sincronizar com Gestão Click" está enviando campos vazios para o GestaoClick ao criar clientes, o que está zerando informações no cadastro.
-
-## Solução
-Modificar a chamada `criar_cliente_gc` para enviar **apenas os campos essenciais**:
-- nome
-- tipo_pessoa (PF/PJ)
-- cnpj_cpf
-- inscricao_estadual (apenas para PJ)
-- email (contato_email)
-
-## Alterações
-
-### Arquivo: `src/pages/Clientes.tsx`
-
-**Linha 163-176 - Simplificar payload:**
-
+Na Edge Function `gestaoclick-proxy`, ao criar um cliente PJ no GestaoClick, o código está enviando:
 ```typescript
-const { data: gcResult, error: gcError } = await supabase.functions.invoke('gestaoclick-proxy', {
-  body: {
-    action: 'criar_cliente_gc',
-    nome: cliente.nome,
-    tipo_pessoa: cliente.tipoPessoa || 'PJ',
-    cnpj_cpf: cliente.cnpjCpf,
-    inscricao_estadual: cliente.tipoPessoa === 'PJ' ? cliente.inscricaoEstadual : undefined,
-    contato_email: cliente.contatoEmail
-  }
-});
+clienteGcBody.razao_social = nome || '';
 ```
 
-## Campos Sincronizados
+Isso faz com que o nome do cliente no Lovable sobrescreva a razão social no GestaoClick.
 
-| Campo | Enviado? |
-|-------|----------|
-| nome | Sim |
-| tipo_pessoa (PF/PJ) | Sim |
-| cnpj_cpf | Sim |
-| inscricao_estadual | Sim (apenas PJ) |
-| email | Sim |
-| endereco | Não |
-| contato_nome | Não |
-| contato_telefone | Não |
-| observacoes | Não |
+## Regra de Negócio
+A **Razão Social** deve ter fluxo **unidirecional**:
+- **GestaoClick → Lovable**: Permitido (buscar razão social para exibição)
+- **Lovable → GestaoClick**: Bloqueado (nunca enviar razão social)
+
+## Alteração
+
+### Arquivo: `supabase/functions/gestaoclick-proxy/index.ts`
+
+**Linha 1912 - Remover atribuição de razao_social:**
+
+| Antes | Depois |
+|-------|--------|
+| `clienteGcBody.razao_social = nome \|\| '';` | *(linha removida)* |
+
+O código após a alteração ficará:
+
+```typescript
+// Add document based on type
+if (tipoPessoa === 'PJ') {
+  clienteGcBody.cnpj = cnpj_cpf || '';
+  // NÃO enviar razao_social - fluxo unidirecional GC → Lovable
+  // Add inscricao_estadual (IE) for PJ
+  if (inscricao_estadual) {
+    clienteGcBody.ie = inscricao_estadual;
+  }
+} else {
+  clienteGcBody.cpf = cnpj_cpf || '';
+}
+```
+
+## Campos Sincronizados (Lovable → GestaoClick)
+
+| Campo | Enviado? | Observação |
+|-------|----------|------------|
+| nome (nome fantasia) | ✅ Sim | Campo `nome` do GC |
+| tipo_pessoa (PF/PJ) | ✅ Sim | |
+| cnpj/cpf | ✅ Sim | |
+| inscricao_estadual | ✅ Sim | Apenas PJ |
+| email | ✅ Sim | |
+| **razao_social** | ❌ **Não** | Fluxo inverso apenas |
 
 ## Resultado Esperado
-A sincronização criará clientes no GestaoClick apenas com os dados essenciais (nome, documento, tipo, IE e email), evitando sobrescrever outros campos com valores vazios.
+A sincronização criará/atualizará clientes no GestaoClick sem sobrescrever a razão social. A razão social continuará sendo lida do GestaoClick para exibição no Lovable (hook `useRazaoSocialGC`), mas nunca será enviada de volta.
