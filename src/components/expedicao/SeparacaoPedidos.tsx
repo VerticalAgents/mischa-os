@@ -1,16 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
-import { Button } from "@/components/ui/button";
-import { RefreshCw, CheckCircle2, Send } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import AgendamentoEditModal from "@/components/agendamento/AgendamentoEditModal";
 import { AgendamentoItem } from "@/components/agendamento/types";
-import { PrintingActions } from "./components/PrintingActions";
 import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
+import { SeparacaoActionsCard } from "./components/SeparacaoActionsCard";
 import { SeparacaoFilters } from "./components/SeparacaoFilters";
 import { SeparacaoEmMassaDialog } from "./components/SeparacaoEmMassaDialog";
 import { GerarVendasEmMassaDialog } from "./components/GerarVendasEmMassaDialog";
@@ -31,10 +30,14 @@ const SeparacaoPedidos = () => {
     filtroTipoPedido,
     filtroData,
     filtroRepresentantes,
+    modoDataSeparacao,
+    semanaSeparacao,
     setFiltroTexto,
     setFiltroTipoPedido,
     setFiltroData,
-    setFiltroRepresentantes
+    setFiltroRepresentantes,
+    setModoDataSeparacao,
+    setSemanaSeparacao
   } = useExpedicaoUiStore();
 
   const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
@@ -49,13 +52,29 @@ const SeparacaoPedidos = () => {
     carregarPedidos();
   }, [carregarPedidos]);
 
+  // Parse semana selecionada
+  const semanaSelecionada = useMemo(() => {
+    try {
+      return parseISO(semanaSeparacao);
+    } catch {
+      return new Date();
+    }
+  }, [semanaSeparacao]);
+
+  // Calcular início e fim da semana selecionada
+  const { inicioSemana, fimSemana } = useMemo(() => {
+    return {
+      inicioSemana: startOfWeek(semanaSelecionada, { weekStartsOn: 0 }),
+      fimSemana: endOfWeek(semanaSelecionada, { weekStartsOn: 0 })
+    };
+  }, [semanaSelecionada]);
+
   const handleMarcarSeparado = async (pedidoId: string) => {
     await confirmarSeparacao(pedidoId);
   };
 
   const handleGerarVendaGC = async (pedidoId: string, clienteId: string) => {
     const result = await gerarVendaGC(pedidoId, clienteId);
-    // Recarregar para atualizar o estado com o novo gestaoclick_venda_id
     if (result.success) {
       await carregarPedidos();
     }
@@ -71,7 +90,6 @@ const SeparacaoPedidos = () => {
   };
 
   const handleEditarPedido = (pedido: any) => {
-    // Store original pedido reference for GestaoClick update
     setPedidoEditandoOriginal(pedido);
     
     const agendamentoFormatado: AgendamentoItem = {
@@ -159,28 +177,36 @@ const SeparacaoPedidos = () => {
   };
 
   // Filtrar pedidos com substatus Agendado (não separados ainda)
-  // O filtro de data (filtroData) cuida de selecionar o dia específico
   const pedidosParaSeparacao = pedidos.filter(pedido => 
     !pedido.substatus_pedido || pedido.substatus_pedido === 'Agendado'
   );
 
-  const pedidosFiltrados = pedidosParaSeparacao.filter(pedido => {
-    const matchTexto = !filtroTexto || 
-      pedido.cliente_nome.toLowerCase().includes(filtroTexto.toLowerCase()) ||
-      pedido.id.toLowerCase().includes(filtroTexto.toLowerCase());
-    
-    const matchTipoPedido = filtroTipoPedido === "todos" || 
-      (filtroTipoPedido === "padrao" && pedido.tipo_pedido === 'Padrão') ||
-      (filtroTipoPedido === "alterado" && pedido.tipo_pedido === 'Alterado');
-    
-    const matchData = !filtroData || 
-      format(pedido.data_prevista_entrega, "yyyy-MM-dd") === filtroData;
+  const pedidosFiltrados = useMemo(() => {
+    return pedidosParaSeparacao.filter(pedido => {
+      const matchTexto = !filtroTexto || 
+        pedido.cliente_nome.toLowerCase().includes(filtroTexto.toLowerCase()) ||
+        pedido.id.toLowerCase().includes(filtroTexto.toLowerCase());
+      
+      const matchTipoPedido = filtroTipoPedido === "todos" || 
+        (filtroTipoPedido === "padrao" && pedido.tipo_pedido === 'Padrão') ||
+        (filtroTipoPedido === "alterado" && pedido.tipo_pedido === 'Alterado');
+      
+      // Filtro por data - modo dia ou semana
+      let matchData = true;
+      if (modoDataSeparacao === 'dia') {
+        matchData = !filtroData || format(pedido.data_prevista_entrega, "yyyy-MM-dd") === filtroData;
+      } else {
+        // Modo semana - verificar se está dentro do range
+        const dataPedido = new Date(pedido.data_prevista_entrega);
+        matchData = dataPedido >= inicioSemana && dataPedido <= fimSemana;
+      }
 
-    const matchRepresentante = filtroRepresentantes.length === 0 ||
-      (pedido.representante_id && filtroRepresentantes.includes(pedido.representante_id));
+      const matchRepresentante = filtroRepresentantes.length === 0 ||
+        (pedido.representante_id && filtroRepresentantes.includes(pedido.representante_id));
 
-    return matchTexto && matchTipoPedido && matchData && matchRepresentante;
-  });
+      return matchTexto && matchTipoPedido && matchData && matchRepresentante;
+    });
+  }, [pedidosParaSeparacao, filtroTexto, filtroTipoPedido, filtroData, modoDataSeparacao, inicioSemana, fimSemana, filtroRepresentantes]);
 
   if (isLoading) {
     return (
@@ -193,7 +219,17 @@ const SeparacaoPedidos = () => {
 
   return (
     <div className="space-y-6">
-      <ResumoQuantidadeProdutos pedidos={pedidosFiltrados} />
+      {/* Cards superiores: Produtos Necessários e Ações */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ResumoQuantidadeProdutos pedidos={pedidosFiltrados} />
+        <SeparacaoActionsCard
+          onSepararEmMassa={handleAbrirSeparacaoEmMassa}
+          onGerarVendas={handleAbrirGerarVendasEmMassa}
+          onAtualizar={() => carregarPedidos()}
+          isLoading={isLoading}
+          pedidosFiltrados={pedidosFiltrados}
+        />
+      </div>
       
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -201,40 +237,6 @@ const SeparacaoPedidos = () => {
           <Badge variant="secondary">
             {pedidosParaSeparacao.length} pedidos
           </Badge>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button 
-            onClick={handleAbrirSeparacaoEmMassa} 
-            size="sm" 
-            variant="outline"
-            className="flex items-center gap-1"
-          >
-            <CheckCircle2 className="h-4 w-4" /> Separar em Massa
-          </Button>
-          <Button 
-            onClick={handleAbrirGerarVendasEmMassa} 
-            size="sm" 
-            variant="outline"
-            className="flex items-center gap-1"
-          >
-            <Send className="h-4 w-4" /> Gerar Vendas
-          </Button>
-          <PrintingActions
-            activeSubTab="todos"
-            pedidosPadrao={pedidosFiltrados.filter(p => p.tipo_pedido === 'Padrão')}
-            pedidosAlterados={pedidosFiltrados.filter(p => p.tipo_pedido === 'Alterado')}
-            pedidosProximoDia={[]}
-            todosPedidos={pedidosFiltrados}
-          />
-          <Button 
-            onClick={() => carregarPedidos()} 
-            size="sm"
-            variant="outline"
-            disabled={isLoading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
         </div>
       </div>
 
@@ -249,39 +251,15 @@ const SeparacaoPedidos = () => {
         onFiltroTipoPedidoChange={setFiltroTipoPedido}
         onFiltroDataChange={setFiltroData}
         onFiltroRepresentantesChange={setFiltroRepresentantes}
+        modoData={modoDataSeparacao}
+        semanaSelecionada={semanaSelecionada}
+        onModoDataChange={setModoDataSeparacao}
+        onSemanaSelecionadaChange={setSemanaSeparacao}
       />
 
       <div className="space-y-4">
         {pedidosFiltrados.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            {pedidosParaSeparacao.length === 0 
-              ? "Nenhum pedido aguardando separação"
-              : "Nenhum pedido encontrado com os filtros aplicados"
-            }
-          </div>
-        ) : (
-          pedidosFiltrados.map((pedido) => (
-            <PedidoCard
-              key={pedido.id}
-              pedido={pedido}
-              onMarcarSeparado={() => handleMarcarSeparado(pedido.id)}
-              onEditarAgendamento={() => handleEditarPedido(pedido)}
-              onGerarVendaGC={() => handleGerarVendaGC(pedido.id, pedido.cliente_id)}
-              onAtualizarVendaGC={
-                pedido.gestaoclick_venda_id 
-                  ? () => handleAtualizarVendaGC(pedido.id, pedido.cliente_id, pedido.gestaoclick_venda_id!)
-                  : undefined
-              }
-              isGerandoVendaGC={loadingGC && pedidoEmProcessamento === pedido.id}
-              showProdutosList={true}
-            />
-          ))
-        )}
-      </div>
-
-      <div className="space-y-4">
-        {pedidosFiltrados.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
             {pedidosParaSeparacao.length === 0 
               ? "Nenhum pedido aguardando separação"
               : "Nenhum pedido encontrado com os filtros aplicados"
