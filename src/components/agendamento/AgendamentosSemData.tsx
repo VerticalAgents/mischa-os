@@ -39,10 +39,11 @@ export default function AgendamentosSemData() {
     setSortDirection(direction);
   };
 
-  // Filtrar agendamentos com status "Agendar" (sem data definida)
+  // Filtrar agendamentos com status "Agendar" (sem data definida) e clientes ativos
   const agendamentosSemData = useMemo(() => {
     return agendamentos.filter(agendamento => 
-      agendamento.statusAgendamento === "Agendar"
+      agendamento.statusAgendamento === "Agendar" &&
+      agendamento.cliente.ativo === true
     );
   }, [agendamentos]);
 
