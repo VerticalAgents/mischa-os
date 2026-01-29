@@ -1909,7 +1909,7 @@ Deno.serve(async (req) => {
         // Add document based on type
         if (tipoPessoa === 'PJ') {
           clienteGcBody.cnpj = cnpj_cpf || '';
-          clienteGcBody.razao_social = nome || '';
+          // NÃO enviar razao_social - fluxo unidirecional GC → Lovable
           // Add inscricao_estadual (IE) for PJ
           if (inscricao_estadual) {
             clienteGcBody.ie = inscricao_estadual;
