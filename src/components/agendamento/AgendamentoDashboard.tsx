@@ -930,10 +930,10 @@ export default function AgendamentoDashboard() {
                 <div className="text-lg font-bold mb-1">{dia.dia}</div>
                 
                 <div className="space-y-1">
-                  {dia.previstos > 0 && <Badge variant="outline" className="text-xs w-full bg-amber-100 rounded-none">
+                  {dia.previstos > 0 && <Badge variant="outline" className="text-[10px] w-full bg-amber-100 rounded-none whitespace-nowrap justify-center">
                       {dia.previstos} Previstos
                     </Badge>}
-                  {dia.confirmados > 0 && <Badge variant="default" className="text-xs w-full bg-green-500">
+                  {dia.confirmados > 0 && <Badge variant="default" className="text-[10px] w-full bg-green-500 whitespace-nowrap justify-center">
                       {dia.confirmados} Confirmados
                     </Badge>}
                   {dia.total === 0 && <span className="text-xs text-muted-foreground">Livre</span>}
