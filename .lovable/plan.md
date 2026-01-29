@@ -1,55 +1,105 @@
 
-# Plano: Remover Razão Social da Sincronização Lovable → GestaoClick
+# Plano: Filtro por Semana na Aba "Entregas Pendentes"
 
-## Problema Identificado
-Na Edge Function `gestaoclick-proxy`, ao criar um cliente PJ no GestaoClick, o código está enviando:
-```typescript
-clienteGcBody.razao_social = nome || '';
+## Objetivo
+Adicionar um navegador de semanas na aba "Entregas Pendentes" (despacho > atrasadas), similar ao existente no Dashboard de Agendamentos, permitindo filtrar os pedidos pendentes por período semanal.
+
+## Componentes Afetados
+
+### 1. Criar Componente de Navegação de Semana
+**Novo arquivo:** `src/components/expedicao/components/WeekNavigator.tsx`
+
+Componente reutilizável para navegação entre semanas, seguindo o padrão do AgendamentoDashboard:
+- Botões de navegação (semana anterior / próxima)
+- Botão "Hoje" para voltar à semana atual
+- Display do período selecionado (ex: "20/01 - 26/01/2026")
+- Indicador visual quando está na semana atual
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  ◀  │  20/01 - 26/01/2026  │  ▶  │  [Semana Atual]      │
+└──────────────────────────────────────────────────────────┘
 ```
 
-Isso faz com que o nome do cliente no Lovable sobrescreva a razão social no GestaoClick.
+### 2. Modificar Store de UI da Expedição
+**Arquivo:** `src/hooks/useExpedicaoUiStore.ts`
 
-## Regra de Negócio
-A **Razão Social** deve ter fluxo **unidirecional**:
-- **GestaoClick → Lovable**: Permitido (buscar razão social para exibição)
-- **Lovable → GestaoClick**: Bloqueado (nunca enviar razão social)
+Adicionar estado persistente para a semana selecionada nas entregas pendentes:
+- `semanaAtrasados: Date` - data de referência da semana
+- `setSemanaAtrasados: (date: Date) => void`
 
-## Alteração
+### 3. Atualizar Componente Despacho
+**Arquivo:** `src/components/expedicao/Despacho.tsx`
 
-### Arquivo: `supabase/functions/gestaoclick-proxy/index.ts`
+Para o `tipoFiltro === "atrasadas"`:
+- Importar e renderizar o `WeekNavigator`
+- Consumir `semanaAtrasados` do store de UI
+- Filtrar os pedidos atrasados pela semana selecionada usando `startOfWeek` e `endOfWeek`
+- Manter comportamento "todos os atrasados" como padrão, com opção de filtrar por semana
 
-**Linha 1912 - Remover atribuição de razao_social:**
+### 4. Atualizar Filtros de Despacho
+**Arquivo:** `src/components/expedicao/components/DespachoFilters.tsx`
 
-| Antes | Depois |
-|-------|--------|
-| `clienteGcBody.razao_social = nome \|\| '';` | *(linha removida)* |
+Adicionar prop opcional para integrar o navegador de semana no layout de filtros existente.
 
-O código após a alteração ficará:
+## Lógica de Filtragem
 
+```text
+Pedidos Atrasados (antes de hoje)
+        │
+        ▼
+┌─────────────────────────────┐
+│  Filtro por Semana          │
+│  (startOfWeek ≤ data ≤      │
+│   endOfWeek da semana       │
+│   selecionada)              │
+└─────────────────────────────┘
+        │
+        ▼
+Pedidos da semana selecionada
+```
+
+## Implementação Detalhada
+
+### WeekNavigator.tsx
 ```typescript
-// Add document based on type
-if (tipoPessoa === 'PJ') {
-  clienteGcBody.cnpj = cnpj_cpf || '';
-  // NÃO enviar razao_social - fluxo unidirecional GC → Lovable
-  // Add inscricao_estadual (IE) for PJ
-  if (inscricao_estadual) {
-    clienteGcBody.ie = inscricao_estadual;
-  }
-} else {
-  clienteGcBody.cpf = cnpj_cpf || '';
+interface WeekNavigatorProps {
+  semanaAtual: Date;
+  onSemanaChange: (data: Date) => void;
+  onVoltarHoje: () => void;
+  ehSemanaAtual: boolean;
 }
 ```
 
-## Campos Sincronizados (Lovable → GestaoClick)
+Props:
+- `semanaAtual`: Data de referência para a semana atual
+- `onSemanaChange`: Callback ao navegar para outra semana
+- `onVoltarHoje`: Callback para voltar à semana atual
+- `ehSemanaAtual`: Boolean indicando se está na semana atual (para desabilitar botão)
 
-| Campo | Enviado? | Observação |
-|-------|----------|------------|
-| nome (nome fantasia) | ✅ Sim | Campo `nome` do GC |
-| tipo_pessoa (PF/PJ) | ✅ Sim | |
-| cnpj/cpf | ✅ Sim | |
-| inscricao_estadual | ✅ Sim | Apenas PJ |
-| email | ✅ Sim | |
-| **razao_social** | ❌ **Não** | Fluxo inverso apenas |
+### useExpedicaoUiStore.ts (adições)
+```typescript
+// Novo estado
+semanaAtrasados: Date;
 
-## Resultado Esperado
-A sincronização criará/atualizará clientes no GestaoClick sem sobrescrever a razão social. A razão social continuará sendo lida do GestaoClick para exibição no Lovable (hook `useRazaoSocialGC`), mas nunca será enviada de volta.
+// Nova ação  
+setSemanaAtrasados: (data: Date) => void;
+```
+
+### Despacho.tsx (modificações)
+1. Importar `startOfWeek`, `endOfWeek`, `subWeeks`, `addWeeks`, `isSameDay` do date-fns
+2. Consumir `semanaAtrasados` e `setSemanaAtrasados` do store
+3. Criar funções `navegarSemanaAnterior` e `navegarProximaSemana`
+4. Aplicar filtro adicional nos `pedidosBase` quando `tipoFiltro === "atrasadas"`
+5. Renderizar `WeekNavigator` apenas para entregas pendentes
+
+## Fluxo de Usuário
+
+1. Usuário acessa Expedição > Despacho > Entregas Pendentes
+2. Por padrão, vê a semana atual (ou últimos 7 dias de atraso)
+3. Pode navegar para semanas anteriores usando as setas
+4. Ao clicar em "Semana Atual", volta para a visualização padrão
+5. O filtro de semana funciona em conjunto com os filtros existentes (texto, status, representante)
+
+## Persistência
+O estado da semana selecionada será persistido no localStorage através do `useExpedicaoUiStore` que já usa `zustand/persist`, garantindo que o usuário mantenha sua seleção ao navegar entre abas.
