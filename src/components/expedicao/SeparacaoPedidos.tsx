@@ -3,9 +3,7 @@ import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Search, Filter } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RefreshCw, CheckCircle2, Send } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -13,8 +11,11 @@ import AgendamentoEditModal from "@/components/agendamento/AgendamentoEditModal"
 import { AgendamentoItem } from "@/components/agendamento/types";
 import { PrintingActions } from "./components/PrintingActions";
 import { ResumoQuantidadeProdutos } from "./components/ResumoQuantidadeProdutos";
-import { RepresentantesFilter } from "./components/RepresentantesFilter";
+import { SeparacaoFilters } from "./components/SeparacaoFilters";
+import { SeparacaoEmMassaDialog } from "./components/SeparacaoEmMassaDialog";
+import { GerarVendasEmMassaDialog } from "./components/GerarVendasEmMassaDialog";
 import { useGestaoClickSync } from "@/hooks/useGestaoClickSync";
+import { toast } from "sonner";
 
 const SeparacaoPedidos = () => {
   const { 
@@ -39,6 +40,8 @@ const SeparacaoPedidos = () => {
   const [pedidoEditando, setPedidoEditando] = useState<AgendamentoItem | null>(null);
   const [pedidoEditandoOriginal, setPedidoEditandoOriginal] = useState<any | null>(null);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
+  const [separacaoEmMassaOpen, setSeparacaoEmMassaOpen] = useState(false);
+  const [gerarVendasEmMassaOpen, setGerarVendasEmMassaOpen] = useState(false);
   
   const { gerarVendaGC, atualizarVendaGC, loading: loadingGC, pedidoEmProcessamento } = useGestaoClickSync();
 
@@ -119,6 +122,42 @@ const SeparacaoPedidos = () => {
     setPedidoEditandoOriginal(null);
   };
 
+  // Handlers para ações em massa
+  const handleAbrirSeparacaoEmMassa = () => {
+    const pedidosAgendados = pedidosFiltrados.filter(p => !p.substatus_pedido || p.substatus_pedido === 'Agendado');
+    if (pedidosAgendados.length === 0) {
+      toast.error("Não há pedidos aguardando separação.");
+      return;
+    }
+    setSeparacaoEmMassaOpen(true);
+  };
+
+  const handleAbrirGerarVendasEmMassa = () => {
+    const pedidosSemVenda = pedidosFiltrados.filter(p => !p.gestaoclick_venda_id);
+    if (pedidosSemVenda.length === 0) {
+      toast.error("Todos os pedidos já possuem venda gerada.");
+      return;
+    }
+    setGerarVendasEmMassaOpen(true);
+  };
+
+  const handleConfirmarSeparacaoEmMassa = async (pedidoIds: string[]) => {
+    for (const pedidoId of pedidoIds) {
+      await confirmarSeparacao(pedidoId);
+    }
+    await carregarPedidos();
+  };
+
+  const handleGerarVendasEmMassa = async (pedidoIds: string[]) => {
+    for (const pedidoId of pedidoIds) {
+      const pedido = pedidosFiltrados.find(p => p.id === pedidoId);
+      if (pedido && !pedido.gestaoclick_venda_id) {
+        await gerarVendaGC(pedidoId, pedido.cliente_id);
+      }
+    }
+    await carregarPedidos();
+  };
+
   // Filtrar pedidos com substatus Agendado (não separados ainda)
   // O filtro de data (filtroData) cuida de selecionar o dia específico
   const pedidosParaSeparacao = pedidos.filter(pedido => 
@@ -163,7 +202,23 @@ const SeparacaoPedidos = () => {
             {pedidosParaSeparacao.length} pedidos
           </Badge>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button 
+            onClick={handleAbrirSeparacaoEmMassa} 
+            size="sm" 
+            variant="outline"
+            className="flex items-center gap-1"
+          >
+            <CheckCircle2 className="h-4 w-4" /> Separar em Massa
+          </Button>
+          <Button 
+            onClick={handleAbrirGerarVendasEmMassa} 
+            size="sm" 
+            variant="outline"
+            className="flex items-center gap-1"
+          >
+            <Send className="h-4 w-4" /> Gerar Vendas
+          </Button>
           <PrintingActions
             activeSubTab="todos"
             pedidosPadrao={pedidosFiltrados.filter(p => p.tipo_pedido === 'Padrão')}
@@ -183,46 +238,45 @@ const SeparacaoPedidos = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg">
-        <div className="relative">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Buscar por cliente ou ID..."
-            value={filtroTexto}
-            onChange={(e) => setFiltroTexto(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        
-        <Select value={filtroTipoPedido} onValueChange={setFiltroTipoPedido}>
-          <SelectTrigger>
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Tipo de Pedido" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os tipos</SelectItem>
-            <SelectItem value="padrao">Padrão</SelectItem>
-            <SelectItem value="alterado">Alterado</SelectItem>
-          </SelectContent>
-        </Select>
+      <SeparacaoFilters
+        filtroTexto={filtroTexto}
+        filtroTipoPedido={filtroTipoPedido}
+        filtroData={filtroData}
+        filtroRepresentantes={filtroRepresentantes}
+        totalFiltrados={pedidosFiltrados.length}
+        totalGeral={pedidosParaSeparacao.length}
+        onFiltroTextoChange={setFiltroTexto}
+        onFiltroTipoPedidoChange={setFiltroTipoPedido}
+        onFiltroDataChange={setFiltroData}
+        onFiltroRepresentantesChange={setFiltroRepresentantes}
+      />
 
-        <Input
-          type="date"
-          value={filtroData}
-          onChange={(e) => setFiltroData(e.target.value)}
-          placeholder="Filtrar por data"
-        />
-
-        <RepresentantesFilter
-          selectedIds={filtroRepresentantes}
-          onSelectionChange={setFiltroRepresentantes}
-        />
-
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">
-            {pedidosFiltrados.length} de {pedidosParaSeparacao.length} pedidos
-          </span>
-        </div>
+      <div className="space-y-4">
+        {pedidosFiltrados.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            {pedidosParaSeparacao.length === 0 
+              ? "Nenhum pedido aguardando separação"
+              : "Nenhum pedido encontrado com os filtros aplicados"
+            }
+          </div>
+        ) : (
+          pedidosFiltrados.map((pedido) => (
+            <PedidoCard
+              key={pedido.id}
+              pedido={pedido}
+              onMarcarSeparado={() => handleMarcarSeparado(pedido.id)}
+              onEditarAgendamento={() => handleEditarPedido(pedido)}
+              onGerarVendaGC={() => handleGerarVendaGC(pedido.id, pedido.cliente_id)}
+              onAtualizarVendaGC={
+                pedido.gestaoclick_venda_id 
+                  ? () => handleAtualizarVendaGC(pedido.id, pedido.cliente_id, pedido.gestaoclick_venda_id!)
+                  : undefined
+              }
+              isGerandoVendaGC={loadingGC && pedidoEmProcessamento === pedido.id}
+              showProdutosList={true}
+            />
+          ))
+        )}
       </div>
 
       <div className="space-y-4">
@@ -271,6 +325,22 @@ const SeparacaoPedidos = () => {
               )
             : undefined
         }
+      />
+
+      {/* Modais de ação em massa */}
+      <SeparacaoEmMassaDialog
+        open={separacaoEmMassaOpen}
+        onOpenChange={setSeparacaoEmMassaOpen}
+        pedidosDisponiveis={pedidosFiltrados}
+        onConfirm={handleConfirmarSeparacaoEmMassa}
+      />
+
+      <GerarVendasEmMassaDialog
+        open={gerarVendasEmMassaOpen}
+        onOpenChange={setGerarVendasEmMassaOpen}
+        pedidosDisponiveis={pedidosFiltrados}
+        onConfirm={handleGerarVendasEmMassa}
+        loading={loadingGC}
       />
     </div>
   );

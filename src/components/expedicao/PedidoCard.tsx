@@ -315,7 +315,7 @@ const PedidoCard = ({
                       ) : (
                         <Send className="h-4 w-4 mr-1" />
                       )}
-                      Gerar Venda GC
+                      Gerar Venda
                     </Button>
                   )}
                   
@@ -377,7 +377,7 @@ const PedidoCard = ({
                   ) : (
                     <Send className="h-4 w-4 mr-1" />
                   )}
-                  Gerar Venda GC
+                  Gerar Venda
                 </Button>
               )}
               
@@ -428,7 +428,7 @@ const PedidoCard = ({
                   ) : (
                     <Send className="h-4 w-4 mr-1" />
                   )}
-                  Gerar Venda GC
+                  Gerar Venda
                 </Button>
               )}
               
