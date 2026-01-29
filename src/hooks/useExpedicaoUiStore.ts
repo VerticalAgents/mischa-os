@@ -13,6 +13,9 @@ interface ExpedicaoUiState {
   activeTab: string;
   entregasTab: string;
   
+  // Semana selecionada para Entregas Pendentes
+  semanaAtrasados: string;
+  
   // Ações
   setFiltroTexto: (texto: string) => void;
   setFiltroTipoPedido: (tipo: string) => void;
@@ -20,6 +23,7 @@ interface ExpedicaoUiState {
   setFiltroRepresentantes: (ids: number[]) => void;
   setActiveTab: (tab: string) => void;
   setEntregasTab: (tab: string) => void;
+  setSemanaAtrasados: (data: Date) => void;
   clearFilters: () => void;
 }
 
@@ -33,6 +37,7 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
       filtroRepresentantes: [],
       activeTab: "resumo",
       entregasTab: "hoje",
+      semanaAtrasados: new Date().toISOString(),
       
       // Ações
       setFiltroTexto: (texto) => set({ filtroTexto: texto }),
@@ -41,16 +46,18 @@ export const useExpedicaoUiStore = create<ExpedicaoUiState>()(
       setFiltroRepresentantes: (ids) => set({ filtroRepresentantes: ids }),
       setActiveTab: (tab) => set({ activeTab: tab }),
       setEntregasTab: (tab) => set({ entregasTab: tab }),
+      setSemanaAtrasados: (data) => set({ semanaAtrasados: data.toISOString() }),
       clearFilters: () => set({ 
         filtroTexto: "",
         filtroTipoPedido: "todos",
         filtroData: new Date().toISOString().split('T')[0],
-        filtroRepresentantes: []
+        filtroRepresentantes: [],
+        semanaAtrasados: new Date().toISOString()
       }),
     }),
     {
       name: 'expedicao-ui-state',
-      version: 1,
+      version: 2,
     }
   )
 );

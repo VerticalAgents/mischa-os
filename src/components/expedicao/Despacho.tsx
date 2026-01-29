@@ -11,14 +11,15 @@ import { useGestaoClickSync } from "@/hooks/useGestaoClickSync";
 import { DebugInfo } from "./components/DebugInfo";
 import { DespachoFilters } from "./components/DespachoFilters";
 import { ResumoStatusCard } from "./components/ResumoStatusCard";
-import { RepresentantesFilter } from "./components/RepresentantesFilter";
+import { WeekNavigator } from "./components/WeekNavigator";
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
 import PedidoCard from "./PedidoCard";
 import AgendamentoEditModal from "../agendamento/AgendamentoEditModal";
 import { toast } from "sonner";
-import { Truck, Package, ArrowLeft, Loader2, Download, MapPin } from "lucide-react";
+import { Truck, Package, Loader2, Download, MapPin } from "lucide-react";
 import { ExportCSVDialog } from "./components/ExportCSVDialog";
 import { useExportCSVDialog } from "@/hooks/useExportCSVDialog";
+import { startOfWeek, endOfWeek, subWeeks, addWeeks, isSameWeek, parseISO } from "date-fns";
 
 interface DespachoProps {
   tipoFiltro: "hoje" | "atrasadas" | "antecipada";
@@ -61,8 +62,37 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
   
   const {
     filtroRepresentantes,
-    setFiltroRepresentantes
+    setFiltroRepresentantes,
+    semanaAtrasados,
+    setSemanaAtrasados
   } = useExpedicaoUiStore();
+
+  // Parse semana selecionada
+  const semanaAtrasadosDate = useMemo(() => {
+    try {
+      return parseISO(semanaAtrasados);
+    } catch {
+      return new Date();
+    }
+  }, [semanaAtrasados]);
+
+  // Verificar se está na semana atual
+  const ehSemanaAtual = useMemo(() => {
+    return isSameWeek(semanaAtrasadosDate, new Date(), { weekStartsOn: 0 });
+  }, [semanaAtrasadosDate]);
+
+  // Handlers de navegação de semana
+  const navegarSemanaAnterior = () => {
+    setSemanaAtrasados(subWeeks(semanaAtrasadosDate, 1));
+  };
+
+  const navegarProximaSemana = () => {
+    setSemanaAtrasados(addWeeks(semanaAtrasadosDate, 1));
+  };
+
+  const voltarSemanaAtual = () => {
+    setSemanaAtrasados(new Date());
+  };
 
   // Usar hook de sincronização
   useExpedicaoSync();
@@ -95,14 +125,26 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     ? getPedidosAtrasados()
     : getPedidosSeparadosAntecipados();
 
-  // Aplicar filtros de busca e tipo
+  // Aplicar filtros de busca, tipo e semana
   const pedidosFiltrados = useMemo(() => {
-    let pedidosFiltrados = pedidosBase;
+    let resultado = pedidosBase;
+
+    // Filtro por semana (apenas para entregas pendentes/atrasadas)
+    if (tipoFiltro === "atrasadas") {
+      const inicioSemana = startOfWeek(semanaAtrasadosDate, { weekStartsOn: 0 });
+      const fimSemana = endOfWeek(semanaAtrasadosDate, { weekStartsOn: 0 });
+      
+      resultado = resultado.filter(pedido => {
+        if (!pedido.data_prevista_entrega) return false;
+        const dataPedido = new Date(pedido.data_prevista_entrega);
+        return dataPedido >= inicioSemana && dataPedido <= fimSemana;
+      });
+    }
 
     // Filtro por texto (cliente ou ID)
     if (filtroTexto.trim()) {
       const searchTerm = filtroTexto.toLowerCase().trim();
-      pedidosFiltrados = pedidosFiltrados.filter(pedido => 
+      resultado = resultado.filter(pedido => 
         pedido.cliente_nome?.toLowerCase().includes(searchTerm) ||
         pedido.id?.toString().includes(searchTerm)
       );
@@ -110,20 +152,20 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
     // Filtro por status (substatus_pedido)
     if (filtroTipo !== "todos") {
-      pedidosFiltrados = pedidosFiltrados.filter(pedido => 
+      resultado = resultado.filter(pedido => 
         pedido.substatus_pedido === filtroTipo
       );
     }
 
     // Filtro por representante
     if (filtroRepresentantes.length > 0) {
-      pedidosFiltrados = pedidosFiltrados.filter(pedido =>
+      resultado = resultado.filter(pedido =>
         pedido.representante_id && filtroRepresentantes.includes(pedido.representante_id)
       );
     }
 
-    return pedidosFiltrados;
-  }, [pedidosBase, filtroTexto, filtroTipo, filtroRepresentantes]);
+    return resultado;
+  }, [pedidosBase, filtroTexto, filtroTipo, filtroRepresentantes, tipoFiltro, semanaAtrasadosDate]);
   
   // Hook para o modal de exportação CSV (após pedidosFiltrados estar definido)
   const exportDialog = useExportCSVDialog(pedidosFiltrados);
@@ -237,6 +279,17 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
         tipo={tipoFiltro === "hoje" ? "hoje" : tipoFiltro === "atrasadas" ? "pendentes" : "antecipada"} 
         pedidos={pedidosFiltrados} 
       />
+
+      {/* Navegador de Semana (apenas para entregas pendentes) */}
+      {tipoFiltro === "atrasadas" && (
+        <WeekNavigator
+          semanaAtual={semanaAtrasadosDate}
+          onSemanaAnterior={navegarSemanaAnterior}
+          onProximaSemana={navegarProximaSemana}
+          onVoltarHoje={voltarSemanaAtual}
+          ehSemanaAtual={ehSemanaAtual}
+        />
+      )}
 
       {/* Filtros de Despacho */}
       <DespachoFilters
