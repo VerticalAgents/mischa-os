@@ -1,213 +1,97 @@
 
 
-# Plano: Aprimorar Cards Superiores das Abas de Despacho
+# Plano: Ajustar UI dos Filtros e Cores do Card
 
 ## Objetivo
-Atualizar o design dos cards superiores das abas "Entregas Hoje", "Entregas Pendentes" e "Separação Antecipada" para seguir o mesmo padrão de layout da aba "Separação de Pedidos".
-
-## Situação Atual
-
-### Separação de Pedidos (Referência)
-```
-+--------------------------------+--------------------------------+
-| Card: Produtos Necessários     | Card: Ações                    |
-| - Total grande em destaque     | - Botões empilhados:           |
-| - Badge com qtd pedidos        |   Separar em Massa             |
-| - Collapsible com detalhes     |   Gerar Vendas                 |
-| - Indicadores de estoque       |   Listas de Expedição          |
-|                                |   Atualizar                    |
-+--------------------------------+--------------------------------+
-```
-
-### Abas de Despacho (Atual)
-```
-+------------------------------------------------------------------+
-| ResumoStatusCard - Card único com gradiente colorido              |
-| - Título + ícone                                                  |
-| - Grid 2 colunas com badges de contagem                          |
-+------------------------------------------------------------------+
-| Filtros...                                                        |
-| Título + Botões inline na mesma linha                            |
-+------------------------------------------------------------------+
-```
-
-## Novo Layout Proposto
-
-### Entregas Hoje / Pendentes / Antecipada
-```
-+--------------------------------+--------------------------------+
-| Card: Resumo de Status         | Card: Ações                    |
-| - Total em destaque (grande)   | - Botões empilhados:           |
-| - Badge com qtd pedidos        |   Despachar em Massa           |
-| - Grid 2x1 com Separados/      |   Entregar em Massa            |
-|   Despachados                  |   Download CSV                 |
-| - Design igual ao card de      |   Otimizador de Rota           |
-|   Produtos Necessários         |                                |
-+--------------------------------+--------------------------------+
-```
+1. Reorganizar os filtros da aba Separação para seguir o mesmo padrão visual da aba "Entregas Pendentes"
+2. Alterar a cor do destaque no card "Produtos Necessários" de amarelo para azul
 
 ---
 
-## Componentes a Criar/Modificar
+## 1. Ajustes no SeparacaoFilters.tsx
 
-### 1. Novo: DespachoActionsCard.tsx
-
-Card de ações para as abas de despacho:
-
-```typescript
-interface DespachoActionsCardProps {
-  tipoFiltro: "hoje" | "atrasadas" | "antecipada";
-  onDespacharEmMassa: () => void;
-  onEntregarEmMassa: () => void;
-  onDownloadCSV: () => void;
-  onAtualizarDados: () => void;
-  temPedidosSeparados: boolean;
-  temPedidosDespachados: boolean;
-  isLoading: boolean;
-}
+### Layout Atual
+```
++----------------------------------------------------------+
+| Filtros [badge]                             X pedidos    |
++----------------------------------------------------------+
+| [Busca]   [Tipo Pedido]   [Dia/Semana] [DataPicker/Nav]  |
++----------------------------------------------------------+
+| Representante: [Filtro de Representantes]                |
++----------------------------------------------------------+
 ```
 
-Conteúdo:
-- Botão "Despachar em Massa" (apenas hoje/pendentes)
-- Botão "Entregar em Massa" (apenas hoje/pendentes)
-- Botão "Download CSV" (apenas hoje/pendentes)
-- Botão "Otimizador de Rota" (apenas hoje/pendentes)
-- Botão "Atualizar"
+### Novo Layout (igual DespachoFilters)
+```
++----------------------------------------------------------+
+| Filtros [badge]                             X pedidos    |
++----------------------------------------------------------+
+| [Busca]    [Tipo Pedido]    [Representante]              |
++----------------------------------------------------------+
+| [Dia/Semana Toggle]  [Data picker ou WeekNavigator]      |
++----------------------------------------------------------+
+```
 
-### 2. Refatorar: ResumoStatusCard.tsx
-
-Redesign para seguir o padrão do ResumoQuantidadeProdutos:
-
-**Novo design:**
-- CardHeader com ícone + título
-- Bloco de destaque com total grande (bg-primary/10)
-- Badge com quantidade de pedidos
-- Grid 2 colunas para status (Separados / Despachados)
-- Remover gradientes coloridos (usar design neutro)
-
-### 3. Modificar: Despacho.tsx
-
-Reorganizar layout para:
-1. Grid 2 colunas com cards superiores
-2. Mover botões de ação para o novo DespachoActionsCard
-3. Simplificar o título/header da listagem
+**Alteracoes:**
+- Grid de 3 colunas para busca, tipo e representante
+- Linha separada para o seletor de periodo (dia/semana)
+- Remover o texto "Representante:" e mover para a mesma linha dos outros filtros
 
 ---
 
-## Detalhes de Implementação
+## 2. Alteracao de Cor no ResumoQuantidadeProdutos.tsx
 
-### ResumoStatusCard (novo design)
-
-```
-+--------------------------------+
-| 🚚 Resumo                      |
-+--------------------------------+
-| Quantidade Total               |
-| [       42        ]  (grande)  |
-| [42 pedidos]  badge            |
-+--------------------------------+
-| +------------+ +------------+  |
-| | 📦 Separados   [12]       |  |
-| +------------+ +------------+  |
-| | 🚚 Despachados [30]       |  |
-| +------------+ +------------+  |
-+--------------------------------+
+### Atual (Amarelo - usando primary)
+```css
+bg-primary/10 dark:bg-primary/20 border-primary/20
+text-primary
 ```
 
-Cores por tipo:
-- Hoje: Verde (green-600)
-- Pendentes: Amarelo (yellow-600)  
-- Antecipada: Azul (blue-600)
-
-### DespachoActionsCard
-
-```
-+--------------------------------+
-| ⚙️ Ações                       |
-+--------------------------------+
-| [🚚 Despachar em Massa]        |
-| [📦 Entregar em Massa]         |
-| [📥 Download CSV]              |
-| [📍 Otimizador de Rota]        |
-| [🔄 Atualizar]                 |
-+--------------------------------+
+### Novo (Azul)
+```css
+bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800
+text-blue-600 dark:text-blue-400
 ```
 
-### Despacho.tsx (layout atualizado)
-
-```tsx
-<div className="space-y-4">
-  {/* Cards superiores lado a lado */}
-  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <ResumoStatusCard tipo={tipo} pedidos={pedidos} />
-    <DespachoActionsCard 
-      tipoFiltro={tipoFiltro}
-      onDespacharEmMassa={...}
-      onEntregarEmMassa={...}
-      onDownloadCSV={...}
-      onAtualizarDados={...}
-      ...
-    />
-  </div>
-  
-  {/* WeekNavigator (apenas para pendentes) */}
-  {tipoFiltro === "atrasadas" && <WeekNavigator ... />}
-  
-  {/* Filtros */}
-  <DespachoFilters ... />
-  
-  {/* Listagem de pedidos (Card simplificado) */}
-  <Card className="p-4">
-    <div className="flex items-center justify-between mb-4">
-      <h2 className="text-lg font-semibold flex items-center gap-2">
-        {icone} {titulo}
-      </h2>
-    </div>
-    {/* Lista de pedidos */}
-  </Card>
-</div>
-```
+**Elementos afetados:**
+- Bloco de destaque "Quantidade Total Necessaria"
+- Numero grande do total
+- Badge de quantidade de pedidos
 
 ---
 
 ## Arquivos a Modificar
 
-| Arquivo | Ação |
+| Arquivo | Acao |
 |---------|------|
-| `src/components/expedicao/components/DespachoActionsCard.tsx` | Criar |
-| `src/components/expedicao/components/ResumoStatusCard.tsx` | Refatorar design |
-| `src/components/expedicao/Despacho.tsx` | Reorganizar layout |
+| `src/components/expedicao/components/SeparacaoFilters.tsx` | Reorganizar layout dos filtros |
+| `src/components/expedicao/components/ResumoQuantidadeProdutos.tsx` | Alterar cores de amarelo para azul |
 
 ---
 
-## Comparação Visual
+## Resultado Visual Esperado
 
-### Antes
+### Card Produtos Necessarios (Nova cor)
 ```
-+------------------------------------------------------------------+
-| [ResumoStatusCard com gradiente colorido - largura total]         |
-+------------------------------------------------------------------+
-| [Título] -------- [Btn1] [Btn2] [Btn3] [Btn4]                    |
-+------------------------------------------------------------------+
-```
-
-### Depois
-```
-+--------------------------------+--------------------------------+
-| [ResumoStatusCard redesenhado] | [DespachoActionsCard]          |
-| (50% largura)                  | (50% largura)                  |
-+--------------------------------+--------------------------------+
-| [Título simplificado]                                            |
-+------------------------------------------------------------------+
++--------------------------------+
+| Produtos Necessarios           |
+| Quantidades para pedidos       |
++--------------------------------+
+| [Bloco Azul]                   |
+| Quantidade Total Necessaria    |
+| 893 (texto azul)               |
+| [25 pedidos] badge azul        |
++--------------------------------+
 ```
 
----
-
-## Considerações de Design
-
-1. **Consistência**: Mesma estrutura de CardHeader/CardContent
-2. **Cores neutras**: Usar bg-primary/10 ao invés de gradientes
-3. **Hierarquia visual**: Total grande em destaque, detalhes menores
-4. **Responsividade**: Grid 1 coluna em mobile, 2 colunas em desktop
-5. **Ações contextuais**: Esconder botões desnecessários na aba "Antecipada"
+### Filtros (Novo layout)
+```
++--------------------------------+
+| Filtros [1 ativo] | X pedidos  |
++--------------------------------+
+| [Busca] | [Tipo] | [Repres.]  |
++--------------------------------+
+| [Dia|Semana]  [Navigator/Date] |
++--------------------------------+
+```
 
