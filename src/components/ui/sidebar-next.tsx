@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
@@ -71,12 +71,38 @@ const staggerVariants = {
 
 export function SessionNavBar() {
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const sidebarRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const pathname = location.pathname;
   const { userRole } = useUserRoles();
   
   // Use state to store the alert count instead of directly accessing the store
   const [alertCount, setAlertCount] = useState(0);
+  
+  // Fallback: check if mouse is really outside sidebar bounds
+  const checkMousePosition = useCallback((e: MouseEvent) => {
+    if (sidebarRef.current && !isCollapsed) {
+      const rect = sidebarRef.current.getBoundingClientRect();
+      const isInside = 
+        e.clientX >= rect.left && 
+        e.clientX <= rect.right && 
+        e.clientY >= rect.top && 
+        e.clientY <= rect.bottom;
+      
+      if (!isInside) {
+        setIsCollapsed(true);
+      }
+    }
+  }, [isCollapsed]);
+
+  // Add/remove mousemove fallback listener
+  useEffect(() => {
+    if (!isCollapsed) {
+      const handler = (e: MouseEvent) => checkMousePosition(e);
+      document.addEventListener('mousemove', handler);
+      return () => document.removeEventListener('mousemove', handler);
+    }
+  }, [isCollapsed, checkMousePosition]);
   
   // Filter menu groups - hide admin groups for non-admin users
   const filteredMenuGroups = useMemo(() => {
@@ -110,14 +136,15 @@ export function SessionNavBar() {
 
   return (
     <motion.div 
-      className={cn("sidebar fixed left-0 z-40 h-full shrink-0 border-r fixed")} 
+      ref={sidebarRef}
+      className={cn("sidebar fixed left-0 z-40 h-full shrink-0 border-r")} 
       style={{ backgroundColor: '#d1193a', borderColor: 'rgba(255,255,255,0.2)' }}
-      initial={isCollapsed ? "closed" : "open"} 
+      initial="closed"
       animate={isCollapsed ? "closed" : "open"} 
       variants={sidebarVariants} 
       transition={transitionProps} 
-      onMouseEnter={() => setIsCollapsed(false)} 
-      onMouseLeave={() => setIsCollapsed(true)}
+      onHoverStart={() => setIsCollapsed(false)} 
+      onHoverEnd={() => setIsCollapsed(true)}
     >
       <motion.div className="relative z-40 flex text-white h-full shrink-0 flex-col transition-all" variants={contentVariants}>
         <motion.ul variants={staggerVariants} className="flex h-full flex-col">
