@@ -69,8 +69,8 @@ const AuthPage = () => {
               className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-lg"
             />
           </div>
-          <CardTitle className="text-2xl">MISCHA'S BAKERY LTDA</CardTitle>
-          <CardDescription>Sistema de Gestão</CardDescription>
+          <CardTitle className="text-2xl text-center">MISCHA'S BAKERY LTDA</CardTitle>
+          <CardDescription className="text-center">Sistema de Gestão</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
