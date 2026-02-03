@@ -2266,6 +2266,105 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'buscar_recebimentos_venda': {
+        // Buscar recebimentos (boletos) de uma venda
+        const { access_token, secret_token, cliente_id, data_venda, valor_venda } = params;
+        
+        if (!access_token || !secret_token) {
+          return new Response(
+            JSON.stringify({ error: 'Tokens não fornecidos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!cliente_id) {
+          return new Response(
+            JSON.stringify({ error: 'cliente_id não fornecido' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('[gestaoclick-proxy] Buscando recebimentos para cliente:', cliente_id, 'data:', data_venda);
+
+        // Calcular intervalo de datas para busca (7 dias antes e depois da venda)
+        const dataBase = data_venda ? new Date(data_venda) : new Date();
+        const dataInicio = formatDate(addDays(dataBase, -7));
+        const dataFim = formatDate(addDays(dataBase, 30)); // Boletos podem ter vencimento até 30 dias após
+
+        const recebimentosUrl = `${GESTAOCLICK_BASE_URL}/recebimentos?cliente_id=${cliente_id}&data_inicio=${dataInicio}&data_fim=${dataFim}&liquidado=ab`;
+        console.log('[gestaoclick-proxy] URL recebimentos:', recebimentosUrl);
+
+        const recebimentosResponse = await fetch(recebimentosUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'access-token': access_token,
+            'secret-access-token': secret_token,
+          },
+        });
+
+        if (!recebimentosResponse.ok) {
+          const errorText = await recebimentosResponse.text();
+          console.error('[gestaoclick-proxy] recebimentos error:', errorText);
+          return new Response(
+            JSON.stringify({ error: `Erro ao buscar recebimentos: ${recebimentosResponse.status}` }),
+            { status: recebimentosResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const recebimentosData = await recebimentosResponse.json();
+        console.log('[gestaoclick-proxy] recebimentos response:', JSON.stringify(recebimentosData).substring(0, 500));
+
+        const responseText = JSON.stringify(recebimentosData);
+        if (hasGCError(responseText, recebimentosResponse.status)) {
+          console.error('[gestaoclick-proxy] GC error in recebimentos response');
+          return new Response(
+            JSON.stringify({ error: 'Erro do GestaoClick ao buscar recebimentos' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const recebimentos = recebimentosData.data || [];
+        
+        // Filtrar por valor aproximado se fornecido (tolerância de R$1)
+        let recebimentosFiltrados = recebimentos;
+        if (valor_venda && valor_venda > 0) {
+          recebimentosFiltrados = recebimentos.filter((r: any) => {
+            const rec = r.Recebimento || r;
+            const valorRec = parseFloat(rec.valor || '0');
+            return Math.abs(valorRec - valor_venda) < 1;
+          });
+          
+          // Se não encontrou com filtro de valor, retornar todos
+          if (recebimentosFiltrados.length === 0) {
+            recebimentosFiltrados = recebimentos;
+          }
+        }
+
+        console.log('[gestaoclick-proxy] recebimentos filtrados:', recebimentosFiltrados.length);
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            recebimentos: recebimentosFiltrados.map((r: any) => {
+              const rec = r.Recebimento || r;
+              return {
+                id: rec.id,
+                codigo: rec.codigo,
+                descricao: rec.descricao,
+                valor: rec.valor,
+                cliente_id: rec.cliente_id,
+                nome_cliente: rec.nome_cliente,
+                data_vencimento: rec.data_vencimento,
+                liquidado: rec.liquidado,
+                hash: rec.hash
+              };
+            })
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: `Ação desconhecida: ${action}` }),
