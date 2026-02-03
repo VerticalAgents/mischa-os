@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, Filter, TrendingUp, TrendingDown, Minus, Settings } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, Filter, TrendingUp, TrendingDown, Minus, Settings, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, differenceInDays } from "date-fns";
@@ -149,6 +150,7 @@ export default function AgendamentoDashboard() {
   const [agendamentosSelecionados, setAgendamentosSelecionados] = useState<Set<string>>(new Set());
   const [modalReagendarAberto, setModalReagendarAberto] = useState(false);
   const [modoGraficos, setModoGraficos] = useState<'agendamentos' | 'unidades'>('agendamentos');
+  const [filtroNome, setFiltroNome] = useState<string>('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -181,6 +183,14 @@ export default function AgendamentoDashboard() {
   const agendamentosFiltrados = useMemo(() => {
     let filtrados = agendamentos;
     
+    // Filtro por nome do cliente
+    if (filtroNome.trim()) {
+      const termoBusca = filtroNome.toLowerCase().trim();
+      filtrados = filtrados.filter(agendamento => 
+        agendamento.cliente.nome.toLowerCase().includes(termoBusca)
+      );
+    }
+    
     // Filtro por representante (multi-select)
     if (representanteFiltro.length > 0) {
       filtrados = filtrados.filter(agendamento => 
@@ -198,7 +208,7 @@ export default function AgendamentoDashboard() {
     }
     
     return filtrados;
-  }, [agendamentos, representanteFiltro, rotaFiltro]);
+  }, [agendamentos, filtroNome, representanteFiltro, rotaFiltro]);
 
   const indicadoresSemana = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, {
@@ -696,14 +706,27 @@ export default function AgendamentoDashboard() {
       {/* Barra de Filtros Unificada */}
       <div className="bg-muted/30 border rounded-lg p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Filter className="h-4 w-4" />
-            Filtros
-            {(representanteFiltro.length > 0 || rotaFiltro.length > 0) && (
-              <Badge variant="secondary" className="text-xs">
-                {[representanteFiltro.length > 0, rotaFiltro.length > 0].filter(Boolean).length} ativo(s)
-              </Badge>
-            )}
+          <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              Filtros
+              {(representanteFiltro.length > 0 || rotaFiltro.length > 0 || filtroNome.trim()) && (
+                <Badge variant="secondary" className="text-xs">
+                  {[representanteFiltro.length > 0, rotaFiltro.length > 0, filtroNome.trim().length > 0].filter(Boolean).length} ativo(s)
+                </Badge>
+              )}
+            </div>
+            
+            {/* Campo de busca por nome */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar cliente..."
+                value={filtroNome}
+                onChange={(e) => setFiltroNome(e.target.value)}
+                className="pl-8 h-9 w-48"
+              />
+            </div>
           </div>
           <div className="text-sm text-muted-foreground">
             <span className="font-medium text-foreground">{agendamentosFiltrados.length}</span> agendamentos
