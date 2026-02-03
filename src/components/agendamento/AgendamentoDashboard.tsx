@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, Filter } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, Filter, TrendingUp, TrendingDown, Minus, Settings } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, addWeeks, subWeeks, differenceInDays } from "date-fns";
@@ -23,6 +23,95 @@ import QuantidadesProdutosSemanal from "./QuantidadesProdutosSemanal";
 import EntregasRealizadasSemanal from "./EntregasRealizadasSemanal";
 import { RepresentantesFilter } from "@/components/expedicao/components/RepresentantesFilter";
 import { RotasFilter } from "./RotasFilter";
+import { useFrequenciaRealEntregas, getCorDivergencia } from "@/hooks/useFrequenciaRealEntregas";
+import { Tooltip as TooltipUI, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+// Componente para indicadores visuais de entrega
+const IndicadoresEntrega = ({ 
+  diasDesdeUltimaEntrega, 
+  periodicidade, 
+  frequenciaReal,
+  numeroEntregas 
+}: { 
+  diasDesdeUltimaEntrega: number | null; 
+  periodicidade: number; 
+  frequenciaReal: number | null;
+  numeroEntregas: number;
+}) => {
+  const divergencia = getCorDivergencia(periodicidade, frequenciaReal);
+  
+  const getDivergenciaIcon = () => {
+    if (frequenciaReal === null) return <Minus className="h-3 w-3" />;
+    if (divergencia.direcao === 'up') return <TrendingUp className="h-3 w-3" />;
+    if (divergencia.direcao === 'down') return <TrendingDown className="h-3 w-3" />;
+    return <Minus className="h-3 w-3" />;
+  };
+
+  const getFrequenciaBackground = () => {
+    if (frequenciaReal === null) return 'bg-slate-100';
+    if (divergencia.cor === 'green') return 'bg-green-100';
+    if (divergencia.cor === 'yellow') return 'bg-yellow-100';
+    if (divergencia.cor === 'red') return 'bg-red-100';
+    return 'bg-slate-100';
+  };
+  
+  return (
+    <div className="flex items-center gap-1.5 mt-2 text-xs flex-wrap">
+      {/* Dias desde última entrega */}
+      <TooltipProvider>
+        <TooltipUI>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1 px-2 py-1 bg-slate-100 rounded text-slate-700">
+              <Clock className="h-3 w-3" />
+              <span className="font-medium">{diasDesdeUltimaEntrega ?? '--'}d</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>{diasDesdeUltimaEntrega !== null 
+              ? `${diasDesdeUltimaEntrega} dias desde última entrega`
+              : 'Primeira entrega (sem histórico)'
+            }</p>
+          </TooltipContent>
+        </TooltipUI>
+      </TooltipProvider>
+      
+      {/* Periodicidade configurada */}
+      <TooltipProvider>
+        <TooltipUI>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 rounded text-blue-700">
+              <Settings className="h-3 w-3" />
+              <span className="font-medium">{periodicidade}d</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>Periodicidade configurada: {periodicidade} dias</p>
+          </TooltipContent>
+        </TooltipUI>
+      </TooltipProvider>
+      
+      {/* Frequência real */}
+      <TooltipProvider>
+        <TooltipUI>
+          <TooltipTrigger asChild>
+            <div className={`flex items-center gap-1 px-2 py-1 rounded ${getFrequenciaBackground()} ${divergencia.classe}`}>
+              {getDivergenciaIcon()}
+              <span className="font-medium">{frequenciaReal ?? '--'}d</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>
+              {frequenciaReal !== null 
+                ? `Frequência real: ${frequenciaReal} dias (${numeroEntregas} entregas nos últimos 84 dias)`
+                : 'Dados insuficientes para calcular frequência real'
+              }
+            </p>
+          </TooltipContent>
+        </TooltipUI>
+      </TooltipProvider>
+    </div>
+  );
+};
 
 export default function AgendamentoDashboard() {
   const {
@@ -256,7 +345,15 @@ export default function AgendamentoDashboard() {
     });
   }, [agendamentosFiltrados, diaSelecionado]);
 
-  
+  // Extrair clienteIds do dia selecionado para buscar frequência real
+  const clienteIdsDiaSelecionado = useMemo(() => {
+    return agendamentosDiaSelecionado.map(a => a.cliente.id);
+  }, [agendamentosDiaSelecionado]);
+
+  // Hook para buscar frequência real de entregas
+  const { data: frequenciasReais } = useFrequenciaRealEntregas(clienteIdsDiaSelecionado);
+
+
 
   const handleDiaClick = (dataCompleta: Date) => {
     setDiaSelecionado(dataCompleta);
@@ -1007,6 +1104,11 @@ export default function AgendamentoDashboard() {
 
                     const periodicidade = agendamento.cliente.periodicidadePadrao || 7;
 
+                    // Buscar frequência real do cliente
+                    const frequenciaInfo = frequenciasReais?.get(agendamento.cliente.id);
+                    const frequenciaReal = frequenciaInfo?.frequenciaReal ?? null;
+                    const numeroEntregas = frequenciaInfo?.numeroEntregas ?? 0;
+
                     // Determinar a cor de fundo baseada no status
                     const getBackgroundColor = () => {
                       if (agendamento.statusAgendamento === "Agendado") {
@@ -1019,10 +1121,11 @@ export default function AgendamentoDashboard() {
                     };
 
                     return (
-                      <div key={agendamento.cliente.id} className={`flex items-center gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
+                      <div key={agendamento.cliente.id} className={`flex items-start gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
                         <Checkbox
                           checked={agendamentosSelecionados.has(agendamento.cliente.id)}
                           onCheckedChange={() => toggleSelecao(agendamento.cliente.id)}
+                          className="mt-1"
                         />
                         <div className="flex-1 text-left">
                           <div className="font-medium text-left">{agendamento.cliente.nome}</div>
@@ -1030,15 +1133,15 @@ export default function AgendamentoDashboard() {
                             Quantidade: {quantidade} unidades
                           </div>
                           {agendamento.statusAgendamento === "Previsto" && (
-                            <div className="text-xs text-muted-foreground text-left mt-1">
-                              {diasDesdeUltimaEntrega !== null 
-                                ? `${diasDesdeUltimaEntrega} dias desde última entrega` 
-                                : 'Primeira entrega'
-                              } • Periodicidade: {periodicidade} dias
-                            </div>
+                            <IndicadoresEntrega
+                              diasDesdeUltimaEntrega={diasDesdeUltimaEntrega}
+                              periodicidade={periodicidade}
+                              frequenciaReal={frequenciaReal}
+                              numeroEntregas={numeroEntregas}
+                            />
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
                           <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
                             {agendamento.statusAgendamento}
