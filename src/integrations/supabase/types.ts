@@ -27,6 +27,7 @@ export type Database = {
           id: string
           itens_personalizados: Json | null
           observacoes_agendamento: string | null
+          paghiper_transaction_id: string | null
           quantidade_total: number
           status_agendamento: string
           substatus_pedido: string | null
@@ -46,6 +47,7 @@ export type Database = {
           id?: string
           itens_personalizados?: Json | null
           observacoes_agendamento?: string | null
+          paghiper_transaction_id?: string | null
           quantidade_total?: number
           status_agendamento?: string
           substatus_pedido?: string | null
@@ -65,6 +67,7 @@ export type Database = {
           id?: string
           itens_personalizados?: Json | null
           observacoes_agendamento?: string | null
+          paghiper_transaction_id?: string | null
           quantidade_total?: number
           status_agendamento?: string
           substatus_pedido?: string | null
