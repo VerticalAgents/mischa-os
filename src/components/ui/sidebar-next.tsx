@@ -15,6 +15,7 @@ import { mainMenuItems, secondaryMenuItems, menuGroups } from "@/components/layo
 import { useAlertaStore } from "@/hooks/useAlertaStore";
 import AlertaIndicator from "@/components/common/AlertaIndicator";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import mischasLogo from "@/assets/mischas-logo.png";
 
 const sidebarVariants = {
   open: {
@@ -109,7 +110,8 @@ export function SessionNavBar() {
 
   return (
     <motion.div 
-      className={cn("sidebar fixed left-0 z-40 h-full shrink-0 border-r fixed border-sidebar-border bg-sidebar")} 
+      className={cn("sidebar fixed left-0 z-40 h-full shrink-0 border-r fixed")} 
+      style={{ backgroundColor: '#d1193a', borderColor: 'rgba(255,255,255,0.2)' }}
       initial={isCollapsed ? "closed" : "open"} 
       animate={isCollapsed ? "closed" : "open"} 
       variants={sidebarVariants} 
@@ -117,16 +119,16 @@ export function SessionNavBar() {
       onMouseEnter={() => setIsCollapsed(false)} 
       onMouseLeave={() => setIsCollapsed(true)}
     >
-      <motion.div className="relative z-40 flex text-sidebar-foreground h-full shrink-0 flex-col transition-all" variants={contentVariants}>
+      <motion.div className="relative z-40 flex text-white h-full shrink-0 flex-col transition-all" variants={contentVariants}>
         <motion.ul variants={staggerVariants} className="flex h-full flex-col">
           <div className="flex grow flex-col items-center">
-            <div className="flex h-[54px] w-full shrink-0 border-b border-sidebar-border p-2">
+            <div className="flex h-[54px] w-full shrink-0 border-b p-2" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
               <div className="mt-[1.5px] flex w-full">
                 <div className="flex w-full items-center gap-2 px-2">
-                  <img src="/lovable-uploads/021d1658-0d25-4427-a96e-47f6d10f9c8b.png" className="size-6 object-contain" alt="Logo" />
+                  <img src={mischasLogo} className="size-8 object-cover rounded-full border-2 border-white" alt="Mischa's Bakery Logo" />
                   <motion.li variants={variants} className="flex w-fit items-center gap-2">
-                    {!isCollapsed && <p className="text-md font-medium text-sidebar-foreground">
-                        MischaOS
+                    {!isCollapsed && <p className="text-md font-medium text-white">
+                        MISCHA'S BAKERY
                       </p>}
                   </motion.li>
                 </div>
@@ -147,15 +149,15 @@ export function SessionNavBar() {
                         )}>
                           <div className={cn(
                             "h-2 w-2 rounded-full",
-                            group.variant === "main" && "bg-indigo-500",
-                            group.variant === "operational" && "bg-purple-500",
-                            group.variant === "tactical" && "bg-blue-500",
-                            group.variant === "strategic" && "bg-green-500",
-                            group.variant === "system" && "bg-gray-400",
-                            group.variant === "admin" && "bg-red-500"
+                            group.variant === "main" && "bg-white",
+                            group.variant === "operational" && "bg-pink-200",
+                            group.variant === "tactical" && "bg-pink-300",
+                            group.variant === "strategic" && "bg-pink-100",
+                            group.variant === "system" && "bg-white/60",
+                            group.variant === "admin" && "bg-yellow-300"
                           )}/>
                           {!isCollapsed && (
-                            <span className="ml-2 text-xs font-medium uppercase text-muted-foreground text-left">
+                            <span className="ml-2 text-xs font-medium uppercase text-white/70 text-left">
                               {group.title}
                             </span>
                           )}
@@ -169,13 +171,13 @@ export function SessionNavBar() {
                               to={item.path}
                               onClick={() => setIsCollapsed(true)}
                               className={cn(
-                                "flex h-8 w-full flex-row items-center rounded-md px-2 py-1.5 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", 
-                                pathname === item.path && "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                                "flex h-8 w-full flex-row items-center rounded-md px-2 py-1.5 transition text-white hover:bg-white/20", 
+                                pathname === item.path && "bg-white/25 font-medium"
                               )}
                             >
                               {item.icon}
                               <motion.li variants={variants}>
-                                {!isCollapsed && <p className="ml-2 text-sm text-left">{item.label}</p>}
+                                {!isCollapsed && <p className="ml-2 text-sm text-left text-white">{item.label}</p>}
                               </motion.li>
                             </Link>
                           ))}
@@ -183,7 +185,7 @@ export function SessionNavBar() {
                         
                         {/* Separator between groups */}
                         {index < filteredMenuGroups.length - 1 && (
-                          <Separator className="my-2 mx-2" />
+                          <Separator className="my-2 mx-2 bg-white/20" />
                         )}
                       </div>
                     ))}
@@ -192,12 +194,12 @@ export function SessionNavBar() {
               </div>
               
               {/* Área de alertas */}
-              <div className="border-t border-sidebar-border p-2">
+              <div className="border-t p-2" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
                 <div className="flex items-center justify-center">
                   {isCollapsed ? (
                     <Link to="/alertas">
-                      <Button variant="ghost" size="icon" className="relative size-8">
-                        <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center">
+                      <Button variant="ghost" size="icon" className="relative size-8 text-white hover:bg-white/20">
+                        <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-white text-[#d1193a]">
                           {alertCount}
                         </Badge>
                       </Button>
