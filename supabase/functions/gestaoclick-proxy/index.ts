@@ -2313,7 +2313,8 @@ Deno.serve(async (req) => {
         }
 
         const recebimentosData = await recebimentosResponse.json();
-        console.log('[gestaoclick-proxy] recebimentos response:', JSON.stringify(recebimentosData).substring(0, 500));
+        // Log COMPLETO da resposta para investigar campos disponíveis (incluindo transaction_id do PagHiper)
+        console.log('[gestaoclick-proxy] recebimentos FULL response:', JSON.stringify(recebimentosData));
 
         const responseText = JSON.stringify(recebimentosData);
         if (hasGCError(responseText, recebimentosResponse.status)) {
@@ -2343,12 +2344,16 @@ Deno.serve(async (req) => {
 
         console.log('[gestaoclick-proxy] recebimentos filtrados:', recebimentosFiltrados.length);
 
+        // Retornar TODOS os campos do recebimento para investigação
         return new Response(
           JSON.stringify({ 
             success: true, 
             recebimentos: recebimentosFiltrados.map((r: any) => {
               const rec = r.Recebimento || r;
+              // Retornar objeto completo para ver todos os campos disponíveis
               return {
+                ...rec,
+                // Campos conhecidos (para compatibilidade)
                 id: rec.id,
                 codigo: rec.codigo,
                 descricao: rec.descricao,
@@ -2357,9 +2362,17 @@ Deno.serve(async (req) => {
                 nome_cliente: rec.nome_cliente,
                 data_vencimento: rec.data_vencimento,
                 liquidado: rec.liquidado,
-                hash: rec.hash
+                hash: rec.hash,
+                // Campos potenciais do PagHiper (investigação)
+                transaction_id: rec.transaction_id,
+                paghiper_id: rec.paghiper_id,
+                boleto_url: rec.boleto_url,
+                link_boleto: rec.link_boleto,
+                url_boleto: rec.url_boleto
               };
-            })
+            }),
+            // Incluir raw_data para investigação completa
+            raw_sample: recebimentosFiltrados.length > 0 ? recebimentosFiltrados[0] : null
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
