@@ -1,137 +1,89 @@
 
-# Plano: Redesign da Pagina de Login - Mischa's Bakery
+# Plano: Corrigir Ícone Cortado na Barra Lateral Minimizada
 
-## Objetivo
-Atualizar a pagina de login para refletir a identidade visual da Mischa's Bakery, com fundo vermelho, logo do gato chef, e melhorias na experiencia do usuario.
+## Problema Identificado
 
----
-
-## Mudancas Visuais
-
-### 1. Fundo da Pagina
-- **Antes**: `bg-gray-50` (cinza claro)
-- **Depois**: Cor personalizada `#d1193a` (vermelho Mischa's Bakery)
-
-### 2. Logo/Imagem de Perfil
-- **Antes**: Icone de relogio roxo em um quadrado
-- **Depois**: Imagem do gato chef com chapeu de cozinheiro (circular)
-- Copiar imagem para `src/assets/mischas-logo.png`
-- Usar como import ES6 para melhor bundling
-
-### 3. Titulo e Subtitulo
-- **Antes**: "Mischa's Bakery" (sem maiusculo padronizado)
-- **Depois**: "MISCHA'S BAKERY LTDA" (tudo maiusculo)
-- Centralizar ambos os textos (ja esta centralizado, garantir que permaneca)
-- Ajustar cor do texto para branco (contraste com fundo vermelho)
-
-### 4. Remocao do Login com Google
-- Remover o separador "Ou"
-- Remover o botao "Entrar com Google" da aba de login
-- Remover o botao "Cadastrar com Google" da aba de cadastro
-- Manter a funcao `handleGoogleLogin` pode ser removida tambem (limpeza de codigo)
-
-### 5. Aba de Cadastro - Mensagem de Indisponibilidade
-- Substituir o formulario de cadastro por uma mensagem informativa:
-  - "Cadastro Indisponivel"
-  - "No momento, nao e possivel realizar novos cadastros."
-  - "O sistema ainda esta em fase de desenvolvimento."
-- Estilizar com icone de alerta e texto amigavel
-
----
-
-## Estrutura Visual Final
+A imagem do gato está sendo cortada porque há múltiplas camadas de padding que reduzem o espaço útil:
 
 ```text
-+--------------------------------------------------+
-|                                                  |
-|          Fundo #d1193a (vermelho)                |
-|                                                  |
-|        +----------------------------+            |
-|        |                            |            |
-|        |      [Gato Chef Logo]      |            |
-|        |      (imagem circular)     |            |
-|        |                            |            |
-|        |   MISCHA'S BAKERY LTDA     |            |
-|        |     Sistema de Gestao      |            |
-|        |                            |            |
-|        |  [Entrar]    [Cadastrar]   |            |
-|        |                            |            |
-|        |  Aba Login:                |            |
-|        |   - Email                  |            |
-|        |   - Senha                  |            |
-|        |   - Botao Entrar           |            |
-|        |   (sem Google)             |            |
-|        |                            |            |
-|        |  Aba Cadastro:             |            |
-|        |   - Mensagem de            |            |
-|        |     indisponibilidade      |            |
-|        |                            |            |
-|        +----------------------------+            |
-|                                                  |
-+--------------------------------------------------+
+Largura total: 3.5rem (56px)
+├── Container externo: p-2 (8px cada lado) = 40px restantes
+│   └── Container interno: px-2 (8px cada lado) = 24px restantes
+│       └── Imagem: size-8 (32px) ← NÃO CABE!
+```
+
+## Solução
+
+Aumentar a largura minimizada para `4rem` (64px) e ajustar o padding interno para centralizar melhor a imagem.
+
+---
+
+## Alterações
+
+### 1. Aumentar Largura Minimizada
+```typescript
+const sidebarVariants = {
+  open: {
+    width: "15rem"
+  },
+  closed: {
+    width: "4rem"  // Aumentar de 3.5rem para 4rem (64px)
+  }
+};
+```
+
+### 2. Ajustar Padding do Header
+Reduzir o padding horizontal interno quando minimizado:
+```tsx
+<div className="flex w-full items-center gap-2 px-2">
+// Mudar para:
+<div className={cn(
+  "flex w-full items-center gap-2",
+  isCollapsed ? "justify-center px-0" : "px-2"
+)}>
+```
+
+### 3. Centralizar Imagem Quando Minimizado
+```tsx
+<img 
+  src={mischasLogo} 
+  className={cn(
+    "object-cover rounded-full border-2 border-white shrink-0",
+    isCollapsed ? "size-10" : "size-8"  // Imagem maior quando minimizado
+  )}
+  alt="Mischa's Bakery Logo" 
+/>
 ```
 
 ---
 
 ## Arquivo a Modificar
 
-| Arquivo | Alteracao |
+| Arquivo | Alteração |
 |---------|-----------|
-| `src/pages/auth/AuthPage.tsx` | Redesign completo: fundo, logo, textos, remover Google, mensagem cadastro |
-| `src/assets/mischas-logo.png` | Copiar imagem do gato chef para assets |
+| `src/components/ui/sidebar-next.tsx` | Largura 4rem, ajustar padding, centralizar imagem |
 
 ---
 
-## Detalhes Tecnicos
+## Resultado Visual
 
-### Copiar Imagem
-```bash
-lov-copy user-uploads://Design_sem_nome_1.png src/assets/mischas-logo.png
+```text
+Minimizado (4rem = 64px):
++----------------+
+|                |
+|    [🐱 Logo]   |  ← Centralizado, sem corte
+|                |
+|     [📊]       |  ← Ícones centralizados
+|     [📋]       |
+|     [🚚]       |
++----------------+
+
+Expandido (15rem):
++----------------------------------+
+|  [🐱]  MISCHA'S BAKERY           |
+|                                  |
+|  • Dashboard                     |
+|  • Agendamentos                  |
+|  • Clientes                      |
++----------------------------------+
 ```
-
-### Import da Imagem
-```typescript
-import mischashLogo from '@/assets/mischas-logo.png';
-```
-
-### Estrutura do Header Atualizado
-```tsx
-<CardHeader className="text-center">
-  <div className="flex justify-center mb-4">
-    <img 
-      src={mischasLogo} 
-      alt="Mischa's Bakery Logo" 
-      className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-lg"
-    />
-  </div>
-  <CardTitle className="text-2xl text-gray-800">MISCHA'S BAKERY LTDA</CardTitle>
-  <CardDescription className="text-gray-600">Sistema de Gestao</CardDescription>
-</CardHeader>
-```
-
-### Aba Cadastro - Mensagem
-```tsx
-<TabsContent value="signup" className="space-y-4">
-  <div className="text-center py-8 space-y-4">
-    <div className="flex justify-center">
-      <AlertCircle className="h-16 w-16 text-amber-500" />
-    </div>
-    <h3 className="text-lg font-semibold text-gray-800">Cadastro Indisponivel</h3>
-    <p className="text-muted-foreground text-sm">
-      No momento, nao e possivel realizar novos cadastros.
-    </p>
-    <p className="text-muted-foreground text-sm">
-      O sistema ainda esta em fase de desenvolvimento.
-    </p>
-  </div>
-</TabsContent>
-```
-
----
-
-## Beneficios
-
-1. **Identidade Visual**: Pagina de login alinhada com a marca Mischa's Bakery
-2. **Experiencia Limpa**: Remocao de opcoes que nao funcionam (Google login)
-3. **Comunicacao Clara**: Usuario sabe que cadastro nao esta disponivel
-4. **Profissionalismo**: Visual mais polido e consistente com a marca
