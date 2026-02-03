@@ -1,245 +1,168 @@
 
 
-# Plano: Melhorar Filtros do Dashboard de Agendamentos
+# Plano: Nova Aba "Periodicidade" no Menu Agendamentos
 
 ## Objetivo
-Modernizar a interface de filtros do Dashboard de Agendamentos com:
-1. Navegador de semana visual similar ao WeekNavigator usado em Entregas Pendentes
-2. Filtros de Rota e Representante mais visuais usando o padrão de Popover com checkboxes
+Criar uma nova aba chamada **"Periodicidade"** dentro do menu Agendamentos para permitir a visualização e gestao da periodicidade dos clientes que possuem:
+- Agendamento ativo (status "Previsto" ou "Agendado")
+- Status de cliente "Ativo"
 
 ---
 
-## Arquitetura Proposta
+## Escopo Funcional
 
-### Layout do Novo Header de Filtros
+### Dados Exibidos
+A nova aba apresentara uma tabela com as seguintes informacoes por cliente:
 
+| Coluna | Descricao |
+|--------|-----------|
+| PDV (Nome) | Nome do cliente |
+| Periodicidade Atual | Valor em dias configurado (`periodicidadePadrao`) |
+| Quantidade Padrao | Unidades padrao por reposicao |
+| Ultima Reposicao | Data da ultima entrega efetiva |
+| Proxima Reposicao | Data do proximo agendamento |
+| Status Agendamento | "Previsto" ou "Agendado" |
+| Acoes | Botao para editar periodicidade |
+
+### Filtros Disponiveis
+- **Pesquisa por nome**: Filtro de texto para buscar clientes
+- **Filtro por periodicidade**: Selecionar faixas (ex: "Semanal (7 dias)", "Quinzenal (14 dias)", "Mensal (30 dias)", "Outros")
+- **Ordenacao**: Por nome, periodicidade, proxima reposicao
+
+### Cards de Resumo (Estatisticas)
+No topo da aba, exibir cards com:
+1. **Total de Clientes**: Numero total de clientes ativos com agendamento
+2. **Periodicidade Media**: Media de dias de periodicidade
+3. **Distribuicao por Faixa**: Quantos clientes em cada faixa de periodicidade
+
+### Funcionalidade de Edicao
+- Modal para editar a periodicidade do cliente diretamente
+- Opcao de alterar `periodicidadePadrao` e `quantidadePadrao`
+- Ao salvar, atualiza o cliente no banco de dados
+
+---
+
+## Arquitetura Tecnica
+
+### Novo Componente
+**Arquivo:** `src/components/agendamento/AgendamentosPeriodicidade.tsx`
+
+```typescript
+// Estrutura do componente
+interface ClientePeriodicidade {
+  clienteId: string;
+  nome: string;
+  periodicidadePadrao: number;
+  quantidadePadrao: number;
+  ultimaReposicao?: Date;
+  proximaReposicao: Date;
+  statusAgendamento: "Previsto" | "Agendado";
+}
 ```
-+------------------------------------------------------------------+
-| ⬅️ | 📅 27/01 - 02/02/2026 | ➡️ | [Semana Atual]               |
-+------------------------------------------------------------------+
-| 🔍 Filtros                                           X agendamentos |
-|------------------------------------------------------------------|
-| 👥 Todos os representantes ▼ | 🛣️ Todas as rotas ▼ | [PDF ⬇️]   |
-+------------------------------------------------------------------+
+
+### Integracao com Stores Existentes
+1. **useAgendamentoClienteStore**: Para obter agendamentos ativos
+2. **useClienteStore**: Para obter dados de periodicidade e atualizar cliente
+
+### Logica de Filtragem
+```typescript
+const clientesComPeriodicidade = useMemo(() => {
+  // Filtrar agendamentos com status Previsto ou Agendado
+  return agendamentos.filter(a => 
+    (a.statusAgendamento === "Previsto" || a.statusAgendamento === "Agendado") &&
+    a.cliente.ativo === true
+  ).map(a => ({
+    clienteId: a.cliente.id,
+    nome: a.cliente.nome,
+    periodicidadePadrao: a.cliente.periodicidadePadrao,
+    quantidadePadrao: a.cliente.quantidadePadrao,
+    ultimaReposicao: a.cliente.ultimaDataReposicaoEfetiva,
+    proximaReposicao: a.dataReposicao,
+    statusAgendamento: a.statusAgendamento
+  }));
+}, [agendamentos]);
 ```
 
 ---
 
-## Alterações Necessárias
+## Alteracoes Necessarias
 
-### 1. Criar Componente RotasFilter
+### 1. Criar Componente Principal
+**Novo arquivo:** `src/components/agendamento/AgendamentosPeriodicidade.tsx`
 
-**Novo arquivo:** `src/components/agendamento/RotasFilter.tsx`
+Estrutura:
+- Cards de estatisticas no topo
+- Barra de filtros (pesquisa + filtro de faixa de periodicidade)
+- Tabela com dados dos clientes
+- Modal de edicao de periodicidade
 
-Componente similar ao `RepresentantesFilter` mas para rotas de entrega:
+### 2. Criar Modal de Edicao
+**Novo arquivo:** `src/components/agendamento/EditarPeriodicidadeModal.tsx`
 
-```tsx
-interface RotasFilterProps {
-  selectedIds: number[];
-  onSelectionChange: (ids: number[]) => void;
-}
-```
+Campos editaveis:
+- Periodicidade (dias)
+- Quantidade Padrao (unidades)
 
-Funcionalidades:
-- Popover com lista de rotas com checkboxes
-- Opção "Todas as rotas" no topo
-- Opção "Sem rota" para clientes sem rota definida
-- Badge mostrando quantidade selecionada
+### 3. Atualizar Pagina de Agendamentos
+**Arquivo:** `src/pages/Agendamento.tsx`
 
-### 2. Criar Componente AgendamentoFiltersBar
-
-**Novo arquivo:** `src/components/agendamento/AgendamentoFiltersBar.tsx`
-
-Componente que agrupa:
-- Navegador de semana (reutilizando WeekNavigator ou versão adaptada)
-- Barra de filtros com Representante e Rota (estilo Popover)
-- Botão de exportar PDF
-
-```tsx
-interface AgendamentoFiltersBarProps {
-  semanaAtual: Date;
-  onSemanaAnterior: () => void;
-  onProximaSemana: () => void;
-  onVoltarSemanaAtual: () => void;
-  ehSemanaAtual: boolean;
-  representantesFiltro: number[];
-  onRepresentantesFiltroChange: (ids: number[]) => void;
-  rotasFiltro: number[];
-  onRotasFiltroChange: (ids: number[]) => void;
-  totalAgendamentos: number;
-  onExportarPDF: () => void;
-}
-```
-
-### 3. Atualizar AgendamentoDashboard.tsx
-
-**Alterações de Estado:**
-
-```typescript
-// Trocar de string para array de IDs
-const [representanteFiltro, setRepresentanteFiltro] = useState<number[]>([]);
-const [rotaFiltro, setRotaFiltro] = useState<number[]>([]);
-```
-
-**Atualizar agendamentosFiltrados:**
-
-```typescript
-const agendamentosFiltrados = useMemo(() => {
-  let filtrados = agendamentos;
-  
-  // Filtro por representante (multi-select)
-  if (representanteFiltro.length > 0) {
-    filtrados = filtrados.filter(agendamento => 
-      agendamento.cliente.representanteId && 
-      representanteFiltro.includes(agendamento.cliente.representanteId)
-    );
-  }
-  
-  // Filtro por rota (multi-select)
-  if (rotaFiltro.length > 0) {
-    filtrados = filtrados.filter(agendamento => 
-      agendamento.cliente.rotaEntregaId && 
-      rotaFiltro.includes(agendamento.cliente.rotaEntregaId)
-    );
-  }
-  
-  return filtrados;
-}, [agendamentos, representanteFiltro, rotaFiltro]);
-```
-
-**Substituir seção de filtros existente (linhas 590-668) por:**
-
-```tsx
-{/* Navegador de Semana */}
-<div className="bg-muted/30 border rounded-lg p-3">
-  <div className="flex items-center justify-center gap-4 flex-wrap">
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={navegarSemanaAnterior}
-      className="h-8 w-8 p-0"
-    >
-      <ChevronLeft className="h-4 w-4" />
-    </Button>
-    
-    <div className="flex items-center gap-2 px-3 min-w-[180px] justify-center">
-      <CalendarDays className="h-4 w-4 text-muted-foreground" />
-      <span className="text-sm font-medium whitespace-nowrap">
-        {format(inicioSemana, 'dd/MM')} - {format(fimSemana, 'dd/MM/yyyy')}
-      </span>
-    </div>
-    
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={navegarProximaSemana}
-      className="h-8 w-8 p-0"
-    >
-      <ChevronRight className="h-4 w-4" />
-    </Button>
-    
-    {!ehSemanaAtual && (
-      <Button
-        variant="default"
-        size="sm"
-        onClick={voltarSemanaAtual}
-        className="text-xs"
-      >
-        Semana Atual
-      </Button>
-    )}
-  </div>
-</div>
-
-{/* Barra de Filtros */}
-<div className="bg-muted/30 border rounded-lg p-4 space-y-3">
-  <div className="flex items-center justify-between">
-    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-      <Filter className="h-4 w-4" />
-      Filtros
-      {(representanteFiltro.length > 0 || rotaFiltro.length > 0) && (
-        <Badge variant="secondary" className="text-xs">
-          {[representanteFiltro.length > 0, rotaFiltro.length > 0].filter(Boolean).length} ativo(s)
-        </Badge>
-      )}
-    </div>
-    <div className="text-sm text-muted-foreground">
-      <span className="font-medium text-foreground">{agendamentosFiltrados.length}</span> agendamentos
-    </div>
-  </div>
-  
-  <div className="flex items-center gap-3 flex-wrap">
-    <RepresentantesFilter
-      selectedIds={representanteFiltro}
-      onSelectionChange={setRepresentanteFiltro}
-    />
-    
-    <RotasFilter
-      selectedIds={rotaFiltro}
-      onSelectionChange={setRotaFiltro}
-    />
-    
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={exportarPDFRepresentante}
-      className="flex items-center gap-2 ml-auto"
-    >
-      <FileDown className="h-4 w-4" />
-      Exportar PDF
-    </Button>
-  </div>
-</div>
-```
+Adicoes:
+- Import do novo componente `AgendamentosPeriodicidade`
+- Nova aba "periodicidade" no TabsList
+- Novo TabsContent renderizando o componente
+- Adicionar "periodicidade" na lista de tabs validas para navegacao via URL
 
 ---
 
 ## Arquivos a Criar
 
-| Arquivo | Descrição |
+| Arquivo | Descricao |
 |---------|-----------|
-| `src/components/agendamento/RotasFilter.tsx` | Componente de filtro multi-select para rotas |
+| `src/components/agendamento/AgendamentosPeriodicidade.tsx` | Componente principal da aba Periodicidade |
+| `src/components/agendamento/EditarPeriodicidadeModal.tsx` | Modal para edicao de periodicidade do cliente |
 
 ---
 
 ## Arquivos a Modificar
 
-| Arquivo | Ação |
+| Arquivo | Acao |
 |---------|------|
-| `src/components/agendamento/AgendamentoDashboard.tsx` | Substituir filtros simples por WeekNavigator + Popovers visuais |
+| `src/pages/Agendamento.tsx` | Adicionar nova aba e importar componente |
 
 ---
 
-## Comparação Visual
+## Interface Visual Proposta
 
-### Antes (Atual):
 ```
-+-------------------------------------------------------+
-| [⬅ Semana Anterior]  27/01 - 02/02  [Próxima ➡]       |
-|                     Voltar para semana atual           |
-+-------------------------------------------------------+
-| [Dropdown Representante ▼] [Dropdown Rota ▼] [PDF]    |
-+-------------------------------------------------------+
-```
++-----------------------------------------------------------------------+
+| [Dashboard] [Agendamentos] [Periodicidade] [Positivacao] [...]        |
++-----------------------------------------------------------------------+
 
-### Depois (Proposto):
-```
-+-------------------------------------------------------+
-| [⬅] 📅 27/01 - 02/02/2026 [➡]  [Semana Atual]       |
-+-------------------------------------------------------+
-| 🔍 Filtros                            25 agendamentos |
-|-------------------------------------------------------|
-| 👥 [Representantes ▼] 🛣️ [Rotas ▼]        [PDF ⬇]     |
-+-------------------------------------------------------+
++-------------------+  +-------------------+  +-------------------+
+| Total de Clientes |  | Periodicidade     |  | Distribuicao      |
+|       42          |  | Media: 12 dias    |  | Semanal: 15       |
+|                   |  |                   |  | Quinzenal: 18     |
+|                   |  |                   |  | Mensal: 9         |
++-------------------+  +-------------------+  +-------------------+
+
++-----------------------------------------------------------------------+
+| [Pesquisar...] | [Filtrar por Faixa ▼] | Ordenar por: [▼]    42 PDVs |
++-----------------------------------------------------------------------+
+
+| PDV           | Periodicidade | Qtd Padrao | Ultima   | Proxima    | Status   | Acoes  |
+|---------------|---------------|------------|----------|------------|----------|--------|
+| Cafe Central  | 7 dias        | 20 un      | 25/01    | 01/02      | Agendado | [Edit] |
+| Padaria Sol   | 14 dias       | 15 un      | 20/01    | 03/02      | Previsto | [Edit] |
+| ...           | ...           | ...        | ...      | ...        | ...      | ...    |
 ```
 
 ---
 
 ## Resultado Esperado
 
-1. **Navegador de Semana**: Visual compacto com setas, data centralizada e botão "Semana Atual"
-2. **Filtro de Representantes**: Popover com checkboxes para múltipla seleção
-3. **Filtro de Rotas**: Popover similar ao de representantes
-4. **Contagem de Filtros**: Badge mostrando quantos filtros estão ativos
-5. **Contagem de Resultados**: Total de agendamentos filtrados visível
+1. **Nova aba "Periodicidade"** visivel no menu de Agendamentos
+2. **Visualizacao clara** de todos os clientes ativos com sua periodicidade configurada
+3. **Filtros funcionais** para encontrar clientes por nome ou faixa de periodicidade
+4. **Estatisticas uteis** para entender a distribuicao de periodicidades
+5. **Edicao rapida** da periodicidade diretamente da aba sem precisar ir ao cadastro de clientes
 
