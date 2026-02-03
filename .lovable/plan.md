@@ -1,61 +1,103 @@
 
-# Plano: Corrigir Inconsistência nos Indicadores de Entrega
+# Plano: Adicionar Filtro de Busca por Nome no Dashboard de Agendamentos
 
-## Problema Identificado
-
-Existe uma inconsistência entre duas fontes de dados diferentes:
-
-| Dado | Fonte Atual | Problema |
-|------|-------------|----------|
-| Dias desde última entrega | `cliente.ultimaDataReposicaoEfetiva` (cadastro) | Pode estar desatualizado |
-| Frequência real e nº entregas | `historico_entregas` (tabela real) | Dados atualizados |
-
-**Resultado**: O cliente Luzardo aparece com "8 entregas nos últimos 84 dias" (dados reais da tabela), mas ao mesmo tempo mostra "--d" e "Primeira entrega (sem histórico)" porque o campo `ultimaDataReposicaoEfetiva` do cadastro está vazio.
+## Objetivo
+Adicionar um campo de busca por texto que permite filtrar os agendamentos pelo nome do cliente, integrado à barra de filtros existente.
 
 ---
 
-## Solução
+## Interface Visual Proposta
 
-Usar a **mesma fonte de dados** para todos os indicadores. O hook `useFrequenciaRealEntregas` já retorna a `ultimaEntrega` do cliente, então devemos usar esse valor em vez do campo do cadastro.
-
-### Mudanças no Componente IndicadoresEntrega
-
-Adicionar `ultimaEntrega` como propriedade e usá-la para calcular os dias:
-
-```typescript
-const IndicadoresEntrega = ({ 
-  diasDesdeUltimaEntrega, 
-  periodicidade, 
-  frequenciaReal,
-  numeroEntregas,
-  ultimaEntregaReal  // NOVO: data da última entrega do histórico real
-}: { 
-  diasDesdeUltimaEntrega: number | null; 
-  periodicidade: number; 
-  frequenciaReal: number | null;
-  numeroEntregas: number;
-  ultimaEntregaReal: Date | null;  // NOVO
-}) => {
-  // Usar a última entrega real como prioridade
-  const diasReais = ultimaEntregaReal 
-    ? differenceInDays(new Date(), ultimaEntregaReal)
-    : diasDesdeUltimaEntrega;
-  
-  // ... resto do código usando diasReais
-};
+A barra de filtros atual:
+```
+[Filtros] [Navegador Semana] [Representantes ▼] [Rotas ▼] [Exportar PDF]
 ```
 
-### Lógica de Prioridade
+Nova barra de filtros:
+```
+[Filtros] [🔍 Buscar cliente...] [Navegador Semana] [Representantes ▼] [Rotas ▼] [Exportar PDF]
+```
 
-1. Se `ultimaEntregaReal` existe (vem do histórico) → usar essa data
-2. Se não existe → usar `diasDesdeUltimaEntrega` do cadastro (fallback)
-3. Se ambos são null → mostrar "--" e "Primeira entrega"
+### Comportamento do Campo de Busca
+- Busca em tempo real enquanto digita (debounce não necessário para listas pequenas)
+- Busca case-insensitive (ignora maiúsculas/minúsculas)
+- Limpa o filtro quando o campo está vazio
+- Placeholder: "Buscar cliente..."
+- Ícone de Search (lupa) à esquerda
 
-### Tooltip Atualizado
+---
 
-O tooltip também precisa refletir a consistência:
-- Se tem entregas no histórico → "X dias desde última entrega"
-- Se não tem entregas no histórico → "Primeira entrega (sem histórico)"
+## Alterações Técnicas
+
+### 1. Novo Estado para Filtro de Texto
+```typescript
+const [filtroNome, setFiltroNome] = useState<string>('');
+```
+
+### 2. Atualizar useMemo de agendamentosFiltrados
+
+Adicionar filtragem por nome do cliente:
+```typescript
+const agendamentosFiltrados = useMemo(() => {
+  let filtrados = agendamentos;
+  
+  // Filtro por nome do cliente (NOVO)
+  if (filtroNome.trim()) {
+    const termoBusca = filtroNome.toLowerCase().trim();
+    filtrados = filtrados.filter(agendamento => 
+      agendamento.cliente.nome.toLowerCase().includes(termoBusca)
+    );
+  }
+  
+  // Filtro por representante (existente)
+  if (representanteFiltro.length > 0) {
+    filtrados = filtrados.filter(agendamento => 
+      agendamento.cliente.representanteId && 
+      representanteFiltro.includes(agendamento.cliente.representanteId)
+    );
+  }
+  
+  // Filtro por rota (existente)
+  if (rotaFiltro.length > 0) {
+    filtrados = filtrados.filter(agendamento => 
+      agendamento.cliente.rotaEntregaId && 
+      rotaFiltro.includes(agendamento.cliente.rotaEntregaId)
+    );
+  }
+  
+  return filtrados;
+}, [agendamentos, filtroNome, representanteFiltro, rotaFiltro]);
+```
+
+### 3. Adicionar Campo de Input na Barra de Filtros
+
+Inserir entre o label "Filtros" e o navegador de semana:
+```tsx
+<div className="relative">
+  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+  <Input
+    placeholder="Buscar cliente..."
+    value={filtroNome}
+    onChange={(e) => setFiltroNome(e.target.value)}
+    className="pl-8 h-9 w-48"
+  />
+</div>
+```
+
+### 4. Atualizar Contador de Filtros Ativos
+
+Incluir filtroNome na contagem:
+```tsx
+{(representanteFiltro.length > 0 || rotaFiltro.length > 0 || filtroNome.trim()) && (
+  <Badge variant="secondary" className="text-xs">
+    {[
+      representanteFiltro.length > 0, 
+      rotaFiltro.length > 0,
+      filtroNome.trim().length > 0
+    ].filter(Boolean).length} ativo(s)
+  </Badge>
+)}
+```
 
 ---
 
@@ -63,46 +105,55 @@ O tooltip também precisa refletir a consistência:
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/components/agendamento/AgendamentoDashboard.tsx` | Passar `ultimaEntrega` do hook para o componente e usar como fonte primária |
+| `src/components/agendamento/AgendamentoDashboard.tsx` | Adicionar estado filtroNome, Input de busca e lógica de filtragem |
 
 ---
 
-## Fluxo de Dados Corrigido
+## Imports Necessários
 
+Adicionar aos imports existentes:
+```typescript
+import { Search } from "lucide-react"; // já existe no projeto
+import { Input } from "@/components/ui/input";
 ```
-useFrequenciaRealEntregas (fonte única de verdade)
-    │
-    ├── frequenciaReal
-    ├── numeroEntregas  
-    ├── primeiraEntrega
-    └── ultimaEntrega ────────┐
-                              │
-                              ▼
-              IndicadoresEntrega
-                      │
-                      ├── diasDesdeUltimaEntrega ← calculado de ultimaEntrega
-                      ├── frequenciaReal
-                      └── numeroEntregas
+
+---
+
+## Fluxo de Dados
+
+```text
+Usuario digita "Luzardo"
+        │
+        ▼
+filtroNome = "Luzardo"
+        │
+        ▼
+useMemo(agendamentosFiltrados)
+        │
+        ├── Filtra por nome.toLowerCase().includes("luzardo")
+        ├── Filtra por representante (se ativo)
+        └── Filtra por rota (se ativo)
+        │
+        ▼
+Componentes atualizam com lista filtrada
 ```
 
 ---
 
 ## Resultado Esperado
 
-**Antes (inconsistente):**
-- Tooltip: "8 entregas nos últimos 84 dias"
-- Badge: "--d" (dias desde última)
-- Tooltip 2: "Primeira entrega (sem histórico)"
-
-**Depois (consistente):**
-- Se tem 8 entregas → Mostra "X dias" desde a última entrega real
-- Se não tem entregas → Mostra "--d" e "Primeira entrega"
-- Dados sempre vindos da mesma fonte (historico_entregas)
+1. **Campo de busca** posicionado na barra de filtros, após o label "Filtros"
+2. **Busca instantânea** enquanto digita
+3. **Case-insensitive** para facilitar uso
+4. **Integração** com filtros existentes (representante e rota)
+5. **Contador atualizado** para incluir filtro de nome quando ativo
+6. **Layout responsivo** com largura fixa de 192px (w-48)
 
 ---
 
 ## Benefícios
 
-1. **Consistência**: Todos os indicadores usam a mesma fonte de dados
-2. **Precisão**: Dados baseados no histórico real, não em campos que podem estar desatualizados
-3. **Confiabilidade**: Usuário pode confiar que os números fazem sentido juntos
+1. **Localização rápida**: Encontrar clientes específicos em listas grandes
+2. **Eficiência operacional**: Menos scroll e procura manual
+3. **Consistência**: Mesmo padrão de busca usado em outras telas (Clientes)
+4. **Não-invasivo**: Não altera lógica existente, apenas adiciona camada de filtro
