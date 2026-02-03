@@ -28,16 +28,25 @@ import { Tooltip as TooltipUI, TooltipContent, TooltipProvider, TooltipTrigger }
 
 // Componente para indicadores visuais de entrega
 const IndicadoresEntrega = ({ 
-  diasDesdeUltimaEntrega, 
+  diasDesdeUltimaEntregaCadastro, 
   periodicidade, 
   frequenciaReal,
-  numeroEntregas 
+  numeroEntregas,
+  ultimaEntregaReal
 }: { 
-  diasDesdeUltimaEntrega: number | null; 
+  diasDesdeUltimaEntregaCadastro: number | null; 
   periodicidade: number; 
   frequenciaReal: number | null;
   numeroEntregas: number;
+  ultimaEntregaReal: Date | null;
 }) => {
+  // Priorizar a última entrega do histórico real (fonte única de verdade)
+  const diasDesdeUltimaEntrega = ultimaEntregaReal 
+    ? differenceInDays(new Date(), ultimaEntregaReal)
+    : diasDesdeUltimaEntregaCadastro;
+  
+  const temHistorico = numeroEntregas > 0;
+  
   const divergencia = getCorDivergencia(periodicidade, frequenciaReal);
   
   const getDivergenciaIcon = () => {
@@ -67,7 +76,7 @@ const IndicadoresEntrega = ({
             </div>
           </TooltipTrigger>
           <TooltipContent side="top">
-            <p>{diasDesdeUltimaEntrega !== null 
+            <p>{temHistorico 
               ? `${diasDesdeUltimaEntrega} dias desde última entrega`
               : 'Primeira entrega (sem histórico)'
             }</p>
@@ -101,9 +110,9 @@ const IndicadoresEntrega = ({
           </TooltipTrigger>
           <TooltipContent side="top">
             <p>
-              {frequenciaReal !== null 
-                ? `Frequência real: ${frequenciaReal} dias (${numeroEntregas} entregas nos últimos 84 dias)`
-                : 'Dados insuficientes para calcular frequência real'
+              {temHistorico 
+                ? `Frequência real: ${frequenciaReal ?? '--'} dias (${numeroEntregas} entregas nos últimos 84 dias)`
+                : 'Primeira entrega (sem histórico para calcular frequência)'
               }
             </p>
           </TooltipContent>
@@ -1134,10 +1143,11 @@ export default function AgendamentoDashboard() {
                           </div>
                           {agendamento.statusAgendamento === "Previsto" && (
                             <IndicadoresEntrega
-                              diasDesdeUltimaEntrega={diasDesdeUltimaEntrega}
+                              diasDesdeUltimaEntregaCadastro={diasDesdeUltimaEntrega}
                               periodicidade={periodicidade}
                               frequenciaReal={frequenciaReal}
                               numeroEntregas={numeroEntregas}
+                              ultimaEntregaReal={frequenciaInfo?.ultimaEntrega ?? null}
                             />
                           )}
                         </div>
