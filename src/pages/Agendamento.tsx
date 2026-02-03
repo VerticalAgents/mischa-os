@@ -9,6 +9,7 @@ import AgendamentosAtrasados from "@/components/agendamento/AgendamentosAtrasado
 import AgendamentosDespachados from "@/components/agendamento/AgendamentosDespachados";
 import AgendamentosSemData from "@/components/agendamento/AgendamentosSemData";
 import AgendamentosPositivacao from "@/components/agendamento/AgendamentosPositivacao";
+import AgendamentosPeriodicidade from "@/components/agendamento/AgendamentosPeriodicidade";
 import { useSearchParams } from "react-router-dom";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
 import { useClienteStore } from "@/hooks/useClienteStore";
@@ -36,7 +37,7 @@ export default function Agendamento() {
   useEffect(() => {
     // Verificar se há parâmetro de tab na URL e atualizar
     const tab = searchParams.get("tab");
-    if (tab && ["dashboard", "agendamentos", "positivacao", "despachados", "pendentes", "atrasados", "sem-data"].includes(tab)) {
+    if (tab && ["dashboard", "agendamentos", "periodicidade", "positivacao", "despachados", "pendentes", "atrasados", "sem-data"].includes(tab)) {
       changeTab(tab);
     }
   }, [searchParams, changeTab]);
@@ -97,6 +98,7 @@ export default function Agendamento() {
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="agendamentos">Agendamentos</TabsTrigger>
+          <TabsTrigger value="periodicidade">Periodicidade</TabsTrigger>
           <TabsTrigger value="positivacao">Positivação</TabsTrigger>
           {temAgendamentosDespachados && <TabsTrigger value="despachados">Despachado</TabsTrigger>}
           {temAgendamentosPendentes && <TabsTrigger value="pendentes">Pendente</TabsTrigger>}
@@ -110,6 +112,10 @@ export default function Agendamento() {
         
         <TabsContent value="agendamentos" className="space-y-4">
           <TodosAgendamentos />
+        </TabsContent>
+        
+        <TabsContent value="periodicidade" className="space-y-4">
+          <AgendamentosPeriodicidade />
         </TabsContent>
         
         <TabsContent value="positivacao" className="space-y-4">
