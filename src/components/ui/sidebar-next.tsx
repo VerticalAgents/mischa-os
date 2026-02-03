@@ -22,7 +22,7 @@ const sidebarVariants = {
     width: "15rem"
   },
   closed: {
-    width: "3.05rem"
+    width: "3.5rem"
   }
 };
 
