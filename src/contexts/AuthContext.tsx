@@ -266,7 +266,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
           // Limpar rota salva no logout
           localStorage.removeItem('lastVisitedRoute');
-          navigate('/login');
+          navigate('/auth');
           toast.info("Você foi desconectado");
         }
 

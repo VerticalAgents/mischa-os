@@ -26,7 +26,7 @@ export function SessionExpiredDialog({ isOpen, onClose }: SessionExpiredDialogPr
     } catch (error) {
       console.error('Erro ao renovar sessão:', error);
       // Force logout if refresh fails
-      window.location.href = '/login';
+      window.location.href = '/auth';
     }
   };
 
