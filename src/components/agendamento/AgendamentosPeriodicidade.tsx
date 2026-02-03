@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
+import { useFrequenciaRealEntregas, getCorDivergencia } from "@/hooks/useFrequenciaRealEntregas";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,9 +20,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Clock, Edit2, Package, Search, Users } from "lucide-react";
+import { Calendar, Clock, Edit2, Package, Search, Users, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import EditarPeriodicidadeModal from "./EditarPeriodicidadeModal";
 import { Cliente } from "@/types";
 
@@ -46,6 +53,19 @@ export default function AgendamentosPeriodicidade() {
   const [faixaPeriodicidade, setFaixaPeriodicidade] = useState<FaixaPeriodicidade>("todos");
   const [ordenacao, setOrdenacao] = useState<OrdenacaoOpcao>("nome");
   const [clienteEditando, setClienteEditando] = useState<ClientePeriodicidade | null>(null);
+
+  // Extrair IDs dos clientes para buscar frequência real
+  const clienteIds = useMemo(() => {
+    return agendamentos
+      .filter(a => 
+        (a.statusAgendamento === "Previsto" || a.statusAgendamento === "Agendado") &&
+        a.cliente.ativo === true
+      )
+      .map(a => a.cliente.id);
+  }, [agendamentos]);
+
+  // Buscar frequência real de entregas
+  const { data: frequenciasReais, isLoading: loadingFrequencias } = useFrequenciaRealEntregas(clienteIds);
 
   // Filtrar apenas agendamentos ativos (Previsto ou Agendado) de clientes ativos
   const clientesComPeriodicidade = useMemo(() => {
@@ -262,12 +282,55 @@ export default function AgendamentosPeriodicidade() {
                   <TableRow key={cliente.clienteId}>
                     <TableCell className="font-medium">{cliente.nome}</TableCell>
                     <TableCell className="text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="font-semibold">{cliente.periodicidadePadrao} dias</span>
-                        <Badge variant="outline" className="text-xs">
-                          {getFaixaLabel(cliente.periodicidadePadrao)}
-                        </Badge>
-                      </div>
+                      {(() => {
+                        const freqInfo = frequenciasReais?.get(cliente.clienteId);
+                        const frequenciaReal = freqInfo?.frequenciaReal ?? null;
+                        const { cor, direcao, classe } = getCorDivergencia(cliente.periodicidadePadrao, frequenciaReal);
+                        
+                        const DirecaoIcon = direcao === 'up' ? TrendingUp : direcao === 'down' ? TrendingDown : Minus;
+                        
+                        return (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="font-semibold">{cliente.periodicidadePadrao} dias</span>
+                            <Badge variant="outline" className="text-xs">
+                              {getFaixaLabel(cliente.periodicidadePadrao)}
+                            </Badge>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className={`flex items-center gap-1 text-xs ${classe}`}>
+                                    <span className="text-muted-foreground">Real:</span>
+                                    {loadingFrequencias ? (
+                                      <span className="text-muted-foreground">...</span>
+                                    ) : frequenciaReal !== null ? (
+                                      <>
+                                        <span className="font-medium">{frequenciaReal} dias</span>
+                                        <DirecaoIcon className="h-3 w-3" />
+                                      </>
+                                    ) : (
+                                      <span className="text-muted-foreground">N/A</span>
+                                    )}
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {freqInfo ? (
+                                    <div className="text-xs">
+                                      <p>Entregas nos últimos 84 dias: {freqInfo.numeroEntregas}</p>
+                                      {frequenciaReal !== null ? (
+                                        <p>Intervalo médio real: {frequenciaReal} dias</p>
+                                      ) : (
+                                        <p>Dados insuficientes (mín. 2 entregas)</p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="text-xs">Sem entregas no período</p>
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
