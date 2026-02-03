@@ -22,7 +22,7 @@ const sidebarVariants = {
     width: "15rem"
   },
   closed: {
-    width: "3.5rem"
+    width: "4rem"
   }
 };
 
@@ -124,8 +124,18 @@ export function SessionNavBar() {
           <div className="flex grow flex-col items-center">
             <div className="flex h-[54px] w-full shrink-0 border-b p-2" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
               <div className="mt-[1.5px] flex w-full">
-                <div className="flex w-full items-center gap-2 px-2">
-                  <img src={mischasLogo} className="size-8 object-cover rounded-full border-2 border-white" alt="Mischa's Bakery Logo" />
+                <div className={cn(
+                  "flex w-full items-center gap-2",
+                  isCollapsed ? "justify-center px-0" : "px-2"
+                )}>
+                  <img 
+                    src={mischasLogo} 
+                    className={cn(
+                      "object-cover rounded-full border-2 border-white shrink-0",
+                      isCollapsed ? "size-10" : "size-8"
+                    )} 
+                    alt="Mischa's Bakery Logo" 
+                  />
                   <motion.li variants={variants} className="flex w-fit items-center gap-2">
                     {!isCollapsed && <p className="text-md font-medium text-white">
                         MISCHA'S BAKERY
