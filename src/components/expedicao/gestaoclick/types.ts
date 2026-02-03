@@ -46,3 +46,22 @@ export interface DocumentosStatus {
   boleto: boolean;
   nf: boolean;
 }
+
+// Tipos para recebimentos (boletos) do GestaoClick
+export interface RecebimentoGC {
+  id: string;
+  codigo: string;
+  descricao: string;
+  valor: string;
+  cliente_id: string;
+  nome_cliente: string;
+  data_vencimento: string;
+  liquidado: string; // "0" = em aberto, "1" = pago
+  hash?: string; // Para montar URL de impressão
+}
+
+export interface BuscarRecebimentosResponse {
+  success: boolean;
+  recebimentos: RecebimentoGC[];
+  error?: string;
+}

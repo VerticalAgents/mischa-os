@@ -87,7 +87,7 @@ export default function Expedicao() {
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="separacao">Separação de Pedidos</TabsTrigger>
-          <TabsTrigger value="gestaoclick">GestaoClick</TabsTrigger>
+          <TabsTrigger value="gestaoclick">Emissão de Documentos</TabsTrigger>
           <TabsTrigger value="despacho">Despacho de Pedidos</TabsTrigger>
           <TabsTrigger value="organizacao">Organização</TabsTrigger>
           <TabsTrigger value="rota">Rota de Entrega</TabsTrigger>
