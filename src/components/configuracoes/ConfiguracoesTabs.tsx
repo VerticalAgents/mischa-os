@@ -1,8 +1,6 @@
 
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { Card, CardContent } from "@/components/ui/card";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
+import ConfiguracoesNavigation, { configGroups } from "./ConfiguracoesNavigation";
 
 // Importações das abas
 import EmpresaTab from "./tabs/EmpresaTab";
@@ -21,104 +19,43 @@ import ProducaoTab from "./tabs/ProducaoTab";
 import ParametrosEstoqueTab from "./tabs/ParametrosEstoqueTab";
 import IntegracoesGestaoClickTab from "./tabs/IntegracoesGestaoClickTab";
 
-const configGroups = [
-  {
-    title: "Administração",
-    tabs: [
-      { id: "empresa", label: "Empresa", component: EmpresaTab },
-      { id: "usuario", label: "Usuário", component: UsuarioTab },
-      { id: "sistema", label: "Sistema", component: SistemaTab },
-      { id: "agentes-ia", label: "Agentes IA", component: AgentesIAConfigTab },
-    ]
-  },
-  {
-    title: "Financeiro",
-    tabs: [
-      { id: "financeiro", label: "Parâmetros", component: FinanceiroTab },
-      { id: "precificacao", label: "Precificação", component: PrecificacaoTab },
-      { id: "custos", label: "Custos", component: CustosTab },
-      { id: "cartoes-credito", label: "Cartões de Crédito", component: CartoesTab },
-    ]
-  },
-  {
-    title: "Produtos & Estoque",
-    tabs: [
-      { id: "categorias-produto", label: "Categorias", component: CategoriasProdutoTab },
-      { id: "proporcoes", label: "Proporções", component: ProporcoesTab },
-      { id: "parametros-estoque", label: "Estoque", component: ParametrosEstoqueTab },
-    ]
-  },
-  {
-    title: "Operações",
-    tabs: [
-      { id: "clientes", label: "Clientes", component: ClientesTab },
-      { id: "agendamento", label: "Agendamento", component: AgendamentoTab },
-      { id: "producao", label: "Produção", component: ProducaoTab },
-    ]
-  },
-  {
-    title: "Integrações",
-    tabs: [
-      { id: "gestaoclick", label: "GestaoClick", component: IntegracoesGestaoClickTab },
-    ]
-  }
-];
+// Mapeamento de componentes por ID
+const tabComponents: Record<string, React.ComponentType> = {
+  "empresa": EmpresaTab,
+  "usuario": UsuarioTab,
+  "sistema": SistemaTab,
+  "agentes-ia": AgentesIAConfigTab,
+  "financeiro": FinanceiroTab,
+  "precificacao": PrecificacaoTab,
+  "custos": CustosTab,
+  "cartoes-credito": CartoesTab,
+  "categorias-produto": CategoriasProdutoTab,
+  "proporcoes": ProporcoesTab,
+  "parametros-estoque": ParametrosEstoqueTab,
+  "clientes": ClientesTab,
+  "agendamento": AgendamentoTab,
+  "producao": ProducaoTab,
+  "gestaoclick": IntegracoesGestaoClickTab,
+};
 
 export default function ConfiguracoesTabs() {
   const { activeTab, changeTab } = useTabPersistence("empresa");
 
-  const allTabs = configGroups.flatMap(group => group.tabs);
-  const activeTabData = allTabs.find(tab => tab.id === activeTab) || allTabs[0];
+  // Obtém o componente ativo
+  const ActiveComponent = tabComponents[activeTab] || EmpresaTab;
 
   return (
-    <div className="w-full space-y-6">
-      <Tabs value={activeTab} onValueChange={changeTab} className="w-full">
-        <div className="space-y-4">
-          {/* Menu organizado por categorias */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="space-y-6">
-                {configGroups.map((group, groupIndex) => (
-                  <div key={group.title}>
-                    <div className="mb-3">
-                      <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                        {group.title}
-                      </h3>
-                    </div>
-                    
-                    <TabsList className="h-auto p-1 grid grid-cols-2 md:grid-cols-4 lg:flex lg:flex-wrap gap-1">
-                      {group.tabs.map((tab) => (
-                        <TabsTrigger
-                          key={tab.id}
-                          value={tab.id}
-                          className="text-sm px-4 py-2 flex-shrink-0"
-                        >
-                          {tab.label}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                    
-                    {groupIndex < configGroups.length - 1 && (
-                      <Separator className="mt-4" />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Conteúdo das abas */}
-        <div className="w-full">
-          {allTabs.map((tab) => (
-            <TabsContent key={tab.id} value={tab.id} className="w-full">
-              <div className="w-full">
-                <tab.component />
-              </div>
-            </TabsContent>
-          ))}
-        </div>
-      </Tabs>
+    <div className="flex h-[calc(100vh-12rem)] border rounded-lg bg-background overflow-hidden">
+      {/* Sidebar de navegação */}
+      <ConfiguracoesNavigation 
+        currentTab={activeTab}
+        onTabChange={changeTab}
+      />
+      
+      {/* Área de conteúdo */}
+      <div className="flex-1 overflow-auto p-6">
+        <ActiveComponent />
+      </div>
     </div>
   );
 }
