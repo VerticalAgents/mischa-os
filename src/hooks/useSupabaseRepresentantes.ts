@@ -8,6 +8,7 @@ interface Representante {
   nome: string;
   email?: string;
   telefone?: string;
+  cpf?: string;
   ativo: boolean;
   gestaoclick_funcionario_id?: string;
 }

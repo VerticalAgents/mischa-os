@@ -29,6 +29,7 @@ interface Representante {
   nome: string;
   email?: string;
   telefone?: string;
+  cpf?: string;
   ativo: boolean;
 }
 
@@ -47,7 +48,8 @@ export default function RepresentantesList() {
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
-    telefone: ""
+    telefone: "",
+    cpf: ""
   });
 
   const handleAdd = async () => {
@@ -55,7 +57,7 @@ export default function RepresentantesList() {
     
     const success = await adicionarRepresentante(formData);
     if (success) {
-      setFormData({ nome: "", email: "", telefone: "" });
+      setFormData({ nome: "", email: "", telefone: "", cpf: "" });
       setIsAddModalOpen(false);
     }
   };
@@ -65,7 +67,7 @@ export default function RepresentantesList() {
     
     const success = await atualizarRepresentante(editingItem.id, formData);
     if (success) {
-      setFormData({ nome: "", email: "", telefone: "" });
+      setFormData({ nome: "", email: "", telefone: "", cpf: "" });
       setIsEditModalOpen(false);
       setEditingItem(null);
     }
@@ -82,7 +84,8 @@ export default function RepresentantesList() {
     setFormData({
       nome: item.nome,
       email: item.email || "",
-      telefone: item.telefone || ""
+      telefone: item.telefone || "",
+      cpf: item.cpf || ""
     });
     setIsEditModalOpen(true);
   };
@@ -138,6 +141,15 @@ export default function RepresentantesList() {
                   placeholder="(00) 00000-0000"
                 />
               </div>
+              <div>
+                <Label htmlFor="cpf">CPF</Label>
+                <Input
+                  id="cpf"
+                  value={formData.cpf}
+                  onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                  placeholder="000.000.000-00"
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
@@ -153,6 +165,7 @@ export default function RepresentantesList() {
         <TableHeader>
           <TableRow>
             <TableHead>Nome</TableHead>
+            <TableHead>CPF</TableHead>
             <TableHead>E-mail</TableHead>
             <TableHead>Telefone</TableHead>
             <TableHead>Status</TableHead>
@@ -163,6 +176,7 @@ export default function RepresentantesList() {
           {representantes.map((representante) => (
             <TableRow key={representante.id}>
               <TableCell className="font-medium">{representante.nome}</TableCell>
+              <TableCell>{representante.cpf || "-"}</TableCell>
               <TableCell>{representante.email || "-"}</TableCell>
               <TableCell>{representante.telefone || "-"}</TableCell>
               <TableCell>
@@ -229,6 +243,15 @@ export default function RepresentantesList() {
                 value={formData.telefone}
                 onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
                 placeholder="(00) 00000-0000"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-cpf">CPF</Label>
+              <Input
+                id="edit-cpf"
+                value={formData.cpf}
+                onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                placeholder="000.000.000-00"
               />
             </div>
           </div>
