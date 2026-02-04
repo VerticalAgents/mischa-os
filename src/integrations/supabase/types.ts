@@ -1750,6 +1750,7 @@ export type Database = {
       representantes: {
         Row: {
           ativo: boolean
+          cpf: string | null
           created_at: string
           email: string | null
           gestaoclick_funcionario_id: string | null
@@ -1761,6 +1762,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          cpf?: string | null
           created_at?: string
           email?: string | null
           gestaoclick_funcionario_id?: string | null
@@ -1772,6 +1774,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          cpf?: string | null
           created_at?: string
           email?: string | null
           gestaoclick_funcionario_id?: string | null
