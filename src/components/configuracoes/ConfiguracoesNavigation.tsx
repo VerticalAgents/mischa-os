@@ -55,7 +55,7 @@ const configGroups = [
   {
     title: "Operações",
     tabs: [
-      { id: "clientes", label: "Clientes", icon: Users },
+      { id: "clientes", label: "Comercial", icon: Users },
       { id: "agendamento", label: "Agendamento", icon: Calendar },
       { id: "producao", label: "Produção", icon: Factory },
     ]
