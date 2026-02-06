@@ -72,7 +72,7 @@ export function ExportCSVDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-6 py-4">
+        <div className="flex-1 overflow-hidden flex flex-col gap-6 py-4 min-h-0">
           {/* Endereço de Partida */}
           <div className="space-y-2">
             <Label htmlFor="endereco-partida" className="flex items-center gap-2">
@@ -98,7 +98,7 @@ export function ExportCSVDialog({
           </div>
 
           {/* Lista de Entregas */}
-          <div className="space-y-2 flex-1 overflow-hidden flex flex-col">
+          <div className="space-y-2 flex-1 overflow-hidden flex flex-col min-h-0">
             <div className="flex items-center justify-between">
               <Label>Entregas para Exportar</Label>
               <span className="text-sm text-muted-foreground">
