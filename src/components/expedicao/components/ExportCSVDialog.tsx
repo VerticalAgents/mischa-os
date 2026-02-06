@@ -72,7 +72,7 @@ export function ExportCSVDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-6 py-4 min-h-0">
+        <div className="flex flex-col gap-6 py-4">
           {/* Endereço de Partida */}
           <div className="space-y-2">
             <Label htmlFor="endereco-partida" className="flex items-center gap-2">
@@ -98,7 +98,7 @@ export function ExportCSVDialog({
           </div>
 
           {/* Lista de Entregas */}
-          <div className="space-y-2 flex-1 overflow-hidden flex flex-col min-h-0">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Entregas para Exportar</Label>
               <span className="text-sm text-muted-foreground">
@@ -113,7 +113,7 @@ export function ExportCSVDialog({
                 </p>
               </div>
             ) : (
-              <div className="border rounded-md flex-1 overflow-hidden flex flex-col">
+              <div className="border rounded-md">
                 {/* Cabeçalho com Select All */}
                 <div className="border-b bg-muted/50 p-3 flex items-center gap-3">
                   <Checkbox
@@ -134,7 +134,7 @@ export function ExportCSVDialog({
                 </div>
 
                 {/* Lista com Scroll */}
-                <ScrollArea className="flex-1">
+                <ScrollArea className="max-h-[40vh]">
                   <div className="p-2">
                     {entregasFiltradas.map((entrega) => (
                       <div
