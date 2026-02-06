@@ -1,131 +1,21 @@
 
-# Plano: Reorganizar Menu de Configurações com Sidebar Lateral
+# Corrigir Scroll da Lista no Modal de Exportar CSV
 
-## Objetivo
+## Problema
+A lista de clientes no modal de exportação CSV não tem scroll funcional. O conteúdo ultrapassa os limites do modal, impedindo o acesso aos clientes que ficam mais abaixo.
 
-Substituir o layout atual de "tabs empilhadas por categoria" (que ocupa muito espaço vertical) por uma estrutura de **sidebar fixa à esquerda + conteúdo à direita**, similar ao padrão já utilizado na página `/manual`.
+**Causa raiz:** O `DialogContent` do Radix UI aplica `display: grid` por padrão. Ao adicionar `flex flex-col` na className, o Tailwind nao garante que `flex` sobrescreva `grid` (depende da ordem no CSS gerado). O resultado e que os containers filhos nao recebem restricao de altura, e o `ScrollArea` nunca ativa o scroll.
 
-## Comparação Visual
+## Solucao
 
-| Antes | Depois |
-|-------|--------|
-| Menu de tabs horizontais dentro de Card | Sidebar fixa de ~280px à esquerda |
-| Categorias empilhadas verticalmente | Categorias como grupos expansíveis na sidebar |
-| Ocupa ~50% da tela só com navegação | Navegação compacta, conteúdo ocupa área principal |
+Aplicar uma altura maxima explicita no `ScrollArea` da lista de entregas, em vez de depender de flex constraints dentro do grid do Dialog. Isso garante que, independente do layout do dialog, a lista tenha um limite de altura e ative o scroll.
 
-## O Que Será Criado/Modificado
+## Arquivo a Modificar
 
-### 1. Novo Componente: `ConfiguracoesNavigation.tsx`
-Sidebar de navegação inspirada no `ManualNavigation.tsx`:
-- Largura fixa de ~280px
-- Categorias como seções (Administração, Financeiro, etc.)
-- Itens clicáveis dentro de cada categoria
-- Indicador visual do item ativo
-- Scroll interno para muitos itens
+**`src/components/expedicao/components/ExportCSVDialog.tsx`**
 
-### 2. Modificar: `ConfiguracoesTabs.tsx`
-Substituir o layout de tabs por:
-- Estrutura flex com sidebar + conteúdo
-- Usar o novo `ConfiguracoesNavigation` para navegação
-- Manter a lógica de persistência de tab ativa
+Mudancas:
+1. No `ScrollArea` (linha 137), adicionar `max-h-[40vh]` para limitar a altura da area de scroll e garantir que o scroll funcione
+2. Remover as classes `flex-1 overflow-hidden min-h-0` dos containers pais que dependiam do flex layout (linhas 75, 101, 116), simplificando para `overflow-auto` onde necessario
 
-### 3. Modificar: `Configuracoes.tsx`
-Ajustar layout para comportar a nova estrutura full-height similar ao Manual
-
----
-
-## Layout Proposto
-
-```text
-┌──────────────────────────────────────────────────────────────────┐
-│ Header: Configurações                                            │
-├───────────────┬──────────────────────────────────────────────────┤
-│               │                                                  │
-│  SIDEBAR      │   CONTEÚDO DA ABA SELECIONADA                   │
-│  (fixa)       │                                                  │
-│               │                                                  │
-│ ┌───────────┐ │   ┌──────────────────────────────────────────┐  │
-│ │ADMINISTR. │ │   │  Dados da Empresa                        │  │
-│ │ • Empresa │ │   │  Configure as informações básicas...     │  │
-│ │ • Usuário │ │   │                                          │  │
-│ │ • Sistema │ │   │  [Form fields...]                        │  │
-│ │ • Agentes │ │   │                                          │  │
-│ ├───────────┤ │   └──────────────────────────────────────────┘  │
-│ │FINANCEIRO │ │                                                  │
-│ │ • Parâm.  │ │                                                  │
-│ │ • Precif. │ │                                                  │
-│ │ ...       │ │                                                  │
-│ └───────────┘ │                                                  │
-│               │                                                  │
-└───────────────┴──────────────────────────────────────────────────┘
-```
-
----
-
-## Arquivos a Criar/Modificar
-
-| Arquivo | Ação |
-|---------|------|
-| `src/components/configuracoes/ConfiguracoesNavigation.tsx` | **CRIAR** - Sidebar de navegação |
-| `src/components/configuracoes/ConfiguracoesTabs.tsx` | Refatorar para layout sidebar + conteúdo |
-| `src/pages/Configuracoes.tsx` | Ajustar estrutura de layout |
-
----
-
-## Seção Técnica
-
-### ConfiguracoesNavigation.tsx (Novo)
-
-```typescript
-interface ConfiguracoesNavigationProps {
-  currentTab: string;
-  onTabChange: (tabId: string) => void;
-}
-```
-
-Componentes internos:
-- `ScrollArea` para scroll vertical
-- Seções por categoria com título em uppercase (muted)
-- Botões de navegação com estado active/hover
-- Ícones opcionais por categoria
-
-### ConfiguracoesTabs.tsx (Refatorado)
-
-Mudança principal:
-```typescript
-// DE (atual):
-<Tabs>
-  <Card com TabsList empilhados>
-  <TabsContent>
-
-// PARA (novo):
-<div className="flex h-full">
-  <ConfiguracoesNavigation 
-    currentTab={activeTab}
-    onTabChange={changeTab}
-  />
-  <div className="flex-1 overflow-auto p-6">
-    {/* Renderiza componente da aba ativa */}
-    <ActiveTabComponent />
-  </div>
-</div>
-```
-
-### Persistência de Estado
-
-Mantém o `useTabPersistence` existente - apenas muda a UI de navegação, não a lógica de estado.
-
-### Responsividade
-
-Para telas menores (mobile), a sidebar pode:
-- Ficar oculta com botão toggle
-- Ou manter versão compacta com apenas ícones
-
----
-
-## Benefícios
-
-1. **Menos espaço desperdiçado** - Navegação compacta na lateral
-2. **Padrão consistente** - Similar ao Manual de Instruções
-3. **Melhor UX** - Categorias sempre visíveis sem scroll
-4. **Escalável** - Fácil adicionar novos itens sem poluir a interface
+Resultado: a lista de entregas tera no maximo 40% da altura da viewport, com scroll interno funcional para acessar todos os clientes.
