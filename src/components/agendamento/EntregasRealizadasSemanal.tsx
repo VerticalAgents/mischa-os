@@ -6,8 +6,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Package, Loader2, ChevronDown, ChevronUp, CheckCircle2, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, endOfWeek, subWeeks } from "date-fns";
+import { Cliente } from "@/types";
+
 interface EntregasRealizadasSemanelProps {
   semanaAtual: Date;
+  representanteFiltro: number[];
+  rotaFiltro: number[];
+  clientes: Cliente[];
 }
 interface ProdutoQuantidade {
   produto_id: string;
@@ -15,7 +20,10 @@ interface ProdutoQuantidade {
   quantidade: number;
 }
 export default function EntregasRealizadasSemanal({
-  semanaAtual
+  semanaAtual,
+  representanteFiltro,
+  rotaFiltro,
+  clientes: clientesProp
 }: EntregasRealizadasSemanelProps) {
   const [quantidadesPorProduto, setQuantidadesPorProduto] = useState<Record<string, ProdutoQuantidade>>({});
   const [quantidadeSemanaAnterior, setQuantidadeSemanaAnterior] = useState<number>(0);
@@ -55,15 +63,38 @@ export default function EntregasRealizadasSemanal({
         const {
           data: entregas,
           error: entregasError
-        } = await supabase.from('historico_entregas').select('id, quantidade, itens').eq('tipo', 'entrega').gte('data', inicioSemana.toISOString()).lte('data', fimSemana.toISOString());
+        } = await supabase.from('historico_entregas').select('id, quantidade, itens, cliente_id').eq('tipo', 'entrega').gte('data', inicioSemana.toISOString()).lte('data', fimSemana.toISOString());
         if (entregasError) throw entregasError;
 
         // Buscar entregas da semana anterior
         const {
           data: entregasAnterior,
           error: entregasAnteriorError
-        } = await supabase.from('historico_entregas').select('id, quantidade, itens').eq('tipo', 'entrega').gte('data', inicioSemanaAnterior.toISOString()).lte('data', fimSemanaAnterior.toISOString());
+        } = await supabase.from('historico_entregas').select('id, quantidade, itens, cliente_id').eq('tipo', 'entrega').gte('data', inicioSemanaAnterior.toISOString()).lte('data', fimSemanaAnterior.toISOString());
         if (entregasAnteriorError) throw entregasAnteriorError;
+
+        // Filtrar entregas por representante/rota usando clientes
+        const filtrarPorRepresentanteRota = (entregasList: typeof entregas) => {
+          if (!entregasList) return [];
+          if (representanteFiltro.length === 0 && rotaFiltro.length === 0) return entregasList;
+          
+          const clienteIdsFiltrados = new Set(
+            clientesProp
+              .filter(c => {
+                const matchRep = representanteFiltro.length === 0 || 
+                  (c.representanteId && representanteFiltro.includes(c.representanteId));
+                const matchRota = rotaFiltro.length === 0 || 
+                  (c.rotaEntregaId && rotaFiltro.includes(c.rotaEntregaId));
+                return matchRep && matchRota;
+              })
+              .map(c => c.id)
+          );
+          
+          return entregasList.filter(e => clienteIdsFiltrados.has(e.cliente_id));
+        };
+
+        const entregasFiltradas = filtrarPorRepresentanteRota(entregas);
+        const entregasAnteriorFiltradas = filtrarPorRepresentanteRota(entregasAnterior);
 
         // Buscar produtos para obter nomes
         const {
@@ -77,7 +108,7 @@ export default function EntregasRealizadasSemanal({
 
         // Agregar quantidades por produto (semana atual)
         const quantidadesTemp: Record<string, ProdutoQuantidade> = {};
-        entregas?.forEach(entrega => {
+        entregasFiltradas.forEach(entrega => {
           if (!entrega.itens || !Array.isArray(entrega.itens)) {
             console.warn('Entrega sem itens válidos:', entrega.id);
             return;
@@ -105,7 +136,7 @@ export default function EntregasRealizadasSemanal({
 
         // Calcular total da semana anterior
         let totalAnterior = 0;
-        entregasAnterior?.forEach(entrega => {
+        entregasAnteriorFiltradas.forEach(entrega => {
           if (!entrega.itens || !Array.isArray(entrega.itens)) return;
           entrega.itens.forEach((item: any) => {
             if (item.quantidade) {
@@ -123,7 +154,7 @@ export default function EntregasRealizadasSemanal({
       }
     };
     calcularQuantidades();
-  }, [inicioSemana, fimSemana, inicioSemanaAnterior, fimSemanaAnterior]);
+  }, [inicioSemana, fimSemana, inicioSemanaAnterior, fimSemanaAnterior, representanteFiltro, rotaFiltro, clientesProp]);
 
   // Calcular totais, percentual e ordenar produtos
   const {

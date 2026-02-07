@@ -210,6 +210,27 @@ export default function AgendamentoDashboard() {
     return filtrados;
   }, [agendamentos, filtroNome, representanteFiltro, rotaFiltro]);
 
+  // Filtrar entregas históricas por representante e rota (cruzando com clientes)
+  const entregasHistoricoFiltradas = useMemo(() => {
+    if (representanteFiltro.length === 0 && rotaFiltro.length === 0) {
+      return entregasHistorico;
+    }
+    
+    const clienteIdsFiltrados = new Set(
+      clientes
+        .filter(cliente => {
+          const matchRep = representanteFiltro.length === 0 || 
+            (cliente.representanteId && representanteFiltro.includes(cliente.representanteId));
+          const matchRota = rotaFiltro.length === 0 || 
+            (cliente.rotaEntregaId && rotaFiltro.includes(cliente.rotaEntregaId));
+          return matchRep && matchRota;
+        })
+        .map(c => c.id)
+    );
+    
+    return entregasHistorico.filter(e => clienteIdsFiltrados.has(e.cliente_id));
+  }, [entregasHistorico, clientes, representanteFiltro, rotaFiltro]);
+
   const indicadoresSemana = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, {
       weekStartsOn: 1
@@ -225,7 +246,7 @@ export default function AgendamentoDashboard() {
     const confirmados = agendamentosSemana.filter(a => a.statusAgendamento === "Agendado");
     
     // Calcular entregas realizadas na semana (apenas tipo 'entrega', não 'retorno')
-    const entregasRealizadas = entregasHistorico.filter(entrega => {
+    const entregasRealizadas = entregasHistoricoFiltradas.filter(entrega => {
       const dataEntrega = new Date(entrega.data);
       return dataEntrega >= inicioSemana && dataEntrega <= fimSemana && entrega.tipo === 'entrega';
     });
@@ -237,7 +258,7 @@ export default function AgendamentoDashboard() {
       entregasRealizadas: entregasRealizadas.length,
       taxaConfirmacao: agendamentosSemana.length > 0 ? confirmados.length / agendamentosSemana.length * 100 : 0
     };
-  }, [agendamentosFiltrados, semanaAtual, representanteFiltro, entregasHistorico]);
+  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas]);
 
   const dadosGraficoStatus = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
@@ -269,7 +290,7 @@ export default function AgendamentoDashboard() {
     }));
     
     // Adicionar entregas realizadas na semana
-    const entregasRealizadasSemana = entregasHistorico.filter(entrega => {
+    const entregasRealizadasSemana = entregasHistoricoFiltradas.filter(entrega => {
       const dataEntrega = new Date(entrega.data);
       return dataEntrega >= inicioSemana && dataEntrega <= fimSemana && entrega.tipo === 'entrega';
     });
@@ -291,7 +312,7 @@ export default function AgendamentoDashboard() {
     }
     
     return data;
-  }, [agendamentosFiltrados, semanaAtual, entregasHistorico, clientes]);
+  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, clientes]);
 
   const dadosGraficoSemanal = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
@@ -315,7 +336,7 @@ export default function AgendamentoDashboard() {
       );
       
       // Entregas realizadas do dia
-      const entregasRealizadasDia = entregasHistorico.filter(entrega => 
+      const entregasRealizadasDia = entregasHistoricoFiltradas.filter(entrega => 
         isSameDay(new Date(entrega.data), dia) && entrega.tipo === 'entrega'
       );
       const unidadesRealizadas = entregasRealizadasDia.reduce((sum, e) => sum + (e.quantidade || 0), 0);
@@ -345,7 +366,7 @@ export default function AgendamentoDashboard() {
         dataCompleta: dia
       };
     });
-  }, [agendamentosFiltrados, semanaAtual, entregasHistorico, clientes]);
+  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, clientes]);
 
   const agendamentosDiaSelecionado = useMemo(() => {
     if (!diaSelecionado) return [];
@@ -523,7 +544,7 @@ export default function AgendamentoDashboard() {
     );
     
     // Unidades de entregas realizadas na semana
-    const entregasRealizadasSemana = entregasHistorico.filter(entrega => {
+    const entregasRealizadasSemana = entregasHistoricoFiltradas.filter(entrega => {
       const dataEntrega = new Date(entrega.data);
       return dataEntrega >= inicioSemana && dataEntrega <= fimSemana && entrega.tipo === 'entrega';
     });
@@ -533,7 +554,7 @@ export default function AgendamentoDashboard() {
     );
     
     return unidadesAgendadas + unidadesEntregues;
-  }, [agendamentosFiltrados, semanaAtual, entregasHistorico]);
+  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas]);
 
 
   const ehSemanaAtual = useMemo(() => {
@@ -859,7 +880,12 @@ export default function AgendamentoDashboard() {
           agendamentosFiltrados={agendamentosFiltrados} 
           semanaAtual={semanaAtual} 
         />
-        <EntregasRealizadasSemanal semanaAtual={semanaAtual} />
+        <EntregasRealizadasSemanal 
+          semanaAtual={semanaAtual} 
+          representanteFiltro={representanteFiltro}
+          rotaFiltro={rotaFiltro}
+          clientes={clientes}
+        />
       </div>
 
       {/* Gráficos */}
