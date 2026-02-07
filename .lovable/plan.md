@@ -1,127 +1,98 @@
 
-# Investigacao: Filtros do Dashboard de Agendamentos Nao Funcionam Consistentemente
+# Adicionar Badge "Entregues" e Detalhes de Entregas Realizadas no Calendario Semanal
 
-## Problemas Identificados
+## O que sera feito
 
-Encontrei **3 problemas** que explicam por que os filtros falham intermitentemente:
+Adicionar no calendario semanal um terceiro badge azul mostrando "Z Entregues" ao lado dos badges existentes de "Confirmados" (verde) e "Previstos" (amarelo). Ao expandir um dia, as entregas concluidas aparecerao no final da lista, com cards de fundo azul claro, em ordem alfabetica, separadas dos agendamentos.
 
----
-
-### Problema 1: Lista de clientes pode estar vazia (PRINCIPAL)
-
-O `AgendamentoDashboard` **nao carrega a lista de clientes** na sua inicializacao. Ele depende de `clientes` do `useClienteStore`, que so e preenchido se o usuario tiver visitado outra pagina antes (como Home ou Clientes).
-
-**Efeito:** Quando `clientes` esta vazio e voce seleciona um filtro de representante/rota, o calculo de `entregasHistoricoFiltradas` tenta cruzar entregas com uma lista vazia de clientes. Resultado: o `clienteIdsFiltrados` fica vazio, e TODAS as entregas sao filtradas (removidas). Os cards "Total da Semana", "Entregas Realizadas", "Produtos Entregues" e os graficos zeram.
-
-**Por que funciona as vezes:** Se o usuario navegou pela Home primeiro, os clientes ja estao no store (Zustand persiste entre paginas). Se acessou o Dashboard diretamente, nao ha clientes.
-
-```text
-Fluxo atual (com bug):
-  Home -> Agendamento/Dashboard -> Filtros funcionam (clientes ja carregados)
-  URL direta /agendamento -> Filtros NAO funcionam (clientes vazio)
-```
-
-**Correcao:** Adicionar `carregarClientes()` no `useEffect` de inicializacao do Dashboard (linha 155), junto com agendamentos e historico.
-
----
-
-### Problema 2: Filtro de nome nao se aplica ao historico de entregas
-
-O filtro de busca por nome (`filtroNome`) filtra `agendamentosFiltrados`, mas nao filtra `entregasHistoricoFiltradas`. Quando o usuario busca por nome, os cards de agendamentos mudam, mas os dados de entregas realizadas continuam mostrando tudo.
-
-**Correcao:** Adicionar filtragem por nome no `entregasHistoricoFiltradas`, cruzando `cliente_id` das entregas com clientes cujo nome corresponde ao filtro.
-
----
-
-### Problema 3: Race condition na inicializacao
-
-O `useEffect` de carregamento (linha 155) usa `agendamentos.length === 0` como condicao para carregar. Se os agendamentos ja estiverem no Zustand de outra pagina, eles nao sao recarregados, mas podem estar desatualizados. Alem disso, `carregarHistoricoEntregas()` e chamado sem argumentos, o que carrega TODOS os registros sem filtro de data, potencialmente trazendo dados desnecessarios.
-
-Mais importante: nao ha garantia de que `clientes` esteja carregado antes que os `useMemo` de filtragem rodem. Na primeira renderizacao, `clientes` pode estar vazio enquanto `entregasHistorico` ja tem dados.
-
----
-
-## Plano de Correcao
+## Mudancas Detalhadas
 
 ### Arquivo: `src/components/agendamento/AgendamentoDashboard.tsx`
 
-**1. Carregar clientes na inicializacao do Dashboard**
+**1. Badge "Entregues" no calendario (linhas ~1093-1101)**
 
-No `useEffect` de montagem (linha 155), adicionar carregamento de clientes:
+Adicionar um terceiro badge azul claro no calendario semanal, apos os badges de Previstos e Confirmados:
 
-```typescript
-useEffect(() => {
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      await Promise.all([
-        agendamentos.length === 0 ? carregarTodosAgendamentos() : Promise.resolve(),
-        clientes.length === 0 ? carregarClientes() : Promise.resolve(),  // NOVO
-        carregarHistoricoEntregas()
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  loadData();
-}, []);
+```text
+Previstos (amarelo)   -> ja existe
+Confirmados (verde)   -> ja existe
+Entregues (azul)      -> NOVO
 ```
 
-**2. Aplicar filtro de nome tambem ao historico de entregas**
+A condicao "Livre" so aparecera se nao houver previstos, confirmados E entregues (`dia.total === 0 && dia.realizadas === 0`).
 
-No `entregasHistoricoFiltradas` (linha 214), incluir logica para `filtroNome`:
+**2. Criar useMemo `entregasDiaSelecionado` (apos o `agendamentosDiaSelecionado`)**
 
-```typescript
-const entregasHistoricoFiltradas = useMemo(() => {
-  if (representanteFiltro.length === 0 && rotaFiltro.length === 0 && !filtroNome.trim()) {
-    return entregasHistorico;
-  }
-  
-  const clienteIdsFiltrados = new Set(
-    clientes
-      .filter(cliente => {
-        // Filtro por nome
-        const matchNome = !filtroNome.trim() || 
-          cliente.nome.toLowerCase().includes(filtroNome.toLowerCase().trim());
-        // Filtro por representante
-        const matchRep = representanteFiltro.length === 0 || 
-          (cliente.representanteId && representanteFiltro.includes(cliente.representanteId));
-        // Filtro por rota
-        const matchRota = rotaFiltro.length === 0 || 
-          (cliente.rotaEntregaId && rotaFiltro.includes(cliente.rotaEntregaId));
-        return matchNome && matchRep && matchRota;
-      })
-      .map(c => c.id)
-  );
-  
-  return entregasHistorico.filter(e => clienteIdsFiltrados.has(e.cliente_id));
-}, [entregasHistorico, clientes, representanteFiltro, rotaFiltro, filtroNome]);
-```
-
-### Arquivo: `src/components/agendamento/EntregasRealizadasSemanal.tsx`
-
-**3. Proteger contra lista de clientes vazia**
-
-Ja tem a logica de filtragem, mas quando `clientesProp` esta vazio e ha filtros ativos, a filtragem remove tudo. Adicionar protecao:
+Novo `useMemo` que filtra as entregas historicas do dia selecionado, enriquece com nome do cliente, e ordena alfabeticamente:
 
 ```typescript
-const filtrarPorRepresentanteRota = (entregasList: typeof entregas) => {
-  if (!entregasList) return [];
-  if (representanteFiltro.length === 0 && rotaFiltro.length === 0) return entregasList;
+const entregasDiaSelecionado = useMemo(() => {
+  if (!diaSelecionado) return [];
   
-  // Se nao ha clientes carregados, nao filtrar (evitar zerar dados)
-  if (clientesProp.length === 0) return entregasList;
-  
-  // ... resto da logica
-};
+  return entregasHistoricoFiltradas
+    .filter(e => isSameDay(new Date(e.data), diaSelecionado) && e.tipo === 'entrega')
+    .map(e => {
+      const cliente = clientes.find(c => c.id === e.cliente_id);
+      return { ...e, clienteNome: cliente?.nome || 'Cliente desconhecido' };
+    })
+    .sort((a, b) => a.clienteNome.localeCompare(b.clienteNome));
+}, [diaSelecionado, entregasHistoricoFiltradas, clientes]);
 ```
 
----
+**3. Atualizar descricao do dia selecionado (linhas ~1115-1117)**
 
-## Resumo das Mudancas
+Incluir contagem de entregas realizadas na descricao:
 
-| Arquivo | Mudanca | Impacto |
-|---------|---------|---------|
-| `AgendamentoDashboard.tsx` | Carregar `clientes` no useEffect | Corrige falha total dos filtros em acesso direto |
-| `AgendamentoDashboard.tsx` | Incluir `filtroNome` em `entregasHistoricoFiltradas` | Filtro de nome afeta todos os indicadores |
-| `EntregasRealizadasSemanal.tsx` | Proteger contra `clientes` vazio | Evita zerar dados quando clientes nao carregou |
+```text
+"X agendamento(s) e Y entrega(s) realizada(s)"
+```
+
+**4. Renderizar cards de entregas realizadas no painel expandido (apos a lista de agendamentos, linhas ~1229-1232)**
+
+Apos a lista dos agendamentos (Confirmados e Previstos), adicionar uma secao de entregas concluidas com:
+- Separador visual com titulo "Entregas Realizadas"
+- Cards com fundo azul claro (`bg-blue-50`)
+- Exibindo: nome do cliente (ordem alfabetica), quantidade entregue, data/hora
+- Badge "Entregue" em azul
+- Sem checkbox (nao sao reagendaveis)
+
+Layout de cada card de entrega concluida:
+
+```text
++---------------------------------------------------+
+| [bg-blue-50]                                       |
+| Nome do Cliente                     Badge: Entregue|
+| Quantidade: XX unidades                            |
+| Observacao (se houver)                             |
++---------------------------------------------------+
+```
+
+**5. Ajustar condicao de "vazio" no painel do dia**
+
+A mensagem "Nenhum agendamento para este dia" so aparecera se nao houver agendamentos E nao houver entregas realizadas.
+
+## Ordem visual no painel expandido
+
+```text
+1. Agendados/Confirmados (fundo verde claro - ja existe)
+2. Previstos (fundo amarelo claro - ja existe)  
+3. --- Separador "Entregas Realizadas" ---
+4. Entregues (fundo azul claro - NOVO, ordem alfabetica)
+```
+
+## Secao Tecnica
+
+### Estrutura dos dados ja disponivel
+
+O `dadosGraficoSemanal` ja computa `realizadas` e `clientesRealizadas` por dia -- so falta exibir no badge. Para o painel expandido, sera criado um novo `useMemo` que usa `entregasHistoricoFiltradas` filtrado pelo `diaSelecionado`.
+
+### Campos disponiveis no historico de entregas
+
+Cada registro de `entregasHistoricoFiltradas` contem:
+- `id`, `cliente_id`, `cliente_nome`, `data`, `tipo`, `quantidade`, `itens[]`, `observacao`
+
+### Arquivo unico a modificar
+
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/components/agendamento/AgendamentoDashboard.tsx` | Badge azul no calendario, novo useMemo, secao de entregas no painel expandido |
