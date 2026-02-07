@@ -1155,15 +1155,6 @@ export default function AgendamentoDashboard() {
             {(agendamentosDiaSelecionado.length > 0 || entregasDiaSelecionado.length > 0) ? <div className="space-y-3">
                 {agendamentosDiaSelecionado.length > 0 && (
                   <>
-                    <div className="flex items-center gap-2 pb-2 border-b mb-3">
-                      <Checkbox
-                        checked={agendamentosSelecionados.size === agendamentosDiaSelecionado.length && agendamentosDiaSelecionado.length > 0}
-                        onCheckedChange={toggleSelecionarTodos}
-                      />
-                      <span className="text-sm font-medium">
-                        Selecionar Todos
-                      </span>
-                    </div>
                     {agendamentosDiaSelecionado.map(agendamento => {
                       const QuantidadeAtualizada = ({ agendamento }: { agendamento: any }) => {
                         const [quantidade, setQuantidade] = useState(agendamento.cliente.quantidadePadrao);
@@ -1202,11 +1193,6 @@ export default function AgendamentoDashboard() {
 
                         return (
                           <div key={agendamento.cliente.id} className={`flex items-start gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
-                            <Checkbox
-                              checked={agendamentosSelecionados.has(agendamento.cliente.id)}
-                              onCheckedChange={() => toggleSelecao(agendamento.cliente.id)}
-                              className="mt-1"
-                            />
                             <div className="flex-1 text-left">
                               <div className="font-medium text-left">{agendamento.cliente.nome}</div>
                               <div className="text-sm text-muted-foreground text-left">
