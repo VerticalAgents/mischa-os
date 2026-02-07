@@ -156,10 +156,10 @@ export default function AgendamentoDashboard() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        // Sempre carregar agendamentos e histórico de entregas na montagem
         await Promise.all([
           agendamentos.length === 0 ? carregarTodosAgendamentos() : Promise.resolve(),
-          carregarHistoricoEntregas() // Sempre recarregar para ter dados atualizados
+          clientes.length === 0 ? carregarClientes() : Promise.resolve(),
+          carregarHistoricoEntregas()
         ]);
       } finally {
         setIsLoading(false);
@@ -210,26 +210,33 @@ export default function AgendamentoDashboard() {
     return filtrados;
   }, [agendamentos, filtroNome, representanteFiltro, rotaFiltro]);
 
-  // Filtrar entregas históricas por representante e rota (cruzando com clientes)
+  // Filtrar entregas históricas por representante, rota e nome (cruzando com clientes)
   const entregasHistoricoFiltradas = useMemo(() => {
-    if (representanteFiltro.length === 0 && rotaFiltro.length === 0) {
+    if (representanteFiltro.length === 0 && rotaFiltro.length === 0 && !filtroNome.trim()) {
+      return entregasHistorico;
+    }
+
+    // Se há filtros ativos mas clientes ainda não carregaram, não filtrar (evitar zerar dados)
+    if (clientes.length === 0) {
       return entregasHistorico;
     }
     
     const clienteIdsFiltrados = new Set(
       clientes
         .filter(cliente => {
+          const matchNome = !filtroNome.trim() || 
+            cliente.nome.toLowerCase().includes(filtroNome.toLowerCase().trim());
           const matchRep = representanteFiltro.length === 0 || 
             (cliente.representanteId && representanteFiltro.includes(cliente.representanteId));
           const matchRota = rotaFiltro.length === 0 || 
             (cliente.rotaEntregaId && rotaFiltro.includes(cliente.rotaEntregaId));
-          return matchRep && matchRota;
+          return matchNome && matchRep && matchRota;
         })
         .map(c => c.id)
     );
     
     return entregasHistorico.filter(e => clienteIdsFiltrados.has(e.cliente_id));
-  }, [entregasHistorico, clientes, representanteFiltro, rotaFiltro]);
+  }, [entregasHistorico, clientes, representanteFiltro, rotaFiltro, filtroNome]);
 
   const indicadoresSemana = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, {
