@@ -1104,7 +1104,7 @@ export default function AgendamentoDashboard() {
                 <div className="text-lg font-bold mb-1">{dia.dia}</div>
                 
                 <div className="space-y-1">
-                  {dia.confirmados > 0 && <Badge variant="default" className="text-[10px] w-full bg-green-500 whitespace-nowrap justify-center">
+                  {dia.confirmados > 0 && <Badge variant="outline" className="text-[10px] w-full bg-green-100 text-green-700 border-green-200 rounded-none whitespace-nowrap justify-center">
                       {dia.confirmados} Confirmados
                     </Badge>}
                   {dia.previstos > 0 && <Badge variant="outline" className="text-[10px] w-full bg-amber-100 rounded-none whitespace-nowrap justify-center">
