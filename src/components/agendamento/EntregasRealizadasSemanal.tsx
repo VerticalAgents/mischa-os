@@ -78,6 +78,9 @@ export default function EntregasRealizadasSemanal({
           if (!entregasList) return [];
           if (representanteFiltro.length === 0 && rotaFiltro.length === 0) return entregasList;
           
+          // Se não há clientes carregados, não filtrar (evitar zerar dados)
+          if (clientesProp.length === 0) return entregasList;
+          
           const clienteIdsFiltrados = new Set(
             clientesProp
               .filter(c => {
