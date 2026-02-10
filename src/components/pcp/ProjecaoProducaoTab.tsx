@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Package, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { startOfWeek, endOfWeek } from "date-fns";
@@ -21,10 +22,12 @@ interface ProdutoQuantidade {
 
 export default function ProjecaoProducaoTab() {
   const [incluirPrevistos, setIncluirPrevistos] = useState(false);
+  const [percentualPrevistos, setPercentualPrevistos] = useState(50);
   const [loading, setLoading] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [semanaAtual] = useState(new Date());
-  const [quantidadesPorProduto, setQuantidadesPorProduto] = useState<Record<string, ProdutoQuantidade>>({});
+  const [quantidadesConfirmados, setQuantidadesConfirmados] = useState<Record<string, ProdutoQuantidade>>({});
+  const [quantidadesPrevistos, setQuantidadesPrevistos] = useState<Record<string, ProdutoQuantidade>>({});
 
   const { agendamentos, carregarTodosAgendamentos } = useAgendamentoClienteStore();
 
@@ -58,43 +61,27 @@ export default function ProjecaoProducaoTab() {
       }
     });
 
-    console.log('📊 Agendamentos da semana filtrados:', {
-      total: filtrados.length,
-      incluirPrevistos,
-      inicioSemana: inicioSemana.toISOString(),
-      fimSemana: fimSemana.toISOString()
-    });
-
     return filtrados;
   }, [agendamentos, semanaAtual, incluirPrevistos]);
 
-  // Calcular quantidades de produtos
+  // Calcular quantidades de produtos separando confirmados e previstos
   useEffect(() => {
     const calcularQuantidades = async () => {
       if (agendamentosSemana.length === 0) {
-        console.log('ℹ️ Nenhum agendamento para processar');
-        setQuantidadesPorProduto({});
+        setQuantidadesConfirmados({});
+        setQuantidadesPrevistos({});
         setLoading(false);
         return;
       }
 
       setLoading(true);
-      console.log('🔄 Calculando quantidades para', agendamentosSemana.length, 'agendamentos...');
 
       try {
-        const quantidadesTemp: Record<string, ProdutoQuantidade> = {};
+        const confirmadosTemp: Record<string, ProdutoQuantidade> = {};
+        const previstosTemp: Record<string, ProdutoQuantidade> = {};
 
         for (const agendamento of agendamentosSemana) {
-          if (!agendamento.id) {
-            console.warn('⚠️ Agendamento sem ID:', agendamento);
-            continue;
-          }
-
-          console.log('📦 Processando agendamento:', {
-            id: agendamento.id,
-            cliente: agendamento.cliente?.nome,
-            status: agendamento.statusAgendamento
-          });
+          if (!agendamento.id) continue;
 
           const { data, error } = await supabase.rpc('compute_entrega_itens_v2', {
             p_agendamento_id: agendamento.id
@@ -106,13 +93,13 @@ export default function ProjecaoProducaoTab() {
           }
 
           if (data && Array.isArray(data)) {
-            console.log('✅ Itens calculados:', data);
+            const targetMap = agendamento.statusAgendamento === "Previsto" ? previstosTemp : confirmadosTemp;
             data.forEach((item: any) => {
               const produtoId = item.produto_id;
-              if (quantidadesTemp[produtoId]) {
-                quantidadesTemp[produtoId].quantidade += item.quantidade;
+              if (targetMap[produtoId]) {
+                targetMap[produtoId].quantidade += item.quantidade;
               } else {
-                quantidadesTemp[produtoId] = {
+                targetMap[produtoId] = {
                   produto_id: produtoId,
                   produto_nome: item.produto_nome,
                   quantidade: item.quantidade
@@ -122,8 +109,8 @@ export default function ProjecaoProducaoTab() {
           }
         }
 
-        console.log('✅ Quantidades finais calculadas:', quantidadesTemp);
-        setQuantidadesPorProduto(quantidadesTemp);
+        setQuantidadesConfirmados(confirmadosTemp);
+        setQuantidadesPrevistos(previstosTemp);
       } catch (error) {
         console.error('❌ Erro ao calcular quantidades:', error);
       } finally {
@@ -133,6 +120,31 @@ export default function ProjecaoProducaoTab() {
 
     calcularQuantidades();
   }, [agendamentosSemana]);
+
+  // Combinar confirmados + previstos com percentual
+  const quantidadesPorProduto = useMemo(() => {
+    const resultado: Record<string, ProdutoQuantidade> = {};
+
+    for (const [id, produto] of Object.entries(quantidadesConfirmados)) {
+      resultado[id] = { ...produto };
+    }
+
+    if (incluirPrevistos) {
+      for (const [id, produto] of Object.entries(quantidadesPrevistos)) {
+        const qtdAjustada = Math.ceil(produto.quantidade * percentualPrevistos / 100);
+        if (resultado[id]) {
+          resultado[id] = {
+            ...resultado[id],
+            quantidade: resultado[id].quantidade + qtdAjustada
+          };
+        } else {
+          resultado[id] = { ...produto, quantidade: qtdAjustada };
+        }
+      }
+    }
+
+    return resultado;
+  }, [quantidadesConfirmados, quantidadesPrevistos, incluirPrevistos, percentualPrevistos]);
 
   // Processar dados para visualização
   const produtosOrdenados = useMemo(() => {
@@ -153,104 +165,118 @@ export default function ProjecaoProducaoTab() {
     return resultado;
   }, [quantidadesPorProduto]);
 
-  // Ordem dos produtos conforme exibidos (pela quantidade necessária)
   const ordemProdutosNecessarios = useMemo(() => {
     return produtosOrdenados.map(p => p.produto_id);
   }, [produtosOrdenados]);
 
-  // Hook para obter estoque disponível
   const { produtos: produtosEstoque } = useEstoqueDisponivel(quantidadesNecessarias);
+
+  const handlePercentualChange = (value: string) => {
+    const num = parseInt(value, 10);
+    if (isNaN(num)) return;
+    setPercentualPrevistos(Math.min(100, Math.max(1, num)));
+  };
 
   return (
     <div className="space-y-6">
-      {/* Grid com 2 blocos superiores */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Bloco Existente - Produtos Necessários */}
         <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="space-y-1.5">
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-primary" />
-                Produtos Necessários
-              </CardTitle>
-              <CardDescription className="text-left">
-                Quantidades para pedidos {incluirPrevistos ? "confirmados e previstos" : "confirmados"}
-              </CardDescription>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="incluir-previstos" className="text-sm cursor-pointer whitespace-nowrap">
-                Incluir previstos
-              </Label>
-              <Switch
-                id="incluir-previstos"
-                checked={incluirPrevistos}
-                onCheckedChange={setIncluirPrevistos}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-muted-foreground">Calculando quantidades...</span>
-            </div>
-          ) : produtosOrdenados.length === 0 ? (
-            <div className="text-center py-8">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-              <p className="text-muted-foreground">
-                Nenhum pedido {incluirPrevistos ? "confirmado ou previsto" : "confirmado"} nesta semana
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Total Geral */}
-              <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
-                <p className="text-sm text-muted-foreground mb-1">Quantidade Total Necessária</p>
-                <p className="text-3xl font-bold text-primary">{quantidadeTotal}</p>
-                <Badge variant="default" className="mt-2">
-                  {agendamentosSemana.length} {agendamentosSemana.length === 1 ? 'pedido' : 'pedidos'}
-                </Badge>
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div className="space-y-1.5">
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" />
+                  Produtos Necessários
+                </CardTitle>
+                <CardDescription className="text-left">
+                  {incluirPrevistos
+                    ? `Quantidades para pedidos confirmados e ${percentualPrevistos}% dos previstos`
+                    : "Quantidades para pedidos confirmados"}
+                </CardDescription>
               </div>
-
-              {/* Produtos Individuais - Collapsible */}
-              <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium text-muted-foreground">Detalhes por Produto</p>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 px-2">
-                      {isDetailsOpen ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
-                <CollapsibleContent className="space-y-2">
-                  {produtosOrdenados.map((produto: any) => (
-                    <div 
-                      key={produto.produto_id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Package className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{produto.produto_nome}</span>
-                      </div>
-                      <Badge variant="secondary" className="text-base px-3 py-1">
-                        {produto.quantidade}
-                      </Badge>
-                    </div>
-                  ))}
-                </CollapsibleContent>
-              </Collapsible>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="incluir-previstos" className="text-sm cursor-pointer whitespace-nowrap">
+                  Incluir previstos
+                </Label>
+                <Switch
+                  id="incluir-previstos"
+                  checked={incluirPrevistos}
+                  onCheckedChange={setIncluirPrevistos}
+                />
+                {incluirPrevistos && (
+                  <div className="flex items-center gap-1 animate-fade-in">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={percentualPrevistos}
+                      onChange={(e) => handlePercentualChange(e.target.value)}
+                      className="w-16 h-8 text-center text-sm px-1"
+                    />
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-muted-foreground">Calculando quantidades...</span>
+              </div>
+            ) : produtosOrdenados.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                <p className="text-muted-foreground">
+                  Nenhum pedido {incluirPrevistos ? "confirmado ou previsto" : "confirmado"} nesta semana
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
+                  <p className="text-sm text-muted-foreground mb-1">Quantidade Total Necessária</p>
+                  <p className="text-3xl font-bold text-primary">{quantidadeTotal}</p>
+                  <Badge variant="default" className="mt-2">
+                    {agendamentosSemana.length} {agendamentosSemana.length === 1 ? 'pedido' : 'pedidos'}
+                  </Badge>
+                </div>
 
-        {/* NOVO Bloco - Estoque Disponível */}
+                <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-medium text-muted-foreground">Detalhes por Produto</p>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 px-2">
+                        {isDetailsOpen ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent className="space-y-2">
+                    {produtosOrdenados.map((produto: any) => (
+                      <div 
+                        key={produto.produto_id}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{produto.produto_nome}</span>
+                        </div>
+                        <Badge variant="secondary" className="text-base px-3 py-1">
+                          {produto.quantidade}
+                        </Badge>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <EstoqueDisponivel 
           quantidadesNecessarias={quantidadesNecessarias}
           ordemProdutosNecessarios={ordemProdutosNecessarios}
@@ -258,7 +284,6 @@ export default function ProjecaoProducaoTab() {
         />
       </div>
 
-      {/* Bloco Sugestão de Produção - Largura Total */}
       <SugestaoProducao 
         produtosNecessarios={produtosOrdenados}
         estoqueDisponivel={produtosEstoque.map(p => ({
