@@ -1,98 +1,99 @@
 
-# Adicionar Badge "Entregues" e Detalhes de Entregas Realizadas no Calendario Semanal
+# Adicionar Percentual de Previstos no Card de Produtos Necessarios
 
 ## O que sera feito
 
-Adicionar no calendario semanal um terceiro badge azul mostrando "Z Entregues" ao lado dos badges existentes de "Confirmados" (verde) e "Previstos" (amarelo). Ao expandir um dia, as entregas concluidas aparecerao no final da lista, com cards de fundo azul claro, em ordem alfabetica, separadas dos agendamentos.
+Ao ativar o toggle "Incluir previstos", aparecera um campo de percentual (padrao 50%) que permite simular cenarios: "se X% dos previstos forem confirmados, quanto preciso produzir?". As quantidades dos pedidos previstos serao multiplicadas por esse percentual antes de somar com os confirmados.
 
-## Mudancas Detalhadas
+## Mudancas na interface
 
-### Arquivo: `src/components/agendamento/AgendamentoDashboard.tsx`
-
-**1. Badge "Entregues" no calendario (linhas ~1093-1101)**
-
-Adicionar um terceiro badge azul claro no calendario semanal, apos os badges de Previstos e Confirmados:
+Quando o toggle estiver ativado, um input de percentual aparecera ao lado (ou abaixo) do switch:
 
 ```text
-Previstos (amarelo)   -> ja existe
-Confirmados (verde)   -> ja existe
-Entregues (azul)      -> NOVO
+Incluir previstos [ON]  [ 50 ] %
 ```
 
-A condicao "Livre" so aparecera se nao houver previstos, confirmados E entregues (`dia.total === 0 && dia.realizadas === 0`).
+- O campo aceita valores de 1 a 100
+- Padrao: 50%
+- A descricao do card muda para: "Quantidades para pedidos confirmados e 50% dos previstos"
 
-**2. Criar useMemo `entregasDiaSelecionado` (apos o `agendamentosDiaSelecionado`)**
+## Mudancas na logica de calculo
 
-Novo `useMemo` que filtra as entregas historicas do dia selecionado, enriquece com nome do cliente, e ordena alfabeticamente:
+Atualmente, todos os agendamentos (Agendado + Previsto) sao processados igualmente no `useEffect` que chama `compute_entrega_itens_v2`. Para aplicar o percentual sem precisar re-chamar o RPC a cada mudanca de %, a estrategia sera:
+
+1. Separar os resultados do RPC em dois mapas: `quantidadesConfirmados` e `quantidadesPrevistos`
+2. No loop de calculo, verificar o `statusAgendamento` de cada agendamento e acumular no mapa correto
+3. Criar um `useMemo` final que combina: `confirmados + (previstos * percentual / 100)`, arredondando para cima
+4. Assim, mudar o slider/input de percentual recalcula instantaneamente sem novas chamadas ao banco
+
+## Arquivo a modificar
+
+**`src/components/pcp/ProjecaoProducaoTab.tsx`**
+
+### 1. Novo estado
 
 ```typescript
-const entregasDiaSelecionado = useMemo(() => {
-  if (!diaSelecionado) return [];
-  
-  return entregasHistoricoFiltradas
-    .filter(e => isSameDay(new Date(e.data), diaSelecionado) && e.tipo === 'entrega')
-    .map(e => {
-      const cliente = clientes.find(c => c.id === e.cliente_id);
-      return { ...e, clienteNome: cliente?.nome || 'Cliente desconhecido' };
-    })
-    .sort((a, b) => a.clienteNome.localeCompare(b.clienteNome));
-}, [diaSelecionado, entregasHistoricoFiltradas, clientes]);
+const [percentualPrevistos, setPercentualPrevistos] = useState(50);
 ```
 
-**3. Atualizar descricao do dia selecionado (linhas ~1115-1117)**
+### 2. Separar quantidades no useEffect (linhas 72-135)
 
-Incluir contagem de entregas realizadas na descricao:
+Em vez de um unico `quantidadesPorProduto`, armazenar dois estados separados:
+- `quantidadesConfirmados` - quantidades dos agendamentos com status "Agendado"
+- `quantidadesPrevistos` - quantidades dos agendamentos com status "Previsto"
+
+O useEffect percorre `agendamentosSemana` e acumula em um ou outro mapa conforme o status.
+
+### 3. Novo useMemo para combinar com percentual
+
+```typescript
+const quantidadesPorProduto = useMemo(() => {
+  const resultado: Record<string, ProdutoQuantidade> = {};
+
+  // Adicionar 100% dos confirmados
+  for (const [id, produto] of Object.entries(quantidadesConfirmados)) {
+    resultado[id] = { ...produto };
+  }
+
+  // Adicionar X% dos previstos
+  for (const [id, produto] of Object.entries(quantidadesPrevistos)) {
+    const qtdAjustada = Math.ceil(produto.quantidade * percentualPrevistos / 100);
+    if (resultado[id]) {
+      resultado[id] = {
+        ...resultado[id],
+        quantidade: resultado[id].quantidade + qtdAjustada
+      };
+    } else {
+      resultado[id] = { ...produto, quantidade: qtdAjustada };
+    }
+  }
+
+  return resultado;
+}, [quantidadesConfirmados, quantidadesPrevistos, percentualPrevistos]);
+```
+
+Isso permite que ao alterar o percentual, o recalculo seja instantaneo (sem chamadas ao banco).
+
+### 4. UI do percentual (linhas 181-190)
+
+Quando `incluirPrevistos` for true, exibir um input numerico compacto ao lado do switch:
 
 ```text
-"X agendamento(s) e Y entrega(s) realizada(s)"
+Incluir previstos [ON]  [ 50 ]%
 ```
 
-**4. Renderizar cards de entregas realizadas no painel expandido (apos a lista de agendamentos, linhas ~1229-1232)**
+- Input tipo number, min=1, max=100, largura ~16 (w-16)
+- Sufixo "%" ao lado
+- Aparece com animacao suave (condicional ao toggle)
 
-Apos a lista dos agendamentos (Confirmados e Previstos), adicionar uma secao de entregas concluidas com:
-- Separador visual com titulo "Entregas Realizadas"
-- Cards com fundo azul claro (`bg-blue-50`)
-- Exibindo: nome do cliente (ordem alfabetica), quantidade entregue, data/hora
-- Badge "Entregue" em azul
-- Sem checkbox (nao sao reagendaveis)
+### 5. Atualizar descricao (linha 178)
 
-Layout de cada card de entrega concluida:
+Quando ativo, mostrar: "Quantidades para pedidos confirmados e {percentualPrevistos}% dos previstos"
 
-```text
-+---------------------------------------------------+
-| [bg-blue-50]                                       |
-| Nome do Cliente                     Badge: Entregue|
-| Quantidade: XX unidades                            |
-| Observacao (se houver)                             |
-+---------------------------------------------------+
-```
+## Comportamento esperado
 
-**5. Ajustar condicao de "vazio" no painel do dia**
-
-A mensagem "Nenhum agendamento para este dia" so aparecera se nao houver agendamentos E nao houver entregas realizadas.
-
-## Ordem visual no painel expandido
-
-```text
-1. Agendados/Confirmados (fundo verde claro - ja existe)
-2. Previstos (fundo amarelo claro - ja existe)  
-3. --- Separador "Entregas Realizadas" ---
-4. Entregues (fundo azul claro - NOVO, ordem alfabetica)
-```
-
-## Secao Tecnica
-
-### Estrutura dos dados ja disponivel
-
-O `dadosGraficoSemanal` ja computa `realizadas` e `clientesRealizadas` por dia -- so falta exibir no badge. Para o painel expandido, sera criado um novo `useMemo` que usa `entregasHistoricoFiltradas` filtrado pelo `diaSelecionado`.
-
-### Campos disponiveis no historico de entregas
-
-Cada registro de `entregasHistoricoFiltradas` contem:
-- `id`, `cliente_id`, `cliente_nome`, `data`, `tipo`, `quantidade`, `itens[]`, `observacao`
-
-### Arquivo unico a modificar
-
-| Arquivo | Mudanca |
-|---------|---------|
-| `src/components/agendamento/AgendamentoDashboard.tsx` | Badge azul no calendario, novo useMemo, secao de entregas no painel expandido |
+- Toggle desligado: mostra apenas confirmados (como hoje)
+- Toggle ligado com 50%: mostra confirmados + metade das quantidades previstas
+- Toggle ligado com 100%: comportamento igual ao atual (todos os previstos)
+- Toggle ligado com 25%: mostra confirmados + 1/4 das quantidades previstas
+- Mudar o percentual recalcula tudo instantaneamente, sem loading
