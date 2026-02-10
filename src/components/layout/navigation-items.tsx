@@ -5,7 +5,7 @@ import {
   ShoppingBag, Settings, Layers, Truck, FileText,
   Cpu, PackageCheck, DollarSign, LineChart, Receipt,
   BarChart, Building, HelpingHand, UserCircle, TrendingUp, Calculator, Home, BookOpen, MapPin,
-  Shield, RefreshCw
+  Shield, RefreshCw, CalendarClock
 } from "lucide-react";
 
 export type MenuItem = {
@@ -60,6 +60,11 @@ export const menuGroups: MenuGroup[] = [
         label: "Controle de Trocas",
         path: "/controle-trocas",
         icon: <RefreshCw className="h-4 w-4" />,
+      },
+      {
+        label: "Reagendamentos",
+        path: "/reagendamentos",
+        icon: <CalendarClock className="h-4 w-4" />,
       },
     ]
   },

@@ -17,6 +17,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import ReagendamentoEmMassaDialog from "./ReagendamentoEmMassaDialog";
+import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
 import jsPDF from 'jspdf';
@@ -518,6 +519,12 @@ export default function AgendamentoDashboard() {
           const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
           
           if (agendamentoAtual) {
+            // Registrar reagendamento entre semanas se aplicável
+            if (agendamentoAtual.data_proxima_reposicao) {
+              const dataOriginal = new Date(agendamentoAtual.data_proxima_reposicao);
+              await registrarReagendamentoEntreSemanas(agendamento.cliente.id, dataOriginal, novaData);
+            }
+
             await salvarAgendamento(agendamento.cliente.id, {
               data_proxima_reposicao: novaData,
               tipo_pedido: agendamentoAtual.tipo_pedido,

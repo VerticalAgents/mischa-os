@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { format, addDays, isWeekend, getDay, setHours } from "date-fns";
+import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
 import { Calendar, Clock } from "lucide-react";
 import { Cliente } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -79,6 +80,12 @@ export default function ReagendamentoDialog({
       const agendamentoAtual = await obterAgendamento(cliente.id);
       
       if (agendamentoAtual) {
+        // Registrar reagendamento entre semanas se aplicável
+        if (agendamentoAtual.data_proxima_reposicao) {
+          const dataOriginal = new Date(agendamentoAtual.data_proxima_reposicao);
+          await registrarReagendamentoEntreSemanas(cliente.id, dataOriginal, dataFormatada);
+        }
+
         console.log('✅ Preservando dados do agendamento:', {
           tipo: agendamentoAtual.tipo_pedido,
           itens: !!agendamentoAtual.itens_personalizados,
@@ -90,8 +97,8 @@ export default function ReagendamentoDialog({
           status_agendamento: 'Agendado',
           data_proxima_reposicao: dataFormatada,
           quantidade_total: agendamentoAtual.quantidade_total,
-          tipo_pedido: agendamentoAtual.tipo_pedido, // Preservar tipo original
-          itens_personalizados: agendamentoAtual.itens_personalizados // Preservar itens personalizados
+          tipo_pedido: agendamentoAtual.tipo_pedido,
+          itens_personalizados: agendamentoAtual.itens_personalizados
         });
 
         console.log('✅ Reagendamento concluído preservando configurações originais');

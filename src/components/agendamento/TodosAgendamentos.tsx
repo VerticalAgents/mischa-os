@@ -24,6 +24,7 @@ import { useClienteStore } from "@/hooks/useClienteStore";
 import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 import AgendamentoFilters from "./AgendamentoFilters";
 import ReagendamentoEmMassaDialog from "./ReagendamentoEmMassaDialog";
+import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
 
 export default function TodosAgendamentos() {
   const [open, setOpen] = useState(false);
@@ -205,6 +206,12 @@ export default function TodosAgendamentos() {
           const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
           
           if (agendamentoAtual) {
+            // Registrar reagendamento entre semanas se aplicável
+            if (agendamentoAtual.data_proxima_reposicao) {
+              const dataOriginal = new Date(agendamentoAtual.data_proxima_reposicao);
+              await registrarReagendamentoEntreSemanas(agendamento.cliente.id, dataOriginal, novaData);
+            }
+
             await salvarAgendamento(agendamento.cliente.id, {
               data_proxima_reposicao: novaData,
               tipo_pedido: agendamentoAtual.tipo_pedido,
