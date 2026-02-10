@@ -1,99 +1,92 @@
 
-# Adicionar Percentual de Previstos no Card de Produtos Necessarios
 
-## O que sera feito
+# Card "Producao Agendada" + Toggle no Estoque Disponivel
 
-Ao ativar o toggle "Incluir previstos", aparecera um campo de percentual (padrao 50%) que permite simular cenarios: "se X% dos previstos forem confirmados, quanto preciso produzir?". As quantidades dos pedidos previstos serao multiplicadas por esse percentual antes de somar com os confirmados.
+## Resumo
 
-## Mudancas na interface
+Duas mudancas conectadas:
 
-Quando o toggle estiver ativado, um input de percentual aparecera ao lado (ou abaixo) do switch:
+1. **Novo card "Producao Agendada"** no topo da aba Projecao de Producao, mostrando registros de producao com status "Registrado" (ainda nao confirmados), agrupados por produto com total de unidades.
 
-```text
-Incluir previstos [ON]  [ 50 ] %
-```
+2. **Toggle "Incluir producao agendada"** no card Estoque Disponivel, que ao ser ativado soma as unidades de producoes agendadas (nao confirmadas) ao estoque disponivel de cada produto.
 
-- O campo aceita valores de 1 a 100
-- Padrao: 50%
-- A descricao do card muda para: "Quantidades para pedidos confirmados e 50% dos previstos"
+## Como vai funcionar
 
-## Mudancas na logica de calculo
+A producao agendada sao os registros na tabela `historico_producao` com `status = 'Registrado'`. Esses brownies estao planejados para serem produzidos mas ainda nao foram confirmados (nao entraram no estoque oficialmente).
 
-Atualmente, todos os agendamentos (Agendado + Previsto) sao processados igualmente no `useEffect` que chama `compute_entrega_itens_v2`. Para aplicar o percentual sem precisar re-chamar o RPC a cada mudanca de %, a estrategia sera:
+Ao ativar o toggle no card de Estoque Disponivel, o sistema somara essas unidades previstas ao estoque, permitindo visualizar como ficara o estoque apos a producao ser concluida. Isso facilita o planejamento semanal completo.
 
-1. Separar os resultados do RPC em dois mapas: `quantidadesConfirmados` e `quantidadesPrevistos`
-2. No loop de calculo, verificar o `statusAgendamento` de cada agendamento e acumular no mapa correto
-3. Criar um `useMemo` final que combina: `confirmados + (previstos * percentual / 100)`, arredondando para cima
-4. Assim, mudar o slider/input de percentual recalcula instantaneamente sem novas chamadas ao banco
+## Mudancas detalhadas
 
-## Arquivo a modificar
+### 1. Novo hook `useProducaoAgendada`
 
-**`src/components/pcp/ProjecaoProducaoTab.tsx`**
+**Arquivo**: `src/hooks/useProducaoAgendada.ts` (novo)
 
-### 1. Novo estado
+Busca registros de `historico_producao` com `status = 'Registrado'`, agrupa por `produto_id` e retorna:
+- Lista de produtos com unidades previstas (usando `unidades_previstas` ou `unidades_calculadas`)
+- Total geral de unidades agendadas
+- Mapa `Record<string, number>` de produto_id -> unidades (para uso no estoque)
+- Funcao de recarregar
 
-```typescript
-const [percentualPrevistos, setPercentualPrevistos] = useState(50);
-```
+### 2. Novo componente `ProducaoAgendadaCard`
 
-### 2. Separar quantidades no useEffect (linhas 72-135)
+**Arquivo**: `src/components/pcp/ProducaoAgendadaCard.tsx` (novo)
 
-Em vez de um unico `quantidadesPorProduto`, armazenar dois estados separados:
-- `quantidadesConfirmados` - quantidades dos agendamentos com status "Agendado"
-- `quantidadesPrevistos` - quantidades dos agendamentos com status "Previsto"
+Card com design semelhante ao "Produtos Necessarios":
+- Icone + titulo "Producao Agendada"
+- Descricao: "Producoes registradas aguardando confirmacao"
+- Bloco destaque com total de unidades agendadas + badge com quantidade de registros
+- Collapsible com detalhes por produto (nome + unidades previstas)
+- Estado vazio quando nao ha producoes agendadas
 
-O useEffect percorre `agendamentosSemana` e acumula em um ou outro mapa conforme o status.
+### 3. Modificar `ProjecaoProducaoTab.tsx`
 
-### 3. Novo useMemo para combinar com percentual
+- Importar e usar o hook `useProducaoAgendada`
+- Renderizar `ProducaoAgendadaCard` acima do grid de 2 colunas (full width)
+- Passar o mapa de producao agendada para o `EstoqueDisponivel`
 
-```typescript
-const quantidadesPorProduto = useMemo(() => {
-  const resultado: Record<string, ProdutoQuantidade> = {};
+### 4. Modificar `EstoqueDisponivel.tsx`
 
-  // Adicionar 100% dos confirmados
-  for (const [id, produto] of Object.entries(quantidadesConfirmados)) {
-    resultado[id] = { ...produto };
-  }
+- Adicionar prop `producaoAgendada?: Record<string, number>` (produto_id -> unidades)
+- Adicionar toggle "Incluir producao agendada" no canto superior direito (ao lado do botao refresh)
+- Estado `incluirProducaoAgendada` (default: false)
+- Quando ativo, somar as unidades agendadas ao estoque disponivel de cada produto na exibicao
+- Atualizar descricao do card para refletir o estado do toggle
+- Passar essa informacao tambem para o `useEstoqueDisponivel` ou calcular localmente no componente
 
-  // Adicionar X% dos previstos
-  for (const [id, produto] of Object.entries(quantidadesPrevistos)) {
-    const qtdAjustada = Math.ceil(produto.quantidade * percentualPrevistos / 100);
-    if (resultado[id]) {
-      resultado[id] = {
-        ...resultado[id],
-        quantidade: resultado[id].quantidade + qtdAjustada
-      };
-    } else {
-      resultado[id] = { ...produto, quantidade: qtdAjustada };
-    }
-  }
+### 5. Modificar `useEstoqueDisponivel.ts`
 
-  return resultado;
-}, [quantidadesConfirmados, quantidadesPrevistos, percentualPrevistos]);
-```
+- Adicionar parametro opcional `producaoAgendada?: Record<string, number>`
+- Quando fornecido, somar as unidades agendadas ao `estoque_disponivel` de cada produto no calculo final
+- Isso afeta o status (critico/baixo/adequado/excesso) automaticamente
 
-Isso permite que ao alterar o percentual, o recalculo seja instantaneo (sem chamadas ao banco).
-
-### 4. UI do percentual (linhas 181-190)
-
-Quando `incluirPrevistos` for true, exibir um input numerico compacto ao lado do switch:
+## Layout da pagina apos as mudancas
 
 ```text
-Incluir previstos [ON]  [ 50 ]%
++--------------------------------------------------+
+|  Producao Agendada (full width)                   |
+|  Total: 640 unidades | 3 registros                |
+|  > Detalhes por Produto                           |
++--------------------------------------------------+
+
++------------------------+-------------------------+
+|  Produtos Necessarios  |  Estoque Disponivel     |
+|  ...                   |  [x] Incluir prod. agend|
+|                        |  ...                    |
++------------------------+-------------------------+
+
++--------------------------------------------------+
+|  Sugestao de Producao                             |
++--------------------------------------------------+
 ```
 
-- Input tipo number, min=1, max=100, largura ~16 (w-16)
-- Sufixo "%" ao lado
-- Aparece com animacao suave (condicional ao toggle)
+## Arquivos
 
-### 5. Atualizar descricao (linha 178)
+| Arquivo | Acao |
+|---------|------|
+| `src/hooks/useProducaoAgendada.ts` | Criar |
+| `src/components/pcp/ProducaoAgendadaCard.tsx` | Criar |
+| `src/components/pcp/ProjecaoProducaoTab.tsx` | Modificar |
+| `src/components/pcp/EstoqueDisponivel.tsx` | Modificar |
+| `src/hooks/useEstoqueDisponivel.ts` | Modificar |
 
-Quando ativo, mostrar: "Quantidades para pedidos confirmados e {percentualPrevistos}% dos previstos"
-
-## Comportamento esperado
-
-- Toggle desligado: mostra apenas confirmados (como hoje)
-- Toggle ligado com 50%: mostra confirmados + metade das quantidades previstas
-- Toggle ligado com 100%: comportamento igual ao atual (todos os previstos)
-- Toggle ligado com 25%: mostra confirmados + 1/4 das quantidades previstas
-- Mudar o percentual recalcula tudo instantaneamente, sem loading
