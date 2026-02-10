@@ -1,92 +1,32 @@
 
 
-# Card "Producao Agendada" + Toggle no Estoque Disponivel
+# Corrigir registro de Choco Duo e prevenir inconsistencias futuras
 
-## Resumo
+## Diagnostico
 
-Duas mudancas conectadas:
+O registro de producao do Brownie Choco Duo (ID: `f41d54c9-3df0-43f8-8bb8-9dcff048d31c`, 4 formas, 160 unidades) esta com status "Registrado", porem todas as movimentacoes de estoque ja foram criadas:
 
-1. **Novo card "Producao Agendada"** no topo da aba Projecao de Producao, mostrando registros de producao com status "Registrado" (ainda nao confirmados), agrupados por produto com total de unidades.
+- 1 entrada de produto (160 unidades)
+- 9 saidas de insumos (consumo de receita)
 
-2. **Toggle "Incluir producao agendada"** no card Estoque Disponivel, que ao ser ativado soma as unidades de producoes agendadas (nao confirmadas) ao estoque disponivel de cada produto.
+Ou seja, uma confirmacao anterior executou com sucesso as movimentacoes de estoque, mas falhou na ultima etapa (atualizar o status do registro para "Confirmado"). Como o codigo verifica idempotencia pela existencia de movimentacoes, ao tentar confirmar novamente ele rejeita com "Producao ja confirmada".
 
-## Como vai funcionar
+## Correcoes
 
-A producao agendada sao os registros na tabela `historico_producao` com `status = 'Registrado'`. Esses brownies estao planejados para serem produzidos mas ainda nao foram confirmados (nao entraram no estoque oficialmente).
+### 1. Corrigir o dado inconsistente (SQL direto)
 
-Ao ativar o toggle no card de Estoque Disponivel, o sistema somara essas unidades previstas ao estoque, permitindo visualizar como ficara o estoque apos a producao ser concluida. Isso facilita o planejamento semanal completo.
+Atualizar o status do registro para "Confirmado" e registrar a data de confirmacao, ja que todas as movimentacoes de estoque ja existem.
 
-## Mudancas detalhadas
+### 2. Melhorar a logica de confirmacao no codigo
 
-### 1. Novo hook `useProducaoAgendada`
+No hook `useConfirmacaoProducao.ts`, quando a verificacao de idempotencia detectar que ja existem movimentacoes mas o status ainda e "Registrado", em vez de rejeitar com erro, o codigo deve **apenas atualizar o status para "Confirmado"** (ja que o trabalho principal ja foi feito). Isso torna o sistema resiliente a falhas parciais.
 
-**Arquivo**: `src/hooks/useProducaoAgendada.ts` (novo)
-
-Busca registros de `historico_producao` com `status = 'Registrado'`, agrupa por `produto_id` e retorna:
-- Lista de produtos com unidades previstas (usando `unidades_previstas` ou `unidades_calculadas`)
-- Total geral de unidades agendadas
-- Mapa `Record<string, number>` de produto_id -> unidades (para uso no estoque)
-- Funcao de recarregar
-
-### 2. Novo componente `ProducaoAgendadaCard`
-
-**Arquivo**: `src/components/pcp/ProducaoAgendadaCard.tsx` (novo)
-
-Card com design semelhante ao "Produtos Necessarios":
-- Icone + titulo "Producao Agendada"
-- Descricao: "Producoes registradas aguardando confirmacao"
-- Bloco destaque com total de unidades agendadas + badge com quantidade de registros
-- Collapsible com detalhes por produto (nome + unidades previstas)
-- Estado vazio quando nao ha producoes agendadas
-
-### 3. Modificar `ProjecaoProducaoTab.tsx`
-
-- Importar e usar o hook `useProducaoAgendada`
-- Renderizar `ProducaoAgendadaCard` acima do grid de 2 colunas (full width)
-- Passar o mapa de producao agendada para o `EstoqueDisponivel`
-
-### 4. Modificar `EstoqueDisponivel.tsx`
-
-- Adicionar prop `producaoAgendada?: Record<string, number>` (produto_id -> unidades)
-- Adicionar toggle "Incluir producao agendada" no canto superior direito (ao lado do botao refresh)
-- Estado `incluirProducaoAgendada` (default: false)
-- Quando ativo, somar as unidades agendadas ao estoque disponivel de cada produto na exibicao
-- Atualizar descricao do card para refletir o estado do toggle
-- Passar essa informacao tambem para o `useEstoqueDisponivel` ou calcular localmente no componente
-
-### 5. Modificar `useEstoqueDisponivel.ts`
-
-- Adicionar parametro opcional `producaoAgendada?: Record<string, number>`
-- Quando fornecido, somar as unidades agendadas ao `estoque_disponivel` de cada produto no calculo final
-- Isso afeta o status (critico/baixo/adequado/excesso) automaticamente
-
-## Layout da pagina apos as mudancas
-
-```text
-+--------------------------------------------------+
-|  Producao Agendada (full width)                   |
-|  Total: 640 unidades | 3 registros                |
-|  > Detalhes por Produto                           |
-+--------------------------------------------------+
-
-+------------------------+-------------------------+
-|  Produtos Necessarios  |  Estoque Disponivel     |
-|  ...                   |  [x] Incluir prod. agend|
-|                        |  ...                    |
-+------------------------+-------------------------+
-
-+--------------------------------------------------+
-|  Sugestao de Producao                             |
-+--------------------------------------------------+
-```
+A mudanca sera na secao que verifica movimentacoes existentes (por volta da linha 50): se encontrar movimentacoes existentes, verificar o status do registro. Se for "Registrado", atualizar para "Confirmado" e retornar sucesso. Se ja for "Confirmado", manter o comportamento atual de rejeicao.
 
 ## Arquivos
 
 | Arquivo | Acao |
 |---------|------|
-| `src/hooks/useProducaoAgendada.ts` | Criar |
-| `src/components/pcp/ProducaoAgendadaCard.tsx` | Criar |
-| `src/components/pcp/ProjecaoProducaoTab.tsx` | Modificar |
-| `src/components/pcp/EstoqueDisponivel.tsx` | Modificar |
-| `src/hooks/useEstoqueDisponivel.ts` | Modificar |
+| Migracao SQL | Criar - corrigir status do registro `f41d54c9` |
+| `src/hooks/useConfirmacaoProducao.ts` | Modificar - tratar caso de confirmacao parcial |
 
