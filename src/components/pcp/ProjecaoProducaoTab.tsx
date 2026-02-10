@@ -12,7 +12,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import EstoqueDisponivel from "./EstoqueDisponivel";
 import SugestaoProducao from "./SugestaoProducao";
+import ProducaoAgendadaCard from "./ProducaoAgendadaCard";
 import { useEstoqueDisponivel } from "@/hooks/useEstoqueDisponivel";
+import { useProducaoAgendada } from "@/hooks/useProducaoAgendada";
 
 interface ProdutoQuantidade {
   produto_id: string;
@@ -170,6 +172,7 @@ export default function ProjecaoProducaoTab() {
   }, [produtosOrdenados]);
 
   const { produtos: produtosEstoque } = useEstoqueDisponivel(quantidadesNecessarias);
+  const { produtosAgrupados, mapaPorProduto, totalUnidades, totalRegistros, loading: loadingProducao } = useProducaoAgendada();
 
   const handlePercentualChange = (value: string) => {
     const num = parseInt(value, 10);
@@ -179,6 +182,13 @@ export default function ProjecaoProducaoTab() {
 
   return (
     <div className="space-y-6">
+      <ProducaoAgendadaCard
+        produtos={produtosAgrupados}
+        totalUnidades={totalUnidades}
+        totalRegistros={totalRegistros}
+        loading={loadingProducao}
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -281,6 +291,7 @@ export default function ProjecaoProducaoTab() {
           quantidadesNecessarias={quantidadesNecessarias}
           ordemProdutosNecessarios={ordemProdutosNecessarios}
           loadingNecessarios={loading}
+          producaoAgendada={mapaPorProduto}
         />
       </div>
 
