@@ -2,6 +2,8 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Package, Loader2, ChevronDown, ChevronUp, RefreshCw, AlertCircle, TrendingDown, TrendingUp } from "lucide-react";
 import { useEstoqueDisponivel } from "@/hooks/useEstoqueDisponivel";
@@ -10,13 +12,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 interface EstoqueDisponivelProps {
   quantidadesNecessarias?: Record<string, number>;
-  ordemProdutosNecessarios?: string[]; // IDs na ordem correta
-  loadingNecessarios?: boolean; // Loading do cálculo de produtos necessários
+  ordemProdutosNecessarios?: string[];
+  loadingNecessarios?: boolean;
+  producaoAgendada?: Record<string, number>;
 }
 
-export default function EstoqueDisponivel({ quantidadesNecessarias = {}, ordemProdutosNecessarios = [], loadingNecessarios = false }: EstoqueDisponivelProps) {
+export default function EstoqueDisponivel({ quantidadesNecessarias = {}, ordemProdutosNecessarios = [], loadingNecessarios = false, producaoAgendada = {} }: EstoqueDisponivelProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [showSemPrevisao, setShowSemPrevisao] = useState(false);
+  const [incluirProducaoAgendada, setIncluirProducaoAgendada] = useState(false);
   const { 
     produtos, 
     loading, 
@@ -27,11 +31,29 @@ export default function EstoqueDisponivel({ quantidadesNecessarias = {}, ordemPr
     recarregar 
   } = useEstoqueDisponivel(quantidadesNecessarias);
 
-  // Separar produtos com e sem previsão
+  // Aplicar produção agendada ao estoque disponível quando toggle ativo
+  const produtosAjustados = useMemo(() => {
+    if (!incluirProducaoAgendada || Object.keys(producaoAgendada).length === 0) {
+      return produtos;
+    }
+    return produtos.map(p => {
+      const extra = producaoAgendada[p.produto_id] || 0;
+      if (extra === 0) return p;
+      const novoDisponivel = p.estoque_disponivel + extra;
+      let status: 'critico' | 'baixo' | 'adequado' | 'excesso' = 'adequado';
+      if (novoDisponivel < 0) status = 'critico';
+      else if (novoDisponivel < p.estoque_minimo) status = 'baixo';
+      else if (novoDisponivel > (p.estoque_ideal || p.estoque_minimo)) status = 'excesso';
+      return { ...p, estoque_disponivel: novoDisponivel, status };
+    });
+  }, [produtos, producaoAgendada, incluirProducaoAgendada]);
+
+  const totalDisponivelAjustado = useMemo(() => {
+    return produtosAjustados.reduce((sum, p) => sum + p.estoque_disponivel, 0);
+  }, [produtosAjustados]);
+
   const produtosComPrevisao = useMemo(() => {
-    const comPrevisao = produtos.filter(p => p.quantidade_necessaria > 0);
-    
-    // Ordenar de acordo com a ordem dos produtos necessários
+    const comPrevisao = produtosAjustados.filter(p => p.quantidade_necessaria > 0);
     return comPrevisao.sort((a, b) => {
       const indexA = ordemProdutosNecessarios.indexOf(a.produto_id);
       const indexB = ordemProdutosNecessarios.indexOf(b.produto_id);
@@ -50,11 +72,11 @@ export default function EstoqueDisponivel({ quantidadesNecessarias = {}, ordemPr
       // Se nenhum está na lista, manter ordem atual
       return 0;
     });
-  }, [produtos, ordemProdutosNecessarios]);
+  }, [produtosAjustados, ordemProdutosNecessarios]);
 
   const produtosSemPrevisao = useMemo(() => {
-    return produtos.filter(p => p.quantidade_necessaria === 0);
-  }, [produtos]);
+    return produtosAjustados.filter(p => p.quantidade_necessaria === 0);
+  }, [produtosAjustados]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -105,18 +127,34 @@ export default function EstoqueDisponivel({ quantidadesNecessarias = {}, ordemPr
               Estoque Disponível
             </CardTitle>
             <CardDescription className="text-left">
-              Saldo atual menos quantidades em expedição
+              {incluirProducaoAgendada 
+                ? "Saldo atual + produção agendada − expedição"
+                : "Saldo atual menos quantidades em expedição"}
             </CardDescription>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={recarregar}
-            disabled={loading}
-            title="Atualizar"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
+          <div className="flex items-center gap-2">
+            {Object.keys(producaoAgendada).length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="incluir-producao" className="text-xs cursor-pointer whitespace-nowrap">
+                  Incluir prod. agendada
+                </Label>
+                <Switch
+                  id="incluir-producao"
+                  checked={incluirProducaoAgendada}
+                  onCheckedChange={setIncluirProducaoAgendada}
+                />
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={recarregar}
+              disabled={loading}
+              title="Atualizar"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -147,8 +185,8 @@ export default function EstoqueDisponivel({ quantidadesNecessarias = {}, ordemPr
             {/* Total Geral */}
             <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20 text-center">
               <p className="text-sm text-muted-foreground mb-1">Estoque Total Disponível</p>
-              <p className={`text-3xl font-bold ${totalDisponivel < 0 ? 'text-red-500' : 'text-primary'}`}>
-                {totalDisponivel}
+              <p className={`text-3xl font-bold ${totalDisponivelAjustado < 0 ? 'text-destructive' : 'text-primary'}`}>
+                {totalDisponivelAjustado}
               </p>
               <div className="flex items-center justify-center gap-2 mt-2">
                 <Badge variant="default">
