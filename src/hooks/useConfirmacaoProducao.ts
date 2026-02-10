@@ -51,6 +51,26 @@ export const useConfirmacaoProducao = () => {
         .limit(1);
 
       if (movimentacoesExistentes && movimentacoesExistentes.length > 0) {
+        // Movimentações já existem - verificar se é uma confirmação parcial
+        if (registro.status === 'Registrado') {
+          // Caso de falha parcial: movimentações criadas mas status não atualizado
+          console.log('Detectada confirmação parcial - atualizando status...');
+          const { error: updateError } = await supabase
+            .from('historico_producao')
+            .update({ status: 'Confirmado', confirmado_em: new Date().toISOString() })
+            .eq('id', registroId);
+
+          if (updateError) {
+            throw new Error(`Erro ao atualizar status: ${updateError.message}`);
+          }
+
+          toast({
+            title: "Produção confirmada com sucesso",
+            description: `Registro de ${registro.produto_nome} atualizado para confirmado.`
+          });
+          return true;
+        }
+
         toast({
           title: "Produção já confirmada",
           description: "Este registro já foi confirmado anteriormente",
