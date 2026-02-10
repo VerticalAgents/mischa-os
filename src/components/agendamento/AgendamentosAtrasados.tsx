@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { format, addDays, isWeekend } from "date-fns";
+import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { AgendamentoItem } from "./types";
@@ -148,6 +149,10 @@ export default function AgendamentosAtrasados() {
       console.log('Reagendamento em massa para:', format(proximoDiaUtil, "dd/MM/yyyy", { locale: ptBR }));
       
       const promises = sortedAgendamentos.map(async (agendamento) => {
+        // Registrar reagendamento entre semanas se aplicável
+        const dataOriginal = new Date(agendamento.dataReposicao);
+        await registrarReagendamentoEntreSemanas(agendamento.cliente.id, dataOriginal, proximoDiaUtil);
+
         await salvarAgendamento(agendamento.cliente.id, {
           data_proxima_reposicao: proximoDiaUtil
         });

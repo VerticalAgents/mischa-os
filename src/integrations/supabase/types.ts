@@ -1672,6 +1672,54 @@ export type Database = {
           },
         ]
       }
+      reagendamentos_entre_semanas: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          data_nova: string
+          data_original: string
+          id: string
+          semana_nova: string
+          semana_original: string
+          semanas_adiadas: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          data_nova: string
+          data_original: string
+          id?: string
+          semana_nova: string
+          semana_original: string
+          semanas_adiadas: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          data_nova?: string
+          data_original?: string
+          id?: string
+          semana_nova?: string
+          semana_original?: string
+          semanas_adiadas?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reagendamentos_entre_semanas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reagendamentos_entre_semanas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "dados_analise_giro_materialized"
+            referencedColumns: ["cliente_id"]
+          },
+        ]
+      }
       receitas_base: {
         Row: {
           created_at: string
