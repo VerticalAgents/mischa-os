@@ -1160,83 +1160,128 @@ export default function AgendamentoDashboard() {
           </CardHeader>
           <CardContent>
             {(agendamentosDiaSelecionado.length > 0 || entregasDiaSelecionado.length > 0) ? <div className="space-y-3">
-                {agendamentosDiaSelecionado.length > 0 && (
-                  <>
-                    {agendamentosDiaSelecionado.map(agendamento => {
-                      const QuantidadeAtualizada = ({ agendamento }: { agendamento: any }) => {
-                        const [quantidade, setQuantidade] = useState(agendamento.cliente.quantidadePadrao);
-                        const [tipoPedido, setTipoPedido] = useState('Padrão');
-                        
-                        useEffect(() => {
-                          const buscarDados = async () => {
-                            try {
-                              const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
-                              if (agendamentoAtual) {
-                                setQuantidade(agendamentoAtual.quantidade_total || agendamento.cliente.quantidadePadrao);
-                                setTipoPedido(agendamentoAtual.tipo_pedido || 'Padrão');
-                              }
-                            } catch (error) {
-                              console.error('Erro ao buscar dados do agendamento:', error);
+                {(() => {
+                  const agendados = agendamentosDiaSelecionado.filter(a => a.statusAgendamento === "Agendado");
+                  const previstos = agendamentosDiaSelecionado.filter(a => a.statusAgendamento === "Previsto");
+                  const outros = agendamentosDiaSelecionado.filter(a => a.statusAgendamento !== "Agendado" && a.statusAgendamento !== "Previsto");
+
+                  // Agrupar previstos por representante
+                  const previstosPorRepresentante = new Map<string, typeof previstos>();
+                  previstos.forEach(ag => {
+                    const repId = ag.cliente.representanteId;
+                    const repNome = repId
+                      ? representantes.find(r => r.id === repId)?.nome || `Representante #${repId}`
+                      : 'Sem representante';
+                    if (!previstosPorRepresentante.has(repNome)) {
+                      previstosPorRepresentante.set(repNome, []);
+                    }
+                    previstosPorRepresentante.get(repNome)!.push(ag);
+                  });
+
+                  // Ordenar grupos: representantes nomeados primeiro, "Sem representante" por último
+                  const gruposOrdenados = Array.from(previstosPorRepresentante.entries()).sort((a, b) => {
+                    if (a[0] === 'Sem representante') return 1;
+                    if (b[0] === 'Sem representante') return -1;
+                    return a[0].localeCompare(b[0]);
+                  });
+
+                  const renderCard = (agendamento: typeof agendamentosDiaSelecionado[0]) => {
+                    const QuantidadeAtualizada = ({ agendamento }: { agendamento: any }) => {
+                      const [quantidade, setQuantidade] = useState(agendamento.cliente.quantidadePadrao);
+                      const [tipoPedido, setTipoPedido] = useState('Padrão');
+                      
+                      useEffect(() => {
+                        const buscarDados = async () => {
+                          try {
+                            const agendamentoAtual = await obterAgendamento(agendamento.cliente.id);
+                            if (agendamentoAtual) {
+                              setQuantidade(agendamentoAtual.quantidade_total || agendamento.cliente.quantidadePadrao);
+                              setTipoPedido(agendamentoAtual.tipo_pedido || 'Padrão');
                             }
-                          };
-                          buscarDados();
-                        }, [agendamento.cliente.id]);
-
-                        const diasDesdeUltimaEntrega = agendamento.cliente.ultimaDataReposicaoEfetiva 
-                          ? differenceInDays(new Date(), new Date(agendamento.cliente.ultimaDataReposicaoEfetiva))
-                          : null;
-
-                        const periodicidade = agendamento.cliente.periodicidadePadrao || 7;
-
-                        const frequenciaInfo = frequenciasReais?.get(agendamento.cliente.id);
-                        const frequenciaReal = frequenciaInfo?.frequenciaReal ?? null;
-                        const numeroEntregas = frequenciaInfo?.numeroEntregas ?? 0;
-
-                        const getBackgroundColor = () => {
-                          if (agendamento.statusAgendamento === "Agendado") return "bg-green-50";
-                          if (agendamento.statusAgendamento === "Previsto") return "bg-yellow-50";
-                          return "bg-gray-50";
+                          } catch (error) {
+                            console.error('Erro ao buscar dados do agendamento:', error);
+                          }
                         };
+                        buscarDados();
+                      }, [agendamento.cliente.id]);
 
-                        return (
-                          <div key={agendamento.cliente.id} className={`flex items-start gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
-                            <div className="flex-1 text-left">
-                              <div className="font-medium text-left">{agendamento.cliente.nome}</div>
-                              <div className="text-sm text-muted-foreground text-left">
-                                Quantidade: {quantidade} unidades
-                              </div>
-                              {agendamento.statusAgendamento === "Previsto" && (
-                                <IndicadoresEntrega
-                                  diasDesdeUltimaEntregaCadastro={diasDesdeUltimaEntrega}
-                                  periodicidade={periodicidade}
-                                  frequenciaReal={frequenciaReal}
-                                  numeroEntregas={numeroEntregas}
-                                  ultimaEntregaReal={frequenciaInfo?.ultimaEntrega ?? null}
-                                />
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
-                              <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
-                                {agendamento.statusAgendamento}
-                              </Badge>
-                              <div className="flex gap-1">
-                                {agendamento.statusAgendamento === "Previsto" && <Button variant="default" size="sm" onClick={() => handleConfirmarAgendamento(agendamento)} className="bg-green-500 hover:bg-green-600 h-8 px-2">
-                                    <CheckCheck className="h-3 w-3" />
-                                  </Button>}
-                                <Button variant="secondary" size="sm" onClick={() => handleEditarAgendamento(agendamento)} className="h-8 px-2">
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        );
+                      const diasDesdeUltimaEntrega = agendamento.cliente.ultimaDataReposicaoEfetiva 
+                        ? differenceInDays(new Date(), new Date(agendamento.cliente.ultimaDataReposicaoEfetiva))
+                        : null;
+
+                      const periodicidade = agendamento.cliente.periodicidadePadrao || 7;
+
+                      const frequenciaInfo = frequenciasReais?.get(agendamento.cliente.id);
+                      const frequenciaReal = frequenciaInfo?.frequenciaReal ?? null;
+                      const numeroEntregas = frequenciaInfo?.numeroEntregas ?? 0;
+
+                      const getBackgroundColor = () => {
+                        if (agendamento.statusAgendamento === "Agendado") return "bg-green-50";
+                        if (agendamento.statusAgendamento === "Previsto") return "bg-yellow-50";
+                        return "bg-gray-50";
                       };
 
-                      return <QuantidadeAtualizada key={agendamento.cliente.id} agendamento={agendamento} />;
-                    })}
-                  </>
-                )}
+                      return (
+                        <div key={agendamento.cliente.id} className={`flex items-start gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
+                          <div className="flex-1 text-left">
+                            <div className="font-medium text-left">{agendamento.cliente.nome}</div>
+                            <div className="text-sm text-muted-foreground text-left">
+                              Quantidade: {quantidade} unidades
+                            </div>
+                            {agendamento.statusAgendamento === "Previsto" && (
+                              <IndicadoresEntrega
+                                diasDesdeUltimaEntregaCadastro={diasDesdeUltimaEntrega}
+                                periodicidade={periodicidade}
+                                frequenciaReal={frequenciaReal}
+                                numeroEntregas={numeroEntregas}
+                                ultimaEntregaReal={frequenciaInfo?.ultimaEntrega ?? null}
+                              />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
+                            <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
+                              {agendamento.statusAgendamento}
+                            </Badge>
+                            <div className="flex gap-1">
+                              {agendamento.statusAgendamento === "Previsto" && <Button variant="default" size="sm" onClick={() => handleConfirmarAgendamento(agendamento)} className="bg-green-500 hover:bg-green-600 h-8 px-2">
+                                  <CheckCheck className="h-3 w-3" />
+                                </Button>}
+                              <Button variant="secondary" size="sm" onClick={() => handleEditarAgendamento(agendamento)} className="h-8 px-2">
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    };
+
+                    return <QuantidadeAtualizada key={agendamento.cliente.id} agendamento={agendamento} />;
+                  };
+
+                  return (
+                    <>
+                      {/* Agendados (confirmados) - lista simples */}
+                      {agendados.map(renderCard)}
+
+                      {/* Previstos agrupados por representante */}
+                      {gruposOrdenados.map(([nomeRepresentante, items]) => (
+                        <div key={nomeRepresentante}>
+                          <div className="flex items-center gap-2 pt-3 pb-2 border-t mt-2">
+                            <Package className="h-4 w-4 text-amber-600" />
+                            <span className="text-sm font-semibold text-amber-700">
+                              {nomeRepresentante} ({items.length} {items.length === 1 ? 'previsto' : 'previstos'})
+                            </span>
+                          </div>
+                          {items.map(renderCard)}
+                        </div>
+                      ))}
+
+                      {/* Outros status (se houver) */}
+                      {outros.map(renderCard)}
+                    </>
+                  );
+                })()}
 
                 {/* Seção de Entregas Realizadas */}
                 {entregasDiaSelecionado.length > 0 && (
