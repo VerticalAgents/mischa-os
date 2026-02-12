@@ -1,66 +1,39 @@
 
-# Agrupar lista de separacao impressa por representante
+# Correcao: Reagendamentos entre semanas nao sendo registrados
 
-## O que muda
+## Problema identificado
 
-A lista de separacao impressa (PDF para impressao) passara a agrupar os pedidos por representante, com cabecalhos visuais separando cada grupo. Isso espelha a mesma logica de agrupamento ja aplicada no calendario semanal.
+A funcao `registrarReagendamentoEntreSemanas` em `src/utils/reagendamentoUtils.ts` tem um bug na linha 21-23:
 
-## Como funciona hoje
-
-A lista e uma tabela unica com todos os pedidos em sequencia, sem agrupamento. Os pedidos possuem `representante_id` (numero) vindo do store, mas esse dado nao e utilizado na impressao.
-
-## O que sera alterado
-
-### 1. `PrintingActions.tsx` - Receber e usar dados de representantes
-
-- Adicionar uma nova prop `representantes` (array com `id` e `nome`) ao componente
-- Na funcao `imprimirListaSeparacao`, agrupar `listaAtual` por `representante_id`:
-  - Resolver o nome usando a lista de representantes
-  - Pedidos sem representante ficam no grupo "Sem representante" (exibido por ultimo)
-  - Grupos ordenados alfabeticamente pelo nome do representante
-- Para cada grupo, renderizar um cabecalho de secao na tabela (linha com colspan, fundo cinza mais escuro, nome do representante e contagem de pedidos)
-- O resumo total (TOTAL GERAL) continua no rodape somando tudo
-
-### 2. `SeparacaoActionsCard.tsx` - Passar representantes
-
-- Receber `representantes` como nova prop e repassar ao `PrintingActions`
-
-### 3. `SeparacaoPedidos.tsx` - Buscar e fornecer representantes
-
-- Buscar representantes do Supabase (similar ao que ja e feito em outros componentes como `OrganizadorEntregas.tsx`)
-- Passar a lista para `SeparacaoActionsCard`
-
-## Resultado visual na impressao
-
-```text
-+--------------------------------------------------+
-| Lista de Separacao - Todos os Pedidos             |
-| Data: 12/02/2026  Total: 15 pedidos               |
-+--------------------------------------------------+
-| >> Joao Silva (5 pedidos)                         |
-+--------+------+------+-----------+-------+--------+
-| Client | Data | Tipo | Produtos  | Total | Obs    |
-+--------+------+------+-----------+-------+--------+
-| ...    | ...  | ...  | ...       | ...   | ...    |
-+--------+------+------+-----------+-------+--------+
-| >> Maria Santos (7 pedidos)                       |
-+--------+------+------+-----------+-------+--------+
-| ...    | ...  | ...  | ...       | ...   | ...    |
-+--------+------+------+-----------+-------+--------+
-| >> Sem representante (3 pedidos)                  |
-+--------+------+------+-----------+-------+--------+
-| ...    | ...  | ...  | ...       | ...   | ...    |
-+--------+------+------+-----------+-------+--------+
-|                        TOTAL GERAL:  450          |
-+--------------------------------------------------+
+```typescript
+const semanasAdiadas = Math.abs(differenceInWeeks(dataNova, dataOriginal));
+if (semanasAdiadas === 0) return; // <-- BUG AQUI
 ```
 
-## Arquivos modificados
+A funcao `differenceInWeeks` do date-fns conta **periodos completos de 7 dias** entre duas datas, nao semanas do calendario. Exemplo: se um pedido e movido de quinta-feira para a segunda-feira da semana seguinte (4 dias de diferenca), as semanas sao diferentes (o primeiro check na linha 17 passa corretamente), mas `differenceInWeeks` retorna 0 porque nao ha 7 dias completos entre as datas. O codigo entao faz `return` sem registrar nada.
+
+## Solucao
+
+Calcular `semanasAdiadas` usando a diferenca entre os **inicios das semanas** (que ja estao calculados nas variaveis `semanaOriginal` e `semanaNova`), em vez de usar as datas originais. Isso garante que qualquer mudanca entre semanas do calendario conta como pelo menos 1 semana. Tambem remover o check redundante `semanasAdiadas === 0`, pois o check anterior (`semanaOriginal === semanaNova`) ja cobre esse caso.
+
+Alem disso, remover o cast `as any` na chamada `.from()` para usar o tipo correto da tabela gerada pelo Supabase, garantindo type-safety.
+
+## Arquivo modificado
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/components/expedicao/SeparacaoPedidos.tsx` | Buscar representantes e passar ao SeparacaoActionsCard |
-| `src/components/expedicao/components/SeparacaoActionsCard.tsx` | Nova prop `representantes`, repassar ao PrintingActions |
-| `src/components/expedicao/components/PrintingActions.tsx` | Nova prop `representantes`, agrupar pedidos por representante na geracao do HTML de impressao |
+| `src/utils/reagendamentoUtils.ts` | Corrigir calculo de `semanasAdiadas` para usar diferenca entre inicios de semana; remover check redundante |
 
-Nenhum arquivo novo sera criado. A lista de documentos nao sera alterada (apenas a lista de separacao).
+### Codigo corrigido
+
+```typescript
+// ANTES (bugado):
+const semanasAdiadas = Math.abs(differenceInWeeks(dataNova, dataOriginal));
+if (semanasAdiadas === 0) return;
+
+// DEPOIS (correto):
+const semanasAdiadas = Math.abs(differenceInWeeks(semanaNova, semanaOriginal));
+// Nao precisa do check === 0 pois o check anterior ja garante semanas diferentes
+```
+
+Essa e a unica mudanca necessaria. O resto do fluxo (chamadas nos dialogs, hook de leitura, pagina) ja esta correto.
