@@ -1,0 +1,1 @@
+ALTER TABLE public.reagendamentos_entre_semanas ADD COLUMN tipo text NOT NULL DEFAULT 'adiamento';

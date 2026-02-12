@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { ReagendamentoTipo, asReagendamentoTipo } from '@/types/estoque';
 
 export interface ReagendamentoEntreSemanas {
   id: string;
@@ -10,18 +11,21 @@ export interface ReagendamentoEntreSemanas {
   semana_original: string;
   semana_nova: string;
   semanas_adiadas: number;
+  tipo: ReagendamentoTipo;
   created_at: string;
 }
 
 interface ReagendamentoResumo {
   total: number;
+  adiamentos: number;
+  adiantamentos: number;
   mediaSemanas: number;
   topClientes: { nome: string; count: number }[];
 }
 
 export function useReagendamentosEntreSemanas() {
   const [reagendamentos, setReagendamentos] = useState<ReagendamentoEntreSemanas[]>([]);
-  const [resumo, setResumo] = useState<ReagendamentoResumo>({ total: 0, mediaSemanas: 0, topClientes: [] });
+  const [resumo, setResumo] = useState<ReagendamentoResumo>({ total: 0, adiamentos: 0, adiantamentos: 0, mediaSemanas: 0, topClientes: [] });
   const [isLoading, setIsLoading] = useState(true);
 
   const carregar = useCallback(async () => {
@@ -43,18 +47,19 @@ export function useReagendamentosEntreSemanas() {
         semana_original: r.semana_original,
         semana_nova: r.semana_nova,
         semanas_adiadas: r.semanas_adiadas,
+        tipo: asReagendamentoTipo(r.tipo || 'adiamento'),
         created_at: r.created_at,
       }));
 
       setReagendamentos(items);
 
-      // Calcular resumo
       const total = items.length;
+      const adiamentos = items.filter(r => r.tipo === 'adiamento').length;
+      const adiantamentos = items.filter(r => r.tipo === 'adiantamento').length;
       const mediaSemanas = total > 0
         ? items.reduce((acc, r) => acc + r.semanas_adiadas, 0) / total
         : 0;
 
-      // Top 3 clientes
       const countMap: Record<string, { nome: string; count: number }> = {};
       items.forEach((r) => {
         if (!countMap[r.cliente_id]) {
@@ -66,7 +71,7 @@ export function useReagendamentosEntreSemanas() {
         .sort((a, b) => b.count - a.count)
         .slice(0, 3);
 
-      setResumo({ total, mediaSemanas, topClientes });
+      setResumo({ total, adiamentos, adiantamentos, mediaSemanas, topClientes });
     } catch (error) {
       console.error('Erro ao carregar reagendamentos entre semanas:', error);
     } finally {

@@ -40,16 +40,17 @@ export default function ReagendamentosTable({ reagendamentos }: ReagendamentosTa
         <TableHeader>
           <TableRow>
             <TableHead>Cliente</TableHead>
+            <TableHead>Tipo</TableHead>
             <TableHead>Data Original</TableHead>
             <TableHead>Nova Data</TableHead>
-            <TableHead>Semanas Adiadas</TableHead>
+            <TableHead>Semanas</TableHead>
             <TableHead>Data do Registro</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {filtered.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                 Nenhum reagendamento entre semanas registrado.
               </TableCell>
             </TableRow>
@@ -57,6 +58,11 @@ export default function ReagendamentosTable({ reagendamentos }: ReagendamentosTa
             filtered.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="font-medium">{r.cliente_nome}</TableCell>
+                <TableCell>
+                  <Badge variant={r.tipo === 'adiamento' ? 'destructive' : 'default'}>
+                    {r.tipo === 'adiamento' ? 'Adiamento' : 'Adiantamento'}
+                  </Badge>
+                </TableCell>
                 <TableCell>{format(new Date(r.data_original), "dd/MM/yyyy")}</TableCell>
                 <TableCell>{format(new Date(r.data_nova), "dd/MM/yyyy")}</TableCell>
                 <TableCell>

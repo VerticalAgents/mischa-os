@@ -11,9 +11,9 @@ export default function Reagendamentos() {
       <div className="flex items-center gap-3">
         <CalendarClock className="h-6 w-6 text-primary" />
         <div>
-          <h1 className="text-2xl font-bold">Reagendamentos Entre Semanas</h1>
+          <h1 className="text-2xl font-bold">Log de Reagendamentos</h1>
           <p className="text-muted-foreground text-sm">
-            Registro de agendamentos movidos para semanas diferentes
+            Registro de adiamentos e adiantamentos entre semanas
           </p>
         </div>
       </div>
@@ -26,6 +26,8 @@ export default function Reagendamentos() {
         <>
           <ReagendamentosResumo
             total={resumo.total}
+            adiamentos={resumo.adiamentos}
+            adiantamentos={resumo.adiantamentos}
             mediaSemanas={resumo.mediaSemanas}
             topClientes={resumo.topClientes}
           />
