@@ -1682,6 +1682,7 @@ export type Database = {
           semana_nova: string
           semana_original: string
           semanas_adiadas: number
+          tipo: string
         }
         Insert: {
           cliente_id: string
@@ -1692,6 +1693,7 @@ export type Database = {
           semana_nova: string
           semana_original: string
           semanas_adiadas: number
+          tipo?: string
         }
         Update: {
           cliente_id?: string
@@ -1702,6 +1704,7 @@ export type Database = {
           semana_nova?: string
           semana_original?: string
           semanas_adiadas?: number
+          tipo?: string
         }
         Relationships: [
           {
