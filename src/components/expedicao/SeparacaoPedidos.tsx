@@ -14,6 +14,7 @@ import { SeparacaoFilters } from "./components/SeparacaoFilters";
 import { SeparacaoEmMassaDialog } from "./components/SeparacaoEmMassaDialog";
 import { GerarVendasEmMassaDialog } from "./components/GerarVendasEmMassaDialog";
 import { useGestaoClickSync } from "@/hooks/useGestaoClickSync";
+import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { toast } from "sonner";
 
 const SeparacaoPedidos = () => {
@@ -47,6 +48,7 @@ const SeparacaoPedidos = () => {
   const [gerarVendasEmMassaOpen, setGerarVendasEmMassaOpen] = useState(false);
   
   const { gerarVendaGC, atualizarVendaGC, loading: loadingGC, pedidoEmProcessamento } = useGestaoClickSync();
+  const { representantes } = useSupabaseRepresentantes();
 
   useEffect(() => {
     carregarPedidos();
@@ -228,6 +230,7 @@ const SeparacaoPedidos = () => {
           onAtualizar={() => carregarPedidos()}
           isLoading={isLoading}
           pedidosFiltrados={pedidosFiltrados}
+          representantes={representantes}
         />
       </div>
       

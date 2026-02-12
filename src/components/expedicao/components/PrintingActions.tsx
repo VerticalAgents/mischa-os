@@ -20,6 +20,7 @@ interface PrintingActionsProps {
   pedidosAlterados: any[];
   pedidosProximoDia: any[];
   todosPedidos: any[];
+  representantes?: { id: number; nome: string }[];
 }
 
 export const PrintingActions = ({ 
@@ -27,7 +28,8 @@ export const PrintingActions = ({
   pedidosPadrao, 
   pedidosAlterados, 
   pedidosProximoDia, 
-  todosPedidos 
+  todosPedidos,
+  representantes = []
 }: PrintingActionsProps) => {
   const printFrameRef = useRef<HTMLIFrameElement>(null);
   const [modalListasAberto, setModalListasAberto] = useState(false);
@@ -130,6 +132,13 @@ export const PrintingActions = ({
             .troca-item { margin-bottom: 3px; padding: 2px 4px; background-color: #fef3c7; border-left: 2px solid #d97706; }
             .troca-produto { font-weight: bold; }
             .troca-motivo { color: #92400e; font-style: italic; font-size: 8px; }
+            .grupo-representante-header {
+              background-color: #e5e7eb;
+              font-weight: bold;
+              font-size: 12px;
+              padding: 8px 10px;
+              border: 1px solid #ddd;
+            }
             .aviso-duplicados {
               background-color: #fef3c7;
               border: 2px solid #d97706;
@@ -220,15 +229,31 @@ export const PrintingActions = ({
             <tbody>
     `;
     
+    // Agrupar pedidos por representante
+    const gruposRepresentante = new Map<string, any[]>();
     listaAtual.forEach(pedido => {
+      const repNome = pedido.representante_id
+        ? representantes.find(r => r.id === pedido.representante_id)?.nome || `Representante #${pedido.representante_id}`
+        : 'Sem representante';
+      if (!gruposRepresentante.has(repNome)) gruposRepresentante.set(repNome, []);
+      gruposRepresentante.get(repNome)!.push(pedido);
+    });
+
+    // Ordenar: nomes alfabéticos, "Sem representante" por último
+    const gruposOrdenados = Array.from(gruposRepresentante.entries()).sort(([a], [b]) => {
+      if (a === 'Sem representante') return 1;
+      if (b === 'Sem representante') return -1;
+      return a.localeCompare(b);
+    });
+
+    const totalColunas = 5 + (temAlgumaObservacao ? 1 : 0) + (temAlgumaTroca ? 1 : 0);
+
+    const renderPedidoRow = (pedido: any) => {
       const produtos = pedido.itens_personalizados || [];
-      
-      // Filtrar produtos com quantidade maior que 0
       const produtosFiltrados = produtos.filter((item: any) => {
         const quantidade = item.quantidade || item.quantidade_sabor || 0;
         return quantidade > 0;
       });
-      
       const produtosParaExibir = produtosFiltrados.length > 0 ? produtosFiltrados : [
         { nome: "Distribuição Padrão", quantidade: pedido.quantidade_total }
       ];
@@ -243,7 +268,6 @@ export const PrintingActions = ({
           </div>
         `;
       });
-      
       if (produtosParaExibir.length > 1) {
         produtosHtml += `
           <div class="produto-item total-geral">
@@ -252,10 +276,8 @@ export const PrintingActions = ({
           </div>
         `;
       }
-      
       produtosHtml += '</div>';
       
-      // Montar HTML das observações (fixas em negrito, temporárias normal)
       let observacoesHtml = '';
       if (temAlgumaObservacao) {
         observacoesHtml = '<td><div class="observacoes">';
@@ -271,7 +293,6 @@ export const PrintingActions = ({
         observacoesHtml += '</div></td>';
       }
       
-      // Montar HTML das trocas pendentes
       let trocasHtml = '';
       if (temAlgumaTroca) {
         const trocasPendentes: TrocaPendente[] = pedido.trocas_pendentes || [];
@@ -291,12 +312,11 @@ export const PrintingActions = ({
         trocasHtml += '</div></td>';
       }
       
-      // Montar HTML do cliente com razão social
       const razaoSocialDiferente = pedido.cliente_razao_social && 
         pedido.cliente_razao_social !== '-' && 
         pedido.cliente_razao_social.toLowerCase() !== pedido.cliente_nome.toLowerCase();
       
-      printContent += `
+      return `
         <tr>
           <td>
             <strong>${pedido.cliente_nome}</strong>
@@ -310,6 +330,20 @@ export const PrintingActions = ({
           ${trocasHtml}
         </tr>
       `;
+    };
+
+    gruposOrdenados.forEach(([nomeRep, pedidosGrupo]) => {
+      const totalGrupo = pedidosGrupo.reduce((s, p) => s + p.quantidade_total, 0);
+      printContent += `
+        <tr>
+          <td colspan="${totalColunas}" class="grupo-representante-header">
+            ${nomeRep} (${pedidosGrupo.length} pedido${pedidosGrupo.length > 1 ? 's' : ''} — ${totalGrupo} un.)
+          </td>
+        </tr>
+      `;
+      pedidosGrupo.forEach(pedido => {
+        printContent += renderPedidoRow(pedido);
+      });
     });
     
     // Adicionar resumo total

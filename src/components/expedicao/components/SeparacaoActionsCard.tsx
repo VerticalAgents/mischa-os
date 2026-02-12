@@ -10,6 +10,7 @@ interface SeparacaoActionsCardProps {
   onAtualizar: () => void;
   isLoading: boolean;
   pedidosFiltrados: any[];
+  representantes?: { id: number; nome: string }[];
   className?: string;
 }
 
@@ -19,6 +20,7 @@ export const SeparacaoActionsCard = ({
   onAtualizar,
   isLoading,
   pedidosFiltrados,
+  representantes = [],
   className = ""
 }: SeparacaoActionsCardProps) => {
   return (
@@ -59,6 +61,7 @@ export const SeparacaoActionsCard = ({
             pedidosAlterados={pedidosFiltrados.filter(p => p.tipo_pedido === 'Alterado')}
             pedidosProximoDia={[]}
             todosPedidos={pedidosFiltrados}
+            representantes={representantes}
           />
           
           <Button 
