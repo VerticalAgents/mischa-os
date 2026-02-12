@@ -18,12 +18,10 @@ export async function registrarReagendamentoEntreSemanas(
     return;
   }
 
-  const semanasAdiadas = Math.abs(differenceInWeeks(dataNova, dataOriginal));
-
-  if (semanasAdiadas === 0) return;
+  const semanasAdiadas = Math.abs(differenceInWeeks(semanaNova, semanaOriginal));
 
   const { error } = await supabase
-    .from('reagendamentos_entre_semanas' as any)
+    .from('reagendamentos_entre_semanas')
     .insert({
       cliente_id: clienteId,
       data_original: format(dataOriginal, 'yyyy-MM-dd'),
