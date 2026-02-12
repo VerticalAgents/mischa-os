@@ -1,58 +1,48 @@
 
-# Log de Reagendamentos (Adiamento / Adiantamento)
 
-## Conceito
+# Correcao: Registrar reagendamento ao editar agendamento pelo modal
 
-Transformar o registro de reagendamentos em um sistema de log semelhante ao que ja existe para movimentacoes de estoque (insumos e produtos). Cada reagendamento entre semanas sera classificado como:
+## Problema
 
-- **Adiamento**: quando o pedido e movido para uma semana posterior (data nova > data original)
-- **Adiantamento**: quando o pedido e movido para uma semana anterior (data nova < data original)
+O `AgendamentoEditModal` -- que e o modal usado ao clicar num card do calendario semanal (e em mais de 10 outros locais) -- **nao chama** `registrarReagendamentoEntreSemanas` ao salvar uma nova data. Ele apenas salva a nova data diretamente no banco.
 
-## O que muda
+A funcao de registro so e chamada em locais especificos:
+- `ReagendamentoDialog.tsx` (botao "Reagendar" dedicado)
+- `AgendamentoDashboard.tsx` (reagendamento em massa)
+- `TodosAgendamentos.tsx` (reagendamento em massa)
+- `AgendamentosAtrasados.tsx` (reagendamento automatico de atrasados)
 
-### 1. Tabela existente - adicionar coluna `tipo`
+Como o usuario editou a data pelo modal do card no calendario (que usa `AgendamentoEditModal`), nenhum log foi registrado.
 
-Adicionar uma coluna `tipo` (text) na tabela `reagendamentos_entre_semanas` com valores `'adiamento'` ou `'adiantamento'`. Isso segue o mesmo padrao da coluna `tipo` nas tabelas de movimentacoes de estoque (`entrada`, `saida`, `ajuste`).
+## Solucao
 
-### 2. Tipo TypeScript - `src/types/estoque.ts` (ou novo arquivo de tipos)
+Adicionar a chamada de `registrarReagendamentoEntreSemanas` dentro da funcao `handleSalvar` do `AgendamentoEditModal.tsx`, comparando a data original do agendamento com a nova data selecionada. O registro so acontece quando a data efetivamente muda.
 
-Criar o tipo `ReagendamentoTipo = 'adiamento' | 'adiantamento'` e uma funcao auxiliar `asReagendamentoTipo`, seguindo o padrao de `MovTipo` e `asMovTipo`.
+## O que sera alterado
 
-### 3. Utilitario - `src/utils/reagendamentoUtils.ts`
+### `src/components/agendamento/AgendamentoEditModal.tsx`
 
-Atualizar `registrarReagendamentoEntreSemanas` para:
-- Determinar o tipo comparando `semanaNova` com `semanaOriginal` (posterior = adiamento, anterior = adiantamento)
-- Incluir o campo `tipo` no insert
+Na funcao `handleSalvar` (linha 174), antes de salvar o agendamento:
 
-### 4. Hook - `src/hooks/useReagendamentosEntreSemanas.ts`
+1. Importar `registrarReagendamentoEntreSemanas` do utils
+2. Comparar a data original (`agendamento.dataReposicao`) com a nova data (`dataReposicao`)
+3. Se forem diferentes, chamar `registrarReagendamentoEntreSemanas(clienteId, dataOriginal, dataNova)`
+4. O registro acontece de forma assincrona (sem bloquear o salvamento)
 
-- Adicionar o campo `tipo` na interface `ReagendamentoEntreSemanas`
-- Mapear o campo no carregamento dos dados
-- Atualizar o resumo para incluir contagem separada de adiamentos e adiantamentos
+```text
+handleSalvar():
+  1. Validacoes existentes
+  2. [NOVO] Se data mudou -> registrarReagendamentoEntreSemanas(clienteId, dataOriginal, dataNova)
+  3. Salvar observacoes (existente)
+  4. Salvar agendamento (existente)
+  5. Resto do fluxo (existente)
+```
 
-### 5. Pagina - `src/pages/Reagendamentos.tsx`
-
-Atualizar titulo e descricao para refletir o conceito de "Log de Reagendamentos".
-
-### 6. Resumo - `src/components/reagendamentos/ReagendamentosResumo.tsx`
-
-Adicionar cards ou indicadores separados para adiamentos e adiantamentos (ex: "X adiamentos" e "Y adiantamentos"), alem do total.
-
-### 7. Tabela - `src/components/reagendamentos/ReagendamentosTable.tsx`
-
-- Adicionar coluna "Tipo" com badge colorido (similar ao historico de movimentacoes de estoque):
-  - Adiamento: badge vermelho/destrutivo (pedido empurrado para frente)
-  - Adiantamento: badge verde/default (pedido puxado para antes)
-- Ajustar o texto da coluna "Semanas Adiadas" para "Semanas" (ja que pode ser adiamento ou adiantamento)
-
-## Arquivos modificados
+## Arquivo modificado
 
 | Arquivo | Mudanca |
 |---------|---------|
-| Migracao SQL | Adicionar coluna `tipo` (text) a `reagendamentos_entre_semanas` |
-| `src/types/estoque.ts` | Adicionar `ReagendamentoTipo` e `asReagendamentoTipo` |
-| `src/utils/reagendamentoUtils.ts` | Calcular e inserir `tipo` (adiamento/adiantamento) |
-| `src/hooks/useReagendamentosEntreSemanas.ts` | Incluir `tipo` na interface e no resumo |
-| `src/pages/Reagendamentos.tsx` | Atualizar titulo para "Log de Reagendamentos" |
-| `src/components/reagendamentos/ReagendamentosResumo.tsx` | Separar contadores de adiamento e adiantamento |
-| `src/components/reagendamentos/ReagendamentosTable.tsx` | Adicionar coluna Tipo com badges coloridos |
+| `src/components/agendamento/AgendamentoEditModal.tsx` | Importar e chamar `registrarReagendamentoEntreSemanas` quando a data muda |
+
+Nenhum outro arquivo precisa ser alterado. A logica de classificacao (adiamento/adiantamento) e calculo de semanas ja esta implementada no utilitario.
+
