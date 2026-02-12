@@ -1,39 +1,58 @@
 
-# Correcao: Reagendamentos entre semanas nao sendo registrados
+# Log de Reagendamentos (Adiamento / Adiantamento)
 
-## Problema identificado
+## Conceito
 
-A funcao `registrarReagendamentoEntreSemanas` em `src/utils/reagendamentoUtils.ts` tem um bug na linha 21-23:
+Transformar o registro de reagendamentos em um sistema de log semelhante ao que ja existe para movimentacoes de estoque (insumos e produtos). Cada reagendamento entre semanas sera classificado como:
 
-```typescript
-const semanasAdiadas = Math.abs(differenceInWeeks(dataNova, dataOriginal));
-if (semanasAdiadas === 0) return; // <-- BUG AQUI
-```
+- **Adiamento**: quando o pedido e movido para uma semana posterior (data nova > data original)
+- **Adiantamento**: quando o pedido e movido para uma semana anterior (data nova < data original)
 
-A funcao `differenceInWeeks` do date-fns conta **periodos completos de 7 dias** entre duas datas, nao semanas do calendario. Exemplo: se um pedido e movido de quinta-feira para a segunda-feira da semana seguinte (4 dias de diferenca), as semanas sao diferentes (o primeiro check na linha 17 passa corretamente), mas `differenceInWeeks` retorna 0 porque nao ha 7 dias completos entre as datas. O codigo entao faz `return` sem registrar nada.
+## O que muda
 
-## Solucao
+### 1. Tabela existente - adicionar coluna `tipo`
 
-Calcular `semanasAdiadas` usando a diferenca entre os **inicios das semanas** (que ja estao calculados nas variaveis `semanaOriginal` e `semanaNova`), em vez de usar as datas originais. Isso garante que qualquer mudanca entre semanas do calendario conta como pelo menos 1 semana. Tambem remover o check redundante `semanasAdiadas === 0`, pois o check anterior (`semanaOriginal === semanaNova`) ja cobre esse caso.
+Adicionar uma coluna `tipo` (text) na tabela `reagendamentos_entre_semanas` com valores `'adiamento'` ou `'adiantamento'`. Isso segue o mesmo padrao da coluna `tipo` nas tabelas de movimentacoes de estoque (`entrada`, `saida`, `ajuste`).
 
-Alem disso, remover o cast `as any` na chamada `.from()` para usar o tipo correto da tabela gerada pelo Supabase, garantindo type-safety.
+### 2. Tipo TypeScript - `src/types/estoque.ts` (ou novo arquivo de tipos)
 
-## Arquivo modificado
+Criar o tipo `ReagendamentoTipo = 'adiamento' | 'adiantamento'` e uma funcao auxiliar `asReagendamentoTipo`, seguindo o padrao de `MovTipo` e `asMovTipo`.
+
+### 3. Utilitario - `src/utils/reagendamentoUtils.ts`
+
+Atualizar `registrarReagendamentoEntreSemanas` para:
+- Determinar o tipo comparando `semanaNova` com `semanaOriginal` (posterior = adiamento, anterior = adiantamento)
+- Incluir o campo `tipo` no insert
+
+### 4. Hook - `src/hooks/useReagendamentosEntreSemanas.ts`
+
+- Adicionar o campo `tipo` na interface `ReagendamentoEntreSemanas`
+- Mapear o campo no carregamento dos dados
+- Atualizar o resumo para incluir contagem separada de adiamentos e adiantamentos
+
+### 5. Pagina - `src/pages/Reagendamentos.tsx`
+
+Atualizar titulo e descricao para refletir o conceito de "Log de Reagendamentos".
+
+### 6. Resumo - `src/components/reagendamentos/ReagendamentosResumo.tsx`
+
+Adicionar cards ou indicadores separados para adiamentos e adiantamentos (ex: "X adiamentos" e "Y adiantamentos"), alem do total.
+
+### 7. Tabela - `src/components/reagendamentos/ReagendamentosTable.tsx`
+
+- Adicionar coluna "Tipo" com badge colorido (similar ao historico de movimentacoes de estoque):
+  - Adiamento: badge vermelho/destrutivo (pedido empurrado para frente)
+  - Adiantamento: badge verde/default (pedido puxado para antes)
+- Ajustar o texto da coluna "Semanas Adiadas" para "Semanas" (ja que pode ser adiamento ou adiantamento)
+
+## Arquivos modificados
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/utils/reagendamentoUtils.ts` | Corrigir calculo de `semanasAdiadas` para usar diferenca entre inicios de semana; remover check redundante |
-
-### Codigo corrigido
-
-```typescript
-// ANTES (bugado):
-const semanasAdiadas = Math.abs(differenceInWeeks(dataNova, dataOriginal));
-if (semanasAdiadas === 0) return;
-
-// DEPOIS (correto):
-const semanasAdiadas = Math.abs(differenceInWeeks(semanaNova, semanaOriginal));
-// Nao precisa do check === 0 pois o check anterior ja garante semanas diferentes
-```
-
-Essa e a unica mudanca necessaria. O resto do fluxo (chamadas nos dialogs, hook de leitura, pagina) ja esta correto.
+| Migracao SQL | Adicionar coluna `tipo` (text) a `reagendamentos_entre_semanas` |
+| `src/types/estoque.ts` | Adicionar `ReagendamentoTipo` e `asReagendamentoTipo` |
+| `src/utils/reagendamentoUtils.ts` | Calcular e inserir `tipo` (adiamento/adiantamento) |
+| `src/hooks/useReagendamentosEntreSemanas.ts` | Incluir `tipo` na interface e no resumo |
+| `src/pages/Reagendamentos.tsx` | Atualizar titulo para "Log de Reagendamentos" |
+| `src/components/reagendamentos/ReagendamentosResumo.tsx` | Separar contadores de adiamento e adiantamento |
+| `src/components/reagendamentos/ReagendamentosTable.tsx` | Adicionar coluna Tipo com badges coloridos |
