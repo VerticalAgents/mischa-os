@@ -28,6 +28,7 @@ import ProdutoQuantidadeSelector from "./ProdutoQuantidadeSelector";
 import ObservacoesAgendamentoSection from "./ObservacoesAgendamentoSection";
 import { TrocaPendente } from "./TrocasPendentesEditor";
 import { supabase } from "@/integrations/supabase/client";
+import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
 
 interface AgendamentoEditModalProps {
   open: boolean;
@@ -186,6 +187,15 @@ export default function AgendamentoEditModal({
     setIsSaving(true);
     
     try {
+      // Registrar reagendamento entre semanas se a data mudou
+      if (agendamento.dataReposicao && dataReposicao.getTime() !== agendamento.dataReposicao.getTime()) {
+        registrarReagendamentoEntreSemanas(
+          agendamento.cliente.id,
+          agendamento.dataReposicao,
+          dataReposicao
+        );
+      }
+
       // Salvar observações gerais no cliente (permanentes)
       await supabase
         .from('clientes')
