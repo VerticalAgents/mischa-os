@@ -28,7 +28,7 @@ export function useReagendamentosEntreSemanas() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('reagendamentos_entre_semanas' as any)
+        .from('reagendamentos_entre_semanas')
         .select('*, clientes(nome)')
         .order('created_at', { ascending: false });
 
