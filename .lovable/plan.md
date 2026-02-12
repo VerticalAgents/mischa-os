@@ -1,27 +1,66 @@
 
-# Agrupar pedidos previstos por representante no calendario semanal
+# Agrupar lista de separacao impressa por representante
 
 ## O que muda
 
-No painel expandido do dia selecionado (quando voce clica em um dia do calendario), os agendamentos com status "Previsto" passarao a ser agrupados por representante. Cada grupo tera um cabecalho com o nome do representante e a contagem de previstos daquele representante.
+A lista de separacao impressa (PDF para impressao) passara a agrupar os pedidos por representante, com cabecalhos visuais separando cada grupo. Isso espelha a mesma logica de agrupamento ja aplicada no calendario semanal.
 
-Agendamentos "Agendados" (confirmados) continuam aparecendo primeiro, sem agrupamento, como ja funciona hoje. A hierarquia visual sera:
+## Como funciona hoje
 
-1. Agendados (confirmados) - lista normal, sem agrupamento
-2. Previstos agrupados por representante - cada grupo com cabecalho
+A lista e uma tabela unica com todos os pedidos em sequencia, sem agrupamento. Os pedidos possuem `representante_id` (numero) vindo do store, mas esse dado nao e utilizado na impressao.
 
-## Alteracoes
+## O que sera alterado
 
-### Arquivo: `src/components/agendamento/AgendamentoDashboard.tsx`
+### 1. `PrintingActions.tsx` - Receber e usar dados de representantes
 
-**Logica** (no bloco de `useMemo` ou inline): Separar os agendamentos do dia em dois grupos:
-- `agendados`: status "Agendado" (mantidos como lista simples)
-- `previstosPorRepresentante`: agrupar os "Previsto" usando `cliente.representanteId`, cruzando com a lista de `representantes` ja carregada para obter o nome. Clientes sem representante ficam em um grupo "Sem representante".
+- Adicionar uma nova prop `representantes` (array com `id` e `nome`) ao componente
+- Na funcao `imprimirListaSeparacao`, agrupar `listaAtual` por `representante_id`:
+  - Resolver o nome usando a lista de representantes
+  - Pedidos sem representante ficam no grupo "Sem representante" (exibido por ultimo)
+  - Grupos ordenados alfabeticamente pelo nome do representante
+- Para cada grupo, renderizar um cabecalho de secao na tabela (linha com colspan, fundo cinza mais escuro, nome do representante e contagem de pedidos)
+- O resumo total (TOTAL GERAL) continua no rodape somando tudo
 
-**Renderizacao**: No trecho que lista os agendamentos do dia (por volta da linha 1162-1238):
-- Primeiro renderizar os agendados normalmente
-- Depois iterar sobre os grupos de previstos, exibindo para cada grupo:
-  - Um cabecalho com o nome do representante e a quantidade (ex: "Joao Silva (3 previstos)")
-  - Os cards dos clientes previstos daquele representante, identicos ao formato atual
+### 2. `SeparacaoActionsCard.tsx` - Passar representantes
 
-Nenhum arquivo novo sera criado. A unica mudanca sera na logica de agrupamento e renderizacao dentro do `AgendamentoDashboard.tsx`, usando os dados de `representantes` que ja estao disponiveis no componente.
+- Receber `representantes` como nova prop e repassar ao `PrintingActions`
+
+### 3. `SeparacaoPedidos.tsx` - Buscar e fornecer representantes
+
+- Buscar representantes do Supabase (similar ao que ja e feito em outros componentes como `OrganizadorEntregas.tsx`)
+- Passar a lista para `SeparacaoActionsCard`
+
+## Resultado visual na impressao
+
+```text
++--------------------------------------------------+
+| Lista de Separacao - Todos os Pedidos             |
+| Data: 12/02/2026  Total: 15 pedidos               |
++--------------------------------------------------+
+| >> Joao Silva (5 pedidos)                         |
++--------+------+------+-----------+-------+--------+
+| Client | Data | Tipo | Produtos  | Total | Obs    |
++--------+------+------+-----------+-------+--------+
+| ...    | ...  | ...  | ...       | ...   | ...    |
++--------+------+------+-----------+-------+--------+
+| >> Maria Santos (7 pedidos)                       |
++--------+------+------+-----------+-------+--------+
+| ...    | ...  | ...  | ...       | ...   | ...    |
++--------+------+------+-----------+-------+--------+
+| >> Sem representante (3 pedidos)                  |
++--------+------+------+-----------+-------+--------+
+| ...    | ...  | ...  | ...       | ...   | ...    |
++--------+------+------+-----------+-------+--------+
+|                        TOTAL GERAL:  450          |
++--------------------------------------------------+
+```
+
+## Arquivos modificados
+
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/components/expedicao/SeparacaoPedidos.tsx` | Buscar representantes e passar ao SeparacaoActionsCard |
+| `src/components/expedicao/components/SeparacaoActionsCard.tsx` | Nova prop `representantes`, repassar ao PrintingActions |
+| `src/components/expedicao/components/PrintingActions.tsx` | Nova prop `representantes`, agrupar pedidos por representante na geracao do HTML de impressao |
+
+Nenhum arquivo novo sera criado. A lista de documentos nao sera alterada (apenas a lista de separacao).
