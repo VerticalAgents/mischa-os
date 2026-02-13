@@ -83,5 +83,14 @@ export function useReagendamentosEntreSemanas() {
     carregar();
   }, [carregar]);
 
-  return { reagendamentos, resumo, isLoading, recarregar: carregar };
+  const excluir = useCallback(async (id: string) => {
+    const { error } = await supabase
+      .from('reagendamentos_entre_semanas')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    await carregar();
+  }, [carregar]);
+
+  return { reagendamentos, resumo, isLoading, recarregar: carregar, excluir };
 }
