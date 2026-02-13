@@ -1,48 +1,44 @@
 
+# Excluir log de reagendamento
 
-# Correcao: Registrar reagendamento ao editar agendamento pelo modal
+## O que sera feito
 
-## Problema
+Adicionar um botao de exclusao em cada linha da tabela de reagendamentos, com confirmacao via AlertDialog antes de deletar.
 
-O `AgendamentoEditModal` -- que e o modal usado ao clicar num card do calendario semanal (e em mais de 10 outros locais) -- **nao chama** `registrarReagendamentoEntreSemanas` ao salvar uma nova data. Ele apenas salva a nova data diretamente no banco.
-
-A funcao de registro so e chamada em locais especificos:
-- `ReagendamentoDialog.tsx` (botao "Reagendar" dedicado)
-- `AgendamentoDashboard.tsx` (reagendamento em massa)
-- `TodosAgendamentos.tsx` (reagendamento em massa)
-- `AgendamentosAtrasados.tsx` (reagendamento automatico de atrasados)
-
-Como o usuario editou a data pelo modal do card no calendario (que usa `AgendamentoEditModal`), nenhum log foi registrado.
-
-## Solucao
-
-Adicionar a chamada de `registrarReagendamentoEntreSemanas` dentro da funcao `handleSalvar` do `AgendamentoEditModal.tsx`, comparando a data original do agendamento com a nova data selecionada. O registro so acontece quando a data efetivamente muda.
-
-## O que sera alterado
-
-### `src/components/agendamento/AgendamentoEditModal.tsx`
-
-Na funcao `handleSalvar` (linha 174), antes de salvar o agendamento:
-
-1. Importar `registrarReagendamentoEntreSemanas` do utils
-2. Comparar a data original (`agendamento.dataReposicao`) com a nova data (`dataReposicao`)
-3. Se forem diferentes, chamar `registrarReagendamentoEntreSemanas(clienteId, dataOriginal, dataNova)`
-4. O registro acontece de forma assincrona (sem bloquear o salvamento)
-
-```text
-handleSalvar():
-  1. Validacoes existentes
-  2. [NOVO] Se data mudou -> registrarReagendamentoEntreSemanas(clienteId, dataOriginal, dataNova)
-  3. Salvar observacoes (existente)
-  4. Salvar agendamento (existente)
-  5. Resto do fluxo (existente)
-```
-
-## Arquivo modificado
+## Arquivos modificados
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/components/agendamento/AgendamentoEditModal.tsx` | Importar e chamar `registrarReagendamentoEntreSemanas` quando a data muda |
+| `src/hooks/useReagendamentosEntreSemanas.ts` | Adicionar funcao `excluir(id)` que deleta o registro do banco e recarrega a lista |
+| `src/components/reagendamentos/ReagendamentosTable.tsx` | Adicionar coluna "Acoes" com botao de lixeira + AlertDialog de confirmacao |
+| `src/pages/Reagendamentos.tsx` | Passar a funcao `excluir` do hook para a tabela |
 
-Nenhum outro arquivo precisa ser alterado. A logica de classificacao (adiamento/adiantamento) e calculo de semanas ja esta implementada no utilitario.
+## Detalhes tecnicos
 
+### Hook - `useReagendamentosEntreSemanas.ts`
+
+Adicionar funcao `excluir`:
+
+```typescript
+const excluir = useCallback(async (id: string) => {
+  const { error } = await supabase
+    .from('reagendamentos_entre_semanas')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+  await carregar(); // recarrega lista e resumo
+}, [carregar]);
+```
+
+Retornar `excluir` junto com os demais valores.
+
+### Tabela - `ReagendamentosTable.tsx`
+
+- Receber prop `onExcluir: (id: string) => Promise<void>`
+- Adicionar coluna "Acoes" no header
+- Em cada linha, botao com icone `Trash2` que abre um `AlertDialog` perguntando "Tem certeza que deseja excluir este registro?"
+- Ao confirmar, chamar `onExcluir(r.id)` e exibir toast de sucesso/erro
+
+### Pagina - `Reagendamentos.tsx`
+
+Passar a funcao `excluir` do hook como prop `onExcluir` para `ReagendamentosTable`.
