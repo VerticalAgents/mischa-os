@@ -1,19 +1,27 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Search } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ReagendamentoEntreSemanas } from "@/hooks/useReagendamentosEntreSemanas";
 
 interface ReagendamentosTableProps {
   reagendamentos: ReagendamentoEntreSemanas[];
+  onExcluir: (id: string) => Promise<void>;
 }
 
-export default function ReagendamentosTable({ reagendamentos }: ReagendamentosTableProps) {
+export default function ReagendamentosTable({ reagendamentos, onExcluir }: ReagendamentosTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
   const filtered = useMemo(() => {
@@ -23,6 +31,15 @@ export default function ReagendamentosTable({ reagendamentos }: ReagendamentosTa
       (r.cliente_nome || '').toLowerCase().includes(term)
     );
   }, [reagendamentos, searchTerm]);
+
+  const handleExcluir = async (id: string) => {
+    try {
+      await onExcluir(id);
+      toast.success("Registro excluído com sucesso.");
+    } catch {
+      toast.error("Erro ao excluir registro.");
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -45,12 +62,13 @@ export default function ReagendamentosTable({ reagendamentos }: ReagendamentosTa
             <TableHead>Nova Data</TableHead>
             <TableHead>Semanas</TableHead>
             <TableHead>Data do Registro</TableHead>
+            <TableHead className="w-[60px]">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {filtered.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                 Nenhum reagendamento entre semanas registrado.
               </TableCell>
             </TableRow>
@@ -72,6 +90,29 @@ export default function ReagendamentosTable({ reagendamentos }: ReagendamentosTa
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {format(new Date(r.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                </TableCell>
+                <TableCell>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir registro</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja excluir este registro de reagendamento? Esta ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleExcluir(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </TableCell>
               </TableRow>
             ))

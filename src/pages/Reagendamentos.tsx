@@ -4,7 +4,7 @@ import ReagendamentosResumo from "@/components/reagendamentos/ReagendamentosResu
 import ReagendamentosTable from "@/components/reagendamentos/ReagendamentosTable";
 
 export default function Reagendamentos() {
-  const { reagendamentos, resumo, isLoading } = useReagendamentosEntreSemanas();
+  const { reagendamentos, resumo, isLoading, excluir } = useReagendamentosEntreSemanas();
 
   return (
     <div className="space-y-6 p-6">
@@ -31,7 +31,7 @@ export default function Reagendamentos() {
             mediaSemanas={resumo.mediaSemanas}
             topClientes={resumo.topClientes}
           />
-          <ReagendamentosTable reagendamentos={reagendamentos} />
+          <ReagendamentosTable reagendamentos={reagendamentos} onExcluir={excluir} />
         </>
       )}
     </div>
