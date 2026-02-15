@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, Filter, TrendingUp, TrendingDown, Minus, Settings, Search } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, CheckCheck, Edit, ChevronLeft, ChevronRight, FileDown, Truck, Package, CalendarDays, Filter, TrendingUp, TrendingDown, Minus, Settings, Search, BarChart3 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -154,6 +155,8 @@ export default function AgendamentoDashboard() {
   const [modalReagendarAberto, setModalReagendarAberto] = useState(false);
   const [modoGraficos, setModoGraficos] = useState<'agendamentos' | 'unidades'>('agendamentos');
   const [filtroNome, setFiltroNome] = useState<string>('');
+  const [incluirPrevistos, setIncluirPrevistos] = useState(false);
+  const [percentualPrevistos, setPercentualPrevistos] = useState(50);
 
   useEffect(() => {
     const loadData = async () => {
@@ -419,6 +422,46 @@ export default function AgendamentoDashboard() {
   // Hook para buscar scores de confirmação dos agendamentos do dia selecionado
   const { scores: confirmationScores, loading: confirmationLoading } = useConfirmationScore(agendamentosDiaSelecionado);
 
+  // Previstos da semana inteira para calcular probabilidade geral
+  const previstosSemanais = useMemo(() => {
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    return agendamentosFiltrados.filter(a => {
+      const data = new Date(a.dataReposicao);
+      return data >= inicioSemana && data <= fimSemana && a.statusAgendamento === "Previsto";
+    });
+  }, [agendamentosFiltrados, semanaAtual]);
+
+  const { scores: scoresSemanais, loading: scoresSemanaisLoading } = useConfirmationScore(previstosSemanais);
+
+  // Probabilidade média da semana e breakdown por faixa
+  const probabilidadeSemanal = useMemo(() => {
+    if (previstosSemanais.length === 0) return { media: 0, alto: 0, medio: 0, baixo: 0, total: 0 };
+    let soma = 0;
+    let alto = 0, medio = 0, baixo = 0;
+    for (const ag of previstosSemanais) {
+      const score = scoresSemanais.get(ag.cliente.id)?.score ?? 70;
+      soma += score;
+      if (score >= 85) alto++;
+      else if (score >= 50) medio++;
+      else baixo++;
+    }
+    return {
+      media: Math.round(soma / previstosSemanais.length),
+      alto,
+      medio,
+      baixo,
+      total: previstosSemanais.length
+    };
+  }, [previstosSemanais, scoresSemanais]);
+
+  // Quando toggle é ativado, setar percentual para a probabilidade média
+  const handleTogglePrevistos = (checked: boolean) => {
+    setIncluirPrevistos(checked);
+    if (checked) {
+      setPercentualPrevistos(probabilidadeSemanal.media || 50);
+    }
+  };
 
   const handleDiaClick = (dataCompleta: Date) => {
     setDiaSelecionado(dataCompleta);
@@ -557,12 +600,12 @@ export default function AgendamentoDashboard() {
     }
   };
 
-  // Calcular total de unidades da semana (apenas AGENDADOS + entregas realizadas)
+  // Calcular total de unidades da semana (AGENDADOS + entregas realizadas + previstos simulados)
   const totalUnidadesSemana = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
     const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
     
-    // Unidades de agendamentos com status "Agendado" (confirmados) - NÃO inclui Previstos
+    // Unidades de agendamentos com status "Agendado" (confirmados)
     const agendamentosSemana = agendamentosFiltrados.filter(agendamento => {
       const dataAgendamento = new Date(agendamento.dataReposicao);
       return dataAgendamento >= inicioSemana && 
@@ -584,8 +627,23 @@ export default function AgendamentoDashboard() {
       sum + (e.quantidade || 0), 0
     );
     
-    return unidadesAgendadas + unidadesEntregues;
-  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas]);
+    // Unidades de previstos (com percentual simulado)
+    let unidadesPrevistos = 0;
+    if (incluirPrevistos && percentualPrevistos > 0) {
+      const prevSemana = agendamentosFiltrados.filter(agendamento => {
+        const dataAgendamento = new Date(agendamento.dataReposicao);
+        return dataAgendamento >= inicioSemana && 
+               dataAgendamento <= fimSemana &&
+               agendamento.statusAgendamento === "Previsto";
+      });
+      const totalPrev = prevSemana.reduce((sum, a) => 
+        sum + (a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0), 0
+      );
+      unidadesPrevistos = Math.ceil(totalPrev * percentualPrevistos / 100);
+    }
+    
+    return unidadesAgendadas + unidadesEntregues + unidadesPrevistos;
+  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, incluirPrevistos, percentualPrevistos]);
 
 
   const ehSemanaAtual = useMemo(() => {
@@ -847,6 +905,91 @@ export default function AgendamentoDashboard() {
         </div>
       </div>
 
+      {/* Card de Probabilidade de Confirmação */}
+      {previstosSemanais.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div className="space-y-1.5">
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-amber-500" />
+                  Probabilidade de Confirmação
+                </CardTitle>
+                <CardDescription className="text-left">
+                  Probabilidade média dos {previstosSemanais.length} previstos desta semana
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="incluir-previstos-global" className="text-sm cursor-pointer whitespace-nowrap">
+                    Incluir previstos
+                  </Label>
+                  <Switch 
+                    id="incluir-previstos-global" 
+                    checked={incluirPrevistos} 
+                    onCheckedChange={handleTogglePrevistos} 
+                  />
+                </div>
+                {incluirPrevistos && (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={percentualPrevistos}
+                      onChange={(e) => setPercentualPrevistos(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+                      className="w-16 h-8 text-center text-sm"
+                    />
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Probabilidade média com barra */}
+              <div className="space-y-2">
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-3xl font-bold ${
+                    probabilidadeSemanal.media >= 85 ? 'text-green-600' : 
+                    probabilidadeSemanal.media >= 50 ? 'text-amber-600' : 'text-red-600'
+                  }`}>
+                    {scoresSemanaisLoading ? '...' : `${probabilidadeSemanal.media}%`}
+                  </span>
+                </div>
+                <Progress 
+                  value={probabilidadeSemanal.media} 
+                  className={`h-3 ${
+                    probabilidadeSemanal.media >= 85 ? '[&>div]:bg-green-500' : 
+                    probabilidadeSemanal.media >= 50 ? '[&>div]:bg-amber-500' : '[&>div]:bg-red-500'
+                  }`}
+                />
+              </div>
+
+              {/* Breakdown por faixa */}
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-green-500" />
+                  <span className="text-muted-foreground">Alta (&gt;85%):</span>
+                  <span className="font-semibold">{probabilidadeSemanal.alto}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-amber-500" />
+                  <span className="text-muted-foreground">Média (50-84%):</span>
+                  <span className="font-semibold">{probabilidadeSemanal.medio}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-500" />
+                  <span className="text-muted-foreground">Baixa (&lt;50%):</span>
+                  <span className="font-semibold">{probabilidadeSemanal.baixo}</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Cards de Indicadores */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
@@ -856,7 +999,9 @@ export default function AgendamentoDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">{totalUnidadesSemana}</div>
-            <p className="text-xs text-muted-foreground">Unidades agendadas + entregues</p>
+            <p className="text-xs text-muted-foreground">
+              {incluirPrevistos ? `Confirmados + ${percentualPrevistos}% previstos + entregues` : 'Unidades agendadas + entregues'}
+            </p>
           </CardContent>
         </Card>
 
@@ -909,7 +1054,9 @@ export default function AgendamentoDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <QuantidadesProdutosSemanal 
           agendamentosFiltrados={agendamentosFiltrados} 
-          semanaAtual={semanaAtual} 
+          semanaAtual={semanaAtual}
+          incluirPrevistos={incluirPrevistos}
+          percentualPrevistos={percentualPrevistos}
         />
         <EntregasRealizadasSemanal 
           semanaAtual={semanaAtual} 
