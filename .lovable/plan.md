@@ -1,67 +1,70 @@
 
-# Corrigir Calculo de Baseline - Penalizar Agendamentos Antecipados
+# Corrigir Logica Invertida do Baseline
 
 ## Problema
 
-A formula atual so penaliza quando o agendamento esta **atrasado** em relacao a cadencia real do cliente. Quando o agendamento esta **adiantado demais**, o desvio e negativo e `Math.max(0, negativo) = 0`, resultando em baseline = 95% incorretamente.
+A logica atual penaliza agendamentos atrasados em relacao a cadencia, mas isso e o oposto do correto:
+- **Atrasado** (cliente ja passou da cadencia) = cliente PRECISA de produto = probabilidade ALTA de confirmar
+- **Antecipado** (cliente ainda nao chegou na cadencia) = cliente talvez nao precise = probabilidade MENOR
 
-Exemplo concreto ("The Best Coffee"):
-- Cadencia real: 23 dias
-- Agendado para 7 dias apos ultima entrega (16 dias antes do esperado)
-- Score atual: 95% (errado)
-- Score esperado: muito menor, pois o cliente provavelmente nao precisa de reposicao
+Exemplos concretos:
+- Severo Garage: 30d desde ultima entrega, cadencia 17d → esta 13d atrasado → PRECISA do produto → deveria ser ~90%+
+- The Best Coffee: 3d desde ultima, cadencia 23d → 20d antes do esperado → provavelmente nao precisa → deveria ser bem baixo
+- Posto Caminho Verde: se tem historico, 10d desde ultima, cadencia 35d → 25d antes → deveria ser baixo
 
 ## Solucao
 
-Alterar o calculo do baseline no `useConfirmationScore.ts` para usar o **valor absoluto do desvio**, penalizando tanto atrasos quanto antecipacoes excessivas. Porem, antecipacoes pequenas (ate 2-3 dias) nao devem ser penalizadas, pois sao normais em logistica.
-
 ### Arquivo: `src/hooks/useConfirmationScore.ts`
 
-Substituir:
-```typescript
-const desvio = differenceInDays(dataAgendada, dataEsperada);
-baseline = 95 - Math.max(0, desvio) * 2 * peso;
-```
+Inverter a logica do desvio no baseline:
 
-Por:
 ```typescript
 const desvio = differenceInDays(dataAgendada, dataEsperada);
 let penalidade = 0;
-if (desvio > 0) {
-  // Atraso: penalidade de 2% por dia
-  penalidade = desvio * 2;
-} else if (desvio < -3) {
-  // Antecipacao excessiva (mais de 3 dias antes): 
-  // penalidade de 1.5% por dia alem da margem
-  penalidade = Math.abs(desvio + 3) * 1.5;
+
+if (desvio >= -3) {
+  // Agendamento no prazo ou atrasado: cliente precisa do produto
+  // Bonus para atrasos (mais confianca na confirmacao)
+  if (desvio > 0) {
+    // Atraso moderado: bonus de +1% por dia (max +10)
+    penalidade = -Math.min(desvio, 10) * 1;
+  }
+  // Dentro da margem de 3 dias: sem ajuste (95%)
+} else {
+  // Antecipacao excessiva (mais de 3 dias antes da cadencia)
+  // Cliente provavelmente nao precisa ainda
+  penalidade = Math.abs(desvio + 3) * 2;
 }
-baseline = 95 - penalidade * peso;
+
+let baseline = Math.min(99, 95 - penalidade * peso);
 ```
 
-Logica:
-- **Atraso** (desvio > 0): mantem penalidade atual de -2%/dia
-- **Antecipacao ate 3 dias** (desvio entre -3 e 0): sem penalidade (margem normal)
-- **Antecipacao excessiva** (desvio < -3): penalidade de -1.5% por dia alem da margem de 3 dias
+Nova logica:
+- **Atrasado** (desvio > 0): BONUS de +1% por dia (max +10%), pois o cliente precisa do produto. Baseline sobe para ate 99%
+- **No prazo** (desvio entre -3 e 0): baseline de 95%, margem normal
+- **Antecipado excessivo** (desvio < -3): penalidade de -2% por dia alem da margem de 3 dias. Mais agressivo que antes para refletir melhor o risco
 
-### Resultado esperado para "The Best Coffee"
+### Resultados esperados
 
-- Desvio = -16 dias
-- Dias alem da margem = 16 - 3 = 13
-- Penalidade = 13 * 1.5 = 19.5
-- Baseline = 95 - 19.5 = ~75%
-- Score final (com outros fatores): provavelmente na faixa amarela ("Atencao")
+| Cliente | Cadencia | Dias desde ultima | Desvio | Baseline novo |
+|---------|----------|-------------------|--------|---------------|
+| Severo Garage | 17d | 30d | +13d | 99% (bonus max) |
+| The Best Coffee | 23d | 3d+4d=7d | -16d | 95 - 13*2 = 69% |
+| Posto Caminho Verde | 35d | 10d+Xd | ~-20d | 95 - 17*2 = 61% |
 
-### Atualizar explicacao e motivos
+### Atualizar motivos
 
-No bloco de construcao do `motivo`, adicionar texto quando houver antecipacao:
 ```typescript
-if (desvio < -3) {
-  motivos.push(`${Math.abs(desvio)} dia(s) antes da cadência`);
+if (desvio > 0) {
+  motivos.push(`${desvio} dia(s) além da cadência — alta necessidade`);
+} else if (desvio < -3) {
+  motivos.push(`${Math.abs(desvio)} dia(s) antes da cadência — baixa necessidade`);
 }
 ```
 
-### Atualizar o card explicativo
+### Arquivo: `src/components/reagendamentos/ExplicacaoConfirmationScore.tsx`
 
-No arquivo `src/components/reagendamentos/ExplicacaoConfirmationScore.tsx`, atualizar a secao de Baseline para mencionar que antecipacoes excessivas tambem sao penalizadas:
-- Atraso: -2% por dia alem da cadencia
-- Antecipacao: -1.5% por dia alem de 3 dias de margem
+Atualizar a secao de Baseline para refletir a nova logica:
+- Atrasado: bonus de ate +10% (cliente precisa do produto)
+- No prazo (±3 dias): 95%
+- Antecipado: -2% por dia alem da margem de 3 dias
