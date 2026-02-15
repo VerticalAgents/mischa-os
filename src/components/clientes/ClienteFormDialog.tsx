@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AlertCircle, Save, Lock, Unlock } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -76,7 +77,8 @@ const getDefaultFormData = (): Partial<Cliente> => ({
   rotaEntregaId: undefined,
   categoriaEstabelecimentoId: undefined,
   instrucoesEntrega: '',
-  gestaoClickClienteId: ''
+  gestaoClickClienteId: '',
+  desabilitarReagendamento: false
 });
 
 export default function ClienteFormDialog({ 
@@ -277,7 +279,8 @@ export default function ClienteFormDialog({
     ativo: cliente?.ativo ?? true,
     categoriaId: cliente?.categoriaId || 0,
     subcategoriaId: cliente?.subcategoriaId || 0,
-    gestaoClickClienteId: formData.gestaoClickClienteId || ''
+    gestaoClickClienteId: formData.gestaoClickClienteId || '',
+    desabilitarReagendamento: formData.desabilitarReagendamento || false
   };
 
   return (
@@ -476,6 +479,22 @@ export default function ClienteFormDialog({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="desabilitarReagendamento" className="text-sm font-medium cursor-pointer">
+                    Desabilitar reagendamento automático
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Ao confirmar entrega, o agendamento volta para "Agendar" sem data definida
+                  </p>
+                </div>
+                <Switch
+                  id="desabilitarReagendamento"
+                  checked={formData.desabilitarReagendamento || false}
+                  onCheckedChange={(checked) => handleInputChange('desabilitarReagendamento', checked)}
+                />
               </div>
             </CardContent>
           </Card>

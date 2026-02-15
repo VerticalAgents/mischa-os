@@ -66,7 +66,8 @@ export const convertToAgendamentoItem = (agendamento: any, cliente: any): Agenda
       observacoes: cliente.observacoes,
       categoriaId: cliente.categoria_id || 1,
       subcategoriaId: cliente.subcategoria_id || 1,
-      categoriasHabilitadas: cliente.categorias_habilitadas
+      categoriasHabilitadas: cliente.categorias_habilitadas,
+      desabilitarReagendamento: cliente.desabilitar_reagendamento === true
     },
     dataReposicao: agendamento.data_proxima_reposicao ? parseLocalDate(agendamento.data_proxima_reposicao) : new Date(),
     statusAgendamento: agendamento.status_agendamento,
