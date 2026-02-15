@@ -27,6 +27,8 @@ import { RepresentantesFilter } from "@/components/expedicao/components/Represen
 import { RotasFilter } from "./RotasFilter";
 import { useFrequenciaRealEntregas, getCorDivergencia } from "@/hooks/useFrequenciaRealEntregas";
 import { Tooltip as TooltipUI, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useConfirmationScore } from "@/hooks/useConfirmationScore";
+import ConfirmationScoreBadge from "@/components/agendamento/ConfirmationScoreBadge";
 
 // Componente para indicadores visuais de entrega
 const IndicadoresEntrega = ({ 
@@ -414,6 +416,8 @@ export default function AgendamentoDashboard() {
   // Hook para buscar frequência real de entregas
   const { data: frequenciasReais } = useFrequenciaRealEntregas(clienteIdsDiaSelecionado);
 
+  // Hook para buscar scores de confirmação dos agendamentos do dia selecionado
+  const { scores: confirmationScores, loading: confirmationLoading } = useConfirmationScore(agendamentosDiaSelecionado);
 
 
   const handleDiaClick = (dataCompleta: Date) => {
@@ -1229,13 +1233,21 @@ export default function AgendamentoDashboard() {
                               Quantidade: {quantidade} unidades
                             </div>
                             {agendamento.statusAgendamento === "Previsto" && (
-                              <IndicadoresEntrega
-                                diasDesdeUltimaEntregaCadastro={diasDesdeUltimaEntrega}
-                                periodicidade={periodicidade}
-                                frequenciaReal={frequenciaReal}
-                                numeroEntregas={numeroEntregas}
-                                ultimaEntregaReal={frequenciaInfo?.ultimaEntrega ?? null}
-                              />
+                              <>
+                                <IndicadoresEntrega
+                                  diasDesdeUltimaEntregaCadastro={diasDesdeUltimaEntrega}
+                                  periodicidade={periodicidade}
+                                  frequenciaReal={frequenciaReal}
+                                  numeroEntregas={numeroEntregas}
+                                  ultimaEntregaReal={frequenciaInfo?.ultimaEntrega ?? null}
+                                />
+                                <div className="mt-1.5">
+                                  <ConfirmationScoreBadge
+                                    score={confirmationScores.get(agendamento.cliente.id)}
+                                    loading={confirmationLoading}
+                                  />
+                                </div>
+                              </>
                             )}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
