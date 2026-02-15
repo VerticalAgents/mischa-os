@@ -1,0 +1,2 @@
+
+export const PEDIDO_MINIMO_UNIDADES = 30;

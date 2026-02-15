@@ -12,6 +12,7 @@ import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import { AgendamentoItem } from "./types";
 import { toast } from "sonner";
+import { PEDIDO_MINIMO_UNIDADES } from "@/utils/constants";
 
 interface AgendamentoComConfirmacao {
   cliente: {
@@ -62,12 +63,12 @@ export default function NovaConfirmacaoReposicaoTab() {
         cliente: {
           id: agendamento.cliente.id,
           nome: agendamento.cliente.nome,
-          quantidadePadrao: agendamento.cliente.quantidadePadrao
+          quantidadePadrao: PEDIDO_MINIMO_UNIDADES
         },
         dataReposicao: agendamento.dataReposicao,
         statusAgendamento: agendamento.statusAgendamento,
         tipoPedido: agendamento.pedido?.tipoPedido || 'Padrão',
-        quantidadeTotal: agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao
+        quantidadeTotal: agendamento.pedido?.totalPedidoUnidades || PEDIDO_MINIMO_UNIDADES
       }));
   }, [agendamentos]);
 

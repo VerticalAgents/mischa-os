@@ -10,6 +10,7 @@ import { isSameDay, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { Check, Clock, AlertTriangle } from "lucide-react";
+import { PEDIDO_MINIMO_UNIDADES } from "@/utils/constants";
 
 export default function ConfirmacaoReposicaoTab() {
   const { clientes } = useClienteStore();
@@ -50,7 +51,7 @@ export default function ConfirmacaoReposicaoTab() {
       await salvarAgendamento(clienteId, {
         status_agendamento: 'Agendado',
         data_proxima_reposicao: cliente.proximaDataReposicao!,
-        quantidade_total: cliente.quantidadePadrao || 0,
+        quantidade_total: PEDIDO_MINIMO_UNIDADES,
         tipo_pedido: 'Padrão'
       });
 
@@ -124,7 +125,7 @@ export default function ConfirmacaoReposicaoTab() {
                   {clientesParaConfirmacao.map((cliente) => (
                     <TableRow key={cliente.id}>
                       <TableCell className="font-medium">{cliente.nome}</TableCell>
-                      <TableCell>{cliente.quantidadePadrao}</TableCell>
+                      <TableCell>{PEDIDO_MINIMO_UNIDADES}</TableCell>
                       <TableCell>
                         {cliente.proximaDataReposicao ? 
                           format(cliente.proximaDataReposicao, "dd/MM/yyyy", { locale: ptBR }) : 
@@ -170,7 +171,7 @@ export default function ConfirmacaoReposicaoTab() {
                   {clientesAtrasados.map((cliente) => (
                     <TableRow key={cliente.id}>
                       <TableCell className="font-medium">{cliente.nome}</TableCell>
-                      <TableCell>{cliente.quantidadePadrao}</TableCell>
+                      <TableCell>{PEDIDO_MINIMO_UNIDADES}</TableCell>
                       <TableCell>
                         <span className="text-amber-600 font-medium">
                           {cliente.proximaDataReposicao ? 
