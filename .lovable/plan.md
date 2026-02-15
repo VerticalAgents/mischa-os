@@ -1,34 +1,44 @@
-
-# Adicionar Confirmation Score nos Cards do Calendario Semanal
+# Card Explicativo do Calculo de Probabilidade no Menu Reagendamentos
 
 ## Resumo
 
-Integrar o badge de probabilidade de confirmacao (`ConfirmationScoreBadge`) nos cards de agendamentos "Previstos" no painel expandido do dia selecionado no Dashboard.
+Adicionar um card/accordion expansivel na pagina `/reagendamentos` que explica detalhadamente como funciona o calculo de probabilidade de confirmacao de agendamento.
 
 ## Alteracoes
 
-### Arquivo: `src/components/agendamento/AgendamentoDashboard.tsx`
+### Arquivo: `src/pages/Reagendamentos.tsx`
 
-1. **Importar** o hook `useConfirmationScore` e o componente `ConfirmationScoreBadge`
-2. **Chamar o hook** passando `agendamentosDiaSelecionado` (os agendamentos do dia expandido)
-3. **Renderizar o badge** dentro do `renderCard` para agendamentos com status "Previsto", ao lado dos indicadores de entrega ja existentes
+Adicionar um novo componente `ExplicacaoConfirmationScore` entre o header e os cards de resumo. Sera um `Collapsible` (ou Accordion) com titulo "Como funciona o Calculo de Probabilidade?" que expande para mostrar a explicacao completa.
 
-### Detalhes tecnicos
+### Novo arquivo: `src/components/reagendamentos/ExplicacaoConfirmationScore.tsx`
 
-- O hook `useConfirmationScore` ja existe e recebe um array de `AgendamentoItem[]`, retornando `{ scores: Map<clienteId, ConfirmationScore>, loading: boolean }`
-- O badge sera adicionado dentro do card, logo apos o componente `IndicadoresEntrega` que ja aparece para previstos
-- O score e acessado via `scores.get(agendamento.cliente.id)`
-- Nenhum arquivo novo precisa ser criado - apenas editar o Dashboard
+Card com as seguintes secoes:
 
-### Posicionamento no card
+1. **O que e o Score** - Explicacao geral (0-100%, verde/amarelo/vermelho)
+2. **Baseline de Cadencia (peso principal)**
+  - Analisa as ultimas entregas do cliente (84 dias)
+  - Calcula o intervalo medio entre entregas
+  - Se o agendamento esta no prazo esperado: 95%
+  - Penalidade de -2% por dia de atraso alem da cadencia
+  - Clientes com poucas entregas recebem peso reduzido
+3. **Penalidade por Volatilidade**
+  - Cada reagendamento vinculado ao pedido: -15%
+  - Se o reagendamento foi feito com menos de 24h de antecedencia: -10% extra
+4. **Vetor de Tendencia**
+  - Se o cliente costuma adiantar pedidos: bonus de +5%
+  - Se o pedido atual tem 2+ adiamentos: penalidade de -20%
+5. **Cold Start (clientes novos)**
+  - 0 entregas: score fixo de 70%
+  - 1 entrega: score fixo de 80%
+6. **Faixas de classificacao**
+  - Tabela visual com as 3 faixas (Verde >85%, Amarelo 50-84%, Vermelho <50%)
 
-```text
-+--------------------------------------------------+
-| Nome do Cliente                    [badges] [btn] |
-| Quantidade: 120 unidades                          |
-| [dias] [periodicidade] [frequencia]               |
-| [ConfirmationScoreBadge]  <-- NOVO                |
-+--------------------------------------------------+
-```
+### Design
 
-O badge aparece apenas para cards com status "Previsto", pois sao os que precisam de confirmacao.
+- Usar `Collapsible` do Radix com icone `Info` ou `HelpCircle`
+- Comecara fechado por padrao para nao poluir a tela
+- Usar `Card` com fundo sutil para diferenciar do conteudo principal
+- Secoes internas com titulos em negrito e icones correspondentes (TrendingUp, TrendingDown, Clock, AlertTriangle)
+- Tabela de faixas com badges coloridos iguais aos usados no ConfirmationScoreBadge
+
+Por fim, alem disso tudo acima eu quero um tool top que mostre a explicaçao do calculo individual de cada card do calendario semanal,
