@@ -340,9 +340,9 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     } else if (VALID_LOGISTICA.includes(originalLogistica as any)) {
       canonicalLogistica = originalLogistica as any;
     } else {
-      canonicalLogistica = 'PROPRIA';
-      errors.push(`Logística inválida "${originalLogistica}", usando padrão "PROPRIA"`);
-      isValid = false;
+      // Aceitar valor customizado do usuário (tipo cadastrado na tabela tipos_logistica)
+      canonicalLogistica = originalLogistica;
+      corrections.push(`Logística customizada aceita: "${originalLogistica}"`);
     }
   }
   sanitized.tipoLogistica = canonicalLogistica as any;
@@ -362,9 +362,9 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     } else if (VALID_COBRANCA.includes(originalCobranca as any)) {
       canonicalCobranca = originalCobranca as any;
     } else {
-      canonicalCobranca = 'A_VISTA';
-      errors.push(`Cobrança inválida "${originalCobranca}", usando padrão "A_VISTA"`);
-      isValid = false;
+      // Aceitar valor customizado do usuário (tipo cadastrado na tabela tipos_cobranca)
+      canonicalCobranca = originalCobranca;
+      corrections.push(`Cobrança customizada aceita: "${originalCobranca}"`);
     }
   }
   sanitized.tipoCobranca = canonicalCobranca as any;
@@ -384,9 +384,9 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     } else if (VALID_PAGAMENTO.includes(originalPagamento as any)) {
       canonicalPagamento = originalPagamento as any;
     } else {
-      canonicalPagamento = 'BOLETO';
-      errors.push(`Pagamento inválido "${originalPagamento}", usando padrão "BOLETO"`);
-      isValid = false;
+      // Aceitar valor customizado do usuário (tipo cadastrado na tabela formas_pagamento)
+      canonicalPagamento = originalPagamento;
+      corrections.push(`Pagamento customizado aceito: "${originalPagamento}"`);
     }
   }
   sanitized.formaPagamento = canonicalPagamento as any;
