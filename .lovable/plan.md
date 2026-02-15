@@ -1,44 +1,67 @@
-# Card Explicativo do Calculo de Probabilidade no Menu Reagendamentos
 
-## Resumo
+# Corrigir Calculo de Baseline - Penalizar Agendamentos Antecipados
 
-Adicionar um card/accordion expansivel na pagina `/reagendamentos` que explica detalhadamente como funciona o calculo de probabilidade de confirmacao de agendamento.
+## Problema
 
-## Alteracoes
+A formula atual so penaliza quando o agendamento esta **atrasado** em relacao a cadencia real do cliente. Quando o agendamento esta **adiantado demais**, o desvio e negativo e `Math.max(0, negativo) = 0`, resultando em baseline = 95% incorretamente.
 
-### Arquivo: `src/pages/Reagendamentos.tsx`
+Exemplo concreto ("The Best Coffee"):
+- Cadencia real: 23 dias
+- Agendado para 7 dias apos ultima entrega (16 dias antes do esperado)
+- Score atual: 95% (errado)
+- Score esperado: muito menor, pois o cliente provavelmente nao precisa de reposicao
 
-Adicionar um novo componente `ExplicacaoConfirmationScore` entre o header e os cards de resumo. Sera um `Collapsible` (ou Accordion) com titulo "Como funciona o Calculo de Probabilidade?" que expande para mostrar a explicacao completa.
+## Solucao
 
-### Novo arquivo: `src/components/reagendamentos/ExplicacaoConfirmationScore.tsx`
+Alterar o calculo do baseline no `useConfirmationScore.ts` para usar o **valor absoluto do desvio**, penalizando tanto atrasos quanto antecipacoes excessivas. Porem, antecipacoes pequenas (ate 2-3 dias) nao devem ser penalizadas, pois sao normais em logistica.
 
-Card com as seguintes secoes:
+### Arquivo: `src/hooks/useConfirmationScore.ts`
 
-1. **O que e o Score** - Explicacao geral (0-100%, verde/amarelo/vermelho)
-2. **Baseline de Cadencia (peso principal)**
-  - Analisa as ultimas entregas do cliente (84 dias)
-  - Calcula o intervalo medio entre entregas
-  - Se o agendamento esta no prazo esperado: 95%
-  - Penalidade de -2% por dia de atraso alem da cadencia
-  - Clientes com poucas entregas recebem peso reduzido
-3. **Penalidade por Volatilidade**
-  - Cada reagendamento vinculado ao pedido: -15%
-  - Se o reagendamento foi feito com menos de 24h de antecedencia: -10% extra
-4. **Vetor de Tendencia**
-  - Se o cliente costuma adiantar pedidos: bonus de +5%
-  - Se o pedido atual tem 2+ adiamentos: penalidade de -20%
-5. **Cold Start (clientes novos)**
-  - 0 entregas: score fixo de 70%
-  - 1 entrega: score fixo de 80%
-6. **Faixas de classificacao**
-  - Tabela visual com as 3 faixas (Verde >85%, Amarelo 50-84%, Vermelho <50%)
+Substituir:
+```typescript
+const desvio = differenceInDays(dataAgendada, dataEsperada);
+baseline = 95 - Math.max(0, desvio) * 2 * peso;
+```
 
-### Design
+Por:
+```typescript
+const desvio = differenceInDays(dataAgendada, dataEsperada);
+let penalidade = 0;
+if (desvio > 0) {
+  // Atraso: penalidade de 2% por dia
+  penalidade = desvio * 2;
+} else if (desvio < -3) {
+  // Antecipacao excessiva (mais de 3 dias antes): 
+  // penalidade de 1.5% por dia alem da margem
+  penalidade = Math.abs(desvio + 3) * 1.5;
+}
+baseline = 95 - penalidade * peso;
+```
 
-- Usar `Collapsible` do Radix com icone `Info` ou `HelpCircle`
-- Comecara fechado por padrao para nao poluir a tela
-- Usar `Card` com fundo sutil para diferenciar do conteudo principal
-- Secoes internas com titulos em negrito e icones correspondentes (TrendingUp, TrendingDown, Clock, AlertTriangle)
-- Tabela de faixas com badges coloridos iguais aos usados no ConfirmationScoreBadge
+Logica:
+- **Atraso** (desvio > 0): mantem penalidade atual de -2%/dia
+- **Antecipacao ate 3 dias** (desvio entre -3 e 0): sem penalidade (margem normal)
+- **Antecipacao excessiva** (desvio < -3): penalidade de -1.5% por dia alem da margem de 3 dias
 
-Por fim, alem disso tudo acima eu quero um tool top que mostre a explicaçao do calculo individual de cada card do calendario semanal,
+### Resultado esperado para "The Best Coffee"
+
+- Desvio = -16 dias
+- Dias alem da margem = 16 - 3 = 13
+- Penalidade = 13 * 1.5 = 19.5
+- Baseline = 95 - 19.5 = ~75%
+- Score final (com outros fatores): provavelmente na faixa amarela ("Atencao")
+
+### Atualizar explicacao e motivos
+
+No bloco de construcao do `motivo`, adicionar texto quando houver antecipacao:
+```typescript
+if (desvio < -3) {
+  motivos.push(`${Math.abs(desvio)} dia(s) antes da cadência`);
+}
+```
+
+### Atualizar o card explicativo
+
+No arquivo `src/components/reagendamentos/ExplicacaoConfirmationScore.tsx`, atualizar a secao de Baseline para mencionar que antecipacoes excessivas tambem sao penalizadas:
+- Atraso: -2% por dia alem da cadencia
+- Antecipacao: -1.5% por dia alem de 3 dias de margem
