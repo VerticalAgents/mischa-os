@@ -108,12 +108,17 @@ export function useConfirmationScore(agendamentos: AgendamentoItem[]) {
       const desvio = differenceInDays(dataAgendada, dataEsperada);
       const peso = entregasCliente.length === 2 ? 0.5 : 1;
       let penalidade = 0;
-      if (desvio > 0) {
-        penalidade = desvio * 2;
-      } else if (desvio < -3) {
-        penalidade = Math.abs(desvio + 3) * 1.5;
+      if (desvio >= -3) {
+        // On time or overdue: client needs the product
+        if (desvio > 0) {
+          // Bonus: +1% per day overdue (max +10)
+          penalidade = -Math.min(desvio, 10) * 1;
+        }
+      } else {
+        // Excessive anticipation (>3 days early): client likely doesn't need it yet
+        penalidade = Math.abs(desvio + 3) * 2;
       }
-      let baseline = 95 - penalidade * peso;
+      let baseline = Math.min(99, 95 - penalidade * peso);
 
       // VOLATILIDADE
       // Try to match by agendamento_id first, fall back to date proximity
@@ -169,9 +174,9 @@ export function useConfirmationScore(agendamentos: AgendamentoItem[]) {
         motivos.push(`${reagendamentosVinculados.length} reagendamento(s)`);
       }
       if (desvio > 0) {
-        motivos.push(`${desvio} dia(s) além da cadência`);
+        motivos.push(`${desvio} dia(s) além da cadência — alta necessidade`);
       } else if (desvio < -3) {
-        motivos.push(`${Math.abs(desvio)} dia(s) antes da cadência`);
+        motivos.push(`${Math.abs(desvio)} dia(s) antes da cadência — baixa necessidade`);
       }
 
       map.set(clienteId, {
