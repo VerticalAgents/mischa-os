@@ -1,50 +1,27 @@
 
 
-# Rota de entrega automatica para tipo de logistica "Retirada"
+# Ajuste da tabela geral de clientes
 
-## Comportamento
+## Remover colunas
 
-Quando o tipo de logistica selecionado for "Retirada" (case-insensitive):
-- O campo "Rota de Entrega" sera automaticamente preenchido com o texto **"Retirada"** e ficara **desabilitado** (nao editavel)
-- O valor `rotaEntregaId` sera setado como `undefined` (nao aponta para nenhuma rota real do banco)
-- Internamente, o nome da rota sera salvo como "Retirada" no campo `rotaEntregaId` ou tratado de forma especial
+Remover as seguintes colunas da tabela de clientes:
+- **Giro Semanal** - remover de `columnOptions` e de `defaultColumns`
+- **Endereço** - remover de `columnOptions` e de `defaultColumns`
+- **Qtde. Padrao** - remover de `columnOptions` e de `defaultColumns`
 
-Quando o tipo de logistica for alterado para qualquer outro valor:
-- O campo "Rota de Entrega" volta a ser editavel normalmente
-- O valor "Retirada" e limpo e o usuario pode selecionar uma rota real
+Tambem remover os cases correspondentes no `getColumnValue` do `ClientesTable.tsx` (`giroSemanal`, `enderecoEntrega`, `quantidadePadrao`) e o import de `calcularGiroSemanalPadrao` que ficara sem uso.
 
-## Alteracoes
+## Evitar corte de colunas
+
+Para resolver o problema de colunas cortadas:
+- Adicionar `whitespace-nowrap` nas celulas (`TableCell`) para evitar quebra de texto
+- Garantir que o container da tabela tenha `overflow-x-auto` para scroll horizontal quando necessario (ja existe no componente `Table`)
+- Aplicar `min-w-max` na tabela para que ela nao comprima as colunas
+
+## Arquivos alterados
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `ClienteFormDialog.tsx` | Quando `tipoLogistica` = "retirada", desabilitar o Select de rota e mostrar "Retirada" como valor fixo. Ao mudar para "retirada", limpar `rotaEntregaId` e setar um valor sentinela. Ao sair de "retirada", limpar o valor sentinela |
-
-## Detalhes tecnicos
-
-No `ClienteFormDialog.tsx`:
-
-1. **No handler de `tipoLogistica`**: quando o valor mudar para "retirada", setar `rotaEntregaId` como `undefined` (sem rota real). Quando mudar para outro valor, manter o `rotaEntregaId` atual.
-
-2. **No campo de Rota de Entrega**: verificar se `formData.tipoLogistica?.toLowerCase() === 'retirada'`. Se sim, renderizar um Input desabilitado com valor "Retirada" em vez do Select. Se nao, renderizar o Select normal.
-
-```typescript
-// No bloco de rota de entrega
-{formData.tipoLogistica?.toLowerCase() === 'retirada' ? (
-  <Input value="Retirada" disabled />
-) : (
-  <Select ...> {/* select normal */} </Select>
-)}
-```
-
-3. **No handleInputChange de tipoLogistica**: limpar a rota quando mudar para "retirada":
-
-```typescript
-if (field === 'tipoLogistica') {
-  if (value?.toString().toLowerCase() === 'retirada') {
-    setFormData(prev => ({ ...prev, tipoLogistica: value, rotaEntregaId: undefined }));
-  }
-}
-```
-
-4. **No salvamento**: o campo `rotaEntregaId` sera `null` para clientes de retirada (sem rota real associada). A identificacao de que e "retirada" vem do `tipoLogistica`.
+| `src/pages/Clientes.tsx` | Remover `giroSemanal`, `enderecoEntrega` e `quantidadePadrao` de `columnOptions` e `defaultColumns` |
+| `src/components/clientes/ClientesTable.tsx` | Remover cases `giroSemanal`, `enderecoEntrega`, `quantidadePadrao` do `getColumnValue`. Remover import e funcao `calcularGiroSemanalCliente`. Adicionar `whitespace-nowrap` nas celulas e `min-w-max` na tabela para evitar corte |
 
