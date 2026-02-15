@@ -11,7 +11,7 @@ import StatusBadge from "@/components/common/StatusBadge";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { toast } from "@/hooks/use-toast";
 import ClienteFormDialog from "./ClienteFormDialog";
-import { calcularGiroSemanalPadrao } from "@/utils/giroCalculations";
+
 import { useRazaoSocialGC } from "@/hooks/useRazaoSocialGC";
 
 interface ColumnOption {
@@ -85,19 +85,6 @@ export default function ClientesTable({
     return statusMap[status] || status;
   };
 
-  // Função para calcular giro semanal dinâmicamente
-  const calcularGiroSemanalCliente = (cliente: Cliente): number => {
-    // Se já tem giro médio semanal válido (> 0), usar ele
-    if (cliente.giroMedioSemanal && cliente.giroMedioSemanal > 0) {
-      return cliente.giroMedioSemanal;
-    }
-    
-    // Caso contrário, calcular baseado na quantidade padrão e periodicidade
-    return calcularGiroSemanalPadrao(
-      cliente.quantidadePadrao || 0, 
-      cliente.periodicidadePadrao || 7
-    );
-  };
 
   const handleDuplicarCliente = async (cliente: Cliente) => {
     try {
@@ -151,16 +138,10 @@ export default function ClientesTable({
         return getRazaoSocial(cliente.gestaoClickClienteId);
       case "nome":
         return cliente.nome;
-      case "giroSemanal":
-        return calcularGiroSemanalCliente(cliente);
       case "cnpjCpf":
         return cliente.cnpjCpf || "-";
-      case "enderecoEntrega":
-        return cliente.enderecoEntrega || "-";
       case "contato":
         return cliente.contatoTelefone || cliente.contatoEmail || "-";
-      case "quantidadePadrao":
-        return cliente.quantidadePadrao || 0;
       case "periodicidade":
         return `${cliente.periodicidadePadrao || 7} dias`;
       case "status":
@@ -231,7 +212,7 @@ export default function ClientesTable({
   return (
     <>
       <div className="rounded-md border">
-        <Table>
+        <Table className="min-w-max">
           <TableHeader>
             <TableRow>
               {showSelectionControls && (
@@ -279,7 +260,7 @@ export default function ClientesTable({
                   {columnOptions
                     .filter(col => visibleColumns.includes(col.id))
                     .map((column) => (
-                      <TableCell key={`${cliente.id}-${column.id}`}>
+                      <TableCell key={`${cliente.id}-${column.id}`} className="whitespace-nowrap">
                         {renderCellContent(cliente, column.id)}
                       </TableCell>
                     ))}
