@@ -2,6 +2,7 @@ import { CalendarClock } from "lucide-react";
 import { useReagendamentosEntreSemanas } from "@/hooks/useReagendamentosEntreSemanas";
 import ReagendamentosResumo from "@/components/reagendamentos/ReagendamentosResumo";
 import ReagendamentosTable from "@/components/reagendamentos/ReagendamentosTable";
+import ExplicacaoConfirmationScore from "@/components/reagendamentos/ExplicacaoConfirmationScore";
 
 export default function Reagendamentos() {
   const { reagendamentos, resumo, isLoading, excluir } = useReagendamentosEntreSemanas();
@@ -17,6 +18,8 @@ export default function Reagendamentos() {
           </p>
         </div>
       </div>
+
+      <ExplicacaoConfirmationScore />
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
