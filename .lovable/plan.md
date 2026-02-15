@@ -1,18 +1,28 @@
 
-# Vincular periodicidade ao toggle de reagendamento
 
-## Comportamento
+# Corrigir botao de excluir registros de reagendamentos
 
-Quando o toggle "Desabilitar reagendamento automatico" estiver ativado:
-- O campo "Periodicidade (dias)" fica desabilitado (disabled) e com valor 0
-- Ao desativar o toggle, a periodicidade volta ao valor padrao (7)
+## Problema
 
-## Alteracao
+A tabela `reagendamentos_entre_semanas` possui RLS habilitado, mas so tem politicas para SELECT e INSERT. Nao existe politica para DELETE, entao o Supabase bloqueia silenciosamente qualquer tentativa de exclusao.
 
-Arquivo unico: `src/components/clientes/ClienteFormDialog.tsx`
+## Solucao
 
-1. No handler do `onCheckedChange` do Switch, ao ativar o toggle, setar `periodicidadePadrao` para `0`. Ao desativar, restaurar para `7`.
+Criar uma migracao SQL adicionando uma politica RLS de DELETE para usuarios autenticados:
 
-2. No Input de periodicidade, adicionar `disabled={formData.desabilitarReagendamento}` para impedir edicao quando o toggle esta ativo.
+```sql
+CREATE POLICY "Authenticated users can delete reagendamentos"
+  ON public.reagendamentos_entre_semanas
+  FOR DELETE
+  TO authenticated
+  USING (true);
+```
 
-3. No `clienteTemp` (objeto de save), garantir que `periodicidadePadrao` seja `0` quando `desabilitarReagendamento` for `true`.
+## Arquivo impactado
+
+| Arquivo | Mudanca |
+|---------|---------|
+| Nova migracao SQL | Adicionar politica RLS de DELETE na tabela `reagendamentos_entre_semanas` |
+
+Nenhuma alteracao de codigo frontend e necessaria -- o hook `useReagendamentosEntreSemanas` ja faz o `supabase.from(...).delete()` corretamente, so estava sendo bloqueado pela falta da politica.
+
