@@ -107,7 +107,13 @@ export function useConfirmationScore(agendamentos: AgendamentoItem[]) {
       
       const desvio = differenceInDays(dataAgendada, dataEsperada);
       const peso = entregasCliente.length === 2 ? 0.5 : 1;
-      let baseline = 95 - Math.max(0, desvio) * 2 * peso;
+      let penalidade = 0;
+      if (desvio > 0) {
+        penalidade = desvio * 2;
+      } else if (desvio < -3) {
+        penalidade = Math.abs(desvio + 3) * 1.5;
+      }
+      let baseline = 95 - penalidade * peso;
 
       // VOLATILIDADE
       // Try to match by agendamento_id first, fall back to date proximity
@@ -164,6 +170,8 @@ export function useConfirmationScore(agendamentos: AgendamentoItem[]) {
       }
       if (desvio > 0) {
         motivos.push(`${desvio} dia(s) além da cadência`);
+      } else if (desvio < -3) {
+        motivos.push(`${Math.abs(desvio)} dia(s) antes da cadência`);
       }
 
       map.set(clienteId, {
