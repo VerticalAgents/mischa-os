@@ -516,21 +516,25 @@ export default function ClienteFormDialog({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="rotaEntrega">Rota de Entrega</Label>
-                  <Select 
-                    value={formData.rotaEntregaId?.toString() || undefined} 
-                    onValueChange={(value) => handleInputChange('rotaEntregaId', value ? parseInt(value) : undefined)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma rota" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {rotasEntrega.map((rota) => (
-                        <SelectItem key={rota.id} value={rota.id.toString()}>
-                          {rota.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {formData.tipoLogistica?.toLowerCase() === 'retirada' ? (
+                    <Input value="Retirada" disabled className="bg-muted text-muted-foreground cursor-not-allowed" />
+                  ) : (
+                    <Select 
+                      value={formData.rotaEntregaId?.toString() || undefined} 
+                      onValueChange={(value) => handleInputChange('rotaEntregaId', value ? parseInt(value) : undefined)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma rota" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {rotasEntrega.map((rota) => (
+                          <SelectItem key={rota.id} value={rota.id.toString()}>
+                            {rota.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
 
@@ -560,7 +564,11 @@ export default function ClienteFormDialog({
                      onValueChange={(value) => {
                        console.log('🔄 Mudança de Tipo de Logística:', value);
                        console.log('📊 Estado ANTES da mudança:', { ...formData });
-                       handleInputChange('tipoLogistica', value);
+                       if (value?.toLowerCase() === 'retirada') {
+                         setFormData(prev => ({ ...prev, tipoLogistica: value as any, rotaEntregaId: undefined }));
+                       } else {
+                         handleInputChange('tipoLogistica', value);
+                       }
                      }}
                    >
                     <SelectTrigger className="notranslate" translate="no" data-translate="no">
