@@ -288,11 +288,8 @@ export default function Clientes() {
     { id: "idGestaoClick", label: "ID GC", canToggle: true },
     { id: "razaoSocial", label: "Razão Social", canToggle: true },
     { id: "nome", label: "Nome", canToggle: false },
-    { id: "giroSemanal", label: "Giro Semanal", canToggle: false },
     { id: "cnpjCpf", label: "CNPJ/CPF", canToggle: true },
-    { id: "enderecoEntrega", label: "Endereço", canToggle: true },
     { id: "contato", label: "Contato", canToggle: true },
-    { id: "quantidadePadrao", label: "Qtde. Padrão", canToggle: true },
     { id: "periodicidade", label: "Period.", canToggle: true },
     { id: "status", label: "Status", canToggle: true },
     { id: "statusAgendamento", label: "Status Agendamento", canToggle: true },
@@ -302,7 +299,7 @@ export default function Clientes() {
 
   // Column visibility state with persistence
   const defaultColumns = [
-    "idGestaoClick", "razaoSocial", "nome", "giroSemanal", "cnpjCpf", "enderecoEntrega", "contato", "quantidadePadrao", 
+    "idGestaoClick", "razaoSocial", "nome", "cnpjCpf", "contato", 
     "periodicidade", "status", "acoes"
   ];
   
