@@ -1,39 +1,44 @@
 
 
-# Correcao: Constraint do banco rejeita tipos de logistica customizados
+# Duas alteracoes: esconder endereco para "Retirada" + remover checkbox "Contabilizar Giro"
 
-## Problema
+## 1. Esconder campos de endereco quando logistica = "Retirada"
 
-O erro `new row for relation "clientes" violates check constraint "ck_tipo_logistica_canonical"` acontece porque existe uma constraint no banco de dados que so aceita dois valores:
+No formulario de cadastro do cliente (`ClienteFormDialog.tsx`), os campos "Endereco de Entrega" e "Link do Google Maps" serao condicionalmente exibidos. Quando o tipo de logistica selecionado for exatamente `"Retirada"` (case-insensitive), esses campos ficarao ocultos.
 
-```text
-CHECK (tipo_logistica IN ('PROPRIA', 'TERCEIRIZADA'))
+## 2. Remover checkbox "Contabilizar no giro medio"
+
+O checkbox sera removido do formulario. Em todos os pontos do sistema que usam `contabilizarGiroMedio` para filtrar clientes, a logica sera substituida por `statusCliente === 'Ativo'`.
+
+### Locais impactados
+
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/components/clientes/ClienteFormDialog.tsx` | Esconder endereco/Google Maps quando logistica = "Retirada". Remover checkbox "Contabilizar no giro medio" |
+| `src/components/clientes/ClienteDetalhesInfo.tsx` | Remover exibicao "Contabilizar no Giro: Sim/Nao" |
+| `src/services/dreCalculations.ts` | Trocar filtro `contabilizarGiroMedio` por `statusCliente === 'Ativo'` |
+| `src/components/gestao-financeira/ResumoGeralTab.tsx` | Trocar filtro `contabilizarGiroMedio` por `statusCliente === 'Ativo'` |
+| `src/pages/gestao-financeira/PontoEquilibrio.tsx` | Trocar filtro `contabilizarGiroMedio` por `statusCliente === 'Ativo'` |
+
+### Detalhes tecnicos
+
+**Endereco condicional** - No `ClienteFormDialog.tsx`, envolver os campos de endereco e link Google Maps com:
+
+```typescript
+{formData.tipoLogistica?.toLowerCase() !== 'retirada' && (
+  // campos de endereco e link google maps
+)}
 ```
 
-A correcao anterior no sanitizador passou a aceitar valores customizados, mas o banco continua rejeitando qualquer valor fora dessa lista.
+**Filtros de giro** - Nos 3 arquivos financeiros, substituir:
 
-## Solucao
+```typescript
+// Antes
+clientes.filter(c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio)
 
-Remover a constraint `ck_tipo_logistica_canonical` da tabela `clientes`, ja que os tipos de logistica sao dinamicos (cadastrados pelo usuario na tabela `tipos_logistica`).
-
-Tambem verificar e remover constraints equivalentes para `tipo_cobranca` e `forma_pagamento`, que tem o mesmo problema potencial.
-
-## Alteracoes
-
-| Local | Mudanca |
-|-------|---------|
-| Banco de dados (SQL) | `ALTER TABLE clientes DROP CONSTRAINT ck_tipo_logistica_canonical;` |
-| Banco de dados (SQL) | Verificar e remover constraints similares para `tipo_cobranca` e `forma_pagamento` se existirem |
-
-## Detalhes tecnicos
-
-Sera executado via migracao SQL:
-
-```sql
-ALTER TABLE clientes DROP CONSTRAINT IF EXISTS ck_tipo_logistica_canonical;
-ALTER TABLE clientes DROP CONSTRAINT IF EXISTS ck_tipo_cobranca_canonical;
-ALTER TABLE clientes DROP CONSTRAINT IF EXISTS ck_forma_pagamento_canonical;
+// Depois
+clientes.filter(c => c.statusCliente === 'Ativo')
 ```
 
-A validacao dos valores continua sendo feita no frontend (dropdown so mostra tipos cadastrados na tabela `tipos_logistica`), tornando a constraint do banco desnecessaria e restritiva.
+O campo `contabilizarGiroMedio` continuara existindo no banco de dados e no tipo TypeScript (para nao quebrar nada), mas nao sera mais exibido nem editavel no formulario. Sempre sera salvo como `true` por padrao.
 
