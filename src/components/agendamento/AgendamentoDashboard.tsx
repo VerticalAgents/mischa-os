@@ -1285,7 +1285,17 @@ export default function AgendamentoDashboard() {
                               {nomeRepresentante} ({items.length} {items.length === 1 ? 'previsto' : 'previstos'})
                             </span>
                           </div>
-                          {items.map(renderCard)}
+                          {items
+                            .slice()
+                            .sort((a, b) => {
+                              const scoreA = confirmationScores.get(a.cliente.id)?.score ?? -1;
+                              const scoreB = confirmationScores.get(b.cliente.id)?.score ?? -1;
+                              const faixaA = scoreA >= 85 ? 0 : scoreA >= 50 ? 1 : scoreA >= 0 ? 2 : 3;
+                              const faixaB = scoreB >= 85 ? 0 : scoreB >= 50 ? 1 : scoreB >= 0 ? 2 : 3;
+                              if (faixaA !== faixaB) return faixaA - faixaB;
+                              return a.cliente.nome.localeCompare(b.cliente.nome);
+                            })
+                            .map(renderCard)}
                         </div>
                       ))}
 
