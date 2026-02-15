@@ -1,44 +1,50 @@
 
 
-# Duas alteracoes: esconder endereco para "Retirada" + remover checkbox "Contabilizar Giro"
+# Rota de entrega automatica para tipo de logistica "Retirada"
 
-## 1. Esconder campos de endereco quando logistica = "Retirada"
+## Comportamento
 
-No formulario de cadastro do cliente (`ClienteFormDialog.tsx`), os campos "Endereco de Entrega" e "Link do Google Maps" serao condicionalmente exibidos. Quando o tipo de logistica selecionado for exatamente `"Retirada"` (case-insensitive), esses campos ficarao ocultos.
+Quando o tipo de logistica selecionado for "Retirada" (case-insensitive):
+- O campo "Rota de Entrega" sera automaticamente preenchido com o texto **"Retirada"** e ficara **desabilitado** (nao editavel)
+- O valor `rotaEntregaId` sera setado como `undefined` (nao aponta para nenhuma rota real do banco)
+- Internamente, o nome da rota sera salvo como "Retirada" no campo `rotaEntregaId` ou tratado de forma especial
 
-## 2. Remover checkbox "Contabilizar no giro medio"
+Quando o tipo de logistica for alterado para qualquer outro valor:
+- O campo "Rota de Entrega" volta a ser editavel normalmente
+- O valor "Retirada" e limpo e o usuario pode selecionar uma rota real
 
-O checkbox sera removido do formulario. Em todos os pontos do sistema que usam `contabilizarGiroMedio` para filtrar clientes, a logica sera substituida por `statusCliente === 'Ativo'`.
-
-### Locais impactados
+## Alteracoes
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/components/clientes/ClienteFormDialog.tsx` | Esconder endereco/Google Maps quando logistica = "Retirada". Remover checkbox "Contabilizar no giro medio" |
-| `src/components/clientes/ClienteDetalhesInfo.tsx` | Remover exibicao "Contabilizar no Giro: Sim/Nao" |
-| `src/services/dreCalculations.ts` | Trocar filtro `contabilizarGiroMedio` por `statusCliente === 'Ativo'` |
-| `src/components/gestao-financeira/ResumoGeralTab.tsx` | Trocar filtro `contabilizarGiroMedio` por `statusCliente === 'Ativo'` |
-| `src/pages/gestao-financeira/PontoEquilibrio.tsx` | Trocar filtro `contabilizarGiroMedio` por `statusCliente === 'Ativo'` |
+| `ClienteFormDialog.tsx` | Quando `tipoLogistica` = "retirada", desabilitar o Select de rota e mostrar "Retirada" como valor fixo. Ao mudar para "retirada", limpar `rotaEntregaId` e setar um valor sentinela. Ao sair de "retirada", limpar o valor sentinela |
 
-### Detalhes tecnicos
+## Detalhes tecnicos
 
-**Endereco condicional** - No `ClienteFormDialog.tsx`, envolver os campos de endereco e link Google Maps com:
+No `ClienteFormDialog.tsx`:
+
+1. **No handler de `tipoLogistica`**: quando o valor mudar para "retirada", setar `rotaEntregaId` como `undefined` (sem rota real). Quando mudar para outro valor, manter o `rotaEntregaId` atual.
+
+2. **No campo de Rota de Entrega**: verificar se `formData.tipoLogistica?.toLowerCase() === 'retirada'`. Se sim, renderizar um Input desabilitado com valor "Retirada" em vez do Select. Se nao, renderizar o Select normal.
 
 ```typescript
-{formData.tipoLogistica?.toLowerCase() !== 'retirada' && (
-  // campos de endereco e link google maps
+// No bloco de rota de entrega
+{formData.tipoLogistica?.toLowerCase() === 'retirada' ? (
+  <Input value="Retirada" disabled />
+) : (
+  <Select ...> {/* select normal */} </Select>
 )}
 ```
 
-**Filtros de giro** - Nos 3 arquivos financeiros, substituir:
+3. **No handleInputChange de tipoLogistica**: limpar a rota quando mudar para "retirada":
 
 ```typescript
-// Antes
-clientes.filter(c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio)
-
-// Depois
-clientes.filter(c => c.statusCliente === 'Ativo')
+if (field === 'tipoLogistica') {
+  if (value?.toString().toLowerCase() === 'retirada') {
+    setFormData(prev => ({ ...prev, tipoLogistica: value, rotaEntregaId: undefined }));
+  }
+}
 ```
 
-O campo `contabilizarGiroMedio` continuara existindo no banco de dados e no tipo TypeScript (para nao quebrar nada), mas nao sera mais exibido nem editavel no formulario. Sempre sera salvo como `true` por padrao.
+4. **No salvamento**: o campo `rotaEntregaId` sera `null` para clientes de retirada (sem rota real associada). A identificacao de que e "retirada" vem do `tipoLogistica`.
 
