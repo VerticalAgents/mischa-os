@@ -391,25 +391,29 @@ export default function ClienteFormDialog({
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="enderecoEntrega">Endereço de Entrega</Label>
-                <Input
-                  id="enderecoEntrega"
-                  value={formData.enderecoEntrega || ''}
-                  onChange={(e) => handleInputChange('enderecoEntrega', e.target.value)}
-                />
-              </div>
+              {formData.tipoLogistica?.toLowerCase() !== 'retirada' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="enderecoEntrega">Endereço de Entrega</Label>
+                    <Input
+                      id="enderecoEntrega"
+                      value={formData.enderecoEntrega || ''}
+                      onChange={(e) => handleInputChange('enderecoEntrega', e.target.value)}
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="linkGoogleMaps">Link do Google Maps</Label>
-                <Input
-                  id="linkGoogleMaps"
-                  type="url"
-                  placeholder="https://maps.app.goo.gl/wTpwoh5LT8hDRPke6"
-                  value={formData.linkGoogleMaps || ''}
-                  onChange={(e) => handleInputChange('linkGoogleMaps', e.target.value)}
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="linkGoogleMaps">Link do Google Maps</Label>
+                    <Input
+                      id="linkGoogleMaps"
+                      type="url"
+                      placeholder="https://maps.app.goo.gl/wTpwoh5LT8hDRPke6"
+                      value={formData.linkGoogleMaps || ''}
+                      onChange={(e) => handleInputChange('linkGoogleMaps', e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
@@ -672,16 +676,6 @@ export default function ClienteFormDialog({
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="contabilizarGiroMedio"
-                  checked={formData.contabilizarGiroMedio || false}
-                  onCheckedChange={(checked) => handleInputChange('contabilizarGiroMedio', checked)}
-                />
-                <Label htmlFor="contabilizarGiroMedio">
-                  Contabilizar no giro médio
-                </Label>
-              </div>
             </CardContent>
           </Card>
 

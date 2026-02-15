@@ -54,10 +54,10 @@ export default function ResumoGeralTab({
       item.categoriaNome.toLowerCase().includes('padrão')
     );
 
-    // Filtrar apenas clientes que têm o giro habilitado (contabilizar_giro_medio = true)
+    // Filtrar apenas clientes ativos
     const dadosRevendaComGiroHabilitado = dadosRevenda.filter(item => {
       const cliente = clientes.find(c => c.id === item.clienteId);
-      return cliente && cliente.contabilizarGiroMedio === true;
+      return cliente && cliente.statusCliente === 'Ativo';
     });
 
     if (dadosRevendaComGiroHabilitado.length === 0) {
@@ -203,7 +203,7 @@ export default function ResumoGeralTab({
               Preço Médio - Revenda Padrão
             </CardTitle>
             <CardDescription>
-              Apenas clientes com giro habilitado
+              Apenas clientes ativos
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">

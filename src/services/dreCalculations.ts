@@ -142,7 +142,7 @@ export const calculateDREFromRealData = async (
                        custosInsumosUFCSPA + custosInsumosPersonalizados + custosInsumosOutros;
   
   // Filtrar clientes ativos
-  const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo' && c.contabilizarGiroMedio);
+  const clientesAtivos = clientes.filter(c => c.statusCliente === 'Ativo');
   
   // Contar clientes com NF
   const clientesComNF = clientesAtivos.filter(c => c.emiteNotaFiscal).length;
