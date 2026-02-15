@@ -1,27 +1,39 @@
 
 
-# Ajuste da tabela geral de clientes
+# Remover "Quantidade Padrao" da UI e usar 30 como fallback universal
 
-## Remover colunas
+## Resumo
 
-Remover as seguintes colunas da tabela de clientes:
-- **Giro Semanal** - remover de `columnOptions` e de `defaultColumns`
-- **Endereço** - remover de `columnOptions` e de `defaultColumns`
-- **Qtde. Padrao** - remover de `columnOptions` e de `defaultColumns`
+O campo `quantidadePadrao` sera removido do formulario de cadastro e da tela de detalhes do cliente. No codigo, todos os pontos que usam `cliente.quantidadePadrao` como fallback passarao a usar uma constante `PEDIDO_MINIMO = 30`. O campo continua existindo no banco de dados e no tipo TypeScript (sem breaking changes), mas nao sera mais editavel.
 
-Tambem remover os cases correspondentes no `getColumnValue` do `ClientesTable.tsx` (`giroSemanal`, `enderecoEntrega`, `quantidadePadrao`) e o import de `calcularGiroSemanalPadrao` que ficara sem uso.
+## Constante global
 
-## Evitar corte de colunas
+Criar uma constante em `src/utils/constants.ts`:
 
-Para resolver o problema de colunas cortadas:
-- Adicionar `whitespace-nowrap` nas celulas (`TableCell`) para evitar quebra de texto
-- Garantir que o container da tabela tenha `overflow-x-auto` para scroll horizontal quando necessario (ja existe no componente `Table`)
-- Aplicar `min-w-max` na tabela para que ela nao comprima as colunas
+```typescript
+export const PEDIDO_MINIMO_UNIDADES = 30;
+```
 
-## Arquivos alterados
+## Arquivos impactados
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/pages/Clientes.tsx` | Remover `giroSemanal`, `enderecoEntrega` e `quantidadePadrao` de `columnOptions` e `defaultColumns` |
-| `src/components/clientes/ClientesTable.tsx` | Remover cases `giroSemanal`, `enderecoEntrega`, `quantidadePadrao` do `getColumnValue`. Remover import e funcao `calcularGiroSemanalCliente`. Adicionar `whitespace-nowrap` nas celulas e `min-w-max` na tabela para evitar corte |
+| `src/utils/constants.ts` | Criar arquivo com `PEDIDO_MINIMO_UNIDADES = 30` |
+| `src/components/clientes/ClienteFormDialog.tsx` | Remover campo "Quantidade Padrao" do formulario. Manter `quantidadePadrao: 30` como valor fixo no save |
+| `src/components/clientes/ClienteDetalhesInfo.tsx` | Remover exibicao de "Quantidade Padrao" |
+| `src/components/agendamento/ConfirmacaoReposicaoTab.tsx` | Trocar `cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` |
+| `src/components/agendamento/NovaConfirmacaoReposicaoTab.tsx` | Trocar `agendamento.cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` |
+| `src/components/expedicao/hooks/useAgendamentoActions.ts` | Trocar `cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` |
+| `src/components/clientes/GiroMetaForm.tsx` | Trocar `cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` na funcao de calculo |
+| `src/utils/calculations.ts` | Trocar `cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` |
+| `src/utils/giroCalculations.ts` | Atualizar `calcularGiroSemanalPadrao` e `calcularMetaGiroSemanal` para usar 30 como default |
+| `src/hooks/useFaturamentoPrevisto.ts` | Trocar `cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` |
+| `src/pages/financeiro/Custos.tsx` | Trocar `cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` |
+
+## O que NAO muda
+
+- O campo `quantidadePadrao` continua no tipo `Cliente` e na tabela do banco (sem migracao)
+- O `useClienteStore` continua lendo o campo do banco (backward compatibility)
+- O `clienteDataSanitizer` continua mapeando o campo (sem quebrar clientes existentes)
+- O campo sera salvo como `30` por padrao para novos clientes
 
