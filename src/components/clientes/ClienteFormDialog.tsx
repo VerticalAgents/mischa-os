@@ -258,7 +258,7 @@ export default function ClienteFormDialog({
     contatoTelefone: formData.contatoTelefone || '',
     contatoEmail: formData.contatoEmail || '',
     quantidadePadrao: formData.quantidadePadrao || 0,
-    periodicidadePadrao: formData.periodicidadePadrao || 7,
+    periodicidadePadrao: formData.desabilitarReagendamento ? 0 : (formData.periodicidadePadrao || 7),
     statusCliente: formData.statusCliente || 'Ativo',
     tipoLogistica: formData.tipoLogistica || 'Própria',
     tipoCobranca: formData.tipoCobranca || 'À vista',
@@ -459,9 +459,11 @@ export default function ClienteFormDialog({
                   <Input
                     id="periodicidadePadrao"
                     type="number"
-                    min="1"
-                    value={formData.periodicidadePadrao || 7}
+                    min="0"
+                    value={formData.desabilitarReagendamento ? 0 : (formData.periodicidadePadrao || 7)}
                     onChange={(e) => handleInputChange('periodicidadePadrao', parseInt(e.target.value) || 7)}
+                    disabled={formData.desabilitarReagendamento}
+                    className={formData.desabilitarReagendamento ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                   />
                 </div>
                 <div className="space-y-2">
@@ -493,7 +495,10 @@ export default function ClienteFormDialog({
                 <Switch
                   id="desabilitarReagendamento"
                   checked={formData.desabilitarReagendamento || false}
-                  onCheckedChange={(checked) => handleInputChange('desabilitarReagendamento', checked)}
+                  onCheckedChange={(checked) => {
+                    handleInputChange('desabilitarReagendamento', checked);
+                    handleInputChange('periodicidadePadrao', checked ? 0 : 7);
+                  }}
                 />
               </div>
             </CardContent>
