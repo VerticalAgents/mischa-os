@@ -1677,6 +1677,7 @@ export type Database = {
       }
       reagendamentos_entre_semanas: {
         Row: {
+          agendamento_id: string | null
           cliente_id: string
           created_at: string
           data_nova: string
@@ -1688,6 +1689,7 @@ export type Database = {
           tipo: string
         }
         Insert: {
+          agendamento_id?: string | null
           cliente_id: string
           created_at?: string
           data_nova: string
@@ -1699,6 +1701,7 @@ export type Database = {
           tipo?: string
         }
         Update: {
+          agendamento_id?: string | null
           cliente_id?: string
           created_at?: string
           data_nova?: string
@@ -1710,6 +1713,13 @@ export type Database = {
           tipo?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reagendamentos_entre_semanas_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos_clientes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reagendamentos_entre_semanas_cliente_id_fkey"
             columns: ["cliente_id"]
