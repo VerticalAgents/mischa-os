@@ -362,6 +362,7 @@ export type Database = {
           contato_telefone: string | null
           contato_telefone_encrypted: string | null
           created_at: string
+          desabilitar_reagendamento: boolean | null
           emite_nota_fiscal: boolean | null
           endereco_entrega: string | null
           endereco_entrega_encrypted: string | null
@@ -404,6 +405,7 @@ export type Database = {
           contato_telefone?: string | null
           contato_telefone_encrypted?: string | null
           created_at?: string
+          desabilitar_reagendamento?: boolean | null
           emite_nota_fiscal?: boolean | null
           endereco_entrega?: string | null
           endereco_entrega_encrypted?: string | null
@@ -446,6 +448,7 @@ export type Database = {
           contato_telefone?: string | null
           contato_telefone_encrypted?: string | null
           created_at?: string
+          desabilitar_reagendamento?: boolean | null
           emite_nota_fiscal?: boolean | null
           endereco_entrega?: string | null
           endereco_entrega_encrypted?: string | null

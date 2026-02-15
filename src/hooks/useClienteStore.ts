@@ -181,6 +181,7 @@ const transformDbRowToCliente = (row: any): Cliente => {
     categoriaId: row.categoria_id || 1,
     subcategoriaId: row.subcategoria_id || 1,
     gestaoClickClienteId: row.gestaoclick_cliente_id || null,
+    desabilitarReagendamento: row.desabilitar_reagendamento === true,
   };
 };
 

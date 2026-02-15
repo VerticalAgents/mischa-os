@@ -503,6 +503,7 @@ export function sanitizeClienteData(data: Partial<Cliente>): SanitizationResult 
     forma_pagamento: sanitized.formaPagamento,
     prazo_pagamento_dias: sanitized.prazoPagamentoDias,
     gestaoclick_cliente_id: sanitized.gestaoClickClienteId || null,
+    desabilitar_reagendamento: boolOr(sanitized.desabilitarReagendamento, false),
     updated_at: new Date().toISOString(),
   };
 

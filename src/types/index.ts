@@ -72,6 +72,9 @@ export interface Cliente {
   
   // ID externo para integração com GestãoClick
   gestaoClickClienteId?: string;
+  
+  // Flag para desabilitar reagendamento automático
+  desabilitarReagendamento?: boolean;
 }
 
 // Representantes, Rotas e Categorias para configuração
