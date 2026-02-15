@@ -162,10 +162,6 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
           </CardHeader>
           <CardContent className="p-6 space-y-4">
             <InfoItem label="Tipo de Logística" value={cliente.tipoLogistica} icon={Truck} />
-            <InfoItem 
-              label="Contabilizar no Giro" 
-              value={cliente.contabilizarGiroMedio ? 'Sim' : 'Não'} 
-            />
             {cliente.janelasEntrega && cliente.janelasEntrega.length > 0 && (
               <InfoItem 
                 label="Janelas de Entrega" 

@@ -28,8 +28,8 @@ export default function PontoEquilibrio() {
     const margem = faturamentoMensal - custoFixoTotal - custoVariavelTotal;
     const margemPercentual = faturamentoMensal > 0 ? (margem / faturamentoMensal) * 100 : 0;
     
-    // [PE-003] Filtrar clientes contabilizados
-    const clientesContabilizados = clientes.filter(cliente => cliente.contabilizarGiroMedio);
+    // [PE-003] Filtrar clientes ativos
+    const clientesContabilizados = clientes.filter(cliente => cliente.statusCliente === 'Ativo');
     const clientesContabilizadosIds = new Set(clientesContabilizados.map(c => c.id));
     
     // [PE-004] Dados apenas de clientes contabilizados
