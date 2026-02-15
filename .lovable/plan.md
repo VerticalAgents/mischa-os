@@ -1,39 +1,97 @@
 
 
-# Remover "Quantidade Padrao" da UI e usar 30 como fallback universal
+# Toggle para desabilitar reagendamento automatico
 
 ## Resumo
 
-O campo `quantidadePadrao` sera removido do formulario de cadastro e da tela de detalhes do cliente. No codigo, todos os pontos que usam `cliente.quantidadePadrao` como fallback passarao a usar uma constante `PEDIDO_MINIMO = 30`. O campo continua existindo no banco de dados e no tipo TypeScript (sem breaking changes), mas nao sera mais editavel.
+Adicionar um campo booleano `desabilitar_reagendamento` na tabela `clientes` e um toggle no bloco "Configuracoes Comerciais" do cadastro. Quando ativado, ao confirmar uma entrega, o agendamento volta para status "Agendar" com data zerada (null), em vez de criar automaticamente o proximo agendamento.
 
-## Constante global
+## Alteracoes
 
-Criar uma constante em `src/utils/constants.ts`:
+### 1. Banco de dados
+
+Adicionar coluna na tabela `clientes`:
+
+```sql
+ALTER TABLE clientes ADD COLUMN desabilitar_reagendamento boolean DEFAULT false;
+```
+
+### 2. Atualizar a funcao RPC `process_entrega_safe`
+
+Modificar o bloco final de reagendamento para verificar o flag:
+
+```sql
+-- Reagendamento: verificar preferencia do cliente
+IF (SELECT desabilitar_reagendamento FROM public.clientes WHERE id = v_cliente_id) = true THEN
+  UPDATE public.agendamentos_clientes
+  SET 
+    data_proxima_reposicao = NULL,
+    status_agendamento = 'Agendar',
+    substatus_pedido = 'Agendado',
+    updated_at = now()
+  WHERE id = p_agendamento_id;
+ELSE
+  UPDATE public.agendamentos_clientes
+  SET 
+    data_proxima_reposicao = (current_date + make_interval(days => v_periodicidade)),
+    status_agendamento = 'Previsto',
+    substatus_pedido = 'Agendado',
+    updated_at = now()
+  WHERE id = p_agendamento_id;
+END IF;
+```
+
+### 3. Tipo TypeScript (`src/types/index.ts`)
+
+Adicionar ao interface `Cliente`:
 
 ```typescript
-export const PEDIDO_MINIMO_UNIDADES = 30;
+desabilitarReagendamento?: boolean;
+```
+
+### 4. Sanitizador (`src/utils/clienteDataSanitizer.ts`)
+
+Adicionar mapeamento do campo `desabilitarReagendamento` para `desabilitar_reagendamento` no objeto de saida.
+
+### 5. Store (`src/hooks/useClienteStore.ts`)
+
+No `transformDbRowToCliente`, mapear `row.desabilitar_reagendamento` para `desabilitarReagendamento`.
+
+### 6. Agendamento utils (`src/hooks/agendamento/utils.ts`)
+
+Mapear o campo no builder de cliente do agendamento.
+
+### 7. Form default (`src/components/clientes/ClienteFormDialog.tsx`)
+
+- Adicionar `desabilitarReagendamento: false` no `getDefaultFormData`
+- Adicionar ao `clienteTemp`
+- No bloco "Configuracoes Comerciais", adicionar um toggle (Switch) com label "Desabilitar reagendamento automatico" e uma descricao curta explicando o comportamento
+
+### 8. UI do toggle
+
+O toggle ficara no card "Configuracoes Comerciais", abaixo da periodicidade e status:
+
+```text
++--------------------------------------------------+
+| Configuracoes Comerciais                          |
+|                                                   |
+| [Periodicidade (dias)]    [Status]                |
+|                                                   |
+| [Toggle] Desabilitar reagendamento automatico     |
+|   Ao confirmar entrega, o agendamento volta para  |
+|   "Agendar" sem data definida                     |
++--------------------------------------------------+
 ```
 
 ## Arquivos impactados
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/utils/constants.ts` | Criar arquivo com `PEDIDO_MINIMO_UNIDADES = 30` |
-| `src/components/clientes/ClienteFormDialog.tsx` | Remover campo "Quantidade Padrao" do formulario. Manter `quantidadePadrao: 30` como valor fixo no save |
-| `src/components/clientes/ClienteDetalhesInfo.tsx` | Remover exibicao de "Quantidade Padrao" |
-| `src/components/agendamento/ConfirmacaoReposicaoTab.tsx` | Trocar `cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` |
-| `src/components/agendamento/NovaConfirmacaoReposicaoTab.tsx` | Trocar `agendamento.cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` |
-| `src/components/expedicao/hooks/useAgendamentoActions.ts` | Trocar `cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` |
-| `src/components/clientes/GiroMetaForm.tsx` | Trocar `cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` na funcao de calculo |
-| `src/utils/calculations.ts` | Trocar `cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` |
-| `src/utils/giroCalculations.ts` | Atualizar `calcularGiroSemanalPadrao` e `calcularMetaGiroSemanal` para usar 30 como default |
-| `src/hooks/useFaturamentoPrevisto.ts` | Trocar `cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` |
-| `src/pages/financeiro/Custos.tsx` | Trocar `cliente.quantidadePadrao` por `PEDIDO_MINIMO_UNIDADES` |
-
-## O que NAO muda
-
-- O campo `quantidadePadrao` continua no tipo `Cliente` e na tabela do banco (sem migracao)
-- O `useClienteStore` continua lendo o campo do banco (backward compatibility)
-- O `clienteDataSanitizer` continua mapeando o campo (sem quebrar clientes existentes)
-- O campo sera salvo como `30` por padrao para novos clientes
+| Migracao SQL | Adicionar coluna `desabilitar_reagendamento` |
+| Migracao SQL | Recriar funcao `process_entrega_safe` com condicional |
+| `src/types/index.ts` | Adicionar `desabilitarReagendamento?: boolean` |
+| `src/utils/clienteDataSanitizer.ts` | Mapear campo no output |
+| `src/hooks/useClienteStore.ts` | Mapear no `transformDbRowToCliente` |
+| `src/hooks/agendamento/utils.ts` | Mapear campo |
+| `src/components/clientes/ClienteFormDialog.tsx` | Adicionar toggle no bloco Comerciais |
 
