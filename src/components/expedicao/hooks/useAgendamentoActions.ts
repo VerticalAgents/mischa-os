@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useExpedicaoStore } from "@/hooks/useExpedicaoStore";
 import { toast } from "sonner";
+import { PEDIDO_MINIMO_UNIDADES } from "@/utils/constants";
 
 export const useAgendamentoActions = () => {
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
@@ -24,7 +25,7 @@ export const useAgendamentoActions = () => {
         cliente: agendamento.cliente,
         dataReposicao: agendamento.dataReposicao,
         pedido: {
-          totalPedidoUnidades: agendamento.cliente.quantidadePadrao
+          totalPedidoUnidades: PEDIDO_MINIMO_UNIDADES
         }
       };
       
@@ -65,7 +66,7 @@ export const useAgendamentoActions = () => {
       
       await salvarAgendamento(agendamentoAtualizado.id, {
         data_proxima_reposicao: agendamentoAtualizado.dataReposicao,
-        quantidade_total: agendamentoAtualizado.pedido?.totalPedidoUnidades || agendamentoAtualizado.cliente.quantidadePadrao
+        quantidade_total: agendamentoAtualizado.pedido?.totalPedidoUnidades || PEDIDO_MINIMO_UNIDADES
       });
       
       // Recarregar dados após atualização

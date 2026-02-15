@@ -6,6 +6,7 @@ import { useConfiguracoesStore } from '@/hooks/useConfiguracoesStore';
 import { useSupabasePrecosCategoriaCliente } from '@/hooks/useSupabasePrecosCategoriaCliente';
 import { useSupabaseGirosSemanaPersonalizados } from '@/hooks/useSupabaseGirosSemanaPersonalizados';
 import { useGiroHistoricoReal } from '@/hooks/useGiroHistoricoReal';
+import { PEDIDO_MINIMO_UNIDADES } from '@/utils/constants';
 
 // Preços temporários por categoria (fallback quando não há configuração)
 const PRECOS_TEMPORARIOS: Record<string, number> = {
@@ -64,11 +65,11 @@ export function useFaturamentoPrevisto() {
       return giroHistorico.giroSemanal;
     }
 
-    // Fallback: Usar cálculo projetado (quantidade_padrao / periodicidade_padrao) * 7 dias
+    // Fallback: Usar cálculo projetado (PEDIDO_MINIMO / periodicidade_padrao) * 7 dias
     if (cliente.periodicidadePadrao === 0) return 0;
-    const giroCalculado = Math.round((cliente.quantidadePadrao / cliente.periodicidadePadrao) * 7);
+    const giroCalculado = Math.round((PEDIDO_MINIMO_UNIDADES / cliente.periodicidadePadrao) * 7);
     
-    console.log(`📊 Giro projetado para cliente ${cliente.nome}, categoria ${categoriaId}: ${giroCalculado} (baseado em ${cliente.quantidadePadrao}/${cliente.periodicidadePadrao})`);
+    console.log(`📊 Giro projetado para cliente ${cliente.nome}, categoria ${categoriaId}: ${giroCalculado} (baseado em ${PEDIDO_MINIMO_UNIDADES}/${cliente.periodicidadePadrao})`);
     return giroCalculado;
   };
 

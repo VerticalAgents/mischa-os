@@ -450,17 +450,7 @@ export default function ClienteFormDialog({
               <CardTitle className="text-lg">Configurações Comerciais</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="quantidadePadrao">Quantidade Padrão</Label>
-                  <Input
-                    id="quantidadePadrao"
-                    type="number"
-                    min="0"
-                    value={formData.quantidadePadrao || 0}
-                    onChange={(e) => handleInputChange('quantidadePadrao', parseInt(e.target.value) || 0)}
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="periodicidadePadrao">Periodicidade (dias)</Label>
                   <Input

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { usePedidoStore } from "@/hooks/usePedidoStore";
 import { Cliente } from "@/types";
 import { toast } from "sonner";
+import { PEDIDO_MINIMO_UNIDADES } from "@/utils/constants";
 
 interface ConfirmacaoReposicaoProps {
   cliente?: Cliente;
@@ -15,7 +16,7 @@ interface ConfirmacaoReposicaoProps {
 }
 
 export default function ConfirmacaoReposicao({ cliente, onClose }: ConfirmacaoReposicaoProps) {
-  const [quantidade, setQuantidade] = useState(cliente?.quantidadePadrao?.toString() || "0");
+  const [quantidade, setQuantidade] = useState(String(PEDIDO_MINIMO_UNIDADES));
   const [observacoes, setObservacoes] = useState("");
   const { criarNovoPedido } = usePedidoStore();
 

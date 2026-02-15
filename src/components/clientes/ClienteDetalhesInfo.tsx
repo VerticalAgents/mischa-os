@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, MapPin, User, Phone, Mail, Building, Truck, CreditCard, FileText, Clock, Target } from "lucide-react";
 import { calcularMetaGiroSemanal } from '@/utils/giroCalculations';
+import { PEDIDO_MINIMO_UNIDADES } from '@/utils/constants';
 
 interface ClienteDetalhesInfoProps {
   cliente: Cliente;
@@ -31,7 +32,7 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
   // Calcular meta de giro semanal dinamicamente
   const metaGiroCalculada = cliente.metaGiroSemanal && cliente.metaGiroSemanal > 0 
     ? cliente.metaGiroSemanal 
-    : calcularMetaGiroSemanal(cliente.quantidadePadrao || 0, cliente.periodicidadePadrao || 7);
+    : calcularMetaGiroSemanal(PEDIDO_MINIMO_UNIDADES, cliente.periodicidadePadrao || 7);
 
   const InfoItem = ({ label, value, icon: Icon }: { label: string; value: string | number | undefined; icon?: any }) => {
     if (!value) return null;
@@ -132,11 +133,6 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
-            <InfoItem 
-              label="Quantidade Padrão" 
-              value={`${cliente.quantidadePadrao} unidades`} 
-              icon={Target} 
-            />
             <InfoItem 
               label="Periodicidade" 
               value={`${cliente.periodicidadePadrao} dias`} 

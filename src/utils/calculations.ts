@@ -1,5 +1,6 @@
 
 import { Cliente, Pedido, Sabor, ItemPedido } from "../types";
+import { PEDIDO_MINIMO_UNIDADES } from "./constants";
 
 // Cálculo de distribuição de sabores com base no percentual padrão
 export function calcularDistribuicaoSabores(
@@ -103,11 +104,11 @@ export function calcularPrevisaoGiroSemanal(clientes: Cliente[]): number {
   return clientesAtivos.reduce((total, cliente) => {
     // Se a periodicidade for semanal, use a quantidade padrão diretamente
     if (cliente.periodicidadePadrao === 7) {
-      return total + cliente.quantidadePadrao;
+      return total + PEDIDO_MINIMO_UNIDADES;
     }
     
     // Para outras periodicidades, ajustar para base semanal
-    return total + (cliente.quantidadePadrao * (7 / cliente.periodicidadePadrao));
+    return total + (PEDIDO_MINIMO_UNIDADES * (7 / cliente.periodicidadePadrao));
   }, 0);
 }
 

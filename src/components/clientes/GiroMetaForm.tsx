@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Cliente } from "@/types";
+import { PEDIDO_MINIMO_UNIDADES } from "@/utils/constants";
 
 interface GiroMetaFormProps {
   cliente: Cliente;
@@ -95,10 +96,10 @@ function calcularGiroSemanalBase(cliente: Cliente): number {
   // Para periodicidade em dias, converter para semanas
   if (cliente.periodicidadePadrao === 3) {
     // Caso especial: 3x por semana
-    return cliente.quantidadePadrao * 3;
+    return PEDIDO_MINIMO_UNIDADES * 3;
   }
   
   // Para outros casos, calcular giro semanal
   const periodicidadeSemanas = cliente.periodicidadePadrao / 7;
-  return Math.round(cliente.quantidadePadrao / periodicidadeSemanas);
+  return Math.round(PEDIDO_MINIMO_UNIDADES / periodicidadeSemanas);
 }

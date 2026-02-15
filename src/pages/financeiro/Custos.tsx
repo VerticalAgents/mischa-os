@@ -18,6 +18,7 @@ import { useSupabaseSubcategoriasCustos } from "@/hooks/useSupabaseSubcategorias
 import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
+import { PEDIDO_MINIMO_UNIDADES } from "@/utils/constants";
 
 type Frequencia = "mensal" | "semanal" | "trimestral" | "semestral" | "anual" | "por-producao";
 type TipoCusto = "fixo" | "variavel";
@@ -101,7 +102,7 @@ export default function Custos() {
 
     clientesAtivos.forEach(cliente => {
       // Calculate weekly volume
-      const giroSemanal = cliente.periodicidadePadrao > 0 ? Math.round(cliente.quantidadePadrao / cliente.periodicidadePadrao * 7) : 0;
+      const giroSemanal = cliente.periodicidadePadrao > 0 ? Math.round(PEDIDO_MINIMO_UNIDADES / cliente.periodicidadePadrao * 7) : 0;
 
       // Mock price calculation based on category (this should match the PDV projection logic)
       // For simplicity, use average price 4.50 as placeholder
@@ -253,7 +254,7 @@ export default function Custos() {
         const categoria = categorias.find(cat => cat.id === categoriaId);
         if (!categoria) return;
 
-        const giroSemanal = calcularGiroSemanal(cliente.quantidadePadrao, cliente.periodicidadePadrao);
+        const giroSemanal = calcularGiroSemanal(PEDIDO_MINIMO_UNIDADES, cliente.periodicidadePadrao);
         const custoUnitario = obterCustoCategoria(categoria.nome);
         const custoInsumos = giroSemanal * custoUnitario;
         
