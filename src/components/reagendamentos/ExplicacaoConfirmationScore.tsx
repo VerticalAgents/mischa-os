@@ -42,8 +42,8 @@ export default function ExplicacaoConfirmationScore() {
               <ul className="text-muted-foreground space-y-1 list-disc list-inside leading-relaxed">
                 <li>Analisa as entregas dos últimos <strong>84 dias</strong> e calcula o intervalo médio entre elas</li>
                 <li>Se o agendamento está dentro do prazo esperado (±3 dias): baseline de <strong>95%</strong></li>
-                <li>Atraso: penalidade de <strong>−2%</strong> por cada dia além da cadência esperada</li>
-                <li>Antecipação excessiva (&gt;3 dias antes): penalidade de <strong>−1.5%</strong> por dia além da margem</li>
+                <li>Atrasado (além da cadência): bônus de <strong>+1%</strong> por dia (máx +10%) — cliente precisa do produto</li>
+                <li>Antecipação excessiva (&gt;3 dias antes): penalidade de <strong>−2%</strong> por dia além da margem</li>
                 <li>Clientes com apenas 2 entregas recebem peso reduzido (×0.5)</li>
               </ul>
             </section>
