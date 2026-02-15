@@ -10,7 +10,8 @@ import { ReagendamentoTipo } from '@/types/estoque';
 export async function registrarReagendamentoEntreSemanas(
   clienteId: string,
   dataOriginal: Date,
-  dataNova: Date
+  dataNova: Date,
+  agendamentoId?: string
 ): Promise<void> {
   const semanaOriginal = startOfWeek(dataOriginal, { weekStartsOn: 1 });
   const semanaNova = startOfWeek(dataNova, { weekStartsOn: 1 });
@@ -33,6 +34,7 @@ export async function registrarReagendamentoEntreSemanas(
       semana_nova: format(semanaNova, 'yyyy-MM-dd'),
       semanas_adiadas: semanasAdiadas,
       tipo,
+      ...(agendamentoId ? { agendamento_id: agendamentoId } : {}),
     });
 
   if (error) {

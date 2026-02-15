@@ -4,6 +4,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { AgendamentoItem } from "./types";
+import { useConfirmationScore } from "@/hooks/useConfirmationScore";
+import ConfirmationScoreBadge from "./ConfirmationScoreBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Edit, CheckCheck, Search } from "lucide-react";
@@ -53,6 +55,8 @@ export default function AgendamentosPrevistos() {
     filteredAgendamentos, 
     'dataReposicao'
   );
+
+  const { scores, loading: scoresLoading } = useConfirmationScore(filteredAgendamentos);
 
   useEffect(() => {
     carregarTodosAgendamentos();
@@ -164,6 +168,7 @@ export default function AgendamentosPrevistos() {
             >
               Tipo
             </SortableTableHeader>
+            <TableHead>Prob.</TableHead>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -181,6 +186,9 @@ export default function AgendamentosPrevistos() {
               </TableCell>
               <TableCell>
                 <TipoPedidoBadge tipo={agendamento.pedido?.tipoPedido || 'Padrão'} />
+              </TableCell>
+              <TableCell>
+                <ConfirmationScoreBadge score={scores.get(agendamento.cliente.id)} loading={scoresLoading} />
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex gap-2 justify-end">

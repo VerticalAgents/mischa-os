@@ -7,6 +7,8 @@ import { formatDate } from "@/lib/utils";
 import { AgendamentoItem } from "./types";
 import { Edit, Plus, Check } from "lucide-react";
 import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
+import { useConfirmationScore } from "@/hooks/useConfirmationScore";
+import ConfirmationScoreBadge from "./ConfirmationScoreBadge";
 
 interface AgendamentoTableProps {
   agendamentos: AgendamentoItem[];
@@ -24,6 +26,7 @@ export default function AgendamentoTable({
   // Ordenação padrão por data (mais próxima primeiro)
   const [sortField, setSortField] = useState<SortField>('data');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const { scores, loading: scoresLoading } = useConfirmationScore(agendamentos);
 
   const handleSortChange = (field: SortField, direction: SortDirection) => {
     console.log('Alterando ordenação para:', field, direction);
@@ -133,13 +136,14 @@ export default function AgendamentoTable({
               <TableHead className="w-[100px]">Quantidade</TableHead>
               <TableHead className="w-[80px]">Tipo</TableHead>
               <TableHead className="w-[100px]">Tipo Pedido</TableHead>
+              <TableHead className="w-[140px]">Prob.</TableHead>
               <TableHead className="text-right w-[150px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedAgendamentos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   Nenhum agendamento encontrado
                 </TableCell>
               </TableRow>
@@ -167,6 +171,9 @@ export default function AgendamentoTable({
                   </TableCell>
                   <TableCell>
                     {getTipoPedidoBadge(agendamento.pedido?.tipoPedido)}
+                  </TableCell>
+                  <TableCell>
+                    <ConfirmationScoreBadge score={scores.get(agendamento.cliente.id)} loading={scoresLoading} />
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex gap-1 justify-end">
