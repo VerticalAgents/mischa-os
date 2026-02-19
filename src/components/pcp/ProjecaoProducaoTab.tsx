@@ -174,6 +174,20 @@ export default function ProjecaoProducaoTab() {
   const { produtos: produtosEstoque } = useEstoqueDisponivel(quantidadesNecessarias);
   const { produtosAgrupados, mapaPorProduto, totalUnidades, totalRegistros, loading: loadingProducao } = useProducaoAgendada();
 
+  // Estado do toggle de produção agendada (elevado ao nível do pai)
+  const [incluirProducaoAgendada, setIncluirProducaoAgendada] = useState(false);
+
+  // Estoque ajustado com produção agendada quando toggle ativo
+  const estoqueAjustado = useMemo(() => {
+    return produtosEstoque.map(p => {
+      const extra = incluirProducaoAgendada ? (mapaPorProduto[p.produto_id] || 0) : 0;
+      return {
+        produto_id: p.produto_id,
+        estoque_disponivel: p.estoque_disponivel + extra
+      };
+    });
+  }, [produtosEstoque, mapaPorProduto, incluirProducaoAgendada]);
+
   const handlePercentualChange = (value: string) => {
     const num = parseInt(value, 10);
     if (isNaN(num)) return;
@@ -292,15 +306,14 @@ export default function ProjecaoProducaoTab() {
           ordemProdutosNecessarios={ordemProdutosNecessarios}
           loadingNecessarios={loading}
           producaoAgendada={mapaPorProduto}
+          incluirProducaoAgendada={incluirProducaoAgendada}
+          onIncluirProducaoAgendadaChange={setIncluirProducaoAgendada}
         />
       </div>
 
       <SugestaoProducao 
         produtosNecessarios={produtosOrdenados}
-        estoqueDisponivel={produtosEstoque.map(p => ({
-          produto_id: p.produto_id,
-          estoque_disponivel: p.estoque_disponivel
-        }))}
+        estoqueDisponivel={estoqueAjustado}
         loading={loading}
       />
     </div>
