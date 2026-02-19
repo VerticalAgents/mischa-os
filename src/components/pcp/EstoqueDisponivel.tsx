@@ -14,16 +14,33 @@ interface EstoqueDisponivelProps {
   ordemProdutosNecessarios?: string[];
   loadingNecessarios?: boolean;
   producaoAgendada?: Record<string, number>;
+  incluirProducaoAgendada?: boolean;
+  onIncluirProducaoAgendadaChange?: (value: boolean) => void;
 }
 export default function EstoqueDisponivel({
   quantidadesNecessarias = {},
   ordemProdutosNecessarios = [],
   loadingNecessarios = false,
-  producaoAgendada = {}
+  producaoAgendada = {},
+  incluirProducaoAgendada: incluirProducaoAgendadaProp,
+  onIncluirProducaoAgendadaChange
 }: EstoqueDisponivelProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [showSemPrevisao, setShowSemPrevisao] = useState(false);
-  const [incluirProducaoAgendada, setIncluirProducaoAgendada] = useState(false);
+  const [incluirProducaoAgendadaInterno, setIncluirProducaoAgendadaInterno] = useState(false);
+
+  // Usar estado externo (controlado) quando prop for fornecida, caso contrário usar estado interno
+  const incluirProducaoAgendada = incluirProducaoAgendadaProp !== undefined
+    ? incluirProducaoAgendadaProp
+    : incluirProducaoAgendadaInterno;
+
+  const setIncluirProducaoAgendada = (value: boolean) => {
+    if (onIncluirProducaoAgendadaChange) {
+      onIncluirProducaoAgendadaChange(value);
+    } else {
+      setIncluirProducaoAgendadaInterno(value);
+    }
+  };
   const {
     produtos,
     loading,
