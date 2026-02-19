@@ -1,87 +1,97 @@
 
-# Card de Probabilidade Geral de Confirmacao + Toggle Integrado no Dashboard
+# Integrar Toggle "Incluir Prod. Agendada" ao Calculo de Formas da Sugestao de Producao
 
-## O que sera criado
+## Problema identificado
 
-1. **Novo card no topo do dashboard** mostrando a probabilidade media de confirmacao dos previstos da semana em visualizacao
-2. **Toggle "Incluir previstos"** integrado no dashboard (similar ao que existe no PCP), com um slider de percentual que, quando ativado, usa a probabilidade media calculada como valor padrao
+O fluxo atual tem uma desconexao entre o toggle e o calculo:
 
-## Detalhes da implementacao
+```text
+ProjecaoProducaoTab
+├── ProducaoAgendadaCard  (exibe prod. agendada)
+├── EstoqueDisponivel
+│   ├── toggle "Incluir prod. agendada"  ← estado LOCAL (isolado)
+│   └── mostra estoque ajustado visualmente
+└── SugestaoProducao
+    └── recebe estoqueDisponivel direto do useEstoqueDisponivel ← ignora toggle!
+```
 
-### 1. Calcular scores de todos os previstos da semana
+O `SugestaoProducao` calcula as formas com base no `estoque_disponivel` cru, sem considerar a producao agendada, mesmo quando o toggle esta ativado em `EstoqueDisponivel`.
 
-Atualmente, `useConfirmationScore` so roda para `agendamentosDiaSelecionado`. Precisamos de uma segunda chamada do hook para os previstos da semana inteira.
+## Solucao
 
-**Arquivo: `src/components/agendamento/AgendamentoDashboard.tsx`**
+### 1. Elevar o estado do toggle para `ProjecaoProducaoTab`
 
-- Criar um `useMemo` que filtra apenas os agendamentos previstos da semana atual:
+O toggle `incluirProducaoAgendada` e `mapaPorProduto` (producao agendada por produto) precisam ser gerenciados no nivel do pai (`ProjecaoProducaoTab`) e propagados para baixo.
+
+### 2. Refatorar `EstoqueDisponivel`
+
+Adicionar props opcionais para receber o estado do toggle do pai:
 ```typescript
-const previstosSemanais = useMemo(() => {
-  const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
-  const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
-  return agendamentosFiltrados.filter(a => {
-    const data = new Date(a.dataReposicao);
-    return data >= inicioSemana && data <= fimSemana && a.statusAgendamento === "Previsto";
+interface EstoqueDisponivelProps {
+  // props existentes ...
+  incluirProducaoAgendada?: boolean;
+  onIncluirProducaoAgendadaChange?: (value: boolean) => void;
+}
+```
+
+Quando essas props forem fornecidas, o componente usa o estado externo em vez do interno.
+
+### 3. Calcular estoque ajustado em `ProjecaoProducaoTab`
+
+Criar um `useMemo` que aplica a producao agendada ao estoque disponivel dos produtos quando o toggle esta ativo:
+
+```typescript
+const estoqueAjustado = useMemo(() => {
+  return produtosEstoque.map(p => {
+    const extra = incluirProducaoAgendada ? (mapaPorProduto[p.produto_id] || 0) : 0;
+    return {
+      produto_id: p.produto_id,
+      estoque_disponivel: p.estoque_disponivel + extra
+    };
   });
-}, [agendamentosFiltrados, semanaAtual]);
+}, [produtosEstoque, mapaPorProduto, incluirProducaoAgendada]);
 ```
 
-- Chamar `useConfirmationScore(previstosSemanais)` para obter os scores semanais
-- Calcular a media ponderada dos scores
+### 4. Passar estoque ajustado para `SugestaoProducao`
 
-### 2. Novo card "Probabilidade de Confirmacao"
+Em vez de passar o estoque bruto, passar o `estoqueAjustado`:
 
-Posicionar acima dos cards de indicadores existentes (antes da grid de 5 cards). O card mostrara:
+```typescript
+// Antes (linha 300-304):
+<SugestaoProducao 
+  estoqueDisponivel={produtosEstoque.map(p => ({
+    produto_id: p.produto_id,
+    estoque_disponivel: p.estoque_disponivel
+  }))}
+/>
 
-- **Probabilidade media** da semana (ex: 72%)
-- **Barra de progresso** colorida (verde >85%, amarelo 50-84%, vermelho <50%)
-- **Breakdown por faixa**: quantos previstos estao em cada faixa (verde/amarelo/vermelho)
-- **Toggle "Incluir previstos"** com campo de percentual editavel
-  - Quando desativado: percentual = 0% (so confirmados contam)
-  - Quando ativado: percentual inicia com o valor da probabilidade media calculada
-  - O percentual pode ser ajustado manualmente pelo usuario (input numerico de 1-100%)
-
-### 3. Propagar o percentual para o QuantidadesProdutosSemanal
-
-O toggle e percentual do novo card substituirao o toggle que ja existe dentro do `QuantidadesProdutosSemanal`. O componente passara a receber `incluirPrevistos` e `percentualPrevistos` como props em vez de gerenciar internamente.
-
-**Arquivo: `src/components/agendamento/QuantidadesProdutosSemanal.tsx`**
-
-- Adicionar props: `incluirPrevistos: boolean` e `percentualPrevistos: number`
-- Remover o estado interno e o toggle de "Incluir previstos"
-- Ao calcular quantidades de previstos, multiplicar por `percentualPrevistos / 100` e aplicar `Math.ceil`
-
-**Arquivo: `src/components/agendamento/AgendamentoDashboard.tsx`**
-
-- Gerenciar os estados `incluirPrevistos` e `percentualPrevistos` no nivel do dashboard
-- Passar como props para `QuantidadesProdutosSemanal`
-- Exibir no novo card
-
-### 4. Layout do novo card
-
-```
-+------------------------------------------------------------------+
-| Probabilidade de Confirmacao          [ ] Incluir previstos [72]% |
-| Probabilidade media dos previstos desta semana                    |
-|                                                                   |
-|   72%  [=============================          ]                  |
-|                                                                   |
-|   Alta (>85%): 5   |   Media (50-84%): 8   |   Baixa (<50%): 3   |
-+------------------------------------------------------------------+
+// Depois:
+<SugestaoProducao 
+  estoqueDisponivel={estoqueAjustado}
+/>
 ```
 
-- Cor da barra segue a media: verde se >85%, amarelo se 50-84%, vermelho se <50%
-- Os contadores por faixa usam as mesmas cores dos badges existentes
-- Quando o toggle "Incluir previstos" e ativado, o campo de percentual inicia automaticamente com o valor da probabilidade media (arredondado)
+## Arquivos alterados
 
-### 5. Impacto nos indicadores existentes
+### `src/components/pcp/ProjecaoProducaoTab.tsx`
+- Adicionar estado `incluirProducaoAgendada` (boolean, false por default)
+- Criar `estoqueAjustado` useMemo que soma a producao agendada quando toggle ativo
+- Passar `incluirProducaoAgendada` e callback `onIncluirProducaoAgendadaChange` para `EstoqueDisponivel`
+- Passar `estoqueAjustado` para `SugestaoProducao`
 
-O card "Total da Semana" (unidades) passara a considerar o percentual dos previstos quando o toggle estiver ativado:
-- Confirmados: 100% das unidades
-- Previstos: `percentualPrevistos%` das unidades (com Math.ceil)
-- Entregas realizadas: 100%
+### `src/components/pcp/EstoqueDisponivel.tsx`
+- Adicionar props opcionais `incluirProducaoAgendada?: boolean` e `onIncluirProducaoAgendadaChange?: (v: boolean) => void`
+- Quando as props forem fornecidas, usar o estado externo (controlado); caso contrario, manter comportamento atual com estado interno (para retro-compatibilidade)
 
-### Arquivos alterados
+## Impacto no calculo de formas
 
-1. `src/components/agendamento/AgendamentoDashboard.tsx` - Novo card, estados do toggle, segunda chamada do hook, propagacao de props
-2. `src/components/agendamento/QuantidadesProdutosSemanal.tsx` - Receber props em vez de gerenciar toggle internamente
+Com essa mudanca, quando o usuario ativar "Incluir prod. agendada" no card de Estoque Disponivel:
+
+- O estoque disponivel considerado pelo `SugestaoProducao` aumenta pela quantidade agendada
+- Produtos com producao ja agendada suficiente passarao a mostrar "Estoque OK" em vez de sugerir formas
+- O numero total de formas sugeridas diminuira corretamente, refletindo a producao que ja esta planejada
+
+Exemplo:
+- Produto X: estoque = -10, producao agendada = 30, estoque alvo = 5
+- Sem toggle: estoque_atual = -10 → precisa produzir 10 + 5 = 15 un → N formas
+- Com toggle ativo: estoque_atual = -10 + 30 = +20 → precisa produzir max(0, 5 - 20) = 0 → Estoque OK
