@@ -364,13 +364,14 @@ export default function AgendamentoEditModal({
                   {dataReposicao ? format(dataReposicao, "PPP", { locale: ptBR }) : "Selecione uma data"}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0" align="start" onInteractOutside={(e) => e.preventDefault()}>
                 <Calendar
                   mode="single"
                   selected={dataReposicao}
                   onSelect={setDataReposicao}
                   locale={ptBR}
                   initialFocus
+                  className={cn("p-3 pointer-events-auto")}
                 />
               </PopoverContent>
             </Popover>
