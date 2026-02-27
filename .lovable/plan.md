@@ -1,21 +1,45 @@
 
-# Busca por CNPJ sem pontuacao
 
-## Alteracao
+# Busca por CNPJ sem pontuacao no Dashboard e Clientes
 
-No filtro de busca em `TodosAgendamentos.tsx`, normalizar tanto o termo digitado quanto o CNPJ do cliente removendo caracteres de pontuacao (`.`, `/`, `-`) antes de comparar.
+## O que muda
 
-## Detalhe tecnico
+Dois lugares serao ajustados para permitir busca por CNPJ (com ou sem pontuacao):
 
-**Arquivo: `src/components/agendamento/TodosAgendamentos.tsx`**
+### 1. Dashboard do Agendamento (`AgendamentoDashboard.tsx`)
 
-Na linha onde o CNPJ e comparado, trocar:
+O filtro "Buscar cliente..." hoje so busca pelo nome. Sera adicionada busca por CNPJ com normalizacao (removendo `.`, `-`, `/`).
+
+**Linha 195-196** - de:
 ```typescript
-(agendamento.cliente.cnpjCpf || '').toLowerCase().includes(term)
+filtrados = filtrados.filter(agendamento => 
+  agendamento.cliente.nome.toLowerCase().includes(termoBusca)
+);
 ```
-por:
+para:
 ```typescript
-(agendamento.cliente.cnpjCpf || '').replace(/[.\-\/]/g, '').toLowerCase().includes(term.replace(/[.\-\/]/g, ''))
+filtrados = filtrados.filter(agendamento => 
+  agendamento.cliente.nome.toLowerCase().includes(termoBusca) ||
+  (agendamento.cliente.cnpjCpf || '').replace(/[.\-\/]/g, '').toLowerCase().includes(termoBusca.replace(/[.\-\/]/g, ''))
+);
 ```
 
-Isso permite buscar `12345678000190` e encontrar `12.345.678/0001-90`, e vice-versa. Apenas 1 linha alterada.
+O placeholder sera atualizado para `"Buscar cliente ou CNPJ..."`.
+
+### 2. Menu Clientes (`useClienteStore.ts`)
+
+A busca por CNPJ ja existe, mas nao normaliza pontuacao. Sera ajustada.
+
+**Linha 539** - de:
+```typescript
+cliente.cnpjCpf.includes(filtros.termo)
+```
+para:
+```typescript
+(cliente.cnpjCpf || '').replace(/[.\-\/]/g, '').toLowerCase().includes(filtros.termo.replace(/[.\-\/]/g, '').toLowerCase())
+```
+
+## Arquivos alterados
+
+- `src/components/agendamento/AgendamentoDashboard.tsx` - adicionar busca por CNPJ no filtro
+- `src/hooks/useClienteStore.ts` - normalizar pontuacao na busca por CNPJ
