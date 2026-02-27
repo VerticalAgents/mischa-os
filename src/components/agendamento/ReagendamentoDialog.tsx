@@ -205,7 +205,7 @@ export default function ReagendamentoDialog({
                           )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => e.preventDefault()}>
                         <CalendarComponent
                           mode="single"
                           selected={dataSelecionada}
@@ -214,6 +214,7 @@ export default function ReagendamentoDialog({
                             date < new Date() || disableWeekends(date)
                           }
                           initialFocus
+                          className={cn("p-3 pointer-events-auto")}
                         />
                       </PopoverContent>
                     </Popover>
