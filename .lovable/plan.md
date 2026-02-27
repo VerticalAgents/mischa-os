@@ -1,31 +1,50 @@
 
-# Corrigir fechamento do calendario ao clicar fora
+# Adicionar "Sem representante" no filtro de representantes
 
-## Problema
+## O que muda
 
-O `onInteractOutside={(e) => e.preventDefault()}` impede que o Popover feche ao clicar fora, porque bloqueia todas as interacoes externas. Precisamos permitir o fechamento do Popover mas impedir que o clique propague para o Dialog (que fecharia o modal).
+O filtro de representantes na Separacao de Pedidos (e Despacho, que usa o mesmo componente) vai ganhar uma opcao "Sem representante" para filtrar pedidos que nao tem representante associado.
 
-## Solucao
+## Abordagem
 
-Trocar `e.preventDefault()` por `e.stopPropagation()` nos 3 arquivos. Isso permite que o Popover feche normalmente ao clicar fora, mas impede que o evento chegue ao Dialog pai.
+Usar um ID especial (ex: `-1`) para representar "Sem representante" na lista de IDs selecionados. Isso evita mudar a interface do componente (continua `number[]`).
 
 ## Arquivos alterados
 
-### 1. `src/components/agendamento/AgendamentoEditModal.tsx` (linha 367)
+### 1. `RepresentantesFilter.tsx`
 
-De:
+- Adicionar uma opcao "Sem representante" na lista, entre "Todos" e os representantes reais, usando o ID `-1`
+- Ajustar `handleToggleAll` para incluir `-1` ao selecionar todos
+- Ajustar `allSelected` para considerar o `-1`
+- Ajustar `getButtonText` para mostrar "Sem representante" quando so `-1` esta selecionado
+
+### 2. `SeparacaoPedidos.tsx` (linha 206-207)
+
+Ajustar a logica de filtragem para tratar o ID `-1`:
+
 ```typescript
-onInteractOutside={(e) => e.preventDefault()}
+const incluiSemRepresentante = filtroRepresentantes.includes(-1);
+const idsReais = filtroRepresentantes.filter(id => id !== -1);
+
+const matchRepresentante = filtroRepresentantes.length === 0 ||
+  (incluiSemRepresentante && !pedido.representante_id) ||
+  (pedido.representante_id && idsReais.includes(pedido.representante_id));
 ```
-Para:
+
+### 3. `Despacho.tsx` (linha 168-171)
+
+Mesma logica de filtragem:
+
 ```typescript
-onInteractOutside={(e) => e.stopPropagation()}
+const incluiSemRepresentante = filtroRepresentantes.includes(-1);
+const idsReais = filtroRepresentantes.filter(id => id !== -1);
+
+resultado = resultado.filter(pedido =>
+  (incluiSemRepresentante && !pedido.representante_id) ||
+  (pedido.representante_id && idsReais.includes(pedido.representante_id))
+);
 ```
 
-### 2. `src/components/agendamento/ReagendamentoDialog.tsx` (linha 208)
+## Resultado
 
-Mesma troca de `preventDefault` para `stopPropagation`.
-
-### 3. `src/components/agendamento/ReagendamentoEmMassaDialog.tsx` (linha 259)
-
-Mesma troca de `preventDefault` para `stopPropagation`.
+O usuario podera filtrar por representantes especificos, por "Sem representante", ou combinar ambos.
