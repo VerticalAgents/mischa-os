@@ -76,7 +76,7 @@ export default function TodosAgendamentos() {
       agendamento.cliente.nome.toLowerCase().includes(term) ||
       agendamento.statusAgendamento.toLowerCase().includes(term) ||
       (agendamento.pedido?.tipoPedido || 'Padrão').toLowerCase().includes(term) ||
-      (agendamento.cliente.cnpjCpf || '').toLowerCase().includes(term)
+      (agendamento.cliente.cnpjCpf || '').replace(/[.\-\/]/g, '').toLowerCase().includes(term.replace(/[.\-\/]/g, ''))
     );
   }, [agendamentosFiltradosPorStatus, searchTerm]);
 
