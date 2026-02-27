@@ -359,35 +359,53 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
       const clienteAtualizado = transformDbRowToCliente(data);
       console.log('✅ CLIENTE ATUALIZADO COM SUCESSO:', clienteAtualizado.id);
 
-      // Sincronizar com GestaoClick se cliente tiver ID vinculado
+      // Sincronizar: buscar dados do GestaoClick e atualizar Lovable (GC é fonte da verdade)
       if (clienteAtualizado.gestaoClickClienteId) {
         try {
-          console.log('🔄 Sincronizando atualização com GestaoClick...');
+          console.log('🔄 Buscando dados atualizados do GestaoClick...');
           const { data: gcResult, error: gcError } = await supabase.functions.invoke('gestaoclick-proxy', {
             body: {
-              action: 'atualizar_cliente_gc',
-              gestaoclick_cliente_id: clienteAtualizado.gestaoClickClienteId,
-              nome: cliente.nome,
-              tipo_pessoa: cliente.tipoPessoa || 'PJ',
-              cnpj_cpf: cliente.cnpjCpf,
-              inscricao_estadual: cliente.tipoPessoa === 'PJ' ? cliente.inscricaoEstadual : undefined,
-              endereco: cliente.enderecoEntrega,
-              contato_nome: cliente.contatoNome,
-              contato_telefone: cliente.contatoTelefone,
-              contato_email: cliente.contatoEmail,
-              observacoes: cliente.observacoes
+              action: 'buscar_cliente_gc',
+              gestaoclick_cliente_id: clienteAtualizado.gestaoClickClienteId
             }
           });
 
           if (gcError) {
-            console.warn('⚠️ Erro ao sincronizar com GestaoClick:', gcError);
-            toast.warning('Cliente atualizado, mas erro na sincronização com GestaoClick');
-          } else if (gcResult?.success) {
-            console.log('✅ Cliente sincronizado com GestaoClick');
-            toast.success('Cliente atualizado e sincronizado com GestaoClick');
+            console.warn('⚠️ Erro ao buscar dados do GestaoClick:', gcError);
+          } else if (gcResult?.success && gcResult?.cliente) {
+            const gcCliente = gcResult.cliente;
+            console.log('✅ Dados recebidos do GestaoClick:', gcCliente);
+
+            // Determinar cnpj_cpf baseado no tipo_pessoa do GC
+            const cnpjCpfGc = gcCliente.tipo_pessoa === 'PJ' ? gcCliente.cnpj : gcCliente.cpf;
+
+            // Atualizar campos no Supabase com dados do GC
+            const camposGc: any = {
+              nome: gcCliente.nome || clienteAtualizado.nome,
+              tipo_pessoa: gcCliente.tipo_pessoa || 'PJ',
+              inscricao_estadual: gcCliente.inscricao_estadual || ''
+            };
+            if (cnpjCpfGc) {
+              camposGc.cnpj_cpf = cnpjCpfGc;
+            }
+
+            const { error: updateError } = await supabase
+              .from('clientes')
+              .update(camposGc)
+              .eq('id', id);
+
+            if (updateError) {
+              console.warn('⚠️ Erro ao atualizar Lovable com dados do GC:', updateError);
+            } else {
+              console.log('✅ Lovable atualizado com dados do GestaoClick');
+              // Atualizar estado local
+              clienteAtualizado.nome = camposGc.nome;
+              clienteAtualizado.tipoPessoa = camposGc.tipo_pessoa;
+              clienteAtualizado.inscricaoEstadual = camposGc.inscricao_estadual;
+              if (cnpjCpfGc) clienteAtualizado.cnpjCpf = cnpjCpfGc;
+            }
           } else if (gcResult?.error) {
             console.warn('⚠️ GestaoClick retornou erro:', gcResult.error);
-            toast.warning(`Cliente atualizado localmente. GestaoClick: ${gcResult.error}`);
           }
         } catch (gcSyncError: any) {
           console.warn('⚠️ Falha na sincronização com GestaoClick (não bloqueante):', gcSyncError);

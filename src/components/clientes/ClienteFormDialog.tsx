@@ -300,12 +300,21 @@ export default function ClienteFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 notranslate" translate="no">`
+        <form onSubmit={handleSubmit} className="space-y-6 notranslate" translate="no">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Dados Básicos</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Alerta: campos gerenciados pelo GestaoClick */}
+              {cliente?.gestaoClickClienteId && (
+              <Alert className="border-warning bg-warning/10">
+                  <AlertCircle className="h-4 w-4 text-warning" />
+                  <AlertDescription className="text-warning-foreground">
+                    Campos de identificação (Nome, Tipo de Pessoa, CNPJ/CPF, Inscrição Estadual) são gerenciados pelo GestaoClick. Edite diretamente no GC.
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -350,6 +359,8 @@ export default function ClienteFormDialog({
                     value={formData.nome || ''}
                     onChange={(e) => handleInputChange('nome', e.target.value)}
                     required
+                    disabled={!!cliente?.gestaoClickClienteId}
+                    className={cliente?.gestaoClickClienteId ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                   />
                 </div>
                 <div className="space-y-2">
@@ -358,6 +369,7 @@ export default function ClienteFormDialog({
                     value={formData.tipoPessoa || 'PJ'}
                     onValueChange={(value: TipoPessoa) => handleInputChange('tipoPessoa', value)}
                     className="flex items-center gap-4"
+                    disabled={!!cliente?.gestaoClickClienteId}
                   >
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="PJ" id="tipoPessoa-pj" />
@@ -379,6 +391,8 @@ export default function ClienteFormDialog({
                     value={formData.cnpjCpf || ''}
                     onChange={(e) => handleInputChange('cnpjCpf', e.target.value)}
                     placeholder={formData.tipoPessoa === 'PF' ? '000.000.000-00' : '00.000.000/0000-00'}
+                    disabled={!!cliente?.gestaoClickClienteId}
+                    className={cliente?.gestaoClickClienteId ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                   />
                 </div>
                 {formData.tipoPessoa === 'PJ' && (
@@ -389,6 +403,8 @@ export default function ClienteFormDialog({
                       value={formData.inscricaoEstadual || ''}
                       onChange={(e) => handleInputChange('inscricaoEstadual', e.target.value)}
                       placeholder="Ex: 123456789"
+                      disabled={!!cliente?.gestaoClickClienteId}
+                      className={cliente?.gestaoClickClienteId ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                     />
                   </div>
                 )}

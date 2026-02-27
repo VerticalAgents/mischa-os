@@ -2030,21 +2030,22 @@ Deno.serve(async (req) => {
       }
 
       case 'atualizar_cliente_gc': {
-        // Update client in GestaoClick when updating in Lovable
-        const { 
-          gestaoclick_cliente_id,
-          nome, 
-          tipo_pessoa,
-          cnpj_cpf, 
-          inscricao_estadual,
-          endereco, 
-          contato_nome, 
-          contato_telefone, 
-          contato_email, 
-          observacoes
-        } = params;
+        // DEPRECATED: Não mais utilizado. A sincronização agora é GC → Lovable.
+        console.warn('[gestaoclick-proxy] Action atualizar_cliente_gc DEPRECATED - use buscar_cliente_gc');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Action descontinuada. A sincronização agora é feita do GestaoClick para o Lovable via buscar_cliente_gc.'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'buscar_cliente_gc': {
+        // Buscar dados de um único cliente no GestaoClick pelo ID
+        const { gestaoclick_cliente_id } = params;
         
-        console.log('[gestaoclick-proxy] Atualizando cliente no GC:', { gestaoclick_cliente_id, nome, tipo_pessoa, inscricao_estadual });
+        console.log('[gestaoclick-proxy] Buscando cliente no GC:', gestaoclick_cliente_id);
         
         if (!userId) {
           return new Response(
@@ -2077,119 +2078,64 @@ Deno.serve(async (req) => {
 
         const config = configData.config as GestaoClickConfig;
 
-        // Use tipo_pessoa from params, or determine from document length
-        const docLimpo = (cnpj_cpf || '').replace(/\D/g, '');
-        const tipoPessoa = tipo_pessoa || (docLimpo.length > 11 ? 'PJ' : 'PF');
-        
-        // Build request body for GestaoClick
-        const clienteGcBody: any = {
-          tipo_pessoa: tipoPessoa,
-          nome: nome || '',
-        };
-
-        // Add document based on type
-        if (tipoPessoa === 'PJ') {
-          clienteGcBody.cnpj = cnpj_cpf || '';
-          clienteGcBody.razao_social = nome || '';
-          // Add inscricao_estadual (IE) for PJ
-          if (inscricao_estadual) {
-            clienteGcBody.ie = inscricao_estadual;
-          }
-        } else {
-          clienteGcBody.cpf = cnpj_cpf || '';
-        }
-
-        // Add contact info
-        if (contato_telefone) {
-          clienteGcBody.celular = contato_telefone;
-        }
-        if (contato_email) {
-          clienteGcBody.email = contato_email;
-        }
-
-        // Add loja_id if configured
-        if (config.loja_id) {
-          clienteGcBody.loja_id = config.loja_id;
-        }
-
-        // Add contact as array if contato_nome provided
-        if (contato_nome) {
-          clienteGcBody.contatos = [{
-            contato: {
-              nome: contato_nome,
-              contato: contato_email || contato_telefone || '',
-              cargo: '',
-              observacao: observacoes || ''
-            }
-          }];
-        }
-
-        // Add address if provided
-        if (endereco) {
-          clienteGcBody.enderecos = [{
-            endereco: {
-              logradouro: endereco,
-              numero: '',
-              complemento: '',
-              bairro: '',
-              nome_cidade: '',
-              estado: ''
-            }
-          }];
-        }
-
-        console.log('[gestaoclick-proxy] Payload para atualizar cliente:', JSON.stringify(clienteGcBody));
-
-        // Call GestaoClick API to update client (PUT)
-        const updateResponse = await fetch(`${GESTAOCLICK_BASE_URL}/clientes/${gestaoclick_cliente_id}`, {
-          method: 'PUT',
+        // GET client from GestaoClick
+        const getResponse = await fetch(`${GESTAOCLICK_BASE_URL}/clientes/${gestaoclick_cliente_id}`, {
+          method: 'GET',
           headers: {
             'Content-Type': 'application/json',
             'access-token': config.access_token,
             'secret-access-token': config.secret_token,
           },
-          body: JSON.stringify(clienteGcBody),
         });
 
-        const updateText = await updateResponse.text();
-        console.log('[gestaoclick-proxy] Resposta atualizar cliente GC:', updateText);
+        const getText = await getResponse.text();
+        console.log('[gestaoclick-proxy] Resposta buscar cliente GC:', getText.substring(0, 500));
 
-        // Parse response
-        let updateData;
+        let getData;
         try {
-          updateData = JSON.parse(updateText);
+          getData = JSON.parse(getText);
         } catch {
-          console.error('[gestaoclick-proxy] Erro ao parsear resposta:', updateText);
           return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: 'Resposta inválida do GestaoClick',
-              raw_response: updateText.substring(0, 500)
-            }),
+            JSON.stringify({ success: false, error: 'Resposta inválida do GestaoClick' }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Check for errors
-        if (hasGCError(updateText, updateResponse.status)) {
-          console.error('[gestaoclick-proxy] Erro ao atualizar cliente no GC:', updateData);
+        if (hasGCError(getText, getResponse.status)) {
           return new Response(
             JSON.stringify({ 
               success: false, 
-              error: updateData.mensagem || updateData.message || 'Erro ao atualizar cliente no GestaoClick',
-              details: updateData
+              error: getData.mensagem || getData.message || 'Erro ao buscar cliente no GestaoClick'
             }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        console.log('[gestaoclick-proxy] Cliente atualizado no GC:', gestaoclick_cliente_id);
+        // Extract client data - GC returns { data: { Cliente: { ... } } } or { data: { ... } }
+        const clienteGc = getData.data?.Cliente || getData.data || getData;
+        
+        console.log('[gestaoclick-proxy] Cliente GC encontrado:', {
+          id: clienteGc.id,
+          nome: clienteGc.nome,
+          razao_social: clienteGc.razao_social,
+          tipo_pessoa: clienteGc.tipo_pessoa,
+          cnpj: clienteGc.cnpj,
+          cpf: clienteGc.cpf,
+          ie: clienteGc.ie
+        });
 
         return new Response(
           JSON.stringify({ 
-            success: true, 
-            gestaoclick_cliente_id: gestaoclick_cliente_id,
-            message: `Cliente atualizado no GestaoClick`
+            success: true,
+            cliente: {
+              id: clienteGc.id,
+              nome: clienteGc.nome || '',
+              razao_social: clienteGc.razao_social || '',
+              tipo_pessoa: clienteGc.tipo_pessoa || 'PJ',
+              cnpj: clienteGc.cnpj || '',
+              cpf: clienteGc.cpf || '',
+              inscricao_estadual: clienteGc.ie || ''
+            }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
