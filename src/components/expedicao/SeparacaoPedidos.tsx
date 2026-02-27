@@ -203,8 +203,11 @@ const SeparacaoPedidos = () => {
         matchData = dataPedido >= inicioSemana && dataPedido <= fimSemana;
       }
 
+      const incluiSemRepresentante = filtroRepresentantes.includes(-1);
+      const idsReais = filtroRepresentantes.filter(id => id !== -1);
       const matchRepresentante = filtroRepresentantes.length === 0 ||
-        (pedido.representante_id && filtroRepresentantes.includes(pedido.representante_id));
+        (incluiSemRepresentante && !pedido.representante_id) ||
+        (pedido.representante_id && idsReais.includes(pedido.representante_id));
 
       return matchTexto && matchTipoPedido && matchData && matchRepresentante;
     });

@@ -166,8 +166,11 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
     // Filtro por representante
     if (filtroRepresentantes.length > 0) {
+      const incluiSemRepresentante = filtroRepresentantes.includes(-1);
+      const idsReais = filtroRepresentantes.filter(id => id !== -1);
       resultado = resultado.filter(pedido =>
-        pedido.representante_id && filtroRepresentantes.includes(pedido.representante_id)
+        (incluiSemRepresentante && !pedido.representante_id) ||
+        (pedido.representante_id && idsReais.includes(pedido.representante_id))
       );
     }
 
