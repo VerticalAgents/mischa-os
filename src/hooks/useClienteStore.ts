@@ -536,7 +536,7 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
     return clientes.filter((cliente) => {
       const matchesTermo = !filtros.termo || 
         cliente.nome.toLowerCase().includes(filtros.termo.toLowerCase()) ||
-        cliente.cnpjCpf.includes(filtros.termo) ||
+        (cliente.cnpjCpf || '').replace(/[.\-\/]/g, '').toLowerCase().includes(filtros.termo.replace(/[.\-\/]/g, '').toLowerCase()) ||
         cliente.enderecoEntrega.toLowerCase().includes(filtros.termo.toLowerCase());
 
       const matchesStatus = !filtros.status || 
