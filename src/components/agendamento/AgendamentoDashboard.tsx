@@ -193,7 +193,8 @@ export default function AgendamentoDashboard() {
     if (filtroNome.trim()) {
       const termoBusca = filtroNome.toLowerCase().trim();
       filtrados = filtrados.filter(agendamento => 
-        agendamento.cliente.nome.toLowerCase().includes(termoBusca)
+        agendamento.cliente.nome.toLowerCase().includes(termoBusca) ||
+        (agendamento.cliente.cnpjCpf || '').replace(/[.\-\/]/g, '').toLowerCase().includes(termoBusca.replace(/[.\-\/]/g, ''))
       );
     }
     
@@ -831,7 +832,7 @@ export default function AgendamentoDashboard() {
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar cliente..."
+                placeholder="Buscar cliente ou CNPJ..."
                 value={filtroNome}
                 onChange={(e) => setFiltroNome(e.target.value)}
                 className="pl-8 h-9 w-48"
