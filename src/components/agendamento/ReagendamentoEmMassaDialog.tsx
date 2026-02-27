@@ -256,7 +256,7 @@ export default function ReagendamentoEmMassaDialog({
                       )}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start" onInteractOutside={(e) => e.preventDefault()}>
+                  <PopoverContent className="w-auto p-0" align="start" onInteractOutside={(e) => e.stopPropagation()}>
                     <Calendar
                       mode="single"
                       selected={dataSelecionada}
