@@ -18,6 +18,8 @@ export const RepresentantesFilter = ({
   const [open, setOpen] = React.useState(false);
 
   const representantesAtivos = representantes.filter((r) => r.ativo);
+  const SEM_REPRESENTANTE_ID = -1;
+  const totalOpcoes = representantesAtivos.length + 1; // +1 para "Sem representante"
 
   const handleToggle = (id: number) => {
     if (selectedIds.includes(id)) {
@@ -28,19 +30,20 @@ export const RepresentantesFilter = ({
   };
 
   const handleToggleAll = () => {
-    if (selectedIds.length === representantesAtivos.length) {
+    if (selectedIds.length === totalOpcoes) {
       onSelectionChange([]);
     } else {
-      onSelectionChange(representantesAtivos.map((r) => r.id));
+      onSelectionChange([SEM_REPRESENTANTE_ID, ...representantesAtivos.map((r) => r.id)]);
     }
   };
 
-  const allSelected = selectedIds.length === representantesAtivos.length;
+  const allSelected = selectedIds.length === totalOpcoes;
   const noneSelected = selectedIds.length === 0;
 
   const getButtonText = () => {
     if (noneSelected || allSelected) return "Todos os representantes";
     if (selectedIds.length === 1) {
+      if (selectedIds[0] === SEM_REPRESENTANTE_ID) return "Sem representante";
       const rep = representantesAtivos.find((r) => r.id === selectedIds[0]);
       return rep?.nome || "1 representante";
     }
@@ -78,6 +81,20 @@ export const RepresentantesFilter = ({
           </div>
         </div>
         <div className="max-h-[300px] overflow-y-auto p-2">
+          {/* Sem representante */}
+          <div className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded cursor-pointer">
+            <Checkbox
+              checked={selectedIds.includes(SEM_REPRESENTANTE_ID)}
+              onCheckedChange={() => handleToggle(SEM_REPRESENTANTE_ID)}
+              id="rep-sem"
+            />
+            <label
+              htmlFor="rep-sem"
+              className="flex-1 cursor-pointer text-sm italic text-muted-foreground"
+            >
+              Sem representante
+            </label>
+          </div>
           {representantesAtivos.map((rep) => (
             <div
               key={rep.id}
