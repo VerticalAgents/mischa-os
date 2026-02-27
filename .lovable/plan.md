@@ -1,45 +1,60 @@
 
+# Corrigir seletor de data nos modais de agendamento
 
-# Busca por CNPJ sem pontuacao no Dashboard e Clientes
+## Problema
 
-## O que muda
+O calendario (date picker) dentro dos modais de agendamento nao funciona corretamente: nao e possivel navegar entre meses e ao clicar em uma data, o clique "atravessa" o calendario e fecha o modal. Isso acontece porque o Popover do calendario dentro de um Dialog do Radix UI tem conflitos de eventos.
 
-Dois lugares serao ajustados para permitir busca por CNPJ (com ou sem pontuacao):
+## Solucao
 
-### 1. Dashboard do Agendamento (`AgendamentoDashboard.tsx`)
+Dois ajustes em cada modal afetado:
 
-O filtro "Buscar cliente..." hoje so busca pelo nome. Sera adicionada busca por CNPJ com normalizacao (removendo `.`, `-`, `/`).
-
-**Linha 195-196** - de:
-```typescript
-filtrados = filtrados.filter(agendamento => 
-  agendamento.cliente.nome.toLowerCase().includes(termoBusca)
-);
-```
-para:
-```typescript
-filtrados = filtrados.filter(agendamento => 
-  agendamento.cliente.nome.toLowerCase().includes(termoBusca) ||
-  (agendamento.cliente.cnpjCpf || '').replace(/[.\-\/]/g, '').toLowerCase().includes(termoBusca.replace(/[.\-\/]/g, ''))
-);
-```
-
-O placeholder sera atualizado para `"Buscar cliente ou CNPJ..."`.
-
-### 2. Menu Clientes (`useClienteStore.ts`)
-
-A busca por CNPJ ja existe, mas nao normaliza pontuacao. Sera ajustada.
-
-**Linha 539** - de:
-```typescript
-cliente.cnpjCpf.includes(filtros.termo)
-```
-para:
-```typescript
-(cliente.cnpjCpf || '').replace(/[.\-\/]/g, '').toLowerCase().includes(filtros.termo.replace(/[.\-\/]/g, '').toLowerCase())
-```
+1. Adicionar `pointer-events-auto` na classe do Calendar para garantir interatividade
+2. Adicionar `onInteractOutside={(e) => e.preventDefault()}` no `PopoverContent` para evitar que cliques no calendario fechem o popover/dialog
 
 ## Arquivos alterados
 
-- `src/components/agendamento/AgendamentoDashboard.tsx` - adicionar busca por CNPJ no filtro
-- `src/hooks/useClienteStore.ts` - normalizar pontuacao na busca por CNPJ
+### 1. `src/components/agendamento/AgendamentoEditModal.tsx` (linhas 367-374)
+
+Atualizar o PopoverContent e Calendar:
+```typescript
+<PopoverContent className="w-auto p-0" align="start" onInteractOutside={(e) => e.preventDefault()}>
+  <Calendar
+    mode="single"
+    selected={dataReposicao}
+    onSelect={setDataReposicao}
+    locale={ptBR}
+    initialFocus
+    className={cn("p-3 pointer-events-auto")}
+  />
+</PopoverContent>
+```
+
+### 2. `src/components/agendamento/ReagendamentoDialog.tsx` (linhas 208-217)
+
+Mesmo ajuste:
+```typescript
+<PopoverContent className="w-auto p-0" onInteractOutside={(e) => e.preventDefault()}>
+  <CalendarComponent
+    mode="single"
+    selected={dataSelecionada}
+    onSelect={setDataSelecionada}
+    disabled={(date) => date < new Date() || disableWeekends(date)}
+    initialFocus
+    className={cn("p-3 pointer-events-auto")}
+  />
+</PopoverContent>
+```
+
+### 3. `src/components/agendamento/ReagendamentoEmMassaDialog.tsx` (linhas 259-267)
+
+Adicionar `onInteractOutside` (ja tem `pointer-events-auto`):
+```typescript
+<PopoverContent className="w-auto p-0" align="start" onInteractOutside={(e) => e.preventDefault()}>
+```
+
+### 4. `src/components/agendamento/EditarAgendamentoDialog.tsx`
+
+Este modal usa `<Input type="date">` nativo, entao nao e afetado.
+
+Total: 3 arquivos com alteracoes minimas.
