@@ -75,7 +75,8 @@ export default function TodosAgendamentos() {
     return agendamentosFiltradosPorStatus.filter(agendamento => 
       agendamento.cliente.nome.toLowerCase().includes(term) ||
       agendamento.statusAgendamento.toLowerCase().includes(term) ||
-      (agendamento.pedido?.tipoPedido || 'Padrão').toLowerCase().includes(term)
+      (agendamento.pedido?.tipoPedido || 'Padrão').toLowerCase().includes(term) ||
+      (agendamento.cliente.cnpjCpf || '').toLowerCase().includes(term)
     );
   }, [agendamentosFiltradosPorStatus, searchTerm]);
 
@@ -257,7 +258,7 @@ export default function TodosAgendamentos() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
-            placeholder="Pesquisar por cliente, status ou tipo..."
+            placeholder="Pesquisar por cliente, CNPJ, status ou tipo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
