@@ -205,7 +205,7 @@ export default function ReagendamentoDialog({
                           )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" onInteractOutside={(e) => e.stopPropagation()}>
+                      <PopoverContent className="w-auto p-0 z-[100]" onInteractOutside={(e) => e.stopPropagation()}>
                         <CalendarComponent
                           mode="single"
                           selected={dataSelecionada}
