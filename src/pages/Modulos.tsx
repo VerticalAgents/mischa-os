@@ -217,6 +217,19 @@ function exportMarkdown() {
 
 export default function Modulos() {
   const [showMatrix, setShowMatrix] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+
+  const copyMarkdownToClipboard = async () => {
+    try {
+      const content = generateMarkdown();
+      await navigator.clipboard.writeText(content);
+      setCopiado(true);
+      toast.success("Markdown copiado para a área de transferência!");
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      toast.error("Erro ao copiar markdown");
+    }
+  };
 
   return (
     <div className="space-y-6 p-4 md:p-6 max-w-7xl mx-auto">
@@ -228,10 +241,16 @@ export default function Modulos() {
             Visualize as conexões entre módulos e a composição dos pacotes comerciais
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={exportMarkdown}>
-          <Download className="h-4 w-4 mr-1.5" />
-          Exportar Markdown
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={copyMarkdownToClipboard}>
+            {copiado ? <Check className="h-4 w-4 mr-1.5" /> : <Copy className="h-4 w-4 mr-1.5" />}
+            {copiado ? "Copiado!" : "Copiar Markdown"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportMarkdown}>
+            <Download className="h-4 w-4 mr-1.5" />
+            Exportar Markdown
+          </Button>
+        </div>
       </div>
 
       {/* Mischa IA Cross-Module Card */}
