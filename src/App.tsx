@@ -52,6 +52,7 @@ const FichaPreview = lazy(() => import('@/pages/fichas-tecnicas/Preview'));
 const Security = lazy(() => import('@/pages/Security'));
 const ControleTrocas = lazy(() => import('@/pages/ControleTrocas'));
 const Reagendamentos = lazy(() => import('@/pages/Reagendamentos'));
+const Modulos = lazy(() => import('@/pages/Modulos'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -279,13 +280,20 @@ function App() {
                        </ProtectedRoute>
                      } />
                      <Route path="/reagendamentos" element={
-                       <ProtectedRoute>
-                         <AppLayout>
-                           <Reagendamentos />
-                         </AppLayout>
-                       </ProtectedRoute>
-                     } />
-                       <Route path="*" element={<NotFound />} />
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <Reagendamentos />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/modulos" element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <Modulos />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      } />
+                        <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>
                   </Suspense>

@@ -2273,7 +2273,7 @@ export type Database = {
           p_email?: string
           p_ip_address: unknown
           p_max_attempts?: number
-          p_time_window?: unknown
+          p_time_window?: string
         }
         Returns: boolean
       }
