@@ -1,22 +1,32 @@
 
-# Corrigir calendario do "Entregar em Massa"
 
-## Problema
+# Adicionar modulo Cross "Faturamento" e botao Exportar Markdown
 
-O `PopoverContent` do calendario no `EntregaEmMassaDialog.tsx` (linha 141) nao tem `z-[100]` nem `onInteractOutside`, o mesmo fix que foi aplicado nos outros modais.
+## Alteracoes em `src/pages/Modulos.tsx`
 
-## Alteracao
+### 1. Novo modulo cross-module: Faturamento & Pagamentos
 
-### `src/components/expedicao/components/EntregaEmMassaDialog.tsx` (linha 141)
+Adicionar um segundo card cross-module (similar ao da Mischa IA) representando o modulo de **Faturamento & Pagamentos** (NF-e, boletos, PIX). Visualmente tera o mesmo estilo amber/cross-module, posicionado logo abaixo do card da Mischa IA.
 
-De:
-```tsx
-<PopoverContent className="w-auto p-0" align="start">
-```
+O card mostrara:
+- Icone `Receipt` (lucide)
+- Nome: "Faturamento & Pagamentos"
+- Descricao: emissao de NF-e, geracao de boletos, PIX e gestao de recebimentos
+- 3 sub-cards por tier mostrando como escala (Tier 1: NF-e e boleto basico; Tier 2: + conciliacao e cobranca automatica; Tier 3: + relatorios financeiros integrados)
 
-Para:
-```tsx
-<PopoverContent className="w-auto p-0 z-[100]" align="start" onInteractOutside={(e) => e.stopPropagation()}>
-```
+Tambem adicionar esse modulo na matriz de dependencias com badge Cross-Module.
 
-Apenas 1 linha alterada, mesma correcao ja aplicada nos outros 4 arquivos.
+### 2. Botao "Exportar Markdown" no header
+
+Adicionar um botao no topo da pagina (ao lado do titulo) que gera e baixa um arquivo `.md` com toda a estrutura de modulos:
+- Titulo e descricao
+- Secao de modulos cross-module (Mischa IA + Faturamento)
+- Tabela por tier com nome, descricao e dependencias
+- Secao de estrategia de upsell
+- Matriz de dependencias completa
+
+A funcao criara o conteudo markdown como string e usara `Blob` + `URL.createObjectURL` + link temporario para download.
+
+### Icones adicionais importados
+- `Receipt` e `Download` do lucide-react
+
