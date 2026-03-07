@@ -2,7 +2,7 @@
 import { 
   Users, Clipboard, Truck, PackageCheck, Layers, RefreshCw, CalendarClock,
   Tag, DollarSign, BarChart3, TrendingUp, MapPin, ShoppingBag, Cpu,
-  ArrowRight, Settings, ChevronDown, ChevronUp, Sparkles
+  ArrowRight, Settings, ChevronDown, ChevronUp, Sparkles, Receipt, Download
 } from "lucide-react";
 import { useState, ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -141,17 +141,95 @@ function TierCard({ tier }: { tier: TierKey }) {
   );
 }
 
+function generateMarkdown(): string {
+  const lines: string[] = [];
+  lines.push("# Mapa de Módulos SaaS\n");
+  lines.push("Visualização das conexões entre módulos e composição dos pacotes comerciais.\n");
+
+  // Cross-modules
+  lines.push("## Módulos Cross-Module\n");
+  lines.push("### Mischa IA");
+  lines.push("Disponível em todos os tiers com capacidades que escalam.\n");
+  lines.push("| Tier | Capacidades |");
+  lines.push("|---|---|");
+  lines.push("| Tier 1 | Responde sobre clientes, agendamentos e entregas |");
+  lines.push("| Tier 2 | + estoque, produção, trocas e compras |");
+  lines.push("| Tier 3 | + financeiro, analytics, comercial e mapas |\n");
+
+  lines.push("### Faturamento & Pagamentos");
+  lines.push("Emissão de NF-e, geração de boletos, PIX e gestão de recebimentos.\n");
+  lines.push("| Tier | Capacidades |");
+  lines.push("|---|---|");
+  lines.push("| Tier 1 | NF-e básica e geração de boletos/PIX |");
+  lines.push("| Tier 2 | + conciliação e cobrança automática |");
+  lines.push("| Tier 3 | + relatórios financeiros integrados |\n");
+
+  // Tiers
+  const tierKeys: TierKey[] = ['essential', 'operations', 'intelligence'];
+  for (const tier of tierKeys) {
+    const config = tierConfig[tier];
+    const tierModules = modules.filter(m => m.tier === tier);
+    lines.push(`## ${config.label} (Tier ${tier === 'essential' ? '1' : tier === 'operations' ? '2' : '3'})`);
+    lines.push(`${config.subtitle}\n`);
+    lines.push("| Módulo | Descrição | Dependências |");
+    lines.push("|---|---|---|");
+    for (const mod of tierModules) {
+      const deps = mod.dependencies.length > 0 ? mod.dependencies.join(", ") : "—";
+      lines.push(`| ${mod.name} | ${mod.description} | ${deps} |`);
+    }
+    lines.push("");
+  }
+
+  // Upsell
+  lines.push("## Estratégia de Upsell via Mischa IA\n");
+  for (const ex of upsellExamples) {
+    lines.push(`- **Usuário ${ex.from} → ${ex.targetModule} (${ex.targetTier}):** "${ex.message}"`);
+  }
+  lines.push("");
+
+  // Full matrix
+  lines.push("## Matriz de Dependências Completa\n");
+  lines.push("| Módulo | Tier | Depende de |");
+  lines.push("|---|---|---|");
+  for (const mod of modules) {
+    const config = tierConfig[mod.tier];
+    const deps = mod.dependencies.length > 0 ? mod.dependencies.join(", ") : "—";
+    lines.push(`| ${mod.name} | ${config.label} | ${deps} |`);
+  }
+  lines.push("| Mischa IA | Cross-Module | Escala com tier ativo |");
+  lines.push("| Faturamento & Pagamentos | Cross-Module | Escala com tier ativo |");
+
+  return lines.join("\n");
+}
+
+function exportMarkdown() {
+  const content = generateMarkdown();
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "mapa-modulos-saas.md";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Modulos() {
   const [showMatrix, setShowMatrix] = useState(false);
 
   return (
     <div className="space-y-6 p-4 md:p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Mapa de Módulos SaaS</h1>
-        <p className="text-muted-foreground mt-1">
-          Visualize as conexões entre módulos e a composição dos pacotes comerciais
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Mapa de Módulos SaaS</h1>
+          <p className="text-muted-foreground mt-1">
+            Visualize as conexões entre módulos e a composição dos pacotes comerciais
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={exportMarkdown}>
+          <Download className="h-4 w-4 mr-1.5" />
+          Exportar Markdown
+        </Button>
       </div>
 
       {/* Mischa IA Cross-Module Card */}
@@ -182,6 +260,40 @@ export default function Modulos() {
                 <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20 p-3">
                   <p className="text-xs font-semibold text-purple-700 dark:text-purple-400 mb-1">No Tier 3</p>
                   <p className="text-xs text-muted-foreground">+ financeiro, analytics, comercial e mapas</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Faturamento & Pagamentos Cross-Module Card */}
+      <Card className="border-2 border-amber-300 dark:border-amber-700 bg-gradient-to-r from-amber-50/60 via-orange-50/40 to-yellow-50/60 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-yellow-950/30">
+        <CardContent className="p-5">
+          <div className="flex items-start gap-4">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0">
+              <Receipt className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-lg font-bold text-foreground">Faturamento & Pagamentos</h2>
+                <Badge className={tierConfig.cross.badgeClass} variant="secondary">Cross-Module</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Emissão de NF-e, geração de boletos, PIX e gestão de recebimentos. Disponível em todos os tiers com recursos que escalam.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-3">
+                  <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">No Tier 1</p>
+                  <p className="text-xs text-muted-foreground">NF-e básica e geração de boletos/PIX</p>
+                </div>
+                <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-3">
+                  <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-1">No Tier 2</p>
+                  <p className="text-xs text-muted-foreground">+ conciliação e cobrança automática</p>
+                </div>
+                <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20 p-3">
+                  <p className="text-xs font-semibold text-purple-700 dark:text-purple-400 mb-1">No Tier 3</p>
+                  <p className="text-xs text-muted-foreground">+ relatórios financeiros integrados</p>
                 </div>
               </div>
             </div>
@@ -292,6 +404,20 @@ export default function Modulos() {
                       <div className="flex items-center gap-2">
                         <span className="text-amber-600"><Sparkles className="h-5 w-5" /></span>
                         <span className="font-bold">Mischa IA</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={tierConfig.cross.badgeClass} variant="secondary">Cross-Module</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground italic">Escala com tier ativo</span>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-600"><Receipt className="h-5 w-5" /></span>
+                        <span className="font-bold">Faturamento & Pagamentos</span>
                       </div>
                     </TableCell>
                     <TableCell>
