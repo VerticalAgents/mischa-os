@@ -2,9 +2,11 @@
 import { 
   Users, Clipboard, Truck, PackageCheck, Layers, RefreshCw, CalendarClock,
   Tag, DollarSign, BarChart3, TrendingUp, MapPin, ShoppingBag, Cpu,
-  ArrowRight, Settings, ChevronDown, ChevronUp, Sparkles, Receipt, Download
+  ArrowRight, Settings, ChevronDown, ChevronUp, Sparkles, Receipt, Download,
+  Copy, Check
 } from "lucide-react";
 import { useState, ReactNode } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
