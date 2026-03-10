@@ -23,15 +23,21 @@ class LazyErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Check if this is a dynamic import error
-    if (error.message.includes('Failed to fetch dynamically imported module')) {
-      console.warn('Dynamic import failed, will attempt reload:', error.message);
+    const isDynamicImportError = error.message.includes('Failed to fetch dynamically imported module');
+    
+    if (isDynamicImportError) {
+      console.warn('Dynamic import failed, attempting auto-reload:', error.message);
+      if (!sessionStorage.getItem('lazy-reload-attempted')) {
+        sessionStorage.setItem('lazy-reload-attempted', 'true');
+        window.location.reload();
+        return;
+      }
     }
   }
 
   handleRetry = () => {
     this.setState({ hasError: false, error: null });
-    // Force a full page reload to clear any cached module references
+    sessionStorage.removeItem('lazy-reload-attempted');
     window.location.reload();
   };
 
