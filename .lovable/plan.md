@@ -1,28 +1,22 @@
 
+# Corrigir calendario do "Entregar em Massa"
 
-# Fix: Date Picker Stuck in PCP Registration Modal
+## Problema
 
-## Problem
-The Calendar date picker inside the `HistoricoProducaoModal` dialog doesn't work properly -- clicking dates or navigating months closes the popover or doesn't register clicks. This is the known Radix UI conflict between Dialog and Popover components.
+O `PopoverContent` do calendario no `EntregaEmMassaDialog.tsx` (linha 141) nao tem `z-[100]` nem `onInteractOutside`, o mesmo fix que foi aplicado nos outros modais.
 
-## Solution
-Apply the same fix already used elsewhere in the project (per memory context): add `z-[100]`, `pointer-events-auto`, and `onInteractOutside` to the PopoverContent.
+## Alteracao
 
-## Change in `src/components/pcp/HistoricoProducaoModal.tsx`
+### `src/components/expedicao/components/EntregaEmMassaDialog.tsx` (linha 141)
 
-**Line 210** -- Update the PopoverContent:
+De:
 ```tsx
-// Before
-<PopoverContent className="w-auto p-0">
-  <Calendar ... />
-
-// After
-<PopoverContent 
-  className="w-auto p-0 z-[100] pointer-events-auto" 
-  onInteractOutside={(e) => e.stopPropagation()}
->
-  <Calendar ... />
+<PopoverContent className="w-auto p-0" align="start">
 ```
 
-Single line change, consistent with the pattern already used in AgendamentoEditModal, ReagendamentoDialog, etc.
+Para:
+```tsx
+<PopoverContent className="w-auto p-0 z-[100]" align="start" onInteractOutside={(e) => e.stopPropagation()}>
+```
 
+Apenas 1 linha alterada, mesma correcao ja aplicada nos outros 4 arquivos.
