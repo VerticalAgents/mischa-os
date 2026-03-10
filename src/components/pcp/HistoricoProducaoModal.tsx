@@ -207,7 +207,7 @@ export function HistoricoProducaoModal({ isOpen, onClose, onSuccess, registro }:
                     {selectedDate ? format(selectedDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0 z-[100] pointer-events-auto" onInteractOutside={(e) => e.stopPropagation()}>
                   <Calendar
                     mode="single"
                     selected={selectedDate}
