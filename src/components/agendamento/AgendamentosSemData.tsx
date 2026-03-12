@@ -44,7 +44,7 @@ export default function AgendamentosSemData() {
   const agendamentosSemData = useMemo(() => {
     return agendamentos.filter(agendamento => 
       agendamento.statusAgendamento === "Agendar" &&
-      agendamento.cliente.ativo === true
+      isClienteVisivelAgendamento(agendamento.cliente)
     );
   }, [agendamentos]);
 

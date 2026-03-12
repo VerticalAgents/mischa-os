@@ -37,7 +37,7 @@ export default function AgendamentosPendentes() {
   const clientesSemAgendamento = useMemo(() => {
     const clientesComAgendamento = new Set(agendamentos.map(a => a.cliente.id));
     return clientes.filter(cliente => 
-      cliente.ativo && !clientesComAgendamento.has(cliente.id)
+      isClienteVisivelAgendamento(cliente) && !clientesComAgendamento.has(cliente.id)
     );
   }, [clientes, agendamentos]);
 

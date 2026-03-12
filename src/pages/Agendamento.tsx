@@ -53,7 +53,7 @@ export default function Agendamento() {
     
     // Verificar se há clientes sem agendamento
     const clientesComAgendamento = new Set(agendamentos.map(a => a.cliente.id));
-    const clientesSemAgendamento = clientes.filter(cliente => cliente.ativo && !clientesComAgendamento.has(cliente.id));
+    const clientesSemAgendamento = clientes.filter(cliente => isClienteVisivelAgendamento(cliente) && !clientesComAgendamento.has(cliente.id));
     setTemAgendamentosPendentes(clientesSemAgendamento.length > 0);
 
     // Verificar se há agendamentos atrasados
