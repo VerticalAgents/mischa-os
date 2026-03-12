@@ -489,8 +489,8 @@ export default function ClienteFormDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent translate="no" data-translate="no">
-                      <SelectItem value="Ativo" translate="no" disabled={cliente?.statusCliente === 'Standby' || cliente?.statusCliente === 'A ativar'}>
-                        Ativo {(cliente?.statusCliente === 'Standby' || cliente?.statusCliente === 'A ativar') ? '(requer entrega confirmada)' : ''}
+                      <SelectItem value="Ativo" translate="no" disabled={cliente?.statusCliente === 'STANDBY' || cliente?.statusCliente === 'A_ATIVAR'}>
+                        Ativo {(cliente?.statusCliente === 'STANDBY' || cliente?.statusCliente === 'A_ATIVAR') ? '(requer entrega confirmada)' : ''}
                       </SelectItem>
                       <SelectItem value="Inativo" translate="no">Inativo</SelectItem>
                       <SelectItem value="Em análise" translate="no">Em análise</SelectItem>
