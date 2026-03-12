@@ -14,6 +14,7 @@ import { useSearchParams } from "react-router-dom";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
+import { isClienteVisivelAgendamento } from "@/components/agendamento/utils/clienteVisibilidade";
 
 export default function Agendamento() {
   const [searchParams] = useSearchParams();
