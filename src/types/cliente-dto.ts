@@ -53,6 +53,7 @@ export const STATUS_CLIENTE_MAP: Record<string, StatusClienteType> = {
   'Em análise': 'EM_ANALISE',
   'A ativar': 'A_ATIVAR',
   'Standby': 'STANDBY',
+  'Reativar': 'REATIVAR',
   // Tokens corrompidos conhecidos
   'customer_deleted': 'INATIVO',
   'client_inactive': 'INATIVO',
