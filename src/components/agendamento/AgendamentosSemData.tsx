@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
+import { isClienteVisivelAgendamento } from "./utils/clienteVisibilidade";
 import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 
 export default function AgendamentosSemData() {
