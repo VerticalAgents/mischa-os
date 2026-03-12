@@ -489,16 +489,17 @@ export default function ClienteFormDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent translate="no" data-translate="no">
-                      <SelectItem value="Ativo" translate="no" disabled={cliente?.statusCliente === 'Standby' || cliente?.statusCliente === 'A ativar'}>
-                        Ativo {(cliente?.statusCliente === 'Standby' || cliente?.statusCliente === 'A ativar') ? '(requer entrega confirmada)' : ''}
+                      <SelectItem value="Ativo" translate="no" disabled={cliente?.statusCliente === 'Standby' || cliente?.statusCliente === 'A ativar' || cliente?.statusCliente === 'Reativar'}>
+                        Ativo {(cliente?.statusCliente === 'Standby' || cliente?.statusCliente === 'A ativar' || cliente?.statusCliente === 'Reativar') ? '(requer entrega confirmada)' : ''}
                       </SelectItem>
                       <SelectItem value="Inativo" translate="no">Inativo</SelectItem>
                       <SelectItem value="Em análise" translate="no">Em análise</SelectItem>
                       <SelectItem value="A ativar" translate="no">A ativar</SelectItem>
                       <SelectItem value="Standby" translate="no">Standby</SelectItem>
+                      <SelectItem value="Reativar" translate="no">Reativar</SelectItem>
                     </SelectContent>
                   </Select>
-                  {(formData.statusCliente === 'Standby' || formData.statusCliente === 'A ativar') && (
+                  {(formData.statusCliente === 'Standby' || formData.statusCliente === 'A ativar' || formData.statusCliente === 'Reativar') && (
                     <p className="text-xs text-muted-foreground">
                       O status mudará automaticamente para "Ativo" quando uma entrega for confirmada.
                     </p>

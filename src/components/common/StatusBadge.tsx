@@ -21,7 +21,8 @@ export default function StatusBadge({ status, size = "md", className }: StatusBa
     "Em análise": "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100",
     "Inativo": "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
     "A ativar": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100",
-    "Standby": "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100"
+    "Standby": "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100",
+    "Reativar": "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100"
   };
   
   // Definir as classes específicas para cada status de pedido
