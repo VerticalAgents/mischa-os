@@ -498,7 +498,7 @@ export default function ClienteFormDialog({
                       <SelectItem value="Standby" translate="no">Standby</SelectItem>
                     </SelectContent>
                   </Select>
-                  {(formData.statusCliente === 'Standby' || formData.statusCliente === 'A ativar') && (
+                  {(formData.statusCliente === 'STANDBY' || formData.statusCliente === 'A_ATIVAR') && (
                     <p className="text-xs text-muted-foreground">
                       O status mudará automaticamente para "Ativo" quando uma entrega for confirmada.
                     </p>
