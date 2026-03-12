@@ -22,7 +22,7 @@ export default function ConfirmacaoReposicaoTab() {
 
   // Filtrar clientes que precisam de confirmação hoje
   const clientesParaConfirmacao = clientes.filter(cliente => {
-    if (cliente.statusCliente !== "Ativo" || !cliente.proximaDataReposicao) return false;
+    if ((cliente.statusCliente !== "Ativo" && cliente.statusCliente !== "Standby") || !cliente.proximaDataReposicao) return false;
     
     const dataReposicao = new Date(cliente.proximaDataReposicao);
     dataReposicao.setHours(0, 0, 0, 0);
@@ -33,7 +33,7 @@ export default function ConfirmacaoReposicaoTab() {
 
   // Clientes com agendamentos atrasados
   const clientesAtrasados = clientes.filter(cliente => {
-    if (cliente.statusCliente !== "Ativo" || !cliente.proximaDataReposicao) return false;
+    if ((cliente.statusCliente !== "Ativo" && cliente.statusCliente !== "Standby") || !cliente.proximaDataReposicao) return false;
     
     const dataReposicao = new Date(cliente.proximaDataReposicao);
     dataReposicao.setHours(0, 0, 0, 0);

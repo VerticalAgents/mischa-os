@@ -33,7 +33,7 @@ export default function ConfirmacaoReposicaoFuncional() {
 
   // Clientes que precisam de confirmação (previstos para daqui 2 dias úteis)
   const clientesParaConfirmacao = clientes.filter(cliente => {
-    if (cliente.statusCliente !== "Ativo" || !cliente.proximaDataReposicao) return false;
+    if ((cliente.statusCliente !== "Ativo" && cliente.statusCliente !== "Standby") || !cliente.proximaDataReposicao) return false;
     
     const dataReposicao = new Date(cliente.proximaDataReposicao);
     dataReposicao.setHours(0, 0, 0, 0);
@@ -44,7 +44,7 @@ export default function ConfirmacaoReposicaoFuncional() {
 
   // Clientes com confirmação atrasada (previstos para antes de hoje)
   const clientesConfirmacaoAtrasada = clientes.filter(cliente => {
-    if (cliente.statusCliente !== "Ativo" || !cliente.proximaDataReposicao) return false;
+    if ((cliente.statusCliente !== "Ativo" && cliente.statusCliente !== "Standby") || !cliente.proximaDataReposicao) return false;
     
     const dataReposicao = new Date(cliente.proximaDataReposicao);
     dataReposicao.setHours(0, 0, 0, 0);

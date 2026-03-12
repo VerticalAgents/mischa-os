@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
+import { isClienteVisivelAgendamento } from "./utils/clienteVisibilidade";
 import { useFrequenciaRealEntregas, getCorDivergencia } from "@/hooks/useFrequenciaRealEntregas";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -59,7 +60,7 @@ export default function AgendamentosPeriodicidade() {
     return agendamentos
       .filter(a => 
         (a.statusAgendamento === "Previsto" || a.statusAgendamento === "Agendado") &&
-        a.cliente.ativo === true
+        isClienteVisivelAgendamento(a.cliente)
       )
       .map(a => a.cliente.id);
   }, [agendamentos]);
@@ -72,7 +73,7 @@ export default function AgendamentosPeriodicidade() {
     return agendamentos
       .filter(a => 
         (a.statusAgendamento === "Previsto" || a.statusAgendamento === "Agendado") &&
-        a.cliente.ativo === true
+        isClienteVisivelAgendamento(a.cliente)
       )
       .map(a => ({
         clienteId: a.cliente.id,

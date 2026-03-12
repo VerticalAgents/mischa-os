@@ -14,6 +14,7 @@ import { useSearchParams } from "react-router-dom";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
+import { isClienteVisivelAgendamento } from "@/components/agendamento/utils/clienteVisibilidade";
 
 export default function Agendamento() {
   const [searchParams] = useSearchParams();
@@ -52,7 +53,7 @@ export default function Agendamento() {
     
     // Verificar se há clientes sem agendamento
     const clientesComAgendamento = new Set(agendamentos.map(a => a.cliente.id));
-    const clientesSemAgendamento = clientes.filter(cliente => cliente.ativo && !clientesComAgendamento.has(cliente.id));
+    const clientesSemAgendamento = clientes.filter(cliente => isClienteVisivelAgendamento(cliente) && !clientesComAgendamento.has(cliente.id));
     setTemAgendamentosPendentes(clientesSemAgendamento.length > 0);
 
     // Verificar se há agendamentos atrasados
