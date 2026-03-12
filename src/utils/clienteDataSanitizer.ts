@@ -91,7 +91,7 @@ const PAGAMENTO_CORRECTIONS = {
 };
 
 // Valores válidos para validação - ATUALIZADOS PARA FORMATO CANÔNICO
-const VALID_STATUS = ['ATIVO', 'INATIVO', 'EM_ANALISE', 'A_ATIVAR', 'STANDBY', 'REATIVAR'];
+const VALID_STATUS = ['ATIVO', 'INATIVO', 'EM_ANALISE', 'A_ATIVAR', 'STANDBY'];
 const VALID_LOGISTICA = ['PROPRIA', 'TERCEIRIZADA'];
 const VALID_COBRANCA = ['A_VISTA', 'PARCELADO', 'A_PRAZO', 'CONSIGNADO'];
 const VALID_PAGAMENTO = ['BOLETO', 'PIX', 'DINHEIRO', 'CARTAO_CREDITO', 'CARTAO_DEBITO'];
@@ -103,8 +103,7 @@ const STATUS_TO_CANONICAL = {
   'Inativo': 'INATIVO', 
   'Em análise': 'EM_ANALISE',
   'A ativar': 'A_ATIVAR',
-  'Standby': 'STANDBY',
-  'Reativar': 'REATIVAR'
+  'Standby': 'STANDBY'
 };
 
 const LOGISTICA_TO_CANONICAL = {

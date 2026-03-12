@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Enums canônicos para domínios de cliente
-export const StatusCliente = z.enum(['ATIVO', 'INATIVO', 'EM_ANALISE', 'A_ATIVAR', 'STANDBY', 'REATIVAR']);
+export const StatusCliente = z.enum(['ATIVO', 'INATIVO', 'EM_ANALISE', 'A_ATIVAR', 'STANDBY']);
 export const TipoLogistica = z.enum(['PROPRIA', 'TERCEIRIZADA']);
 export const TipoCobranca = z.enum(['A_VISTA', 'PARCELADO', 'A_PRAZO']);
 export const FormaPagamento = z.enum(['BOLETO', 'PIX', 'DINHEIRO', 'CARTAO_CREDITO', 'CARTAO_DEBITO']);
@@ -53,7 +53,6 @@ export const STATUS_CLIENTE_MAP: Record<string, StatusClienteType> = {
   'Em análise': 'EM_ANALISE',
   'A ativar': 'A_ATIVAR',
   'Standby': 'STANDBY',
-  'Reativar': 'REATIVAR',
   // Tokens corrompidos conhecidos
   'customer_deleted': 'INATIVO',
   'client_inactive': 'INATIVO',
@@ -98,7 +97,6 @@ export const STATUS_CLIENTE_LABELS: Record<StatusClienteType, string> = {
   'EM_ANALISE': 'Em análise',
   'A_ATIVAR': 'A ativar',
   'STANDBY': 'Standby',
-  'REATIVAR': 'Reativar',
 };
 
 export const TIPO_LOGISTICA_LABELS: Record<TipoLogisticaType, string> = {

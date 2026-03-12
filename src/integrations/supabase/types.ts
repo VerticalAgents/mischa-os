@@ -2257,7 +2257,6 @@ export type Database = {
         Args: { data_base: string; dia_fixo: number; n_meses: number }
         Returns: string
       }
-      auto_standby_clientes_inativos_60dias: { Args: never; Returns: undefined }
       check_cliente_status_consistency: {
         Args: never
         Returns: {

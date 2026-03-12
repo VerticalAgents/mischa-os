@@ -186,21 +186,6 @@ export const createAgendamentoActions = (
       console.log('✅ Agendamento salvo com sucesso:', result.data);
       console.log('🔍 Validação pós-salvamento - Quantidade salva:', result.data.quantidade_total);
       
-      // Se o cliente estava INATIVO e um agendamento foi criado, mudar para REATIVAR
-      const { data: clienteData } = await supabase
-        .from('clientes')
-        .select('status_cliente')
-        .eq('id', clienteId)
-        .single();
-      
-      if (clienteData?.status_cliente === 'INATIVO') {
-        console.log('🔄 Cliente INATIVO detectado, mudando para REATIVAR:', clienteId);
-        await supabase
-          .from('clientes')
-          .update({ status_cliente: 'REATIVAR', ativo: true, updated_at: new Date().toISOString() })
-          .eq('id', clienteId);
-      }
-      
       // Atualizar cache
       const novoCache = new Map(get().agendamentosCompletos);
       novoCache.set(clienteId, convertDbRowToAgendamento(result.data));

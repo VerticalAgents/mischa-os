@@ -121,8 +121,7 @@ const transformDbRowToCliente = (row: any): Cliente => {
     'INATIVO': 'Inativo', 
     'EM_ANALISE': 'Em análise',
     'A_ATIVAR': 'A ativar',
-    'STANDBY': 'Standby',
-    'REATIVAR': 'Reativar'
+    'STANDBY': 'Standby'
   };
 
   const canonicalToUiLogistica = {
@@ -469,13 +468,6 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
   carregarClientes: async () => {
     set({ loading: true });
     try {
-      // Auto-atualizar status antes de buscar: Standby (60+ dias) e A ativar (sem entregas)
-      try {
-        await supabase.rpc('auto_standby_clientes_inativos_60dias');
-      } catch (rpcError) {
-        console.warn('Erro ao executar auto_standby_clientes_inativos_60dias:', rpcError);
-      }
-
       const { data, error } = await supabase
         .from('clientes')
         .select('*');

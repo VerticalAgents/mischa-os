@@ -1,4 +1,4 @@
-export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby' | 'Reativar';
+export type StatusCliente = 'Ativo' | 'Em análise' | 'Inativo' | 'A ativar' | 'Standby';
 
 // Tipo de pessoa para clientes
 export type TipoPessoa = 'PF' | 'PJ';
