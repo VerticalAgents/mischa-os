@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Enums canônicos para domínios de cliente
-export const StatusCliente = z.enum(['ATIVO', 'INATIVO', 'EM_ANALISE', 'A_ATIVAR', 'STANDBY']);
+export const StatusCliente = z.enum(['ATIVO', 'INATIVO', 'EM_ANALISE', 'A_ATIVAR', 'STANDBY', 'REATIVAR']);
 export const TipoLogistica = z.enum(['PROPRIA', 'TERCEIRIZADA']);
 export const TipoCobranca = z.enum(['A_VISTA', 'PARCELADO', 'A_PRAZO']);
 export const FormaPagamento = z.enum(['BOLETO', 'PIX', 'DINHEIRO', 'CARTAO_CREDITO', 'CARTAO_DEBITO']);
