@@ -19,6 +19,7 @@ import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import { AgendamentoItem } from "./types";
+import { isClienteVisivelAgendamento } from "./utils/clienteVisibilidade";
 
 export default function AgendamentosPendentes() {
   const [searchTerm, setSearchTerm] = useState("");
