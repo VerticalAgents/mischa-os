@@ -478,6 +478,13 @@ export const useClienteStore = create<ClienteState>((set, get) => ({
 
       const clientesTransformados = data.map(transformDbRowToCliente);
 
+      // Auto-atualizar status: Standby (60+ dias) e A ativar (sem entregas)
+      try {
+        await supabase.rpc('auto_standby_clientes_inativos_60dias');
+      } catch (rpcError) {
+        console.warn('Erro ao executar auto_standby_clientes_inativos_60dias:', rpcError);
+      }
+
       set((state) => {
         const clienteAtualAtualizado = state.clienteAtual 
           ? clientesTransformados.find(c => c.id === state.clienteAtual?.id) || state.clienteAtual
