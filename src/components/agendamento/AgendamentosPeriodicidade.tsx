@@ -59,7 +59,7 @@ export default function AgendamentosPeriodicidade() {
     return agendamentos
       .filter(a => 
         (a.statusAgendamento === "Previsto" || a.statusAgendamento === "Agendado") &&
-        a.cliente.ativo === true
+        isClienteVisivelAgendamento(a.cliente)
       )
       .map(a => a.cliente.id);
   }, [agendamentos]);
