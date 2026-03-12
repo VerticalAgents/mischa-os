@@ -4,8 +4,8 @@
  * Inclui clientes ativos, em Standby e A ativar. Exclui inativos.
  */
 export const isClienteVisivelAgendamento = (cliente: { ativo?: boolean | null; statusCliente?: string | null }) => {
-  if (cliente.statusCliente === 'INATIVO') return false;
+  if (cliente.statusCliente === 'Inativo') return false;
   return cliente.ativo === true || 
-    cliente.statusCliente === 'STANDBY' || 
-    cliente.statusCliente === 'A_ATIVAR';
+    cliente.statusCliente === 'Standby' || 
+    cliente.statusCliente === 'A ativar';
 };
