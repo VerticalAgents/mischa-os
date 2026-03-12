@@ -499,7 +499,7 @@ export default function ClienteFormDialog({
                       <SelectItem value="Reativar" translate="no">Reativar</SelectItem>
                     </SelectContent>
                   </Select>
-                  {(formData.statusCliente === 'Standby' || formData.statusCliente === 'A ativar') && (
+                  {(formData.statusCliente === 'Standby' || formData.statusCliente === 'A ativar' || formData.statusCliente === 'Reativar') && (
                     <p className="text-xs text-muted-foreground">
                       O status mudará automaticamente para "Ativo" quando uma entrega for confirmada.
                     </p>

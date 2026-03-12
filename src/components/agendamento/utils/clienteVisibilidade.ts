@@ -7,5 +7,6 @@ export const isClienteVisivelAgendamento = (cliente: { ativo?: boolean | null; s
   if (cliente.statusCliente === 'Inativo') return false;
   return cliente.ativo === true || 
     cliente.statusCliente === 'Standby' || 
-    cliente.statusCliente === 'A ativar';
+    cliente.statusCliente === 'A ativar' ||
+    cliente.statusCliente === 'Reativar';
 };

@@ -103,7 +103,8 @@ const STATUS_TO_CANONICAL = {
   'Inativo': 'INATIVO', 
   'Em análise': 'EM_ANALISE',
   'A ativar': 'A_ATIVAR',
-  'Standby': 'STANDBY'
+  'Standby': 'STANDBY',
+  'Reativar': 'REATIVAR'
 };
 
 const LOGISTICA_TO_CANONICAL = {

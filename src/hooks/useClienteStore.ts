@@ -121,7 +121,8 @@ const transformDbRowToCliente = (row: any): Cliente => {
     'INATIVO': 'Inativo', 
     'EM_ANALISE': 'Em análise',
     'A_ATIVAR': 'A ativar',
-    'STANDBY': 'Standby'
+    'STANDBY': 'Standby',
+    'REATIVAR': 'Reativar'
   };
 
   const canonicalToUiLogistica = {

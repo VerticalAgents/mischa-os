@@ -98,6 +98,7 @@ export const STATUS_CLIENTE_LABELS: Record<StatusClienteType, string> = {
   'EM_ANALISE': 'Em análise',
   'A_ATIVAR': 'A ativar',
   'STANDBY': 'Standby',
+  'REATIVAR': 'Reativar',
 };
 
 export const TIPO_LOGISTICA_LABELS: Record<TipoLogisticaType, string> = {
