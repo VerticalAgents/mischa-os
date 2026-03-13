@@ -69,8 +69,9 @@ function hasGCError(responseText: string, status: number): boolean {
 // Helper: Get next sequential sale code from GestaoClick
 async function getProximoCodigoVenda(accessToken: string, secretToken: string): Promise<number> {
   try {
-    // Fetch most recent sale ordered by codigo descending
-    const response = await fetch(`${GESTAOCLICK_BASE_URL}/vendas?limite=1&ordenar_por=codigo&ordem=desc`, {
+    // Fetch last 50 sales to find the true highest numeric code
+    // (ordenação pode ser alfabética: "999" > "2060", então precisamos do Math.max)
+    const response = await fetch(`${GESTAOCLICK_BASE_URL}/vendas?limite=50&ordenar_por=codigo&ordem=desc`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -86,16 +87,19 @@ async function getProximoCodigoVenda(accessToken: string, secretToken: string): 
 
     const data = await response.json();
     
-    // Extract highest codigo from returned sales
+    // Extract highest codigo from ALL returned sales using Math.max
     if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-      // Handle both direct and nested response structures
-      const venda = data.data[0];
-      const codigoStr = venda.codigo || venda.Venda?.codigo;
-      const ultimoCodigo = parseInt(codigoStr, 10);
+      const codigos = data.data
+        .map((venda: any) => {
+          const codigoStr = venda.codigo || venda.Venda?.codigo;
+          return parseInt(codigoStr, 10);
+        })
+        .filter((c: number) => !isNaN(c));
       
-      if (!isNaN(ultimoCodigo)) {
-        console.log(`[gestaoclick-proxy] Último código encontrado: ${ultimoCodigo}, próximo: ${ultimoCodigo + 1}`);
-        return ultimoCodigo + 1;
+      if (codigos.length > 0) {
+        const maxCodigo = Math.max(...codigos);
+        console.log(`[gestaoclick-proxy] Maior código encontrado entre ${codigos.length} vendas: ${maxCodigo}, próximo: ${maxCodigo + 1}`);
+        return maxCodigo + 1;
       }
     }
     
@@ -728,7 +732,7 @@ Deno.serve(async (req) => {
         let vendaResponseText;
         let currentCodigo = codigo;
         let retryCount = 0;
-        const maxRetries = 5;
+        const maxRetries = 20;
 
         while (retryCount < maxRetries) {
           vendaPayload.codigo = currentCodigo;
@@ -769,6 +773,11 @@ Deno.serve(async (req) => {
             errorMessage = errorData.message || errorData.error || errorMessage;
           } catch {
             errorMessage = vendaResponseText || errorMessage;
+          }
+
+          // Mensagem específica para código duplicado após esgotar tentativas
+          if (errorMessage.includes('sendo utilizado') || errorMessage.includes('j\u00e1 est\u00e1 sendo')) {
+            errorMessage = `Não foi possível gerar a venda: todos os códigos sequenciais de ${codigo} até ${currentCodigo} já estão em uso no GestaoClick. Tente novamente em alguns segundos.`;
           }
 
           if (errorMessage.includes('cliente_id informado')) {
@@ -1048,7 +1057,7 @@ Deno.serve(async (req) => {
         let vendaResponseText;
         let currentCodigo = novoCodigo;
         let retryCount = 0;
-        const maxRetries = 5;
+        const maxRetries = 20;
 
         while (retryCount < maxRetries) {
           vendaPayload.codigo = currentCodigo;
