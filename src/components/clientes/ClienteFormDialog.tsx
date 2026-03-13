@@ -554,21 +554,26 @@ export default function ClienteFormDialog({
                   {formData.tipoLogistica?.toLowerCase() === 'retirada' ? (
                     <Input value="Retirada" disabled className="bg-muted text-muted-foreground cursor-not-allowed" />
                   ) : (
-                    <Select 
-                      value={formData.rotaEntregaId?.toString() || undefined} 
-                      onValueChange={(value) => handleInputChange('rotaEntregaId', value ? parseInt(value) : undefined)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma rota" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {rotasEntrega.map((rota) => (
-                          <SelectItem key={rota.id} value={rota.id.toString()}>
-                            {rota.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {rotasEntrega.length === 0 && formData.rotaEntregaId ? (
+                      <Input value="Carregando..." disabled className="bg-muted" />
+                    ) : (
+                      <Select 
+                        key={`rota-${rotasEntrega.length}`}
+                        value={formData.rotaEntregaId?.toString() || undefined} 
+                        onValueChange={(value) => handleInputChange('rotaEntregaId', value ? parseInt(value) : undefined)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma rota" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {rotasEntrega.map((rota) => (
+                            <SelectItem key={rota.id} value={rota.id.toString()}>
+                              {rota.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   )}
                 </div>
               </div>
