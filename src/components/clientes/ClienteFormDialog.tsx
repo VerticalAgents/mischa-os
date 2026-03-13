@@ -528,21 +528,26 @@ export default function ClienteFormDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="representante">Representante</Label>
-                  <Select 
-                    value={formData.representanteId?.toString() || undefined} 
-                    onValueChange={(value) => handleInputChange('representanteId', value ? parseInt(value) : undefined)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um representante" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {representantes.map((rep) => (
-                        <SelectItem key={rep.id} value={rep.id.toString()}>
-                          {rep.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {representantes.length === 0 && formData.representanteId ? (
+                    <Input value="Carregando..." disabled className="bg-muted" />
+                  ) : (
+                    <Select 
+                      key={`rep-${representantes.length}`}
+                      value={formData.representanteId?.toString() || undefined} 
+                      onValueChange={(value) => handleInputChange('representanteId', value ? parseInt(value) : undefined)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um representante" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {representantes.map((rep) => (
+                          <SelectItem key={rep.id} value={rep.id.toString()}>
+                            {rep.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="rotaEntrega">Rota de Entrega</Label>
