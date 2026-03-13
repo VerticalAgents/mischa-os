@@ -581,21 +581,26 @@ export default function ClienteFormDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="categoriaEstabelecimento">Categoria do Estabelecimento</Label>
-                  <Select 
-                    value={formData.categoriaEstabelecimentoId?.toString() || undefined} 
-                    onValueChange={(value) => handleInputChange('categoriaEstabelecimentoId', value ? parseInt(value) : undefined)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categoriasEstabelecimento.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id.toString()}>
-                          {cat.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {categoriasEstabelecimento.length === 0 && formData.categoriaEstabelecimentoId ? (
+                    <Input value="Carregando..." disabled className="bg-muted" />
+                  ) : (
+                    <Select 
+                      key={`cat-${categoriasEstabelecimento.length}`}
+                      value={formData.categoriaEstabelecimentoId?.toString() || undefined} 
+                      onValueChange={(value) => handleInputChange('categoriaEstabelecimentoId', value ? parseInt(value) : undefined)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoriasEstabelecimento.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id.toString()}>
+                            {cat.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                   <div className="space-y-2">
                    <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
