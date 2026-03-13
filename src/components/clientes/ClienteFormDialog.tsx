@@ -528,28 +528,36 @@ export default function ClienteFormDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="representante">Representante</Label>
-                  <Select 
-                    value={formData.representanteId?.toString() || undefined} 
-                    onValueChange={(value) => handleInputChange('representanteId', value ? parseInt(value) : undefined)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um representante" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {representantes.map((rep) => (
-                        <SelectItem key={rep.id} value={rep.id.toString()}>
-                          {rep.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {representantes.length === 0 && formData.representanteId ? (
+                    <Input value="Carregando..." disabled className="bg-muted" />
+                  ) : (
+                    <Select 
+                      key={`rep-${representantes.length}`}
+                      value={formData.representanteId?.toString() || undefined} 
+                      onValueChange={(value) => handleInputChange('representanteId', value ? parseInt(value) : undefined)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um representante" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {representantes.map((rep) => (
+                          <SelectItem key={rep.id} value={rep.id.toString()}>
+                            {rep.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="rotaEntrega">Rota de Entrega</Label>
                   {formData.tipoLogistica?.toLowerCase() === 'retirada' ? (
                     <Input value="Retirada" disabled className="bg-muted text-muted-foreground cursor-not-allowed" />
+                  ) : rotasEntrega.length === 0 && formData.rotaEntregaId ? (
+                    <Input value="Carregando..." disabled className="bg-muted" />
                   ) : (
                     <Select 
+                      key={`rota-${rotasEntrega.length}`}
                       value={formData.rotaEntregaId?.toString() || undefined} 
                       onValueChange={(value) => handleInputChange('rotaEntregaId', value ? parseInt(value) : undefined)}
                     >
@@ -571,21 +579,26 @@ export default function ClienteFormDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="categoriaEstabelecimento">Categoria do Estabelecimento</Label>
-                  <Select 
-                    value={formData.categoriaEstabelecimentoId?.toString() || undefined} 
-                    onValueChange={(value) => handleInputChange('categoriaEstabelecimentoId', value ? parseInt(value) : undefined)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categoriasEstabelecimento.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id.toString()}>
-                          {cat.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {categoriasEstabelecimento.length === 0 && formData.categoriaEstabelecimentoId ? (
+                    <Input value="Carregando..." disabled className="bg-muted" />
+                  ) : (
+                    <Select 
+                      key={`cat-${categoriasEstabelecimento.length}`}
+                      value={formData.categoriaEstabelecimentoId?.toString() || undefined} 
+                      onValueChange={(value) => handleInputChange('categoriaEstabelecimentoId', value ? parseInt(value) : undefined)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoriasEstabelecimento.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id.toString()}>
+                            {cat.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                   <div className="space-y-2">
                    <Label htmlFor="tipoLogistica">Tipo de Logística</Label>
