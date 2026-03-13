@@ -69,8 +69,9 @@ function hasGCError(responseText: string, status: number): boolean {
 // Helper: Get next sequential sale code from GestaoClick
 async function getProximoCodigoVenda(accessToken: string, secretToken: string): Promise<number> {
   try {
-    // Fetch most recent sale ordered by codigo descending
-    const response = await fetch(`${GESTAOCLICK_BASE_URL}/vendas?limite=1&ordenar_por=codigo&ordem=desc`, {
+    // Fetch last 50 sales to find the true highest numeric code
+    // (ordenação pode ser alfabética: "999" > "2060", então precisamos do Math.max)
+    const response = await fetch(`${GESTAOCLICK_BASE_URL}/vendas?limite=50&ordenar_por=codigo&ordem=desc`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -86,16 +87,19 @@ async function getProximoCodigoVenda(accessToken: string, secretToken: string): 
 
     const data = await response.json();
     
-    // Extract highest codigo from returned sales
+    // Extract highest codigo from ALL returned sales using Math.max
     if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-      // Handle both direct and nested response structures
-      const venda = data.data[0];
-      const codigoStr = venda.codigo || venda.Venda?.codigo;
-      const ultimoCodigo = parseInt(codigoStr, 10);
+      const codigos = data.data
+        .map((venda: any) => {
+          const codigoStr = venda.codigo || venda.Venda?.codigo;
+          return parseInt(codigoStr, 10);
+        })
+        .filter((c: number) => !isNaN(c));
       
-      if (!isNaN(ultimoCodigo)) {
-        console.log(`[gestaoclick-proxy] Último código encontrado: ${ultimoCodigo}, próximo: ${ultimoCodigo + 1}`);
-        return ultimoCodigo + 1;
+      if (codigos.length > 0) {
+        const maxCodigo = Math.max(...codigos);
+        console.log(`[gestaoclick-proxy] Maior código encontrado entre ${codigos.length} vendas: ${maxCodigo}, próximo: ${maxCodigo + 1}`);
+        return maxCodigo + 1;
       }
     }
     
