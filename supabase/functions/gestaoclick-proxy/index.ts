@@ -775,6 +775,11 @@ Deno.serve(async (req) => {
             errorMessage = vendaResponseText || errorMessage;
           }
 
+          // Mensagem específica para código duplicado após esgotar tentativas
+          if (errorMessage.includes('sendo utilizado') || errorMessage.includes('j\u00e1 est\u00e1 sendo')) {
+            errorMessage = `Não foi possível gerar a venda: todos os códigos sequenciais de ${codigo} até ${currentCodigo} já estão em uso no GestaoClick. Tente novamente em alguns segundos.`;
+          }
+
           if (errorMessage.includes('cliente_id informado')) {
             errorMessage = `ID GestaoClick do cliente inválido ("${clienteIdGCStr}") para "${cliente.nome}". Confirme o ID GC no cadastro do cliente no GestaoClick e atualize no Lovable.`;
           }
