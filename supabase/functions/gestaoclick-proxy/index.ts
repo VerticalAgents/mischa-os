@@ -1052,7 +1052,7 @@ Deno.serve(async (req) => {
         let vendaResponseText;
         let currentCodigo = novoCodigo;
         let retryCount = 0;
-        const maxRetries = 5;
+        const maxRetries = 20;
 
         while (retryCount < maxRetries) {
           vendaPayload.codigo = currentCodigo;
