@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { isClienteVisivelAgendamento } from "./utils/clienteVisibilidade";
 import { useFrequenciaRealEntregas, getCorDivergencia } from "@/hooks/useFrequenciaRealEntregas";
