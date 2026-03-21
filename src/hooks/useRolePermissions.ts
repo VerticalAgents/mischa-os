@@ -34,7 +34,7 @@ export interface RolePermission {
   can_edit: boolean;
 }
 
-export function useRolePermissions(role: string) {
+export function useRolePermissions(role: AppRoleDB) {
   const [permissions, setPermissions] = useState<RolePermission[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
