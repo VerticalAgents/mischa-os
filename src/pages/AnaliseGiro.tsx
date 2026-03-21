@@ -46,7 +46,10 @@ export default function AnaliseGiro() {
     );
   }
 
+  const { canEdit } = useRoutePermission('/analise-giro');
+
   return (
+    <EditPermissionProvider value={{ canEdit }}>
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
