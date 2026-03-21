@@ -364,14 +364,15 @@ export default function FunilLeads() {
                   <SelectItem value="perdido_presencial">Perdido Presencial</SelectItem>
                 </SelectContent>
               </Select>
-              <Button onClick={() => {
-              setEditingLead(null);
-              setIsLeadDialogOpen(true);
-            }}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Lead
-              </Button>
-            </div>
+              {canEdit && (
+                <Button onClick={() => {
+                  setEditingLead(null);
+                  setIsLeadDialogOpen(true);
+                }}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Lead
+                </Button>
+              )}
           </div>
         </CardHeader>
         <CardContent>
