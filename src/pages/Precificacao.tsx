@@ -23,7 +23,29 @@ export default function Precificacao() {
       
       <div className="mt-8">
         <Tabs value={activeTab} onValueChange={changeTab}>
-          <TabsList className="grid grid-cols-4 mb-8">
+          {/* Mobile: grid 2 colunas */}
+          <div className="grid grid-cols-2 gap-2 lg:hidden mb-8">
+            {[
+              { id: "insumos", label: "Insumos" },
+              { id: "receitas", label: "Receitas Base" },
+              { id: "produtos", label: "Produtos" },
+              { id: "rendimentos", label: "Rendimentos" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => changeTab(tab.id)}
+                className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {/* Desktop */}
+          <TabsList className="hidden lg:grid grid-cols-4 mb-8">
             <TabsTrigger value="insumos">Insumos</TabsTrigger>
             <TabsTrigger value="receitas">Receitas Base</TabsTrigger>
             <TabsTrigger value="produtos">Produtos</TabsTrigger>

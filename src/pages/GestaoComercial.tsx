@@ -55,12 +55,34 @@ export default function GestaoComercial() {
         description="Gerencie representantes, leads, distribuidores e parcerias comerciais"
       />
 
-      <Tabs
+        <Tabs
         value={activeTab}
         onValueChange={handleTabChange}
         className="mt-6"
       >
-        <TabsList className="w-full justify-start">
+        {/* Mobile: grid 2 colunas */}
+        <div className="grid grid-cols-2 gap-2 lg:hidden">
+          {[
+            { id: "representantes", label: "Dashboard" },
+            { id: "funil-leads", label: "Funil de Leads" },
+            { id: "distribuidores", label: "Distribuidores" },
+            { id: "parceiros", label: "Parceiros" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => handleTabChange(tab.id)}
+              className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                activeTab === tab.id
+                  ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {/* Desktop */}
+        <TabsList className="hidden lg:inline-flex w-full justify-start">
           <TabsTrigger value="representantes" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Dashboard

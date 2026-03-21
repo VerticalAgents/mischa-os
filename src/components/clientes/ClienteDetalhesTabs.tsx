@@ -23,35 +23,43 @@ export default function ClienteDetalhesTabs({
 
   return (
     <Tabs value={activeTab} onValueChange={changeTab} className="space-y-6">
-      <TabsList className="grid w-full grid-cols-5 h-12 bg-gray-100 rounded-lg p-1">
-        <TabsTrigger 
-          value="informacoes" 
-          className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium"
-        >
+      {/* Mobile: grid 2 colunas */}
+      <div className="grid grid-cols-2 gap-2 lg:hidden">
+        {[
+          { id: "informacoes", label: "Informações" },
+          { id: "agendamento", label: "Agendamento Atual" },
+          { id: "analise", label: "Análise de Giro" },
+          { id: "financeiro", label: "Financeiro" },
+          { id: "historico", label: "Histórico de Entregas" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => changeTab(tab.id)}
+            className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+              activeTab === tab.id
+                ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      {/* Desktop */}
+      <TabsList className="hidden lg:grid w-full grid-cols-5 h-12 bg-gray-100 rounded-lg p-1">
+        <TabsTrigger value="informacoes" className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium">
           Informações
         </TabsTrigger>
-        <TabsTrigger 
-          value="agendamento"
-          className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium"
-        >
+        <TabsTrigger value="agendamento" className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium">
           Agendamento Atual
         </TabsTrigger>
-        <TabsTrigger 
-          value="analise"
-          className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium"
-        >
+        <TabsTrigger value="analise" className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium">
           Análise de Giro
         </TabsTrigger>
-        <TabsTrigger 
-          value="financeiro"
-          className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium"
-        >
+        <TabsTrigger value="financeiro" className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium">
           Financeiro
         </TabsTrigger>
-        <TabsTrigger 
-          value="historico"
-          className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium"
-        >
+        <TabsTrigger value="historico" className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium">
           Histórico de Entregas
         </TabsTrigger>
       </TabsList>
