@@ -122,5 +122,6 @@ export default function GestaoComercial() {
         </TabsContent>
       </Tabs>
     </div>
+    </EditPermissionProvider>
   );
 }

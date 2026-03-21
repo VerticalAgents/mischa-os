@@ -42,5 +42,6 @@ export default function Reagendamentos() {
         </>
       )}
     </div>
+    </EditPermissionProvider>
   );
 }

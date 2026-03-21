@@ -123,5 +123,6 @@ export default function AnaliseGiro() {
         </TabsContent>
       </Tabs>
     </div>
+    </EditPermissionProvider>
   );
 }

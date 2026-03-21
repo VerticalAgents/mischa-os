@@ -104,4 +104,6 @@ export default function GestaoFinanceira() {
       </Tabs>
     </div>
   );
+    </EditPermissionProvider>
+  );
 }

@@ -188,5 +188,6 @@ export default function DashboardAnalytics() {
         </Tabs>
       </div>
     </>
+    </EditPermissionProvider>
   );
 }
