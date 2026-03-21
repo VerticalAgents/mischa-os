@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-export type AppRole = 'admin' | 'user';
+export type AppRole = 'admin' | 'user' | 'producao';
 
 /**
  * Validates if the current user has admin access using database roles
