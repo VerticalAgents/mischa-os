@@ -91,7 +91,6 @@ export function UserManager() {
     total: users.length,
     admins: users.filter(u => u.role === 'admin').length,
     users: users.filter(u => u.role === 'user').length,
-    producao: users.filter(u => u.role === 'producao').length
   };
 
   if (loading) {
