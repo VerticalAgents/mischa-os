@@ -22,6 +22,8 @@ import EntregasAnalyticsTab from "@/components/dashboard-analytics/EntregasAnaly
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { toast } from "sonner";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 export default function DashboardAnalytics() {
   const [activeTab, setActiveTab] = useState("operational-summary");
