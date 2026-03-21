@@ -6,11 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { UserPlus, Users, Trash2, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Users, RefreshCw, Eye, EyeOff, Shield } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCustomRoles } from '@/hooks/useCustomRoles';
 
 interface StaffAccount {
   id: string;
@@ -20,15 +23,29 @@ interface StaffAccount {
   ativo: boolean;
   created_at: string;
   email?: string;
+  custom_role_id?: string | null;
 }
 
 export default function FuncionariosTab() {
+  const { user } = useAuth();
+  const { roles: customRoles, loading: rolesLoading } = useCustomRoles();
   const [staff, setStaff] = useState<StaffAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ nome: '', email: '', password: '' });
+  const [form, setForm] = useState({ nome: '', email: '', password: '', custom_role_id: '' });
+  const [adminProfile, setAdminProfile] = useState<{ full_name: string | null; email: string | null } | null>(null);
+
+  const fetchAdminProfile = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', user.id)
+      .single();
+    setAdminProfile(data);
+  };
 
   const fetchStaff = async () => {
     try {
@@ -40,7 +57,6 @@ export default function FuncionariosTab() {
 
       if (error) throw error;
 
-      // Fetch emails from profiles
       const staffIds = (data || []).map(s => s.staff_user_id);
       let emailMap = new Map<string, string>();
 
@@ -49,7 +65,6 @@ export default function FuncionariosTab() {
           .from('profiles')
           .select('id, email')
           .in('id', staffIds);
-
         profiles?.forEach(p => {
           if (p.email) emailMap.set(p.id, p.email);
         });
@@ -69,14 +84,14 @@ export default function FuncionariosTab() {
 
   useEffect(() => {
     fetchStaff();
-  }, []);
+    fetchAdminProfile();
+  }, [user]);
 
   const handleCreate = async () => {
     if (!form.nome || !form.email || !form.password) {
       toast.error('Preencha todos os campos');
       return;
     }
-
     if (form.password.length < 6) {
       toast.error('A senha deve ter pelo menos 6 caracteres');
       return;
@@ -84,10 +99,8 @@ export default function FuncionariosTab() {
 
     try {
       setCreating(true);
-
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
-
       if (!token) {
         toast.error('Sessão expirada. Faça login novamente.');
         return;
@@ -106,19 +119,18 @@ export default function FuncionariosTab() {
             email: form.email,
             password: form.password,
             nome: form.nome,
-            role: 'producao',
+            custom_role_id: form.custom_role_id || null,
           }),
         }
       );
 
       const result = await response.json();
-
       if (!response.ok) {
         throw new Error(result.error || 'Erro ao criar funcionário');
       }
 
       toast.success(`Funcionário "${form.nome}" criado com sucesso!`);
-      setForm({ nome: '', email: '', password: '' });
+      setForm({ nome: '', email: '', password: '', custom_role_id: '' });
       setDialogOpen(false);
       fetchStaff();
     } catch (error: any) {
@@ -134,9 +146,7 @@ export default function FuncionariosTab() {
         .from('staff_accounts')
         .update({ ativo: !currentlyActive })
         .eq('id', staffId);
-
       if (error) throw error;
-
       toast.success(currentlyActive ? 'Funcionário desativado' : 'Funcionário reativado');
       fetchStaff();
     } catch (error) {
@@ -144,9 +154,20 @@ export default function FuncionariosTab() {
     }
   };
 
-  const roleLabel = (role: string) => {
-    if (role === 'producao') return 'Gerente de Produção';
-    return role;
+  const getRoleName = (s: StaffAccount) => {
+    if (s.custom_role_id) {
+      const cr = customRoles.find(r => r.id === s.custom_role_id);
+      return cr ? cr.name : 'Tipo removido';
+    }
+    return s.role === 'producao' ? 'Gerente de Produção' : s.role;
+  };
+
+  const getRoleColor = (s: StaffAccount) => {
+    if (s.custom_role_id) {
+      const cr = customRoles.find(r => r.id === s.custom_role_id);
+      return cr?.color || '#6B7280';
+    }
+    return '#3B82F6';
   };
 
   if (loading) {
@@ -167,10 +188,10 @@ export default function FuncionariosTab() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Funcionários da Empresa
+              Equipe da Empresa
             </CardTitle>
             <CardDescription>
-              Cadastre funcionários com acesso limitado ao sistema. Eles terão login próprio e verão apenas os dados da sua empresa.
+              Gerencie sua equipe e os acessos ao sistema.
             </CardDescription>
           </div>
           <div className="flex gap-2">
@@ -231,11 +252,31 @@ export default function FuncionariosTab() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Função</Label>
-                    <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
-                      <Badge className="bg-blue-500 hover:bg-blue-600 text-white">Gerente de Produção</Badge>
-                      <span className="text-xs text-muted-foreground">Acesso a PCP, Estoque, Agendamento</span>
-                    </div>
+                    <Label>Tipo de Acesso</Label>
+                    {customRoles.length > 0 ? (
+                      <Select
+                        value={form.custom_role_id}
+                        onValueChange={(val) => setForm(f => ({ ...f, custom_role_id: val }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um tipo de acesso" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {customRoles.map(role => (
+                            <SelectItem key={role.id} value={role.id}>
+                              <div className="flex items-center gap-2">
+                                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: role.color }} />
+                                {role.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
+                        Nenhum tipo de acesso criado. Crie na aba "Tipos de Acesso" primeiro.
+                      </div>
+                    )}
                   </div>
                 </div>
                 <DialogFooter>
@@ -263,10 +304,34 @@ export default function FuncionariosTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {staff.length === 0 ? (
+              {/* Admin/Owner row */}
+              {user && (
+                <TableRow className="bg-muted/30">
+                  <TableCell className="font-medium flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-primary" />
+                    {adminProfile?.full_name || user.email || 'Proprietário'}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {adminProfile?.email || user.email}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                      Proprietário / Administrador
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">—</TableCell>
+                  <TableCell>
+                    <Badge variant="default">Ativo</Badge>
+                  </TableCell>
+                  <TableCell className="text-right text-xs text-muted-foreground">
+                    Acesso total
+                  </TableCell>
+                </TableRow>
+              )}
+              {staff.length === 0 && !user ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    Nenhum funcionário cadastrado. Clique em "Adicionar Funcionário" para começar.
+                    Nenhum funcionário cadastrado.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -275,8 +340,8 @@ export default function FuncionariosTab() {
                     <TableCell className="font-medium">{s.nome || 'Sem nome'}</TableCell>
                     <TableCell className="text-muted-foreground">{s.email}</TableCell>
                     <TableCell>
-                      <Badge className="bg-blue-500 hover:bg-blue-600 text-white">
-                        {roleLabel(s.role)}
+                      <Badge style={{ backgroundColor: getRoleColor(s), color: '#fff' }}>
+                        {getRoleName(s)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">

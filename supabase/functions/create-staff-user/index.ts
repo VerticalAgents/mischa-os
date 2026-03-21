@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
     // Parse body
-    const { email, password, nome, role } = await req.json();
+    const { email, password, nome, custom_role_id } = await req.json();
 
     if (!email || !password || !nome) {
       return new Response(
@@ -53,9 +53,6 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const validRoles = ["producao"];
-    const staffRole = validRoles.includes(role) ? role : "producao";
 
     // Check caller is not a staff member themselves
     const { data: callerStaff } = await adminClient
@@ -92,14 +89,15 @@ Deno.serve(async (req) => {
 
     const staffUserId = newUser.user.id;
 
-    // Insert into staff_accounts
+    // Insert into staff_accounts with custom_role_id
     const { error: staffError } = await adminClient
       .from("staff_accounts")
       .insert({
         owner_id: ownerId,
         staff_user_id: staffUserId,
-        role: staffRole,
+        role: "producao",
         nome,
+        custom_role_id: custom_role_id || null,
       });
 
     if (staffError) {
@@ -117,7 +115,7 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .insert({
         user_id: staffUserId,
-        role: staffRole,
+        role: "producao",
         owner_id: ownerId,
       });
 
@@ -145,7 +143,7 @@ Deno.serve(async (req) => {
           id: staffUserId,
           email,
           nome,
-          role: staffRole,
+          custom_role_id: custom_role_id || null,
         },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
