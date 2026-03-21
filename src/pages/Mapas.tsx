@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
