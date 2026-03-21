@@ -8,7 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Factory, Save, ShoppingCart } from 'lucide-react';
 import { useRolePermissions, ALL_ROUTES } from '@/hooks/useRolePermissions';
 
-const ROLE_PROFILES = [
+type AppRole = 'admin' | 'producao' | 'user';
+
+const ROLE_PROFILES: { id: AppRole; name: string; description: string; icon: React.ReactNode; badgeClass: string }[] = [
   {
     id: 'producao',
     name: 'Gerente de Produção',
