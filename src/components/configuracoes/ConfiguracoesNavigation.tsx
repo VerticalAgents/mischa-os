@@ -18,7 +18,8 @@ import {
   Calendar,
   Factory,
   Link2,
-  UserPlus
+  UserPlus,
+  ShieldCheck
 } from 'lucide-react';
 
 interface ConfiguracoesNavigationProps {
