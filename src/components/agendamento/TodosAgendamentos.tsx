@@ -28,6 +28,7 @@ import ReagendamentoEmMassaDialog from "./ReagendamentoEmMassaDialog";
 import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
 
 export default function TodosAgendamentos() {
+  const { canEdit } = useEditPermission();
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
