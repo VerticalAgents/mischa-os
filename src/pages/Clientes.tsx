@@ -403,14 +403,17 @@ export default function Clientes() {
   if (clienteAtual) {
     console.log('Clientes: Renderizando detalhes do cliente:', clienteAtual.nome);
     return (
-      <ClienteDetailsView 
-        cliente={clienteAtual} 
-        onBack={handleBackToList} 
-      />
+      <EditPermissionProvider value={{ canEdit }}>
+        <ClienteDetailsView 
+          cliente={clienteAtual} 
+          onBack={handleBackToList} 
+        />
+      </EditPermissionProvider>
     );
   }
   
   return (
+    <EditPermissionProvider value={{ canEdit }}>
     <>
       <PageHeader 
         title="Clientes" 
