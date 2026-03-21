@@ -15,7 +15,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ReagendamentoEntreSemanas } from "@/hooks/useReagendamentosEntreSemanas";
-
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 interface ReagendamentosTableProps {
   reagendamentos: ReagendamentoEntreSemanas[];
   onExcluir: (id: string) => Promise<void>;
