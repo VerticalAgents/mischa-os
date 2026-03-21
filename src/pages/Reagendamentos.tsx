@@ -8,7 +8,7 @@ export default function Reagendamentos() {
   const { reagendamentos, resumo, isLoading, excluir } = useReagendamentosEntreSemanas();
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-3 sm:p-6">
       <div className="flex items-center gap-3">
         <CalendarClock className="h-6 w-6 text-primary" />
         <div>

@@ -815,9 +815,9 @@ export default function AgendamentoDashboard() {
 
   return <div className="space-y-6">
       {/* Barra de Filtros Unificada */}
-      <div className="bg-muted/30 border rounded-lg p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
+      <div className="bg-muted/30 border rounded-lg p-3 sm:p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 text-sm font-medium text-muted-foreground flex-wrap">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4" />
               Filtros
@@ -829,13 +829,13 @@ export default function AgendamentoDashboard() {
             </div>
             
             {/* Campo de busca por nome */}
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar cliente ou CNPJ..."
                 value={filtroNome}
                 onChange={(e) => setFiltroNome(e.target.value)}
-                className="pl-8 h-9 w-48"
+                className="pl-8 h-9 w-full sm:w-48"
               />
             </div>
           </div>
@@ -910,9 +910,9 @@ export default function AgendamentoDashboard() {
       {previstosSemanais.length > 0 && (
         <Card>
           <CardHeader>
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div className="space-y-1.5">
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                   <BarChart3 className="h-5 w-5 text-amber-500" />
                   Probabilidade de Confirmação
                 </CardTitle>
@@ -969,7 +969,7 @@ export default function AgendamentoDashboard() {
               </div>
 
               {/* Breakdown por faixa */}
-              <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-3 sm:gap-4 text-sm flex-wrap">
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-green-500" />
                   <span className="text-muted-foreground">Alta (&gt;85%):</span>
@@ -992,7 +992,7 @@ export default function AgendamentoDashboard() {
       )}
 
       {/* Cards de Indicadores */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 min-h-[52px]">
             <CardTitle className="text-sm font-medium">Total da Semana</CardTitle>
