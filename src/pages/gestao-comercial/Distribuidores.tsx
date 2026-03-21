@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Users, Package, Store, TrendingUp, Check, X, Loader2 } from "lucide-react";
 import { useDistribuidoresExpositores } from "@/hooks/useDistribuidoresExpositores";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 
 export default function Distribuidores() {
   const { distribuidores, isLoading, metricas, updateExpositores, isUpdating } =
