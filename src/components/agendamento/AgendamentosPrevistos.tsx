@@ -28,6 +28,7 @@ import SortableTableHeader from "@/components/common/SortableTableHeader";
 import { useTableSort } from "@/hooks/useTableSort";
 
 export default function AgendamentosPrevistos() {
+  const { canEdit } = useEditPermission();
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
