@@ -1,105 +1,35 @@
 
 
-# Funcionários por Empresa — Acesso Isolado Multi-Tenant
+## Plano: Mostrar admin na lista de funcionários + remover role "producao" hardcoded
 
-## Problema Atual
-O role `producao` é global. Qualquer admin pode atribuir o role a qualquer usuário. Não existe vínculo "este funcionário pertence a esta empresa". Enzo e Lucca são ambos donos de empresa, mas o sistema trata todos como iguais.
+### O que muda
 
-## Conceito
-- **Dono de empresa** = qualquer usuário com role `admin` ou `user` (quem cria conta é dono)
-- **Funcionário** = conta criada pelo dono, com role `producao`, vinculada ao dono via `owner_id`
-- Funcionários do Lucca não veem dados do Enzo e vice-versa
-- A página Segurança (`/security`) continua sendo só para você (super-admin da plataforma)
+1. **FuncionariosTab.tsx** - Adicionar o usuário admin (owner) como primeiro item na lista de funcionários
+   - Buscar o perfil do usuário logado (admin) via `useAuth`
+   - Exibir na tabela como primeira linha com Badge especial "Proprietário / Administrador"
+   - Sem botões de ação (não pode desativar a si mesmo)
+   - Adicionar um Select para escolher o tipo de acesso (custom_role) ao criar funcionário, em vez do hardcoded "Gerente de Produção"
 
-## Plano de Implementação
+2. **FuncionariosTab.tsx** - Permitir atribuir custom_roles aos funcionários
+   - No dialog de criação, trocar o badge fixo "Gerente de Produção" por um Select que lista os custom_roles criados na aba "Tipos de Acesso"
+   - Na tabela, mostrar o nome do custom_role atribuído (via `staff_accounts.role` ou uma nova coluna `custom_role_id`)
 
-### 1. Migration SQL — Tabela `staff_accounts`
+3. **Remover referências hardcoded ao role "producao"**
+   - No `SidebarContent.tsx`, trocar a lógica `userRole !== 'producao'` por uma verificação genérica: se o usuário tem `allowedRoutes` do DB, filtrar; se é admin, mostrar tudo
+   - No `FuncionariosTab.tsx`, remover o hardcoded `role: 'producao'` no create e o `roleLabel` que traduz "producao" → "Gerente de Produção"
 
-Nova tabela para vincular funcionários aos donos:
+4. **Migração DB** (opcional mas recomendada) - Adicionar coluna `custom_role_id` na tabela `staff_accounts` para vincular funcionários aos custom_roles
+   - `ALTER TABLE staff_accounts ADD COLUMN custom_role_id uuid REFERENCES custom_roles(id) ON DELETE SET NULL;`
 
-```sql
-CREATE TABLE public.staff_accounts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  owner_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  staff_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  role app_role NOT NULL DEFAULT 'producao',
-  nome text,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  UNIQUE(owner_id, staff_user_id)
-);
+### Detalhes técnicos
 
-ALTER TABLE staff_accounts ENABLE ROW LEVEL SECURITY;
+- O admin aparece na lista buscando o user logado via `useAuth()` e consultando `profiles`
+- O Select de tipo de acesso usa o hook `useCustomRoles()` já existente
+- A sidebar passa a usar: se `userRole === 'admin'` → tudo; senão → `allowedRoutes` do DB; senão → nada (ou fallback mínimo)
+- A coluna `custom_role_id` em `staff_accounts` substitui o campo `role` text para funcionários, permitindo vincular ao sistema dinâmico de permissões
 
--- Donos veem só seus funcionários
-CREATE POLICY "Owners can manage own staff"
-ON staff_accounts FOR ALL
-TO authenticated
-USING (owner_id = auth.uid())
-WITH CHECK (owner_id = auth.uid());
-```
-
-Adicionar `owner_id` na tabela `user_roles` para saber a quem o `producao` pertence:
-
-```sql
-ALTER TABLE user_roles ADD COLUMN owner_id uuid REFERENCES auth.users(id);
-```
-
-### 2. Edge Function — `create-staff-user`
-
-Uma Edge Function que o dono de empresa chama para criar a conta do funcionário:
-
-- Recebe: `email`, `password`, `nome`, `role` (por enquanto só `producao`)
-- Usa o Supabase Admin API (`supabase.auth.admin.createUser`) para criar o usuário
-- Insere na `staff_accounts` com `owner_id = auth.uid()` do chamador
-- Insere na `user_roles` com role `producao` e `owner_id`
-
-Isso garante que o dono define email e senha do funcionário.
-
-### 3. Nova aba em Configurações — "Funcionários"
-
-- Criar `src/components/configuracoes/tabs/FuncionariosTab.tsx`
-- Adicionar na navegação de Configurações (grupo "Administração")
-- Interface: lista de funcionários cadastrados, botão "Adicionar Funcionário"
-- Modal de cadastro: campos email, senha, nome, role (select com "Gerente de Produção")
-- Ações: desativar/remover funcionário
-
-### 4. RLS — Dados isolados por empresa
-
-As tabelas que o `producao` acessa (agendamentos, estoque, PCP, etc.) precisam de policies que permitam acesso quando o usuário é funcionário vinculado ao dono dos dados. Isso requer:
-
-- Criar função `get_owner_id(user_id)` que retorna o `owner_id` do staff, ou o próprio `user_id` se for dono
-- Adicionar policies: `USING (owner_id = get_owner_id(auth.uid()))` nas tabelas relevantes
-
-**Importante**: Essa etapa de RLS é a mais sensível e pode ser feita incrementalmente, tabela por tabela.
-
-### 5. Ajustar `UserManager` (Segurança)
-
-- Remover a opção "Gerente de Produção" do dropdown — esse role não se atribui globalmente
-- Manter só `admin` e `user` como opções (donos de empresa)
-- Funcionários aparecem numa seção separada ou nem aparecem aqui
-
-## Arquivos Novos
-- `supabase/functions/create-staff-user/index.ts` — Edge Function
-- `src/components/configuracoes/tabs/FuncionariosTab.tsx` — Aba de funcionários
-- 1 migration SQL (tabela + policies + função helper)
-
-## Arquivos Modificados
-- `src/components/configuracoes/ConfiguracoesNavigation.tsx` — adicionar aba "Funcionários"
-- `src/components/configuracoes/ConfiguracoesTabs.tsx` — registrar componente
-- `src/components/security/UserManager.tsx` — remover opção `producao` do dropdown
-- RLS policies das tabelas de dados (incremental)
-
-## O que NÃO muda
-- `AdminGuard`, `ProducaoGuard`, `RoleBasedRoute` — continuam funcionando
-- Sidebar filtrada por role — continua igual
-- Página de Segurança — continua só para super-admin
-- Roles existentes de Lucca (admin) e Enzo (user)
-
-## Ordem de Execução Sugerida
-1. Migration SQL (tabela + função)
-2. Edge Function `create-staff-user`
-3. Aba "Funcionários" em Configurações
-4. Ajustar UserManager
-5. RLS incremental nas tabelas de dados (etapa futura, mais sensível)
+### Arquivos afetados
+- `src/components/configuracoes/tabs/FuncionariosTab.tsx` — mostrar admin + select de custom_role
+- `src/components/layout/SidebarContent.tsx` — remover lógica hardcoded "producao"
+- Migration SQL — adicionar `custom_role_id` a `staff_accounts`
 
