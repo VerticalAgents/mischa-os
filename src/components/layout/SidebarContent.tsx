@@ -1,36 +1,29 @@
 
 import { Link, useLocation } from "react-router-dom";
 import {
-  Home,
-  Users,
-  ShoppingBag,
-  Calendar,
-  Package,
-  Settings,
-  Factory,
-  Truck,
-  BarChart4,
-  FileText,
-  Bot,
-  ShoppingCart,
-  BadgeDollarSign,
-  LayoutDashboard,
-  Store,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { mainMenuItems } from "@/components/layout/navigation-items";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 interface SidebarProps {
   showLabels: boolean;
   onItemClick?: () => void;
 }
 
+const PRODUCAO_ALLOWED_PATHS = ['/home', '/pcp', '/estoque', '/estoque/insumos', '/agendamento'];
+
 const SidebarContent = ({ showLabels, onItemClick }: SidebarProps) => {
   const location = useLocation();
   const { logout } = useAuth();
+  const { userRole } = useUserRoles();
+
+  const filteredItems = userRole === 'producao'
+    ? mainMenuItems.filter(item => PRODUCAO_ALLOWED_PATHS.some(p => item.path === p || item.path.startsWith(p + '?')))
+    : mainMenuItems;
 
   return (
     <div className="flex h-full flex-col gap-2">
@@ -56,7 +49,7 @@ const SidebarContent = ({ showLabels, onItemClick }: SidebarProps) => {
       </div>
 
       <nav className="space-y-1 px-2">
-        {mainMenuItems.map((item) => (
+        {filteredItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
