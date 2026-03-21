@@ -1,48 +1,33 @@
 
 
-## Plano: Calendário Semanal responsivo + esconder scrollbars no mobile/tablet
+## Plano: Tabs do Agendamento em grid no mobile
 
-### Problemas identificados
-1. **Calendário Semanal**: `grid-cols-7` fixo (linha 1260) — impossível de ler no mobile 391px
-2. **Scrollbar vertical visível** no mobile/tablet ocupando espaço
-3. **Conteúdo não cabe** na largura — gera scroll horizontal indesejado
+### Problema
+No mobile (391px), até 8 abas ficam em uma fila horizontal com scroll — UX ruim, parece quebrado, o usuário não vê todas as opções.
+
+### Solução
+Substituir o `TabsList` padrão por um **grid de botões** no mobile, e manter o `TabsList` horizontal apenas no desktop.
+
+**No mobile/tablet (`<lg`)**: Grid de 2 colunas com botões compactos, todos visíveis de uma vez — sem scroll horizontal.
+
+**No desktop (`lg+`)**: Manter o `TabsList` horizontal atual sem alterações.
 
 ### Mudanças
 
-**1. `src/components/agendamento/AgendamentoDashboard.tsx` — Calendário responsivo**
+**`src/pages/Agendamento.tsx`**
 
-O calendário de 7 colunas será substituído por um layout responsivo:
-- **Mobile** (`<md`): layout vertical, lista de cards empilhados (1 coluna), cada dia mostrando nome abreviado + data + badges lado a lado
-- **Tablet** (`md`): `grid-cols-4` (4 dias na primeira fila, 3 na segunda)
-- **Desktop** (`lg+`): mantém `grid-cols-7` atual
+- Importar `useIsMobile` (ou usar breakpoint `lg`)
+- Renderizar condicionalmente:
+  - **Mobile**: Um `div` com `grid grid-cols-2 gap-2` contendo botões estilizados que chamam `changeTab()`. O botão ativo tem fundo destacado (bg-white shadow), os inativos ficam em bg-muted.
+  - **Desktop**: O `TabsList` + `TabsTrigger` atual, sem alterações.
+- `TabsContent` permanece idêntico (controlado por `activeTab` via `Tabs value=`)
 
-Além disso, no card de "Agendamentos do Dia Selecionado" (linhas 1377-1415), os badges e botões ficam empilhados no mobile em vez de lado a lado:
-- `flex-col sm:flex-row` no container do card
-- Botões de ação abaixo do conteúdo no mobile
-
-**2. `src/index.css` — Esconder scrollbar vertical no mobile/tablet**
-
-Adicionar regra CSS que esconde a scrollbar do `<main>` em viewports `<1024px`:
-```css
-@media (max-width: 1023px) {
-  main { scrollbar-width: none; }
-  main::-webkit-scrollbar { display: none; }
-}
-```
-
-Isso remove AMBAS as scrollbars (vertical e horizontal) no mobile/tablet sem afetar desktop.
-
-**3. `src/components/agendamento/AgendamentoDashboard.tsx` — Filtros e navegador de semana**
-
-- O navegador de semana (linha 849-885) já tem `min-w-[160px]` e flex-wrap — ok
-- O botão "Exportar PDF" com `ml-auto` pode empurrar conteúdo — adicionar `w-full sm:w-auto` para empilhar no mobile
+### Resultado
+- Mobile: todas as abas visíveis em grid 2x4, sem scroll horizontal
+- Desktop: layout horizontal original intacto
 
 ### Arquivos alterados
 | Arquivo | Mudança |
 |---------|---------|
-| `AgendamentoDashboard.tsx` | Calendário responsivo (lista no mobile, grid-cols-4 tablet, grid-cols-7 desktop) + cards do dia empilhados no mobile |
-| `src/index.css` | Esconder scrollbar no mobile/tablet |
-
-### Desktop preservado
-Todas as mudanças usam breakpoints `md:` e `lg:` — desktop inalterado.
+| `src/pages/Agendamento.tsx` | Grid de tabs no mobile, TabsList no desktop |
 
