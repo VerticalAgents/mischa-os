@@ -8,22 +8,31 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { mainMenuItems } from "@/components/layout/navigation-items";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { useMyPermissions } from "@/hooks/useRolePermissions";
 
 interface SidebarProps {
   showLabels: boolean;
   onItemClick?: () => void;
 }
 
-const PRODUCAO_ALLOWED_PATHS = ['/home', '/pcp', '/estoque', '/estoque/insumos', '/agendamento'];
+// Fallback hardcoded paths if no DB permissions configured yet
+const PRODUCAO_DEFAULT_PATHS = ['/home', '/pcp', '/estoque', '/estoque/insumos', '/agendamento'];
 
 const SidebarContent = ({ showLabels, onItemClick }: SidebarProps) => {
   const location = useLocation();
   const { logout } = useAuth();
   const { userRole } = useUserRoles();
+  const { allowedRoutes, loading: permLoading } = useMyPermissions();
 
-  const filteredItems = userRole === 'producao'
-    ? mainMenuItems.filter(item => PRODUCAO_ALLOWED_PATHS.some(p => item.path === p || item.path.startsWith(p + '?')))
-    : mainMenuItems;
+  const filteredItems = (() => {
+    if (userRole !== 'producao') return mainMenuItems;
+
+    // If DB permissions exist, use them; otherwise fall back to hardcoded
+    const paths = allowedRoutes.length > 0 ? allowedRoutes : PRODUCAO_DEFAULT_PATHS;
+    return mainMenuItems.filter(item =>
+      paths.some(p => item.path === p || item.path.startsWith(p + '?') || item.path.startsWith(p + '/'))
+    );
+  })();
 
   return (
     <div className="flex h-full flex-col gap-2">
