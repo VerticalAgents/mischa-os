@@ -281,7 +281,9 @@ function App() {
                      <Route path="/seguranca" element={
                        <ProtectedRoute>
                          <AppLayout>
-                           <Security />
+                           <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                             <Security />
+                           </RoleBasedRoute>
                          </AppLayout>
                        </ProtectedRoute>
                      } />
