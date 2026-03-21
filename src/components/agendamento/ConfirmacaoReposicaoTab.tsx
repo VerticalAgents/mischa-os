@@ -14,6 +14,7 @@ import { Check, Clock, AlertTriangle } from "lucide-react";
 import { PEDIDO_MINIMO_UNIDADES } from "@/utils/constants";
 
 export default function ConfirmacaoReposicaoTab() {
+  const { canEdit } = useEditPermission();
   const { clientes } = useClienteStore();
   const { salvarAgendamento } = useAgendamentoClienteStore();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
