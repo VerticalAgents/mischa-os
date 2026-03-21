@@ -1,0 +1,1 @@
+ALTER TABLE public.staff_accounts ADD COLUMN custom_role_id uuid REFERENCES public.custom_roles(id) ON DELETE SET NULL;
