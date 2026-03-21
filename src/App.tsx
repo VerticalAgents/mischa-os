@@ -253,7 +253,9 @@ function App() {
                     <Route path="/projecoes" element={
                       <ProtectedRoute>
                         <AppLayout>
-                          <Projections />
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <Projections />
+                          </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
                     } />
