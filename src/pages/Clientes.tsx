@@ -418,10 +418,10 @@ export default function Clientes() {
       <PageHeader 
         title="Clientes" 
         description="Gerencie os pontos de venda dos seus produtos" 
-        action={{
+        action={canEdit ? {
           label: "Novo Cliente",
           onClick: handleOpenForm
-        }} 
+        } : undefined} 
       >
         <Button
           variant="outline"
