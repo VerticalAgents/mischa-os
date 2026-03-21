@@ -5,6 +5,7 @@ import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from '@/components/ui/toaster';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { RoleBasedRoute } from '@/components/auth/RoleBasedRoute';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import AppLayout from '@/components/layout/AppLayout';
 import { RouteGuard } from '@/components/navigation/RouteGuard';
@@ -151,7 +152,9 @@ function App() {
                     <Route path="/precificacao" element={
                       <ProtectedRoute>
                         <AppLayout>
-                          <Precificacao />
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <Precificacao />
+                          </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
                     } />
@@ -200,28 +203,36 @@ function App() {
                     <Route path="/gestao-financeira" element={
                       <ProtectedRoute>
                         <AppLayout>
-                          <GestaoFinanceira />
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <GestaoFinanceira />
+                          </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
                     } />
                     <Route path="/gestao-financeira/projecao-resultados-pdv" element={
                       <ProtectedRoute>
                         <AppLayout>
-                          <ProjecaoResultadosPDV />
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <ProjecaoResultadosPDV />
+                          </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
                     } />
                     <Route path="/gestao-financeira/ponto-equilibrio" element={
                       <ProtectedRoute>
                         <AppLayout>
-                          <PontoEquilibrio />
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <PontoEquilibrio />
+                          </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
                     } />
                     <Route path="/configuracoes" element={
                       <ProtectedRoute>
                         <AppLayout>
-                          <Configuracoes />
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <Configuracoes />
+                          </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
                     } />
@@ -242,7 +253,9 @@ function App() {
                     <Route path="/projecoes" element={
                       <ProtectedRoute>
                         <AppLayout>
-                          <Projections />
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <Projections />
+                          </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
                     } />
@@ -256,7 +269,9 @@ function App() {
                      <Route path="/custos" element={
                        <ProtectedRoute>
                          <AppLayout>
-                           <Custos />
+                           <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                             <Custos />
+                           </RoleBasedRoute>
                          </AppLayout>
                        </ProtectedRoute>
                      } />
@@ -268,7 +283,9 @@ function App() {
                      <Route path="/seguranca" element={
                        <ProtectedRoute>
                          <AppLayout>
-                           <Security />
+                           <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                             <Security />
+                           </RoleBasedRoute>
                          </AppLayout>
                        </ProtectedRoute>
                      } />

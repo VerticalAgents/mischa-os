@@ -79,7 +79,7 @@ export function UserManager() {
         user.id === userId ? { ...user, role: newRole } : user
       ));
       
-      toast.success(`Função atualizada para ${newRole === 'admin' ? 'Administrador' : 'Usuário'}`);
+      toast.success(`Função atualizada para ${newRole === 'admin' ? 'Administrador' : newRole === 'producao' ? 'Gerente de Produção' : 'Usuário'}`);
     } catch (error: any) {
       toast.error(error.message || 'Erro ao atualizar função');
     } finally {
@@ -90,7 +90,8 @@ export function UserManager() {
   const stats = {
     total: users.length,
     admins: users.filter(u => u.role === 'admin').length,
-    users: users.filter(u => u.role === 'user').length
+    users: users.filter(u => u.role === 'user').length,
+    producao: users.filter(u => u.role === 'producao').length
   };
 
   if (loading) {
@@ -206,9 +207,9 @@ export function UserManager() {
                     <TableCell>
                       <Badge 
                         variant={user.role === 'admin' ? 'default' : 'secondary'}
-                        className={user.role === 'admin' ? 'bg-amber-500 hover:bg-amber-600' : ''}
+                        className={user.role === 'admin' ? 'bg-amber-500 hover:bg-amber-600' : user.role === 'producao' ? 'bg-blue-500 hover:bg-blue-600 text-white' : ''}
                       >
-                        {user.role === 'admin' ? 'Administrador' : 'Usuário'}
+                        {user.role === 'admin' ? 'Administrador' : user.role === 'producao' ? 'Ger. Produção' : 'Usuário'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -223,6 +224,7 @@ export function UserManager() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="user">Usuário</SelectItem>
+                            <SelectItem value="producao">Gerente de Produção</SelectItem>
                             <SelectItem value="admin">Administrador</SelectItem>
                           </SelectContent>
                         </Select>
