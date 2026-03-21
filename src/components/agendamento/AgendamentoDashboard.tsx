@@ -992,7 +992,7 @@ export default function AgendamentoDashboard() {
       )}
 
       {/* Cards de Indicadores */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 min-h-[52px]">
             <CardTitle className="text-sm font-medium">Total da Semana</CardTitle>

@@ -51,7 +51,7 @@ export default function PCP() {
 
   return (
     <EditPermissionProvider value={{ canEdit }}>
-      <div className="container mx-auto py-6">
+      <div className="space-y-6">
         <PageHeader 
           title="PCP - Planejamento e Controle da Produção" 
           description="Gerencie a produção, estoques e planejamento de forma integrada"
