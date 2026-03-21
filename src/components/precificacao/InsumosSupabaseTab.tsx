@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
