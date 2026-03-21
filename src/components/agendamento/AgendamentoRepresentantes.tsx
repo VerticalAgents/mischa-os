@@ -236,6 +236,8 @@ export default function AgendamentoRepresentantes() {
                           variant="default"
                           size="sm"
                           onClick={() => handleConfirmarAgendamento(agendamento)}
+                          disabled={!canEdit}
+                          title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                           className="bg-green-500 hover:bg-green-600"
                         >
                           <CheckCheck className="mr-2 h-4 w-4" />
@@ -245,6 +247,8 @@ export default function AgendamentoRepresentantes() {
                           variant="secondary"
                           size="sm"
                           onClick={() => handleEditarAgendamento(agendamento)}
+                          disabled={!canEdit}
+                          title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                         >
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
