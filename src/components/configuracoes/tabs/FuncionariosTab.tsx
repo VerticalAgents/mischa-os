@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { UserPlus, Users, RefreshCw, Eye, EyeOff, Shield } from 'lucide-react';
+import { UserPlus, Users, RefreshCw, Eye, EyeOff, Shield, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,8 +33,11 @@ export default function FuncionariosTab() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<StaffAccount | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '', custom_role_id: '' });
+  const [editForm, setEditForm] = useState({ nome: '', custom_role_id: '' });
   const [adminProfile, setAdminProfile] = useState<{ full_name: string | null; email: string | null } | null>(null);
 
   const fetchAdminProfile = async () => {
@@ -148,6 +151,36 @@ export default function FuncionariosTab() {
         .eq('id', staffId);
       if (error) throw error;
       toast.success(currentlyActive ? 'Funcionário desativado' : 'Funcionário reativado');
+      fetchStaff();
+    } catch (error) {
+      toast.error('Erro ao atualizar funcionário');
+    }
+  };
+
+  const openEditDialog = (s: StaffAccount) => {
+    setEditingStaff(s);
+    setEditForm({ nome: s.nome || '', custom_role_id: s.custom_role_id || '' });
+    setEditDialogOpen(true);
+  };
+
+  const handleEdit = async () => {
+    if (!editingStaff) return;
+    if (!editForm.nome) {
+      toast.error('O nome é obrigatório');
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('staff_accounts')
+        .update({
+          nome: editForm.nome,
+          custom_role_id: editForm.custom_role_id || null,
+        })
+        .eq('id', editingStaff.id);
+      if (error) throw error;
+      toast.success('Funcionário atualizado!');
+      setEditDialogOpen(false);
+      setEditingStaff(null);
       fetchStaff();
     } catch (error) {
       toast.error('Erro ao atualizar funcionário');
@@ -356,14 +389,24 @@ export default function FuncionariosTab() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs h-7 px-2"
-                          onClick={() => handleDeactivate(s.id, s.ativo)}
-                        >
-                          {s.ativo ? 'Desativar' : 'Reativar'}
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 px-2"
+                            onClick={() => openEditDialog(s)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 px-2"
+                            onClick={() => handleDeactivate(s.id, s.ativo)}
+                          >
+                            {s.ativo ? 'Desativar' : 'Reativar'}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -373,6 +416,57 @@ export default function FuncionariosTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Funcionário</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome completo</Label>
+              <Input
+                value={editForm.nome}
+                onChange={(e) => setEditForm(f => ({ ...f, nome: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de Acesso</Label>
+              {customRoles.length > 0 ? (
+                <Select
+                  value={editForm.custom_role_id}
+                  onValueChange={(val) => setEditForm(f => ({ ...f, custom_role_id: val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um tipo de acesso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customRoles.map(role => (
+                      <SelectItem key={role.id} value={role.id}>
+                        <div className="flex items-center gap-2">
+                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: role.color }} />
+                          {role.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
+                  Nenhum tipo de acesso criado. Crie na aba "Tipos de Acesso" primeiro.
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button onClick={handleEdit}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
