@@ -30,8 +30,10 @@ import { ProdutoTableRow } from "./ProdutoTableRow";
 import EditarProdutoModal from "./EditarProdutoModal";
 import CriarProdutoModal from "./CriarProdutoModal";
 import { toast } from "sonner";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 
 export default function ProdutosTab() {
+  const { canEdit } = useEditPermission();
   const { 
     produtos, 
     loading, 
