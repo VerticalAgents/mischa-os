@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Settings, Truck, Package, Download, MapPin, RefreshCw } from "lucide-react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 
 interface DespachoActionsCardProps {
   tipoFiltro: "hoje" | "atrasadas" | "antecipada";
@@ -25,6 +26,7 @@ export const DespachoActionsCard = ({
   temPedidosDespachados,
   isLoading
 }: DespachoActionsCardProps) => {
+  const { canEdit } = useEditPermission();
   const mostrarAcoesDespacho = tipoFiltro !== "antecipada";
 
   return (
@@ -36,7 +38,7 @@ export const DespachoActionsCard = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {mostrarAcoesDespacho && (
+        {mostrarAcoesDespacho && canEdit && (
           <>
             <Button
               onClick={onDespacharEmMassa}

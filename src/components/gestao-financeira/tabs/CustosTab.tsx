@@ -18,6 +18,7 @@ import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useIndicadoresFinanceiros } from "@/hooks/useIndicadoresFinanceiros";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 type Frequencia = "mensal" | "semanal" | "trimestral" | "semestral" | "anual" | "por-producao";
 type TipoCusto = "fixo" | "variavel";
 type FormData = {
@@ -36,6 +37,7 @@ const formatCurrency = (value: number): string => {
   }).format(value);
 };
 export default function CustosTab() {
+  const { canEdit } = useEditPermission();
   const {
     custosFixos,
     isLoading: loadingFixos,
@@ -489,19 +491,20 @@ export default function CustosTab() {
               <CardTitle>Gestão de Custos</CardTitle>
               <CardDescription className="text-left mt-1">Adicione e gerencie seus custos por categoria</CardDescription>
             </div>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => {
-                resetForm();
-                setNovoCusto(prev => ({
-                  ...prev,
-                  tipoCusto: activeTab === "fixos" ? "fixo" : "variavel"
-                }));
-              }}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Custo
-                </Button>
-              </DialogTrigger>
+            {canEdit && (
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => {
+                    resetForm();
+                    setNovoCusto(prev => ({
+                      ...prev,
+                      tipoCusto: activeTab === "fixos" ? "fixo" : "variavel"
+                    }));
+                  }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Custo
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>{editandoId ? 'Editar' : 'Novo'} Custo {novoCusto.tipoCusto === 'fixo' ? 'Fixo' : 'Variável'}</DialogTitle>
@@ -607,6 +610,7 @@ export default function CustosTab() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </CardHeader>
         <CardContent>

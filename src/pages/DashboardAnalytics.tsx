@@ -22,6 +22,8 @@ import EntregasAnalyticsTab from "@/components/dashboard-analytics/EntregasAnaly
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { toast } from "sonner";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 export default function DashboardAnalytics() {
   const [activeTab, setActiveTab] = useState("operational-summary");
@@ -88,7 +90,10 @@ export default function DashboardAnalytics() {
     }
   };
 
+  const { canEdit } = useRoutePermission('/dashboard-analytics');
+
   return (
+    <EditPermissionProvider value={{ canEdit }}>
     <>
       <div className="flex items-center justify-between mb-4">
         <PageHeader 
@@ -183,5 +188,6 @@ export default function DashboardAnalytics() {
         </Tabs>
       </div>
     </>
+    </EditPermissionProvider>
   );
 }

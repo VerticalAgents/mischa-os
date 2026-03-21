@@ -15,13 +15,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ReagendamentoEntreSemanas } from "@/hooks/useReagendamentosEntreSemanas";
-
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 interface ReagendamentosTableProps {
   reagendamentos: ReagendamentoEntreSemanas[];
   onExcluir: (id: string) => Promise<void>;
 }
 
 export default function ReagendamentosTable({ reagendamentos, onExcluir }: ReagendamentosTableProps) {
+  const { canEdit } = useEditPermission();
   const [searchTerm, setSearchTerm] = useState("");
 
   const filtered = useMemo(() => {
@@ -91,6 +92,7 @@ export default function ReagendamentosTable({ reagendamentos, onExcluir }: Reage
                 <TableCell className="text-muted-foreground">
                   {format(new Date(r.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                 </TableCell>
+                {canEdit && (
                 <TableCell>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -114,6 +116,7 @@ export default function ReagendamentosTable({ reagendamentos, onExcluir }: Reage
                     </AlertDialogContent>
                   </AlertDialog>
                 </TableCell>
+                )}
               </TableRow>
             ))
           )}

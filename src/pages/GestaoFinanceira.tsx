@@ -7,11 +7,15 @@ import IndicadoresTab from "@/components/gestao-financeira/tabs/IndicadoresTab";
 import CustosTab from "@/components/gestao-financeira/tabs/CustosTab";
 import { DRETab } from "@/components/gestao-financeira/tabs/DRETab";
 import { ParcelamentosTab } from "@/components/gestao-financeira/tabs/ParcelamentosTab";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 export default function GestaoFinanceira() {
   const [activeTab, setActiveTab] = useState("resumo");
+  const { canEdit } = useRoutePermission('/gestao-financeira');
 
   return (
+    <EditPermissionProvider value={{ canEdit }}>
     <div className="container mx-auto">
       <BreadcrumbNavigation />
       
@@ -99,5 +103,7 @@ export default function GestaoFinanceira() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+    </EditPermissionProvider>
   );
 }

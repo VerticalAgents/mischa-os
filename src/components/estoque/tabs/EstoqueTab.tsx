@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { useInsumosStore } from "@/hooks/useInsumosStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +91,7 @@ const formSchema = z.object({
 type InsumoFormValues = z.infer<typeof formSchema>;
 
 export default function EstoqueTab() {
+  const { canEdit } = useEditPermission();
   const {
     insumos,
     adicionarInsumo,
@@ -263,9 +265,11 @@ export default function EstoqueTab() {
           <Button onClick={exportarCSV} variant="outline">
             <FileDown className="mr-2 h-4 w-4" /> Exportar CSV
           </Button>
-          <Button onClick={openNewInsumoForm}>
-            <FilePlus className="mr-2 h-4 w-4" /> Novo Insumo
-          </Button>
+          {canEdit && (
+            <Button onClick={openNewInsumoForm}>
+              <FilePlus className="mr-2 h-4 w-4" /> Novo Insumo
+            </Button>
+          )}
         </div>
       </div>
 

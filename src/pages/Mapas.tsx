@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/integrations/supabase/client';
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -41,6 +43,7 @@ interface RotaEntrega {
 }
 
 const Mapas = () => {
+  const { canEdit } = useRoutePermission('/mapas');
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -379,6 +382,7 @@ const Mapas = () => {
   }, [filteredClientes, colorMode, representantes]);
 
   return (
+    <EditPermissionProvider value={{ canEdit }}>
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -680,6 +684,7 @@ const Mapas = () => {
         )}
       </Card>
     </div>
+    </EditPermissionProvider>
   );
 };
 

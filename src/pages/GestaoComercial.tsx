@@ -1,5 +1,6 @@
-
 import { useEffect } from "react";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 import { useSearchParams } from "react-router-dom";
 import PageHeader from "@/components/common/PageHeader";
 import BreadcrumbNavigation from "@/components/common/Breadcrumb";
@@ -46,7 +47,10 @@ export default function GestaoComercial() {
     }, { replace: true });
   };
 
+  const { canEdit } = useRoutePermission('/gestao-comercial');
+
   return (
+    <EditPermissionProvider value={{ canEdit }}>
     <div className="container mx-auto">
       <BreadcrumbNavigation />
       
@@ -118,5 +122,6 @@ export default function GestaoComercial() {
         </TabsContent>
       </Tabs>
     </div>
+    </EditPermissionProvider>
   );
 }

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Handshake, Phone, Mail, MapPin, Calendar, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 
 interface Parceiro {
   id: string;
@@ -29,6 +30,7 @@ interface Parceiro {
 }
 
 export default function Parceiros() {
+  const { canEdit } = useEditPermission();
   const [parceiros, setParceiros] = useState<Parceiro[]>([
     {
       id: '1',
@@ -201,13 +203,14 @@ export default function Parceiros() {
               <CardTitle>Rede de Parceiros</CardTitle>
               <CardDescription>Gerencie fornecedores, prestadores de serviço e parceiros estratégicos</CardDescription>
             </div>
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Parceiro
-                </Button>
-              </DialogTrigger>
+            {canEdit && (
+              <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Parceiro
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Adicionar Novo Parceiro</DialogTitle>
@@ -371,6 +374,7 @@ export default function Parceiros() {
                 </div>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </CardHeader>
         <CardContent>

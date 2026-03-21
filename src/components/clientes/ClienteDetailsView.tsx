@@ -6,6 +6,7 @@ import { ArrowLeft, Edit } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
 import ClienteDetalhesTabs from "./ClienteDetalhesTabs";
 import ClienteFormDialog from "./ClienteFormDialog";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 
 interface ClienteDetailsViewProps {
   cliente: Cliente;
@@ -15,6 +16,7 @@ interface ClienteDetailsViewProps {
 export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsViewProps) {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { canEdit } = useEditPermission();
 
   const handleAgendamentoUpdate = () => {
     console.log('ClienteDetailsView: Agendamento atualizado, forçando refresh');
@@ -37,16 +39,18 @@ export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsVi
         }}
       />
       
-      <div className="flex justify-end">
-        <Button 
-          onClick={() => setIsEditDialogOpen(true)}
-          variant="outline"
-          className="flex items-center gap-2"
-        >
-          <Edit className="h-4 w-4" />
-          Editar Cliente
-        </Button>
-      </div>
+      {canEdit && (
+        <div className="flex justify-end">
+          <Button 
+            onClick={() => setIsEditDialogOpen(true)}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Edit className="h-4 w-4" />
+            Editar Cliente
+          </Button>
+        </div>
+      )}
       
       <ClienteDetalhesTabs 
         cliente={cliente} 

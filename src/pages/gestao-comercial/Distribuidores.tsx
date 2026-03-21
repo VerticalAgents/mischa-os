@@ -13,10 +13,12 @@ import {
 } from "@/components/ui/table";
 import { Users, Package, Store, TrendingUp, Check, X, Loader2 } from "lucide-react";
 import { useDistribuidoresExpositores } from "@/hooks/useDistribuidoresExpositores";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 
 export default function Distribuidores() {
   const { distribuidores, isLoading, metricas, updateExpositores, isUpdating } =
     useDistribuidoresExpositores();
+  const { canEdit } = useEditPermission();
 
   // Estado para edição inline
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -189,11 +191,12 @@ export default function Distribuidores() {
                             variant="ghost"
                             className="h-8 px-3 font-mono"
                             onClick={() =>
-                              handleStartEdit(
+                              canEdit && handleStartEdit(
                                 distribuidor.cliente_id,
                                 distribuidor.numero_expositores
                               )
                             }
+                            disabled={!canEdit}
                           >
                             {distribuidor.numero_expositores}
                           </Button>

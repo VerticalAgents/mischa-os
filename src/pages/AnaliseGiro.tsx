@@ -1,6 +1,7 @@
-
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart3, TrendingUp, Users, Package, ListChecks } from 'lucide-react';
 import { useGiroAnalysisConsolidated } from '@/hooks/useGiroAnalysisConsolidated';
@@ -45,7 +46,10 @@ export default function AnaliseGiro() {
     );
   }
 
+  const { canEdit } = useRoutePermission('/analise-giro');
+
   return (
+    <EditPermissionProvider value={{ canEdit }}>
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -119,5 +123,6 @@ export default function AnaliseGiro() {
         </TabsContent>
       </Tabs>
     </div>
+    </EditPermissionProvider>
   );
 }

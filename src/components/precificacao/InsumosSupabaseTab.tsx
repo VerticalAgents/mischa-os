@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ import EditarInsumoModal from "@/components/estoque/EditarInsumoModal";
 import AdicionarInsumoModal from "@/components/precificacao/AdicionarInsumoModal";
 
 export default function InsumosSupabaseTab() {
+  const { canEdit } = useEditPermission();
   const { 
     insumos, 
     loading, 
@@ -110,10 +112,12 @@ export default function InsumosSupabaseTab() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 Atualizar
               </Button>
-              <Button onClick={handleNovoInsumo}>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Insumo
-              </Button>
+              {canEdit && (
+                <Button onClick={handleNovoInsumo}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Insumo
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>

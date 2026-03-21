@@ -15,8 +15,11 @@ import DeleteClienteDialog from "@/components/clientes/DeleteClienteDialog";
 import { RelatorioClientesRevisaoModal } from "@/components/clientes/RelatorioClientesRevisaoModal";
 import { FileSpreadsheet, Link2, FileDown } from "lucide-react";
 import { toast } from "sonner";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 export default function Clientes() {
+  const { canEdit } = useRoutePermission('/clientes');
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -388,9 +391,11 @@ export default function Clientes() {
   // Show loading state during initial load or URL processing
   if (loading && initialLoad) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <div className="text-muted-foreground">Carregando clientes...</div>
-      </div>
+      <EditPermissionProvider value={{ canEdit }}>
+        <div className="flex justify-center items-center py-8">
+          <div className="text-muted-foreground">Carregando clientes...</div>
+        </div>
+      </EditPermissionProvider>
     );
   }
 
@@ -398,33 +403,38 @@ export default function Clientes() {
   if (clienteAtual) {
     console.log('Clientes: Renderizando detalhes do cliente:', clienteAtual.nome);
     return (
-      <ClienteDetailsView 
-        cliente={clienteAtual} 
-        onBack={handleBackToList} 
-      />
+      <EditPermissionProvider value={{ canEdit }}>
+        <ClienteDetailsView 
+          cliente={clienteAtual} 
+          onBack={handleBackToList} 
+        />
+      </EditPermissionProvider>
     );
   }
   
   return (
+    <EditPermissionProvider value={{ canEdit }}>
     <>
       <PageHeader 
         title="Clientes" 
         description="Gerencie os pontos de venda dos seus produtos" 
-        action={{
+        action={canEdit ? {
           label: "Novo Cliente",
           onClick: handleOpenForm
-        }} 
+        } : undefined} 
       >
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleSyncGestaoClick}
-          disabled={isSyncingGC || !config?.access_token}
-          title={!config?.access_token ? "Configure o GestaoClick em Configurações → Integrações" : "Sincronizar clientes com GestaoClick (criar e vincular)"}
-        >
-          <Link2 className={`h-4 w-4 mr-1 ${isSyncingGC ? 'animate-pulse' : ''}`} />
-          {isSyncingGC ? 'Sincronizando...' : 'Sincronizar com Gestão Click'}
-        </Button>
+        {canEdit && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncGestaoClick}
+            disabled={isSyncingGC || !config?.access_token}
+            title={!config?.access_token ? "Configure o GestaoClick em Configurações → Integrações" : "Sincronizar clientes com GestaoClick (criar e vincular)"}
+          >
+            <Link2 className={`h-4 w-4 mr-1 ${isSyncingGC ? 'animate-pulse' : ''}`} />
+            {isSyncingGC ? 'Sincronizando...' : 'Sincronizar com Gestão Click'}
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -494,5 +504,6 @@ export default function Clientes() {
         onOpenChange={setRelatorioOpen} 
       />
     </>
+    </EditPermissionProvider>
   );
 }

@@ -19,7 +19,9 @@ import { convertLeadToCliente } from "@/utils/leadToClienteConverter";
 import { Cliente } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 export default function FunilLeads() {
+  const { canEdit } = useEditPermission();
   const {
     leads,
     loading,
@@ -362,13 +364,15 @@ export default function FunilLeads() {
                   <SelectItem value="perdido_presencial">Perdido Presencial</SelectItem>
                 </SelectContent>
               </Select>
-              <Button onClick={() => {
-              setEditingLead(null);
-              setIsLeadDialogOpen(true);
-            }}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Lead
-              </Button>
+              {canEdit && (
+                <Button onClick={() => {
+                  setEditingLead(null);
+                  setIsLeadDialogOpen(true);
+                }}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Lead
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -432,13 +436,17 @@ export default function FunilLeads() {
                           </Button>
                         )}
                         
-                        <Button variant="ghost" size="sm" onClick={() => handleEditLead(lead)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <LeadStatusChanger currentStatus={lead.status} onStatusChange={novoStatus => handleMudarStatus(lead, novoStatus)} />
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteLead(lead.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => handleEditLead(lead)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <LeadStatusChanger currentStatus={lead.status} onStatusChange={novoStatus => handleMudarStatus(lead, novoStatus)} />
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteLead(lead.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>)}

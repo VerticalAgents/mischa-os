@@ -3,11 +3,15 @@ import { useReagendamentosEntreSemanas } from "@/hooks/useReagendamentosEntreSem
 import ReagendamentosResumo from "@/components/reagendamentos/ReagendamentosResumo";
 import ReagendamentosTable from "@/components/reagendamentos/ReagendamentosTable";
 import ExplicacaoConfirmationScore from "@/components/reagendamentos/ExplicacaoConfirmationScore";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 export default function Reagendamentos() {
+  const { canEdit } = useRoutePermission('/reagendamentos');
   const { reagendamentos, resumo, isLoading, excluir } = useReagendamentosEntreSemanas();
 
   return (
+    <EditPermissionProvider value={{ canEdit }}>
     <div className="space-y-6 p-3 sm:p-6">
       <div className="flex items-center gap-3">
         <CalendarClock className="h-6 w-6 text-primary" />
@@ -38,5 +42,6 @@ export default function Reagendamentos() {
         </>
       )}
     </div>
+    </EditPermissionProvider>
   );
 }
