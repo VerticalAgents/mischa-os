@@ -389,14 +389,24 @@ export default function FuncionariosTab() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs h-7 px-2"
-                          onClick={() => handleDeactivate(s.id, s.ativo)}
-                        >
-                          {s.ativo ? 'Desativar' : 'Reativar'}
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 px-2"
+                            onClick={() => openEditDialog(s)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 px-2"
+                            onClick={() => handleDeactivate(s.id, s.ativo)}
+                          >
+                            {s.ativo ? 'Desativar' : 'Reativar'}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
