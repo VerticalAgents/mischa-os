@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 import AgendamentoDashboard from "@/components/agendamento/AgendamentoDashboard";
 import TodosAgendamentos from "@/components/agendamento/TodosAgendamentos";
 import AgendamentosPendentes from "@/components/agendamento/AgendamentosPendentes";
