@@ -90,7 +90,10 @@ export default function DashboardAnalytics() {
     }
   };
 
+  const { canEdit } = useRoutePermission('/dashboard-analytics');
+
   return (
+    <EditPermissionProvider value={{ canEdit }}>
     <>
       <div className="flex items-center justify-between mb-4">
         <PageHeader 
