@@ -33,8 +33,11 @@ export default function FuncionariosTab() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<StaffAccount | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '', custom_role_id: '' });
+  const [editForm, setEditForm] = useState({ nome: '', custom_role_id: '' });
   const [adminProfile, setAdminProfile] = useState<{ full_name: string | null; email: string | null } | null>(null);
 
   const fetchAdminProfile = async () => {
