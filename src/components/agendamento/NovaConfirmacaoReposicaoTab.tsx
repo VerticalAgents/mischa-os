@@ -48,6 +48,7 @@ const getTwoBusinessDaysName = () => {
 };
 
 export default function NovaConfirmacaoReposicaoTab() {
+  const { canEdit } = useEditPermission();
   const { agendamentos, carregarTodosAgendamentos, salvarAgendamento } = useAgendamentoClienteStore();
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
