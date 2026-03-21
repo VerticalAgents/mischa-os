@@ -88,7 +88,33 @@ export default function Expedicao() {
         />
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-          <TabsList>
+          {/* Mobile: grid 2 colunas */}
+          <div className="grid grid-cols-2 gap-2 lg:hidden">
+            {[
+              { id: "resumo", label: "Resumo" },
+              { id: "dashboard", label: "Dashboard" },
+              { id: "separacao", label: "Separação de Pedidos" },
+              { id: "gestaoclick", label: "Emissão de Documentos" },
+              { id: "despacho", label: "Despacho de Pedidos" },
+              { id: "organizacao", label: "Organização" },
+              { id: "rota", label: "Rota de Entrega" },
+              { id: "historico", label: "Histórico de Entregas" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {/* Desktop: TabsList horizontal */}
+          <TabsList className="hidden lg:inline-flex">
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="separacao">Separação de Pedidos</TabsTrigger>
@@ -122,7 +148,27 @@ export default function Expedicao() {
           <TabsContent value="despacho" className="space-y-4" forceMount={activeTab === "despacho" ? true : undefined}>
             {activeTab === "despacho" && (
               <Tabs value={entregasTab} onValueChange={handleEntregasTabChange} className="space-y-4">
-                <TabsList className="w-full border-b bg-white">
+                {/* Mobile: grid sub-tabs */}
+                <div className="grid grid-cols-2 gap-2 lg:hidden">
+                  {[
+                    { id: "hoje", label: "🟢 Entregas de Hoje" },
+                    { id: "atrasadas", label: "🟡 Entregas Pendentes" },
+                    { id: "antecipada", label: "🔵 Separação Antecipada" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => handleEntregasTabChange(tab.id)}
+                      className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                        entregasTab === tab.id
+                          ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                <TabsList className="hidden lg:inline-flex w-full border-b bg-white">
                   <TabsTrigger value="hoje" className="data-[state=active]:bg-green-500/10 data-[state=active]:text-green-700">
                     🟢 Entregas de Hoje
                   </TabsTrigger>

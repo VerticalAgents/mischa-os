@@ -103,7 +103,32 @@ export default function DashboardAnalytics() {
       
       <div id="dashboard-content">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full justify-start mb-6 overflow-x-auto">
+          {/* Mobile: grid 2 colunas */}
+          <div className="grid grid-cols-2 gap-2 lg:hidden mb-6">
+            {[
+              { id: "operational-summary", label: "Resumo Operacional" },
+              { id: "financial-analysis", label: "Análise Financeira" },
+              { id: "customer-behavior", label: "Análise de PDV e Giro" },
+              { id: "production-indicators", label: "Indicadores de Produção" },
+              { id: "producao-simulada", label: "Produção Simulada" },
+              { id: "entregas", label: "Entregas" },
+              { id: "alerts-risks", label: "Alertas e Riscos" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {/* Desktop */}
+          <TabsList className="hidden lg:inline-flex w-full justify-start mb-6">
             <TabsTrigger value="operational-summary">Resumo Operacional</TabsTrigger>
             <TabsTrigger value="financial-analysis">Análise Financeira</TabsTrigger>
             <TabsTrigger value="customer-behavior">Análise de PDV e Giro</TabsTrigger>
