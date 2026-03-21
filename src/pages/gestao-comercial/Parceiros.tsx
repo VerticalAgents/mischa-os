@@ -30,6 +30,7 @@ interface Parceiro {
 }
 
 export default function Parceiros() {
+  const { canEdit } = useEditPermission();
   const [parceiros, setParceiros] = useState<Parceiro[]>([
     {
       id: '1',

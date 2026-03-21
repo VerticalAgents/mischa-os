@@ -423,16 +423,18 @@ export default function Clientes() {
           onClick: handleOpenForm
         } : undefined} 
       >
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleSyncGestaoClick}
-          disabled={isSyncingGC || !config?.access_token}
-          title={!config?.access_token ? "Configure o GestaoClick em Configurações → Integrações" : "Sincronizar clientes com GestaoClick (criar e vincular)"}
-        >
-          <Link2 className={`h-4 w-4 mr-1 ${isSyncingGC ? 'animate-pulse' : ''}`} />
-          {isSyncingGC ? 'Sincronizando...' : 'Sincronizar com Gestão Click'}
-        </Button>
+        {canEdit && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncGestaoClick}
+            disabled={isSyncingGC || !config?.access_token}
+            title={!config?.access_token ? "Configure o GestaoClick em Configurações → Integrações" : "Sincronizar clientes com GestaoClick (criar e vincular)"}
+          >
+            <Link2 className={`h-4 w-4 mr-1 ${isSyncingGC ? 'animate-pulse' : ''}`} />
+            {isSyncingGC ? 'Sincronizando...' : 'Sincronizar com Gestão Click'}
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"

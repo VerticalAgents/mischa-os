@@ -37,6 +37,7 @@ const formatCurrency = (value: number): string => {
   }).format(value);
 };
 export default function CustosTab() {
+  const { canEdit } = useEditPermission();
   const {
     custosFixos,
     isLoading: loadingFixos,

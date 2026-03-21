@@ -263,9 +263,11 @@ export default function EstoqueTab() {
           <Button onClick={exportarCSV} variant="outline">
             <FileDown className="mr-2 h-4 w-4" /> Exportar CSV
           </Button>
-          <Button onClick={openNewInsumoForm}>
-            <FilePlus className="mr-2 h-4 w-4" /> Novo Insumo
-          </Button>
+          {canEdit && (
+            <Button onClick={openNewInsumoForm}>
+              <FilePlus className="mr-2 h-4 w-4" /> Novo Insumo
+            </Button>
+          )}
         </div>
       </div>
 

@@ -19,7 +19,9 @@ import { convertLeadToCliente } from "@/utils/leadToClienteConverter";
 import { Cliente } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 export default function FunilLeads() {
+  const { canEdit } = useEditPermission();
   const {
     leads,
     loading,

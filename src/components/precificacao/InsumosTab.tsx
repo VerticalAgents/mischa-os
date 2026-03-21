@@ -122,9 +122,11 @@ export default function InsumosTab() {
           <h2 className="text-2xl font-semibold">Insumos</h2>
           <p className="text-muted-foreground">Gerenciamento de matérias-primas e embalagens</p>
         </div>
-        <Button onClick={openNewInsumoDialog}>
-          <Plus className="mr-2 h-4 w-4" /> Novo Insumo
-        </Button>
+        {canEdit && (
+          <Button onClick={openNewInsumoDialog}>
+            <Plus className="mr-2 h-4 w-4" /> Novo Insumo
+          </Button>
+        )}
       </div>
       
       <div className="flex justify-between items-center mb-6">

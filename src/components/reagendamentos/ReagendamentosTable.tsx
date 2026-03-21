@@ -92,6 +92,7 @@ export default function ReagendamentosTable({ reagendamentos, onExcluir }: Reage
                 <TableCell className="text-muted-foreground">
                   {format(new Date(r.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                 </TableCell>
+                {canEdit && (
                 <TableCell>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -115,6 +116,7 @@ export default function ReagendamentosTable({ reagendamentos, onExcluir }: Reage
                     </AlertDialogContent>
                   </AlertDialog>
                 </TableCell>
+                )}
               </TableRow>
             ))
           )}

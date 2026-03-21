@@ -110,10 +110,12 @@ export default function InsumosSupabaseTab() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 Atualizar
               </Button>
-              <Button onClick={handleNovoInsumo}>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Insumo
-              </Button>
+              {canEdit && (
+                <Button onClick={handleNovoInsumo}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Insumo
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>

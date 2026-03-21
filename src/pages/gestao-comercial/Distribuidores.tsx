@@ -18,6 +18,7 @@ import { useEditPermission } from "@/contexts/EditPermissionContext";
 export default function Distribuidores() {
   const { distribuidores, isLoading, metricas, updateExpositores, isUpdating } =
     useDistribuidoresExpositores();
+  const { canEdit } = useEditPermission();
 
   // Estado para edição inline
   const [editingId, setEditingId] = useState<string | null>(null);
