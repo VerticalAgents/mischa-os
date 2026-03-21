@@ -435,12 +435,17 @@ export default function FunilLeads() {
                           </Button>
                         )}
                         
-                        <Button variant="ghost" size="sm" onClick={() => handleEditLead(lead)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <LeadStatusChanger currentStatus={lead.status} onStatusChange={novoStatus => handleMudarStatus(lead, novoStatus)} />
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteLead(lead.id)}>
-                          <Trash2 className="h-4 w-4" />
+                        {canEdit && (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => handleEditLead(lead)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <LeadStatusChanger currentStatus={lead.status} onStatusChange={novoStatus => handleMudarStatus(lead, novoStatus)} />
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteLead(lead.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                         </Button>
                       </div>
                     </TableCell>

@@ -191,11 +191,13 @@ export default function Distribuidores() {
                             variant="ghost"
                             className="h-8 px-3 font-mono"
                             onClick={() =>
-                              handleStartEdit(
+                              canEdit && handleStartEdit(
                                 distribuidor.cliente_id,
                                 distribuidor.numero_expositores
                               )
                             }
+                            disabled={!canEdit}
+                          >
                           >
                             {distribuidor.numero_expositores}
                           </Button>

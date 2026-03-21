@@ -491,19 +491,20 @@ export default function CustosTab() {
               <CardTitle>Gestão de Custos</CardTitle>
               <CardDescription className="text-left mt-1">Adicione e gerencie seus custos por categoria</CardDescription>
             </div>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => {
-                resetForm();
-                setNovoCusto(prev => ({
-                  ...prev,
-                  tipoCusto: activeTab === "fixos" ? "fixo" : "variavel"
-                }));
-              }}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Custo
-                </Button>
-              </DialogTrigger>
+            {canEdit && (
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => {
+                    resetForm();
+                    setNovoCusto(prev => ({
+                      ...prev,
+                      tipoCusto: activeTab === "fixos" ? "fixo" : "variavel"
+                    }));
+                  }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Custo
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>{editandoId ? 'Editar' : 'Novo'} Custo {novoCusto.tipoCusto === 'fixo' ? 'Fixo' : 'Variável'}</DialogTitle>

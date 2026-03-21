@@ -203,13 +203,14 @@ export default function Parceiros() {
               <CardTitle>Rede de Parceiros</CardTitle>
               <CardDescription>Gerencie fornecedores, prestadores de serviço e parceiros estratégicos</CardDescription>
             </div>
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Parceiro
-                </Button>
-              </DialogTrigger>
+            {canEdit && (
+              <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Parceiro
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Adicionar Novo Parceiro</DialogTitle>
