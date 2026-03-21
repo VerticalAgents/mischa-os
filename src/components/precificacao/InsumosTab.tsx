@@ -47,6 +47,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export default function InsumosTab() {
+  const { canEdit } = useEditPermission();
   const { insumos, adicionarInsumo, atualizarInsumo, removerInsumo } = useInsumoStore();
   
   const form = useForm<FormValues>({
