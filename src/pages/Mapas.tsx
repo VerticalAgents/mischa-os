@@ -687,6 +687,5 @@ const Mapas = () => {
     </EditPermissionProvider>
   );
 };
-};
 
 export default Mapas;
