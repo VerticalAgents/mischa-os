@@ -1,69 +1,35 @@
 
-Objetivo: corrigir o acesso da Beatriz para que a navegação e os dados respeitem exatamente o “Tipo de Acesso” (can_access/can_edit), sem mostrar menus indevidos e sem telas vazias nas rotas permitidas.
 
-Assunção crítica usada no plano: funcionário deve trabalhar nos dados da empresa (owner), não em dados isolados da própria conta staff.
+## Problema
 
-1) Diagnóstico confirmado (causas-raiz)
-- O menu lateral ativo no app é `SessionNavBar` (`src/components/ui/sidebar-next.tsx`), e ele hoje NÃO usa `role_permissions`; por isso aparecem quase todos os itens.
-- O hook `useMyPermissions` (`src/hooks/useRolePermissions.ts`) busca permissões sem filtrar por `custom_role_id`; ele mistura permissões de todos os tipos.
-- `get_user_role()` no banco usa `LIMIT 1` sem prioridade; como a Beatriz tem `user` + `producao`, a role pode vir errada e liberar telas indevidas.
-- RLS atual bloqueia staff em boa parte dos dados (admin-only ou `auth.uid() = user_id`), então mesmo com rota “permitida”, a tela fica sem informação.
+Beatriz vê e edita tudo porque há **duas falhas**:
 
-2) Correção da base de permissões (DB + hook)
-- Criar função SQL segura para contexto do staff (owner_id + custom_role_id ativo) sem expor senha:
-  - Ex.: `public.get_my_staff_context()` (SECURITY DEFINER).
-- Ajustar `public.get_user_role(user_id)` para prioridade determinística (admin > producao > user), removendo efeito aleatório do `LIMIT 1`.
-- Endurecer política de `role_permissions` para staff ler somente permissões do próprio `custom_role_id` (não todas do owner).
-- Refatorar `useMyPermissions()` para carregar permissões efetivas:
-  - Admin: acesso total.
-  - Staff: somente linhas do `custom_role_id` dele.
-  - Retornar também mapa por rota: `{ can_access, can_edit }`.
+1. **RLS de `role_permissions` tem política duplicada**: A policy "Staff can read owner permissions" (`user_id = get_owner_id(auth.uid())`) retorna TODAS as permissões do owner. Como as policies são OR, ela sobrepõe a policy correta que filtra por `custom_role_id`. Resultado: `useMyPermissions()` recebe todas as rotas → sidebar mostra tudo.
 
-3) Aplicar permissões na navegação e bloqueio de URL direta
-- Atualizar `SessionNavBar` para filtrar `menuGroups/items` usando `allowedRoutes` reais.
-- Atualizar `MobileMenuOverlay` com a mesma regra (hoje mostra tudo no mobile).
-- Criar guard de rota por permissão (ex.: `RoutePermissionGuard`) para impedir URL manual:
-  - Sem `can_access`: redireciona para `/home` (ou primeira rota permitida).
-- Integrar guard no roteamento (`src/App.tsx`) para rotas funcionais controladas por tipo de acesso.
+2. **Nenhuma página usa `can_edit`**: O hook `useRoutePermission` existe mas nenhuma página o consome. Beatriz tem `is_owner_or_staff()` = true nas tabelas, então consegue editar tudo.
 
-4) Fazer os dados aparecerem nas rotas permitidas (RLS por rota)
-- Criar função SQL `has_route_permission(route_key text, need_edit boolean)` (SECURITY DEFINER) que valida:
-  - owner/admin
-  - staff ativo
-  - `role_permissions` do `custom_role_id` correto.
-- Revisar políticas RLS das tabelas usadas nas rotas da Beatriz (`/agendamento`, `/estoque/insumos`, `/pcp`, `/precificacao`) para:
-  - SELECT condicionado a `has_route_permission(..., false)`.
-  - INSERT/UPDATE/DELETE condicionado a `has_route_permission(..., true)`.
-  - Em tabelas com `user_id`, usar `user_id = get_owner_id(auth.uid())` para staff enxergar dados da empresa.
-- Resultado: rota permitida mostra dados; rota com só leitura mostra dados sem permitir edição.
+## Plano
 
-5) Conectar `can_edit` na UI (comportamento esperado pelo usuário)
-- Criar util/hook por rota (ex.: `useRoutePermission(routeKey)`).
-- Nos módulos principais (PCP, Agendamento, Estoque, Precificação):
-  - Se `can_edit = false`: ocultar/desabilitar criar/editar/excluir e mostrar badge “Somente visualização”.
-  - Se `can_edit = true`: manter ações normais.
+### 1. Corrigir RLS de `role_permissions` (DB migration)
+- **Dropar** a policy "Staff can read owner permissions" (a que usa `get_owner_id`)
+- Manter apenas "Staff reads own custom_role permissions" que filtra por `custom_role_id`
+- Isso faz `useMyPermissions` retornar apenas as 5 rotas da Beatriz
 
-6) Validação final (E2E)
-- Teste com owner:
-  - Continua vendo tudo, gerenciando funcionários e tipos de acesso.
-- Teste com Beatriz:
-  - Sidebar só com rotas permitidas do tipo “Gerente de Produção”.
-  - URL direta para rota não permitida é bloqueada.
-  - Rotas permitidas carregam dados da empresa (sem tela vazia).
-  - Em rotas sem edição, botões de alteração ficam bloqueados.
-- Teste de segurança:
-  - Confirmar via SQL que staff não lê permissões de outros tipos.
-  - Confirmar que `get_user_role` não retorna role errada por ordem aleatória.
+### 2. Adicionar controle `can_edit` nas páginas permitidas
+Nas rotas que Beatriz tem acesso (`/agendamento`, `/estoque/insumos`, `/pcp`, `/precificacao`), usar `useRoutePermission(routeKey)` para:
+- Se `can_edit = false`: desabilitar botões de criar/editar/excluir
+- Se `can_edit = true`: manter comportamento normal
 
-Arquivos principais a alterar
-- Frontend:
-  - `src/hooks/useRolePermissions.ts`
-  - `src/components/ui/sidebar-next.tsx`
-  - `src/components/layout/MobileMenuOverlay.tsx`
-  - `src/components/navigation/*` (novo guard)
-  - `src/App.tsx`
-  - páginas de ação (PCP/Agendamento/Estoque/Precificação) para `can_edit`
-- Banco (migrações):
-  - funções SQL de contexto/permissão
-  - ajuste de políticas RLS em `role_permissions` e tabelas das rotas citadas
-  - correção de `get_user_role`
+Páginas a alterar:
+- `/agendamento` — `can_edit: false` → somente visualização
+- `/estoque/insumos` — `can_edit: true` → normal
+- `/pcp` — `can_edit: true` → normal
+- `/precificacao` — `can_edit: true` → normal
+
+### 3. Também dropar a policy "Users can manage own role_permissions" 
+A policy `auth.uid() = user_id` permite que qualquer usuário que criou permissions as edite diretamente, bypassing admin check. Deve ser removida (somente admins gerenciam via policies existentes).
+
+---
+
+**Resultado**: Sidebar mostra só as 5 rotas. Agendamento fica read-only. Estoque/PCP/Precificação permite edição. Outras rotas ficam inacessíveis.
+
