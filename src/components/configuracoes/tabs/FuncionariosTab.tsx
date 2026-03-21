@@ -1,0 +1,308 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import { UserPlus, Users, Trash2, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+interface StaffAccount {
+  id: string;
+  staff_user_id: string;
+  nome: string | null;
+  role: string;
+  ativo: boolean;
+  created_at: string;
+  email?: string;
+}
+
+export default function FuncionariosTab() {
+  const [staff, setStaff] = useState<StaffAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [form, setForm] = useState({ nome: '', email: '', password: '' });
+
+  const fetchStaff = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('staff_accounts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch emails from profiles
+      const staffIds = (data || []).map(s => s.staff_user_id);
+      let emailMap = new Map<string, string>();
+
+      if (staffIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .in('id', staffIds);
+
+        profiles?.forEach(p => {
+          if (p.email) emailMap.set(p.id, p.email);
+        });
+      }
+
+      setStaff((data || []).map(s => ({
+        ...s,
+        email: emailMap.get(s.staff_user_id) || '-',
+      })));
+    } catch (error) {
+      console.error('Error fetching staff:', error);
+      toast.error('Erro ao carregar funcionários');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStaff();
+  }, []);
+
+  const handleCreate = async () => {
+    if (!form.nome || !form.email || !form.password) {
+      toast.error('Preencha todos os campos');
+      return;
+    }
+
+    if (form.password.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+
+    try {
+      setCreating(true);
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      if (!token) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        return;
+      }
+
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/create-staff-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            email: form.email,
+            password: form.password,
+            nome: form.nome,
+            role: 'producao',
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao criar funcionário');
+      }
+
+      toast.success(`Funcionário "${form.nome}" criado com sucesso!`);
+      setForm({ nome: '', email: '', password: '' });
+      setDialogOpen(false);
+      fetchStaff();
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao criar funcionário');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDeactivate = async (staffId: string, currentlyActive: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('staff_accounts')
+        .update({ ativo: !currentlyActive })
+        .eq('id', staffId);
+
+      if (error) throw error;
+
+      toast.success(currentlyActive ? 'Funcionário desativado' : 'Funcionário reativado');
+      fetchStaff();
+    } catch (error) {
+      toast.error('Erro ao atualizar funcionário');
+    }
+  };
+
+  const roleLabel = (role: string) => {
+    if (role === 'producao') return 'Gerente de Produção';
+    return role;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="flex items-center gap-3">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <span className="text-sm text-muted-foreground">Carregando funcionários...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Funcionários da Empresa
+            </CardTitle>
+            <CardDescription>
+              Cadastre funcionários com acesso limitado ao sistema. Eles terão login próprio e verão apenas os dados da sua empresa.
+            </CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={fetchStaff} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Adicionar Funcionário
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Novo Funcionário</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nome">Nome completo</Label>
+                    <Input
+                      id="nome"
+                      placeholder="Nome do funcionário"
+                      value={form.nome}
+                      onChange={(e) => setForm(f => ({ ...f, nome: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email de acesso</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="email@exemplo.com"
+                      value={form.email}
+                      onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Senha de acesso</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Mínimo 6 caracteres"
+                        value={form.password}
+                        onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Função</Label>
+                    <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                      <Badge className="bg-blue-500 hover:bg-blue-600 text-white">Gerente de Produção</Badge>
+                      <span className="text-xs text-muted-foreground">Acesso a PCP, Estoque, Agendamento</span>
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">Cancelar</Button>
+                  </DialogClose>
+                  <Button onClick={handleCreate} disabled={creating}>
+                    {creating ? 'Criando...' : 'Criar Funcionário'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Função</TableHead>
+                <TableHead>Cadastro</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {staff.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    Nenhum funcionário cadastrado. Clique em "Adicionar Funcionário" para começar.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                staff.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium">{s.nome || 'Sem nome'}</TableCell>
+                    <TableCell className="text-muted-foreground">{s.email}</TableCell>
+                    <TableCell>
+                      <Badge className="bg-blue-500 hover:bg-blue-600 text-white">
+                        {roleLabel(s.role)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {format(new Date(s.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={s.ativo ? 'default' : 'secondary'}>
+                        {s.ativo ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeactivate(s.id, s.ativo)}
+                      >
+                        {s.ativo ? 'Desativar' : 'Reativar'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
