@@ -115,7 +115,7 @@ function RolePermissionsEditor({ roleId, roleName }: { roleId: 'admin' | 'produc
 }
 
 export default function TiposAcessoTab() {
-  const [activeRole, setActiveRole] = useState(ROLE_PROFILES[0]?.id || '');
+  const [activeRole, setActiveRole] = useState<'admin' | 'producao' | 'user'>(ROLE_PROFILES[0]?.id as any || 'producao');
 
   return (
     <div className="space-y-6">
