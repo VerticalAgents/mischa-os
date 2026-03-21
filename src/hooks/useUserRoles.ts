@@ -200,10 +200,11 @@ export function useUserRoles() {
 
   return {
     userRole,
-    loading: loading && !hasLoaded, // Só mostra loading na primeira vez
+    loading: loading && !hasLoaded,
     error,
     hasRole,
     isAdmin,
+    isProducao,
     assignRole,
     revokeRole,
     refreshRole
