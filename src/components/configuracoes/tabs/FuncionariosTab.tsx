@@ -416,6 +416,57 @@ export default function FuncionariosTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Funcionário</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome completo</Label>
+              <Input
+                value={editForm.nome}
+                onChange={(e) => setEditForm(f => ({ ...f, nome: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de Acesso</Label>
+              {customRoles.length > 0 ? (
+                <Select
+                  value={editForm.custom_role_id}
+                  onValueChange={(val) => setEditForm(f => ({ ...f, custom_role_id: val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um tipo de acesso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customRoles.map(role => (
+                      <SelectItem key={role.id} value={role.id}>
+                        <div className="flex items-center gap-2">
+                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: role.color }} />
+                          {role.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
+                  Nenhum tipo de acesso criado. Crie na aba "Tipos de Acesso" primeiro.
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button onClick={handleEdit}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
