@@ -192,6 +192,8 @@ export default function ConfirmacaoReposicaoTab() {
                           onClick={() => confirmarReposicao(cliente.id)}
                           size="sm"
                           variant="outline"
+                          disabled={!canEdit}
+                          title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                           className="flex items-center gap-1"
                         >
                           <Check className="h-4 w-4" />

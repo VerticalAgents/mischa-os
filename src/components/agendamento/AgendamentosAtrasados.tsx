@@ -280,6 +280,8 @@ export default function AgendamentosAtrasados() {
                     variant="secondary"
                     size="sm"
                     onClick={() => handleEditarAgendamento(agendamento)}
+                    disabled={!canEdit}
+                    title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                   >
                     <Edit className="mr-2 h-4 w-4" />
                     Editar

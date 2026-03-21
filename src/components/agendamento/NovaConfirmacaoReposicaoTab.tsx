@@ -171,6 +171,8 @@ export default function NovaConfirmacaoReposicaoTab() {
                         onClick={() => handleConfirmarAgendamento(agendamento.cliente.id)}
                         size="sm"
                         variant="success"
+                        disabled={!canEdit}
+                        title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                         className="flex items-center gap-1"
                       >
                         <Check className="h-4 w-4" />
@@ -180,6 +182,8 @@ export default function NovaConfirmacaoReposicaoTab() {
                         onClick={() => handleReagendar(agendamento)}
                         size="sm"
                         variant="outline"
+                        disabled={!canEdit}
+                        title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                         className="flex items-center gap-1"
                       >
                         <Edit className="h-4 w-4" />

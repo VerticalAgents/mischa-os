@@ -359,6 +359,8 @@ export default function AgendamentosPeriodicidade() {
                         variant="ghost"
                         size="icon"
                         onClick={() => setClienteEditando(cliente)}
+                        disabled={!canEdit}
+                        title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>

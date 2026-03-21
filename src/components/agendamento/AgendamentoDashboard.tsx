@@ -1410,10 +1410,10 @@ export default function AgendamentoDashboard() {
                               {agendamento.statusAgendamento}
                             </Badge>
                             <div className="flex gap-1">
-                              {agendamento.statusAgendamento === "Previsto" && <Button variant="default" size="sm" onClick={() => handleConfirmarAgendamento(agendamento)} className="bg-green-500 hover:bg-green-600 h-8 px-2">
+                              {agendamento.statusAgendamento === "Previsto" && <Button variant="default" size="sm" onClick={() => handleConfirmarAgendamento(agendamento)} disabled={!canEdit} title={!canEdit ? "Ação não habilitada pelo administrador" : undefined} className="bg-green-500 hover:bg-green-600 h-8 px-2">
                                   <CheckCheck className="h-3 w-3" />
                                 </Button>}
-                              <Button variant="secondary" size="sm" onClick={() => handleEditarAgendamento(agendamento)} className="h-8 px-2">
+                              <Button variant="secondary" size="sm" onClick={() => handleEditarAgendamento(agendamento)} disabled={!canEdit} title={!canEdit ? "Ação não habilitada pelo administrador" : undefined} className="h-8 px-2">
                                 <Edit className="h-3 w-3" />
                               </Button>
                             </div>
