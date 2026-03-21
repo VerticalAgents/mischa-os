@@ -34,6 +34,7 @@ const getProximoDiaUtil = (data: Date): Date => {
 };
 
 export default function AgendamentosAtrasados() {
+  const { canEdit } = useEditPermission();
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
