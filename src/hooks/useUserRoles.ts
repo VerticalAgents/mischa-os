@@ -99,7 +99,7 @@ export function useUserRoles() {
         throw new Error('User ID and role are required');
       }
 
-      if (!['admin', 'user'].includes(role)) {
+      if (!['admin', 'user', 'producao'].includes(role)) {
         throw new Error('Invalid role specified');
       }
 
