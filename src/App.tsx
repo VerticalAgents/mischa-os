@@ -269,7 +269,9 @@ function App() {
                      <Route path="/custos" element={
                        <ProtectedRoute>
                          <AppLayout>
-                           <Custos />
+                           <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                             <Custos />
+                           </RoleBasedRoute>
                          </AppLayout>
                        </ProtectedRoute>
                      } />
