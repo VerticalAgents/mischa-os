@@ -91,6 +91,7 @@ const formSchema = z.object({
 type InsumoFormValues = z.infer<typeof formSchema>;
 
 export default function EstoqueTab() {
+  const { canEdit } = useEditPermission();
   const {
     insumos,
     adicionarInsumo,

@@ -25,6 +25,7 @@ import EditarInsumoModal from "@/components/estoque/EditarInsumoModal";
 import AdicionarInsumoModal from "@/components/precificacao/AdicionarInsumoModal";
 
 export default function InsumosSupabaseTab() {
+  const { canEdit } = useEditPermission();
   const { 
     insumos, 
     loading, 

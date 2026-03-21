@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { useInsumoStore } from "@/hooks/useInsumoStore";
 import { Insumo, CategoriaInsumo, UnidadeMedida } from "@/types";
 import { Button } from "@/components/ui/button";
