@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { UserPlus, Users, RefreshCw, Eye, EyeOff, Shield, Pencil } from 'lucide-react';
+import { UserPlus, Users, RefreshCw, Eye, EyeOff, Shield, Pencil, Copy } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +24,8 @@ interface StaffAccount {
   created_at: string;
   email?: string;
   custom_role_id?: string | null;
+  login_email?: string | null;
+  senha_acesso?: string | null;
 }
 
 export default function FuncionariosTab() {
@@ -34,8 +36,12 @@ export default function FuncionariosTab() {
   const [creating, setCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffAccount | null>(null);
+  const [viewingStaff, setViewingStaff] = useState<StaffAccount | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showViewPassword, setShowViewPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '', custom_role_id: '' });
   const [editForm, setEditForm] = useState({ nome: '', custom_role_id: '' });
   const [adminProfile, setAdminProfile] = useState<{ full_name: string | null; email: string | null } | null>(null);
@@ -75,7 +81,7 @@ export default function FuncionariosTab() {
 
       setStaff((data || []).map(s => ({
         ...s,
-        email: emailMap.get(s.staff_user_id) || '-',
+        email: s.login_email || emailMap.get(s.staff_user_id) || '-',
       })));
     } catch (error) {
       console.error('Error fetching staff:', error);
@@ -160,7 +166,14 @@ export default function FuncionariosTab() {
   const openEditDialog = (s: StaffAccount) => {
     setEditingStaff(s);
     setEditForm({ nome: s.nome || '', custom_role_id: s.custom_role_id || '' });
+    setShowEditPassword(false);
     setEditDialogOpen(true);
+  };
+
+  const openViewDialog = (s: StaffAccount) => {
+    setViewingStaff(s);
+    setShowViewPassword(false);
+    setViewDialogOpen(true);
   };
 
   const handleEdit = async () => {
@@ -185,6 +198,14 @@ export default function FuncionariosTab() {
     } catch (error) {
       toast.error('Erro ao atualizar funcionário');
     }
+  };
+
+  const handleCopyCredentials = (s: StaffAccount) => {
+    const loginEmail = s.login_email || s.email || '-';
+    const senha = s.senha_acesso || '(não disponível)';
+    const text = `🔐 Dados de Acesso\n\nNome: ${s.nome || '-'}\nLogin: ${loginEmail}\nSenha: ${senha}\nFunção: ${getRoleName(s)}`;
+    navigator.clipboard.writeText(text);
+    toast.success('Credenciais copiadas para a área de transferência!');
   };
 
   const getRoleName = (s: StaffAccount) => {
@@ -394,6 +415,16 @@ export default function FuncionariosTab() {
                             variant="ghost"
                             size="sm"
                             className="text-xs h-7 px-2"
+                            title="Visualizar credenciais"
+                            onClick={() => openViewDialog(s)}
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 px-2"
+                            title="Editar funcionário"
                             onClick={() => openEditDialog(s)}
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -417,48 +448,140 @@ export default function FuncionariosTab() {
         </CardContent>
       </Card>
 
+      {/* View Credentials Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Dados de Acesso</DialogTitle>
+          </DialogHeader>
+          {viewingStaff && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-xs">Nome</Label>
+                <p className="text-sm font-medium">{viewingStaff.nome || '-'}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-xs">Email de login</Label>
+                <p className="text-sm font-medium">{viewingStaff.login_email || viewingStaff.email || '-'}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-xs">Senha</Label>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium font-mono">
+                    {viewingStaff.senha_acesso
+                      ? (showViewPassword ? viewingStaff.senha_acesso : '••••••••')
+                      : '(não disponível)'}
+                  </p>
+                  {viewingStaff.senha_acesso && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-1"
+                      onClick={() => setShowViewPassword(!showViewPassword)}
+                    >
+                      {showViewPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-xs">Função</Label>
+                <div>
+                  <Badge className="text-[11px]" style={{ backgroundColor: getRoleColor(viewingStaff), color: '#fff' }}>
+                    {getRoleName(viewingStaff)}
+                  </Badge>
+                </div>
+              </div>
+              <div className="pt-2">
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={() => handleCopyCredentials(viewingStaff)}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copiar credenciais para enviar
+                </Button>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Fechar</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Editar Funcionário</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Nome completo</Label>
-              <Input
-                value={editForm.nome}
-                onChange={(e) => setEditForm(f => ({ ...f, nome: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Tipo de Acesso</Label>
-              {customRoles.length > 0 ? (
-                <Select
-                  value={editForm.custom_role_id}
-                  onValueChange={(val) => setEditForm(f => ({ ...f, custom_role_id: val }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um tipo de acesso" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customRoles.map(role => (
-                      <SelectItem key={role.id} value={role.id}>
-                        <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: role.color }} />
-                          {role.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
-                  Nenhum tipo de acesso criado. Crie na aba "Tipos de Acesso" primeiro.
+          {editingStaff && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Nome completo</Label>
+                <Input
+                  value={editForm.nome}
+                  onChange={(e) => setEditForm(f => ({ ...f, nome: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-xs">Email de login</Label>
+                <p className="text-sm font-medium bg-muted px-3 py-2 rounded-md">
+                  {editingStaff.login_email || editingStaff.email || '-'}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-xs">Senha</Label>
+                <div className="flex items-center gap-2 bg-muted px-3 py-2 rounded-md">
+                  <p className="text-sm font-medium font-mono flex-1">
+                    {editingStaff.senha_acesso
+                      ? (showEditPassword ? editingStaff.senha_acesso : '••••••••')
+                      : '(não disponível)'}
+                  </p>
+                  {editingStaff.senha_acesso && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-1"
+                      onClick={() => setShowEditPassword(!showEditPassword)}
+                    >
+                      {showEditPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </Button>
+                  )}
                 </div>
-              )}
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo de Acesso</Label>
+                {customRoles.length > 0 ? (
+                  <Select
+                    value={editForm.custom_role_id}
+                    onValueChange={(val) => setEditForm(f => ({ ...f, custom_role_id: val }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um tipo de acesso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customRoles.map(role => (
+                        <SelectItem key={role.id} value={role.id}>
+                          <div className="flex items-center gap-2">
+                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: role.color }} />
+                            {role.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
+                    Nenhum tipo de acesso criado. Crie na aba "Tipos de Acesso" primeiro.
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancelar</Button>

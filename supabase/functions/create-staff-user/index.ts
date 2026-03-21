@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
 
     const staffUserId = newUser.user.id;
 
-    // Insert into staff_accounts with custom_role_id
+    // Insert into staff_accounts with custom_role_id and credentials
     const { error: staffError } = await adminClient
       .from("staff_accounts")
       .insert({
@@ -98,6 +98,8 @@ Deno.serve(async (req) => {
         role: "producao",
         nome,
         custom_role_id: custom_role_id || null,
+        login_email: email,
+        senha_acesso: password,
       });
 
     if (staffError) {
