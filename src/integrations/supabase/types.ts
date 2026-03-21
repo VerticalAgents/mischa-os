@@ -2038,9 +2038,11 @@ export type Database = {
           created_at: string
           custom_role_id: string | null
           id: string
+          login_email: string | null
           nome: string | null
           owner_id: string
           role: Database["public"]["Enums"]["app_role"]
+          senha_acesso: string | null
           staff_user_id: string
           updated_at: string
         }
@@ -2049,9 +2051,11 @@ export type Database = {
           created_at?: string
           custom_role_id?: string | null
           id?: string
+          login_email?: string | null
           nome?: string | null
           owner_id: string
           role?: Database["public"]["Enums"]["app_role"]
+          senha_acesso?: string | null
           staff_user_id: string
           updated_at?: string
         }
@@ -2060,9 +2064,11 @@ export type Database = {
           created_at?: string
           custom_role_id?: string | null
           id?: string
+          login_email?: string | null
           nome?: string | null
           owner_id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          senha_acesso?: string | null
           staff_user_id?: string
           updated_at?: string
         }
