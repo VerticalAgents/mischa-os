@@ -18,6 +18,7 @@ import { useFaturamentoPrevisto } from "@/hooks/useFaturamentoPrevisto";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useIndicadoresFinanceiros } from "@/hooks/useIndicadoresFinanceiros";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 type Frequencia = "mensal" | "semanal" | "trimestral" | "semestral" | "anual" | "por-producao";
 type TipoCusto = "fixo" | "variavel";
 type FormData = {
