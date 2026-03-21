@@ -47,7 +47,10 @@ export default function GestaoComercial() {
     }, { replace: true });
   };
 
+  const { canEdit } = useRoutePermission('/gestao-comercial');
+
   return (
+    <EditPermissionProvider value={{ canEdit }}>
     <div className="container mx-auto">
       <BreadcrumbNavigation />
       
