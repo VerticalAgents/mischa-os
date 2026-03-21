@@ -230,7 +230,9 @@ function App() {
                     <Route path="/configuracoes" element={
                       <ProtectedRoute>
                         <AppLayout>
-                          <Configuracoes />
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <Configuracoes />
+                          </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
                     } />
