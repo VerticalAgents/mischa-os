@@ -5,6 +5,7 @@ import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from '@/components/ui/toaster';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { RoleBasedRoute } from '@/components/auth/RoleBasedRoute';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import AppLayout from '@/components/layout/AppLayout';
 import { RouteGuard } from '@/components/navigation/RouteGuard';
