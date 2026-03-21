@@ -207,9 +207,9 @@ export function UserManager() {
                     <TableCell>
                       <Badge 
                         variant={user.role === 'admin' ? 'default' : 'secondary'}
-                        className={user.role === 'admin' ? 'bg-amber-500 hover:bg-amber-600' : ''}
+                        className={user.role === 'admin' ? 'bg-amber-500 hover:bg-amber-600' : user.role === 'producao' ? 'bg-blue-500 hover:bg-blue-600 text-white' : ''}
                       >
-                        {user.role === 'admin' ? 'Administrador' : 'Usuário'}
+                        {user.role === 'admin' ? 'Administrador' : user.role === 'producao' ? 'Ger. Produção' : 'Usuário'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
