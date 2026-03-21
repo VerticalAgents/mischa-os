@@ -99,7 +99,7 @@ export function useRolePermissions(role: AppRoleDB) {
       // Upsert all permissions
       const rows = permissions.map(p => ({
         user_id: user.id,
-        role,
+        role: role as AppRoleDB,
         route_key: p.route_key,
         route_label: p.route_label,
         can_access: p.can_access,
