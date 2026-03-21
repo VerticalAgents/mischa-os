@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { format, addDays, isWeekend } from "date-fns";
 import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
 import { ptBR } from "date-fns/locale";
