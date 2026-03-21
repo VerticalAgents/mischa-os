@@ -502,5 +502,6 @@ export default function Clientes() {
         onOpenChange={setRelatorioOpen} 
       />
     </>
+    </EditPermissionProvider>
   );
 }
