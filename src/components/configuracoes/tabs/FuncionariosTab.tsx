@@ -159,7 +159,7 @@ export default function FuncionariosTab() {
       const cr = customRoles.find(r => r.id === s.custom_role_id);
       return cr ? cr.name : 'Tipo removido';
     }
-    return s.role === 'producao' ? 'Gerente de Produção' : s.role;
+    return 'Não definido';
   };
 
   const getRoleColor = (s: StaffAccount) => {
@@ -167,7 +167,7 @@ export default function FuncionariosTab() {
       const cr = customRoles.find(r => r.id === s.custom_role_id);
       return cr?.color || '#6B7280';
     }
-    return '#3B82F6';
+    return '#6B7280';
   };
 
   if (loading) {
