@@ -88,7 +88,33 @@ export default function Expedicao() {
         />
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-          <TabsList>
+          {/* Mobile: grid 2 colunas */}
+          <div className="grid grid-cols-2 gap-2 lg:hidden">
+            {[
+              { id: "resumo", label: "Resumo" },
+              { id: "dashboard", label: "Dashboard" },
+              { id: "separacao", label: "Separação de Pedidos" },
+              { id: "gestaoclick", label: "Emissão de Documentos" },
+              { id: "despacho", label: "Despacho de Pedidos" },
+              { id: "organizacao", label: "Organização" },
+              { id: "rota", label: "Rota de Entrega" },
+              { id: "historico", label: "Histórico de Entregas" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {/* Desktop: TabsList horizontal */}
+          <TabsList className="hidden lg:inline-flex">
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="separacao">Separação de Pedidos</TabsTrigger>
