@@ -37,6 +37,7 @@ const tabComponents: Record<string, React.ComponentType> = {
   "agendamento": AgendamentoTab,
   "producao": ProducaoTab,
   "gestaoclick": IntegracoesGestaoClickTab,
+  "funcionarios": FuncionariosTab,
 };
 
 export default function ConfiguracoesTabs() {

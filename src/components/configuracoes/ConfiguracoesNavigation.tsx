@@ -34,6 +34,7 @@ const configGroups = [
       { id: "usuario", label: "Usuário", icon: User },
       { id: "sistema", label: "Sistema", icon: Settings },
       { id: "agentes-ia", label: "Agentes IA", icon: Bot },
+      { id: "funcionarios", label: "Funcionários", icon: UserPlus },
     ]
   },
   {
