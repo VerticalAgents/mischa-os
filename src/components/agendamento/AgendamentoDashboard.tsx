@@ -129,6 +129,7 @@ const IndicadoresEntrega = ({
 };
 
 export default function AgendamentoDashboard() {
+  const { canEdit } = useEditPermission();
   const {
     agendamentos,
     carregarTodosAgendamentos,
