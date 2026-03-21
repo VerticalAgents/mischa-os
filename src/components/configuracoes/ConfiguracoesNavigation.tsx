@@ -36,6 +36,7 @@ const configGroups = [
       { id: "sistema", label: "Sistema", icon: Settings },
       { id: "agentes-ia", label: "Agentes IA", icon: Bot },
       { id: "funcionarios", label: "Funcionários", icon: UserPlus },
+      { id: "tipos-acesso", label: "Tipos de Acesso", icon: ShieldCheck },
     ]
   },
   {
