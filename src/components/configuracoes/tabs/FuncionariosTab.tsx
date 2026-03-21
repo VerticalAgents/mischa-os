@@ -569,7 +569,7 @@ export default function FuncionariosTab() {
                 </p>
               </div>
               <div className="space-y-1">
-                <Label className="text-muted-foreground text-xs">Senha</Label>
+                <Label className="text-muted-foreground text-xs">Senha atual</Label>
                 <div className="flex items-center gap-2 bg-muted px-3 py-2 rounded-md">
                   <p className="text-sm font-medium font-mono flex-1">
                     {editingStaff.senha_acesso
@@ -587,6 +587,16 @@ export default function FuncionariosTab() {
                     </Button>
                   )}
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Nova senha (opcional)</Label>
+                <Input
+                  type="password"
+                  placeholder="Deixe vazio para manter a atual"
+                  value={editForm.nova_senha}
+                  onChange={(e) => setEditForm(f => ({ ...f, nova_senha: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground">Mínimo 6 caracteres. Só preencha se quiser alterar.</p>
               </div>
               <div className="space-y-2">
                 <Label>Tipo de Acesso</Label>
