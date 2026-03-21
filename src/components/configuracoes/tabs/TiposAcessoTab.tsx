@@ -144,7 +144,7 @@ export default function TiposAcessoTab() {
           <RolePermissionsEditor roleId={ROLE_PROFILES[0].id} roleName={ROLE_PROFILES[0].name} />
         </div>
       ) : (
-        <Tabs value={activeRole} onValueChange={setActiveRole}>
+        <Tabs value={activeRole} onValueChange={(v) => setActiveRole(v as AppRole)}>
           <TabsList>
             {ROLE_PROFILES.map(profile => (
               <TabsTrigger key={profile.id} value={profile.id} className="flex items-center gap-2">
