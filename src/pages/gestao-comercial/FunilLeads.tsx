@@ -446,7 +446,7 @@ export default function FunilLeads() {
                             </Button>
                           </>
                         )}
-                        </Button>
+                      </div>
                       </div>
                     </TableCell>
                   </TableRow>)}

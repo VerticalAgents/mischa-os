@@ -198,7 +198,6 @@ export default function Distribuidores() {
                             }
                             disabled={!canEdit}
                           >
-                          >
                             {distribuidor.numero_expositores}
                           </Button>
                         )}
