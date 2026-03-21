@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { Database } from '@/integrations/supabase/types';
-
-type AppRoleDB = Database['public']['Enums']['app_role'];
 
 // Master list of all available routes in the app
 export const ALL_ROUTES = [
@@ -34,22 +31,26 @@ export interface RolePermission {
   can_edit: boolean;
 }
 
-export function useRolePermissions(role: AppRoleDB) {
+export function useCustomRolePermissions(customRoleId: string | null) {
   const [permissions, setPermissions] = useState<RolePermission[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const fetchPermissions = useCallback(async () => {
+    if (!customRoleId) {
+      setPermissions([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('role_permissions')
         .select('*')
-        .eq('role', role);
+        .eq('custom_role_id', customRoleId);
 
       if (error) throw error;
 
-      // Merge DB data with master route list
       const dbMap = new Map((data || []).map(d => [d.route_key, d]));
       const merged = ALL_ROUTES.map(route => {
         const db = dbMap.get(route.key);
@@ -69,7 +70,7 @@ export function useRolePermissions(role: AppRoleDB) {
     } finally {
       setLoading(false);
     }
-  }, [role]);
+  }, [customRoleId]);
 
   useEffect(() => {
     fetchPermissions();
@@ -79,11 +80,9 @@ export function useRolePermissions(role: AppRoleDB) {
     setPermissions(prev => prev.map(p => {
       if (p.route_key !== routeKey) return p;
       if (field === 'can_access' && p.can_access) {
-        // Turning off access also turns off edit
         return { ...p, can_access: false, can_edit: false };
       }
       if (field === 'can_edit' && !p.can_access) {
-        // Can't enable edit without access
         return p;
       }
       return { ...p, [field]: !p[field] };
@@ -91,26 +90,35 @@ export function useRolePermissions(role: AppRoleDB) {
   };
 
   const savePermissions = async () => {
+    if (!customRoleId) return;
     try {
       setSaving(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
-      // Upsert all permissions
-      const rows = permissions.map(p => ({
-        user_id: user.id,
-        role: role as AppRoleDB,
-        route_key: p.route_key,
-        route_label: p.route_label,
-        can_access: p.can_access,
-        can_edit: p.can_edit,
-      }));
-
-      const { error } = await supabase
+      // Delete existing permissions for this custom role, then insert fresh
+      await supabase
         .from('role_permissions')
-        .upsert(rows, { onConflict: 'user_id,role,route_key' });
+        .delete()
+        .eq('custom_role_id', customRoleId);
 
-      if (error) throw error;
+      const rows = permissions
+        .filter(p => p.can_access || p.can_edit)
+        .map(p => ({
+          user_id: user.id,
+          custom_role_id: customRoleId,
+          route_key: p.route_key,
+          route_label: p.route_label,
+          can_access: p.can_access,
+          can_edit: p.can_edit,
+        }));
+
+      if (rows.length > 0) {
+        const { error } = await supabase
+          .from('role_permissions')
+          .insert(rows);
+        if (error) throw error;
+      }
 
       toast.success('Permissões salvas com sucesso!');
       fetchPermissions();
