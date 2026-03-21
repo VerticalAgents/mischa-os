@@ -47,38 +47,42 @@ export default function PCP() {
     }, { replace: true });
   };
 
+  const { canEdit } = useRoutePermission('/pcp');
+
   return (
-    <div className="container mx-auto py-6">
-      <PageHeader 
-        title="PCP - Planejamento e Controle da Produção" 
-        description="Gerencie a produção, estoques e planejamento de forma integrada"
-        icon={<Layers className="h-6 w-6" />}
-      />
-      
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="projecao-producao">Projeção de Produção</TabsTrigger>
-          <TabsTrigger value="registro">Registro</TabsTrigger>
-          <TabsTrigger value="auditoria-pcp">Auditoria PCP</TabsTrigger>
-        </TabsList>
+    <EditPermissionProvider value={{ canEdit }}>
+      <div className="container mx-auto py-6">
+        <PageHeader 
+          title="PCP - Planejamento e Controle da Produção" 
+          description="Gerencie a produção, estoques e planejamento de forma integrada"
+          icon={<Layers className="h-6 w-6" />}
+        />
         
-        <TabsContent value="projecao-producao" className="space-y-6 mt-6" forceMount={activeTab === "projecao-producao" ? true : undefined}>
-          {activeTab === "projecao-producao" && <ProjecaoProducaoTab />}
-        </TabsContent>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="projecao-producao">Projeção de Produção</TabsTrigger>
+            <TabsTrigger value="registro">Registro</TabsTrigger>
+            <TabsTrigger value="auditoria-pcp">Auditoria PCP</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="projecao-producao" className="space-y-6 mt-6" forceMount={activeTab === "projecao-producao" ? true : undefined}>
+            {activeTab === "projecao-producao" && <ProjecaoProducaoTab />}
+          </TabsContent>
 
-        <TabsContent value="dashboard" className="space-y-6 mt-6">
-          {activeTab === "dashboard" && <HistoricoAnalytics />}
-        </TabsContent>
+          <TabsContent value="dashboard" className="space-y-6 mt-6">
+            {activeTab === "dashboard" && <HistoricoAnalytics />}
+          </TabsContent>
 
-        <TabsContent value="registro" className="space-y-6 mt-6">
-          {activeTab === "registro" && <HistoricoProducao />}
-        </TabsContent>
+          <TabsContent value="registro" className="space-y-6 mt-6">
+            {activeTab === "registro" && <HistoricoProducao />}
+          </TabsContent>
 
-        <TabsContent value="auditoria-pcp" className="space-y-6 mt-6">
-          {activeTab === "auditoria-pcp" && <AuditoriaPCPTab />}
-        </TabsContent>
-      </Tabs>
-    </div>
+          <TabsContent value="auditoria-pcp" className="space-y-6 mt-6">
+            {activeTab === "auditoria-pcp" && <AuditoriaPCPTab />}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </EditPermissionProvider>
   );
 }
