@@ -7,6 +7,8 @@ import ReceitasTab from "@/components/precificacao/ReceitasTab";
 import ProdutosTab from "@/components/precificacao/ProdutosTab";
 import RendimentoReceitasProdutos from "@/components/precificacao/RendimentoReceitasProdutos";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 export default function Precificacao() {
   const { activeTab, changeTab } = useTabPersistence("insumos");
