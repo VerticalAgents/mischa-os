@@ -910,9 +910,9 @@ export default function AgendamentoDashboard() {
       {previstosSemanais.length > 0 && (
         <Card>
           <CardHeader>
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div className="space-y-1.5">
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                   <BarChart3 className="h-5 w-5 text-amber-500" />
                   Probabilidade de Confirmação
                 </CardTitle>
