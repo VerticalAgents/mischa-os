@@ -79,7 +79,7 @@ export function UserManager() {
         user.id === userId ? { ...user, role: newRole } : user
       ));
       
-      toast.success(`Função atualizada para ${newRole === 'admin' ? 'Administrador' : 'Usuário'}`);
+      toast.success(`Função atualizada para ${newRole === 'admin' ? 'Administrador' : newRole === 'producao' ? 'Gerente de Produção' : 'Usuário'}`);
     } catch (error: any) {
       toast.error(error.message || 'Erro ao atualizar função');
     } finally {
