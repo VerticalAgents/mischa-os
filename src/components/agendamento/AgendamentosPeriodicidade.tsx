@@ -49,6 +49,7 @@ type FaixaPeriodicidade = "todos" | "semanal" | "quinzenal" | "mensal" | "outros
 type OrdenacaoOpcao = "nome" | "periodicidade" | "proxima";
 
 export default function AgendamentosPeriodicidade() {
+  const { canEdit } = useEditPermission();
   const { agendamentos } = useAgendamentoClienteStore();
   
   const [termoBusca, setTermoBusca] = useState("");
