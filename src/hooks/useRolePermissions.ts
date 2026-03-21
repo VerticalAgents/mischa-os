@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/useUserRoles';
 
 // Master list of all available routes in the app
 export const ALL_ROUTES = [
@@ -133,14 +135,36 @@ export function useCustomRolePermissions(customRoleId: string | null) {
   return { permissions, loading, saving, togglePermission, savePermissions, fetchPermissions };
 }
 
+export interface RoutePermissionMap {
+  [routeKey: string]: { can_access: boolean; can_edit: boolean };
+}
+
 // Hook for sidebar/route guards to read effective permissions for current user
 export function useMyPermissions() {
+  const { user } = useAuth();
+  const { userRole, loading: roleLoading } = useUserRoles();
   const [allowedRoutes, setAllowedRoutes] = useState<string[]>([]);
   const [editableRoutes, setEditableRoutes] = useState<string[]>([]);
+  const [permissionMap, setPermissionMap] = useState<RoutePermissionMap>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
+    if (roleLoading || !user) return;
+
+    // Admin has full access - no need to query
+    if (userRole === 'admin') {
+      const allKeys = ALL_ROUTES.map(r => r.key);
+      setAllowedRoutes(allKeys);
+      setEditableRoutes(allKeys);
+      const map: RoutePermissionMap = {};
+      allKeys.forEach(k => { map[k] = { can_access: true, can_edit: true }; });
+      setPermissionMap(map);
+      setLoading(false);
+      return;
+    }
+
+    // Staff: RLS already filters to only their custom_role_id permissions
+    const fetchPerms = async () => {
       try {
         const { data, error } = await supabase
           .from('role_permissions')
@@ -148,16 +172,38 @@ export function useMyPermissions() {
 
         if (error) throw error;
 
-        setAllowedRoutes((data || []).filter(d => d.can_access).map(d => d.route_key));
-        setEditableRoutes((data || []).filter(d => d.can_edit).map(d => d.route_key));
+        const map: RoutePermissionMap = {};
+        const allowed: string[] = [];
+        const editable: string[] = [];
+
+        (data || []).forEach(d => {
+          map[d.route_key] = { can_access: d.can_access, can_edit: d.can_edit };
+          if (d.can_access) allowed.push(d.route_key);
+          if (d.can_edit) editable.push(d.route_key);
+        });
+
+        setPermissionMap(map);
+        setAllowedRoutes(allowed);
+        setEditableRoutes(editable);
       } catch (error) {
         console.error('Error fetching my permissions:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetch();
-  }, []);
+    fetchPerms();
+  }, [user, userRole, roleLoading]);
 
-  return { allowedRoutes, editableRoutes, loading };
+  return { allowedRoutes, editableRoutes, permissionMap, loading };
+}
+
+// Convenience hook for a specific route
+export function useRoutePermission(routeKey: string) {
+  const { permissionMap, loading } = useMyPermissions();
+  const perm = permissionMap[routeKey];
+  return {
+    canAccess: perm?.can_access ?? false,
+    canEdit: perm?.can_edit ?? false,
+    loading,
+  };
 }
