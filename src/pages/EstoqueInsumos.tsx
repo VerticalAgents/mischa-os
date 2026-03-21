@@ -21,7 +21,8 @@ export default function EstoqueInsumos() {
       changeTab(tabParam);
     }
   }, [location.search, changeTab]);
-  return <>
+  const { canEdit } = useRoutePermission('/estoque/insumos');
+  return <EditPermissionProvider value={{ canEdit }}>
       <PageHeader title="Gestão de Estoque" description="Controle completo do estoque de produtos e insumos" icon={<Package className="h-5 w-5" />} />
 
       <div className="mt-8">
@@ -45,5 +46,5 @@ export default function EstoqueInsumos() {
           </TabsContent>
         </Tabs>
       </div>
-    </>;
+    </EditPermissionProvider>;
 }
