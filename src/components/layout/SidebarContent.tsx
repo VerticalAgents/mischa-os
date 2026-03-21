@@ -15,9 +15,6 @@ interface SidebarProps {
   onItemClick?: () => void;
 }
 
-// Fallback hardcoded paths if no DB permissions configured yet
-const PRODUCAO_DEFAULT_PATHS = ['/home', '/pcp', '/estoque', '/estoque/insumos', '/agendamento'];
-
 const SidebarContent = ({ showLabels, onItemClick }: SidebarProps) => {
   const location = useLocation();
   const { logout } = useAuth();
@@ -25,13 +22,18 @@ const SidebarContent = ({ showLabels, onItemClick }: SidebarProps) => {
   const { allowedRoutes, loading: permLoading } = useMyPermissions();
 
   const filteredItems = (() => {
-    if (userRole !== 'producao') return mainMenuItems;
+    // Admin sees everything
+    if (userRole === 'admin') return mainMenuItems;
 
-    // If DB permissions exist, use them; otherwise fall back to hardcoded
-    const paths = allowedRoutes.length > 0 ? allowedRoutes : PRODUCAO_DEFAULT_PATHS;
-    return mainMenuItems.filter(item =>
-      paths.some(p => item.path === p || item.path.startsWith(p + '?') || item.path.startsWith(p + '/'))
-    );
+    // Staff: use DB permissions if available, otherwise show nothing
+    if (allowedRoutes.length > 0) {
+      return mainMenuItems.filter(item =>
+        allowedRoutes.some(p => item.path === p || item.path.startsWith(p + '?') || item.path.startsWith(p + '/'))
+      );
+    }
+
+    // Fallback: show only home
+    return mainMenuItems.filter(item => item.path === '/home');
   })();
 
   return (

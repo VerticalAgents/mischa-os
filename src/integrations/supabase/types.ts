@@ -2036,6 +2036,7 @@ export type Database = {
         Row: {
           ativo: boolean
           created_at: string
+          custom_role_id: string | null
           id: string
           nome: string | null
           owner_id: string
@@ -2046,6 +2047,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           created_at?: string
+          custom_role_id?: string | null
           id?: string
           nome?: string | null
           owner_id: string
@@ -2056,6 +2058,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           created_at?: string
+          custom_role_id?: string | null
           id?: string
           nome?: string | null
           owner_id?: string
@@ -2063,7 +2066,15 @@ export type Database = {
           staff_user_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "staff_accounts_custom_role_id_fkey"
+            columns: ["custom_role_id"]
+            isOneToOne: false
+            referencedRelation: "custom_roles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subcategorias_custos: {
         Row: {
