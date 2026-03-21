@@ -9,6 +9,8 @@ import { RotaEntrega } from "@/components/expedicao/RotaEntrega";
 import DashboardEntregasAnalytics from "@/components/expedicao/DashboardEntregasAnalytics";
 import { OrganizacaoEntregas } from "@/components/expedicao/organizacao/OrganizacaoEntregas";
 import { useExpedicaoSync } from "@/hooks/useExpedicaoSync";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 const GestaoClickTab = lazy(() => import("@/components/expedicao/GestaoClickTab"));
 import { useExpedicaoUiStore } from "@/hooks/useExpedicaoUiStore";
