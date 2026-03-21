@@ -2451,7 +2451,7 @@ export type Database = {
       validate_email: { Args: { email: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "producao"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2579,7 +2579,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "producao"],
     },
   },
 } as const

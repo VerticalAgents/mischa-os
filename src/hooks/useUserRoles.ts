@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 
-export type AppRole = 'admin' | 'user';
+export type AppRole = 'admin' | 'user' | 'producao';
 
 export function useUserRoles() {
   const { user } = useAuth();
