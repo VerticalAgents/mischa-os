@@ -88,6 +88,10 @@ export function useUserRoles() {
     return userRole === 'admin';
   };
 
+  const isProducao = (): boolean => {
+    return userRole === 'producao';
+  };
+
   const assignRole = async (userId: string, role: AppRole) => {
     try {
       // Validate input
