@@ -1,10 +1,14 @@
-
 import PageHeader from "@/components/common/PageHeader";
 import ConfiguracoesTabs from "@/components/configuracoes/ConfiguracoesTabs";
 import { Settings } from "lucide-react";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 export default function Configuracoes() {
+  const { canEdit } = useRoutePermission('/configuracoes');
+
   return (
+    <EditPermissionProvider value={{ canEdit }}>
     <div className="flex flex-col h-full">
       <PageHeader 
         title="Configurações"
@@ -16,5 +20,6 @@ export default function Configuracoes() {
         <ConfiguracoesTabs />
       </div>
     </div>
+    </EditPermissionProvider>
   );
 }
