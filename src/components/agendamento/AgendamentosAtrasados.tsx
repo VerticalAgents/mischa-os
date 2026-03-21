@@ -209,6 +209,8 @@ export default function AgendamentosAtrasados() {
           <Button
             variant="default"
             onClick={handleReagendamentoEmMassa}
+            disabled={!canEdit}
+            title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
             className="bg-orange-500 hover:bg-orange-600"
           >
             <Calendar className="mr-2 h-4 w-4" />
