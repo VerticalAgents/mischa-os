@@ -182,7 +182,12 @@ export default function FuncionariosTab() {
       toast.error('O nome é obrigatório');
       return;
     }
+    if (editForm.nova_senha && editForm.nova_senha.length < 6) {
+      toast.error('A nova senha deve ter pelo menos 6 caracteres');
+      return;
+    }
     try {
+      // Update staff_accounts
       const { error } = await supabase
         .from('staff_accounts')
         .update({
@@ -191,6 +196,36 @@ export default function FuncionariosTab() {
         })
         .eq('id', editingStaff.id);
       if (error) throw error;
+
+      // Update password if provided
+      if (editForm.nova_senha) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) {
+          toast.error('Sessão expirada');
+          return;
+        }
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const pwResponse = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/update-staff-password`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              staff_account_id: editingStaff.id,
+              new_password: editForm.nova_senha,
+            }),
+          }
+        );
+        const pwResult = await pwResponse.json();
+        if (!pwResponse.ok) {
+          throw new Error(pwResult.error || 'Erro ao atualizar senha');
+        }
+      }
+
       toast.success('Funcionário atualizado!');
       setEditDialogOpen(false);
       setEditingStaff(null);
