@@ -7,12 +7,15 @@ import ReceitasTab from "@/components/precificacao/ReceitasTab";
 import ProdutosTab from "@/components/precificacao/ProdutosTab";
 import RendimentoReceitasProdutos from "@/components/precificacao/RendimentoReceitasProdutos";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 export default function Precificacao() {
   const { activeTab, changeTab } = useTabPersistence("insumos");
+  const { canEdit } = useRoutePermission('/precificacao');
   
   return (
-    <>
+    <EditPermissionProvider value={{ canEdit }}>
       <PageHeader 
         title="Precificação"
         description="Sistema integrado de gestão de insumos, receitas e produtos com banco de dados unificado"
@@ -44,6 +47,6 @@ export default function Precificacao() {
           </TabsContent>
         </Tabs>
       </div>
-    </>
+    </EditPermissionProvider>
   );
 }

@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 import AgendamentoDashboard from "@/components/agendamento/AgendamentoDashboard";
 import TodosAgendamentos from "@/components/agendamento/TodosAgendamentos";
 import AgendamentosPendentes from "@/components/agendamento/AgendamentosPendentes";
@@ -91,62 +93,66 @@ export default function Agendamento() {
     temAgendamentosSemData
   });
 
+  const { canEdit } = useRoutePermission('/agendamento');
+
   return (
-    <div className="space-y-6">
-      <PageHeader title="Agendamento" description="Gerenciamento de agendamentos e confirmação de reposições" />
-      
-      <Tabs value={activeTab} onValueChange={changeTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="agendamentos">Agendamentos</TabsTrigger>
-          <TabsTrigger value="periodicidade">Periodicidade</TabsTrigger>
-          <TabsTrigger value="positivacao">Positivação</TabsTrigger>
-          {temAgendamentosDespachados && <TabsTrigger value="despachados">Despachado</TabsTrigger>}
-          {temAgendamentosPendentes && <TabsTrigger value="pendentes">Pendente</TabsTrigger>}
-          {temAgendamentosAtrasados && <TabsTrigger value="atrasados">Atrasado</TabsTrigger>}
-          {temAgendamentosSemData && <TabsTrigger value="sem-data">Sem Agendamento</TabsTrigger>}
-        </TabsList>
+    <EditPermissionProvider value={{ canEdit }}>
+      <div className="space-y-6">
+        <PageHeader title="Agendamento" description="Gerenciamento de agendamentos e confirmação de reposições" />
         
-        <TabsContent value="dashboard" className="space-y-4">
-          <AgendamentoDashboard />
-        </TabsContent>
-        
-        <TabsContent value="agendamentos" className="space-y-4">
-          <TodosAgendamentos />
-        </TabsContent>
-        
-        <TabsContent value="periodicidade" className="space-y-4">
-          <AgendamentosPeriodicidade />
-        </TabsContent>
-        
-        <TabsContent value="positivacao" className="space-y-4">
-          <AgendamentosPositivacao />
-        </TabsContent>
-        
-        {temAgendamentosDespachados && (
-          <TabsContent value="despachados" className="space-y-4">
-            <AgendamentosDespachados />
+        <Tabs value={activeTab} onValueChange={changeTab} className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="agendamentos">Agendamentos</TabsTrigger>
+            <TabsTrigger value="periodicidade">Periodicidade</TabsTrigger>
+            <TabsTrigger value="positivacao">Positivação</TabsTrigger>
+            {temAgendamentosDespachados && <TabsTrigger value="despachados">Despachado</TabsTrigger>}
+            {temAgendamentosPendentes && <TabsTrigger value="pendentes">Pendente</TabsTrigger>}
+            {temAgendamentosAtrasados && <TabsTrigger value="atrasados">Atrasado</TabsTrigger>}
+            {temAgendamentosSemData && <TabsTrigger value="sem-data">Sem Agendamento</TabsTrigger>}
+          </TabsList>
+          
+          <TabsContent value="dashboard" className="space-y-4">
+            <AgendamentoDashboard />
           </TabsContent>
-        )}
-        
-        {temAgendamentosPendentes && (
-          <TabsContent value="pendentes" className="space-y-4">
-            <AgendamentosPendentes />
+          
+          <TabsContent value="agendamentos" className="space-y-4">
+            <TodosAgendamentos />
           </TabsContent>
-        )}
-        
-        {temAgendamentosAtrasados && (
-          <TabsContent value="atrasados" className="space-y-4">
-            <AgendamentosAtrasados />
+          
+          <TabsContent value="periodicidade" className="space-y-4">
+            <AgendamentosPeriodicidade />
           </TabsContent>
-        )}
-        
-        {temAgendamentosSemData && (
-          <TabsContent value="sem-data" className="space-y-4">
-            <AgendamentosSemData />
+          
+          <TabsContent value="positivacao" className="space-y-4">
+            <AgendamentosPositivacao />
           </TabsContent>
-        )}
-      </Tabs>
-    </div>
+          
+          {temAgendamentosDespachados && (
+            <TabsContent value="despachados" className="space-y-4">
+              <AgendamentosDespachados />
+            </TabsContent>
+          )}
+          
+          {temAgendamentosPendentes && (
+            <TabsContent value="pendentes" className="space-y-4">
+              <AgendamentosPendentes />
+            </TabsContent>
+          )}
+          
+          {temAgendamentosAtrasados && (
+            <TabsContent value="atrasados" className="space-y-4">
+              <AgendamentosAtrasados />
+            </TabsContent>
+          )}
+          
+          {temAgendamentosSemData && (
+            <TabsContent value="sem-data" className="space-y-4">
+              <AgendamentosSemData />
+            </TabsContent>
+          )}
+        </Tabs>
+      </div>
+    </EditPermissionProvider>
   );
 }
