@@ -1,54 +1,48 @@
 
 
-## Plano: Adaptar UI mobile/tablet para todas as abas Operacionais
+## Plano: Calendário Semanal responsivo + esconder scrollbars no mobile/tablet
 
-### Problema central
-O componente `TabsList` usa `inline-flex` sem scroll horizontal, fazendo as abas ficarem apertadas/cortadas em telas menores. Além disso, grids fixos (7 colunas no calendário, 5 nos KPIs) não se adaptam.
+### Problemas identificados
+1. **Calendário Semanal**: `grid-cols-7` fixo (linha 1260) — impossível de ler no mobile 391px
+2. **Scrollbar vertical visível** no mobile/tablet ocupando espaço
+3. **Conteúdo não cabe** na largura — gera scroll horizontal indesejado
 
 ### Mudanças
 
-**1. `src/components/ui/tabs.tsx` — TabsList com scroll horizontal**
-- Adicionar `overflow-x-auto` e `scrollbar-hide` ao TabsList base
-- Adicionar `flex-nowrap` para impedir quebra de linha
-- TabsTrigger ganha `shrink-0` para não encolher
-- Isso corrige TODAS as páginas que usam Tabs de uma vez, sem quebrar desktop
+**1. `src/components/agendamento/AgendamentoDashboard.tsx` — Calendário responsivo**
 
-**2. `src/components/agendamento/AgendamentoDashboard.tsx` — Calendário e filtros responsivos**
-- Calendário Semanal: `grid-cols-3 sm:grid-cols-4 md:grid-cols-7` (3 colunas no mobile, 7 no desktop)
-- Barra de filtros: empilhar verticalmente no mobile (`flex-col sm:flex-row`)
-- Navegador de semana: `min-w-[140px]` no mobile, texto menor
-- KPI cards: `grid-cols-2 md:grid-cols-3 lg:grid-cols-5`
-- Gráficos: já usam `grid-cols-1 lg:grid-cols-2`, ok
-- Card Probabilidade de Confirmação: empilhar header no mobile (`flex-col sm:flex-row`)
-- Breakdown faixas: `flex-wrap` para não cortar no mobile
+O calendário de 7 colunas será substituído por um layout responsivo:
+- **Mobile** (`<md`): layout vertical, lista de cards empilhados (1 coluna), cada dia mostrando nome abreviado + data + badges lado a lado
+- **Tablet** (`md`): `grid-cols-4` (4 dias na primeira fila, 3 na segunda)
+- **Desktop** (`lg+`): mantém `grid-cols-7` atual
 
-**3. `src/pages/Expedicao.tsx` — Sub-tabs de despacho**
-- Sub-TabsList interna: adicionar `overflow-x-auto` (mesma correção do componente base já cobre)
-- Nenhuma mudança extra necessária se o TabsList base for corrigido
+Além disso, no card de "Agendamentos do Dia Selecionado" (linhas 1377-1415), os badges e botões ficam empilhados no mobile em vez de lado a lado:
+- `flex-col sm:flex-row` no container do card
+- Botões de ação abaixo do conteúdo no mobile
 
-**4. `src/pages/PCP.tsx` — Padding duplicado**
-- Remover `container mx-auto py-6` do wrapper (já está dentro do AppLayout container)
-- Manter consistência com as outras páginas que usam `space-y-6`
+**2. `src/index.css` — Esconder scrollbar vertical no mobile/tablet**
 
-**5. `src/pages/Reagendamentos.tsx` — Padding mobile**
-- Reduzir `p-6` para `p-3 sm:p-6` para não desperdiçar espaço no mobile
+Adicionar regra CSS que esconde a scrollbar do `<main>` em viewports `<1024px`:
+```css
+@media (max-width: 1023px) {
+  main { scrollbar-width: none; }
+  main::-webkit-scrollbar { display: none; }
+}
+```
 
-**6. `src/pages/Estoque.tsx` / `src/pages/EstoqueInsumos.tsx`**
-- Já responsivos (usam `grid-cols-1 md:grid-cols-2` e `grid-cols-3`), sem mudanças
+Isso remove AMBAS as scrollbars (vertical e horizontal) no mobile/tablet sem afetar desktop.
 
-**7. `src/pages/ControleTrocas.tsx`**
-- Já usa `space-y-6` simples, sem mudanças necessárias
+**3. `src/components/agendamento/AgendamentoDashboard.tsx` — Filtros e navegador de semana**
 
-### Resumo de arquivos
+- O navegador de semana (linha 849-885) já tem `min-w-[160px]` e flex-wrap — ok
+- O botão "Exportar PDF" com `ml-auto` pode empurrar conteúdo — adicionar `w-full sm:w-auto` para empilhar no mobile
+
+### Arquivos alterados
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/ui/tabs.tsx` | Scroll horizontal no TabsList + shrink-0 nos triggers |
-| `src/components/agendamento/AgendamentoDashboard.tsx` | Grid responsivo calendário, filtros, KPIs, card probabilidade |
-| `src/pages/PCP.tsx` | Remover container/padding duplicado |
-| `src/pages/Reagendamentos.tsx` | Padding responsivo |
+| `AgendamentoDashboard.tsx` | Calendário responsivo (lista no mobile, grid-cols-4 tablet, grid-cols-7 desktop) + cards do dia empilhados no mobile |
+| `src/index.css` | Esconder scrollbar no mobile/tablet |
 
-### O que NÃO muda (desktop preservado)
-- Todas as classes responsivas usam breakpoints (`sm:`, `md:`, `lg:`) — desktop mantém layout atual
-- TabsList no desktop continua `inline-flex` normal (scroll só ativa quando necessário)
-- Grids mantêm colunas originais nos breakpoints `md`/`lg`
+### Desktop preservado
+Todas as mudanças usam breakpoints `md:` e `lg:` — desktop inalterado.
 
