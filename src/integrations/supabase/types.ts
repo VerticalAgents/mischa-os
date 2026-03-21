@@ -2531,6 +2531,14 @@ export type Database = {
         }[]
       }
       get_feature_flag: { Args: { flag_name: string }; Returns: boolean }
+      get_my_staff_context: {
+        Args: never
+        Returns: {
+          custom_role_id: string
+          owner_id: string
+          staff_role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
       get_owner_id: { Args: { _user_id: string }; Returns: string }
       get_pedidos_summary: {
         Args: never
@@ -2551,6 +2559,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_route_permission: {
+        Args: { p_need_edit?: boolean; p_route_key: string }
+        Returns: boolean
+      }
+      is_owner_or_staff: { Args: never; Returns: boolean }
       marcar_parcelas_atrasadas: { Args: never; Returns: undefined }
       populate_historico_giro_semanal: { Args: never; Returns: undefined }
       process_entrega: { Args: { p_entrega_id: string }; Returns: undefined }

@@ -11,63 +11,42 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
-import { mainMenuItems, secondaryMenuItems, menuGroups } from "@/components/layout/navigation-items";
+import { menuGroups, type MenuGroup } from "@/components/layout/navigation-items";
 import { useAlertaStore } from "@/hooks/useAlertaStore";
 import AlertaIndicator from "@/components/common/AlertaIndicator";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { useMyPermissions } from "@/hooks/useRolePermissions";
 import mischasLogo from "@/assets/mischas-logo.png";
 
 const sidebarVariants = {
-  open: {
-    width: "15rem"
-  },
-  closed: {
-    width: "4rem"
-  }
+  open: { width: "15rem" },
+  closed: { width: "4rem" }
 };
 
 const contentVariants = {
-  open: {
-    opacity: 1
-  },
-  closed: {
-    opacity: 1
-  }
+  open: { opacity: 1 },
+  closed: { opacity: 1 }
 };
 
 const variants = {
-  open: {
-    x: 0,
-    opacity: 1,
-    transition: {
-      duration: 0.1,
-      ease: "easeOut"
-    }
-  },
-  closed: {
-    x: -10,
-    opacity: 0,
-    transition: {
-      duration: 0.1,
-      ease: "easeIn"
-    }
-  }
+  open: { x: 0, opacity: 1, transition: { duration: 0.1, ease: "easeOut" } },
+  closed: { x: -10, opacity: 0, transition: { duration: 0.1, ease: "easeIn" } }
 };
 
-const transitionProps = {
-  type: "tween",
-  ease: "easeOut",
-  duration: 0.1
-};
+const transitionProps = { type: "tween", ease: "easeOut", duration: 0.1 };
 
 const staggerVariants = {
-  open: {
-    transition: {
-      staggerChildren: 0.01,
-      delayChildren: 0.01
-    }
-  }
+  open: { transition: { staggerChildren: 0.01, delayChildren: 0.01 } }
 };
+
+// Helper: check if a menu item path matches an allowed route key
+function itemMatchesRoute(itemPath: string, routeKey: string): boolean {
+  // Exact match
+  if (itemPath === routeKey) return true;
+  // Item path may have query params like /estoque/insumos?tab=produtos
+  const basePath = itemPath.split('?')[0];
+  return basePath === routeKey;
+}
 
 export function SessionNavBar() {
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -75,11 +54,10 @@ export function SessionNavBar() {
   const location = useLocation();
   const pathname = location.pathname;
   const { userRole } = useUserRoles();
+  const { allowedRoutes, loading: permLoading } = useMyPermissions();
   
-  // Use state to store the alert count instead of directly accessing the store
   const [alertCount, setAlertCount] = useState(0);
   
-  // Fallback: check if mouse is really outside sidebar bounds
   const checkMousePosition = useCallback((e: MouseEvent) => {
     if (sidebarRef.current && !isCollapsed) {
       const rect = sidebarRef.current.getBoundingClientRect();
@@ -88,14 +66,10 @@ export function SessionNavBar() {
         e.clientX <= rect.right && 
         e.clientY >= rect.top && 
         e.clientY <= rect.bottom;
-      
-      if (!isInside) {
-        setIsCollapsed(true);
-      }
+      if (!isInside) setIsCollapsed(true);
     }
   }, [isCollapsed]);
 
-  // Add/remove mousemove fallback listener
   useEffect(() => {
     if (!isCollapsed) {
       const handler = (e: MouseEvent) => checkMousePosition(e);
@@ -104,34 +78,33 @@ export function SessionNavBar() {
     }
   }, [isCollapsed, checkMousePosition]);
   
-  // Filter menu groups - hide admin groups for non-admin users
+  // Filter menu groups based on role and permissions
   const filteredMenuGroups = useMemo(() => {
-    return menuGroups.filter(group => {
-      if (group.variant === 'admin') {
-        return userRole === 'admin';
-      }
-      return true;
-    });
-  }, [userRole]);
+    // Admin sees everything
+    if (userRole === 'admin') {
+      return menuGroups;
+    }
+
+    // Staff: filter by allowedRoutes
+    return menuGroups
+      .filter(group => group.variant !== 'admin') // non-admins never see admin group
+      .map(group => ({
+        ...group,
+        items: group.items.filter(item =>
+          allowedRoutes.some(route => itemMatchesRoute(item.path, route))
+        )
+      }))
+      .filter(group => group.items.length > 0);
+  }, [userRole, allowedRoutes]);
   
-  // Update alert count when component mounts and when alerts change - with proper cleanup
   useEffect(() => {
-    // Function to get the current alert count
     function updateAlertCount() {
       const count = useAlertaStore.getState().getQuantidadeAlertasNaoLidas();
       setAlertCount(count);
     }
-    
-    // Initial count
     updateAlertCount();
-    
-    // Subscribe to changes
     const unsubscribe = useAlertaStore.subscribe(updateAlertCount);
-    
-    // Cleanup subscription when component unmounts
-    return () => {
-      unsubscribe();
-    };
+    return () => { unsubscribe(); };
   }, []);
 
   return (
@@ -176,10 +149,8 @@ export function SessionNavBar() {
               <div className="flex grow flex-col gap-4">
                 <ScrollArea className="h-16 grow p-2">
                   <div className={cn("flex w-full flex-col gap-1")}>
-                    {/* Menu por grupos funcionais com indicadores visuais de cor */}
                     {filteredMenuGroups.map((group, index) => (
                       <div key={group.title} className="mt-2 first:mt-0">
-                        {/* Cabeçalho do grupo com indicador de cor */}
                         <div className={cn(
                           "flex items-center px-2 py-1.5",
                           isCollapsed ? "justify-center" : "justify-start"
@@ -200,7 +171,6 @@ export function SessionNavBar() {
                           )}
                         </div>
                         
-                        {/* Itens do grupo */}
                         <div className="space-y-1 mt-1">
                           {group.items.map(item => (
                             <Link 
@@ -220,7 +190,6 @@ export function SessionNavBar() {
                           ))}
                         </div>
                         
-                        {/* Separator between groups */}
                         {index < filteredMenuGroups.length - 1 && (
                           <Separator className="my-2 mx-2 bg-white/20" />
                         )}
@@ -230,7 +199,6 @@ export function SessionNavBar() {
                 </ScrollArea>
               </div>
               
-              {/* Área de alertas */}
               <div className="border-t p-2" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
                 <div className="flex items-center justify-center">
                   {isCollapsed ? (

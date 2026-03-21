@@ -1,8 +1,5 @@
-
 import { Link, useLocation } from "react-router-dom";
-import {
-  LogOut,
-} from "lucide-react";
+import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { mainMenuItems } from "@/components/layout/navigation-items";
@@ -15,6 +12,12 @@ interface SidebarProps {
   onItemClick?: () => void;
 }
 
+function itemMatchesRoute(itemPath: string, routeKey: string): boolean {
+  if (itemPath === routeKey) return true;
+  const basePath = itemPath.split('?')[0];
+  return basePath === routeKey;
+}
+
 const SidebarContent = ({ showLabels, onItemClick }: SidebarProps) => {
   const location = useLocation();
   const { logout } = useAuth();
@@ -22,17 +25,12 @@ const SidebarContent = ({ showLabels, onItemClick }: SidebarProps) => {
   const { allowedRoutes, loading: permLoading } = useMyPermissions();
 
   const filteredItems = (() => {
-    // Admin sees everything
     if (userRole === 'admin') return mainMenuItems;
-
-    // Staff: use DB permissions if available, otherwise show nothing
     if (allowedRoutes.length > 0) {
       return mainMenuItems.filter(item =>
-        allowedRoutes.some(p => item.path === p || item.path.startsWith(p + '?') || item.path.startsWith(p + '/'))
+        allowedRoutes.some(route => itemMatchesRoute(item.path, route))
       );
     }
-
-    // Fallback: show only home
     return mainMenuItems.filter(item => item.path === '/home');
   })();
 
