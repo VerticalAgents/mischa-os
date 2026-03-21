@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useMemo } from "react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -47,6 +48,7 @@ const getTwoBusinessDaysName = () => {
 };
 
 export default function NovaConfirmacaoReposicaoTab() {
+  const { canEdit } = useEditPermission();
   const { agendamentos, carregarTodosAgendamentos, salvarAgendamento } = useAgendamentoClienteStore();
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -169,6 +171,8 @@ export default function NovaConfirmacaoReposicaoTab() {
                         onClick={() => handleConfirmarAgendamento(agendamento.cliente.id)}
                         size="sm"
                         variant="success"
+                        disabled={!canEdit}
+                        title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                         className="flex items-center gap-1"
                       >
                         <Check className="h-4 w-4" />
@@ -178,6 +182,8 @@ export default function NovaConfirmacaoReposicaoTab() {
                         onClick={() => handleReagendar(agendamento)}
                         size="sm"
                         variant="outline"
+                        disabled={!canEdit}
+                        title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                         className="flex items-center gap-1"
                       >
                         <Edit className="h-4 w-4" />

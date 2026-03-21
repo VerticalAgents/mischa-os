@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { format, addDays, isWeekend } from "date-fns";
 import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
 import { ptBR } from "date-fns/locale";
@@ -33,6 +34,7 @@ const getProximoDiaUtil = (data: Date): Date => {
 };
 
 export default function AgendamentosAtrasados() {
+  const { canEdit } = useEditPermission();
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -207,6 +209,8 @@ export default function AgendamentosAtrasados() {
           <Button
             variant="default"
             onClick={handleReagendamentoEmMassa}
+            disabled={!canEdit}
+            title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
             className="bg-orange-500 hover:bg-orange-600"
           >
             <Calendar className="mr-2 h-4 w-4" />
@@ -276,6 +280,8 @@ export default function AgendamentosAtrasados() {
                     variant="secondary"
                     size="sm"
                     onClick={() => handleEditarAgendamento(agendamento)}
+                    disabled={!canEdit}
+                    title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                   >
                     <Edit className="mr-2 h-4 w-4" />
                     Editar

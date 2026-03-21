@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ import { Check, Clock, AlertTriangle } from "lucide-react";
 import { PEDIDO_MINIMO_UNIDADES } from "@/utils/constants";
 
 export default function ConfirmacaoReposicaoTab() {
+  const { canEdit } = useEditPermission();
   const { clientes } = useClienteStore();
   const { salvarAgendamento } = useAgendamentoClienteStore();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -139,6 +141,8 @@ export default function ConfirmacaoReposicaoTab() {
                         <Button 
                           onClick={() => confirmarReposicao(cliente.id)}
                           size="sm"
+                          disabled={!canEdit}
+                          title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                           className="flex items-center gap-1"
                         >
                           <Check className="h-4 w-4" />
@@ -188,6 +192,8 @@ export default function ConfirmacaoReposicaoTab() {
                           onClick={() => confirmarReposicao(cliente.id)}
                           size="sm"
                           variant="outline"
+                          disabled={!canEdit}
+                          title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                           className="flex items-center gap-1"
                         >
                           <Check className="h-4 w-4" />

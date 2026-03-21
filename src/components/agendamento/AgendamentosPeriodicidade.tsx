@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { isClienteVisivelAgendamento } from "./utils/clienteVisibilidade";
 import { useFrequenciaRealEntregas, getCorDivergencia } from "@/hooks/useFrequenciaRealEntregas";
@@ -48,6 +49,7 @@ type FaixaPeriodicidade = "todos" | "semanal" | "quinzenal" | "mensal" | "outros
 type OrdenacaoOpcao = "nome" | "periodicidade" | "proxima";
 
 export default function AgendamentosPeriodicidade() {
+  const { canEdit } = useEditPermission();
   const { agendamentos } = useAgendamentoClienteStore();
   
   const [termoBusca, setTermoBusca] = useState("");
@@ -357,6 +359,8 @@ export default function AgendamentosPeriodicidade() {
                         variant="ghost"
                         size="icon"
                         onClick={() => setClienteEditando(cliente)}
+                        disabled={!canEdit}
+                        title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>

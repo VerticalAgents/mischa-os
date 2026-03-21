@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import { AgendamentoItem } from "./types";
 
 export default function AgendamentoRepresentantes() {
+  const { canEdit } = useEditPermission();
   const { agendamentos, carregarTodosAgendamentos, obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
   const { clientes, carregarClientes } = useClienteStore();
   const { representantes, carregarRepresentantes } = useSupabaseRepresentantes();
@@ -234,6 +236,8 @@ export default function AgendamentoRepresentantes() {
                           variant="default"
                           size="sm"
                           onClick={() => handleConfirmarAgendamento(agendamento)}
+                          disabled={!canEdit}
+                          title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                           className="bg-green-500 hover:bg-green-600"
                         >
                           <CheckCheck className="mr-2 h-4 w-4" />
@@ -243,6 +247,8 @@ export default function AgendamentoRepresentantes() {
                           variant="secondary"
                           size="sm"
                           onClick={() => handleEditarAgendamento(agendamento)}
+                          disabled={!canEdit}
+                          title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                         >
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
@@ -295,6 +301,8 @@ export default function AgendamentoRepresentantes() {
                         variant="secondary"
                         size="sm"
                         onClick={() => handleEditarAgendamento(agendamento)}
+                        disabled={!canEdit}
+                        title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                       >
                         <Edit className="mr-2 h-4 w-4" />
                         Editar

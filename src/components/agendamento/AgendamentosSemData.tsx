@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useMemo } from "react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +25,7 @@ import { isClienteVisivelAgendamento } from "./utils/clienteVisibilidade";
 import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 
 export default function AgendamentosSemData() {
+  const { canEdit } = useEditPermission();
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -186,6 +188,8 @@ export default function AgendamentosSemData() {
                   variant="secondary"
                   size="sm"
                   onClick={() => handleEditarAgendamento(agendamento)}
+                  disabled={!canEdit}
+                  title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                 >
                   <Edit className="mr-2 h-4 w-4" />
                   Definir Data

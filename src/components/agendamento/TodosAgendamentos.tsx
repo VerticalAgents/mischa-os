@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +28,7 @@ import ReagendamentoEmMassaDialog from "./ReagendamentoEmMassaDialog";
 import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
 
 export default function TodosAgendamentos() {
+  const { canEdit } = useEditPermission();
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -266,7 +268,8 @@ export default function TodosAgendamentos() {
         </div>
         <Button
           onClick={() => setModalReagendarAberto(true)}
-          disabled={sortedAgendamentos.length === 0}
+          disabled={sortedAgendamentos.length === 0 || !canEdit}
+          title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
           className="whitespace-nowrap"
         >
           <Calendar className="mr-2 h-4 w-4" />
@@ -341,6 +344,8 @@ export default function TodosAgendamentos() {
                       variant="default"
                       size="sm"
                       onClick={() => handleConfirmarAgendamento(agendamento)}
+                      disabled={!canEdit}
+                      title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                       className="bg-green-500 hover:bg-green-600"
                     >
                       <CheckCheck className="mr-2 h-4 w-4" />
@@ -351,6 +356,8 @@ export default function TodosAgendamentos() {
                     variant="secondary"
                     size="sm"
                     onClick={() => handleEditarAgendamento(agendamento)}
+                    disabled={!canEdit}
+                    title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                   >
                     <Edit className="mr-2 h-4 w-4" />
                     Editar
