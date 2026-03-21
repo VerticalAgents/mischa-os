@@ -18,7 +18,8 @@ import { toast } from "sonner";
 import { useRoutePermission } from "@/hooks/useRolePermissions";
 import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
-const { canEdit } = useRoutePermission('/clientes');
+export default function Clientes() {
+  const { canEdit } = useRoutePermission('/clientes');
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isFormOpen, setIsFormOpen] = useState(false);
