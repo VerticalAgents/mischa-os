@@ -43,7 +43,7 @@ export default function FuncionariosTab() {
   const [showViewPassword, setShowViewPassword] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '', custom_role_id: '' });
-  const [editForm, setEditForm] = useState({ nome: '', custom_role_id: '' });
+  const [editForm, setEditForm] = useState({ nome: '', custom_role_id: '', nova_senha: '' });
   const [adminProfile, setAdminProfile] = useState<{ full_name: string | null; email: string | null } | null>(null);
 
   const fetchAdminProfile = async () => {
@@ -165,7 +165,7 @@ export default function FuncionariosTab() {
 
   const openEditDialog = (s: StaffAccount) => {
     setEditingStaff(s);
-    setEditForm({ nome: s.nome || '', custom_role_id: s.custom_role_id || '' });
+    setEditForm({ nome: s.nome || '', custom_role_id: s.custom_role_id || '', nova_senha: '' });
     setShowEditPassword(false);
     setEditDialogOpen(true);
   };
@@ -182,7 +182,12 @@ export default function FuncionariosTab() {
       toast.error('O nome é obrigatório');
       return;
     }
+    if (editForm.nova_senha && editForm.nova_senha.length < 6) {
+      toast.error('A nova senha deve ter pelo menos 6 caracteres');
+      return;
+    }
     try {
+      // Update staff_accounts
       const { error } = await supabase
         .from('staff_accounts')
         .update({
@@ -191,6 +196,36 @@ export default function FuncionariosTab() {
         })
         .eq('id', editingStaff.id);
       if (error) throw error;
+
+      // Update password if provided
+      if (editForm.nova_senha) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) {
+          toast.error('Sessão expirada');
+          return;
+        }
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const pwResponse = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/update-staff-password`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              staff_account_id: editingStaff.id,
+              new_password: editForm.nova_senha,
+            }),
+          }
+        );
+        const pwResult = await pwResponse.json();
+        if (!pwResponse.ok) {
+          throw new Error(pwResult.error || 'Erro ao atualizar senha');
+        }
+      }
+
       toast.success('Funcionário atualizado!');
       setEditDialogOpen(false);
       setEditingStaff(null);
@@ -534,7 +569,7 @@ export default function FuncionariosTab() {
                 </p>
               </div>
               <div className="space-y-1">
-                <Label className="text-muted-foreground text-xs">Senha</Label>
+                <Label className="text-muted-foreground text-xs">Senha atual</Label>
                 <div className="flex items-center gap-2 bg-muted px-3 py-2 rounded-md">
                   <p className="text-sm font-medium font-mono flex-1">
                     {editingStaff.senha_acesso
@@ -552,6 +587,16 @@ export default function FuncionariosTab() {
                     </Button>
                   )}
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Nova senha (opcional)</Label>
+                <Input
+                  type="password"
+                  placeholder="Deixe vazio para manter a atual"
+                  value={editForm.nova_senha}
+                  onChange={(e) => setEditForm(f => ({ ...f, nova_senha: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground">Mínimo 6 caracteres. Só preencha se quiser alterar.</p>
               </div>
               <div className="space-y-2">
                 <Label>Tipo de Acesso</Label>
