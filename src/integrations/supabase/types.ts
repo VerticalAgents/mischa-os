@@ -1955,6 +1955,39 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_accounts: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string | null
+          owner_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          staff_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string | null
+          owner_id: string
+          role?: Database["public"]["Enums"]["app_role"]
+          staff_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string | null
+          owner_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          staff_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subcategorias_custos: {
         Row: {
           ativo: boolean
@@ -2198,6 +2231,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          owner_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           updated_at: string | null
           user_id: string
@@ -2205,6 +2239,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          owner_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string | null
           user_id: string
@@ -2212,6 +2247,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          owner_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string | null
           user_id?: string
@@ -2401,6 +2437,7 @@ export type Database = {
         }[]
       }
       get_feature_flag: { Args: { flag_name: string }; Returns: boolean }
+      get_owner_id: { Args: { _user_id: string }; Returns: string }
       get_pedidos_summary: {
         Args: never
         Returns: {
