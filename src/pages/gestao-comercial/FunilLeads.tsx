@@ -373,6 +373,7 @@ export default function FunilLeads() {
                   Novo Lead
                 </Button>
               )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>

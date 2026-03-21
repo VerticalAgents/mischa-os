@@ -374,6 +374,7 @@ export default function Parceiros() {
                 </div>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </CardHeader>
         <CardContent>

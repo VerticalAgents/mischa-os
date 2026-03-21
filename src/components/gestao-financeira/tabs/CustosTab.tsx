@@ -610,6 +610,7 @@ export default function CustosTab() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </CardHeader>
         <CardContent>
