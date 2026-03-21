@@ -1306,7 +1306,8 @@ export default function AgendamentoDashboard() {
                   variant="default"
                   size="sm"
                   onClick={() => setModalReagendarAberto(true)}
-                  disabled={agendamentosDiaSelecionado.length === 0}
+                  disabled={agendamentosDiaSelecionado.length === 0 || !canEdit}
+                  title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
                   className="flex items-center gap-2"
                 >
                   <Calendar className="h-4 w-4" />
