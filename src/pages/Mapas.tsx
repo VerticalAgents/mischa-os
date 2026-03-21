@@ -684,7 +684,9 @@ const Mapas = () => {
         )}
       </Card>
     </div>
+    </EditPermissionProvider>
   );
+};
 };
 
 export default Mapas;
