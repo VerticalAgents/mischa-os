@@ -43,6 +43,7 @@ interface RotaEntrega {
 }
 
 const Mapas = () => {
+  const { canEdit } = useRoutePermission('/mapas');
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
