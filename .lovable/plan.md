@@ -1,55 +1,46 @@
 
 
-## Diagnóstico: Por que a Beatriz não vê nada
+## Plano: Unificar sidebar e otimizar mobile
 
-A causa-raiz é um **conflito de RLS em cascata** entre as tabelas `role_permissions` e `staff_accounts`.
+### Problema atual
+Existem **duas navegações laterais** independentes:
+1. **Sidebar vermelha** (`SessionNavBar`) — fixa, expande com hover, visível em todas as telas
+2. **Menu branco** (`MobileMenuOverlay`) — abre via hamburger, só no mobile/tablet
 
-### O que acontece passo a passo:
+No mobile/tablet, a sidebar vermelha fica colapsada (ícones) mas o hover não funciona em touch. O hamburger abre o menu branco duplicado.
 
-1. Beatriz faz login → `useMyPermissions()` busca de `role_permissions`
-2. A policy RLS de `role_permissions` faz uma subquery inline:
-   ```sql
-   custom_role_id = (
-     SELECT sa.custom_role_id FROM staff_accounts sa
-     WHERE sa.staff_user_id = auth.uid() AND sa.ativo = true
-   )
-   ```
-3. Mas `staff_accounts` tem sua própria RLS: **`owner_id = auth.uid()`**
-4. Para a Beatriz, `auth.uid()` = `b7cf88d9...` mas `owner_id` = `7618131a...` (o dono)
-5. A subquery retorna **vazio** → `custom_role_id = NULL` → **nenhuma row retornada**
-6. `allowedRoutes = []` → sidebar vazia, telas sem dados
+### Solução
 
-### Correção
+**Eliminar o `MobileMenuOverlay` e fazer o hamburger controlar a sidebar vermelha.**
 
-**1. Corrigir RLS de `role_permissions`** — substituir a subquery inline por chamada à função `get_my_staff_context()` que já é SECURITY DEFINER (ignora RLS):
+### Mudanças
 
-```sql
-DROP POLICY "Staff reads own custom_role permissions" ON role_permissions;
-CREATE POLICY "Staff reads own custom_role permissions" ON role_permissions
-  FOR SELECT TO authenticated
-  USING (
-    has_role(auth.uid(), 'admin') 
-    OR custom_role_id = (SELECT ctx.custom_role_id FROM get_my_staff_context() ctx)
-  );
-```
+**1. `SessionNavBar` — aceitar controle externo (mobile toggle)**
+- Adicionar prop `mobileOpen` + `onMobileClose` para controle externo
+- No mobile/tablet (`lg:hidden`): sidebar fica **totalmente escondida** (não mostra ícones), e abre expandida quando `mobileOpen=true`
+- No desktop (`lg+`): mantém comportamento atual (hover para expandir/colapsar)
+- Quando aberta no mobile, mostrar overlay backdrop clicável para fechar
 
-**2. Adicionar policy em `staff_accounts`** para staff ler seu próprio registro (necessário para outros contextos futuros):
+**2. `MobileHeader` — controlar a sidebar vermelha**
+- Remover referência ao `MobileMenuOverlay`
+- Hamburger agora chama `setIsMobileMenuOpen(true)` que passa para `SessionNavBar`
 
-```sql
-CREATE POLICY "Staff can read own record" ON staff_accounts
-  FOR SELECT TO authenticated
-  USING (staff_user_id = auth.uid());
-```
+**3. `AppLayout` — remover `MobileMenuOverlay`**
+- Remover import e renderização do `MobileMenuOverlay`
+- Passar `isMobileMenuOpen` / `setIsMobileMenuOpen` para `SessionNavBar`
+- No mobile: remover `ml-[3.05rem]` do main (sidebar escondida, não ocupa espaço)
 
-**3. Verificar RLS das tabelas de dados** — as tabelas operacionais usam `is_owner_or_staff()` que é SECURITY DEFINER, então já funcionam. Nenhuma alteração necessária nelas.
+**4. `Home.tsx` — otimizar layout mobile**
+- Cards de ações rápidas: `grid-cols-2` no mobile já existe, ok
+- Seção Sistema: usar `grid-cols-2` no mobile em vez de `grid-cols-1`
+- Reduzir padding/gaps em telas pequenas
 
-### Resultado esperado
-- Sidebar mostra 5 itens (Home, Agendamento, Estoque, PCP, Precificação)
-- Páginas carregam dados da empresa
-- Agendamento fica somente leitura (can_edit=false)
-- Outras 3 permitem edição
+**5. Remover `MobileMenuOverlay.tsx`** — arquivo não mais necessário
 
 ### Arquivos alterados
-- 1 migração SQL (2 policies)
-- Nenhuma alteração no frontend (o código já está correto, só não recebia dados do banco)
+- `src/components/ui/sidebar-next.tsx` — lógica mobile toggle
+- `src/components/layout/AppLayout.tsx` — remover overlay, passar props
+- `src/components/layout/MobileHeader.tsx` — sem mudança funcional (já controla o state)
+- `src/pages/Home.tsx` — ajustes responsivos menores
+- `src/components/layout/MobileMenuOverlay.tsx` — deletar
 
