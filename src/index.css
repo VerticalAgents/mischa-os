@@ -105,3 +105,14 @@
     display: none;
   }
 }
+
+/* Hide scrollbars on mobile/tablet for cleaner UI */
+@media (max-width: 1023px) {
+  main {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  main::-webkit-scrollbar {
+    display: none;
+  }
+}

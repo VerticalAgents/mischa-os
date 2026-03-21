@@ -1377,7 +1377,7 @@ export default function AgendamentoDashboard() {
                       };
 
                       return (
-                        <div key={agendamento.cliente.id} className={`flex items-start gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
+                        <div key={agendamento.cliente.id} className={`flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
                           <div className="flex-1 text-left">
                             <div className="font-medium text-left">{agendamento.cliente.nome}</div>
                             <div className="text-sm text-muted-foreground text-left">
@@ -1401,7 +1401,7 @@ export default function AgendamentoDashboard() {
                               </>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                             <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
                             <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
                               {agendamento.statusAgendamento}
