@@ -22,6 +22,7 @@ interface ReagendamentosTableProps {
 }
 
 export default function ReagendamentosTable({ reagendamentos, onExcluir }: ReagendamentosTableProps) {
+  const { canEdit } = useEditPermission();
   const [searchTerm, setSearchTerm] = useState("");
 
   const filtered = useMemo(() => {
