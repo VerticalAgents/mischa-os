@@ -2,7 +2,6 @@
 import { ReactNode, useState, useEffect } from "react";
 import { useThemeStore } from "@/lib/theme";
 import MobileHeader from "@/components/layout/MobileHeader";
-import MobileMenuOverlay from "@/components/layout/MobileMenuOverlay";
 import { SessionNavBar } from "@/components/ui/sidebar-next";
 import TopHeader from "@/components/layout/TopHeader";
 import { RouteStateManager } from "@/components/common/RouteStateManager";
@@ -15,7 +14,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isDark } = useThemeStore();
 
-  // Apply theme when the isDark state changes
   useEffect(() => {
     const htmlElement = document.documentElement;
     if (isDark) {
@@ -29,31 +27,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen flex w-full bg-background">
-      {/* Gerenciador de estado de rotas */}
       <RouteStateManager />
       
-      {/* Nova sidebar com animações fluidas */}
-      <SessionNavBar />
+      {/* Unified red sidebar — desktop: hover, mobile: hamburger toggle */}
+      <SessionNavBar 
+        mobileOpen={isMobileMenuOpen} 
+        onMobileClose={() => setIsMobileMenuOpen(false)} 
+      />
 
-      {/* Mobile Header */}
+      {/* Mobile Header with hamburger */}
       <MobileHeader 
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
       />
-
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <MobileMenuOverlay 
-          setIsMobileMenuOpen={setIsMobileMenuOpen}
-        />
-      )}
       
       {/* Header superior com avatar e toggle de tema */}
       <TopHeader />
 
-      {/* Main Content - adjusts automatically with the sidebar */}
-      <main className="flex-1 overflow-auto pt-14 lg:pt-0 ml-[3.05rem] transition-all">
-        <div className="container py-6 max-w-7xl mx-auto">
+      {/* Main Content — no left margin on mobile (sidebar hidden), margin on desktop */}
+      <main className="flex-1 overflow-auto pt-14 lg:pt-0 lg:ml-[3.05rem] transition-all">
+        <div className="container py-4 lg:py-6 px-3 lg:px-8 max-w-7xl mx-auto">
           {children}
         </div>
       </main>
