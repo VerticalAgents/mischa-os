@@ -15,6 +15,8 @@ import DeleteClienteDialog from "@/components/clientes/DeleteClienteDialog";
 import { RelatorioClientesRevisaoModal } from "@/components/clientes/RelatorioClientesRevisaoModal";
 import { FileSpreadsheet, Link2, FileDown } from "lucide-react";
 import { toast } from "sonner";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 export default function Clientes() {
   const [searchParams, setSearchParams] = useSearchParams();
