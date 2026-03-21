@@ -157,6 +157,36 @@ export default function FuncionariosTab() {
     }
   };
 
+  const openEditDialog = (s: StaffAccount) => {
+    setEditingStaff(s);
+    setEditForm({ nome: s.nome || '', custom_role_id: s.custom_role_id || '' });
+    setEditDialogOpen(true);
+  };
+
+  const handleEdit = async () => {
+    if (!editingStaff) return;
+    if (!editForm.nome) {
+      toast.error('O nome é obrigatório');
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('staff_accounts')
+        .update({
+          nome: editForm.nome,
+          custom_role_id: editForm.custom_role_id || null,
+        })
+        .eq('id', editingStaff.id);
+      if (error) throw error;
+      toast.success('Funcionário atualizado!');
+      setEditDialogOpen(false);
+      setEditingStaff(null);
+      fetchStaff();
+    } catch (error) {
+      toast.error('Erro ao atualizar funcionário');
+    }
+  };
+
   const getRoleName = (s: StaffAccount) => {
     if (s.custom_role_id) {
       const cr = customRoles.find(r => r.id === s.custom_role_id);
