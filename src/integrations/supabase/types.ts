@@ -1850,6 +1850,42 @@ export type Database = {
         }
         Relationships: []
       }
+      role_permissions: {
+        Row: {
+          can_access: boolean
+          can_edit: boolean
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          route_key: string
+          route_label: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_access?: boolean
+          can_edit?: boolean
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          route_key: string
+          route_label: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_access?: boolean
+          can_edit?: boolean
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          route_key?: string
+          route_label?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       rotas_entrega: {
         Row: {
           ativo: boolean
