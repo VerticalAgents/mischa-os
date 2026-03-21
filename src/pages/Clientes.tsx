@@ -391,9 +391,11 @@ export default function Clientes() {
   // Show loading state during initial load or URL processing
   if (loading && initialLoad) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <div className="text-muted-foreground">Carregando clientes...</div>
-      </div>
+      <EditPermissionProvider value={{ canEdit }}>
+        <div className="flex justify-center items-center py-8">
+          <div className="text-muted-foreground">Carregando clientes...</div>
+        </div>
+      </EditPermissionProvider>
     );
   }
 
