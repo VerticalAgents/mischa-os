@@ -5,6 +5,8 @@ import { Package } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InsumosTabs from "@/components/estoque/InsumosTabs";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 export default function EstoqueInsumos() {
   const location = useLocation();
   const {
