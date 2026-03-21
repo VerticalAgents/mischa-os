@@ -33,7 +33,7 @@ const routeGroups = ALL_ROUTES.reduce<Record<string, typeof ALL_ROUTES[number][]
   return acc;
 }, {});
 
-function RolePermissionsEditor({ roleId, roleName }: { roleId: string; roleName: string }) {
+function RolePermissionsEditor({ roleId, roleName }: { roleId: 'admin' | 'producao' | 'user'; roleName: string }) {
   const { permissions, loading, saving, togglePermission, savePermissions } = useRolePermissions(roleId);
 
   if (loading) {
