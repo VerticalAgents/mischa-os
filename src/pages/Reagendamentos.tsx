@@ -3,8 +3,11 @@ import { useReagendamentosEntreSemanas } from "@/hooks/useReagendamentosEntreSem
 import ReagendamentosResumo from "@/components/reagendamentos/ReagendamentosResumo";
 import ReagendamentosTable from "@/components/reagendamentos/ReagendamentosTable";
 import ExplicacaoConfirmationScore from "@/components/reagendamentos/ExplicacaoConfirmationScore";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 export default function Reagendamentos() {
+  const { canEdit } = useRoutePermission('/reagendamentos');
   const { reagendamentos, resumo, isLoading, excluir } = useReagendamentosEntreSemanas();
 
   return (
