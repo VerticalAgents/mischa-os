@@ -5,6 +5,8 @@ import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Layers } from "lucide-react";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 // Import components
 import HistoricoAnalytics from "@/components/pcp/HistoricoAnalytics";
