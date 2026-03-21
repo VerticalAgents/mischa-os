@@ -165,7 +165,7 @@ export default function FuncionariosTab() {
 
   const openEditDialog = (s: StaffAccount) => {
     setEditingStaff(s);
-    setEditForm({ nome: s.nome || '', custom_role_id: s.custom_role_id || '' });
+    setEditForm({ nome: s.nome || '', custom_role_id: s.custom_role_id || '', nova_senha: '' });
     setShowEditPassword(false);
     setEditDialogOpen(true);
   };
