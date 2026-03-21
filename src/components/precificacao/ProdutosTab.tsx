@@ -300,10 +300,12 @@ export default function ProdutosTab() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                 Atualizar
               </Button>
-              <Button onClick={abrirCriacaoProduto}>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Produto
-              </Button>
+              {canEdit && (
+                <Button onClick={abrirCriacaoProduto}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Produto
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
