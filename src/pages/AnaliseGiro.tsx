@@ -1,6 +1,7 @@
-
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { useRoutePermission } from "@/hooks/useRolePermissions";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart3, TrendingUp, Users, Package, ListChecks } from 'lucide-react';
 import { useGiroAnalysisConsolidated } from '@/hooks/useGiroAnalysisConsolidated';
