@@ -38,7 +38,7 @@ export const DespachoActionsCard = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {mostrarAcoesDespacho && (
+        {mostrarAcoesDespacho && canEdit && (
           <>
             <Button
               onClick={onDespacharEmMassa}
