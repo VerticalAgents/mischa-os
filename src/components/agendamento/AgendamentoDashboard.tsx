@@ -815,9 +815,9 @@ export default function AgendamentoDashboard() {
 
   return <div className="space-y-6">
       {/* Barra de Filtros Unificada */}
-      <div className="bg-muted/30 border rounded-lg p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
+      <div className="bg-muted/30 border rounded-lg p-3 sm:p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 text-sm font-medium text-muted-foreground flex-wrap">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4" />
               Filtros
@@ -829,13 +829,13 @@ export default function AgendamentoDashboard() {
             </div>
             
             {/* Campo de busca por nome */}
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar cliente ou CNPJ..."
                 value={filtroNome}
                 onChange={(e) => setFiltroNome(e.target.value)}
-                className="pl-8 h-9 w-48"
+                className="pl-8 h-9 w-full sm:w-48"
               />
             </div>
           </div>
