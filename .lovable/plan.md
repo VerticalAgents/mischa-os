@@ -1,25 +1,30 @@
 
 
-## Plano: Corrigir exibição de função e layout responsivo na aba Funcionários
+## Plano: Exibir credenciais de login nos modais de edição e visualização
 
-### Problemas identificados
-1. Beatriz aparece com "Gerente de Produção" porque o código faz fallback: `s.role === 'producao' ? 'Gerente de Produção' : s.role` — mas não existe nenhum custom_role cadastrado, então deveria mostrar "Não definido" ou similar
-2. A tabela tem scroll horizontal cortando conteúdo — precisa ser responsiva
+### Problema
+As senhas não são armazenadas na tabela `staff_accounts` — são enviadas ao Supabase Auth na criação e não podem ser recuperadas depois. O email vem da tabela `profiles`. Para mostrar as credenciais de acesso, precisamos armazená-las na própria `staff_accounts`.
 
-### Correções
+### Mudanças
 
-**1. `FuncionariosTab.tsx` — getRoleName / getRoleColor**
-- Se `custom_role_id` existe e encontra no array → mostra o nome/cor do custom role
-- Se `custom_role_id` não existe (null) e `role` é qualquer valor antigo (incluindo "producao") → mostrar "Não definido" com cor cinza, indicando que precisa ser atribuído
-- Remover o mapeamento hardcoded `producao → Gerente de Produção`
+**1. Migração DB** — Adicionar colunas `login_email` e `senha_acesso` em `staff_accounts`
+- `login_email text` — email de login do funcionário
+- `senha_acesso text` — senha definida na criação (armazenada em texto para o dono poder compartilhar)
+- Atualizar os registros existentes preenchendo `login_email` a partir da tabela `profiles`
 
-**2. `FuncionariosTab.tsx` — Layout responsivo da tabela**
-- Remover a estrutura de `<Table>` rígida e trocar por um layout que se adapte ao espaço disponível
-- Usar `table-fixed w-full` com colunas proporcionais, ou usar `overflow-hidden` com truncamento de texto (`truncate`, `max-w-[...]`)
-- Células de email e nome com `truncate` para não estourar
-- Reduzir padding e tamanhos de texto onde necessário
-- Remover a barra de rolagem horizontal
+**2. Edge Function `create-staff-user`** — Salvar email e senha na `staff_accounts` no momento da criação
+
+**3. FuncionariosTab.tsx** — Três mudanças principais:
+- **Modal de Edição**: Mostrar email e senha (somente leitura) além dos campos editáveis (nome, tipo de acesso). Permitir editar a senha também (opcional, com campo de nova senha)
+- **Botão de Visualizar** (ícone Eye): Abre modal read-only com nome, email, senha (com toggle mostrar/ocultar) e tipo de acesso
+- **Botão Copiar**: No modal de visualização, botão que copia as credenciais formatadas para a área de transferência (ex: "Login: email@x.com / Senha: 123456") para enviar por WhatsApp/email
 
 ### Arquivos afetados
-- `src/components/configuracoes/tabs/FuncionariosTab.tsx`
+- Migration SQL — `ALTER TABLE staff_accounts ADD COLUMN login_email text, ADD COLUMN senha_acesso text`
+- `supabase/functions/create-staff-user/index.ts` — salvar email/senha
+- `src/components/configuracoes/tabs/FuncionariosTab.tsx` — modal de visualização + edição com credenciais
+- `src/integrations/supabase/types.ts` — atualizado automaticamente
+
+### Nota de segurança
+Armazenar senhas em texto plano não é ideal, mas é necessário para o caso de uso solicitado (compartilhar credenciais com funcionários). O acesso é restrito ao owner via RLS.
 
