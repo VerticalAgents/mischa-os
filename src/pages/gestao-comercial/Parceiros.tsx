@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Handshake, Phone, Mail, MapPin, Calendar, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useEditPermission } from "@/contexts/EditPermissionContext";
 
 interface Parceiro {
   id: string;
