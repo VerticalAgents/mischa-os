@@ -623,6 +623,36 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_roles: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       custos_fixos: {
         Row: {
           created_at: string
@@ -1855,8 +1885,9 @@ export type Database = {
           can_access: boolean
           can_edit: boolean
           created_at: string
+          custom_role_id: string | null
           id: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: Database["public"]["Enums"]["app_role"] | null
           route_key: string
           route_label: string
           updated_at: string
@@ -1866,8 +1897,9 @@ export type Database = {
           can_access?: boolean
           can_edit?: boolean
           created_at?: string
+          custom_role_id?: string | null
           id?: string
-          role: Database["public"]["Enums"]["app_role"]
+          role?: Database["public"]["Enums"]["app_role"] | null
           route_key: string
           route_label: string
           updated_at?: string
@@ -1877,14 +1909,23 @@ export type Database = {
           can_access?: boolean
           can_edit?: boolean
           created_at?: string
+          custom_role_id?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          role?: Database["public"]["Enums"]["app_role"] | null
           route_key?: string
           route_label?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_custom_role_id_fkey"
+            columns: ["custom_role_id"]
+            isOneToOne: false
+            referencedRelation: "custom_roles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rotas_entrega: {
         Row: {
