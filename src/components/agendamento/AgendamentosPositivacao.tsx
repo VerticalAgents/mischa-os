@@ -27,6 +27,7 @@ import SortDropdown, { SortField, SortDirection } from "./SortDropdown";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function AgendamentosPositivacao() {
+  const { canEdit } = useEditPermission();
   const [open, setOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<AgendamentoItem | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
