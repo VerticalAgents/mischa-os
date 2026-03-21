@@ -12,9 +12,10 @@ import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 
 export default function Precificacao() {
   const { activeTab, changeTab } = useTabPersistence("insumos");
+  const { canEdit } = useRoutePermission('/precificacao');
   
   return (
-    <>
+    <EditPermissionProvider value={{ canEdit }}>
       <PageHeader 
         title="Precificação"
         description="Sistema integrado de gestão de insumos, receitas e produtos com banco de dados unificado"
@@ -46,6 +47,6 @@ export default function Precificacao() {
           </TabsContent>
         </Tabs>
       </div>
-    </>
+    </EditPermissionProvider>
   );
 }
