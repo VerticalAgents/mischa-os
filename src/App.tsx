@@ -203,21 +203,27 @@ function App() {
                     <Route path="/gestao-financeira" element={
                       <ProtectedRoute>
                         <AppLayout>
-                          <GestaoFinanceira />
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <GestaoFinanceira />
+                          </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
                     } />
                     <Route path="/gestao-financeira/projecao-resultados-pdv" element={
                       <ProtectedRoute>
                         <AppLayout>
-                          <ProjecaoResultadosPDV />
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <ProjecaoResultadosPDV />
+                          </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
                     } />
                     <Route path="/gestao-financeira/ponto-equilibrio" element={
                       <ProtectedRoute>
                         <AppLayout>
-                          <PontoEquilibrio />
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <PontoEquilibrio />
+                          </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
                     } />
