@@ -18,6 +18,7 @@ import AgendamentoTab from "./tabs/AgendamentoTab";
 import ProducaoTab from "./tabs/ProducaoTab";
 import ParametrosEstoqueTab from "./tabs/ParametrosEstoqueTab";
 import IntegracoesGestaoClickTab from "./tabs/IntegracoesGestaoClickTab";
+import TiposAcessoTab from "./tabs/TiposAcessoTab";
 import FuncionariosTab from "./tabs/FuncionariosTab";
 
 // Mapeamento de componentes por ID
