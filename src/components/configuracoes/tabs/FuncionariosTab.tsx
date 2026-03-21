@@ -291,81 +291,86 @@ export default function FuncionariosTab() {
             </Dialog>
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Função</TableHead>
-                <TableHead>Cadastro</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {/* Admin/Owner row */}
-              {user && (
-                <TableRow className="bg-muted/30">
-                  <TableCell className="font-medium flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-primary" />
-                    {adminProfile?.full_name || user.email || 'Proprietário'}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {adminProfile?.email || user.email}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                      Proprietário / Administrador
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">—</TableCell>
-                  <TableCell>
-                    <Badge variant="default">Ativo</Badge>
-                  </TableCell>
-                  <TableCell className="text-right text-xs text-muted-foreground">
-                    Acesso total
-                  </TableCell>
-                </TableRow>
-              )}
-              {staff.length === 0 && !user ? (
+        <CardContent className="p-0">
+          <div className="overflow-hidden">
+            <Table className="table-fixed w-full">
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    Nenhum funcionário cadastrado.
-                  </TableCell>
+                  <TableHead className="w-[22%]">Nome</TableHead>
+                  <TableHead className="w-[24%]">Email</TableHead>
+                  <TableHead className="w-[18%]">Função</TableHead>
+                  <TableHead className="w-[12%]">Cadastro</TableHead>
+                  <TableHead className="w-[10%]">Status</TableHead>
+                  <TableHead className="w-[14%] text-right">Ações</TableHead>
                 </TableRow>
-              ) : (
-                staff.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.nome || 'Sem nome'}</TableCell>
-                    <TableCell className="text-muted-foreground">{s.email}</TableCell>
+              </TableHeader>
+              <TableBody>
+                {/* Admin/Owner row */}
+                {user && (
+                  <TableRow className="bg-muted/30">
+                    <TableCell className="font-medium truncate">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Shield className="h-4 w-4 shrink-0 text-primary" />
+                        <span className="truncate">{adminProfile?.full_name || user.email || 'Proprietário'}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground truncate">
+                      {adminProfile?.email || user.email}
+                    </TableCell>
                     <TableCell>
-                      <Badge style={{ backgroundColor: getRoleColor(s), color: '#fff' }}>
-                        {getRoleName(s)}
+                      <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground text-[11px] truncate max-w-full">
+                        Proprietário
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {format(new Date(s.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">—</TableCell>
                     <TableCell>
-                      <Badge variant={s.ativo ? 'default' : 'secondary'}>
-                        {s.ativo ? 'Ativo' : 'Inativo'}
-                      </Badge>
+                      <Badge variant="default">Ativo</Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeactivate(s.id, s.ativo)}
-                      >
-                        {s.ativo ? 'Desativar' : 'Reativar'}
-                      </Button>
+                    <TableCell className="text-right text-xs text-muted-foreground">
+                      Acesso total
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                )}
+                {staff.length === 0 && !user ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      Nenhum funcionário cadastrado.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  staff.map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="font-medium truncate">{s.nome || 'Sem nome'}</TableCell>
+                      <TableCell className="text-muted-foreground truncate">{s.email}</TableCell>
+                      <TableCell>
+                        <Badge className="text-[11px] truncate max-w-full" style={{ backgroundColor: getRoleColor(s), color: '#fff' }}>
+                          {getRoleName(s)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {format(new Date(s.created_at), "dd/MM/yy", { locale: ptBR })}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={s.ativo ? 'default' : 'secondary'}>
+                          {s.ativo ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-7 px-2"
+                          onClick={() => handleDeactivate(s.id, s.ativo)}
+                        >
+                          {s.ativo ? 'Desativar' : 'Reativar'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
