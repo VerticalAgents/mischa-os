@@ -268,7 +268,8 @@ export default function TodosAgendamentos() {
         </div>
         <Button
           onClick={() => setModalReagendarAberto(true)}
-          disabled={sortedAgendamentos.length === 0}
+          disabled={sortedAgendamentos.length === 0 || !canEdit}
+          title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
           className="whitespace-nowrap"
         >
           <Calendar className="mr-2 h-4 w-4" />
