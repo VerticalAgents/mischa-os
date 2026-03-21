@@ -25,6 +25,7 @@ import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import { AgendamentoItem } from "./types";
 
 export default function AgendamentoRepresentantes() {
+  const { canEdit } = useEditPermission();
   const { agendamentos, carregarTodosAgendamentos, obterAgendamento, salvarAgendamento } = useAgendamentoClienteStore();
   const { clientes, carregarClientes } = useClienteStore();
   const { representantes, carregarRepresentantes } = useSupabaseRepresentantes();
