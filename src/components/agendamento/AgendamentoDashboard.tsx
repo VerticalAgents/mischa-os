@@ -1257,19 +1257,22 @@ export default function AgendamentoDashboard() {
           <CardDescription className="text-left">Visão dos agendamentos por dia da semana selecionada - Clique em um dia para ver os detalhes</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-7 gap-2">
-            {dadosGraficoSemanal.map((dia, index) => <div key={index} className={`p-4 border rounded-lg text-center cursor-pointer transition-colors hover:bg-muted/50 ${dia.isToday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado) ? 'border-primary bg-primary/20' : 'border-border'}`} onClick={() => handleDiaClick(dia.dataCompleta)}>
-                <div className="font-medium text-sm mb-2">{dia.diaSemana}</div>
-                <div className="text-lg font-bold mb-1">{dia.dia}</div>
+          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-2">
+            {dadosGraficoSemanal.map((dia, index) => <div key={index} className={`p-3 lg:p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${dia.isToday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado) ? 'border-primary bg-primary/20' : 'border-border'} flex items-center gap-3 md:flex-col md:text-center`} onClick={() => handleDiaClick(dia.dataCompleta)}>
+                {/* Mobile: horizontal layout | Tablet/Desktop: vertical */}
+                <div className="flex items-center gap-2 md:flex-col md:gap-0">
+                  <div className="font-medium text-sm md:mb-2">{dia.diaSemana}</div>
+                  <div className="text-lg font-bold md:mb-1">{dia.dia}</div>
+                </div>
                 
-                <div className="space-y-1">
-                  {dia.confirmados > 0 && <Badge variant="outline" className="text-[10px] w-full bg-green-100 text-green-700 border-green-200 rounded-none whitespace-nowrap justify-center">
+                <div className="flex flex-wrap gap-1 flex-1 md:flex-col md:space-y-1 md:gap-0">
+                  {dia.confirmados > 0 && <Badge variant="outline" className="text-[10px] bg-green-100 text-green-700 border-green-200 rounded-none whitespace-nowrap justify-center md:w-full">
                       {dia.confirmados} Confirmados
                     </Badge>}
-                  {dia.previstos > 0 && <Badge variant="outline" className="text-[10px] w-full bg-amber-100 rounded-none whitespace-nowrap justify-center">
+                  {dia.previstos > 0 && <Badge variant="outline" className="text-[10px] bg-amber-100 rounded-none whitespace-nowrap justify-center md:w-full">
                       {dia.previstos} Previstos
                     </Badge>}
-                  {dia.realizadas > 0 && <Badge variant="outline" className="text-[10px] w-full bg-blue-100 text-blue-700 border-blue-200 rounded-none whitespace-nowrap justify-center">
+                  {dia.realizadas > 0 && <Badge variant="outline" className="text-[10px] bg-blue-100 text-blue-700 border-blue-200 rounded-none whitespace-nowrap justify-center md:w-full">
                       {dia.realizadas} Entregues
                     </Badge>}
                   {dia.total === 0 && dia.realizadas === 0 && <span className="text-xs text-muted-foreground">Livre</span>}
@@ -1282,7 +1285,7 @@ export default function AgendamentoDashboard() {
       {/* Agendamentos do Dia Selecionado */}
       {diaSelecionado && <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <CardTitle>Agendamentos para {format(diaSelecionado, "dd 'de' MMMM 'de' yyyy", {
                   locale: ptBR
@@ -1374,7 +1377,7 @@ export default function AgendamentoDashboard() {
                       };
 
                       return (
-                        <div key={agendamento.cliente.id} className={`flex items-start gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
+                        <div key={agendamento.cliente.id} className={`flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
                           <div className="flex-1 text-left">
                             <div className="font-medium text-left">{agendamento.cliente.nome}</div>
                             <div className="text-sm text-muted-foreground text-left">
@@ -1398,7 +1401,7 @@ export default function AgendamentoDashboard() {
                               </>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                             <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
                             <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
                               {agendamento.statusAgendamento}
