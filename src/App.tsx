@@ -152,7 +152,9 @@ function App() {
                     <Route path="/precificacao" element={
                       <ProtectedRoute>
                         <AppLayout>
-                          <Precificacao />
+                          <RoleBasedRoute allowedRoles={['admin', 'user']}>
+                            <Precificacao />
+                          </RoleBasedRoute>
                         </AppLayout>
                       </ProtectedRoute>
                     } />
