@@ -186,6 +186,16 @@ export default function EstoqueProdutosTab() {
             Mostrar Saldo Total
           </Label>
         </div>
+        <div className="flex items-center gap-2 border rounded-lg px-4 py-2">
+          <Switch 
+            checked={mostrarInativos}
+            onCheckedChange={setMostrarInativos}
+            id="mostrar-inativos"
+          />
+          <Label htmlFor="mostrar-inativos" className="cursor-pointer whitespace-nowrap text-sm">
+            Mostrar Inativos
+          </Label>
+        </div>
         <Button
           variant="outline"
           size="sm"
