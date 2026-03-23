@@ -121,9 +121,15 @@ export default function CategoriaEstoqueGroup({
                   const status = getStatusEstoque(produto.saldoReal);
                   
                   return (
-                    <TableRow key={produto.id}>
+                    <TableRow key={produto.id} className={!produto.ativo ? "opacity-50" : ""}>
                       <TableCell>
                         <div className="font-medium">{produto.nome}</div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={produto.ativo}
+                          onCheckedChange={(checked) => onToggleAtivo(produto.id, checked)}
+                        />
                       </TableCell>
                       {mostrarSaldoTotal && (
                         <TableCell className="text-center">
