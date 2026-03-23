@@ -23,6 +23,7 @@ export default function EstoqueProdutosTab() {
   const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao } = useMovimentacoesEstoqueProdutos();
   const { categorias } = useSupabaseCategoriasProduto();
   const { proporcoes } = useSupabaseProporoesPadrao();
+  const { atualizarProduto } = useSupabaseProdutos();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [mostrarSaldoTotal, setMostrarSaldoTotal] = useState(false);
