@@ -97,6 +97,7 @@ export default function CategoriaEstoqueGroup({
             <TableHeader>
               <TableRow>
                 <TableHead>Produto</TableHead>
+                <TableHead className="text-center">Ativo</TableHead>
                 {mostrarSaldoTotal && (
                   <TableHead className="text-center">Saldo Total</TableHead>
                 )}
