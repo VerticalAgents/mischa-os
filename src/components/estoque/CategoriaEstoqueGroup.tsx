@@ -21,6 +21,7 @@ interface CategoriaEstoqueGroupProps {
   onAbrirMovimentacao: (produto: any) => void;
   onAbrirBaixa: (produto: any) => void;
   onVerHistorico: (produtoId: string) => void;
+  onToggleAtivo: (produtoId: string, novoValor: boolean) => void;
   getStatusEstoque: (saldo: number) => { variant: "destructive" | "secondary" | "outline" | "default", label: string };
 }
 
