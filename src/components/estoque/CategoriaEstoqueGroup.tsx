@@ -109,7 +109,7 @@ export default function CategoriaEstoqueGroup({
             <TableBody>
               {produtosFiltrados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={mostrarSaldoTotal ? 5 : 4} className="text-center py-4 text-muted-foreground">
+                  <TableCell colSpan={mostrarSaldoTotal ? 6 : 5} className="text-center py-4 text-muted-foreground">
                     {isRevendaPadrao && filtrarPorProporcao
                       ? "Nenhum produto com proporção > 0% nesta categoria"
                       : "Nenhum produto nesta categoria"
