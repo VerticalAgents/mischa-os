@@ -36,10 +36,10 @@ export default function EstoqueProdutosTab() {
 
   // Filtrar produtos por busca
   const produtosFiltrados = useMemo(() => 
-    produtos.filter(produto =>
-      produto.nome.toLowerCase().includes(searchTerm.toLowerCase())
-    ),
-    [produtos, searchTerm]
+    produtos
+      .filter(produto => mostrarInativos || produto.ativo)
+      .filter(produto => produto.nome.toLowerCase().includes(searchTerm.toLowerCase())),
+    [produtos, searchTerm, mostrarInativos]
   );
 
   // Agrupar produtos por categoria
