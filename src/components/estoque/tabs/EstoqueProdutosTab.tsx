@@ -113,8 +113,10 @@ export default function EstoqueProdutosTab() {
   };
 
   const handleToggleAtivo = async (produtoId: string, novoValor: boolean) => {
-    await atualizarProduto(produtoId, { ativo: novoValor });
-    await carregarSaldos();
+    const sucesso = await atualizarProduto(produtoId, { ativo: novoValor });
+    if (sucesso) {
+      await forcarRecarregamento();
+    }
   };
 
   const getStatusEstoque = (saldo: number) => {
