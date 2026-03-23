@@ -10,6 +10,8 @@ import { useEstoqueComExpedicao } from "@/hooks/useEstoqueComExpedicao";
 import { useMovimentacoesEstoqueProdutos } from "@/hooks/useMovimentacoesEstoqueProdutos";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
+import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
+import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import MovimentacaoEstoqueModal from "../MovimentacaoEstoqueModal";
 import BaixaEstoqueModal from "../BaixaEstoqueModal";
 import HistoricoMovimentacoes from "../HistoricoMovimentacoes";
