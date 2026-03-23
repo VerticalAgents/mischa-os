@@ -21,6 +21,7 @@ interface CategoriaEstoqueGroupProps {
   onAbrirMovimentacao: (produto: any) => void;
   onAbrirBaixa: (produto: any) => void;
   onVerHistorico: (produtoId: string) => void;
+  onToggleAtivo: (produtoId: string, novoValor: boolean) => void;
   getStatusEstoque: (saldo: number) => { variant: "destructive" | "secondary" | "outline" | "default", label: string };
 }
 
@@ -33,6 +34,7 @@ export default function CategoriaEstoqueGroup({
   onAbrirMovimentacao,
   onAbrirBaixa,
   onVerHistorico,
+  onToggleAtivo,
   getStatusEstoque
 }: CategoriaEstoqueGroupProps) {
   const [isOpen, setIsOpen] = useState(true);
@@ -95,6 +97,7 @@ export default function CategoriaEstoqueGroup({
             <TableHeader>
               <TableRow>
                 <TableHead>Produto</TableHead>
+                <TableHead className="text-center">Ativo</TableHead>
                 {mostrarSaldoTotal && (
                   <TableHead className="text-center">Saldo Total</TableHead>
                 )}
@@ -106,7 +109,7 @@ export default function CategoriaEstoqueGroup({
             <TableBody>
               {produtosFiltrados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={mostrarSaldoTotal ? 5 : 4} className="text-center py-4 text-muted-foreground">
+                  <TableCell colSpan={mostrarSaldoTotal ? 6 : 5} className="text-center py-4 text-muted-foreground">
                     {isRevendaPadrao && filtrarPorProporcao
                       ? "Nenhum produto com proporção > 0% nesta categoria"
                       : "Nenhum produto nesta categoria"
@@ -118,9 +121,15 @@ export default function CategoriaEstoqueGroup({
                   const status = getStatusEstoque(produto.saldoReal);
                   
                   return (
-                    <TableRow key={produto.id}>
+                    <TableRow key={produto.id} className={!produto.ativo ? "opacity-50" : ""}>
                       <TableCell>
                         <div className="font-medium">{produto.nome}</div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={produto.ativo}
+                          onCheckedChange={(checked) => onToggleAtivo(produto.id, checked)}
+                        />
                       </TableCell>
                       {mostrarSaldoTotal && (
                         <TableCell className="text-center">

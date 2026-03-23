@@ -10,6 +10,7 @@ import { useEstoqueComExpedicao } from "@/hooks/useEstoqueComExpedicao";
 import { useMovimentacoesEstoqueProdutos } from "@/hooks/useMovimentacoesEstoqueProdutos";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
+import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 import MovimentacaoEstoqueModal from "../MovimentacaoEstoqueModal";
 import BaixaEstoqueModal from "../BaixaEstoqueModal";
 import HistoricoMovimentacoes from "../HistoricoMovimentacoes";
@@ -21,9 +22,11 @@ export default function EstoqueProdutosTab() {
   const { movimentacoes, loading: loadingMovimentacoes, adicionarMovimentacao } = useMovimentacoesEstoqueProdutos();
   const { categorias } = useSupabaseCategoriasProduto();
   const { proporcoes } = useSupabaseProporoesPadrao();
+  const { atualizarProduto } = useSupabaseProdutos();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [mostrarSaldoTotal, setMostrarSaldoTotal] = useState(false);
+  const [mostrarInativos, setMostrarInativos] = useState(false);
   const [modalMovimentacao, setModalMovimentacao] = useState(false);
   const [modalBaixa, setModalBaixa] = useState(false);
   const [modalCalculos, setModalCalculos] = useState(false);
@@ -32,10 +35,10 @@ export default function EstoqueProdutosTab() {
 
   // Filtrar produtos por busca
   const produtosFiltrados = useMemo(() => 
-    produtos.filter(produto =>
-      produto.nome.toLowerCase().includes(searchTerm.toLowerCase())
-    ),
-    [produtos, searchTerm]
+    produtos
+      .filter(produto => mostrarInativos || produto.ativo)
+      .filter(produto => produto.nome.toLowerCase().includes(searchTerm.toLowerCase())),
+    [produtos, searchTerm, mostrarInativos]
   );
 
   // Agrupar produtos por categoria
@@ -109,6 +112,11 @@ export default function EstoqueProdutosTab() {
     carregarSaldos();
   };
 
+  const handleToggleAtivo = async (produtoId: string, novoValor: boolean) => {
+    await atualizarProduto(produtoId, { ativo: novoValor });
+    await carregarSaldos();
+  };
+
   const getStatusEstoque = (saldo: number) => {
     if (saldo <= 0) return { variant: "destructive" as const, label: "Sem estoque" };
     if (saldo <= 10) return { variant: "secondary" as const, label: "Baixo" };
@@ -178,6 +186,16 @@ export default function EstoqueProdutosTab() {
             Mostrar Saldo Total
           </Label>
         </div>
+        <div className="flex items-center gap-2 border rounded-lg px-4 py-2">
+          <Switch 
+            checked={mostrarInativos}
+            onCheckedChange={setMostrarInativos}
+            id="mostrar-inativos"
+          />
+          <Label htmlFor="mostrar-inativos" className="cursor-pointer whitespace-nowrap text-sm">
+            Mostrar Inativos
+          </Label>
+        </div>
         <Button
           variant="outline"
           size="sm"
@@ -213,6 +231,7 @@ export default function EstoqueProdutosTab() {
                 onAbrirMovimentacao={handleModalMovimentacao}
                 onAbrirBaixa={handleModalBaixa}
                 onVerHistorico={(produtoId) => setShowHistorico(showHistorico === produtoId ? null : produtoId)}
+                onToggleAtivo={handleToggleAtivo}
                 getStatusEstoque={getStatusEstoque}
               />
             );
