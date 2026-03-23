@@ -112,6 +112,11 @@ export default function EstoqueProdutosTab() {
     carregarSaldos();
   };
 
+  const handleToggleAtivo = async (produtoId: string, novoValor: boolean) => {
+    await atualizarProduto(produtoId, { ativo: novoValor });
+    await carregarSaldos();
+  };
+
   const getStatusEstoque = (saldo: number) => {
     if (saldo <= 0) return { variant: "destructive" as const, label: "Sem estoque" };
     if (saldo <= 10) return { variant: "secondary" as const, label: "Baixo" };
