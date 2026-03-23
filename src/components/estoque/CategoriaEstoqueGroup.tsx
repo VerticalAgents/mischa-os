@@ -34,6 +34,7 @@ export default function CategoriaEstoqueGroup({
   onAbrirMovimentacao,
   onAbrirBaixa,
   onVerHistorico,
+  onToggleAtivo,
   getStatusEstoque
 }: CategoriaEstoqueGroupProps) {
   const [isOpen, setIsOpen] = useState(true);
