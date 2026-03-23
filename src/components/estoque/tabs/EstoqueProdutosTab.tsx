@@ -27,6 +27,7 @@ export default function EstoqueProdutosTab() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [mostrarSaldoTotal, setMostrarSaldoTotal] = useState(false);
+  const [mostrarInativos, setMostrarInativos] = useState(false);
   const [modalMovimentacao, setModalMovimentacao] = useState(false);
   const [modalBaixa, setModalBaixa] = useState(false);
   const [modalCalculos, setModalCalculos] = useState(false);
