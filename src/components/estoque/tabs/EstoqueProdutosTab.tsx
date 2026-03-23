@@ -221,6 +221,7 @@ export default function EstoqueProdutosTab() {
                 onAbrirMovimentacao={handleModalMovimentacao}
                 onAbrirBaixa={handleModalBaixa}
                 onVerHistorico={(produtoId) => setShowHistorico(showHistorico === produtoId ? null : produtoId)}
+                onToggleAtivo={handleToggleAtivo}
                 getStatusEstoque={getStatusEstoque}
               />
             );
