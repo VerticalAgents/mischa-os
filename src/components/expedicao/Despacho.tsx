@@ -62,6 +62,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
   const [filtroTexto, setFiltroTexto] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("todos");
+  const [filtroTipoLogistica, setFiltroTipoLogistica] = useState<string[]>([]);
   const [despachoEmMassaOpen, setDespachoEmMassaOpen] = useState(false);
   const [entregaEmMassaOpen, setEntregaEmMassaOpen] = useState(false);
   
