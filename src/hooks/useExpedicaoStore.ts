@@ -33,6 +33,7 @@ interface PedidoExpedicao {
   // Campos para lista de documentos
   emite_nota_fiscal?: boolean;
   forma_pagamento?: string;
+  tipo_logistica?: string;
 }
 
 interface ExpedicaoStore {
