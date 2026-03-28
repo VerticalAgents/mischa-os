@@ -154,7 +154,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           try {
             const { data: clientesComLink, error: clientesError } = await supabase
               .from('clientes')
-              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes, gestaoclick_cliente_id, emite_nota_fiscal, forma_pagamento');
+              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes, gestaoclick_cliente_id, emite_nota_fiscal, forma_pagamento, tipo_logistica');
 
             if (clientesError) {
               console.warn('Erro ao carregar clientes:', clientesError);
