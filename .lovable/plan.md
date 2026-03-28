@@ -1,33 +1,34 @@
 
 
-## Plano: Toggle para inativar/ativar produtos na página de Estoque
+## Plano: Filtro por Tipo de Logística no Despacho
 
 ### O que será feito
-Adicionar um toggle (Switch) em cada linha de produto na tabela de estoque, permitindo ativar/desativar produtos. Produtos inativos ficam ocultos em agendamento, produção, e seleções — mas continuam visíveis na página de estoque (com visual esmaecido).
-
-### Como funciona hoje
-- A tabela `produtos_finais` já tem o campo `ativo` (boolean, default true)
-- Muitas queries do sistema já filtram `.eq('ativo', true)` (agendamento, PCP, proporções, etc.)
-- O hook `useSupabaseProdutos` já tem `atualizarProduto()` que faz update no Supabase
-- O `useSupabaseProdutos` carrega TODOS os produtos (sem filtro de ativo), o que é correto para a página de estoque
+Adicionar um filtro multi-select de "Tipo de Logística" na aba de Despacho, com as opções: Própria, Retirada, Terceirizada e "Sem logística cadastrada" (para clientes sem `tipo_logistica`). O padrão visual e comportamento seguem o mesmo padrão do filtro de Representantes existente.
 
 ### Alterações
 
-**1. `CategoriaEstoqueGroup.tsx`** — Adicionar coluna "Ativo" na tabela com um Switch por produto
-- Nova coluna entre "Produto" e "Saldo"
-- Switch que chama callback `onToggleAtivo(produtoId, novoValor)`
-- Linha do produto inativo com `opacity-50` para feedback visual
+**1. `src/hooks/useExpedicaoStore.ts`**
+- Adicionar `tipo_logistica?: string` à interface `PedidoExpedicao`
+- Incluir `tipo_logistica` no `select` das queries de clientes (2 locais: `carregarPedidos` e `recarregarSilencioso`)
+- Mapear `cliente?.tipo_logistica` ao montar o objeto pedido (2 locais)
 
-**2. `EstoqueProdutosTab.tsx`** — Adicionar handler e prop de toggle
-- Importar `useSupabaseProdutos` para acessar `atualizarProduto`
-- Criar função `handleToggleAtivo` que faz update de `ativo` e recarrega saldos
-- Passar callback para `CategoriaEstoqueGroup`
-- Adicionar switch "Mostrar inativos" nos filtros (por padrão oculta inativos)
+**2. `src/components/expedicao/components/TipoLogisticaFilter.tsx`** (novo)
+- Componente multi-select com Popover + Checkboxes, idêntico ao `RepresentantesFilter`
+- Opções fixas: Própria, Terceirizada, Retirada + "Sem logística" (valor sentinela `"_sem_logistica"`)
+- Ícone `Truck` em vez de `Users`
 
-**3. Nenhuma migração necessária** — O campo `ativo` já existe na tabela e já é respeitado pelas queries de agendamento, PCP, etc.
+**3. `src/components/expedicao/components/DespachoFilters.tsx`**
+- Adicionar props `filtroTipoLogistica: string[]` e `onFiltroTipoLogisticaChange`
+- Incluir `TipoLogisticaFilter` no grid (mudar grid para `md:grid-cols-4`)
+- Incrementar contagem de filtros ativos
 
-### Detalhes técnicos
-- O toggle chama `atualizarProduto(produtoId, { ativo: false })` via Supabase
-- Filtro "Mostrar inativos" no topo (desligado por padrão) — quando ligado, mostra todos
-- Produtos inativos já são filtrados automaticamente nas outras partes do sistema
+**4. `src/components/expedicao/Despacho.tsx`**
+- Adicionar state `filtroTipoLogistica: string[]` (inicialmente `[]`)
+- Adicionar bloco de filtragem no `useMemo` de `pedidosFiltrados`:
+  - `"_sem_logistica"` filtra pedidos onde `tipo_logistica` é null/undefined/vazio
+  - Demais valores comparam diretamente com `pedido.tipo_logistica`
+- Passar props ao `DespachoFilters`
+
+### Valores do filtro
+Os valores canônicos no banco são: `PROPRIA`, `TERCEIRIZADA`, `RETIRADA`. O filtro compara diretamente com esses valores. A opção "Sem logística" captura `null`, `undefined` ou string vazia.
 
