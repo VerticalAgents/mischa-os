@@ -179,10 +179,17 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
     if (filtroTipoLogistica.length > 0) {
       const incluiSemLogistica = filtroTipoLogistica.includes("_sem_logistica");
       const tiposReais = filtroTipoLogistica.filter(t => t !== "_sem_logistica");
-      resultado = resultado.filter(pedido =>
-        (incluiSemLogistica && !pedido.tipo_logistica) ||
-        (pedido.tipo_logistica && tiposReais.includes(pedido.tipo_logistica))
-      );
+      resultado = resultado.filter(pedido => {
+        if (incluiSemLogistica && !pedido.tipo_logistica) return true;
+        if (!pedido.tipo_logistica) return false;
+        const normalizado = pedido.tipo_logistica.toUpperCase()
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        return tiposReais.some(tipo => {
+          const tipoNorm = tipo.toUpperCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          return normalizado === tipoNorm;
+        });
+      });
     }
 
     return resultado;

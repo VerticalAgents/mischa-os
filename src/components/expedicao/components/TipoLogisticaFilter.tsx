@@ -6,9 +6,9 @@ import { Truck, ChevronDown } from "lucide-react";
 
 const OPCOES_LOGISTICA = [
   { value: "_sem_logistica", label: "Sem logística cadastrada", italic: true },
-  { value: "Própria", label: "Própria", italic: false },
-  { value: "Terceirizada", label: "Terceirizada", italic: false },
-  { value: "Retirada", label: "Retirada", italic: false },
+  { value: "PROPRIA", label: "Própria", italic: false },
+  { value: "TERCEIRIZADA", label: "Terceirizada", italic: false },
+  { value: "RETIRADA", label: "Retirada", italic: false },
 ];
 
 interface TipoLogisticaFilterProps {
