@@ -62,6 +62,7 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
 
   const [filtroTexto, setFiltroTexto] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("todos");
+  const [filtroTipoLogistica, setFiltroTipoLogistica] = useState<string[]>([]);
   const [despachoEmMassaOpen, setDespachoEmMassaOpen] = useState(false);
   const [entregaEmMassaOpen, setEntregaEmMassaOpen] = useState(false);
   
@@ -174,8 +175,18 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
       );
     }
 
+    // Filtro por tipo de logística
+    if (filtroTipoLogistica.length > 0) {
+      const incluiSemLogistica = filtroTipoLogistica.includes("_sem_logistica");
+      const tiposReais = filtroTipoLogistica.filter(t => t !== "_sem_logistica");
+      resultado = resultado.filter(pedido =>
+        (incluiSemLogistica && !pedido.tipo_logistica) ||
+        (pedido.tipo_logistica && tiposReais.includes(pedido.tipo_logistica))
+      );
+    }
+
     return resultado;
-  }, [pedidosBase, filtroTexto, filtroTipo, filtroRepresentantes, tipoFiltro, semanaAtrasadosDate, modoVisualizacaoAtrasados]);
+  }, [pedidosBase, filtroTexto, filtroTipo, filtroRepresentantes, filtroTipoLogistica, tipoFiltro, semanaAtrasadosDate, modoVisualizacaoAtrasados]);
   
   // Hook para o modal de exportação CSV (após pedidosFiltrados estar definido)
   const exportDialog = useExportCSVDialog(pedidosFiltrados);
@@ -335,9 +346,11 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
         filtroTipo={filtroTipo}
         totalPedidos={pedidosFiltrados.length}
         filtroRepresentantes={filtroRepresentantes}
+        filtroTipoLogistica={filtroTipoLogistica}
         onFiltroTextoChange={setFiltroTexto}
         onFiltroTipoChange={setFiltroTipo}
         onFiltroRepresentantesChange={setFiltroRepresentantes}
+        onFiltroTipoLogisticaChange={setFiltroTipoLogistica}
       />
       
       <Card className="p-4">

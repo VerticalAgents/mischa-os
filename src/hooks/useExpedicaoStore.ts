@@ -33,6 +33,7 @@ interface PedidoExpedicao {
   // Campos para lista de documentos
   emite_nota_fiscal?: boolean;
   forma_pagamento?: string;
+  tipo_logistica?: string;
 }
 
 interface ExpedicaoStore {
@@ -153,7 +154,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           try {
             const { data: clientesComLink, error: clientesError } = await supabase
               .from('clientes')
-              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes, gestaoclick_cliente_id, emite_nota_fiscal, forma_pagamento');
+              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes, gestaoclick_cliente_id, emite_nota_fiscal, forma_pagamento, tipo_logistica');
 
             if (clientesError) {
               console.warn('Erro ao carregar clientes:', clientesError);
@@ -255,7 +256,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : [],
               // Campos para lista de documentos
               emite_nota_fiscal: cliente?.emite_nota_fiscal ?? true,
-              forma_pagamento: cliente?.forma_pagamento || 'PIX'
+              forma_pagamento: cliente?.forma_pagamento || 'PIX',
+              tipo_logistica: cliente?.tipo_logistica || undefined
             };
           });
 
@@ -301,7 +303,7 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
           try {
             const { data: clientesComLink, error: clientesError } = await supabase
               .from('clientes')
-              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes, gestaoclick_cliente_id, emite_nota_fiscal, forma_pagamento');
+              .select('id, nome, endereco_entrega, contato_telefone, link_google_maps, representante_id, observacoes, gestaoclick_cliente_id, emite_nota_fiscal, forma_pagamento, tipo_logistica');
 
             if (clientesError) {
               const { data: clientesSemLink, error: fallbackError } = await supabase
@@ -391,7 +393,8 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
               trocas_pendentes: Array.isArray(agendamento.trocas_pendentes) ? agendamento.trocas_pendentes : [],
               // Campos para lista de documentos
               emite_nota_fiscal: cliente?.emite_nota_fiscal ?? true,
-              forma_pagamento: cliente?.forma_pagamento || 'PIX'
+              forma_pagamento: cliente?.forma_pagamento || 'PIX',
+              tipo_logistica: cliente?.tipo_logistica || undefined
             };
           });
 

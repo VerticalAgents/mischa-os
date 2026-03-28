@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Filter } from "lucide-react";
 import { RepresentantesFilter } from "./RepresentantesFilter";
+import { TipoLogisticaFilter } from "./TipoLogisticaFilter";
 import { Badge } from "@/components/ui/badge";
 
 interface DespachoFiltersProps {
@@ -10,9 +11,11 @@ interface DespachoFiltersProps {
   filtroTipo: string;
   totalPedidos: number;
   filtroRepresentantes: number[];
+  filtroTipoLogistica: string[];
   onFiltroTextoChange: (value: string) => void;
   onFiltroTipoChange: (value: string) => void;
   onFiltroRepresentantesChange: (ids: number[]) => void;
+  onFiltroTipoLogisticaChange: (values: string[]) => void;
 }
 
 export const DespachoFilters = ({
@@ -20,14 +23,17 @@ export const DespachoFilters = ({
   filtroTipo,
   totalPedidos,
   filtroRepresentantes,
+  filtroTipoLogistica,
   onFiltroTextoChange,
   onFiltroTipoChange,
-  onFiltroRepresentantesChange
+  onFiltroRepresentantesChange,
+  onFiltroTipoLogisticaChange
 }: DespachoFiltersProps) => {
   const filtrosAtivos = [
     filtroTexto && "texto",
     filtroTipo !== "todos" && "status",
     filtroRepresentantes.length > 0 && "representante",
+    filtroTipoLogistica.length > 0 && "logistica",
   ].filter(Boolean).length;
 
   return (
@@ -47,7 +53,7 @@ export const DespachoFilters = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         {/* Busca por texto */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -75,6 +81,12 @@ export const DespachoFilters = ({
         <RepresentantesFilter
           selectedIds={filtroRepresentantes}
           onSelectionChange={onFiltroRepresentantesChange}
+        />
+
+        {/* Tipo Logística */}
+        <TipoLogisticaFilter
+          selectedValues={filtroTipoLogistica}
+          onSelectionChange={onFiltroTipoLogisticaChange}
         />
       </div>
     </div>
