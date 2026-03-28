@@ -82,6 +82,12 @@ export const DespachoFilters = ({
           selectedIds={filtroRepresentantes}
           onSelectionChange={onFiltroRepresentantesChange}
         />
+
+        {/* Tipo Logística */}
+        <TipoLogisticaFilter
+          selectedValues={filtroTipoLogistica}
+          onSelectionChange={onFiltroTipoLogisticaChange}
+        />
       </div>
     </div>
   );

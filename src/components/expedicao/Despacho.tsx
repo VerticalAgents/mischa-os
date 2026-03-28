@@ -346,9 +346,11 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
         filtroTipo={filtroTipo}
         totalPedidos={pedidosFiltrados.length}
         filtroRepresentantes={filtroRepresentantes}
+        filtroTipoLogistica={filtroTipoLogistica}
         onFiltroTextoChange={setFiltroTexto}
         onFiltroTipoChange={setFiltroTipo}
         onFiltroRepresentantesChange={setFiltroRepresentantes}
+        onFiltroTipoLogisticaChange={setFiltroTipoLogistica}
       />
       
       <Card className="p-4">
