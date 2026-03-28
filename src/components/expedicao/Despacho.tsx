@@ -175,8 +175,18 @@ export const Despacho = ({ tipoFiltro }: DespachoProps) => {
       );
     }
 
+    // Filtro por tipo de logística
+    if (filtroTipoLogistica.length > 0) {
+      const incluiSemLogistica = filtroTipoLogistica.includes("_sem_logistica");
+      const tiposReais = filtroTipoLogistica.filter(t => t !== "_sem_logistica");
+      resultado = resultado.filter(pedido =>
+        (incluiSemLogistica && !pedido.tipo_logistica) ||
+        (pedido.tipo_logistica && tiposReais.includes(pedido.tipo_logistica))
+      );
+    }
+
     return resultado;
-  }, [pedidosBase, filtroTexto, filtroTipo, filtroRepresentantes, tipoFiltro, semanaAtrasadosDate, modoVisualizacaoAtrasados]);
+  }, [pedidosBase, filtroTexto, filtroTipo, filtroRepresentantes, filtroTipoLogistica, tipoFiltro, semanaAtrasadosDate, modoVisualizacaoAtrasados]);
   
   // Hook para o modal de exportação CSV (após pedidosFiltrados estar definido)
   const exportDialog = useExportCSVDialog(pedidosFiltrados);
