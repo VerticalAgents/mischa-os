@@ -1,24 +1,25 @@
 
 
-## Plano: Cadastrar 3 novos clientes
-
-### Dados a inserir na tabela `clientes`
-
-| Campo | Mercado Cristal | La La Mercado | Mercado Sasso |
-|-------|----------------|---------------|---------------|
-| nome | Mercado Cristal | La La Mercado | Mercado Sasso |
-| razao_social (campo não existe*) | Mini Mercado Bom Fim Ltda | La La Mercado Ltda | Mercado Sasso Ltda |
-| cnpj_cpf | 94.296.456/0001-94 | 60.966.958/0001-63 | 11.801.558/0001-92 |
-| inscricao_estadual | 087/0067710 | 096/4068834 | 096/3359541 |
-| contato_telefone | 51 98231-3231 | 51 99858-7079 | 51 3241-6144 |
-| contato_nome | Juliano | — | — |
-| tipo_pessoa | PJ | PJ | PJ |
-
-### Observação sobre Razão Social
-A tabela `clientes` não possui coluna `razao_social`. Vou verificar como o sistema armazena essa informação (pode estar no campo `nome` ou em outro local) antes de inserir.
+## Plano: Cadastrar 2 clientes faltantes + vincular Yuri como representante
 
 ### Ação
-- Inserir os 3 clientes via SQL INSERT na tabela `clientes`
-- Campos não informados (endereço, etc.) ficam como NULL
-- Status padrão: ATIVO
+Inserir via SQL (insert tool) os 2 clientes na tabela `clientes` com `representante_id = 16` (Yuri Leonardo):
+
+| Campo | Mini Mercado Giacomolli | Mercadinho Gourmet |
+|-------|------------------------|-------------------|
+| nome | Mini Mercado Giacomolli | Mercadinho Gourmet |
+| cnpj_cpf | 58.020.599/0001-05 | 57.677.305/0001-50 |
+| inscricao_estadual | 096/4041464 | 800/4027685 |
+| contato_telefone | 51 99227-5771 | 51 99884-1863 |
+| contato_nome | — | Ester |
+| endereco_entrega | — | Coronel Massot, 1094 |
+| tipo_pessoa | PJ | PJ |
+| status_cliente | ATIVO | ATIVO |
+| representante_id | 16 | 16 |
+
+Também atualizar os 3 clientes cadastrados anteriormente (Mercado Cristal, La La Mercado, Mercado Sasso) para vincular `representante_id = 16`.
+
+### Detalhes técnicos
+- 1 INSERT com 2 registros novos
+- 1 UPDATE nos 3 clientes existentes para setar `representante_id = 16`
 
