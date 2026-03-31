@@ -1,18 +1,24 @@
 
 
-## Correção: Filtro de Tipo de Logística não filtra corretamente
+## Plano: Cadastrar 3 novos clientes
 
-### Problema
-Os valores no banco de dados são armazenados em formato canônico maiúsculo (`PROPRIA`, `TERCEIRIZADA`, `RETIRADA`), mas o filtro compara com valores em formato UI (`Própria`, `Terceirizada`, `Retirada`). Por isso nenhum pedido corresponde.
+### Dados a inserir na tabela `clientes`
 
-### Correção
+| Campo | Mercado Cristal | La La Mercado | Mercado Sasso |
+|-------|----------------|---------------|---------------|
+| nome | Mercado Cristal | La La Mercado | Mercado Sasso |
+| razao_social (campo não existe*) | Mini Mercado Bom Fim Ltda | La La Mercado Ltda | Mercado Sasso Ltda |
+| cnpj_cpf | 94.296.456/0001-94 | 60.966.958/0001-63 | 11.801.558/0001-92 |
+| inscricao_estadual | 087/0067710 | 096/4068834 | 096/3359541 |
+| contato_telefone | 51 98231-3231 | 51 99858-7079 | 51 3241-6144 |
+| contato_nome | Juliano | — | — |
+| tipo_pessoa | PJ | PJ | PJ |
 
-**`src/components/expedicao/components/TipoLogisticaFilter.tsx`**
-- Alterar os valores das opções para os valores canônicos do banco:
-  - `"Própria"` → `"PROPRIA"`
-  - `"Terceirizada"` → `"TERCEIRIZADA"`
-  - `"Retirada"` → `"RETIRADA"`
-- Os labels continuam iguais para o usuário
+### Observação sobre Razão Social
+A tabela `clientes` não possui coluna `razao_social`. Vou verificar como o sistema armazena essa informação (pode estar no campo `nome` ou em outro local) antes de inserir.
 
-Apenas uma linha precisa mudar (o array `OPCOES_LOGISTICA`). A lógica de filtragem em `Despacho.tsx` já está correta — compara diretamente com `pedido.tipo_logistica`, que vem cru do banco.
+### Ação
+- Inserir os 3 clientes via SQL INSERT na tabela `clientes`
+- Campos não informados (endereço, etc.) ficam como NULL
+- Status padrão: ATIVO
 
