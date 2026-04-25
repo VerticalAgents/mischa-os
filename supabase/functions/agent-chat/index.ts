@@ -898,7 +898,7 @@ async function executarTool(supabase: any, toolName: string, args: any): Promise
     }
   } catch (error) {
     console.error(`[agent-chat] Erro na tool ${toolName}:`, error);
-    return JSON.stringify({ erro: `Erro ao executar ${toolName}: ${error.message}` });
+    return JSON.stringify({ erro: `Erro ao executar ${toolName}: ${error instanceof Error ? error.message : String(error)}` });
   }
 }
 
@@ -1161,7 +1161,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("[agent-chat] Erro:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "Erro interno do servidor" }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Erro interno do servidor" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
