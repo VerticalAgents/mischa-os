@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, RefreshCw, Search } from "lucide-react";
+import { Plus, RefreshCw, Search, ChevronDown, ChevronRight } from "lucide-react";
 import { ReceitaTableRow } from "./ReceitaTableRow";
 import { ReceitasMetricasCards } from "./ReceitasMetricasCards";
 import EditarReceitaModal from "./EditarReceitaModal";
@@ -42,6 +42,7 @@ export default function ReceitasTab() {
   const [editandoReceita, setEditandoReceita] = useState<ReceitaCompleta | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [mostrarSemProduto, setMostrarSemProduto] = useState(false);
 
   // Handlers otimizados
   const handleRemoverReceita = async (id: string) => {
@@ -78,51 +79,26 @@ export default function ReceitasTab() {
     refresh();
   };
 
-  // Memoizar as linhas da tabela para evitar re-renders desnecessários
-  const receitasRows = useMemo(() => {
-    if (loading) {
-      return (
-        <TableRow>
-          <TableCell colSpan={6} className="text-center py-8">
-            <div className="flex items-center justify-center gap-2">
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              Carregando receitas...
-            </div>
-          </TableCell>
-        </TableRow>
-      );
-    }
+  // Separar receitas em duas listas: com produto ativo vinculado e sem
+  const { receitasComProduto, receitasSemProduto } = useMemo(() => {
+    const com: ReceitaCompleta[] = [];
+    const sem: ReceitaCompleta[] = [];
+    receitas.forEach((r) => {
+      if ((r.produtos_ativos_vinculados ?? 0) > 0) com.push(r);
+      else sem.push(r);
+    });
+    return { receitasComProduto: com, receitasSemProduto: sem };
+  }, [receitas]);
 
-    if (receitas.length === 0 && !searchTerm) {
-      return (
-        <TableRow>
-          <TableCell colSpan={6} className="text-center py-8">
-            Nenhuma receita cadastrada
-          </TableCell>
-        </TableRow>
-      );
-    }
-
-    if (receitas.length === 0 && searchTerm) {
-      return (
-        <TableRow>
-          <TableCell colSpan={6} className="text-center py-8">
-            Nenhuma receita encontrada para "{searchTerm}"
-          </TableCell>
-        </TableRow>
-      );
-    }
-
-    return receitas.map((receita) => (
-      <ReceitaTableRow
-        key={receita.id}
-        receita={receita}
-        onEdit={abrirEdicaoReceita}
-        onRemove={handleRemoverReceita}
-        onDuplicate={handleDuplicarReceita}
-      />
-    ));
-  }, [receitas, loading, searchTerm]);
+  const renderRow = (receita: ReceitaCompleta) => (
+    <ReceitaTableRow
+      key={receita.id}
+      receita={receita}
+      onEdit={abrirEdicaoReceita}
+      onRemove={handleRemoverReceita}
+      onDuplicate={handleDuplicarReceita}
+    />
+  );
 
   return (
     <div className="space-y-6">
@@ -208,7 +184,61 @@ export default function ReceitasTab() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {receitasRows}
+                    {loading && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          <div className="flex items-center justify-center gap-2">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            Carregando receitas...
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+
+                    {!loading && receitas.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          {searchTerm
+                            ? `Nenhuma receita encontrada para "${searchTerm}"`
+                            : "Nenhuma receita cadastrada"}
+                        </TableCell>
+                      </TableRow>
+                    )}
+
+                    {!loading && receitasComProduto.length > 0 && (
+                      <>
+                        <TableRow className="bg-muted/40 hover:bg-muted/40">
+                          <TableCell colSpan={6} className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Em produção ({receitasComProduto.length})
+                          </TableCell>
+                        </TableRow>
+                        {receitasComProduto.map(renderRow)}
+                      </>
+                    )}
+
+                    {!loading && receitasSemProduto.length > 0 && (
+                      <>
+                        <TableRow
+                          className="bg-muted/20 hover:bg-muted/30 cursor-pointer"
+                          onClick={() => setMostrarSemProduto((v) => !v)}
+                        >
+                          <TableCell colSpan={6} className="py-2">
+                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              {mostrarSemProduto ? (
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5" />
+                              )}
+                              Sem produto ativo vinculado ({receitasSemProduto.length})
+                              <span className="ml-2 normal-case font-normal text-muted-foreground/70">
+                                — clique para {mostrarSemProduto ? "ocultar" : "expandir"}
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {mostrarSemProduto && receitasSemProduto.map(renderRow)}
+                      </>
+                    )}
                   </TableBody>
                 </Table>
               </div>

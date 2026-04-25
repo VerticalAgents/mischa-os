@@ -13,6 +13,8 @@ export interface ReceitaCompleta {
   custo_total: number;
   custo_unitario: number;
   user_id: string;
+  ativo?: boolean;
+  produtos_ativos_vinculados: number;
   itens: {
     id: string;
     insumo_id: string;
@@ -132,6 +134,25 @@ export const useOptimizedReceitasData = () => {
 
       console.log(`📦 Carregados ${receitasData.length} receitas e ${itensData?.length || 0} itens`);
 
+      // Carregar componentes de produto (vínculo receita -> produto) para contar produtos ativos
+      const { data: componentesData } = await supabase
+        .from('componentes_produto')
+        .select('item_id, produto_id, tipo, produtos_finais(ativo)')
+        .eq('tipo', 'receita');
+
+      const produtosAtivosPorReceita = new Map<string, number>();
+      if (componentesData) {
+        componentesData.forEach((c: any) => {
+          const ativo = c.produtos_finais?.ativo === true;
+          if (ativo) {
+            produtosAtivosPorReceita.set(
+              c.item_id,
+              (produtosAtivosPorReceita.get(c.item_id) || 0) + 1
+            );
+          }
+        });
+      }
+
       // Criar mapa de itens por receita para acesso O(1)
       const itensPorReceita = new Map<string, any[]>();
       
@@ -175,6 +196,7 @@ export const useOptimizedReceitasData = () => {
           peso_total: pesoTotal,
           custo_total: custoTotal,
           custo_unitario: custoUnitario,
+          produtos_ativos_vinculados: produtosAtivosPorReceita.get(receita.id) || 0,
           itens: itensProcessados
         };
       });
