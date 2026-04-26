@@ -15,6 +15,7 @@ type PageHeaderProps = {
   };
   children?: ReactNode;
   className?: string;
+  actionsClassName?: string;
 };
 export default function PageHeader({
   title,
@@ -24,7 +25,8 @@ export default function PageHeader({
   // Added backLink parameter
   action,
   children,
-  className
+  className,
+  actionsClassName
 }: PageHeaderProps) {
   return <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8", className)}>
       <div>
@@ -38,7 +40,7 @@ export default function PageHeader({
         </div>
         {description && <p className="text-muted-foreground mt-1 text-left">{description}</p>}
       </div>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+      <div className={cn("flex flex-col sm:flex-row items-start sm:items-center gap-3", actionsClassName)}>
         {children}
         {action && <Button onClick={action.onClick} variant={action.variant || "default"}>
             {action.label}
