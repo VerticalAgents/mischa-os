@@ -205,7 +205,8 @@ export default function SortableClientesTable({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border overflow-x-auto">
+        {/* Tabela (desktop/tablet) */}
+        <div className="hidden md:block rounded-md border overflow-x-auto">
           <Table className="min-w-[640px]">
             <TableHeader>
               <TableRow>
@@ -333,6 +334,56 @@ export default function SortableClientesTable({
               })}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Cards (mobile) */}
+        <div className="md:hidden space-y-2">
+          {sortedClientes.map((cliente) => {
+            const giro = calcularGiroSemanalHistoricoSync(cliente.id, registros);
+            const achievement = cliente.metaGiroSemanal ? (giro / cliente.metaGiroSemanal) * 100 : 0;
+            const stats = getDeliveryStats(cliente.id);
+            const ultimaEntregaTxt = stats.daysSinceLastDelivery !== null
+              ? (stats.daysSinceLastDelivery === 0 ? 'Hoje' : stats.daysSinceLastDelivery === 1 ? '1 dia' : `${stats.daysSinceLastDelivery} dias`)
+              : 'Sem entregas';
+            return (
+              <div key={cliente.id} className="rounded-lg border p-3 space-y-2 bg-card">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="font-medium text-sm flex-1 min-w-0 break-words">
+                    {cliente.nome}
+                    {stats.canActivate && (
+                      <Badge className="ml-2 bg-green-100 text-green-800 text-[10px]">
+                        Pronto para Ativar
+                      </Badge>
+                    )}
+                  </div>
+                  <Badge className={`${getStatusBadgeColor(cliente.statusCliente)} shrink-0 text-[10px]`}>
+                    {cliente.statusCliente}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <div>
+                    Giro: <span className="font-mono text-foreground">{giro.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    Achievement: <span className="font-mono text-foreground">{achievement.toFixed(1)}%</span>
+                  </div>
+                  <div className="col-span-2">
+                    Última entrega: <span className="text-foreground">{ultimaEntregaTxt}</span>
+                  </div>
+                  {showDeliveryStats && (
+                    <>
+                      <div>
+                        Entregas: <span className="font-mono text-foreground">{stats.count}</span>
+                      </div>
+                      <div>
+                        Dias ativo: <span className="font-mono text-foreground">{stats.daysSinceFirst}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>
