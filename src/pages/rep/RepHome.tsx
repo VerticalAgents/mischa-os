@@ -159,7 +159,9 @@ function AgendamentoList({
               {formatDate(a.data_proxima_reposicao)} • {a.quantidade_total} un.
             </div>
           </div>
-          <Badge variant={statusVariant(a.status_agendamento)}>{a.status_agendamento}</Badge>
+          <Badge variant={statusVariant(a.status_agendamento)}>
+            {a.status_agendamento === "Agendar" ? "Pendente" : a.status_agendamento}
+          </Badge>
         </button>
       ))}
     </div>
