@@ -22,6 +22,12 @@ interface ProdutoQuantidadeSelectorProps {
   clienteId: string;
   quantidadeTotal: number;
   onQuantidadeTotalChange?: (novaQuantidade: number) => void;
+  /**
+   * Categorias habilitadas do cliente. Quando informado, tem prioridade sobre
+   * a busca via useClienteStore — necessário para fluxos onde o store não é
+   * populado (ex.: visualização do representante em /rep/clientes).
+   */
+  categoriasHabilitadas?: number[];
 }
 
 export default function ProdutoQuantidadeSelector({ 
@@ -29,7 +35,8 @@ export default function ProdutoQuantidadeSelector({
   onChange, 
   clienteId,
   quantidadeTotal,
-  onQuantidadeTotalChange
+  onQuantidadeTotalChange,
+  categoriasHabilitadas
 }: ProdutoQuantidadeSelectorProps) {
   const { produtos, carregarProdutos } = useSupabaseProdutos();
   const { getClientePorId } = useClienteStore();
@@ -43,9 +50,14 @@ export default function ProdutoQuantidadeSelector({
   //  1) somente ativos (produtos inativados no estoque não devem aparecer)
   //  2) pertencentes a uma categoria habilitada para o cliente.
   //     Se o cliente não tem nenhuma categoria habilitada, NENHUM produto é exibido.
+  // Prioriza categoriasHabilitadas vindas por prop; cai no store apenas como fallback.
+  const habilitadas =
+    categoriasHabilitadas && categoriasHabilitadas.length > 0
+      ? categoriasHabilitadas
+      : cliente?.categoriasHabilitadas ?? [];
+
   const produtosFiltrados = produtos.filter(produto => {
     if (!produto.ativo) return false;
-    const habilitadas = cliente?.categoriasHabilitadas ?? [];
     if (habilitadas.length === 0) return false;
     return habilitadas.includes(produto.categoria_id || 0);
   });

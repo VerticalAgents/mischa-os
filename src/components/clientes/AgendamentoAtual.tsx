@@ -287,6 +287,7 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
               onChange={setProdutosQuantidades}
               clienteId={cliente.id}
               quantidadeTotal={quantidadeTotal}
+              categoriasHabilitadas={cliente.categoriasHabilitadas}
             />
           </div>
         )}
