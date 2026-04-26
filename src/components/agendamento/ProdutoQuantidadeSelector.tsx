@@ -212,10 +212,10 @@ export default function ProdutoQuantidadeSelector({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <Label className="text-base font-medium">Produtos e Quantidades</Label>
         <TooltipProvider>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap sm:justify-end">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button 
@@ -320,7 +320,7 @@ export default function ProdutoQuantidadeSelector({
         });
 
         return (
-          <div key={index} className="grid grid-cols-3 gap-4 items-end p-4 border rounded-lg">
+          <div key={index} className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 sm:items-end p-3 sm:p-4 border rounded-lg">
             <div className="space-y-2">
               <Label htmlFor={`produto-${index}`}>Produto</Label>
               <Select
