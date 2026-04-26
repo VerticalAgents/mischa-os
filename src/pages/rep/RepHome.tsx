@@ -68,14 +68,14 @@ export default function RepHome() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Atalhos</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Button onClick={() => setNovoClienteOpen(true)}>
+          <CardContent className="flex flex-col gap-2">
+            <Button className="w-full justify-start" onClick={() => setNovoClienteOpen(true)}>
               <Plus className="w-4 h-4 mr-2" /> Cadastrar cliente
             </Button>
-            <Button variant="outline" onClick={() => navigate("/rep/clientes")}>
+            <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/rep/clientes")}>
               <Users className="w-4 h-4 mr-2" /> Ver clientes
             </Button>
-            <Button variant="outline" onClick={() => navigate("/rep/agendamentos")}>
+            <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/rep/agendamentos")}>
               <Calendar className="w-4 h-4 mr-2" /> Ver agendamentos
             </Button>
           </CardContent>
