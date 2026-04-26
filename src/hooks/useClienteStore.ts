@@ -100,7 +100,7 @@ export function transformClienteToDbRow(c: any) {
   return finalPayload;
 }
 
-const transformDbRowToCliente = (row: any): Cliente => {
+export const transformDbRowToCliente = (row: any): Cliente => {
   const safeParseJsonb = (value: any) => {
     if (value === null || value === undefined) return [];
     if (Array.isArray(value)) return value;

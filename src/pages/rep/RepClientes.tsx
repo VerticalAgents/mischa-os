@@ -14,6 +14,7 @@ import { Plus, Search, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 import { Cliente } from "@/types";
+import { transformDbRowToCliente } from "@/hooks/useClienteStore";
 
 interface ClienteRow {
   id: string;
@@ -118,8 +119,8 @@ export default function RepClientes() {
       console.error(error);
       return;
     }
-    // Conversão mínima para o tipo Cliente do formDialog
-    setEditandoCliente(data as unknown as Cliente);
+    // Mapear snake_case → camelCase para o formulário
+    setEditandoCliente(transformDbRowToCliente(data));
   };
 
   return (
