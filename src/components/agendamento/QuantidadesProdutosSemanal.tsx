@@ -181,9 +181,9 @@ export default function QuantidadesProdutosSemanal({
       {loading ? <div className="flex items-center justify-center py-8">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <span className="ml-2 text-muted-foreground">Calculando quantidades...</span>
-        </div> : produtosOrdenados.length === 0 ? <div className="text-center py-8">
-          <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-          <p className="text-muted-foreground">
+        </div> : produtosOrdenados.length === 0 ? <div className="flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground">
+          <Package className="h-4 w-4 opacity-50" />
+          <p>
             Nenhum pedido {incluirPrevistos ? "confirmado ou previsto" : "confirmado"} nesta semana
           </p>
         </div> : <div className="space-y-4">
