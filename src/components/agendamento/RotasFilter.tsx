@@ -4,15 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MapPin, ChevronDown } from "lucide-react";
 import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
+import { cn } from "@/lib/utils";
 
 interface RotasFilterProps {
   selectedIds: number[];
   onSelectionChange: (ids: number[]) => void;
+  className?: string;
 }
 
 export const RotasFilter = ({
   selectedIds,
   onSelectionChange,
+  className,
 }: RotasFilterProps) => {
   const { rotasEntrega } = useSupabaseRotasEntrega();
   const [open, setOpen] = React.useState(false);
@@ -52,7 +55,7 @@ export const RotasFilter = ({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="justify-between min-w-[180px]"
+          className={cn("justify-between min-w-[180px]", className)}
         >
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />

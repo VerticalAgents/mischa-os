@@ -846,9 +846,9 @@ export default function AgendamentoDashboard() {
           </div>
         </div>
         
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-3">
           {/* Navegador de Semana */}
-          <div className="flex items-center gap-1 bg-background border rounded-md px-1">
+          <div className="flex w-full sm:w-auto items-center gap-1 bg-background border rounded-md px-1">
             <Button
               variant="ghost"
               size="sm"
@@ -858,7 +858,7 @@ export default function AgendamentoDashboard() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
             
-            <div className="flex items-center gap-2 px-2 min-w-[160px] justify-center">
+            <div className="flex flex-1 sm:flex-none items-center gap-2 px-2 sm:min-w-[160px] justify-center">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium whitespace-nowrap">
                 {format(startOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })} - {format(endOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM/yyyy', { locale: ptBR })}
@@ -889,18 +889,20 @@ export default function AgendamentoDashboard() {
           <RepresentantesFilter
             selectedIds={representanteFiltro}
             onSelectionChange={setRepresentanteFiltro}
+            className="w-full sm:w-auto"
           />
           
           <RotasFilter
             selectedIds={rotaFiltro}
             onSelectionChange={setRotaFiltro}
+            className="w-full sm:w-auto"
           />
           
           <Button
             variant="outline"
             size="sm"
             onClick={exportarPDFRepresentante}
-            className="flex items-center gap-2 ml-auto"
+            className="flex items-center justify-center gap-2 w-full sm:w-auto sm:ml-auto"
           >
             <FileDown className="h-4 w-4" />
             Exportar PDF
@@ -1178,13 +1180,12 @@ export default function AgendamentoDashboard() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-2">
             {dadosGraficoSemanal.map((dia, index) => <div key={index} className={`p-3 lg:p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${dia.isToday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado) ? 'border-primary bg-primary/20' : 'border-border'} flex items-center gap-3 md:flex-col md:text-center`} onClick={() => handleDiaClick(dia.dataCompleta)}>
-                {/* Mobile: horizontal layout | Tablet/Desktop: vertical */}
-                <div className="flex items-center gap-2 md:flex-col md:gap-0">
-                  <div className="font-medium text-sm md:mb-2">{dia.diaSemana}</div>
-                  <div className="text-lg font-bold md:mb-1">{dia.dia}</div>
-                </div>
-                
-                <div className="flex flex-wrap gap-1 flex-1 md:flex-col md:space-y-1 md:gap-0">
+                {/* Mobile: dia da semana esquerda | data centro | badges direita */}
+                {/* Tablet/Desktop: vertical empilhado */}
+                <div className="font-medium text-sm md:mb-2 flex-1 min-w-0 md:flex-none truncate">{dia.diaSemana}</div>
+                <div className="text-lg font-bold md:mb-1 flex-1 text-center md:flex-none">{dia.dia}</div>
+
+                <div className="flex flex-col items-end gap-1 flex-1 md:flex-row md:flex-wrap md:items-stretch md:justify-center md:gap-1 md:flex-none md:w-full">
                   {dia.confirmados > 0 && <Badge variant="outline" className="text-[10px] bg-green-100 text-green-700 border-green-200 rounded-none whitespace-nowrap justify-center md:w-full">
                       {dia.confirmados} Confirmados
                     </Badge>}
