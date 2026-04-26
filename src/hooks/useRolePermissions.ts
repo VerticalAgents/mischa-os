@@ -163,6 +163,18 @@ export function useMyPermissions() {
       return;
     }
 
+    // Representante: acesso fixo apenas a Home, Clientes e Agendamento
+    if (userRole === 'representante') {
+      const repRoutes = ['/home', '/clientes', '/agendamento'];
+      const map: RoutePermissionMap = {};
+      repRoutes.forEach(k => { map[k] = { can_access: true, can_edit: true }; });
+      setPermissionMap(map);
+      setAllowedRoutes(repRoutes);
+      setEditableRoutes(repRoutes);
+      setLoading(false);
+      return;
+    }
+
     // Staff: RLS already filters to only their custom_role_id permissions
     const fetchPerms = async () => {
       try {
