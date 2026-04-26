@@ -1,71 +1,67 @@
+## Objetivo
+
+Permitir que o representante visualize e selecione corretamente os campos de "Configurações Financeiras" (Tipo de Cobrança, Forma de Pagamento, Prazo de Pagamento, Emite Nota Fiscal) e "Categorias de Produtos Habilitadas" no formulário de cliente — usando os parâmetros cadastrados pelo admin (owner). Tal qual feito para categorias de estabelecimento e tipos de logística.
+
+A edição/criação desses parâmetros continua restrita ao admin (já é o comportamento). O representante apenas seleciona entre as opções já cadastradas.
+
 ## Diagnóstico
 
-No formulário de cliente do portal do representante, três campos não funcionam:
+Os campos não carregam para o representante por dois motivos combinados:
 
-1. **Categoria do Estabelecimento** — fica em "Carregando…" porque a RLS de `categorias_estabelecimento` só permite `admin` ou `is_owner_or_staff()`. Representante não é nenhum dos dois.
-2. **Tipo de Logística** — vazio porque o hook filtra `user_id = auth.uid()` (e a RLS também). Os tipos pertencem ao admin/owner; o representante (auth user separado) não os vê.
-3. **Rota de Entrega** — vazio pelo mesmo motivo. Mas aqui a regra de negócio é diferente: cada representante deve ter as **suas próprias rotas**.
+1. **RLS** das tabelas `tipos_cobranca` e `formas_pagamento` só permite `SELECT` quando `auth.uid() = user_id`. Como o representante não é o owner, ele não enxerga nada.
+   - `categorias_produto` já tem política via `get_owner_id(auth.uid())`, então o representante já consegue ler — falta só o hook usar o escopo correto.
+2. **Hooks** `useSupabaseTiposCobranca`, `useSupabaseFormasPagamento` e `useSupabaseCategoriasProduto` filtram por `user.id` (do representante) em vez do `owner_id` resolvido a partir de `representante_accounts`.
 
-## O que será feito
+## Mudanças
 
-### 1. Acesso do representante a Categoria e Tipo de Logística (do admin/owner)
+### 1. Migração (RLS)
 
-Tanto Categoria de Estabelecimento quanto Tipo de Logística pertencem ao admin/owner e devem ser **lidos** pelo representante (sem permissão de editar).
-
-- Migration SQL adicionando policies de SELECT em `categorias_estabelecimento` e `tipos_logistica` permitindo que o representante leia os registros do seu owner (resolvido via `representante_accounts.owner_id`, comparando com `tipos_logistica.user_id` / sem filtro extra para `categorias_estabelecimento`).
-- Ajustar `useSupabaseTiposLogistica.ts` para, quando o usuário for representante, buscar pelo `owner_id` do representante em vez de `auth.uid()`.
-- `useSupabaseCategoriasEstabelecimento.ts` já não filtra por user — basta a policy permitir leitura ao representante.
-
-### 2. Aba "Configurações" no portal do representante
-
-Criar nova rota `/rep/configuracoes` no `RepLayout`, com item "Configurações" no `RepSidebar`. Conteúdo inicial: gerenciamento das **Rotas de Entrega do próprio representante** (CRUD). As rotas continuam sendo escopadas por `user_id = auth.uid()` (cada representante vê apenas as suas).
-
-- Nova página `src/pages/rep/RepConfiguracoes.tsx`.
-- Reaproveitar UI no estilo de `RotasEntregaList` (tabela + dialog de adicionar/editar), mas usando o hook existente `useSupabaseRotasEntrega` que já está pronto para escopo `auth.uid()`.
-- Adicionar item de menu "Configurações" em `RepSidebar.tsx`.
-- Registrar rota em `App.tsx`.
-
-### 3. Ajustes no formulário de cliente (visualização para representante)
-
-- Quando `tipoLogistica = 'Retirada'`, o select de Rota de Entrega já é ocultado — manter.
-- Adicionar mensagem amigável quando o representante não tem nenhuma rota cadastrada (com link "Cadastrar rotas em Configurações").
-- Garantir que a lista de Tipo de Logística carrega corretamente para o representante após a correção do hook.
-
-## Detalhes técnicos
-
-**Migration (resumo)**
+Adicionar políticas `SELECT` nas tabelas usadas no formulário, espelhando o padrão já usado em `categorias_produto` (via `get_owner_id`):
 
 ```sql
--- categorias_estabelecimento: representantes podem ler
-CREATE POLICY "Representantes can read categorias_estabelecimento"
-ON public.categorias_estabelecimento FOR SELECT
-USING (public.is_representante());
+-- tipos_cobranca: representante lê os do owner
+CREATE POLICY "Owner or staff can view tipos_cobranca"
+ON public.tipos_cobranca FOR SELECT
+USING (user_id = public.get_owner_id(auth.uid()));
 
--- tipos_logistica: representantes podem ler os tipos do seu owner
-CREATE POLICY "Representantes can read owner tipos_logistica"
-ON public.tipos_logistica FOR SELECT
-USING (
-  EXISTS (
-    SELECT 1 FROM public.representante_accounts ra
-    WHERE ra.auth_user_id = auth.uid()
-      AND ra.ativo = true
-      AND ra.owner_id = tipos_logistica.user_id
-  )
-);
+-- formas_pagamento: representante lê os do owner
+CREATE POLICY "Owner or staff can view formas_pagamento"
+ON public.formas_pagamento FOR SELECT
+USING (user_id = public.get_owner_id(auth.uid()));
 ```
 
-**Hook `useSupabaseTiposLogistica.ts`**: detectar se é representante (via `representante_accounts`); se sim, buscar `owner_id` e filtrar por esse `user_id`. Caso contrário, manter comportamento atual.
+(As políticas existentes `Users can read own ...` continuam valendo para o owner; o representante passa a ler via a nova política.)
 
-**Arquivos**
+### 2. Hooks — escopo do owner
 
-- `supabase/migrations/<timestamp>_rep_read_cat_logistica.sql` (novo)
-- `src/hooks/useSupabaseTiposLogistica.ts` (editar)
-- `src/pages/rep/RepConfiguracoes.tsx` (novo)
-- `src/components/rep/RepSidebar.tsx` (editar — novo item de menu)
-- `src/App.tsx` (editar — nova rota `/rep/configuracoes`)
-- `src/components/clientes/ClienteFormDialog.tsx` (editar — mensagem quando rep não tem rotas)
+Atualizar os três hooks para resolver o `owner_id` quando o usuário logado é representante (mesmo padrão já usado em `useSupabaseTiposLogistica.ts`):
 
-## Fora de escopo
+- `src/hooks/useSupabaseTiposCobranca.ts`
+- `src/hooks/useSupabaseFormasPagamento.ts`
+- `src/hooks/useSupabaseCategoriasProduto.ts` (atualmente nem filtra por user_id; passar a filtrar pelo owner para consistência multi-tenant)
 
-- Edição de Categoria/Tipo de Logística pelo representante (continua exclusivo do admin).
-- Outras seções da aba Configurações (apenas Rotas no MVP).
+Lógica:
+
+```ts
+const { data: repAccount } = await supabase
+  .from('representante_accounts')
+  .select('owner_id')
+  .eq('auth_user_id', user.id)
+  .eq('ativo', true)
+  .maybeSingle();
+
+const scopeUserId = repAccount?.owner_id || user.id;
+// .eq('user_id', scopeUserId)
+```
+
+### 3. UI (sem mudanças funcionais)
+
+- O formulário do cliente (`ClienteFormDialog.tsx`) já renderiza esses campos para o representante; eles vão passar a popular automaticamente após as correções acima.
+- A edição dos parâmetros (criar/alterar tipos de cobrança, formas de pagamento, categorias de produto) permanece exclusiva do admin nas Configurações — não há mudança no menu do representante.
+
+## Arquivos afetados
+
+- **Novo**: `supabase/migrations/<timestamp>_rls_rep_financeiro_categorias.sql`
+- **Editar**: `src/hooks/useSupabaseTiposCobranca.ts`
+- **Editar**: `src/hooks/useSupabaseFormasPagamento.ts`
+- **Editar**: `src/hooks/useSupabaseCategoriasProduto.ts`
