@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import React from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -8,11 +9,13 @@ import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 interface RepresentantesFilterProps {
   selectedIds: number[];
   onSelectionChange: (ids: number[]) => void;
+  className?: string;
 }
 
 export const RepresentantesFilter = ({
   selectedIds,
   onSelectionChange,
+  className,
 }: RepresentantesFilterProps) => {
   const { representantes } = useSupabaseRepresentantes();
   const [open, setOpen] = React.useState(false);
@@ -55,7 +58,7 @@ export const RepresentantesFilter = ({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="justify-between min-w-[200px]"
+          className={cn("justify-between min-w-[200px]", className)}
         >
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4" />
