@@ -1,53 +1,58 @@
-# Renomear "Agendar" para "Pendente" e simplificar modal
-
 ## Objetivo
-1. Renomear o rótulo visível "Agendar" para "Pendente" em toda a interface (admin e representante).
-2. Quando o status estiver marcado como "Pendente", ocultar os campos que não fazem sentido: Tipo de Pedido, Data de Reposição, Quantidade Total e a seção de Produtos.
 
-## Estratégia de implementação
-
-**Manter o valor interno `"Agendar"` no banco de dados.** Apenas o texto exibido ao usuário muda para "Pendente". Isso evita:
-- Migração de dados em `agendamentos_clientes.status_agendamento` (centenas de registros)
-- Quebrar RLS, triggers, edge functions e queries que filtram por `'Agendar'`
-- Impacto em integrações (GestaoClick, sincronização, dashboards de probabilidade)
-
-A mudança é puramente cosmética/UX.
+1. Ocultar a aba **Financeiro** dentro do detalhe do cliente quando o usuário for um representante.
+2. Adicionar três novos indicadores no topo da aba **Análise de Giro** do cliente (visíveis tanto para admin quanto para representante):
+   - **Dias desde a última entrega**
+   - **Periodicidade configurada** (em dias)
+   - **Periodicidade real** (em dias, calculada a partir do histórico)
 
 ## Mudanças
 
-### 1. Modal de edição do admin — `src/components/agendamento/AgendamentoEditModal.tsx`
-- Trocar o label do `SelectItem value="Agendar"` de "Agendar" para "Pendente".
-- Quando `statusAgendamento === "Agendar"`:
-  - Ocultar o bloco de "Tipo do Pedido"
-  - Ocultar o bloco de "Data de Reposição"
-  - Ocultar o bloco de "Quantidade Total"
-  - Ocultar a seção de produtos (`ProdutoQuantidadeSelector`)
-  - Ocultar a seção de observações/trocas (opcional — manter se útil)
-- Ao salvar com status "Agendar", garantir que `dataReposicao` seja enviada como `null` e `quantidadeTotal` mantenha o valor existente (sem alterar).
+### 1. Ocultar aba "Financeiro" para representantes
 
-### 2. Modal/card do representante — `src/components/clientes/AgendamentoAtual.tsx`
-- Trocar o label do RadioGroupItem `value="Agendar"` de "Agendar" para "Pendente".
-- Atualizar mensagens auxiliares ("será limpa automaticamente", "Para status Agendar a data será automaticamente limpa") para usar "Pendente".
-- Quando `statusAgendamento === "Agendar"`:
-  - Ocultar o bloco de "Tipo do Pedido"
-  - Ocultar o bloco de "Data de Reposição"
-  - Ocultar o bloco de "Quantidade Total"
-  - Ocultar a seção de produtos personalizados (`tipoPedido === "Alterado"`)
+Arquivo: `src/components/clientes/ClienteDetalhesTabs.tsx`
 
-### 3. Outros pontos de exibição do rótulo "Agendar"
-Atualizar **apenas o texto exibido** (mantendo valor interno):
-- `src/pages/rep/RepAgendamentos.tsx` linha 33 — `{ value: "Agendar", label: "Pendente" }`
-- `src/components/clientes/ClientesTable.tsx` linha 80 — mapa de labels: `'Agendar': 'Pendente'`
-- `src/pages/rep/RepHome.tsx` — se houver label visível no case "Agendar"
-- `src/components/clientes/ClienteFormDialog.tsx` linha 541 — texto explicativo: trocar para "Pendente"
+- Adicionar uma prop opcional `hideFinanceiro?: boolean` no componente.
+- Quando `hideFinanceiro` for `true`:
+  - Remover a entrada "Financeiro" do array de tabs mobile.
+  - Mudar o grid desktop de `grid-cols-5` para `grid-cols-4` e remover o `TabsTrigger` de "financeiro".
+  - Remover o `TabsContent` de "financeiro".
 
-### 4. Não alterar
-- Tipos TypeScript (`'Agendar' | 'Previsto' | 'Agendado'`) — permanecem iguais
-- Banco de dados, RLS, triggers, edge functions
-- Lógica de filtros (`statusAgendamento === "Agendar"`) em dashboards, positivação, sem-data, etc.
-- `useStatusAgendamentoStore` — manter `nome: 'Agendar'` (ou apenas o display name se houver campo separado — a verificar)
+Arquivo: `src/pages/rep/RepClientes.tsx`
 
-## Resultado para o usuário
-- O rótulo "Agendar" aparece como "Pendente" em todos os menus, tabelas e badges.
-- Ao marcar um agendamento como "Pendente" no modal de edição (admin ou rep), só o seletor de status fica visível — os outros campos somem, deixando claro que o agendamento está aguardando definição.
-- Comportamento de filtros, dashboards, integrações e dados existentes permanece inalterado.
+- Identificar onde o `ClienteDetailsView` (ou `ClienteDetalhesTabs`) é renderizado para o representante e propagar `hideFinanceiro={true}`. Caso o representante use `ClienteDetailsView`, adicionaremos a prop nele também e repassaremos para `ClienteDetalhesTabs`.
+
+Arquivo: `src/components/clientes/ClienteDetailsView.tsx`
+
+- Adicionar prop `hideFinanceiro?: boolean` e repassá-la para `ClienteDetalhesTabs`.
+
+### 2. Novos indicadores na Análise de Giro
+
+Arquivo: `src/components/clientes/AnaliseGiro.tsx`
+
+Adicionar uma nova grade de 3 cards acima da grade existente de métricas de giro, com:
+
+- **Última Entrega**: dias desde a última entrega (ex.: "5 dias atrás"). Usa `frequenciaInfo.ultimaEntrega` do hook `useFrequenciaRealEntregas` e calcula `differenceInDays(hoje, ultimaEntrega)`. Se não houver entrega, mostrar "Sem entregas".
+- **Periodicidade Configurada**: `cliente.periodicidadePadrao` em dias, com a label da faixa (ex.: "7 dias - Semanal"). Reutilizar `getFaixaLabel` se existir, ou exibir simples.
+- **Periodicidade Real**: `frequenciaInfo.frequenciaReal` em dias. Aplicar coloração por divergência usando `getCorDivergencia(periodicidadeConfig, frequenciaReal)` já existente em `useFrequenciaRealEntregas.ts`. Mostrar ícone de tendência (TrendingUp/Down/Minus) e valor. Se `null`, exibir "Dados insuficientes".
+
+Reutilizar componente existente `GiroMetricCard` para manter consistência visual, ou criar uma pequena variação inline se necessário.
+
+Hook a ser chamado:
+```ts
+const { data: frequenciasMap } = useFrequenciaRealEntregas([cliente.id]);
+const freqInfo = frequenciasMap?.get(cliente.id);
+```
+
+## Detalhes técnicos
+
+- O hook `useFrequenciaRealEntregas` já retorna `{ frequenciaReal, numeroEntregas, primeiraEntrega, ultimaEntrega }` por cliente, portanto não há necessidade de novas queries no Supabase.
+- A função `getCorDivergencia` já está exportada do mesmo arquivo do hook e pode ser usada para colorir o card de periodicidade real (verde/amarelo/vermelho conforme divergência ≤20%, ≤40%, >40%).
+- A detecção do representante será via prop explícita `hideFinanceiro` (não via contexto), mantendo o componente reutilizável para o admin.
+
+## Arquivos editados
+
+- `src/components/clientes/ClienteDetalhesTabs.tsx`
+- `src/components/clientes/ClienteDetailsView.tsx`
+- `src/pages/rep/RepClientes.tsx`
+- `src/components/clientes/AnaliseGiro.tsx`

@@ -12,26 +12,30 @@ interface ClienteDetalhesTabsProps {
   cliente: Cliente;
   onAgendamentoUpdate?: () => void;
   refreshTrigger?: number;
+  hideFinanceiro?: boolean;
 }
 
 export default function ClienteDetalhesTabs({ 
   cliente, 
   onAgendamentoUpdate,
-  refreshTrigger 
+  refreshTrigger,
+  hideFinanceiro = false,
 }: ClienteDetalhesTabsProps) {
   const { activeTab, changeTab } = useTabPersistence("informacoes");
+
+  const mobileTabs = [
+    { id: "informacoes", label: "Informações" },
+    { id: "agendamento", label: "Agendamento Atual" },
+    { id: "analise", label: "Análise de Giro" },
+    ...(!hideFinanceiro ? [{ id: "financeiro", label: "Financeiro" }] : []),
+    { id: "historico", label: "Histórico de Entregas" },
+  ];
 
   return (
     <Tabs value={activeTab} onValueChange={changeTab} className="space-y-6">
       {/* Mobile: grid 2 colunas */}
       <div className="grid grid-cols-2 gap-2 lg:hidden">
-        {[
-          { id: "informacoes", label: "Informações" },
-          { id: "agendamento", label: "Agendamento Atual" },
-          { id: "analise", label: "Análise de Giro" },
-          { id: "financeiro", label: "Financeiro" },
-          { id: "historico", label: "Histórico de Entregas" },
-        ].map((tab) => (
+        {mobileTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => changeTab(tab.id)}
@@ -46,7 +50,7 @@ export default function ClienteDetalhesTabs({
         ))}
       </div>
       {/* Desktop */}
-      <TabsList className="hidden lg:grid w-full grid-cols-5 h-12 bg-gray-100 rounded-lg p-1">
+      <TabsList className={`hidden lg:grid w-full ${hideFinanceiro ? 'grid-cols-4' : 'grid-cols-5'} h-12 bg-gray-100 rounded-lg p-1`}>
         <TabsTrigger value="informacoes" className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium">
           Informações
         </TabsTrigger>
@@ -56,9 +60,11 @@ export default function ClienteDetalhesTabs({
         <TabsTrigger value="analise" className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium">
           Análise de Giro
         </TabsTrigger>
-        <TabsTrigger value="financeiro" className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium">
-          Financeiro
-        </TabsTrigger>
+        {!hideFinanceiro && (
+          <TabsTrigger value="financeiro" className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium">
+            Financeiro
+          </TabsTrigger>
+        )}
         <TabsTrigger value="historico" className="data-[state=active]:bg-white data-[state=active]:shadow-sm font-medium">
           Histórico de Entregas
         </TabsTrigger>
@@ -80,9 +86,11 @@ export default function ClienteDetalhesTabs({
         <AnaliseGiro cliente={cliente} />
       </TabsContent>
 
-      <TabsContent value="financeiro" className="mt-6">
-        <ClienteFinanceiro cliente={cliente} />
-      </TabsContent>
+      {!hideFinanceiro && (
+        <TabsContent value="financeiro" className="mt-6">
+          <ClienteFinanceiro cliente={cliente} />
+        </TabsContent>
+      )}
 
       <TabsContent value="historico" className="mt-6">
         <HistoricoEntregasCliente cliente={cliente} />
