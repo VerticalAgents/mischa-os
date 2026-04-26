@@ -321,7 +321,7 @@ export default function ClienteFormDialog({
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Alerta: campos gerenciados pelo GestaoClick */}
-              {cliente?.gestaoClickClienteId && (
+              {cliente?.gestaoClickClienteId && !isRep && (
               <Alert className="border-warning bg-warning/10">
                   <AlertCircle className="h-4 w-4 text-warning" />
                   <AlertDescription className="text-warning-foreground">
