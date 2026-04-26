@@ -104,7 +104,10 @@ export default function RepClientes() {
       if (busca) {
         const q = busca.toLowerCase();
         const nameMatch = c.nome.toLowerCase().includes(q);
-        const cnpjMatch = (c.cnpj_cpf || "").replace(/\D/g, "").includes(q.replace(/\D/g, ""));
+        const qDigits = q.replace(/\D/g, "");
+        const cnpjMatch =
+          qDigits.length > 0 &&
+          (c.cnpj_cpf || "").replace(/\D/g, "").includes(qDigits);
         if (!nameMatch && !cnpjMatch) return false;
       }
       return true;
