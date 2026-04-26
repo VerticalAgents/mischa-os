@@ -366,7 +366,11 @@ export default function AgendamentoEditModal({
 
             <div className="space-y-2">
               <Label htmlFor="tipoPedido">Tipo do Pedido</Label>
-              <Select value={tipoPedido} onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}>
+              <Select
+                value={tipoPedido}
+                onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}
+                disabled={isRep}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -421,6 +425,7 @@ export default function AgendamentoEditModal({
               value={quantidadeTotal}
               onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
               min="0"
+              disabled={isRep}
               className={hasValidationError ? "border-red-500" : ""}
             />
           </div>
