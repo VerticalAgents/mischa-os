@@ -1,29 +1,45 @@
-## Refinar layout dos blocos diários no Calendário Semanal (mobile)
+## Problema
 
-Reestruturar cada bloco de dia no calendário semanal para ter duas linhas no mobile, com melhor distribuição do espaço. No desktop o layout vertical empilhado permanece igual.
+O modal "Novo Cliente / Editar Cliente" (`ClienteFormDialog.tsx`) está quebrado no mobile (390px):
+- Vários blocos usam grids fixos (`grid-cols-3`, `grid-cols-2`) que não colapsam em telas pequenas, espremendo labels (ex: "ID do Cliente", "Tipo de Cobrança", "Prazo de Pagamento") e cortando textos.
+- O grupo de Tipo de Pessoa (PJ/PF) usa `flex` sem wrap, vazando para fora.
+- O `DialogContent` tem `p-6` e `max-w-lg` padrão (em mobile sai dos limites do viewport quando combinado com o conteúdo), e o título/descrição ficam apertados ao lado do botão de fechar.
 
-### Novo layout mobile
+## Solução
 
-```text
-┌─────────────────────────────────────────────┐
-│ Segunda-feira                            12 │  ← linha 1: dia da semana (esq) | data numérica (dir)
-├─────────────────────────────────────────────┤
-│ [ 3 Confirmados ][ 2 Previstos ][ 1 Entr. ]│  ← linha 2: badges lado a lado dividindo a largura total
-└─────────────────────────────────────────────┘
-```
+Tornar o modal totalmente fluido no mobile, mantendo o layout multi-coluna em telas `sm`/`md` para cima.
 
-- Linha 1: dia da semana à esquerda, data numérica à direita (alinhamento `justify-between`).
-- Linha 2: badges ocupando toda a largura, divididos igualmente pelo número de badges visíveis (`grid grid-cols-N` dinâmico, ou `flex-1` em cada badge).
-- Quando não houver agendamentos, exibir o "Livre" centralizado nessa segunda linha.
+### Ajustes no `src/components/clientes/ClienteFormDialog.tsx`
 
-### Detalhes técnicos
+1. **DialogContent**: ajustar largura/padding para mobile.
+   - `w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-full sm:max-w-[1000px]`
+   - `p-4 sm:p-6` para reduzir padding lateral em telas pequenas.
 
-Arquivo: `src/components/agendamento/AgendamentoDashboard.tsx` (bloco do Calendário Semanal por volta da linha 1182).
+2. **Bloco Dados Básicos**:
+   - `grid-cols-3` (ID, Nome, Tipo de Pessoa) → `grid-cols-1 sm:grid-cols-3`
+   - `grid-cols-2` (CNPJ, Insc. Estadual) → `grid-cols-1 sm:grid-cols-2`
+   - `grid-cols-3` (Contato Nome, Telefone, Email) → `grid-cols-1 sm:grid-cols-3`
+   - RadioGroup de Tipo de Pessoa: adicionar `flex-wrap` e `gap-x-4 gap-y-2`.
 
-- Trocar o container atual (`grid grid-cols-3 items-center` no mobile) por um `flex flex-col` no mobile, mantendo `md:flex md:flex-col md:text-center` para desktop.
-- Linha 1: `<div className="flex items-center justify-between md:flex-col md:gap-1">` contendo o nome do dia e a data numérica. No desktop, manter empilhado e centralizado (data abaixo do dia).
-- Linha 2: container dos badges usando `flex w-full gap-1` no mobile (cada badge com `flex-1` para dividir a largura igualmente). No desktop, manter `md:flex-wrap md:justify-center` com badges em `md:w-full`.
-- Remover classes que forçavam grid 3-colunas no mobile.
-- Estado "Livre" (`dia.total === 0 && dia.realizadas === 0`): exibir centralizado na linha 2 (`text-center w-full`).
+3. **Bloco Configurações Comerciais**:
+   - `grid-cols-2` (Periodicidade, Status) → `grid-cols-1 sm:grid-cols-2`.
 
-Sem alterações de dados, hooks ou lógica — apenas reestruturação de classes Tailwind no JSX desse bloco.
+4. **Bloco Configurações de Entrega e Logística**:
+   - Ambos `grid-cols-2` (Representante/Rota, Categoria/Tipo Logística) → `grid-cols-1 sm:grid-cols-2`.
+
+5. **Bloco Configurações Financeiras**:
+   - `grid-cols-3` → `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`.
+
+6. **Card padding**: `CardContent` mantém `space-y-4`; sem mudança necessária além das grids.
+
+7. **DialogHeader**: garantir que o título não seja cortado pelo botão X — adicionar `pr-8` no `DialogTitle` para reservar espaço do botão de fechar.
+
+### Resultado esperado
+
+- Mobile (≤640px): cada campo ocupa toda a largura, sem cortes; radios PJ/PF quebram linha se preciso.
+- Tablet (≥640px): volta o layout 2 colunas.
+- Desktop (≥1024px): layout original 3 colunas no bloco financeiro.
+
+### Arquivo afetado
+
+- `src/components/clientes/ClienteFormDialog.tsx` (apenas ajustes de classes Tailwind).
