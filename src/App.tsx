@@ -55,6 +55,14 @@ const ControleTrocas = lazy(() => import('@/pages/ControleTrocas'));
 const Reagendamentos = lazy(() => import('@/pages/Reagendamentos'));
 const Modulos = lazy(() => import('@/pages/Modulos'));
 
+// Páginas dedicadas para representantes comerciais
+const RepHome = lazy(() => import('@/pages/rep/RepHome'));
+const RepClientes = lazy(() => import('@/pages/rep/RepClientes'));
+const RepAgendamentos = lazy(() => import('@/pages/rep/RepAgendamentos'));
+import RepLayout from '@/layouts/RepLayout';
+import { RepGuard } from '@/components/rep/RepGuard';
+import { Navigate } from 'react-router-dom';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -79,6 +87,35 @@ function App() {
                     <Route path="/" element={<Index />} />
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/login" element={<LoginPage />} />
+                    {/* Área dedicada do representante comercial */}
+                    <Route path="/rep" element={<Navigate to="/rep/home" replace />} />
+                    <Route path="/rep/home" element={
+                      <ProtectedRoute>
+                        <RepGuard>
+                          <RepLayout>
+                            <RepHome />
+                          </RepLayout>
+                        </RepGuard>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/rep/clientes" element={
+                      <ProtectedRoute>
+                        <RepGuard>
+                          <RepLayout>
+                            <RepClientes />
+                          </RepLayout>
+                        </RepGuard>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/rep/agendamentos" element={
+                      <ProtectedRoute>
+                        <RepGuard>
+                          <RepLayout>
+                            <RepAgendamentos />
+                          </RepLayout>
+                        </RepGuard>
+                      </ProtectedRoute>
+                    } />
                     <Route path="/home" element={
                       <ProtectedRoute>
                         <AppLayout>
