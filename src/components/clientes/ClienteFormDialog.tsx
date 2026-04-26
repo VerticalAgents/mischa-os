@@ -300,13 +300,13 @@ export default function ClienteFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto notranslate" 
+        className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-full sm:max-w-[1000px] max-h-[90vh] overflow-y-auto p-4 sm:p-6 notranslate" 
         translate="no" 
         data-translate="no"
         lang="pt"
       >
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="pr-8">
             {cliente ? 'Editar Cliente' : 'Novo Cliente'}
           </DialogTitle>
           <DialogDescription>
@@ -337,7 +337,7 @@ export default function ClienteFormDialog({
                   </AlertDescription>
                 </Alert>
               )}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="gestaoClickClienteId">ID do Cliente</Label>
@@ -391,7 +391,7 @@ export default function ClienteFormDialog({
                   <RadioGroup
                     value={formData.tipoPessoa || 'PJ'}
                     onValueChange={(value: TipoPessoa) => handleInputChange('tipoPessoa', value)}
-                    className="flex items-center gap-4"
+                    className="flex flex-wrap items-center gap-x-4 gap-y-2"
                     disabled={!!cliente?.gestaoClickClienteId || lockBasicForRep}
                   >
                     <div className="flex items-center space-x-2">
@@ -406,7 +406,7 @@ export default function ClienteFormDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cnpjCpf">{formData.tipoPessoa === 'PF' ? 'CPF' : 'CNPJ'}</Label>
                   <Input
@@ -461,7 +461,7 @@ export default function ClienteFormDialog({
                 </>
               )}
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="contatoNome">Nome do Contato</Label>
                   <Input
@@ -502,7 +502,7 @@ export default function ClienteFormDialog({
               <CardTitle className="text-lg">Configurações Comerciais</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="periodicidadePadrao">Periodicidade (dias)</Label>
                   <Input
@@ -558,7 +558,7 @@ export default function ClienteFormDialog({
               <CardTitle className="text-lg">Configurações de Entrega e Logística</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="representante">Representante</Label>
                   {isRep ? (
@@ -629,7 +629,7 @@ export default function ClienteFormDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="categoriaEstabelecimento">Categoria do Estabelecimento</Label>
                   {categoriasEstabelecimento.length === 0 && formData.categoriaEstabelecimentoId ? (
@@ -707,7 +707,7 @@ export default function ClienteFormDialog({
               <CardTitle className="text-lg">Configurações Financeiras</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="tipoCobranca">Tipo de Cobrança</Label>
                     <Select 
