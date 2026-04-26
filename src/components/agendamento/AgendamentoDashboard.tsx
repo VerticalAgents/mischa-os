@@ -1231,7 +1231,6 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
         </Card>
       </div>
       )}
-      </div>
 
       {/* Calendário Semanal */}
       <Card>
