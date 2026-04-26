@@ -889,7 +889,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                 onClick={voltarSemanaAtual}
                 className="text-xs h-8 shrink-0 w-full sm:w-auto"
               >
-                Semana Atual
+                Ver semana atual
               </Button>
             )}
           </div>
