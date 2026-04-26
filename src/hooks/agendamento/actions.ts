@@ -122,7 +122,7 @@ export const createAgendamentoActions = (
 
       console.log('💾 Dados formatados para salvar:', dadosParaSalvar);
 
-      let result;
+      let agendamentoSalvo;
       if (agendamentoExistente) {
         // CORREÇÃO: Preservar explicitamente a quantidade_total quando fornecida
         const dadosAtualizacao = {
@@ -155,40 +155,56 @@ export const createAgendamentoActions = (
           itensPersonalizados: dadosAtualizacao.itens_personalizados
         });
         
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('agendamentos_clientes')
           .update(dadosAtualizacao)
-          .eq('cliente_id', clienteId)
-          .select()
-          .single();
+          .eq('cliente_id', clienteId);
         
-        result = { data, error };
+        if (error) {
+          console.error('useAgendamentoClienteStore: Erro ao atualizar agendamento:', error);
+          throw error;
+        }
       } else {
         console.log('➕ Criando novo agendamento:', dadosParaSalvar);
         
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('agendamentos_clientes')
           .insert({
             ...dadosParaSalvar,
             created_at: new Date().toISOString()
-          })
-          .select()
-          .single();
+          });
         
-        result = { data, error };
+        if (error) {
+          console.error('useAgendamentoClienteStore: Erro ao criar agendamento:', error);
+          throw error;
+        }
       }
 
-      if (result.error) {
-        console.error('useAgendamentoClienteStore: Erro ao salvar agendamento:', result.error);
-        throw result.error;
+      const { data: agendamentoAtualizado, error: erroRecarga } = await supabase
+        .from('agendamentos_clientes')
+        .select('*')
+        .eq('cliente_id', clienteId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (erroRecarga) {
+        console.error('useAgendamentoClienteStore: Erro ao recarregar agendamento salvo:', erroRecarga);
+        throw erroRecarga;
       }
 
-      console.log('✅ Agendamento salvo com sucesso:', result.data);
-      console.log('🔍 Validação pós-salvamento - Quantidade salva:', result.data.quantidade_total);
+      if (!agendamentoAtualizado) {
+        throw new Error('Agendamento salvo, mas não foi possível recarregar os dados.');
+      }
+
+      agendamentoSalvo = agendamentoAtualizado;
+
+      console.log('✅ Agendamento salvo com sucesso:', agendamentoSalvo);
+      console.log('🔍 Validação pós-salvamento - Quantidade salva:', agendamentoSalvo.quantidade_total);
       
       // Atualizar cache
       const novoCache = new Map(get().agendamentosCompletos);
-      novoCache.set(clienteId, convertDbRowToAgendamento(result.data));
+      novoCache.set(clienteId, convertDbRowToAgendamento(agendamentoSalvo));
       set((state: any) => ({ ...state, agendamentosCompletos: novoCache }));
       
       // Recarregar todos os agendamentos para atualizar a lista
