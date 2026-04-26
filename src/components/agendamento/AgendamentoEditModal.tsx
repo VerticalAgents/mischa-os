@@ -177,7 +177,9 @@ export default function AgendamentoEditModal({
   const hasValidationError = tipoPedido === "Alterado" && somaQuantidadesProdutos !== quantidadeTotal;
 
   const handleSalvar = async () => {
-    if (!agendamento || !dataReposicao) return;
+    if (!agendamento) return;
+    // Para status "Agendar" (Pendente) a data pode ser nula
+    if (statusAgendamento !== "Agendar" && !dataReposicao) return;
 
     if (hasValidationError) {
       toast({
@@ -196,7 +198,9 @@ export default function AgendamentoEditModal({
         const { error: rpcErr } = await supabase.rpc("representante_update_agendamento", {
           p_agendamento_id: agendamento.id as unknown as string,
           p_status_agendamento: statusAgendamento,
-          p_data_proxima_reposicao: formatDate(dataReposicao, "yyyy-MM-dd"),
+          p_data_proxima_reposicao: statusAgendamento === "Agendar" || !dataReposicao
+            ? null
+            : formatDate(dataReposicao, "yyyy-MM-dd"),
         });
         if (rpcErr) throw rpcErr;
 
@@ -207,7 +211,7 @@ export default function AgendamentoEditModal({
 
         const agendamentoAtualizado: AgendamentoItem = {
           ...agendamento,
-          dataReposicao,
+          dataReposicao: statusAgendamento === "Agendar" ? (null as any) : dataReposicao,
           statusAgendamento,
         };
         onSalvar(agendamentoAtualizado);
@@ -217,7 +221,12 @@ export default function AgendamentoEditModal({
       }
 
       // Registrar reagendamento entre semanas se a data mudou
-      if (agendamento.dataReposicao && dataReposicao.getTime() !== agendamento.dataReposicao.getTime()) {
+      if (
+        statusAgendamento !== "Agendar" &&
+        dataReposicao &&
+        agendamento.dataReposicao &&
+        dataReposicao.getTime() !== agendamento.dataReposicao.getTime()
+      ) {
         registrarReagendamentoEntreSemanas(
           agendamento.cliente.id,
           agendamento.dataReposicao,
@@ -235,7 +244,7 @@ export default function AgendamentoEditModal({
       // IMPORTANTE: Ao editar agendamento, limpar gestaoclick_nf_id para permitir regenerar NF
       await salvarAgendamento(agendamento.cliente.id, {
         status_agendamento: statusAgendamento,
-        data_proxima_reposicao: dataReposicao,
+        data_proxima_reposicao: statusAgendamento === "Agendar" ? null : dataReposicao,
         tipo_pedido: tipoPedido,
         quantidade_total: quantidadeTotal,
         itens_personalizados: tipoPedido === "Alterado" ? itensPersonalizados : null
@@ -357,34 +366,37 @@ export default function AgendamentoEditModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Agendar">Agendar</SelectItem>
+                  <SelectItem value="Agendar">Pendente</SelectItem>
                   <SelectItem value="Previsto">Previsto</SelectItem>
                   <SelectItem value="Agendado">Agendado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tipoPedido">Tipo do Pedido</Label>
-              <Select
-                value={tipoPedido}
-                onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}
-                disabled={isRep}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Padrão">Padrão</SelectItem>
-                  <SelectItem value="Alterado">Alterado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {statusAgendamento !== "Agendar" && (
+              <div className="space-y-2">
+                <Label htmlFor="tipoPedido">Tipo do Pedido</Label>
+                <Select
+                  value={tipoPedido}
+                  onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}
+                  disabled={isRep}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Padrão">Padrão</SelectItem>
+                    <SelectItem value="Alterado">Alterado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label>Data de Reposição</Label>
-            <Popover>
+          {statusAgendamento !== "Agendar" && (
+            <div className="space-y-2">
+              <Label>Data de Reposição</Label>
+              <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -407,30 +419,33 @@ export default function AgendamentoEditModal({
                   className={cn("p-3 pointer-events-auto")}
                 />
               </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-4">
-              <Label htmlFor="quantidade">Quantidade Total</Label>
-              {hasValidationError && (
-                <p className="text-sm text-red-500">
-                  Total deve ser igual à soma das quantidades dos produtos ({somaQuantidadesProdutos})
-                </p>
-              )}
+              </Popover>
             </div>
-            <Input
-              id="quantidade"
-              type="number"
-              value={quantidadeTotal}
-              onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
-              min="0"
-              disabled={isRep}
-              className={hasValidationError ? "border-red-500" : ""}
-            />
-          </div>
+          )}
 
-          {tipoPedido === "Alterado" && !isRep && (
+          {statusAgendamento !== "Agendar" && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="quantidade">Quantidade Total</Label>
+                {hasValidationError && (
+                  <p className="text-sm text-red-500">
+                    Total deve ser igual à soma das quantidades dos produtos ({somaQuantidadesProdutos})
+                  </p>
+                )}
+              </div>
+              <Input
+                id="quantidade"
+                type="number"
+                value={quantidadeTotal}
+                onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
+                min="0"
+                disabled={isRep}
+                className={hasValidationError ? "border-red-500" : ""}
+              />
+            </div>
+          )}
+
+          {statusAgendamento !== "Agendar" && tipoPedido === "Alterado" && !isRep && (
             <div className="space-y-4 border-t pt-4">
               <ProdutoQuantidadeSelector
                 value={itensPersonalizados}

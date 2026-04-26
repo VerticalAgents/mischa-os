@@ -30,7 +30,7 @@ const STATUS_OPTIONS = [
   { value: "todos", label: "Todos os status" },
   { value: "Previsto", label: "Previsto" },
   { value: "Agendado", label: "Agendado" },
-  { value: "Agendar", label: "Agendar" },
+  { value: "Agendar", label: "Pendente" },
 ];
 
 function statusVariant(s: string): "default" | "secondary" | "outline" {
@@ -202,7 +202,7 @@ export default function RepAgendamentos() {
                         <td className="p-3">{a.pedido?.totalPedidoUnidades ?? "-"}</td>
                       <td className="p-3">
                         <Badge variant={statusVariant(a.statusAgendamento)}>
-                          {a.statusAgendamento}
+                          {a.statusAgendamento === "Agendar" ? "Pendente" : a.statusAgendamento}
                         </Badge>
                       </td>
                       <td className="p-3 text-right">
