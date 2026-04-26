@@ -54,7 +54,7 @@ export default function RepAgendamentos() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<AgendamentoItem | null>(null);
   const [loading, setLoading] = useState(true);
-  const { activeTab, changeTab } = useTabPersistence("dashboard", "rep-agendamentos");
+  const { activeTab, changeTab } = useTabPersistence("dashboard");
 
   useEffect(() => {
     (async () => {
