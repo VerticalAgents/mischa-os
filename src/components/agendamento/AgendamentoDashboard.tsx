@@ -908,90 +908,32 @@ export default function AgendamentoDashboard() {
         </div>
       </div>
 
-      {/* Card de Probabilidade de Confirmação */}
-      {previstosSemanais.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-              <div className="space-y-1.5">
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <BarChart3 className="h-5 w-5 text-amber-500" />
-                  Probabilidade de Confirmação
-                </CardTitle>
-                <CardDescription className="text-left">
-                  Probabilidade média dos {previstosSemanais.length} previstos desta semana
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="incluir-previstos-global" className="text-sm cursor-pointer whitespace-nowrap">
-                    Incluir previstos
-                  </Label>
-                  <Switch 
-                    id="incluir-previstos-global" 
-                    checked={incluirPrevistos} 
-                    onCheckedChange={handleTogglePrevistos} 
-                  />
-                </div>
-                {incluirPrevistos && (
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={percentualPrevistos}
-                      onChange={(e) => setPercentualPrevistos(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
-                      className="w-16 h-8 text-center text-sm"
-                    />
-                    <span className="text-sm text-muted-foreground">%</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Probabilidade média com barra */}
-              <div className="space-y-2">
-                <div className="flex items-baseline gap-2">
-                  <span className={`text-3xl font-bold ${
-                    probabilidadeSemanal.media >= 85 ? 'text-green-600' : 
-                    probabilidadeSemanal.media >= 50 ? 'text-amber-600' : 'text-red-600'
-                  }`}>
-                    {scoresSemanaisLoading ? '...' : `${probabilidadeSemanal.media}%`}
-                  </span>
-                </div>
-                <Progress 
-                  value={probabilidadeSemanal.media} 
-                  className={`h-3 ${
-                    probabilidadeSemanal.media >= 85 ? '[&>div]:bg-green-500' : 
-                    probabilidadeSemanal.media >= 50 ? '[&>div]:bg-amber-500' : '[&>div]:bg-red-500'
-                  }`}
-                />
-              </div>
-
-              {/* Breakdown por faixa */}
-              <div className="flex items-center gap-3 sm:gap-4 text-sm flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-green-500" />
-                  <span className="text-muted-foreground">Alta (&gt;85%):</span>
-                  <span className="font-semibold">{probabilidadeSemanal.alto}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-amber-500" />
-                  <span className="text-muted-foreground">Média (50-84%):</span>
-                  <span className="font-semibold">{probabilidadeSemanal.medio}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <span className="text-muted-foreground">Baixa (&lt;50%):</span>
-                  <span className="font-semibold">{probabilidadeSemanal.baixo}</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Toggle global: Incluir previstos no cálculo de unidades */}
+      <div className="flex items-center justify-end gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Label htmlFor="incluir-previstos-global" className="text-sm cursor-pointer whitespace-nowrap">
+            Incluir previstos
+          </Label>
+          <Switch
+            id="incluir-previstos-global"
+            checked={incluirPrevistos}
+            onCheckedChange={handleTogglePrevistos}
+          />
+        </div>
+        {incluirPrevistos && (
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={percentualPrevistos}
+              onChange={(e) => setPercentualPrevistos(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+              className="w-16 h-8 text-center text-sm"
+            />
+            <span className="text-sm text-muted-foreground">%</span>
+          </div>
+        )}
+      </div>
 
       {/* Cards de Indicadores */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
