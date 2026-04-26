@@ -1,107 +1,82 @@
 ## Objetivo
 
-Criar um tipo de acesso específico para **representantes comerciais**, com login próprio. Cada representante enxerga apenas:
-- Clientes vinculados a ele (campo `representante_id`)
-- Agendamentos desses clientes
-- Pode cadastrar novos clientes (sempre forçado como representante)
-- Pode editar agendamentos, **mas apenas status e data** (garantido no banco via RPC dedicada)
+Criar uma experiência dedicada para representantes comerciais em rotas `/rep/*`, com layout próprio e telas simplificadas focadas no fluxo deles (cadastro de clientes vinculados e gestão de status/data dos próprios agendamentos). Hoje o rep cai no `/home` do dono e vê KPIs do negócio inteiro — não faz sentido.
 
-Não vê clientes de outros representantes nem clientes sem representante. Não tem acesso a Expedição, PCP, Financeiro, Configurações, etc.
+A segurança (RLS, RPC restrito de update, edge function de criação de credenciais) já está pronta da fase anterior. Este plano é puramente de UI/roteamento.
 
-Histórico de entregas, indicadores próprios, funil de leads e dados financeiros ficam para a **fase 2**.
+---
 
-## Arquitetura
-
-Estrutura paralela ao padrão de `staff_accounts`, em uma nova tabela `representante_accounts`. Mantida separada porque o representante é um perfil único e bem definido, com regra de visibilidade muito específica.
+## Estrutura de rotas
 
 ```text
-┌──────────────────────┐      ┌──────────────────────────┐
-│ representantes       │◄─────│ representante_accounts   │
-│  - id (int)          │ 1:1  │  - representante_id (FK) │
-│  - nome, email...    │      │  - auth_user_id (uuid)   │
-└──────────────────────┘      │  - login_email           │
-                              │  - ativo, owner_id       │
-                              └──────────────────────────┘
-                                         │
-                                         ▼
-                                 auth.users + user_roles('representante')
+/rep                       → redirect para /rep/home
+/rep/home                  → dashboard do representante
+/rep/clientes              → lista + cadastro/edição de clientes dele
+/rep/agendamentos          → lista de agendamentos com edição limitada (status + data)
 ```
 
-## Implementação
+Tudo dentro de um novo `RepLayout` com sidebar enxuta (3 itens) e header próprio. Sem acesso a outras rotas — qualquer tentativa redireciona para `/rep/home`.
 
-### 1. Banco de dados (migration)
+---
 
-- Adicionar valor `representante` ao enum `app_role`
-- Criar tabela `representante_accounts` (id, representante_id FK, auth_user_id FK auth.users, login_email, ativo, owner_id, timestamps)
-- RLS na nova tabela: admin gerencia tudo; representante lê o próprio registro
-- Funções helper SECURITY DEFINER:
-  - `is_representante()` → boolean
-  - `get_my_representante_id()` → integer
-- Novas RLS policies (somando às existentes de admin/staff):
-  - `clientes` SELECT: representante vê linhas onde `representante_id = get_my_representante_id()`
-  - `clientes` INSERT: representante insere apenas com `representante_id = get_my_representante_id()`
-  - `clientes` UPDATE: representante edita apenas seus clientes (sem mudar representante_id)
-  - `agendamentos_clientes` SELECT: representante vê agendamentos cujo cliente é dele
-  - `agendamentos_clientes` UPDATE: **BLOQUEADO** para representante (forçado a usar RPC)
-  - `representantes` SELECT: representante vê apenas o próprio registro
-- **RPC `representante_update_agendamento(p_agendamento_id uuid, p_status text, p_data_proxima_reposicao date)`**:
-  - SECURITY DEFINER
-  - Valida que o caller é representante e que o agendamento pertence a um cliente dele
-  - Atualiza apenas os dois campos permitidos
+## Comportamento por tela
 
-### 2. Edge function `create-representante-user`
+### 1. Login e redirecionamento
+- Após login, se `userRole === 'representante'` → redirecionar para `/rep/home` (em vez de `/home`).
+- Guard global: se usuário é representante e tenta acessar qualquer rota fora de `/rep/*`, redireciona para `/rep/home`.
+- Inversamente, se um admin/staff acessa `/rep/*`, redireciona para `/home`.
 
-Espelho da `create-staff-user`:
-- Recebe `representante_id`, `email`, `senha` (validados via Zod)
-- Valida que o caller é admin (via `getClaims` + `has_role`)
-- Cria usuário no `auth.users` com service role
-- Insere em `representante_accounts` vinculando os dois
-- Atribui role `representante` em `user_roles`
-- Retorna sucesso/erro com mensagens claras
+### 2. `/rep/home` — Dashboard do representante
+Quatro blocos:
+- **Saudação + total de PDVs ativos**: "Olá, {nome}" + card com contagem de clientes ativos vinculados a ele.
+- **Próximos agendamentos (7 dias)**: lista enxuta dos próximos pedidos previstos dos clientes dele (data, cliente, status). Clicar abre o modal de edição.
+- **Pendentes de confirmação**: agendamentos com status `Previsto` ou `Agendar` que precisam de ação. Mesmo padrão de clique.
+- **Atalhos rápidos**: 3 botões grandes — "Cadastrar cliente", "Ver clientes", "Ver agendamentos".
 
-### 3. UI — Gestão Comercial → Representantes
+### 3. `/rep/clientes` — Lista simplificada
+- Tabela com colunas essenciais: Nome, Status, Categoria, Telefone, Próxima reposição, Ações (editar).
+- Botão destacado "Novo cliente" no topo.
+- Busca por nome/CNPJ.
+- Filtro por status (Ativo, Standby, A ativar, Inativo).
+- Reusa o `ClienteFormDialog` existente (já trava o campo Representante automaticamente para usuários rep — feito na fase anterior).
 
-Na tabela de representantes existente:
-- Nova coluna **"Acesso"**: badge "Ativo / Sem acesso"
-- Botão **"Criar acesso"** (representantes sem login) abre modal pedindo email + senha
-- Botão **"Revogar acesso"** (representantes com login ativo) desativa o `representante_accounts.ativo`
-- Botão **"Resetar senha"** reaproveita a edge function `update-staff-password` ou cria espelho
+### 4. `/rep/agendamentos` — Lista simplificada
+- Lista (não calendário, mais simples) agrupada por data, com filtro de período (Hoje / 7 dias / 30 dias / Todos).
+- Cada linha: data, cliente, quantidade, status. Clique abre o modal de edição.
+- Modal de edição reusa o `AgendamentoEditModal` existente, que já está restrito para reps via RPC `representante_update_agendamento` (só edita status e data).
+- Filtro por cliente e por status.
 
-### 4. UI — Roles, rotas e navegação
+---
 
-- `useUserRoles.ts` (e tipo `AppRole`): adicionar `'representante'`
-- Novo `RepresentanteGuard` (espelho do `AdminGuard`)
-- `navigation-items.tsx`: quando `userRole === 'representante'`, sidebar mostra apenas: **Home**, **Clientes**, **Agendamento**
-- `App.tsx`: rotas restantes (Expedição, PCP, Financeiro, Configurações, Analytics, Relatórios, etc.) redirecionam para `/home` quando role é representante
-- Home com widgets simplificados (ou redirecionar direto pra Clientes na fase 1)
+## Arquivos a criar/editar
 
-### 5. UI — Páginas operacionais
+### Novos
+- `src/layouts/RepLayout.tsx` — shell com sidebar enxuta (3 itens) + header com nome do rep e logout.
+- `src/components/rep/RepSidebar.tsx` — sidebar dedicada.
+- `src/pages/rep/RepHome.tsx` — dashboard do rep.
+- `src/pages/rep/RepClientes.tsx` — lista de clientes simplificada.
+- `src/pages/rep/RepAgendamentos.tsx` — lista de agendamentos simplificada.
+- `src/components/rep/RepGuard.tsx` — bloqueia acesso a `/rep/*` para não-reps.
+- `src/hooks/useRepDashboardData.ts` — busca dados agregados para a Home (total de clientes, próximos agendamentos, pendentes).
 
-- **Clientes**:
-  - Lista vem filtrada via RLS automaticamente
-  - No formulário de novo/editar cliente, quando role é representante: campo "Representante" fica oculto e fixo no `representante_id` dele
-- **Agendamento**:
-  - Lista filtrada via RLS automaticamente
-  - No `AgendamentoEditModal`, quando role é representante: apenas **status** e **data da próxima reposição** ficam editáveis; demais campos viram read-only
-  - Hook de salvar agendamento detecta role representante e chama a **RPC `representante_update_agendamento`** em vez do update direto
-  - Reaproveita o padrão `EditPermissionContext` para os campos read-only
+### Editar
+- `src/App.tsx` — registrar as novas rotas `/rep/*` envolvidas pelo `RepLayout` + `RepGuard`.
+- `src/contexts/AuthContext.tsx` (ou onde acontece o redirecionamento pós-login) — redirecionar reps para `/rep/home`.
+- Guard global existente (provavelmente em `App.tsx` ou em `MainLayout`) — se `isRepresentante`, redirecionar qualquer rota não-`/rep/*` para `/rep/home`.
 
-## Resumo dos arquivos impactados
+---
 
-- 1 migration SQL (enum, tabela, RLS, funções, RPC)
-- 1 edge function nova (`create-representante-user`)
-- `src/hooks/useUserRoles.ts` (adicionar role)
-- `src/components/auth/` (novo `RepresentanteGuard`)
-- `src/components/layout/navigation-items.tsx` (filtrar por role)
-- `src/App.tsx` (proteger rotas)
-- `src/pages/gestao-comercial/Representantes.tsx` (coluna + botões)
-- 1 modal novo: `CriarAcessoRepresentanteDialog`
-- `src/components/clientes/ClienteFormDialog` (esconder campo representante)
-- `src/components/agendamento/AgendamentoEditModal` + hook de save (read-only + RPC)
+## Detalhes técnicos
 
-## Notas de segurança
+- **Filtros de dados**: como o RLS já filtra por `get_my_representante_id()`, as queries no front são as mesmas usadas hoje (`from('clientes').select(...)` e `from('agendamentos_clientes').select(...)`) — o Postgres devolve só o que o rep pode ver. Sem necessidade de filtros adicionais no client.
+- **Edição de agendamento**: o `AgendamentoEditModal` já detecta `isRepresentante` e roteia o save pela RPC `representante_update_agendamento`. Reusamos sem mudanças.
+- **Cadastro de cliente**: `ClienteFormDialog` já auto-preenche e trava `representante_id` quando o usuário é rep. Reusamos sem mudanças.
+- **Sidebar do dono**: a lógica atual em `useMyPermissions` para representante (`/home`, `/clientes`, `/agendamento`) deixa de ser usada na prática, mas pode ficar como fallback. O guard novo garante que o rep nunca renderiza `MainLayout`.
+- **Estilo**: mantém a identidade Mischa (vermelho #d1193a no header/sidebar) seguindo `mem://brand/identity-and-ui-standards`.
 
-- Senhas definidas pelo admin no momento da criação (alinhado com `mem://auth/staff-credentials-management-policy`)
-- RPC garante que mesmo via DevTools o representante só consegue alterar status e data
-- RLS bloqueia visibilidade no banco — não depende só de filtros de UI
-- Role assignment via edge function (admin-only) — nunca pelo cliente
+---
+
+## Fora de escopo (fase 2, conforme combinado)
+- Funil de leads para o rep.
+- Indicadores de performance (meta vs realizado, conversão).
+- Visão financeira detalhada.
