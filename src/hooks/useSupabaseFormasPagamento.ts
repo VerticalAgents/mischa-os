@@ -26,11 +26,21 @@ export const useSupabaseFormasPagamento = () => {
         return;
       }
 
+      // Resolve owner_id when the logged user is a representative
+      const { data: repAccount } = await supabase
+        .from('representante_accounts')
+        .select('owner_id')
+        .eq('auth_user_id', user.id)
+        .eq('ativo', true)
+        .maybeSingle();
+
+      const scopeUserId = repAccount?.owner_id || user.id;
+
       const { data, error } = await supabase
         .from('formas_pagamento')
         .select('*')
         .eq('ativo', true)
-        .eq('user_id', user.id)
+        .eq('user_id', scopeUserId)
         .order('nome');
 
       if (error) {
