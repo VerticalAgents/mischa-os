@@ -20,8 +20,24 @@ export function useGestaoClickSync() {
       });
 
       if (error) {
-        console.error('Erro ao chamar Edge Function:', error);
-        toast.error(error.message || 'Erro ao conectar com GestaoClick');
+        console.error('Erro ao chamar Edge Function:', error, 'data:', data);
+        // Tentar extrair mensagem real do body de erro (FunctionsHttpError)
+        let detalhe: string | null = (data as any)?.error || null;
+        if (!detalhe && (error as any)?.context?.json) {
+          try {
+            const body = await (error as any).context.json();
+            detalhe = body?.error || body?.message || null;
+          } catch (_) { /* ignore */ }
+        }
+        if (!detalhe && (error as any)?.context?.text) {
+          try {
+            const txt = await (error as any).context.text();
+            if (txt) detalhe = txt;
+          } catch (_) { /* ignore */ }
+        }
+        toast.error(detalhe || error.message || 'Erro ao conectar com GestaoClick', {
+          duration: 8000,
+        });
         return { success: false, vendaId: null };
       }
 
@@ -31,7 +47,7 @@ export function useGestaoClickSync() {
           toast.info(`Pedido já possui venda vinculada #${data.venda_id}`);
           return { success: true, vendaId: data.venda_id, alreadyExists: true };
         }
-        toast.error(data.error);
+        toast.error(data.error, { duration: 8000 });
         return { success: false, vendaId: null };
       }
 
