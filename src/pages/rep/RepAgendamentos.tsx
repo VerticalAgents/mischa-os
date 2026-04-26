@@ -25,6 +25,8 @@ import { useTabPersistence } from "@/hooks/useTabPersistence";
 
 const PERIODO_OPTIONS = [
   { value: "hoje", label: "Hoje" },
+  { value: "atrasados", label: "Atrasados" },
+  { value: "pendentes", label: "Sem data" },
   { value: "7", label: "Próximos 7 dias" },
   { value: "30", label: "Próximos 30 dias" },
   { value: "todos", label: "Todos" },
@@ -102,20 +104,37 @@ export default function RepAgendamentos() {
     if (periodo !== "todos") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const limit = new Date(today);
-      if (periodo === "hoje") {
-        limit.setHours(23, 59, 59, 999);
+
+      if (periodo === "atrasados") {
+        list = list.filter((a) => {
+          if (!a.dataReposicao) return false;
+          const d = new Date(a.dataReposicao);
+          d.setHours(0, 0, 0, 0);
+          return d < today;
+        });
+      } else if (periodo === "pendentes") {
+        list = list.filter((a) => !a.dataReposicao);
       } else {
-        limit.setDate(limit.getDate() + parseInt(periodo));
+        const limit = new Date(today);
+        if (periodo === "hoje") {
+          limit.setHours(23, 59, 59, 999);
+        } else {
+          limit.setDate(limit.getDate() + parseInt(periodo));
+        }
+        list = list.filter((a) => {
+          if (!a.dataReposicao) return false;
+          const d = new Date(a.dataReposicao);
+          d.setHours(0, 0, 0, 0);
+          return d >= today && d <= limit;
+        });
       }
-      list = list.filter((a) => {
-        const d = new Date(a.dataReposicao);
-        d.setHours(0, 0, 0, 0);
-        return d >= today && d <= limit;
-      });
     }
 
-    list.sort((a, b) => a.dataReposicao.getTime() - b.dataReposicao.getTime());
+    list.sort((a, b) => {
+      const ta = a.dataReposicao ? a.dataReposicao.getTime() : Infinity;
+      const tb = b.dataReposicao ? b.dataReposicao.getTime() : Infinity;
+      return ta - tb;
+    });
     return list;
   }, [agendamentos, busca, periodo, filtroStatus]);
 
@@ -241,7 +260,9 @@ export default function RepAgendamentos() {
                   filtrados.map((a) => (
                     <tr key={a.id ?? a.cliente.id} className="border-t hover:bg-muted/30">
                       <td className="p-3 truncate text-muted-foreground">
-                        {format(a.dataReposicao, "dd/MM/yyyy", { locale: ptBR })}
+                        {a.dataReposicao
+                          ? format(a.dataReposicao, "dd/MM/yyyy", { locale: ptBR })
+                          : "—"}
                       </td>
                       <td className="p-3 truncate font-medium">{a.cliente.nome}</td>
                         <td className="p-3">{a.pedido?.totalPedidoUnidades ?? "-"}</td>
@@ -288,7 +309,9 @@ export default function RepAgendamentos() {
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" />
-                        {format(a.dataReposicao, "dd/MM/yyyy", { locale: ptBR })}
+                        {a.dataReposicao
+                          ? format(a.dataReposicao, "dd/MM/yyyy", { locale: ptBR })
+                          : "—"}
                       </span>
                       <span>
                         Qtd:{" "}
