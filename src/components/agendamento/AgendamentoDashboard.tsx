@@ -129,7 +129,11 @@ const IndicadoresEntrega = ({
   );
 };
 
-export default function AgendamentoDashboard() {
+interface AgendamentoDashboardProps {
+  hideExportPDF?: boolean;
+}
+
+export default function AgendamentoDashboard({ hideExportPDF = false }: AgendamentoDashboardProps = {}) {
   const { canEdit } = useEditPermission();
   const isMobile = useIsMobile();
   const {
