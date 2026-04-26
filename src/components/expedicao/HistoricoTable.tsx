@@ -59,8 +59,11 @@ export const HistoricoTable = ({
   };
 
   return (
-    <Table>
-      <TableHeader>
+    <>
+      {/* Desktop: tabela */}
+      <div className="hidden lg:block">
+        <Table>
+          <TableHeader>
         <TableRow>
           <TableHead>Data</TableHead>
           {showClienteColumn && <TableHead>Cliente</TableHead>}
@@ -135,6 +138,66 @@ export const HistoricoTable = ({
           </TableRow>
         ))}
       </TableBody>
-    </Table>
+        </Table>
+      </div>
+
+      {/* Mobile: cards */}
+      <div className="lg:hidden space-y-2">
+        {registros.map((registro) => (
+          <div key={registro.id} className="rounded-lg border p-3 bg-card space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <span>{format(new Date(registro.data), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                {registro.editado_manualmente && (
+                  <Edit className="h-3 w-3 text-muted-foreground" />
+                )}
+              </div>
+              {registro.tipo === 'entrega' ? (
+                <Badge variant="default" className="bg-green-500 text-white shrink-0">
+                  <Check className="h-3 w-3 mr-1" />
+                  Entrega
+                </Badge>
+              ) : (
+                <Badge variant="destructive" className="shrink-0">
+                  <X className="h-3 w-3 mr-1" />
+                  Retorno
+                </Badge>
+              )}
+            </div>
+
+            {showClienteColumn && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium truncate">{registro.cliente_nome}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-1 h-6 w-6 opacity-60 hover:opacity-100 shrink-0"
+                  onClick={(e) => handleRedirectToCliente(registro.cliente_id, e)}
+                  title="Ver informações do cliente"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+
+            <div className="text-xs text-muted-foreground line-clamp-2">
+              {formatItensParaExibicao(registro.itens)}
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-sm font-medium">{registro.quantidade} unidades</span>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" onClick={() => onVerDetalhes(registro)}>
+                  <Eye className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => onEditarRegistro(registro)}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 };

@@ -50,21 +50,23 @@ export const HistoricoEntregasCliente = ({
     resetFiltros();
     carregarHistorico(cliente.id);
   };
-  return <Card className="p-6">
-      <div className="space-y-6">
+  return <Card className="p-3 lg:p-6">
+      <div className="space-y-4 lg:space-y-6">
         <div>
-          <h3 className="text-xl font-semibold mb-2">Histórico de Entregas do Cliente</h3>
-          <p className="text-muted-foreground text-left">
+          <h3 className="text-lg lg:text-xl font-semibold mb-2">Histórico de Entregas do Cliente</h3>
+          <p className="text-sm text-muted-foreground text-left">
             Visualize todas as entregas e retornos confirmados para {cliente.nome}.
           </p>
         </div>
 
         {/* Filtros */}
-        <div className="bg-muted/50 p-4 rounded-lg space-y-4">
-          <div className="flex items-center gap-4">
-            <Calendar className="h-5 w-5 text-muted-foreground" />
-            <span className="font-medium">Filtros de Período</span>
-            <Button variant="outline" size="sm" onClick={handleResetFiltros} className="ml-auto">
+        <div className="bg-muted/50 p-3 lg:p-4 rounded-lg space-y-3 lg:space-y-4">
+          <div className="flex flex-col items-start gap-2 lg:flex-row lg:items-center lg:gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-muted-foreground" />
+              <span className="font-medium">Filtros de Período</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleResetFiltros} className="w-full lg:w-auto lg:ml-auto">
               <RotateCcw className="h-4 w-4 mr-2" />
               Restaurar Padrão (2 meses)
             </Button>
@@ -83,24 +85,24 @@ export const HistoricoEntregasCliente = ({
         </div>
 
         {/* Resumo */}
-        <div className="grid grid-cols-3 gap-4">
-          <Card className="p-4 text-center">
-            <div className="text-2xl font-bold">{registrosFiltrados.length}</div>
-            <div className="text-sm text-muted-foreground">Total de Operações</div>
+        <div className="grid grid-cols-3 gap-2 lg:gap-4">
+          <Card className="p-2 lg:p-4 text-center">
+            <div className="text-lg lg:text-2xl font-bold">{registrosFiltrados.length}</div>
+            <div className="text-xs lg:text-sm text-muted-foreground">Total</div>
           </Card>
-          <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">{totalEntregas}</div>
-            <div className="text-sm text-muted-foreground">Entregas</div>
+          <Card className="p-2 lg:p-4 text-center">
+            <div className="text-lg lg:text-2xl font-bold text-green-600">{totalEntregas}</div>
+            <div className="text-xs lg:text-sm text-muted-foreground">Entregas</div>
           </Card>
-          <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-red-600">{totalRetornos}</div>
-            <div className="text-sm text-muted-foreground">Retornos</div>
+          <Card className="p-2 lg:p-4 text-center">
+            <div className="text-lg lg:text-2xl font-bold text-red-600">{totalRetornos}</div>
+            <div className="text-xs lg:text-sm text-muted-foreground">Retornos</div>
           </Card>
         </div>
 
         {/* Tabs por tipo */}
         <Tabs value={filtros.tipo} onValueChange={value => setFiltroTipo(value as any)} className="w-full">
-          <TabsList className="mb-4">
+          <TabsList className="mb-4 w-full lg:w-auto overflow-x-auto">
             <TabsTrigger value="todos">
               Todos ({registrosFiltrados.length})
             </TabsTrigger>
