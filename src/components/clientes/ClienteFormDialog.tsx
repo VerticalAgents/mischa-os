@@ -22,6 +22,8 @@ import { Cliente, StatusCliente, DiaSemana, TipoPessoa } from "@/types";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { useMyRepresentanteId } from "@/hooks/useMyRepresentanteId";
 import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
 import { useSupabaseCategoriasEstabelecimento } from "@/hooks/useSupabaseCategoriasEstabelecimento";
 import { useSupabaseTiposLogistica } from "@/hooks/useSupabaseTiposLogistica";
