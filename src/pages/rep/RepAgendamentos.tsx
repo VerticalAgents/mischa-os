@@ -199,7 +199,7 @@ export default function RepAgendamentos() {
                         {format(a.dataReposicao, "dd/MM/yyyy", { locale: ptBR })}
                       </td>
                       <td className="p-3 truncate font-medium">{a.cliente.nome}</td>
-                      <td className="p-3">{a.pedido?.quantidadeTotal ?? "-"}</td>
+                        <td className="p-3">{a.pedido?.totalPedidoUnidades ?? "-"}</td>
                       <td className="p-3">
                         <Badge variant={statusVariant(a.statusAgendamento)}>
                           {a.statusAgendamento}
