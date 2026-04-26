@@ -138,18 +138,18 @@ export default function QuantidadesProdutosSemanal({
 
   return <Card>
     <CardHeader>
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
         <div className="space-y-1.5">
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-blue-500" />
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Package className="h-4 w-4 md:h-5 md:w-5 text-blue-500" />
             Produtos Necessários
           </CardTitle>
-          <CardDescription className="text-left">
+          <CardDescription className="text-left text-xs md:text-sm">
             Quantidades para pedidos {incluirPrevistos ? `confirmados + ${percentualPrevistos}% previstos` : "confirmados"}
           </CardDescription>
         </div>
         {onToggleIncluirPrevistos && (
-          <div className="flex items-center gap-3 sm:justify-end flex-wrap">
+          <div className="flex items-center gap-2 sm:gap-3 sm:justify-end flex-wrap">
             <div className="flex items-center gap-2">
               <Label htmlFor="incluir-previstos-prod" className="text-sm cursor-pointer whitespace-nowrap">
                 Incluir previstos
@@ -188,9 +188,9 @@ export default function QuantidadesProdutosSemanal({
           </p>
         </div> : <div className="space-y-4">
           {/* Total Geral */}
-          <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-            <p className="text-sm text-muted-foreground mb-1">Quantidade Total Necessária</p>
-            <p className="text-3xl font-bold text-blue-600">{quantidadeTotal}</p>
+          <div className="bg-blue-50 dark:bg-blue-950/20 p-3 md:p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-xs md:text-sm text-muted-foreground mb-1">Quantidade Total Necessária</p>
+            <p className="text-2xl md:text-3xl font-bold text-blue-600">{quantidadeTotal}</p>
             <Badge variant="default" className="mt-2 bg-blue-200">
               {totalPedidos} {totalPedidos === 1 ? 'pedido' : 'pedidos'}
             </Badge>

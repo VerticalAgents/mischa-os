@@ -181,19 +181,19 @@ export default function EntregasRealizadasSemanal({
   }, [quantidadesPorProduto, quantidadeSemanaAnterior]);
   return <Card>
       <CardHeader>
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
           <div className="space-y-1.5">
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+              <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
               Produtos Entregues
             </CardTitle>
-            <CardDescription className="text-left">
+            <CardDescription className="text-left text-xs md:text-sm">
               Quantidades já entregues nesta semana
             </CardDescription>
           </div>
           {quantidadeSemanaAnterior > 0 && (
-            <div className="flex flex-col items-end text-right">
-              <div className="text-xs text-muted-foreground mb-1">Semana anterior</div>
+            <div className="flex flex-row items-center gap-2 sm:flex-col sm:items-end sm:text-right sm:gap-0">
+              <div className="text-xs text-muted-foreground sm:mb-1">Semana anterior:</div>
               <div className="flex items-center gap-1.5">
                 <span className="text-lg font-semibold text-foreground">{quantidadeSemanaAnterior}</span>
                 <TrendingUp className="h-3 w-3 text-green-600" />
@@ -214,9 +214,9 @@ export default function EntregasRealizadasSemanal({
             <p>Nenhuma entrega realizada nesta semana</p>
           </div> : <div className="space-y-4">
             {/* Total Geral */}
-            <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-              <p className="text-sm text-muted-foreground mb-1">Quantidade Total Entregue</p>
-              <p className="text-3xl font-bold text-green-600">{quantidadeTotal}</p>
+            <div className="bg-green-50 dark:bg-green-950/20 p-3 md:p-4 rounded-lg border border-green-200 dark:border-green-800">
+              <p className="text-xs md:text-sm text-muted-foreground mb-1">Quantidade Total Entregue</p>
+              <p className="text-2xl md:text-3xl font-bold text-green-600">{quantidadeTotal}</p>
               <Badge variant="default" className="mt-2 bg-green-600 hover:bg-green-700">
                 {totalEntregas} {totalEntregas === 1 ? 'produto' : 'produtos'}
               </Badge>
