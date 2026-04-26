@@ -13,6 +13,8 @@ import {
 import { Plus, Search, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
+import ClienteDetailsView from "@/components/clientes/ClienteDetailsView";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
 import { Cliente } from "@/types";
 import { transformDbRowToCliente } from "@/hooks/useClienteStore";
 
@@ -72,6 +74,7 @@ export default function RepClientes() {
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [novoOpen, setNovoOpen] = useState(false);
   const [editandoCliente, setEditandoCliente] = useState<Cliente | null>(null);
+  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null);
 
   const carregar = async () => {
     try {
@@ -122,6 +125,34 @@ export default function RepClientes() {
     // Mapear snake_case → camelCase para o formulário
     setEditandoCliente(transformDbRowToCliente(data));
   };
+
+  const abrirDetalhes = async (id: string) => {
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (error || !data) {
+      console.error(error);
+      return;
+    }
+    setClienteSelecionado(transformDbRowToCliente(data));
+  };
+
+  // Quando há cliente selecionado, exibe a visualização detalhada com abas
+  if (clienteSelecionado) {
+    return (
+      <EditPermissionProvider value={{ canEdit: true }}>
+        <ClienteDetailsView
+          cliente={clienteSelecionado}
+          onBack={() => {
+            setClienteSelecionado(null);
+            carregar();
+          }}
+        />
+      </EditPermissionProvider>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -189,7 +220,11 @@ export default function RepClientes() {
                   </tr>
                 ) : (
                   filtrados.map((c) => (
-                    <tr key={c.id} className="border-t hover:bg-muted/30">
+                    <tr
+                      key={c.id}
+                      className="border-t hover:bg-muted/30 cursor-pointer"
+                      onClick={() => abrirDetalhes(c.id)}
+                    >
                       <td className="p-3 truncate font-medium">{c.nome}</td>
                       <td className="p-3">
                         <Badge variant={statusVariant(c.status_cliente)}>
@@ -202,7 +237,7 @@ export default function RepClientes() {
                       <td className="p-3 text-muted-foreground">
                         {formatDate(c.proxima_data_reposicao)}
                       </td>
-                      <td className="p-3 text-right">
+                      <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <Button size="sm" variant="ghost" onClick={() => handleEditar(c.id)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
