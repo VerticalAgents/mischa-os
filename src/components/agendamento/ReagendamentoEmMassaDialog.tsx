@@ -120,9 +120,9 @@ export default function ReagendamentoEmMassaDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-full sm:max-w-[500px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 pr-8">
             <CalendarIcon className="h-5 w-5 text-primary" />
             Reagendar em Massa
           </DialogTitle>
@@ -139,9 +139,9 @@ export default function ReagendamentoEmMassaDialog({
           ) : (
             <>
               {/* Filtro por Status */}
-              <div className="flex items-center gap-4 pb-2 border-b">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-2 border-b">
                 <span className="text-sm text-muted-foreground">Filtrar por status:</span>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                   <div className="flex items-center gap-2">
                     <Checkbox
                       id="filtro-agendado"
@@ -186,7 +186,7 @@ export default function ReagendamentoEmMassaDialog({
               </div>
 
               {/* Header com Selecionar Todos e Contador */}
-              <div className="flex items-center justify-between border-b pb-2">
+              <div className="flex items-center justify-between gap-2 border-b pb-2 flex-wrap">
                 <div className="flex items-center gap-2">
                   <Checkbox
                     checked={todosSelecionados}
@@ -199,13 +199,13 @@ export default function ReagendamentoEmMassaDialog({
                   />
                   <span className="text-sm font-medium">Selecionar todos</span>
                 </div>
-                <Badge variant="secondary">
+                <Badge variant="secondary" className="text-xs whitespace-nowrap">
                   {selecionados.size} de {agendamentosFiltrados.length} selecionados
                 </Badge>
               </div>
 
               {/* Lista de Agendamentos com Checkboxes */}
-              <ScrollArea className="h-[200px] pr-4">
+              <ScrollArea className="h-[200px] pr-2 sm:pr-4">
                 <div className="space-y-2">
                   {agendamentosFiltrados.map((agendamento) => (
                     <div
@@ -215,6 +215,7 @@ export default function ReagendamentoEmMassaDialog({
                       <Checkbox
                         checked={selecionados.has(agendamento.cliente.id)}
                         onCheckedChange={() => toggleItem(agendamento.cliente.id)}
+                        className="shrink-0"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">{agendamento.cliente.nome}</div>
@@ -227,7 +228,7 @@ export default function ReagendamentoEmMassaDialog({
                       </div>
                       <Badge 
                         variant={agendamento.statusAgendamento === "Agendado" ? "default" : "outline"}
-                        className="text-xs"
+                        className="text-xs shrink-0"
                       >
                         {agendamento.statusAgendamento}
                       </Badge>
@@ -278,13 +279,14 @@ export default function ReagendamentoEmMassaDialog({
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
+        <DialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0">
+          <Button variant="outline" onClick={handleCancel} disabled={isLoading} className="w-full sm:w-auto">
             Cancelar
           </Button>
           <Button 
             onClick={handleConfirmar} 
             disabled={!dataSelecionada || isLoading || selecionados.size === 0}
+            className="w-full sm:w-auto"
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
