@@ -1,5 +1,5 @@
 import { useEffect, memo, Suspense, lazy } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { BarChart3 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useClienteStore } from "@/hooks/useClienteStore";
