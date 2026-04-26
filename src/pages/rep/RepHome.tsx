@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Users, Calendar, Plus, AlertCircle, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRepDashboardData, RepAgendamentoLite } from "@/hooks/useRepDashboardData";
-import AgendamentoEditModal from "@/components/agendamento/AgendamentoEditModal";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
 
 function formatDate(s: string | null) {
@@ -32,8 +31,11 @@ export default function RepHome() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data, loading, refetch } = useRepDashboardData();
-  const [editingAgendamentoId, setEditingAgendamentoId] = useState<string | null>(null);
   const [novoClienteOpen, setNovoClienteOpen] = useState(false);
+
+  const goToAgendamento = (id: string) => {
+    navigate(`/rep/agendamentos?id=${id}`);
+  };
 
   const greetingName = user?.email?.split("@")[0] || "representante";
 
@@ -92,7 +94,7 @@ export default function RepHome() {
             items={data.proximos7Dias}
             empty="Nenhum agendamento previsto para os próximos 7 dias."
             loading={loading}
-            onItemClick={(id) => setEditingAgendamentoId(id)}
+            onItemClick={goToAgendamento}
           />
         </CardContent>
       </Card>
@@ -109,22 +111,10 @@ export default function RepHome() {
             items={data.pendentesConfirmacao}
             empty="Nenhuma pendência."
             loading={loading}
-            onItemClick={(id) => setEditingAgendamentoId(id)}
+            onItemClick={goToAgendamento}
           />
         </CardContent>
       </Card>
-
-      {/* Modais */}
-      {editingAgendamentoId && (
-        <AgendamentoEditModal
-          agendamentoId={editingAgendamentoId}
-          isOpen={!!editingAgendamentoId}
-          onClose={() => {
-            setEditingAgendamentoId(null);
-            refetch();
-          }}
-        />
-      )}
 
       <ClienteFormDialog
         open={novoClienteOpen}
