@@ -906,15 +906,17 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
             className="w-full sm:w-auto"
           />
           
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={exportarPDFRepresentante}
-            className="flex items-center justify-center gap-2 w-full sm:w-auto sm:ml-auto"
-          >
-            <FileDown className="h-4 w-4" />
-            Exportar PDF
-          </Button>
+          {!hideExportPDF && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportarPDFRepresentante}
+              className="flex items-center justify-center gap-2 w-full sm:w-auto sm:ml-auto"
+            >
+              <FileDown className="h-4 w-4" />
+              Exportar PDF
+            </Button>
+          )}
         </div>
       </div>
 
