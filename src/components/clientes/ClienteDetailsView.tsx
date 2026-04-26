@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Cliente } from '@/types';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit } from "lucide-react";
+import { Edit } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
 import ClienteDetalhesTabs from "./ClienteDetalhesTabs";
 import ClienteFormDialog from "./ClienteFormDialog";
@@ -38,6 +38,7 @@ export default function ClienteDetailsView({ cliente, onBack, hideFinanceiro = f
           label: "Voltar para lista",
           onClick: onBack
         }}
+        actionsClassName="flex-row items-center gap-2"
       >
         {canEdit && (
           <Button 
