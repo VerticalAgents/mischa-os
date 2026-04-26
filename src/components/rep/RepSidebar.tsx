@@ -16,7 +16,7 @@ export function RepSidebar() {
   const location = useLocation();
 
   return (
-    <aside className="w-60 min-h-screen flex flex-col bg-[#d1193a] text-white">
+    <aside className="w-60 sticky top-0 h-screen flex flex-col bg-[#d1193a] text-white shrink-0 overflow-y-auto">
       <div className="p-5 flex items-center gap-3 border-b border-white/10">
         <img src={logo} alt="Mischa's Bakery" className="w-10 h-10 rounded-full bg-white" />
         <div className="flex flex-col leading-tight">
