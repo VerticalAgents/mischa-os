@@ -93,6 +93,9 @@ export default function ClienteFormDialog({
   const { adicionarCliente, atualizarCliente, loading } = useClienteStore();
   const { categorias } = useSupabaseCategoriasProduto();
   const { representantes } = useSupabaseRepresentantes();
+  const { isRepresentante } = useUserRoles();
+  const { representanteId: meuRepresentanteId } = useMyRepresentanteId();
+  const isRep = isRepresentante();
   const { rotasEntrega } = useSupabaseRotasEntrega();
   const { categorias: categoriasEstabelecimento } = useSupabaseCategoriasEstabelecimento();
   const { formasPagamento } = useSupabaseFormasPagamento();
@@ -141,12 +144,18 @@ export default function ClienteFormDialog({
         setFormData({
           ...getDefaultFormData(),
           ...dadosIniciais,
+          representanteId: isRep && meuRepresentanteId
+            ? meuRepresentanteId
+            : (dadosIniciais.representanteId ?? undefined),
           categoriasHabilitadas: dadosIniciais.categoriasHabilitadas || []
         });
         lastClienteIdRef.current = null;
       } else {
         // MODO DE CRIAÇÃO VAZIA: Novo cliente em branco
-        setFormData(getDefaultFormData());
+        setFormData({
+          ...getDefaultFormData(),
+          representanteId: isRep && meuRepresentanteId ? meuRepresentanteId : undefined,
+        });
         lastClienteIdRef.current = null;
       }
       initializedRef.current = true;
