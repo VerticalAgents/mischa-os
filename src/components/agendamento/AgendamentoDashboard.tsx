@@ -1179,23 +1179,25 @@ export default function AgendamentoDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-2">
-            {dadosGraficoSemanal.map((dia, index) => <div key={index} className={`p-3 lg:p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${dia.isToday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado) ? 'border-primary bg-primary/20' : 'border-border'} grid grid-cols-3 items-center gap-3 md:flex md:flex-col md:text-center`} onClick={() => handleDiaClick(dia.dataCompleta)}>
-                {/* Mobile: dia da semana esquerda | data centro | badges direita (grid 3 col p/ centralização real) */}
-                {/* Tablet/Desktop: vertical empilhado */}
-                <div className="font-medium text-sm md:mb-2 whitespace-nowrap text-left md:text-center">{dia.diaSemana}</div>
-                <div className="text-lg font-bold md:mb-1 text-center">{dia.dia}</div>
+            {dadosGraficoSemanal.map((dia, index) => <div key={index} className={`p-3 lg:p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${dia.isToday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado) ? 'border-primary bg-primary/20' : 'border-border'} flex flex-col gap-2 md:text-center`} onClick={() => handleDiaClick(dia.dataCompleta)}>
+                {/* Mobile linha 1: dia da semana esq | data num dir. Desktop: empilhado/centralizado */}
+                <div className="flex items-center justify-between gap-2 md:flex-col md:gap-1 md:justify-center">
+                  <div className="font-medium text-sm whitespace-nowrap md:mb-1">{dia.diaSemana}</div>
+                  <div className="text-lg font-bold">{dia.dia}</div>
+                </div>
 
-                <div className="flex flex-col items-end gap-1 md:flex-row md:flex-wrap md:items-stretch md:justify-center md:gap-1 md:w-full">
-                  {dia.confirmados > 0 && <Badge variant="outline" className="text-[10px] bg-green-100 text-green-700 border-green-200 rounded-none whitespace-nowrap justify-center md:w-full">
+                {/* Mobile linha 2: badges dividindo a largura. Desktop: stacked w-full */}
+                <div className="flex w-full gap-1 md:flex-col md:items-stretch md:gap-1">
+                  {dia.confirmados > 0 && <Badge variant="outline" className="text-[10px] bg-green-100 text-green-700 border-green-200 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
                       {dia.confirmados} Confirmados
                     </Badge>}
-                  {dia.previstos > 0 && <Badge variant="outline" className="text-[10px] bg-amber-100 rounded-none whitespace-nowrap justify-center md:w-full">
+                  {dia.previstos > 0 && <Badge variant="outline" className="text-[10px] bg-amber-100 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
                       {dia.previstos} Previstos
                     </Badge>}
-                  {dia.realizadas > 0 && <Badge variant="outline" className="text-[10px] bg-blue-100 text-blue-700 border-blue-200 rounded-none whitespace-nowrap justify-center md:w-full">
+                  {dia.realizadas > 0 && <Badge variant="outline" className="text-[10px] bg-blue-100 text-blue-700 border-blue-200 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
                       {dia.realizadas} Entregues
                     </Badge>}
-                  {dia.total === 0 && dia.realizadas === 0 && <span className="text-xs text-muted-foreground">Livre</span>}
+                  {dia.total === 0 && dia.realizadas === 0 && <span className="text-xs text-muted-foreground text-center w-full">Livre</span>}
                 </div>
               </div>)}
           </div>
