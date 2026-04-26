@@ -204,7 +204,7 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             <RadioGroup value={statusAgendamento} onValueChange={(value: any) => setStatusAgendamento(value)}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="Agendar" id="agendar" />
-                <Label htmlFor="agendar">Agendar</Label>
+                <Label htmlFor="agendar">Pendente</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="Previsto" id="previsto" />
@@ -217,60 +217,55 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
             </RadioGroup>
           </div>
 
+          {statusAgendamento !== 'Agendar' && (
+            <div className="space-y-2">
+              <Label>Tipo do Pedido</Label>
+              <RadioGroup value={tipoPedido} onValueChange={(value: any) => setTipoPedido(value)}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="Padrão" id="padrao" />
+                  <Label htmlFor="padrao">Padrão</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="Alterado" id="alterado" />
+                  <Label htmlFor="alterado">Alterado</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
+        </div>
+
+        {statusAgendamento !== 'Agendar' && (
           <div className="space-y-2">
-            <Label>Tipo do Pedido</Label>
-            <RadioGroup value={tipoPedido} onValueChange={(value: any) => setTipoPedido(value)}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="Padrão" id="padrao" />
-                <Label htmlFor="padrao">Padrão</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="Alterado" id="alterado" />
-                <Label htmlFor="alterado">Alterado</Label>
-              </div>
-            </RadioGroup>
+            <Label htmlFor="dataReposicao">Data de Reposição</Label>
+            <Input
+              id="dataReposicao"
+              type="date"
+              value={proximaDataReposicao}
+              onChange={(e) => setProximaDataReposicao(e.target.value)}
+            />
           </div>
-        </div>
+        )}
 
-        <div className="space-y-2">
-          <Label htmlFor="dataReposicao">
-            Data de Reposição
-            {statusAgendamento === 'Agendar' && (
-              <span className="text-sm text-muted-foreground ml-2">(será limpa automaticamente)</span>
+        {statusAgendamento !== 'Agendar' && (
+          <div className="space-y-2">
+            <Label htmlFor="quantidade">Quantidade Total</Label>
+            <Input
+              id="quantidade"
+              type="number"
+              value={quantidadeTotal}
+              onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
+              min="0"
+              className={hasValidationError ? "border-red-500" : ""}
+            />
+            {hasValidationError && (
+              <p className="text-sm text-red-500">
+                Total deve ser igual à soma das quantidades dos produtos ({somaQuantidadesProdutos})
+              </p>
             )}
-          </Label>
-          <Input
-            id="dataReposicao"
-            type="date"
-            value={proximaDataReposicao}
-            onChange={(e) => setProximaDataReposicao(e.target.value)}
-            disabled={statusAgendamento === 'Agendar'}
-          />
-          {statusAgendamento === 'Agendar' && (
-            <p className="text-sm text-blue-600">
-              Para status "Agendar", a data será automaticamente limpa
-            </p>
-          )}
-        </div>
+          </div>
+        )}
 
-        <div className="space-y-2">
-          <Label htmlFor="quantidade">Quantidade Total</Label>
-          <Input
-            id="quantidade"
-            type="number"
-            value={quantidadeTotal}
-            onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
-            min="0"
-            className={hasValidationError ? "border-red-500" : ""}
-          />
-          {hasValidationError && (
-            <p className="text-sm text-red-500">
-              Total deve ser igual à soma das quantidades dos produtos ({somaQuantidadesProdutos})
-            </p>
-          )}
-        </div>
-
-        {tipoPedido === "Alterado" && (
+        {statusAgendamento !== 'Agendar' && tipoPedido === "Alterado" && (
           <div className="space-y-4 border-t pt-4">
             {hasValidationError && (
               <Alert variant="destructive">
