@@ -26,6 +26,11 @@ interface MovimentacaoEstoqueModalProps {
    * Útil para usar o "Saldo Real" (físico − separados − despachados) na tela de Estoque de Produtos.
    */
   saldoReferencia?: number;
+  /**
+   * Tipo de movimentação pré-selecionado ao abrir o modal.
+   * Default: 'entrada'. Use 'ajuste' para abrir já no modo de ajuste.
+   */
+  tipoInicial?: MovTipo;
 }
 
 export default function MovimentacaoEstoqueModal({
@@ -36,8 +41,9 @@ export default function MovimentacaoEstoqueModal({
   tipoItem,
   onSuccess,
   saldoReferencia,
+  tipoInicial = 'entrada',
 }: MovimentacaoEstoqueModalProps) {
-  const [tipo, setTipo] = useState<MovTipo>('entrada');
+  const [tipo, setTipo] = useState<MovTipo>(tipoInicial);
   const [quantidade, setQuantidade] = useState('');
   const [quantidadePacotes, setQuantidadePacotes] = useState('');
   const [observacao, setObservacao] = useState('');
@@ -55,8 +61,9 @@ export default function MovimentacaoEstoqueModal({
   useEffect(() => {
     if (isOpen) {
       carregarSaldoAtual();
+      setTipo(tipoInicial);
     }
-  }, [isOpen, itemId, tipoItem, saldoReferencia]);
+  }, [isOpen, itemId, tipoItem, saldoReferencia, tipoInicial]);
 
   useEffect(() => {
     // Calcular quantidade automaticamente quando em modo pacotes
@@ -152,7 +159,7 @@ export default function MovimentacaoEstoqueModal({
   };
 
   const resetForm = () => {
-    setTipo('entrada');
+    setTipo(tipoInicial);
     setQuantidade('');
     setQuantidadePacotes('');
     setObservacao('');

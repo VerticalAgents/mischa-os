@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, TrendingDown, BarChart3, Search, Settings } from "lucide-react";
+import { Plus, TrendingDown, BarChart3, Search, Settings, SlidersHorizontal } from "lucide-react";
 import { useSupabaseInsumos } from "@/hooks/useSupabaseInsumos";
 import { useMovimentacoesEstoqueInsumos } from "@/hooks/useMovimentacoesEstoqueInsumos";
 import MovimentacaoEstoqueModal from "../MovimentacaoEstoqueModal";
@@ -22,6 +22,7 @@ export default function EstoqueInsumosTab() {
   const [modalMovimentacao, setModalMovimentacao] = useState(false);
   const [modalBaixa, setModalBaixa] = useState(false);
   const [modalEditar, setModalEditar] = useState(false);
+  const [modalAjuste, setModalAjuste] = useState(false);
   const [insumoSelecionado, setInsumoSelecionado] = useState<{id: string, nome: string} | null>(null);
   const [insumoParaEditar, setInsumoParaEditar] = useState<any>(null);
   const [showHistorico, setShowHistorico] = useState<string | null>(null);
@@ -72,6 +73,11 @@ export default function EstoqueInsumosTab() {
     setModalBaixa(true);
   };
 
+  const handleModalAjuste = (insumo: any) => {
+    setInsumoSelecionado({ id: insumo.id, nome: insumo.nome });
+    setModalAjuste(true);
+  };
+
   const handleModalEditar = (insumo: any) => {
     setInsumoParaEditar(insumo);
     setModalEditar(true);
@@ -80,6 +86,7 @@ export default function EstoqueInsumosTab() {
   const handleCloseModal = () => {
     setModalMovimentacao(false);
     setModalBaixa(false);
+    setModalAjuste(false);
     setInsumoSelecionado(null);
     carregarSaldos();
   };
@@ -213,6 +220,15 @@ export default function EstoqueInsumosTab() {
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => handleModalAjuste(insumo)}
+                            title="Ajustar saldo"
+                          >
+                            <SlidersHorizontal className="h-3 w-3 mr-1" />
+                            Ajustar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => setShowHistorico(showHistorico === insumo.id ? null : insumo.id)}
                             title="Ver histórico"
                           >
@@ -252,6 +268,16 @@ export default function EstoqueInsumosTab() {
             onSuccess={handleCloseModal}
           />
           
+          <MovimentacaoEstoqueModal
+            isOpen={modalAjuste}
+            onClose={handleCloseModal}
+            itemId={insumoSelecionado.id}
+            itemNome={insumoSelecionado.nome}
+            tipoItem="insumo"
+            tipoInicial="ajuste"
+            onSuccess={handleCloseModal}
+          />
+
           <BaixaEstoqueModal
             isOpen={modalBaixa}
             onClose={handleCloseModal}
