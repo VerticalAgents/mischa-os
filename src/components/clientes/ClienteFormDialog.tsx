@@ -539,7 +539,16 @@ export default function ClienteFormDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="representante">Representante</Label>
-                  {representantes.length === 0 && formData.representanteId ? (
+                  {isRep ? (
+                    <Input
+                      value={
+                        representantes.find((r) => r.id === formData.representanteId)?.nome
+                          ?? "Você"
+                      }
+                      disabled
+                      className="bg-muted"
+                    />
+                  ) : representantes.length === 0 && formData.representanteId ? (
                     <Input value="Carregando..." disabled className="bg-muted" />
                   ) : (
                     <Select 
