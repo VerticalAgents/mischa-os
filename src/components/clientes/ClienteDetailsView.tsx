@@ -11,9 +11,10 @@ import { useEditPermission } from "@/contexts/EditPermissionContext";
 interface ClienteDetailsViewProps {
   cliente: Cliente;
   onBack: () => void;
+  hideFinanceiro?: boolean;
 }
 
-export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsViewProps) {
+export default function ClienteDetailsView({ cliente, onBack, hideFinanceiro = false }: ClienteDetailsViewProps) {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { canEdit } = useEditPermission();
@@ -56,6 +57,7 @@ export default function ClienteDetailsView({ cliente, onBack }: ClienteDetailsVi
         cliente={cliente} 
         onAgendamentoUpdate={handleAgendamentoUpdate}
         refreshTrigger={refreshTrigger}
+        hideFinanceiro={hideFinanceiro}
       />
 
       <ClienteFormDialog 
