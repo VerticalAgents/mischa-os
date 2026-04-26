@@ -38,7 +38,7 @@ export default function MovimentacaoEstoqueModal({
   const [modoEntrada, setModoEntrada] = useState<'quantidade' | 'pacotes'>('quantidade');
   const [saldoAtual, setSaldoAtual] = useState(0);
 
-  const { adicionarMovimentacao: adicionarMovimentacaoProduto } = useMovimentacoesEstoqueProdutos();
+  const { adicionarMovimentacao: adicionarMovimentacaoProduto, obterSaldoProduto } = useMovimentacoesEstoqueProdutos();
   const { adicionarMovimentacao: adicionarMovimentacaoInsumo, obterSaldoInsumo } = useMovimentacoesEstoqueInsumos();
   const { insumos } = useSupabaseInsumos();
 
@@ -46,7 +46,7 @@ export default function MovimentacaoEstoqueModal({
   const insumoAtual = tipoItem === 'insumo' ? insumos.find(i => i.id === itemId) : null;
 
   useEffect(() => {
-    if (isOpen && tipoItem === 'insumo') {
+    if (isOpen) {
       carregarSaldoAtual();
     }
   }, [isOpen, itemId, tipoItem]);
@@ -63,13 +63,23 @@ export default function MovimentacaoEstoqueModal({
     if (tipoItem === 'insumo') {
       const saldo = await obterSaldoInsumo(itemId);
       setSaldoAtual(saldo);
+    } else if (tipoItem === 'produto') {
+      const saldo = await obterSaldoProduto(itemId);
+      setSaldoAtual(saldo);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!quantidade || parseFloat(quantidade) <= 0) {
+
+    // Permitir 0 apenas no tipo "ajuste" (zerar estoque). Para entrada/saida exigir > 0.
+    if (quantidade === '' || isNaN(parseFloat(quantidade))) {
+      return;
+    }
+    if (tipo !== 'ajuste' && parseFloat(quantidade) <= 0) {
+      return;
+    }
+    if (tipo === 'ajuste' && parseFloat(quantidade) < 0) {
       return;
     }
 
@@ -99,12 +109,16 @@ export default function MovimentacaoEstoqueModal({
       }
     }
 
+    const unidadeLabel = tipoItem === 'insumo'
+      ? (insumoAtual?.unidade_medida || 'unidades')
+      : 'unidades';
+
     const movimentacao = {
       tipo: tipoMovimentacao,
       quantidade: quantidadeFinal,
       data_movimentacao: new Date().toISOString(),
-      observacao: tipo === 'ajuste' 
-        ? `Ajuste de estoque para ${quantidade} ${insumoAtual?.unidade_medida || 'unidades'}${observacao ? ' | ' + observacao : ''}`
+      observacao: tipo === 'ajuste'
+        ? `Ajuste de estoque para ${quantidade} ${unidadeLabel}${observacao ? ' | ' + observacao : ''}`
         : observacao || undefined,
       ...(tipoItem === 'produto' 
         ? { produto_id: itemId } 
@@ -162,6 +176,20 @@ export default function MovimentacaoEstoqueModal({
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Saldo atual:</span>
                 <span className="text-sm font-medium">{saldoAtual.toFixed(3)} {insumoAtual.unidade_medida}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {tipoItem === 'produto' && (
+          <Card className="mb-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Informações do Produto</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Saldo atual:</span>
+                <span className="text-sm font-medium">{Math.round(saldoAtual)} unidades</span>
               </div>
             </CardContent>
           </Card>
@@ -251,6 +279,11 @@ export default function MovimentacaoEstoqueModal({
                 }
               </p>
             )}
+            {tipo === 'ajuste' && quantidade === '0' && (
+              <p className="text-xs text-muted-foreground">
+                Estoque será zerado.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -268,7 +301,7 @@ export default function MovimentacaoEstoqueModal({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || !quantidade}>
+            <Button type="submit" disabled={loading || quantidade === ''}>
               {loading ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>

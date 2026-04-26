@@ -1,39 +1,38 @@
-## Diagnóstico
+## Problema
 
-A Beatriz está logada como funcionária (`role: producao`, `staff_user_id: b7cf88d9...`) vinculada ao proprietário (`owner_id: 7618131a...`). Na aba **Produtos** do Estoque, ela vê:
+No modal "Nova Movimentação" usado em `/estoque/insumos?tab=produtos` (ex.: Brownie Avelã), o tipo **Ajuste** apresenta dois bugs:
 
-- **Revenda Padrão**: "0 de 6 produtos" com "Nenhum produto com proporção > 0% nesta categoria" (deveria mostrar Brownie Avelã 30%, Choco Duo 25%, Doce de Leite 15%, Stikadinho 20%, Tradicional 10%).
-- **Food Service**: 3 produtos aparecem normalmente (porque não dependem de proporções).
+1. **Não salva quando o valor digitado é `0`**  
+   O guard `if (!quantidade || parseFloat(quantidade) <= 0) return;` aborta silenciosamente para qualquer valor `≤ 0`, impedindo zerar o estoque.
 
-### Causa raiz
+2. **Não respeita o saldo final informado para produtos**  
+   O `saldoAtual` só é carregado quando `tipoItem === 'insumo'`. Para **produto**, ele permanece `0`, então a lógica `diferenca = quantidadeFinal - saldoAtual` calcula a diferença contra zero e gera uma **entrada** somando ao estoque atual em vez de ajustá-lo ao valor desejado. Resultado: o saldo final fica diferente do número digitado.
 
-O hook `src/hooks/useSupabaseProporoesPadrao.ts` (linha 57) faz a query com filtro explícito:
+Além disso, o card "Informações do Insumo" (que mostra o saldo atual) é renderizado apenas para insumos — quando o usuário ajusta um produto, ele não vê o saldo atual nem o cálculo "Entrada/Saída de X" que ajuda a conferir.
 
-```ts
-.eq('user_id', user.id)
-```
+## Correções (arquivo `src/components/estoque/MovimentacaoEstoqueModal.tsx`)
 
-Como a Beatriz é funcionária, `user.id` é o ID dela (`b7cf88d9...`), mas as proporções foram salvas pelo proprietário com `user_id = 7618131a...`. Resultado: a query retorna **zero proporções** para a Beatriz, então o toggle "Apenas proporção > 0%" esconde todos os produtos da categoria Revenda Padrão.
+1. **Carregar `saldoAtual` também para produtos**  
+   - Importar `obterSaldoProduto` de `useMovimentacoesEstoqueProdutos`.
+   - No `useEffect` de abertura, chamar `obterSaldoProduto(itemId)` quando `tipoItem === 'produto'` (paralelo ao caminho de insumo).
 
-A RLS no banco já está correta (`user_id = get_owner_id(auth.uid())` resolve o owner para staff), mas o filtro client-side redundante quebra essa resolução.
+2. **Permitir quantidade `0` no Ajuste**  
+   - Trocar o guard de submissão por algo como:
+     - Se `tipo === 'ajuste'`: aceitar `quantidade` desde que seja um número válido `>= 0` (string vazia continua bloqueada).
+     - Para `entrada`/`saida`: manter o requisito `> 0`.
+   - Ajustar também o `disabled` do botão Salvar para não bloquear quando `quantidade === '0'` em modo ajuste.
 
-## Correção
+3. **Exibir o saldo atual do produto no modal**  
+   - Mostrar uma linha simplificada "Saldo atual: X un" também para produtos (sem categoria/volume_bruto, que são específicos de insumo). Mantém o usuário ciente do valor base do ajuste.
+   - O cálculo "Entrada de X / Saída de X / Sem alteração" abaixo do input já funcionará automaticamente quando `saldoAtual` estiver carregado para produto, usando "unidades" como unidade padrão.
 
-Remover o filtro redundante `.eq('user_id', user.id)` do hook `useSupabaseProporoesPadrao.ts` na função `carregarProporcoes` (linha 57). A RLS do Supabase já garante que cada usuário veja apenas as proporções do seu owner — não precisa duplicar isso no client.
+4. **Tratamento de produto com saldo igual ao desejado**  
+   - O fluxo `diferenca === 0` já fecha o modal corretamente; após a correção #1 isso funcionará para zerar (digitar 0 quando saldo já é 0) sem inserir movimentação desnecessária.
 
-Auditar o mesmo hook nas funções de criar/atualizar/desativar para garantir consistência:
-- Ao **criar** uma nova proporção, usar `get_owner_id` via RPC ou simplesmente deixar o trigger/policy validar — mas no insert, o `user_id` deve ser o `owner_id` (não o `staff_user_id`), senão a policy `WITH CHECK (user_id = get_owner_id(auth.uid()))` rejeitará. Vou ajustar para resolver o `owner_id` antes de inserir/atualizar/deletar quando o usuário for staff.
+## Resultado esperado
 
-### Arquivos alterados
-- `src/hooks/useSupabaseProporoesPadrao.ts`: remover filtro `.eq('user_id', user.id)` na leitura; resolver `owner_id` (via RPC `get_owner_id` ou consulta a `staff_accounts`) antes de operações de escrita, para que funcionários consigam editar proporções do owner sem violar RLS.
+- Ao escolher Ajuste para um produto e digitar `0`, o sistema gera uma **saída** equivalente ao saldo atual e o estoque vai a zero.
+- Ao digitar qualquer outro número N, o estoque do produto fica exatamente em N (entrada se N > saldo atual, saída se N < saldo atual).
+- O usuário enxerga o saldo atual antes de confirmar, evitando ambiguidade.
 
-## Verificação
-
-Após a correção, a Beatriz verá:
-- Revenda Padrão: 5 produtos com proporção > 0% (Brownie Avelã, Choco Duo, Doce de Leite, Stikadinho, Tradicional).
-- Filtro "Apenas proporção > 0%" funcionando corretamente.
-- Capacidade de editar proporções (se o perfil tiver `can_edit` na rota).
-
-## Observação adicional
-
-Vale uma varredura futura em outros hooks que usam o padrão `.eq('user_id', user.id)` (ex: `useSupabaseCategoriasProduto`, `useSupabaseProdutos`, etc.) para garantir que nenhum outro módulo apresente o mesmo sintoma para funcionários. Não vou tocar agora para manter o escopo focado, mas posso auditar a seguir se quiser.
+Sem mudanças de banco; apenas alterações no componente do modal.
