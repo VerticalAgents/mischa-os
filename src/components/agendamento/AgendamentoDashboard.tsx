@@ -846,9 +846,9 @@ export default function AgendamentoDashboard() {
           </div>
         </div>
         
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-3">
           {/* Navegador de Semana */}
-          <div className="flex items-center gap-1 bg-background border rounded-md px-1">
+          <div className="flex w-full sm:w-auto items-center gap-1 bg-background border rounded-md px-1">
             <Button
               variant="ghost"
               size="sm"
@@ -858,7 +858,7 @@ export default function AgendamentoDashboard() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
             
-            <div className="flex items-center gap-2 px-2 min-w-[160px] justify-center">
+            <div className="flex flex-1 sm:flex-none items-center gap-2 px-2 sm:min-w-[160px] justify-center">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium whitespace-nowrap">
                 {format(startOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })} - {format(endOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM/yyyy', { locale: ptBR })}
@@ -889,18 +889,20 @@ export default function AgendamentoDashboard() {
           <RepresentantesFilter
             selectedIds={representanteFiltro}
             onSelectionChange={setRepresentanteFiltro}
+            className="w-full sm:w-auto"
           />
           
           <RotasFilter
             selectedIds={rotaFiltro}
             onSelectionChange={setRotaFiltro}
+            className="w-full sm:w-auto"
           />
           
           <Button
             variant="outline"
             size="sm"
             onClick={exportarPDFRepresentante}
-            className="flex items-center gap-2 ml-auto"
+            className="flex items-center justify-center gap-2 w-full sm:w-auto sm:ml-auto"
           >
             <FileDown className="h-4 w-4" />
             Exportar PDF
