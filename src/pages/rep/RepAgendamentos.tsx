@@ -25,6 +25,8 @@ import { useTabPersistence } from "@/hooks/useTabPersistence";
 
 const PERIODO_OPTIONS = [
   { value: "hoje", label: "Hoje" },
+  { value: "atrasados", label: "Atrasados" },
+  { value: "pendentes", label: "Sem data" },
   { value: "7", label: "Próximos 7 dias" },
   { value: "30", label: "Próximos 30 dias" },
   { value: "todos", label: "Todos" },
@@ -102,20 +104,37 @@ export default function RepAgendamentos() {
     if (periodo !== "todos") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const limit = new Date(today);
-      if (periodo === "hoje") {
-        limit.setHours(23, 59, 59, 999);
+
+      if (periodo === "atrasados") {
+        list = list.filter((a) => {
+          if (!a.dataReposicao) return false;
+          const d = new Date(a.dataReposicao);
+          d.setHours(0, 0, 0, 0);
+          return d < today;
+        });
+      } else if (periodo === "pendentes") {
+        list = list.filter((a) => !a.dataReposicao);
       } else {
-        limit.setDate(limit.getDate() + parseInt(periodo));
+        const limit = new Date(today);
+        if (periodo === "hoje") {
+          limit.setHours(23, 59, 59, 999);
+        } else {
+          limit.setDate(limit.getDate() + parseInt(periodo));
+        }
+        list = list.filter((a) => {
+          if (!a.dataReposicao) return false;
+          const d = new Date(a.dataReposicao);
+          d.setHours(0, 0, 0, 0);
+          return d >= today && d <= limit;
+        });
       }
-      list = list.filter((a) => {
-        const d = new Date(a.dataReposicao);
-        d.setHours(0, 0, 0, 0);
-        return d >= today && d <= limit;
-      });
     }
 
-    list.sort((a, b) => a.dataReposicao.getTime() - b.dataReposicao.getTime());
+    list.sort((a, b) => {
+      const ta = a.dataReposicao ? a.dataReposicao.getTime() : Infinity;
+      const tb = b.dataReposicao ? b.dataReposicao.getTime() : Infinity;
+      return ta - tb;
+    });
     return list;
   }, [agendamentos, busca, periodo, filtroStatus]);
 
