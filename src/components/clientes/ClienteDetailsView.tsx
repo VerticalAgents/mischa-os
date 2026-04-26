@@ -38,10 +38,8 @@ export default function ClienteDetailsView({ cliente, onBack, hideFinanceiro = f
           label: "Voltar para lista",
           onClick: onBack
         }}
-      />
-      
-      {canEdit && (
-        <div className="flex justify-end">
+      >
+        {canEdit && (
           <Button 
             onClick={() => setIsEditDialogOpen(true)}
             variant="outline"
@@ -50,8 +48,8 @@ export default function ClienteDetailsView({ cliente, onBack, hideFinanceiro = f
             <Edit className="h-4 w-4" />
             Editar Cliente
           </Button>
-        </div>
-      )}
+        )}
+      </PageHeader>
       
       <ClienteDetalhesTabs 
         cliente={cliente} 
