@@ -15,6 +15,23 @@ export const useSupabaseProporoesPadrao = () => {
   const [proporcoes, setProporcoes] = useState<ProporcaoPadrao[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Resolve o owner_id (proprietário) do usuário atual.
+  // Para staff (funcionários), retorna o owner_id ao invés do staff_user_id.
+  // Para owners, retorna o próprio user.id.
+  const resolveOwnerId = async (userId: string): Promise<string> => {
+    try {
+      const { data, error } = await supabase.rpc('get_owner_id', { _user_id: userId });
+      if (error) {
+        console.warn('Falha ao resolver owner_id, usando user.id como fallback:', error);
+        return userId;
+      }
+      return (data as string) || userId;
+    } catch (e) {
+      console.warn('Erro ao chamar get_owner_id, usando user.id como fallback:', e);
+      return userId;
+    }
+  };
+
   const carregarProporcoes = async () => {
     try {
       setLoading(true);
@@ -49,12 +66,11 @@ export const useSupabaseProporoesPadrao = () => {
         return;
       }
 
-      // Buscar proporções existentes do usuário
+      // Buscar proporções existentes (RLS já filtra pelo owner do usuário/staff)
       const { data: proporcoesExistentes, error: proporcoesError } = await supabase
         .from('proporcoes_padrao')
         .select('id, produto_id, percentual, ativo')
-        .eq('ativo', true)
-        .eq('user_id', user.id);
+        .eq('ativo', true);
 
       if (proporcoesError) {
         console.error('Erro ao carregar proporções:', proporcoesError);
@@ -103,13 +119,15 @@ export const useSupabaseProporoesPadrao = () => {
         return false;
       }
 
+      const ownerId = await resolveOwnerId(user.id);
+
       const { error } = await supabase
         .from('proporcoes_padrao')
         .upsert({
           produto_id: produtoId,
           percentual: novoPercentual,
           ativo: true,
-          user_id: user.id
+          user_id: ownerId
         });
 
       if (error) {
@@ -152,6 +170,8 @@ export const useSupabaseProporoesPadrao = () => {
         return false;
       }
 
+      const ownerId = await resolveOwnerId(user.id);
+
       // Processar cada proporção individualmente
       for (const proporcao of novasProporcoes) {
         const proporcaoExistente = proporcoes.find(p => p.produto_id === proporcao.produto_id);
@@ -178,7 +198,7 @@ export const useSupabaseProporoesPadrao = () => {
               produto_id: proporcao.produto_id,
               percentual: proporcao.percentual,
               ativo: true,
-              user_id: user.id
+              user_id: ownerId
             });
 
           if (error) {
@@ -216,12 +236,11 @@ export const useSupabaseProporoesPadrao = () => {
         return [];
       }
 
-      // Primeiro buscar proporções ativas do usuário
+      // Buscar proporções ativas (RLS já filtra pelo owner do usuário/staff)
       const { data: proporcoes, error: propError } = await supabase
         .from('proporcoes_padrao')
         .select('produto_id, percentual')
         .eq('ativo', true)
-        .eq('user_id', user.id)
         .gt('percentual', 0);
 
       if (propError) {
