@@ -975,6 +975,8 @@ export default function AgendamentoDashboard() {
           semanaAtual={semanaAtual}
           incluirPrevistos={incluirPrevistos}
           percentualPrevistos={percentualPrevistos}
+          onToggleIncluirPrevistos={handleTogglePrevistos}
+          onChangePercentualPrevistos={setPercentualPrevistos}
         />
         <EntregasRealizadasSemanal 
           semanaAtual={semanaAtual} 
