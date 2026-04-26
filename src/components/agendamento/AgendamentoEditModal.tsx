@@ -411,7 +411,6 @@ export default function AgendamentoEditModal({
                 <Select
                   value={tipoPedido}
                   onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}
-                  disabled={isRep}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -471,13 +470,12 @@ export default function AgendamentoEditModal({
                 value={quantidadeTotal}
                 onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
                 min="0"
-                disabled={isRep}
                 className={hasValidationError ? "border-red-500" : ""}
               />
             </div>
           )}
 
-          {statusAgendamento !== "Agendar" && tipoPedido === "Alterado" && !isRep && (
+          {statusAgendamento !== "Agendar" && tipoPedido === "Alterado" && (
             <div className="space-y-4 border-t pt-4">
               <ProdutoQuantidadeSelector
                 value={itensPersonalizados}
