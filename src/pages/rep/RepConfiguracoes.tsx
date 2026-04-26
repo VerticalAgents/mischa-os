@@ -1,5 +1,4 @@
 import { useState } from "react";
-import RepLayout from "@/layouts/RepLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,8 +73,7 @@ export default function RepConfiguracoes() {
   };
 
   return (
-    <RepLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
           <p className="text-sm text-muted-foreground">
@@ -248,7 +246,6 @@ export default function RepConfiguracoes() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-    </RepLayout>
+    </div>
   );
 }
