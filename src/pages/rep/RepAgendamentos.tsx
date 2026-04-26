@@ -30,7 +30,7 @@ const STATUS_OPTIONS = [
   { value: "todos", label: "Todos os status" },
   { value: "Previsto", label: "Previsto" },
   { value: "Agendado", label: "Agendado" },
-  { value: "Agendar", label: "Agendar" },
+  { value: "Agendar", label: "Pendente" },
 ];
 
 function statusVariant(s: string): "default" | "secondary" | "outline" {
