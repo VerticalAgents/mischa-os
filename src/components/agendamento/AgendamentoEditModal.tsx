@@ -430,7 +430,7 @@ export default function AgendamentoEditModal({
             />
           </div>
 
-          {tipoPedido === "Alterado" && (
+          {tipoPedido === "Alterado" && !isRep && (
             <div className="space-y-4 border-t pt-4">
               <ProdutoQuantidadeSelector
                 value={itensPersonalizados}
@@ -442,15 +442,17 @@ export default function AgendamentoEditModal({
             </div>
           )}
 
-          {/* Nova seção de observações e trocas */}
-          <ObservacoesAgendamentoSection
-            observacoesGerais={observacoesGerais}
-            onObservacoesGeraisChange={setObservacoesGerais}
-            observacoesAgendamento={observacoesAgendamento}
-            onObservacoesAgendamentoChange={setObservacoesAgendamento}
-            trocasPendentes={trocasPendentes}
-            onTrocasPendentesChange={setTrocasPendentes}
-          />
+          {/* Nova seção de observações e trocas (oculta para representantes) */}
+          {!isRep && (
+            <ObservacoesAgendamentoSection
+              observacoesGerais={observacoesGerais}
+              onObservacoesGeraisChange={setObservacoesGerais}
+              observacoesAgendamento={observacoesAgendamento}
+              onObservacoesAgendamentoChange={setObservacoesAgendamento}
+              trocasPendentes={trocasPendentes}
+              onTrocasPendentesChange={setTrocasPendentes}
+            />
+          )}
         </div>
 
         <DialogFooter>
