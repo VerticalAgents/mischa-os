@@ -15,7 +15,8 @@ import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useToast } from "@/hooks/use-toast";
 import { useHistoricoEntregasStore } from "@/hooks/useHistoricoEntregasStore";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, Legend } from 'recharts';
+import { useIsMobile } from '@/hooks/use-mobile';
 import TipoPedidoBadge from "@/components/expedicao/TipoPedidoBadge";
 import AgendamentoEditModal from "./AgendamentoEditModal";
 import ReagendamentoEmMassaDialog from "./ReagendamentoEmMassaDialog";
@@ -130,6 +131,7 @@ const IndicadoresEntrega = ({
 
 export default function AgendamentoDashboard() {
   const { canEdit } = useEditPermission();
+  const isMobile = useIsMobile();
   const {
     agendamentos,
     carregarTodosAgendamentos,
@@ -1031,14 +1033,14 @@ export default function AgendamentoDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gráfico de Status */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <div>
-              <CardTitle>Distribuição por Status</CardTitle>
-              <CardDescription className="text-left">
+          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 space-y-0">
+            <div className="space-y-1">
+              <CardTitle className="text-base md:text-lg">Distribuição por Status</CardTitle>
+              <CardDescription className="text-left text-xs md:text-sm">
                 {modoGraficos === 'unidades' ? 'Volume de unidades por status' : 'Visão geral dos agendamentos por status'}
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-start md:self-auto">
               <Label htmlFor="toggle-graficos" className="text-xs text-muted-foreground">
                 {modoGraficos === 'unidades' ? 'Unidades' : 'Agendamentos'}
               </Label>
@@ -1051,7 +1053,7 @@ export default function AgendamentoDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
+            <div className="h-64 md:h-80">
               <ResponsiveContainer width="100%" height="100%">
                  <PieChart>
                   <Pie 
@@ -1059,15 +1061,27 @@ export default function AgendamentoDashboard() {
                     cx="50%" 
                     cy="50%" 
                     labelLine={false} 
-                    label={({ status, quantidade, unidades }) => 
+                    label={isMobile ? false : ({ status, quantidade, unidades }) => 
                       `${status}: ${modoGraficos === 'unidades' ? unidades : quantidade}`
                     } 
-                    outerRadius={80} 
+                    outerRadius={isMobile ? 70 : 80} 
                     fill="#8884d8" 
                     dataKey={modoGraficos === 'unidades' ? 'unidades' : 'quantidade'}
                   >
                     {dadosGraficoStatus.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
                   </Pie>
+                  {isMobile && (
+                    <Legend
+                      verticalAlign="bottom"
+                      height={36}
+                      wrapperStyle={{ fontSize: '11px' }}
+                      formatter={(value, entry: any) => {
+                        const data = entry?.payload;
+                        const valor = modoGraficos === 'unidades' ? data?.unidades : data?.quantidade;
+                        return `${data?.status ?? value}: ${valor ?? 0}`;
+                      }}
+                    />
+                  )}
                   <Tooltip 
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
@@ -1106,18 +1120,18 @@ export default function AgendamentoDashboard() {
         {/* Gráfico Semanal */}
         <Card>
           <CardHeader>
-            <CardTitle>Agendamentos por Dia da Semana</CardTitle>
-            <CardDescription className="text-left">
+            <CardTitle className="text-base md:text-lg">Agendamentos por Dia da Semana</CardTitle>
+            <CardDescription className="text-left text-xs md:text-sm">
               {modoGraficos === 'unidades' ? 'Volume de unidades ao longo da semana' : 'Distribuição dos agendamentos ao longo da semana'}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
+            <div className="h-64 md:h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dadosGraficoSemanal}>
+                <BarChart data={dadosGraficoSemanal} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="dia" />
-                  <YAxis />
+                  <XAxis dataKey="dia" tick={{ fontSize: 10 }} interval={0} />
+                  <YAxis tick={{ fontSize: 10 }} width={30} />
                   <Tooltip 
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {

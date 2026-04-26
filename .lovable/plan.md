@@ -1,45 +1,39 @@
 ## Problema
 
-O modal "Novo Cliente / Editar Cliente" (`ClienteFormDialog.tsx`) está quebrado no mobile (390px):
-- Vários blocos usam grids fixos (`grid-cols-3`, `grid-cols-2`) que não colapsam em telas pequenas, espremendo labels (ex: "ID do Cliente", "Tipo de Cobrança", "Prazo de Pagamento") e cortando textos.
-- O grupo de Tipo de Pessoa (PJ/PF) usa `flex` sem wrap, vazando para fora.
-- O `DialogContent` tem `p-6` e `max-w-lg` padrão (em mobile sai dos limites do viewport quando combinado com o conteúdo), e o título/descrição ficam apertados ao lado do botão de fechar.
+No mobile (390px), quatro blocos do Dashboard de Agendamentos estão mal adaptados:
 
-## Solução
+1. **Produtos Necessários** — ícone + título grandes + toggle "Incluir previstos" ocupam muito espaço; o input de % quebra a linha.
+2. **Produtos Entregues** — título "Produtos Entregues" quebra em duas linhas porque o bloco "Semana anterior" à direita rouba espaço.
+3. **Distribuição por Status (pizza)** — header com switch "Agendamentos/Unidades" + ícone se sobrepõe ao título; labels do PieChart vazam para fora ("Agendar...", "viso: 27", "Agen…").
+4. **Agendamentos por Dia da Semana (barras)** — eixo X mostra datas demais (20/04, 22/04, 24/04, 26/04) com fontes grandes; gráfico fica apertado.
 
-Tornar o modal totalmente fluido no mobile, mantendo o layout multi-coluna em telas `sm`/`md` para cima.
+## Correções
 
-### Ajustes no `src/components/clientes/ClienteFormDialog.tsx`
+### 1. Cards "Produtos Necessários" e "Produtos Entregues" (`QuantidadesProdutosSemanal.tsx`, `EntregasRealizadasSemanal.tsx`)
+- Reduzir tamanho do `CardTitle` no mobile (`text-base md:text-lg`) e do ícone (`h-4 w-4 md:h-5 md:w-5`).
+- Forçar empilhamento vertical do header no mobile: título em cima, controles/indicador "Semana anterior" embaixo, alinhados à esquerda.
+- Em "Produtos Necessários": colocar o switch "Incluir previstos" e o input "%" na mesma linha horizontal compacta abaixo do título no mobile.
+- Em "Produtos Entregues": no mobile, mover "Semana anterior" para uma linha horizontal abaixo do título (sem `text-right`), em formato compacto: `Semana anterior: 370 ↗ 0%`.
+- Reduzir padding interno do bloco azul/verde de total no mobile (`p-3 md:p-4`) e tamanho do número (`text-2xl md:text-3xl`).
 
-1. **DialogContent**: ajustar largura/padding para mobile.
-   - `w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-full sm:max-w-[1000px]`
-   - `p-4 sm:p-6` para reduzir padding lateral em telas pequenas.
+### 2. Card "Distribuição por Status" (`AgendamentoDashboard.tsx` linhas ~1033-1104)
+- Mudar `CardHeader` para `flex-col md:flex-row` no mobile, evitando sobreposição entre título e switch.
+- Reduzir altura do gráfico no mobile (`h-64 md:h-80`).
+- Remover labels do `Pie` no mobile (`label={isMobile ? false : ...}`) e habilitar `<Legend />` do recharts abaixo do gráfico para mostrar os status sem cortar texto.
+- Reduzir `outerRadius` para 70 no mobile.
 
-2. **Bloco Dados Básicos**:
-   - `grid-cols-3` (ID, Nome, Tipo de Pessoa) → `grid-cols-1 sm:grid-cols-3`
-   - `grid-cols-2` (CNPJ, Insc. Estadual) → `grid-cols-1 sm:grid-cols-2`
-   - `grid-cols-3` (Contato Nome, Telefone, Email) → `grid-cols-1 sm:grid-cols-3`
-   - RadioGroup de Tipo de Pessoa: adicionar `flex-wrap` e `gap-x-4 gap-y-2`.
+### 3. Card "Agendamentos por Dia da Semana" (`AgendamentoDashboard.tsx` linhas ~1107+)
+- Reduzir altura no mobile (`h-64 md:h-80`).
+- Diminuir fonte dos eixos (`tick={{ fontSize: 10 }}`) e usar formato curto (apenas `dd/MM` já está, mas reduzir tick size).
+- Adicionar `interval={0}` ou `interval="preserveStartEnd"` e ajustar margens (`margin={{ left: -10, right: 10 }}`) para aproveitar espaço.
 
-3. **Bloco Configurações Comerciais**:
-   - `grid-cols-2` (Periodicidade, Status) → `grid-cols-1 sm:grid-cols-2`.
+### 4. Detecção de mobile
+- Reutilizar o hook existente `useIsMobile()` (já presente em `src/hooks/use-mobile.tsx`) para condicionar labels do PieChart.
 
-4. **Bloco Configurações de Entrega e Logística**:
-   - Ambos `grid-cols-2` (Representante/Rota, Categoria/Tipo Logística) → `grid-cols-1 sm:grid-cols-2`.
+## Arquivos a editar
+- `src/components/agendamento/QuantidadesProdutosSemanal.tsx`
+- `src/components/agendamento/EntregasRealizadasSemanal.tsx`
+- `src/components/agendamento/AgendamentoDashboard.tsx`
 
-5. **Bloco Configurações Financeiras**:
-   - `grid-cols-3` → `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`.
-
-6. **Card padding**: `CardContent` mantém `space-y-4`; sem mudança necessária além das grids.
-
-7. **DialogHeader**: garantir que o título não seja cortado pelo botão X — adicionar `pr-8` no `DialogTitle` para reservar espaço do botão de fechar.
-
-### Resultado esperado
-
-- Mobile (≤640px): cada campo ocupa toda a largura, sem cortes; radios PJ/PF quebram linha se preciso.
-- Tablet (≥640px): volta o layout 2 colunas.
-- Desktop (≥1024px): layout original 3 colunas no bloco financeiro.
-
-### Arquivo afetado
-
-- `src/components/clientes/ClienteFormDialog.tsx` (apenas ajustes de classes Tailwind).
+## Fora do escopo
+Não mexer em desktop — todas as mudanças são via classes responsivas (`md:`) ou condicionais por `useIsMobile`.
