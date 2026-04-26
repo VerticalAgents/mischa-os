@@ -261,6 +261,7 @@ export default function EstoqueProdutosTab() {
             itemId={produtoSelecionado.id}
             itemNome={produtoSelecionado.nome}
             tipoItem="produto"
+            saldoReferencia={produtos.find(p => p.id === produtoSelecionado.id)?.saldoReal ?? 0}
             onSuccess={handleCloseModal}
           />
           

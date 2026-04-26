@@ -20,6 +20,12 @@ interface MovimentacaoEstoqueModalProps {
   itemNome: string;
   tipoItem: 'produto' | 'insumo';
   onSuccess?: () => void;
+  /**
+   * Saldo de referência usado como base do Ajuste.
+   * Quando informado, sobrepõe o saldo físico bruto vindo do banco.
+   * Útil para usar o "Saldo Real" (físico − separados − despachados) na tela de Estoque de Produtos.
+   */
+  saldoReferencia?: number;
 }
 
 export default function MovimentacaoEstoqueModal({
@@ -28,7 +34,8 @@ export default function MovimentacaoEstoqueModal({
   itemId,
   itemNome,
   tipoItem,
-  onSuccess
+  onSuccess,
+  saldoReferencia,
 }: MovimentacaoEstoqueModalProps) {
   const [tipo, setTipo] = useState<MovTipo>('entrada');
   const [quantidade, setQuantidade] = useState('');
@@ -49,7 +56,7 @@ export default function MovimentacaoEstoqueModal({
     if (isOpen) {
       carregarSaldoAtual();
     }
-  }, [isOpen, itemId, tipoItem]);
+  }, [isOpen, itemId, tipoItem, saldoReferencia]);
 
   useEffect(() => {
     // Calcular quantidade automaticamente quando em modo pacotes
@@ -60,6 +67,11 @@ export default function MovimentacaoEstoqueModal({
   }, [quantidadePacotes, modoEntrada, insumoAtual]);
 
   const carregarSaldoAtual = async () => {
+    // Se o chamador já forneceu o saldo de referência (ex.: Saldo Real para produtos), usá-lo direto.
+    if (typeof saldoReferencia === 'number') {
+      setSaldoAtual(saldoReferencia);
+      return;
+    }
     if (tipoItem === 'insumo') {
       const saldo = await obterSaldoInsumo(itemId);
       setSaldoAtual(saldo);
@@ -188,9 +200,16 @@ export default function MovimentacaoEstoqueModal({
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Saldo atual:</span>
+                <span className="text-sm text-muted-foreground">
+                  {typeof saldoReferencia === 'number' ? 'Saldo disponível (real):' : 'Saldo atual:'}
+                </span>
                 <span className="text-sm font-medium">{Math.round(saldoAtual)} unidades</span>
               </div>
+              {typeof saldoReferencia === 'number' && (
+                <p className="text-xs text-muted-foreground">
+                  Considera o estoque físico menos pedidos já separados e despachados pendentes de baixa.
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
