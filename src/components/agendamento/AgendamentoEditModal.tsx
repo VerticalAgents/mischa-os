@@ -438,6 +438,7 @@ export default function AgendamentoEditModal({
                 clienteId={agendamento.cliente.id}
                 quantidadeTotal={quantidadeTotal}
                 onQuantidadeTotalChange={setQuantidadeTotal}
+                categoriasHabilitadas={agendamento.cliente.categoriasHabilitadas}
               />
             </div>
           )}
