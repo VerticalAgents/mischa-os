@@ -129,7 +129,11 @@ const IndicadoresEntrega = ({
   );
 };
 
-export default function AgendamentoDashboard() {
+interface AgendamentoDashboardProps {
+  hideExportPDF?: boolean;
+}
+
+export default function AgendamentoDashboard({ hideExportPDF = false }: AgendamentoDashboardProps = {}) {
   const { canEdit } = useEditPermission();
   const isMobile = useIsMobile();
   const {
@@ -902,15 +906,17 @@ export default function AgendamentoDashboard() {
             className="w-full sm:w-auto"
           />
           
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={exportarPDFRepresentante}
-            className="flex items-center justify-center gap-2 w-full sm:w-auto sm:ml-auto"
-          >
-            <FileDown className="h-4 w-4" />
-            Exportar PDF
-          </Button>
+          {!hideExportPDF && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportarPDFRepresentante}
+              className="flex items-center justify-center gap-2 w-full sm:w-auto sm:ml-auto"
+            >
+              <FileDown className="h-4 w-4" />
+              Exportar PDF
+            </Button>
+          )}
         </div>
       </div>
 
