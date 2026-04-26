@@ -4,7 +4,7 @@ export interface AgendamentoCliente {
   cliente_id: string;
   tipo_pedido: 'Padrão' | 'Alterado';
   status_agendamento: 'Agendar' | 'Previsto' | 'Agendado';
-  data_proxima_reposicao?: Date;
+  data_proxima_reposicao?: Date | null;
   quantidade_total: number;
   itens_personalizados?: { produto: string; quantidade: number }[];
   substatus_pedido?: string;
