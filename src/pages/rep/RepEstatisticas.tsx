@@ -87,35 +87,32 @@ export default function RepEstatisticas() {
       {data && (
         <>
           <RepresentantesIndicadoresOptimized
-            clientesDoRepresentante={data.clientesDoRepresentante}
-            clientesAtivos={data.clientesAtivos}
-            clientesEmAnalise={data.clientesEmAnalise}
-            clientesAtivar={data.clientesAtivar}
-            clientesInativos={data.clientesInativos}
-            clientesStandby={data.clientesStandby}
-            giroTotalReal={data.giroTotalReal}
-            giroMedioPorPDV={data.giroMedioPorPDV}
-            taxaConversao={data.taxaConversao}
+            data={{
+              totalClientes: data.clientesDoRepresentante.length,
+              clientesAtivos: data.clientesAtivos.length,
+              giroTotalReal: data.giroTotalReal,
+              giroMedioPorPDV: data.giroMedioPorPDV,
+              taxaConversao: data.taxaConversao,
+              clientesEmAnalise: data.clientesEmAnalise.length,
+            }}
+            isLoading={isLoading}
           />
 
           <RepresentantesCharts
-            dadosStatusPie={data.dadosStatusPie}
-            dadosGiroBar={data.dadosGiroBar}
+            data={{
+              dadosStatusPie: data.dadosStatusPie,
+              dadosGiroBar: data.dadosGiroBar,
+            }}
+            isLoading={isLoading}
           />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Meus Clientes</CardTitle>
-              <CardDescription>
-                Lista completa da sua carteira ({data.clientesDoRepresentante.length})
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-                <SortableClientesTable clientes={data.clientesDoRepresentante} />
-              </Suspense>
-            </CardContent>
-          </Card>
+          <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+            <SortableClientesTable
+              clientes={data.clientesDoRepresentante as any}
+              titulo={`Meus Clientes (${data.clientesDoRepresentante.length})`}
+              showDeliveryStats
+            />
+          </Suspense>
         </>
       )}
     </div>
