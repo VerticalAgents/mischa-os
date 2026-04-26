@@ -4,6 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Package, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, endOfWeek } from "date-fns";
 
@@ -12,6 +15,8 @@ interface QuantidadesProdutosSemanelProps {
   semanaAtual: Date;
   incluirPrevistos: boolean;
   percentualPrevistos: number;
+  onToggleIncluirPrevistos?: (checked: boolean) => void;
+  onChangePercentualPrevistos?: (value: number) => void;
 }
 
 interface ProdutoQuantidade {
@@ -24,7 +29,9 @@ export default function QuantidadesProdutosSemanal({
   agendamentosFiltrados,
   semanaAtual,
   incluirPrevistos,
-  percentualPrevistos
+  percentualPrevistos,
+  onToggleIncluirPrevistos,
+  onChangePercentualPrevistos,
 }: QuantidadesProdutosSemanelProps) {
   const [quantidadesPorProdutoConfirmados, setQuantidadesPorProdutoConfirmados] = useState<Record<string, ProdutoQuantidade>>({});
   const [quantidadesPorProdutoPrevistos, setQuantidadesPorProdutoPrevistos] = useState<Record<string, ProdutoQuantidade>>({});
@@ -131,7 +138,7 @@ export default function QuantidadesProdutosSemanal({
 
   return <Card>
     <CardHeader>
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="space-y-1.5">
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-blue-500" />
@@ -141,6 +148,33 @@ export default function QuantidadesProdutosSemanal({
             Quantidades para pedidos {incluirPrevistos ? `confirmados + ${percentualPrevistos}% previstos` : "confirmados"}
           </CardDescription>
         </div>
+        {onToggleIncluirPrevistos && (
+          <div className="flex items-center gap-3 sm:justify-end flex-wrap">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="incluir-previstos-prod" className="text-sm cursor-pointer whitespace-nowrap">
+                Incluir previstos
+              </Label>
+              <Switch
+                id="incluir-previstos-prod"
+                checked={incluirPrevistos}
+                onCheckedChange={onToggleIncluirPrevistos}
+              />
+            </div>
+            {incluirPrevistos && onChangePercentualPrevistos && (
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={percentualPrevistos}
+                  onChange={(e) => onChangePercentualPrevistos(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+                  className="w-16 h-8 text-center text-sm"
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </CardHeader>
     <CardContent>
