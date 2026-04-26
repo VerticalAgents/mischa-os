@@ -1,35 +1,37 @@
-## Problema
+## Objetivo
 
-Ao usar o Ajuste de Estoque para zerar Brownie Avelã, o estoque físico foi corretamente para `0` no banco, mas a coluna "Saldo Real" da tela ficou em **−418**. Motivo:
+Tornar o **Ajuste de Estoque de Insumos** equivalente ao de Produtos: botão dedicado, modal já aberto no modo "Ajuste", aceitando 0 para zerar e calculando automaticamente a diferença (entrada/saída) a partir do saldo atual.
 
-- A coluna "Saldo Real" da página de Estoque mostra `saldoAtual − quantidadeSeparada − quantidadeDespachada` (pedidos já separados/despachados que ainda não baixaram o físico).
-- O modal de Ajuste usava apenas o `saldoAtual` (físico bruto) como referência. Ao zerar, gravou saída do físico inteiro, mas as 418 unidades de pedidos pendentes continuam descontando na exibição.
+## Situação atual
 
-A decisão é: **o Ajuste deve usar o Saldo Real como base**, para que o número final digitado pelo usuário corresponda ao que ele vê na tela (e zerar realmente signifique "Saldo Real = 0").
+- O modal `MovimentacaoEstoqueModal` já é genérico e suporta ajuste para insumos (calcula delta, aceita 0, cria entrada ou saída automaticamente).
+- Na aba **Estoque de Insumos**, porém, o usuário precisa clicar em "Movimentar" e trocar manualmente o tipo para "Ajuste" — não há botão direto.
+- Para insumos não existe "Saldo Real" (não há separados/despachados pendentes); o saldo de referência é o próprio saldo físico (`saldo_insumo`), que já é o que o modal usa por padrão.
+- A trigger `prevent_negative_insumo` só bloqueia saídas maiores que o saldo — não impede zerar.
 
-## Correções
+## Mudanças
 
-### 1. `src/components/estoque/MovimentacaoEstoqueModal.tsx`
-- Receber o `saldoReal` do produto como prop opcional (`saldoReferencia?: number`) — quando informado, é ele que vira `saldoAtual` para fins do cálculo de ajuste.
-- Continuar buscando `saldo_produto` como fallback caso a prop não venha (compatibilidade com EstoqueProdutosTab antigo, EstoqueInsumosTab e Precificacao).
-- Para insumos, manter o comportamento atual (sem expedição envolvida, segue usando `saldo_insumo`).
-- Renomear o rótulo da linha do card para "Saldo disponível (real)" quando estamos usando Saldo Real, para deixar claro ao usuário.
-- A diferença `quantidadeFinal − saldoReferencia` continua sendo registrada como entrada/saída no banco, mantendo a contabilidade do físico coerente. Ex.: saldo físico 1388, separados/despachados 418, saldo real 970. Usuário ajusta para 0 → grava saída de 970 → físico passa a 418, saldo real passa a 0.
+### 1. `src/components/estoque/tabs/EstoqueInsumosTab.tsx`
+- Adicionar um novo botão **"Ajustar"** (ícone `Pencil` ou `Settings2`) na coluna Ações de cada insumo, ao lado de "Movimentar".
+- Ao clicar, abrir o `MovimentacaoEstoqueModal` com uma nova prop `tipoInicial="ajuste"` para que o tipo já venha pré-selecionado.
+- Reaproveita o mesmo estado `insumoSelecionado` e o mesmo `handleCloseModal` que já recarrega os saldos.
 
-### 2. `src/components/estoque/tabs/EstoqueProdutosTab.tsx`
-- Passar `saldoReferencia={produto.saldoReal}` ao `MovimentacaoEstoqueModal`. O `produto` selecionado já vem do hook `useEstoqueComExpedicao` com `saldoReal` calculado.
-- Após o ajuste, manter o `carregarSaldos()` atual no `handleCloseModal` para refletir o novo estado.
+### 2. `src/components/estoque/MovimentacaoEstoqueModal.tsx`
+- Adicionar prop opcional `tipoInicial?: MovTipo` (default `'entrada'`).
+- Inicializar `useState<MovTipo>(tipoInicial)` e resetar para `tipoInicial` no `resetForm`.
+- Sincronizar com `useEffect` quando o modal abre, para refletir o valor da prop.
+- Nenhuma mudança na lógica de cálculo do ajuste — ela já trata o caso `quantidade = 0` e gera saída pelo delta correto.
 
-### 3. (Sem mudanças em `EstoqueInsumosTab.tsx` e `precificacao/EstoqueTab.tsx`)
-Esses outros usos continuam usando o saldo físico, que é o correto para insumos e para a tela de precificação.
+### 3. (Opcional) Texto do card de Insumos no modal
+- O card "Informações do Insumo" já mostra "Saldo atual" — sem mudanças.
+- Quando o tipo for "ajuste", a label do input já vira "Quantidade Final (unidade)" e mostra o resumo "Entrada de X" / "Saída de X" / "Sem alteração" — funciona igual aos produtos.
 
-## Comportamento esperado após o fix
+## Resultado esperado
 
-- Card do modal mostra: "Saldo disponível (real): 970 unidades" (no caso atual de Brownie Avelã, depois de tudo se reverter; ou o número equivalente em qualquer outro produto).
-- Usuário digita `0` → sistema grava saída de 970 → físico vai a 418, Saldo Real vai a 0, status "Sem estoque".
-- Usuário digita `N` → Saldo Real final = N exatamente.
-- Não modifica banco nem RPCs; é apenas reinterpretação no frontend.
+- Na aba de Insumos, o usuário clica em **"Ajustar"** → modal abre direto no modo Ajuste mostrando o saldo atual → digita o saldo final desejado (incluindo 0) → sistema cria automaticamente a movimentação de entrada ou saída com o delta exato → saldo da tabela atualiza.
+- Comportamento idêntico ao já implementado na aba de Estoque de Produtos.
 
-## Observação adicional
+## Detalhes técnicos
 
-Não vou re-corrigir automaticamente o estado atual (Brownie Avelã com físico 0 e separados/despachados de 418). Para corrigir o caso já registrado, basta após o deploy abrir o modal e digitar `0` novamente — agora ele baseia o ajuste no Saldo Real (que está em −418), interpretando como "subir até 0" e gravará uma entrada de 418 unidades para igualar.
+- Não requer mudanças no banco (RPC `saldo_insumo`, trigger `prevent_negative_insumo` e tabela `movimentacoes_estoque_insumos` já cobrem o cenário).
+- Mantém retrocompatibilidade: `tipoInicial` é opcional; chamadas existentes do modal continuam abrindo com tipo "entrada".
