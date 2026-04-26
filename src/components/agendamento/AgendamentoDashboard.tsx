@@ -1036,7 +1036,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
       </div>
 
       {/* Gráficos */}
-      {agendamentosFiltrados.length > 0 && (
+      {dadosGraficoStatus.length > 0 && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gráfico de Status */}
         <Card>
