@@ -1844,6 +1844,50 @@ export type Database = {
           },
         ]
       }
+      representante_accounts: {
+        Row: {
+          ativo: boolean
+          auth_user_id: string
+          created_at: string
+          id: string
+          login_email: string
+          owner_id: string
+          representante_id: number
+          senha_acesso: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          auth_user_id: string
+          created_at?: string
+          id?: string
+          login_email: string
+          owner_id: string
+          representante_id: number
+          senha_acesso?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          auth_user_id?: string
+          created_at?: string
+          id?: string
+          login_email?: string
+          owner_id?: string
+          representante_id?: number
+          senha_acesso?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "representante_accounts_representante_id_fkey"
+            columns: ["representante_id"]
+            isOneToOne: true
+            referencedRelation: "representantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       representantes: {
         Row: {
           ativo: boolean
@@ -2534,6 +2578,7 @@ export type Database = {
         }[]
       }
       get_feature_flag: { Args: { flag_name: string }; Returns: boolean }
+      get_my_representante_id: { Args: never; Returns: number }
       get_my_staff_context: {
         Args: never
         Returns: {
@@ -2567,6 +2612,7 @@ export type Database = {
         Returns: boolean
       }
       is_owner_or_staff: { Args: never; Returns: boolean }
+      is_representante: { Args: never; Returns: boolean }
       marcar_parcelas_atrasadas: { Args: never; Returns: undefined }
       populate_historico_giro_semanal: { Args: never; Returns: undefined }
       process_entrega: { Args: { p_entrega_id: string }; Returns: undefined }
@@ -2592,13 +2638,21 @@ export type Database = {
             Returns: undefined
           }
       refresh_dados_analise_giro: { Args: never; Returns: undefined }
+      representante_update_agendamento: {
+        Args: {
+          p_agendamento_id: string
+          p_data_proxima_reposicao?: string
+          p_status_agendamento?: string
+        }
+        Returns: undefined
+      }
       saldo_insumo: { Args: { i_id: string }; Returns: number }
       saldo_produto: { Args: { p_id: string }; Returns: number }
       validate_cnpj_cpf: { Args: { doc: string }; Returns: boolean }
       validate_email: { Args: { email: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "user" | "producao"
+      app_role: "admin" | "user" | "producao" | "representante"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2726,7 +2780,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "producao"],
+      app_role: ["admin", "user", "producao", "representante"],
     },
   },
 } as const

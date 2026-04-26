@@ -29,6 +29,8 @@ import ObservacoesAgendamentoSection from "./ObservacoesAgendamentoSection";
 import { TrocaPendente } from "./TrocasPendentesEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { registrarReagendamentoEntreSemanas } from "@/utils/reagendamentoUtils";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { format as formatDate } from "date-fns";
 
 interface AgendamentoEditModalProps {
   open: boolean;
@@ -68,6 +70,8 @@ export default function AgendamentoEditModal({
   const { salvarAgendamento, carregarAgendamentoPorCliente } = useAgendamentoClienteStore();
   const { atualizarCliente } = useClienteStore();
   const { toast } = useToast();
+  const { isRepresentante } = useUserRoles();
+  const isRep = isRepresentante();
 
   // Carrega dados apenas uma vez quando o agendamento muda
   useEffect(() => {
@@ -187,6 +191,31 @@ export default function AgendamentoEditModal({
     setIsSaving(true);
     
     try {
+      // ===== Modo representante: usa RPC restrita (apenas status + data) =====
+      if (isRep) {
+        const { error: rpcErr } = await supabase.rpc("representante_update_agendamento", {
+          p_agendamento_id: agendamento.id as unknown as string,
+          p_status_agendamento: statusAgendamento,
+          p_data_proxima_reposicao: formatDate(dataReposicao, "yyyy-MM-dd"),
+        });
+        if (rpcErr) throw rpcErr;
+
+        toast({
+          title: "Sucesso",
+          description: "Agendamento atualizado",
+        });
+
+        const agendamentoAtualizado: AgendamentoItem = {
+          ...agendamento,
+          dataReposicao,
+          statusAgendamento,
+        };
+        onSalvar(agendamentoAtualizado);
+        onOpenChange(false);
+        setDadosCarregados(false);
+        return;
+      }
+
       // Registrar reagendamento entre semanas se a data mudou
       if (agendamento.dataReposicao && dataReposicao.getTime() !== agendamento.dataReposicao.getTime()) {
         registrarReagendamentoEntreSemanas(
@@ -337,7 +366,11 @@ export default function AgendamentoEditModal({
 
             <div className="space-y-2">
               <Label htmlFor="tipoPedido">Tipo do Pedido</Label>
-              <Select value={tipoPedido} onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}>
+              <Select
+                value={tipoPedido}
+                onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}
+                disabled={isRep}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -392,11 +425,12 @@ export default function AgendamentoEditModal({
               value={quantidadeTotal}
               onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
               min="0"
+              disabled={isRep}
               className={hasValidationError ? "border-red-500" : ""}
             />
           </div>
 
-          {tipoPedido === "Alterado" && (
+          {tipoPedido === "Alterado" && !isRep && (
             <div className="space-y-4 border-t pt-4">
               <ProdutoQuantidadeSelector
                 value={itensPersonalizados}
@@ -408,15 +442,17 @@ export default function AgendamentoEditModal({
             </div>
           )}
 
-          {/* Nova seção de observações e trocas */}
-          <ObservacoesAgendamentoSection
-            observacoesGerais={observacoesGerais}
-            onObservacoesGeraisChange={setObservacoesGerais}
-            observacoesAgendamento={observacoesAgendamento}
-            onObservacoesAgendamentoChange={setObservacoesAgendamento}
-            trocasPendentes={trocasPendentes}
-            onTrocasPendentesChange={setTrocasPendentes}
-          />
+          {/* Nova seção de observações e trocas (oculta para representantes) */}
+          {!isRep && (
+            <ObservacoesAgendamentoSection
+              observacoesGerais={observacoesGerais}
+              onObservacoesGeraisChange={setObservacoesGerais}
+              observacoesAgendamento={observacoesAgendamento}
+              onObservacoesAgendamentoChange={setObservacoesAgendamento}
+              trocasPendentes={trocasPendentes}
+              onTrocasPendentesChange={setTrocasPendentes}
+            />
+          )}
         </div>
 
         <DialogFooter>

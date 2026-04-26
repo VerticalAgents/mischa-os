@@ -22,6 +22,8 @@ import { Cliente, StatusCliente, DiaSemana, TipoPessoa } from "@/types";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import { useSupabaseCategoriasProduto } from "@/hooks/useSupabaseCategoriasProduto";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import { useMyRepresentanteId } from "@/hooks/useMyRepresentanteId";
 import { useSupabaseRotasEntrega } from "@/hooks/useSupabaseRotasEntrega";
 import { useSupabaseCategoriasEstabelecimento } from "@/hooks/useSupabaseCategoriasEstabelecimento";
 import { useSupabaseTiposLogistica } from "@/hooks/useSupabaseTiposLogistica";
@@ -91,6 +93,9 @@ export default function ClienteFormDialog({
   const { adicionarCliente, atualizarCliente, loading } = useClienteStore();
   const { categorias } = useSupabaseCategoriasProduto();
   const { representantes } = useSupabaseRepresentantes();
+  const { isRepresentante } = useUserRoles();
+  const { representanteId: meuRepresentanteId } = useMyRepresentanteId();
+  const isRep = isRepresentante();
   const { rotasEntrega } = useSupabaseRotasEntrega();
   const { categorias: categoriasEstabelecimento } = useSupabaseCategoriasEstabelecimento();
   const { formasPagamento } = useSupabaseFormasPagamento();
@@ -139,12 +144,18 @@ export default function ClienteFormDialog({
         setFormData({
           ...getDefaultFormData(),
           ...dadosIniciais,
+          representanteId: isRep && meuRepresentanteId
+            ? meuRepresentanteId
+            : (dadosIniciais.representanteId ?? undefined),
           categoriasHabilitadas: dadosIniciais.categoriasHabilitadas || []
         });
         lastClienteIdRef.current = null;
       } else {
         // MODO DE CRIAÇÃO VAZIA: Novo cliente em branco
-        setFormData(getDefaultFormData());
+        setFormData({
+          ...getDefaultFormData(),
+          representanteId: isRep && meuRepresentanteId ? meuRepresentanteId : undefined,
+        });
         lastClienteIdRef.current = null;
       }
       initializedRef.current = true;
@@ -528,7 +539,16 @@ export default function ClienteFormDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="representante">Representante</Label>
-                  {representantes.length === 0 && formData.representanteId ? (
+                  {isRep ? (
+                    <Input
+                      value={
+                        representantes.find((r) => r.id === formData.representanteId)?.nome
+                          ?? "Você"
+                      }
+                      disabled
+                      className="bg-muted"
+                    />
+                  ) : representantes.length === 0 && formData.representanteId ? (
                     <Input value="Carregando..." disabled className="bg-muted" />
                   ) : (
                     <Select 

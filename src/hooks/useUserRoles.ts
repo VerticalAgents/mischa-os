@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 
-export type AppRole = 'admin' | 'user' | 'producao';
+export type AppRole = 'admin' | 'user' | 'producao' | 'representante';
 
 export function useUserRoles() {
   const { user } = useAuth();
@@ -92,6 +92,10 @@ export function useUserRoles() {
     return userRole === 'producao';
   };
 
+  const isRepresentante = (): boolean => {
+    return userRole === 'representante';
+  };
+
   const assignRole = async (userId: string, role: AppRole) => {
     try {
       // Validate input
@@ -99,7 +103,7 @@ export function useUserRoles() {
         throw new Error('User ID and role are required');
       }
 
-      if (!['admin', 'user', 'producao'].includes(role)) {
+      if (!['admin', 'user', 'producao', 'representante'].includes(role)) {
         throw new Error('Invalid role specified');
       }
 
@@ -205,6 +209,7 @@ export function useUserRoles() {
     hasRole,
     isAdmin,
     isProducao,
+    isRepresentante,
     assignRole,
     revokeRole,
     refreshRole
