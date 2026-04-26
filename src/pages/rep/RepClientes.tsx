@@ -145,6 +145,7 @@ export default function RepClientes() {
       <EditPermissionProvider value={{ canEdit: true }}>
         <ClienteDetailsView
           cliente={clienteSelecionado}
+          hideFinanceiro
           onBack={() => {
             setClienteSelecionado(null);
             carregar();
