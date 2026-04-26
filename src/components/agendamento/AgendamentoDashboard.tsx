@@ -908,33 +908,6 @@ export default function AgendamentoDashboard() {
         </div>
       </div>
 
-      {/* Toggle global: Incluir previstos no cálculo de unidades */}
-      <div className="flex items-center justify-end gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Label htmlFor="incluir-previstos-global" className="text-sm cursor-pointer whitespace-nowrap">
-            Incluir previstos
-          </Label>
-          <Switch
-            id="incluir-previstos-global"
-            checked={incluirPrevistos}
-            onCheckedChange={handleTogglePrevistos}
-          />
-        </div>
-        {incluirPrevistos && (
-          <div className="flex items-center gap-1">
-            <Input
-              type="number"
-              min={1}
-              max={100}
-              value={percentualPrevistos}
-              onChange={(e) => setPercentualPrevistos(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
-              className="w-16 h-8 text-center text-sm"
-            />
-            <span className="text-sm text-muted-foreground">%</span>
-          </div>
-        )}
-      </div>
-
       {/* Cards de Indicadores */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card>
@@ -1002,6 +975,8 @@ export default function AgendamentoDashboard() {
           semanaAtual={semanaAtual}
           incluirPrevistos={incluirPrevistos}
           percentualPrevistos={percentualPrevistos}
+          onToggleIncluirPrevistos={handleTogglePrevistos}
+          onChangePercentualPrevistos={setPercentualPrevistos}
         />
         <EntregasRealizadasSemanal 
           semanaAtual={semanaAtual} 
