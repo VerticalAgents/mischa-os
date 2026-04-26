@@ -1,51 +1,52 @@
-## Atualização das Fichas Técnicas (6 receitas — 60 un cada)
 
-### Correções importantes vs. tentativa anterior
+# Reconstrução do Histórico de Produção (semanas zeradas)
 
-1. **Sem manteiga, sem cacau em pó genérico, sem "chocolate meio amargo"** — esses ingredientes não existem nas fichas reais. Foram inventados na primeira tentativa. Serão removidos.
-2. **Custos NÃO devem ser divididos por 1000.** O modelo do sistema é `custo_medio` = R$ da embalagem inteira (campo `volume_bruto` em g). Exemplos: Açúcar Refinado R$4,19/1000g, Ovo em Pó hidratado R$1050/86956g. Está correto. A correção combinada antes seria um erro — fica revertida.
-3. **Rendimento por receita = 60 un** (1× = 1 forma = 3980g de massa). As fichas enviadas mostram 2× (120 un / 7960g) só pra produção real; vou cadastrar a base 1×.
-4. **Ovo em Pó**: o insumo cadastrado já é "homogeneizado" (com água embutida). Usar a quantidade total da ficha (ex: 548g), sem desmembrar pó+água.
+## Diagnóstico
 
-### Plano de execução
+- **Última semana com produção registrada:** 02/mar/2026 → 08/mar/2026
+- **Semanas zeradas (com entregas, sem produção):**
+  - 09/03 → 15/03 (38 entregas)
+  - 16/03 → 22/03 (41 entregas)
+  - 23/03 → 29/03 (40 entregas)
+  - 30/03 → 05/04 (36 entregas)
+  - 06/04 → 12/04 (45 entregas)
+  - 13/04 → 19/04 (48 entregas) — semana passada
+- **Semana atual (20/04 →):** NÃO entra (a pedido: "até a semana passada")
 
-**1. Atualizar receitas (rendimento = 60, ativo = true) e limpar `itens_receita`** das 6 ativas: Tradicional, Choco Duo, Stikadinho, Meio Amargo, Doce de Leite, Avelã.
+## Lógica de reconstrução
 
-**2. Inserir os novos `itens_receita` (qtd 1× por forma, 60 un)** mapeando para os insumos reais:
+Para cada semana zerada:
 
-**Tradicional** (60 un)
-- Açúcar Refinado 1164,8 · Chocolate em Pó 50% - Sicao 411,3 · Sorbitol em Pó 81,9 · Farinha de Trigo 500,1 · Propionato de Cálcio 8 · Sal 4 · Ovo em Pó (homogeneizado) 548 · Óleo de Soja 576 · Cobertura Ao Leite - Genuine 616,9 · Água 21 · Essência de Baunilha 27 · Sorbato de Potássio 21 · Spray Desmoldante - Carlex 2
+1. Somar `quantidade` por `produto_id` em `historico_entregas.itens` (jsonb).
+2. Mapear cada `produto_id` para a sua receita_base via `componentes_produto` (tipo='receita').
+3. Agrupar unidades entregues por **receita** (várias variações como Mini/Nano Tradicional caem todas em "Brownie Tradicional").
+4. Calcular `formas = ceil(unidades_entregues / rendimento)`, onde rendimento = 60 un/forma.
+5. Inserir 1 registro por **produto final** (não por receita), distribuindo as formas proporcionalmente às unidades entregues de cada produto, para preservar o detalhamento histórico.
+6. Cada registro recebe:
+   - `data_producao` = segunda-feira da semana (consistente com padrão existente)
+   - `formas_producidas`, `unidades_calculadas` (= formas × 60)
+   - `rendimento_usado` = 60
+   - `status` = `'Confirmado'`, `confirmado_em` = now()
+   - `origem` = `'Reconstrução histórica'`
+   - `observacoes` = "Reconstruído a partir de entregas da semana DD/MM–DD/MM"
 
-**Choco Duo** (60 un) — igual à Tradicional, mas topping = **Cobertura Branca Genuine 616,9** (no lugar da Cobertura Ao Leite).
+## Tratamento de produtos especiais
 
-**Stikadinho** (60 un) — igual à Tradicional, mas topping = **Stikadinho 616,9** (no lugar da Cobertura Ao Leite).
+- **Brownie Oreo Cream** (`129a01ab…`, inativo): aparece em várias entregas. Será incluído normalmente nos registros (produto inativo não impede histórico).
+- **Mini/Nano Brownie Tradicional**: vão como registros separados (produtos próprios), mas as **formas são calculadas em conjunto** com o Brownie Tradicional padrão (mesma receita), pois compartilham a mesma massa.
+- Produtos que aparecem em entregas mas **não têm receita vinculada**: ignorar e listar no relatório final.
 
-**Meio Amargo** (60 un)
-- Açúcar Refinado 1235,8 · Chocolate em Pó 50% - Sicao 463,2 · Cacau Black 27,9 · Sorbitol em Pó 99,8 · Farinha de Trigo 562 · Propionato de Cálcio 8 · Sal 4 · Ovo em Pó (homogeneizado) 617,9 · Óleo de Soja 610,9 · Cobertura Meio Amargo - Genuine 280,5 · Água 21 · Essência de Baunilha 28 · Sorbato de Potássio 21 · Spray Desmoldante - Carlex 2
+## Etapas de execução
 
-**Doce de Leite** (60 un) — receita especial (sem chocolate em pó):
-- Açúcar Refinado 590 · Doce de Leite Tirol 925 (775 massa + 150 topping) · Açúcar Líquido Invertido 80 · Sorbitol em Pó 80 · Farinha de Trigo 643 · Propionato de Cálcio 8 · Sal 21 · Ovo em Pó (homogeneizado) 380 · Óleo de Soja 275 · Cobertura Branca Genuine 909 (292 derretida + 617 topping) · Água 21 · Essência de Baunilha 27 · Sorbato de Potássio 21 · Spray Desmoldante - Carlex 2
+1. Rodar query de levantamento mostrando, por semana e produto, total de unidades entregues e formas calculadas — exibir tabela para conferência **antes de inserir**.
+2. Após confirmação visual, executar `INSERT` em `historico_producao` (via insert tool) com todos os registros.
+3. Validar com query final agregando produção × entregas semana a semana.
 
-**Avelã** (60 un)
-- Açúcar Refinado 1117,7 · Chocolate em Pó 50% - Sicao 394,6 · Sorbitol em Pó 78,5 · Farinha de Trigo 479,8 · Propionato de Cálcio 8 · Sal 4 · Ovo em Pó (homogeneizado) 525,8 · Óleo de Soja 552,6 · Nutella 3kg 750 · Água 21 · Essência de Baunilha 27 · Sorbato de Potássio 21 · Spray Desmoldante - Carlex 2
+## Resultado esperado
 
-### O que será mantido das migrations já rodadas
+~6 semanas × ~7 produtos = **~40 novos registros** em `historico_producao`, todos com status Confirmado, deixando o card "Produção da Semana" e o histórico do PCP completos até 19/04.
 
-- ✅ Açúcar Líquido Invertido cadastrado (R$0,007/g — usado no Doce de Leite)
-- ✅ Brownie Nesquik / Oreo / Pistache marcados como inativos
-- ✅ "Brownie Tradicional (60 un)" (teste) deletado
-- ✅ Coluna `ativo` em `receitas_base`
+## Observação
 
-### Tabelas afetadas
+Nada será alterado no código — é só dados. O Card de Produção da Semana (HomeProducaoSemana.tsx) e o Histórico PCP passarão a mostrar os números automaticamente.
 
-- `receitas_base` — UPDATE rendimento + ativo nas 6 receitas
-- `itens_receita` — DELETE antigos + INSERT das fichas acima
-
-### Impacto esperado
-
-- Custo por brownie ficará realista (alguns reais por unidade), batendo com a margem que vocês praticam.
-- "Brownie Tradicional FS" não é tocado nesta migration (mantém como está) — confirmar se também deve receber a mesma ficha em rodada futura.
-
-### Próxima etapa (após aprovar e rodar)
-
-Gerar os registros de `historico_producao` que estavam pendentes desde o início da conversa, agora com fichas corretas.
