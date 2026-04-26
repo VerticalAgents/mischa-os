@@ -357,34 +357,37 @@ export default function AgendamentoEditModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Agendar">Agendar</SelectItem>
+                  <SelectItem value="Agendar">Pendente</SelectItem>
                   <SelectItem value="Previsto">Previsto</SelectItem>
                   <SelectItem value="Agendado">Agendado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tipoPedido">Tipo do Pedido</Label>
-              <Select
-                value={tipoPedido}
-                onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}
-                disabled={isRep}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Padrão">Padrão</SelectItem>
-                  <SelectItem value="Alterado">Alterado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {statusAgendamento !== "Agendar" && (
+              <div className="space-y-2">
+                <Label htmlFor="tipoPedido">Tipo do Pedido</Label>
+                <Select
+                  value={tipoPedido}
+                  onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}
+                  disabled={isRep}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Padrão">Padrão</SelectItem>
+                    <SelectItem value="Alterado">Alterado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label>Data de Reposição</Label>
-            <Popover>
+          {statusAgendamento !== "Agendar" && (
+            <div className="space-y-2">
+              <Label>Data de Reposição</Label>
+              <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -407,30 +410,33 @@ export default function AgendamentoEditModal({
                   className={cn("p-3 pointer-events-auto")}
                 />
               </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-4">
-              <Label htmlFor="quantidade">Quantidade Total</Label>
-              {hasValidationError && (
-                <p className="text-sm text-red-500">
-                  Total deve ser igual à soma das quantidades dos produtos ({somaQuantidadesProdutos})
-                </p>
-              )}
+              </Popover>
             </div>
-            <Input
-              id="quantidade"
-              type="number"
-              value={quantidadeTotal}
-              onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
-              min="0"
-              disabled={isRep}
-              className={hasValidationError ? "border-red-500" : ""}
-            />
-          </div>
+          )}
 
-          {tipoPedido === "Alterado" && !isRep && (
+          {statusAgendamento !== "Agendar" && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="quantidade">Quantidade Total</Label>
+                {hasValidationError && (
+                  <p className="text-sm text-red-500">
+                    Total deve ser igual à soma das quantidades dos produtos ({somaQuantidadesProdutos})
+                  </p>
+                )}
+              </div>
+              <Input
+                id="quantidade"
+                type="number"
+                value={quantidadeTotal}
+                onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
+                min="0"
+                disabled={isRep}
+                className={hasValidationError ? "border-red-500" : ""}
+              />
+            </div>
+          )}
+
+          {statusAgendamento !== "Agendar" && tipoPedido === "Alterado" && !isRep && (
             <div className="space-y-4 border-t pt-4">
               <ProdutoQuantidadeSelector
                 value={itensPersonalizados}
