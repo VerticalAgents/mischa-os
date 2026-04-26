@@ -96,6 +96,9 @@ export default function ClienteFormDialog({
   const { isRepresentante } = useUserRoles();
   const { representanteId: meuRepresentanteId } = useMyRepresentanteId();
   const isRep = isRepresentante();
+  // Representante não pode editar dados básicos de clientes já criados.
+  // Só pode preencher no primeiro cadastro. Depois, somente admin altera.
+  const lockBasicForRep = isRep && !!cliente;
   const { rotasEntrega } = useSupabaseRotasEntrega();
   const { categorias: categoriasEstabelecimento } = useSupabaseCategoriasEstabelecimento();
   const { formasPagamento } = useSupabaseFormasPagamento();
@@ -326,6 +329,14 @@ export default function ClienteFormDialog({
                   </AlertDescription>
                 </Alert>
               )}
+              {lockBasicForRep && (
+                <Alert className="border-warning bg-warning/10">
+                  <AlertCircle className="h-4 w-4 text-warning" />
+                  <AlertDescription className="text-warning-foreground">
+                    Os dados básicos deste cliente já foram cadastrados. Somente o administrador pode alterá-los.
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -344,6 +355,7 @@ export default function ClienteFormDialog({
                         }
                       }}
                       title={isIdUnlocked ? "Bloquear edição" : "Desbloquear edição"}
+                      disabled={lockBasicForRep}
                     >
                       {isIdUnlocked ? (
                         <Unlock className="h-3.5 w-3.5 text-amber-500" />
@@ -356,9 +368,9 @@ export default function ClienteFormDialog({
                     id="gestaoClickClienteId"
                     value={formData.gestaoClickClienteId || ''}
                     onChange={(e) => handleInputChange('gestaoClickClienteId', e.target.value)}
-                    disabled={!isIdUnlocked}
+                    disabled={!isIdUnlocked || lockBasicForRep}
                     placeholder="Ex: 12345"
-                    className={!isIdUnlocked ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                    className={(!isIdUnlocked || lockBasicForRep) ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                   />
                 </div>
                 <div className="space-y-2">
@@ -370,8 +382,8 @@ export default function ClienteFormDialog({
                     value={formData.nome || ''}
                     onChange={(e) => handleInputChange('nome', e.target.value)}
                     required
-                    disabled={!!cliente?.gestaoClickClienteId}
-                    className={cliente?.gestaoClickClienteId ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                    disabled={!!cliente?.gestaoClickClienteId || lockBasicForRep}
+                    className={(!!cliente?.gestaoClickClienteId || lockBasicForRep) ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                   />
                 </div>
                 <div className="space-y-2">
@@ -380,7 +392,7 @@ export default function ClienteFormDialog({
                     value={formData.tipoPessoa || 'PJ'}
                     onValueChange={(value: TipoPessoa) => handleInputChange('tipoPessoa', value)}
                     className="flex items-center gap-4"
-                    disabled={!!cliente?.gestaoClickClienteId}
+                    disabled={!!cliente?.gestaoClickClienteId || lockBasicForRep}
                   >
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="PJ" id="tipoPessoa-pj" />
@@ -402,8 +414,8 @@ export default function ClienteFormDialog({
                     value={formData.cnpjCpf || ''}
                     onChange={(e) => handleInputChange('cnpjCpf', e.target.value)}
                     placeholder={formData.tipoPessoa === 'PF' ? '000.000.000-00' : '00.000.000/0000-00'}
-                    disabled={!!cliente?.gestaoClickClienteId}
-                    className={cliente?.gestaoClickClienteId ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                    disabled={!!cliente?.gestaoClickClienteId || lockBasicForRep}
+                    className={(!!cliente?.gestaoClickClienteId || lockBasicForRep) ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                   />
                 </div>
                 {formData.tipoPessoa === 'PJ' && (
@@ -414,8 +426,8 @@ export default function ClienteFormDialog({
                       value={formData.inscricaoEstadual || ''}
                       onChange={(e) => handleInputChange('inscricaoEstadual', e.target.value)}
                       placeholder="Ex: 123456789"
-                      disabled={!!cliente?.gestaoClickClienteId}
-                      className={cliente?.gestaoClickClienteId ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                      disabled={!!cliente?.gestaoClickClienteId || lockBasicForRep}
+                      className={(!!cliente?.gestaoClickClienteId || lockBasicForRep) ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                     />
                   </div>
                 )}
@@ -429,6 +441,8 @@ export default function ClienteFormDialog({
                       id="enderecoEntrega"
                       value={formData.enderecoEntrega || ''}
                       onChange={(e) => handleInputChange('enderecoEntrega', e.target.value)}
+                      disabled={lockBasicForRep}
+                      className={lockBasicForRep ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                     />
                   </div>
 
@@ -440,6 +454,8 @@ export default function ClienteFormDialog({
                       placeholder="https://maps.app.goo.gl/wTpwoh5LT8hDRPke6"
                       value={formData.linkGoogleMaps || ''}
                       onChange={(e) => handleInputChange('linkGoogleMaps', e.target.value)}
+                      disabled={lockBasicForRep}
+                      className={lockBasicForRep ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                     />
                   </div>
                 </>
@@ -452,6 +468,8 @@ export default function ClienteFormDialog({
                     id="contatoNome"
                     value={formData.contatoNome || ''}
                     onChange={(e) => handleInputChange('contatoNome', e.target.value)}
+                    disabled={lockBasicForRep}
+                    className={lockBasicForRep ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                   />
                 </div>
                 <div className="space-y-2">
@@ -460,6 +478,8 @@ export default function ClienteFormDialog({
                     id="contatoTelefone"
                     value={formData.contatoTelefone || ''}
                     onChange={(e) => handleInputChange('contatoTelefone', e.target.value)}
+                    disabled={lockBasicForRep}
+                    className={lockBasicForRep ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                   />
                 </div>
                 <div className="space-y-2">
@@ -469,6 +489,8 @@ export default function ClienteFormDialog({
                     type="email"
                     value={formData.contatoEmail || ''}
                     onChange={(e) => handleInputChange('contatoEmail', e.target.value)}
+                    disabled={lockBasicForRep}
+                    className={lockBasicForRep ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
                   />
                 </div>
               </div>
