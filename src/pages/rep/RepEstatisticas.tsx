@@ -54,7 +54,7 @@ export default function RepEstatisticas() {
 
   if (repIdLoading || (!data && isLoading)) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-3 lg:p-6">
         <LoadingSkeleton />
       </div>
     );
@@ -62,7 +62,7 @@ export default function RepEstatisticas() {
 
   if (error) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-3 lg:p-6">
         <Card>
           <CardContent className="p-6 text-center text-destructive">
             Erro ao carregar dados: {error.message}
@@ -73,7 +73,7 @@ export default function RepEstatisticas() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-3 lg:p-6 space-y-6">
       <div className="flex items-center gap-3">
         <BarChart3 className="h-6 w-6 text-primary" />
         <div>
