@@ -59,6 +59,7 @@ const Modulos = lazy(() => import('@/pages/Modulos'));
 const RepHome = lazy(() => import('@/pages/rep/RepHome'));
 const RepClientes = lazy(() => import('@/pages/rep/RepClientes'));
 const RepAgendamentos = lazy(() => import('@/pages/rep/RepAgendamentos'));
+const RepConfiguracoes = lazy(() => import('@/pages/rep/RepConfiguracoes'));
 import RepLayout from '@/layouts/RepLayout';
 import { RepGuard } from '@/components/rep/RepGuard';
 import { Navigate } from 'react-router-dom';
@@ -112,6 +113,15 @@ function App() {
                         <RepGuard>
                           <RepLayout>
                             <RepAgendamentos />
+                          </RepLayout>
+                        </RepGuard>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/rep/configuracoes" element={
+                      <ProtectedRoute>
+                        <RepGuard>
+                          <RepLayout>
+                            <RepConfiguracoes />
                           </RepLayout>
                         </RepGuard>
                       </ProtectedRoute>

@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { Home, Users, Calendar, LogOut } from "lucide-react";
+import { Home, Users, Calendar, LogOut, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import logo from "@/assets/mischas-logo.png";
 
@@ -7,6 +7,7 @@ const items = [
   { to: "/rep/home", label: "Início", icon: Home },
   { to: "/rep/clientes", label: "Meus Clientes", icon: Users },
   { to: "/rep/agendamentos", label: "Agendamentos", icon: Calendar },
+  { to: "/rep/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 export function RepSidebar() {
