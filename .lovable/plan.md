@@ -1,40 +1,53 @@
-Identifiquei a causa real do erro: não é mais um erro genérico de RLS aparecendo diretamente. O console mostra `PGRST116: The result contains 0 rows`, que acontece porque o código salva com `.select().single()` e espera receber a linha salva de volta. Para o representante, a operação acaba retornando 0 linhas, então o front interpreta como falha.
+# Renomear "Agendar" para "Pendente" e simplificar modal
 
-Além disso, confirmei no banco que as políticas de `INSERT/UPDATE/DELETE` para representantes em `agendamentos_clientes` ainda não aparecem aplicadas; só existe a política de leitura. Também há clientes com representante sem registro de agendamento, então o fluxo de criação precisa estar 100% liberado.
+## Objetivo
+1. Renomear o rótulo visível "Agendar" para "Pendente" em toda a interface (admin e representante).
+2. Quando o status estiver marcado como "Pendente", ocultar os campos que não fazem sentido: Tipo de Pedido, Data de Reposição, Quantidade Total e a seção de Produtos.
 
-Plano de correção:
+## Estratégia de implementação
 
-1. Corrigir RLS de `agendamentos_clientes`
-   - Criar/aplicar políticas explícitas para representantes criarem e atualizarem agendamentos apenas dos próprios clientes.
-   - Não liberar edição de clientes de outros representantes.
-   - Não liberar acesso amplo a histórico ou dados administrativos.
-   - Manter admin/owner/staff como já está.
-   - Avaliar se `DELETE` deve ficar bloqueado para representante; para o fluxo atual de salvar agendamento, só precisamos de `INSERT` e `UPDATE`.
+**Manter o valor interno `"Agendar"` no banco de dados.** Apenas o texto exibido ao usuário muda para "Pendente". Isso evita:
+- Migração de dados em `agendamentos_clientes.status_agendamento` (centenas de registros)
+- Quebrar RLS, triggers, edge functions e queries que filtram por `'Agendar'`
+- Impacto em integrações (GestaoClick, sincronização, dashboards de probabilidade)
 
-2. Tornar o salvamento mais resiliente no frontend
-   - Em `src/hooks/agendamento/actions.ts`, trocar os pontos frágeis com `.single()` no salvar por uma abordagem que não falhe quando o PostgREST não retornar linha após `insert/update`.
-   - Para `UPDATE`, preferir filtrar por `cliente_id`, executar a mutação e depois recarregar o agendamento com `carregarAgendamentoPorCliente` ou usar `.maybeSingle()` quando fizer sentido.
-   - Para `INSERT`, idem: salvar e depois buscar o registro criado, evitando que o erro `PGRST116` apareça como falha quando o banco não retornou linha.
+A mudança é puramente cosmética/UX.
 
-3. Melhorar diagnóstico para erros futuros
-   - Ajustar o tratamento de erro para mostrar uma mensagem mais específica quando vier erro do Supabase, ao invés de sempre “Erro ao salvar agendamento”.
-   - Manter logs técnicos no console para facilitar depuração, mas sem expor detalhes sensíveis ao usuário final.
+## Mudanças
 
-4. Validar o fluxo afetado
-   - Testar leitura de agendamento existente.
-   - Testar criação de agendamento para cliente do representante sem agendamento ainda.
-   - Testar atualização de agendamento existente para cliente do próprio representante.
-   - Confirmar que representante continua sem poder editar histórico de entregas.
+### 1. Modal de edição do admin — `src/components/agendamento/AgendamentoEditModal.tsx`
+- Trocar o label do `SelectItem value="Agendar"` de "Agendar" para "Pendente".
+- Quando `statusAgendamento === "Agendar"`:
+  - Ocultar o bloco de "Tipo do Pedido"
+  - Ocultar o bloco de "Data de Reposição"
+  - Ocultar o bloco de "Quantidade Total"
+  - Ocultar a seção de produtos (`ProdutoQuantidadeSelector`)
+  - Ocultar a seção de observações/trocas (opcional — manter se útil)
+- Ao salvar com status "Agendar", garantir que `dataReposicao` seja enviada como `null` e `quantidadeTotal` mantenha o valor existente (sem alterar).
 
-Detalhe técnico principal:
+### 2. Modal/card do representante — `src/components/clientes/AgendamentoAtual.tsx`
+- Trocar o label do RadioGroupItem `value="Agendar"` de "Agendar" para "Pendente".
+- Atualizar mensagens auxiliares ("será limpa automaticamente", "Para status Agendar a data será automaticamente limpa") para usar "Pendente".
+- Quando `statusAgendamento === "Agendar"`:
+  - Ocultar o bloco de "Tipo do Pedido"
+  - Ocultar o bloco de "Data de Reposição"
+  - Ocultar o bloco de "Quantidade Total"
+  - Ocultar a seção de produtos personalizados (`tipoPedido === "Alterado"`)
 
-```text
-Erro atual:
-frontend -> insert/update agendamentos_clientes -> .select().single()
-PostgREST retorna 0 linhas -> PGRST116 -> toast genérico
+### 3. Outros pontos de exibição do rótulo "Agendar"
+Atualizar **apenas o texto exibido** (mantendo valor interno):
+- `src/pages/rep/RepAgendamentos.tsx` linha 33 — `{ value: "Agendar", label: "Pendente" }`
+- `src/components/clientes/ClientesTable.tsx` linha 80 — mapa de labels: `'Agendar': 'Pendente'`
+- `src/pages/rep/RepHome.tsx` — se houver label visível no case "Agendar"
+- `src/components/clientes/ClienteFormDialog.tsx` linha 541 — texto explicativo: trocar para "Pendente"
 
-Correção:
-frontend -> insert/update com política RLS correta
-frontend -> não depender de .single() na mutação
-frontend -> recarregar registro salvo de forma segura
-```
+### 4. Não alterar
+- Tipos TypeScript (`'Agendar' | 'Previsto' | 'Agendado'`) — permanecem iguais
+- Banco de dados, RLS, triggers, edge functions
+- Lógica de filtros (`statusAgendamento === "Agendar"`) em dashboards, positivação, sem-data, etc.
+- `useStatusAgendamentoStore` — manter `nome: 'Agendar'` (ou apenas o display name se houver campo separado — a verificar)
+
+## Resultado para o usuário
+- O rótulo "Agendar" aparece como "Pendente" em todos os menus, tabelas e badges.
+- Ao marcar um agendamento como "Pendente" no modal de edição (admin ou rep), só o seletor de status fica visível — os outros campos somem, deixando claro que o agendamento está aguardando definição.
+- Comportamento de filtros, dashboards, integrações e dados existentes permanece inalterado.
