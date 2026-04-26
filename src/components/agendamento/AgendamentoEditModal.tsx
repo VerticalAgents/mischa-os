@@ -177,7 +177,9 @@ export default function AgendamentoEditModal({
   const hasValidationError = tipoPedido === "Alterado" && somaQuantidadesProdutos !== quantidadeTotal;
 
   const handleSalvar = async () => {
-    if (!agendamento || !dataReposicao) return;
+    if (!agendamento) return;
+    // Para status "Agendar" (Pendente) a data pode ser nula
+    if (statusAgendamento !== "Agendar" && !dataReposicao) return;
 
     if (hasValidationError) {
       toast({
@@ -196,7 +198,9 @@ export default function AgendamentoEditModal({
         const { error: rpcErr } = await supabase.rpc("representante_update_agendamento", {
           p_agendamento_id: agendamento.id as unknown as string,
           p_status_agendamento: statusAgendamento,
-          p_data_proxima_reposicao: formatDate(dataReposicao, "yyyy-MM-dd"),
+          p_data_proxima_reposicao: statusAgendamento === "Agendar" || !dataReposicao
+            ? null
+            : formatDate(dataReposicao, "yyyy-MM-dd"),
         });
         if (rpcErr) throw rpcErr;
 
@@ -207,7 +211,7 @@ export default function AgendamentoEditModal({
 
         const agendamentoAtualizado: AgendamentoItem = {
           ...agendamento,
-          dataReposicao,
+          dataReposicao: statusAgendamento === "Agendar" ? (null as any) : dataReposicao,
           statusAgendamento,
         };
         onSalvar(agendamentoAtualizado);
@@ -217,7 +221,12 @@ export default function AgendamentoEditModal({
       }
 
       // Registrar reagendamento entre semanas se a data mudou
-      if (agendamento.dataReposicao && dataReposicao.getTime() !== agendamento.dataReposicao.getTime()) {
+      if (
+        statusAgendamento !== "Agendar" &&
+        dataReposicao &&
+        agendamento.dataReposicao &&
+        dataReposicao.getTime() !== agendamento.dataReposicao.getTime()
+      ) {
         registrarReagendamentoEntreSemanas(
           agendamento.cliente.id,
           agendamento.dataReposicao,
@@ -235,7 +244,7 @@ export default function AgendamentoEditModal({
       // IMPORTANTE: Ao editar agendamento, limpar gestaoclick_nf_id para permitir regenerar NF
       await salvarAgendamento(agendamento.cliente.id, {
         status_agendamento: statusAgendamento,
-        data_proxima_reposicao: dataReposicao,
+        data_proxima_reposicao: statusAgendamento === "Agendar" ? null : dataReposicao,
         tipo_pedido: tipoPedido,
         quantidade_total: quantidadeTotal,
         itens_personalizados: tipoPedido === "Alterado" ? itensPersonalizados : null
