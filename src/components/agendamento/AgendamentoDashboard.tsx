@@ -1179,13 +1179,13 @@ export default function AgendamentoDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-2">
-            {dadosGraficoSemanal.map((dia, index) => <div key={index} className={`p-3 lg:p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${dia.isToday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado) ? 'border-primary bg-primary/20' : 'border-border'} flex items-center gap-3 md:flex-col md:text-center`} onClick={() => handleDiaClick(dia.dataCompleta)}>
-                {/* Mobile: dia da semana esquerda | data centro | badges direita */}
+            {dadosGraficoSemanal.map((dia, index) => <div key={index} className={`p-3 lg:p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${dia.isToday ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : diaSelecionado && isSameDay(dia.dataCompleta, diaSelecionado) ? 'border-primary bg-primary/20' : 'border-border'} grid grid-cols-3 items-center gap-3 md:flex md:flex-col md:text-center`} onClick={() => handleDiaClick(dia.dataCompleta)}>
+                {/* Mobile: dia da semana esquerda | data centro | badges direita (grid 3 col p/ centralização real) */}
                 {/* Tablet/Desktop: vertical empilhado */}
-                <div className="font-medium text-sm md:mb-2 shrink-0 whitespace-nowrap">{dia.diaSemana}</div>
-                <div className="text-lg font-bold md:mb-1 flex-1 text-center md:flex-none">{dia.dia}</div>
+                <div className="font-medium text-sm md:mb-2 whitespace-nowrap text-left md:text-center">{dia.diaSemana}</div>
+                <div className="text-lg font-bold md:mb-1 text-center">{dia.dia}</div>
 
-                <div className="flex flex-col items-end gap-1 shrink-0 md:flex-row md:flex-wrap md:items-stretch md:justify-center md:gap-1 md:w-full">
+                <div className="flex flex-col items-end gap-1 md:flex-row md:flex-wrap md:items-stretch md:justify-center md:gap-1 md:w-full">
                   {dia.confirmados > 0 && <Badge variant="outline" className="text-[10px] bg-green-100 text-green-700 border-green-200 rounded-none whitespace-nowrap justify-center md:w-full">
                       {dia.confirmados} Confirmados
                     </Badge>}
