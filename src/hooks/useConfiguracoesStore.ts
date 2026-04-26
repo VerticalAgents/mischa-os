@@ -27,10 +27,14 @@ export const useConfiguracoesStore = () => {
         return;
       }
 
+      // Resolver owner_id: para representantes/staff, usar o owner; para admin, ele mesmo
+      const { data: ownerId } = await supabase.rpc('get_owner_id', { _user_id: user.id });
+      const targetUserId = ownerId || user.id;
+
       const { data, error } = await supabase
         .from('configuracoes_sistema')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', targetUserId);
 
       if (error) {
         console.error('Erro ao carregar configurações:', error);
@@ -64,11 +68,14 @@ export const useConfiguracoesStore = () => {
         return null;
       }
 
+      const { data: ownerId } = await supabase.rpc('get_owner_id', { _user_id: user.id });
+      const targetUserId = ownerId || user.id;
+
       const { data, error } = await supabase
         .from('configuracoes_sistema')
         .select('configuracoes')
         .eq('modulo', modulo)
-        .eq('user_id', user.id)
+        .eq('user_id', targetUserId)
         .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = not found
