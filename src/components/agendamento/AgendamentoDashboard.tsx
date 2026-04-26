@@ -854,8 +854,8 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
         
         <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-3">
           {/* Navegador de Semana + botão Semana Atual */}
-          <div className="flex w-full sm:w-auto items-center gap-2 flex-wrap">
-            <div className="flex flex-1 sm:flex-none items-center gap-1 bg-background border rounded-md px-1 min-w-0">
+          <div className="flex w-full sm:w-auto flex-col sm:flex-row sm:items-center gap-2">
+            <div className="flex w-full sm:w-auto items-center gap-1 bg-background border rounded-md px-1 min-w-0">
               <Button
                 variant="ghost"
                 size="sm"
@@ -867,8 +867,8 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
 
               <div className="flex flex-1 sm:flex-none items-center gap-2 px-2 sm:min-w-[160px] justify-center min-w-0">
                 <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium whitespace-nowrap truncate">
-                  {format(startOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })} - {format(endOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM/yyyy', { locale: ptBR })}
+                <span className="text-sm font-medium whitespace-nowrap">
+                  {format(startOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })} - {format(endOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })}
                 </span>
               </div>
 
@@ -887,7 +887,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                 variant="default"
                 size="sm"
                 onClick={voltarSemanaAtual}
-                className="text-xs h-8 shrink-0"
+                className="text-xs h-8 shrink-0 w-full sm:w-auto"
               >
                 Semana Atual
               </Button>
