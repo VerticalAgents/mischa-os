@@ -789,9 +789,11 @@ export default function ClienteFormDialog({
             clienteId={cliente?.id}
           />
 
-          <PrecificacaoPorCategoria
-            cliente={clienteTemp}
-          />
+          {(formData.categoriasHabilitadas?.length ?? 0) > 0 && (
+            <PrecificacaoPorCategoria
+              cliente={clienteTemp}
+            />
+          )}
 
           <Card>
             <CardHeader>
