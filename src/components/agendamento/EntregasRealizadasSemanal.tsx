@@ -209,8 +209,8 @@ export default function EntregasRealizadasSemanal({
       <CardContent>
         {loading ? <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div> : quantidadeTotal === 0 ? <div className="text-center py-8 text-muted-foreground">
-            <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
+          </div> : quantidadeTotal === 0 ? <div className="flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground">
+            <Package className="h-4 w-4 opacity-50" />
             <p>Nenhuma entrega realizada nesta semana</p>
           </div> : <div className="space-y-4">
             {/* Total Geral */}
