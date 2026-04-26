@@ -202,7 +202,7 @@ export default function RepAgendamentos() {
                         <td className="p-3">{a.pedido?.totalPedidoUnidades ?? "-"}</td>
                       <td className="p-3">
                         <Badge variant={statusVariant(a.statusAgendamento)}>
-                          {a.statusAgendamento}
+                          {a.statusAgendamento === "Agendar" ? "Pendente" : a.statusAgendamento}
                         </Badge>
                       </td>
                       <td className="p-3 text-right">
