@@ -38,7 +38,7 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
     if (!value) return null;
     
     return (
-      <div className="flex items-start space-x-3 p-3 rounded-lg bg-gray-50/50 border border-gray-100">
+      <div className="flex items-start space-x-3 p-2 lg:p-3 rounded-lg bg-gray-50/50 border border-gray-100">
         {Icon && <Icon className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />}
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
@@ -52,7 +52,7 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
     if (!value || !href) return null;
     
     return (
-      <div className="flex items-start space-x-3 p-3 rounded-lg bg-blue-50/50 border border-blue-100">
+      <div className="flex items-start space-x-3 p-2 lg:p-3 rounded-lg bg-blue-50/50 border border-blue-100">
         {Icon && <Icon className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />}
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">{label}</p>
@@ -71,32 +71,32 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
   };
 
   return (
-    <div className="space-y-8 max-w-6xl">
+    <div className="space-y-4 lg:space-y-8 max-w-6xl">
       {/* Status Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">{cliente.nome}</h2>
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 lg:p-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-lg lg:text-xl font-semibold text-gray-900 break-words">{cliente.nome}</h2>
             <p className="text-sm text-gray-600 mt-1">Informações detalhadas do cliente</p>
           </div>
-          <Badge className={`${getStatusColor(cliente.statusCliente)} border px-4 py-2 text-sm font-medium`}>
+          <Badge className={`${getStatusColor(cliente.statusCliente)} border px-3 py-1.5 lg:px-4 lg:py-2 text-sm font-medium self-start lg:self-auto`}>
             {cliente.statusCliente}
           </Badge>
         </div>
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
         
         {/* Informações Básicas */}
         <Card className="border-gray-200 shadow-sm">
-          <CardHeader className="bg-gray-50/50 border-b border-gray-200">
-            <CardTitle className="flex items-center text-lg">
+          <CardHeader className="bg-gray-50/50 border-b border-gray-200 p-4 lg:p-6">
+            <CardTitle className="flex items-center text-base lg:text-lg">
               <User className="h-5 w-5 mr-3 text-blue-600" />
               Informações Básicas
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6 space-y-4">
+          <CardContent className="p-3 lg:p-6 space-y-3 lg:space-y-4">
             <InfoItem label="Nome do Cliente" value={cliente.nome} icon={User} />
             <InfoItem label="CNPJ/CPF" value={cliente.cnpjCpf} icon={FileText} />
             <InfoItem label="Contato" value={cliente.contatoNome} icon={User} />
@@ -107,13 +107,13 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
 
         {/* Localização */}
         <Card className="border-gray-200 shadow-sm">
-          <CardHeader className="bg-gray-50/50 border-b border-gray-200">
-            <CardTitle className="flex items-center text-lg">
+          <CardHeader className="bg-gray-50/50 border-b border-gray-200 p-4 lg:p-6">
+            <CardTitle className="flex items-center text-base lg:text-lg">
               <MapPin className="h-5 w-5 mr-3 text-green-600" />
               Localização
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6 space-y-4">
+          <CardContent className="p-3 lg:p-6 space-y-3 lg:space-y-4">
             <InfoItem label="Endereço de Entrega" value={cliente.enderecoEntrega} icon={MapPin} />
             <LinkItem 
               label="Google Maps" 
@@ -126,13 +126,13 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
 
         {/* Configurações Comerciais */}
         <Card className="border-gray-200 shadow-sm">
-          <CardHeader className="bg-gray-50/50 border-b border-gray-200">
-            <CardTitle className="flex items-center text-lg">
+          <CardHeader className="bg-gray-50/50 border-b border-gray-200 p-4 lg:p-6">
+            <CardTitle className="flex items-center text-base lg:text-lg">
               <Building className="h-5 w-5 mr-3 text-purple-600" />
               Configurações Comerciais
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6 space-y-4">
+          <CardContent className="p-3 lg:p-6 space-y-3 lg:space-y-4">
             <InfoItem 
               label="Periodicidade" 
               value={`${cliente.periodicidadePadrao} dias`} 
@@ -150,13 +150,13 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
 
         {/* Entrega e Logística */}
         <Card className="border-gray-200 shadow-sm">
-          <CardHeader className="bg-gray-50/50 border-b border-gray-200">
-            <CardTitle className="flex items-center text-lg">
+          <CardHeader className="bg-gray-50/50 border-b border-gray-200 p-4 lg:p-6">
+            <CardTitle className="flex items-center text-base lg:text-lg">
               <Truck className="h-5 w-5 mr-3 text-orange-600" />
               Entrega e Logística
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6 space-y-4">
+          <CardContent className="p-3 lg:p-6 space-y-3 lg:space-y-4">
             <InfoItem label="Tipo de Logística" value={cliente.tipoLogistica} icon={Truck} />
             {cliente.janelasEntrega && cliente.janelasEntrega.length > 0 && (
               <InfoItem 
@@ -166,7 +166,7 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
               />
             )}
             {cliente.instrucoesEntrega && (
-              <div className="p-3 rounded-lg bg-amber-50/50 border border-amber-100">
+              <div className="p-2 lg:p-3 rounded-lg bg-amber-50/50 border border-amber-100">
                 <p className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1">Instruções de Entrega</p>
                 <p className="text-sm text-amber-800 whitespace-pre-wrap">{cliente.instrucoesEntrega}</p>
               </div>
@@ -178,14 +178,14 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
 
       {/* Configurações Financeiras - Full Width */}
       <Card className="border-gray-200 shadow-sm">
-        <CardHeader className="bg-gray-50/50 border-b border-gray-200">
-          <CardTitle className="flex items-center text-lg">
+        <CardHeader className="bg-gray-50/50 border-b border-gray-200 p-4 lg:p-6">
+          <CardTitle className="flex items-center text-base lg:text-lg">
             <CreditCard className="h-5 w-5 mr-3 text-emerald-600" />
             Configurações Financeiras
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <CardContent className="p-3 lg:p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-4">
             <InfoItem label="Tipo de Cobrança" value={cliente.tipoCobranca} icon={CreditCard} />
             <InfoItem label="Forma de Pagamento" value={cliente.formaPagamento} icon={CreditCard} />
             <InfoItem 
@@ -200,14 +200,14 @@ export default function ClienteDetalhesInfo({ cliente }: ClienteDetalhesInfoProp
       {/* Observações - Full Width */}
       {cliente.observacoes && (
         <Card className="border-gray-200 shadow-sm">
-          <CardHeader className="bg-gray-50/50 border-b border-gray-200">
-            <CardTitle className="flex items-center text-lg">
+          <CardHeader className="bg-gray-50/50 border-b border-gray-200 p-4 lg:p-6">
+            <CardTitle className="flex items-center text-base lg:text-lg">
               <FileText className="h-5 w-5 mr-3 text-gray-600" />
               Observações
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
+          <CardContent className="p-3 lg:p-6">
+            <div className="p-3 lg:p-4 rounded-lg bg-gray-50 border border-gray-200">
               <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{cliente.observacoes}</p>
             </div>
           </CardContent>

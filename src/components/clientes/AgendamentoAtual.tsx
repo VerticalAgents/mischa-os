@@ -191,14 +191,14 @@ export default function AgendamentoAtual({ cliente, onAgendamentoUpdate }: Agend
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className="p-4 lg:p-6">
+        <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
           <Calendar className="h-5 w-5" />
           Agendamento Atual
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+      <CardContent className="space-y-4 p-4 lg:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Status do Agendamento</Label>
             <RadioGroup value={statusAgendamento} onValueChange={(value: any) => setStatusAgendamento(value)}>

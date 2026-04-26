@@ -33,14 +33,14 @@ export default function AnaliseGiro({
   const DirecaoIcon = direcao === 'up' ? TrendingUp : direcao === 'down' ? TrendingDown : Minus;
 
   const indicadoresPeriodicidade = (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-4">
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 lg:pt-6 p-4 lg:p-6">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-muted-foreground">Última Entrega</p>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </div>
-          <p className="text-2xl font-bold">
+          <p className="text-xl lg:text-2xl font-bold">
             {diasDesdeUltima !== null ? `${diasDesdeUltima} dias` : "Sem entregas"}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
@@ -52,23 +52,23 @@ export default function AnaliseGiro({
       </Card>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 lg:pt-6 p-4 lg:p-6">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-muted-foreground">Periodicidade Configurada</p>
             <Repeat className="h-4 w-4 text-muted-foreground" />
           </div>
-          <p className="text-2xl font-bold">{periodicidadeConfig} dias</p>
+          <p className="text-xl lg:text-2xl font-bold">{periodicidadeConfig} dias</p>
           <p className="text-xs text-muted-foreground mt-1">Intervalo entre entregas</p>
         </CardContent>
       </Card>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 lg:pt-6 p-4 lg:p-6">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-muted-foreground">Periodicidade Real</p>
             <DirecaoIcon className={`h-4 w-4 ${classeDivergencia}`} />
           </div>
-          <p className={`text-2xl font-bold ${classeDivergencia}`}>
+          <p className={`text-xl lg:text-2xl font-bold ${classeDivergencia}`}>
             {frequenciaReal !== null ? `${frequenciaReal} dias` : "—"}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
@@ -267,7 +267,7 @@ export default function AnaliseGiro({
   
   return <div className="space-y-6">
       {indicadoresPeriodicidade}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-4">
         <GiroMetricCard title="Média Histórica" value={dadosGiro.mediaHistorica} suffix="un/sem" description={`Últimas ${dadosGiro.numeroSemanasHistorico} semana${dadosGiro.numeroSemanasHistorico !== 1 ? 's' : ''}`} />
         
         <GiroMetricCard title="Última Semana" value={dadosGiro.ultimaSemana} suffix="unidades" trend={dadosGiro.variacaoPercentual !== 0 ? {
@@ -285,19 +285,19 @@ export default function AnaliseGiro({
       )}
       
       <Card>
-        <CardHeader>
-          <CardTitle>Giro Semanal - Últimas 12 semanas</CardTitle>
+        <CardHeader className="p-4 lg:p-6">
+          <CardTitle className="text-base lg:text-lg">Giro Semanal - Últimas 12 semanas</CardTitle>
           <CardDescription className="text-left">
             Evolução do giro semanal baseado no histórico real de entregas com média histórica
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="h-80">
+        <CardContent className="p-2 lg:p-6">
+          <div className="h-64 lg:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dadosGrafico} margin={{
               top: 20,
-              right: 30,
-              left: 20,
+              right: 10,
+              left: 0,
               bottom: 10
             }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />

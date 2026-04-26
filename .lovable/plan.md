@@ -1,74 +1,74 @@
 ## Objetivo
 
-Otimizar a versão **mobile e tablet** das telas do portal do representante, eliminando:
-- tabelas com colunas espremidas/sobrepostas e scroll horizontal ruim
-- cabeçalhos de cards com layout quebrado
-- toolbars de ícones que estouram a largura
-- seções de produtos no modal de agendamento sem responsividade
+Otimizar a versão mobile (≤ 1024px) das abas internas exibidas dentro de um cliente na rota `/rep/clientes`: **Informações**, **Agendamento Atual**, **Análise de Giro** e **Histórico de Entregas**. Hoje os conteúdos foram desenhados para desktop (paddings grandes, grids fixos, tabelas largas) e ficam apertados/quebrados a 390px.
 
-A experiência desktop fica intacta.
+Os componentes são compartilhados com o admin, portanto as melhorias serão **responsivas** (mobile-first), sem mudar o layout desktop.
 
-## Mudanças
+---
 
-### 1. Lista "Meus Clientes" (`src/pages/rep/RepClientes.tsx`)
+## Mudanças por aba
 
-Hoje a tabela tem 5 colunas em `table-fixed` e fica ilegível no mobile.
+### 1. Aba "Informações" — `src/components/clientes/ClienteDetalhesInfo.tsx`
+- Reduzir paddings/gaps no mobile: `space-y-8` → `space-y-4 lg:space-y-8`, `gap-8` → `gap-4 lg:gap-8`.
+- Header de status: empilhar nome + badge no mobile (`flex-col gap-3 lg:flex-row lg:items-center lg:justify-between`), reduzir padding (`p-4 lg:p-6`) e tamanho do título (`text-lg lg:text-xl`).
+- `CardHeader` e `CardContent`: padding compacto no mobile (`p-3 lg:p-6`, `pb-3 lg:pb-6`). Reduzir `text-lg` dos títulos para `text-base lg:text-lg`.
+- `InfoItem`: padding `p-2 lg:p-3` para liberar espaço.
+- Grid de configurações financeiras: já é `grid-cols-1 md:grid-cols-3`, manter.
 
-- **Em telas `< lg`**: substituir a tabela por uma **lista de cards**. Cada card mostra:
-  - Linha 1: Nome (negrito, truncate) + badge de status à direita
-  - Linha 2: Telefone (muted, pequeno)
-  - Linha 3: "Próxima reposição: dd/mm/yyyy" + botão de editar (ícone) à direita
-  - Card inteiro clicável para abrir os detalhes
-- **Em `lg+`**: manter a tabela atual.
-- O botão "Novo cliente" no topo já é grande, sem mudanças.
+### 2. Aba "Agendamento Atual" — `src/components/clientes/AgendamentoAtual.tsx`
+- Grid superior `grid-cols-2 gap-4` → `grid-cols-1 sm:grid-cols-2 gap-4` (Status + Tipo de Pedido empilham no mobile).
+- `CardContent` com `p-4 lg:p-6` e `space-y-4`.
+- Garantir que o `ProdutoQuantidadeSelector` (já otimizado em loop anterior) continue ok.
+- Botão "Salvar Agendamento" já é `w-full`, manter.
 
-### 2. Lista "Agendamentos" (`src/pages/rep/RepAgendamentos.tsx`)
+### 3. Aba "Análise de Giro" — `src/components/clientes/AnaliseGiro.tsx`
+- Cards de indicadores de periodicidade (Última Entrega / Periodicidade Configurada / Periodicidade Real): grid já é `grid-cols-1 md:grid-cols-3`. Reduzir padding (`pt-4 lg:pt-6`) e fonte do valor principal (`text-xl lg:text-2xl`) para caber melhor.
+- Grid de métricas de giro (Média / Última Semana / Comparativo): mesma simplificação.
+- Gráfico (`LineChart`): reduzir altura no mobile (`h-64 lg:h-80`) e margens (`left: 0, right: 10` no mobile) para o eixo Y não cortar.
+- `Card` do gráfico: `CardHeader` com `p-4 lg:p-6` e `CardTitle` `text-base lg:text-lg`.
 
-Mesmo problema: 5 colunas espremidas, header de status corta texto.
+### 4. Aba "Histórico de Entregas" — `src/components/clientes/HistoricoEntregasCliente.tsx` + `src/components/expedicao/HistoricoTable.tsx`
+- Card externo: `p-3 lg:p-6`, `space-y-4 lg:space-y-6`.
+- Bloco de filtros: header `flex-col items-start gap-2 lg:flex-row lg:items-center lg:gap-4`; botão "Restaurar Padrão" `w-full lg:w-auto lg:ml-auto`.
+- Resumo (Total / Entregas / Retornos): trocar `grid-cols-3 gap-4` por `grid-cols-3 gap-2 lg:gap-4` com padding `p-2 lg:p-4` e fonte `text-lg lg:text-2xl` para caber a 390px sem quebrar.
+- `TabsList`: já é horizontal compacta; envolver em `overflow-x-auto` para não estourar.
+- **`HistoricoTable`** (mais crítico): tabela tem 5–6 colunas que não cabem em 390px. Aplicar o padrão já adotado em `RepClientes`/`RepAgendamentos`:
+  - Renderização condicional: tabela atual fica `hidden lg:block`.
+  - No mobile (`lg:hidden`), lista de cards empilhados mostrando: Data + ícone "editado", Badge tipo (Entrega/Retorno), Itens (com `line-clamp-2`), Quantidade, e botões Ver detalhes / Editar como ícones em uma linha.
 
-- **Em telas `< lg`**: lista de cards. Cada card mostra:
-  - Linha 1: Nome do cliente (negrito) + badge de status (Pendente/Previsto/Agendado) à direita
-  - Linha 2: ícone de calendário + data formatada · "Qtd: N" · botão editar à direita
-- **Filtros**: empilhar verticalmente em mobile (`flex-col`) com largura total; manter horizontais em `sm+`.
-- **Em `lg+`**: manter a tabela atual.
+---
 
-### 3. Estatísticas (`src/pages/rep/RepEstatisticas.tsx` + `SortableClientesTable`)
+## Padrão técnico
 
-A tabela de clientes faz scroll horizontal cortando colunas.
+```tsx
+// Padding e tipografia responsivos em cards
+<Card>
+  <CardHeader className="p-3 lg:p-6">
+    <CardTitle className="text-base lg:text-lg">...</CardTitle>
+  </CardHeader>
+  <CardContent className="p-3 lg:p-6 space-y-3 lg:space-y-4">...</CardContent>
+</Card>
 
-- Envolver a `SortableClientesTable` em um wrapper com `overflow-x-auto` e largura mínima na tabela interna, para que o scroll seja claro e não corte conteúdo.
-- Adicionar `px-3 lg:px-6` nos containers para evitar que a tabela cole nas bordas.
-- Cards de KPI: garantir `grid-cols-1 sm:grid-cols-2` em mobile (já é `md:grid-cols-2 lg:grid-cols-5`, validar que o `sm` também quebra bem).
+// Tabela vira cards no mobile
+<div className="hidden lg:block"><Table>...</Table></div>
+<div className="lg:hidden space-y-2">
+  {registros.map(r => (
+    <div className="rounded-lg border p-3 bg-card">...</div>
+  ))}
+</div>
+```
 
-### 4. Configurações (`src/pages/rep/RepConfiguracoes.tsx`)
+Breakpoint usado: `lg` (1024px) — consistente com o sidebar e demais telas do representante já otimizadas.
 
-O CardHeader empilha mal e a tabela de rotas faz scroll horizontal.
+## Arquivos a editar
 
-- Trocar o header do card de "Minhas Rotas de Entrega" para `flex-col sm:flex-row` com botão "Nova Rota" abaixo do título no mobile (full-width) e à direita no desktop.
-- A tabela de rotas: em `< sm` virar cards verticais simples (Nome + Descrição + Status + ações). Em `sm+` manter tabela com `overflow-x-auto`.
+- `src/components/clientes/ClienteDetalhesInfo.tsx`
+- `src/components/clientes/AgendamentoAtual.tsx`
+- `src/components/clientes/AnaliseGiro.tsx`
+- `src/components/clientes/HistoricoEntregasCliente.tsx`
+- `src/components/expedicao/HistoricoTable.tsx`
 
-### 5. Modal de Agendamento — seção de Produtos (`src/components/agendamento/ProdutoQuantidadeSelector.tsx`)
+## Fora do escopo
 
-A toolbar de ícones quebra o título "Produtos e Quantidades" em duas linhas e estoura a largura.
-
-- Cabeçalho: mudar para `flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2`. No mobile o título fica em cima e a toolbar de ícones embaixo, alinhada à direita, com `flex-wrap`.
-- Linhas de produto: mudar `grid grid-cols-3` para `grid-cols-1 sm:grid-cols-3` para que produto/quantidade/excluir empilhem no mobile.
-
-### 6. Layout geral (`src/layouts/RepLayout.tsx`)
-
-- Reduzir padding do container em mobile: já é `p-4 lg:p-6` (alterado anteriormente). Confirmar que o `max-w-6xl mx-auto` não cria margens excessivas em telas estreitas (está ok com padding).
-
-## Detalhes técnicos
-
-- Padrão de card mobile: usar `<div className="rounded-lg border p-4 space-y-2 bg-card cursor-pointer hover:bg-muted/40 transition-colors">` para manter o look-and-feel do app.
-- Breakpoint: usar `lg:` para alternar entre cards (mobile/tablet) e tabela (desktop) — coerente com o sidebar atual que vira hamburger em `< lg`.
-- Sem mudanças no schema do banco ou em hooks; tudo é layout/CSS/markup.
-- Não vou alterar componentes do admin (como `ClienteFormDialog`, `AgendamentoEditModal` em si) — apenas o `ProdutoQuantidadeSelector` que é compartilhado mas a mudança é puramente responsiva e melhora também o admin em telas pequenas.
-
-## Arquivos editados
-
-- `src/pages/rep/RepClientes.tsx`
-- `src/pages/rep/RepAgendamentos.tsx`
-- `src/pages/rep/RepEstatisticas.tsx`
-- `src/pages/rep/RepConfiguracoes.tsx`
-- `src/components/agendamento/ProdutoQuantidadeSelector.tsx`
+- Mudanças no admin (alterações são responsivas, não afetam o desktop).
+- Nova lógica de negócio — apenas layout/responsividade.
