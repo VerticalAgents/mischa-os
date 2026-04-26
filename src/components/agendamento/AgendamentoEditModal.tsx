@@ -193,8 +193,10 @@ export default function AgendamentoEditModal({
     setIsSaving(true);
     
     try {
-      // ===== Modo representante: usa RPC restrita (apenas status + data) =====
+      // ===== Modo representante: status, data, tipo, quantidade e itens =====
+      // (RLS permite via policy "Representante updates own agendamentos")
       if (isRep) {
+        // 1) Atualiza status e data via RPC restrita (mantém compat. existente)
         const { error: rpcErr } = await supabase.rpc("representante_update_agendamento", {
           p_agendamento_id: agendamento.id as unknown as string,
           p_status_agendamento: statusAgendamento,
@@ -203,6 +205,19 @@ export default function AgendamentoEditModal({
             : formatDate(dataReposicao, "yyyy-MM-dd"),
         });
         if (rpcErr) throw rpcErr;
+
+        // 2) Atualiza tipo do pedido, quantidade e itens personalizados
+        const { error: updErr } = await supabase
+          .from('agendamentos_clientes')
+          .update({
+            tipo_pedido: tipoPedido,
+            quantidade_total: quantidadeTotal,
+            itens_personalizados: tipoPedido === "Alterado"
+              ? (JSON.parse(JSON.stringify(itensPersonalizados)) as any)
+              : null,
+          })
+          .eq('cliente_id', agendamento.cliente.id);
+        if (updErr) throw updErr;
 
         toast({
           title: "Sucesso",
@@ -213,6 +228,23 @@ export default function AgendamentoEditModal({
           ...agendamento,
           dataReposicao: statusAgendamento === "Agendar" ? (null as any) : dataReposicao,
           statusAgendamento,
+          pedido: tipoPedido === "Alterado" ? {
+            id: 0,
+            idCliente: agendamento.cliente.id,
+            dataPedido: new Date(),
+            dataPrevistaEntrega: dataReposicao as Date,
+            statusPedido: 'Agendado',
+            itensPedido: itensPersonalizados.map((item, index) => ({
+              id: index,
+              idPedido: 0,
+              idSabor: index,
+              nomeSabor: item.produto,
+              quantidadeSabor: item.quantidade,
+              sabor: { nome: item.produto }
+            })),
+            totalPedidoUnidades: quantidadeTotal,
+            tipoPedido,
+          } : undefined,
         };
         onSalvar(agendamentoAtualizado);
         onOpenChange(false);
@@ -379,7 +411,6 @@ export default function AgendamentoEditModal({
                 <Select
                   value={tipoPedido}
                   onValueChange={(value: TipoPedidoAgendamento) => setTipoPedido(value)}
-                  disabled={isRep}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -439,13 +470,12 @@ export default function AgendamentoEditModal({
                 value={quantidadeTotal}
                 onChange={(e) => setQuantidadeTotal(Number(e.target.value))}
                 min="0"
-                disabled={isRep}
                 className={hasValidationError ? "border-red-500" : ""}
               />
             </div>
           )}
 
-          {statusAgendamento !== "Agendar" && tipoPedido === "Alterado" && !isRep && (
+          {statusAgendamento !== "Agendar" && tipoPedido === "Alterado" && (
             <div className="space-y-4 border-t pt-4">
               <ProdutoQuantidadeSelector
                 value={itensPersonalizados}
