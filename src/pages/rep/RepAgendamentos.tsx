@@ -18,6 +18,10 @@ import { useAgendamentoClienteStore } from "@/hooks/useAgendamentoClienteStore";
 import { useClienteStore } from "@/hooks/useClienteStore";
 import AgendamentoEditModal from "@/components/agendamento/AgendamentoEditModal";
 import { AgendamentoItem } from "@/components/agendamento/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AgendamentoDashboard from "@/components/agendamento/AgendamentoDashboard";
+import { EditPermissionProvider } from "@/contexts/EditPermissionContext";
+import { useTabPersistence } from "@/hooks/useTabPersistence";
 
 const PERIODO_OPTIONS = [
   { value: "hoje", label: "Hoje" },
@@ -50,6 +54,7 @@ export default function RepAgendamentos() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<AgendamentoItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const { activeTab, changeTab } = useTabPersistence("dashboard", "rep-agendamentos");
 
   useEffect(() => {
     (async () => {
@@ -85,8 +90,13 @@ export default function RepAgendamentos() {
     }
 
     if (busca.trim()) {
-      const q = busca.toLowerCase();
-      list = list.filter((a) => a.cliente.nome.toLowerCase().includes(q));
+      const q = busca.toLowerCase().trim();
+      const qNum = q.replace(/[.\-\/]/g, "");
+      list = list.filter((a) => {
+        const nome = a.cliente.nome.toLowerCase();
+        const cnpj = (a.cliente.cnpjCpf || "").replace(/[.\-\/]/g, "").toLowerCase();
+        return nome.includes(q) || (qNum && cnpj.includes(qNum));
+      });
     }
 
     if (periodo !== "todos") {
@@ -129,13 +139,47 @@ export default function RepAgendamentos() {
         </p>
       </div>
 
-      <Card>
+      <Tabs value={activeTab} onValueChange={changeTab} className="space-y-4">
+        {/* Mobile: grid 2 colunas */}
+        <div className="grid grid-cols-2 gap-2 lg:hidden">
+          {[
+            { id: "dashboard", label: "Dashboard" },
+            { id: "lista", label: "Lista" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => changeTab(tab.id)}
+              className={`rounded-md px-3 py-2 text-xs font-medium transition-all text-center ${
+                activeTab === tab.id
+                  ? "bg-background text-foreground shadow-sm border"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Desktop */}
+        <TabsList className="hidden lg:inline-flex">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="lista">Lista</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-4">
+          <EditPermissionProvider value={{ canEdit: true }}>
+            <AgendamentoDashboard />
+          </EditPermissionProvider>
+        </TabsContent>
+
+        <TabsContent value="lista" className="space-y-4">
+          <Card>
         <CardContent className="p-4 space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por cliente…"
+                placeholder="Buscar por nome, CNPJ ou CPF…"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 className="pl-9"
@@ -269,7 +313,9 @@ export default function RepAgendamentos() {
             )}
           </div>
         </CardContent>
-      </Card>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <AgendamentoEditModal
         open={open}
