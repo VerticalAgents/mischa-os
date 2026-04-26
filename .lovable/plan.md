@@ -1,51 +1,56 @@
-## Causa raiz
+# Detalhes do Cliente para Representante
 
-O componente `CategoriasProdutoSelector` carrega as categorias selecionadas do cliente lendo a tabela `clientes_categorias`. Mas as políticas RLS dessa tabela só permitem leitura para **admin** e **owner/staff** (`is_owner_or_staff()`). O representante não está em nenhum dos dois grupos, então o SELECT volta vazio — e o checkbox aparece desmarcado, mesmo o cliente tendo categorias gravadas (`categorias_habilitadas: [1]` no JSONB do cliente).
+Hoje, em `/rep/clientes`, o representante vê uma tabela e só consegue **editar** o cliente. Vamos transformar o clique no bloco/linha do cliente numa **visualização detalhada com abas** — a mesma usada pelo admin (Informações, Agendamento Atual, Análise de Giro, Financeiro, Histórico de Entregas).
 
-Verificado no banco: clientes do representante têm `categorias_habilitadas = [1]` e a tabela espelho `clientes_categorias` também — o que falta é apenas permissão de leitura (e escrita) para o representante.
+## O que muda
 
-## Correção
+**Página `src/pages/rep/RepClientes.tsx`**
+- Adicionar estado `clienteSelecionado: Cliente | null`.
+- Tornar a linha da tabela clicável (cursor pointer + hover já existente). O ícone de lápis (Editar) continua funcionando, mas o clique no restante da linha abre os detalhes.
+- Quando há cliente selecionado, renderizar `<ClienteDetailsView cliente={...} onBack={() => setClienteSelecionado(null)} />` em vez da lista.
+- Buscar o registro completo do cliente (igual ao `handleEditar` atual) e converter via `transformDbRowToCliente` antes de abrir os detalhes.
 
-### Migração — RLS de `clientes_categorias`
+**Reuso de componentes existentes (sem duplicar código):**
+- `ClienteDetailsView` → já renderiza `PageHeader` + botão Editar + `ClienteDetalhesTabs`.
+- `ClienteDetalhesTabs` → já contém as 5 abas: Informações, Agendamento Atual, Análise de Giro, Financeiro, Histórico de Entregas.
+- O botão "Editar Cliente" dentro do `ClienteDetailsView` depende de `useEditPermission().canEdit`. Para o representante, vamos envolver a visualização num `EditPermissionProvider` com `canEdit={true}` (representante já pode editar seus clientes hoje, conforme RLS atual).
 
-Adicionar políticas para representantes lerem e gerenciarem (insert/update/delete) as categorias dos seus próprios clientes, no mesmo padrão já usado em `clientes`:
+## Considerações
 
-```sql
--- Representante lê categorias dos seus clientes
-CREATE POLICY "Representante reads own clientes_categorias"
-ON public.clientes_categorias FOR SELECT
-USING (
-  is_representante() AND cliente_id IN (
-    SELECT id FROM public.clientes
-    WHERE representante_id = get_my_representante_id()
-  )
-);
+- **RLS**: as tabelas consultadas pelas abas (agendamentos, entregas, giro, financeiro, preços por categoria) já têm policies que permitem ao representante ver dados dos seus clientes (confirmado nos ajustes anteriores de RLS).
+- **Layout**: o `RepLayout` já usa container centralizado (`max-w-6xl`). O `ClienteDetailsView` se adapta bem a essa largura.
+- **Voltar**: o botão "Voltar para lista" do `PageHeader` chama `onBack`, que limpa o cliente selecionado e mostra novamente a tabela com filtros preservados (estado mantido no componente pai).
+- **Aviso GestaoClick**: já foi escondido para representantes na resposta anterior, então segue oculto nas Informações.
 
--- Representante insere/atualiza/remove categorias dos seus clientes
-CREATE POLICY "Representante manages own clientes_categorias"
-ON public.clientes_categorias FOR ALL
-USING (
-  is_representante() AND cliente_id IN (
-    SELECT id FROM public.clientes
-    WHERE representante_id = get_my_representante_id()
-  )
-)
-WITH CHECK (
-  is_representante() AND cliente_id IN (
-    SELECT id FROM public.clientes
-    WHERE representante_id = get_my_representante_id()
-  )
-);
+## Detalhes técnicos
+
+```tsx
+// RepClientes.tsx (resumo)
+const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null);
+
+const abrirDetalhes = async (id: string) => {
+  const { data } = await supabase.from("clientes").select("*").eq("id", id).maybeSingle();
+  if (data) setClienteSelecionado(transformDbRowToCliente(data));
+};
+
+if (clienteSelecionado) {
+  return (
+    <EditPermissionProvider value={{ canEdit: true }}>
+      <ClienteDetailsView
+        cliente={clienteSelecionado}
+        onBack={() => { setClienteSelecionado(null); carregar(); }}
+      />
+    </EditPermissionProvider>
+  );
+}
+
+// na tabela:
+<tr onClick={() => abrirDetalhes(c.id)} className="border-t hover:bg-muted/30 cursor-pointer">
+  ...
+  <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
+    <Button onClick={() => handleEditar(c.id)}>...</Button>
+  </td>
+</tr>
 ```
 
-### Sem mudanças no frontend
-
-O `CategoriasProdutoSelector` e o `useClientesCategorias` já fazem as queries certas — só faltava a permissão.
-
-## Arquivos afetados
-
-- **Novo**: `supabase/migrations/<timestamp>_rls_rep_clientes_categorias.sql`
-
-## Efeito esperado
-
-Ao abrir um cliente existente como representante, as categorias previamente atribuídas aparecem marcadas; e ao salvar alterações nas categorias, a gravação também passa pela RLS sem erro.
+Nenhuma migração de banco é necessária — apenas alterações no frontend.
