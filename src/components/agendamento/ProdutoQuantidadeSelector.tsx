@@ -39,12 +39,15 @@ export default function ProdutoQuantidadeSelector({
 
   const cliente = getClientePorId(clienteId);
 
-  // Filtrar produtos apenas das categorias habilitadas do cliente
+  // Filtrar produtos:
+  //  1) somente ativos (produtos inativados no estoque não devem aparecer)
+  //  2) pertencentes a uma categoria habilitada para o cliente.
+  //     Se o cliente não tem nenhuma categoria habilitada, NENHUM produto é exibido.
   const produtosFiltrados = produtos.filter(produto => {
-    if (!cliente?.categoriasHabilitadas || cliente.categoriasHabilitadas.length === 0) {
-      return true;
-    }
-    return cliente.categoriasHabilitadas.includes(produto.categoria_id || 0);
+    if (!produto.ativo) return false;
+    const habilitadas = cliente?.categoriasHabilitadas ?? [];
+    if (habilitadas.length === 0) return false;
+    return habilitadas.includes(produto.categoria_id || 0);
   });
 
   // Filtrar produtos que ainda não foram adicionados
