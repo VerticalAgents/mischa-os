@@ -222,7 +222,7 @@ export default function RepClientes() {
                   filtrados.map((c) => (
                     <tr
                       key={c.id}
-                      className="border-t hover:bg-muted/30 cursor-pointer"
+                      className="border-t cursor-pointer transition-colors hover:bg-muted active:bg-muted/80"
                       onClick={() => abrirDetalhes(c.id)}
                     >
                       <td className="p-3 truncate font-medium">{c.nome}</td>
