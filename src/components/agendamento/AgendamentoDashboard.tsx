@@ -847,39 +847,41 @@ export default function AgendamentoDashboard() {
         </div>
         
         <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-3">
-          {/* Navegador de Semana */}
-          <div className="flex w-full sm:w-auto items-center gap-1 bg-background border rounded-md px-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={navegarSemanaAnterior}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            
-            <div className="flex flex-1 sm:flex-none items-center gap-2 px-2 sm:min-w-[160px] justify-center">
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium whitespace-nowrap">
-                {format(startOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })} - {format(endOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM/yyyy', { locale: ptBR })}
-              </span>
+          {/* Navegador de Semana + botão Semana Atual */}
+          <div className="flex w-full sm:w-auto items-center gap-2 flex-wrap">
+            <div className="flex flex-1 sm:flex-none items-center gap-1 bg-background border rounded-md px-1 min-w-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={navegarSemanaAnterior}
+                className="h-8 w-8 p-0 shrink-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
+              <div className="flex flex-1 sm:flex-none items-center gap-2 px-2 sm:min-w-[160px] justify-center min-w-0">
+                <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-sm font-medium whitespace-nowrap truncate">
+                  {format(startOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM', { locale: ptBR })} - {format(endOfWeek(semanaAtual, { weekStartsOn: 1 }), 'dd/MM/yyyy', { locale: ptBR })}
+                </span>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={navegarProximaSemana}
+                className="h-8 w-8 p-0 shrink-0"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={navegarProximaSemana}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            
+
             {!ehSemanaAtual && (
               <Button
                 variant="default"
                 size="sm"
                 onClick={voltarSemanaAtual}
-                className="text-xs h-8"
+                className="text-xs h-8 shrink-0"
               >
                 Semana Atual
               </Button>
