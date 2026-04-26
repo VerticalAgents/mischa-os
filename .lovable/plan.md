@@ -1,58 +1,74 @@
 ## Objetivo
 
-1. Ocultar a aba **Financeiro** dentro do detalhe do cliente quando o usuário for um representante.
-2. Adicionar três novos indicadores no topo da aba **Análise de Giro** do cliente (visíveis tanto para admin quanto para representante):
-   - **Dias desde a última entrega**
-   - **Periodicidade configurada** (em dias)
-   - **Periodicidade real** (em dias, calculada a partir do histórico)
+Otimizar a versão **mobile e tablet** das telas do portal do representante, eliminando:
+- tabelas com colunas espremidas/sobrepostas e scroll horizontal ruim
+- cabeçalhos de cards com layout quebrado
+- toolbars de ícones que estouram a largura
+- seções de produtos no modal de agendamento sem responsividade
+
+A experiência desktop fica intacta.
 
 ## Mudanças
 
-### 1. Ocultar aba "Financeiro" para representantes
+### 1. Lista "Meus Clientes" (`src/pages/rep/RepClientes.tsx`)
 
-Arquivo: `src/components/clientes/ClienteDetalhesTabs.tsx`
+Hoje a tabela tem 5 colunas em `table-fixed` e fica ilegível no mobile.
 
-- Adicionar uma prop opcional `hideFinanceiro?: boolean` no componente.
-- Quando `hideFinanceiro` for `true`:
-  - Remover a entrada "Financeiro" do array de tabs mobile.
-  - Mudar o grid desktop de `grid-cols-5` para `grid-cols-4` e remover o `TabsTrigger` de "financeiro".
-  - Remover o `TabsContent` de "financeiro".
+- **Em telas `< lg`**: substituir a tabela por uma **lista de cards**. Cada card mostra:
+  - Linha 1: Nome (negrito, truncate) + badge de status à direita
+  - Linha 2: Telefone (muted, pequeno)
+  - Linha 3: "Próxima reposição: dd/mm/yyyy" + botão de editar (ícone) à direita
+  - Card inteiro clicável para abrir os detalhes
+- **Em `lg+`**: manter a tabela atual.
+- O botão "Novo cliente" no topo já é grande, sem mudanças.
 
-Arquivo: `src/pages/rep/RepClientes.tsx`
+### 2. Lista "Agendamentos" (`src/pages/rep/RepAgendamentos.tsx`)
 
-- Identificar onde o `ClienteDetailsView` (ou `ClienteDetalhesTabs`) é renderizado para o representante e propagar `hideFinanceiro={true}`. Caso o representante use `ClienteDetailsView`, adicionaremos a prop nele também e repassaremos para `ClienteDetalhesTabs`.
+Mesmo problema: 5 colunas espremidas, header de status corta texto.
 
-Arquivo: `src/components/clientes/ClienteDetailsView.tsx`
+- **Em telas `< lg`**: lista de cards. Cada card mostra:
+  - Linha 1: Nome do cliente (negrito) + badge de status (Pendente/Previsto/Agendado) à direita
+  - Linha 2: ícone de calendário + data formatada · "Qtd: N" · botão editar à direita
+- **Filtros**: empilhar verticalmente em mobile (`flex-col`) com largura total; manter horizontais em `sm+`.
+- **Em `lg+`**: manter a tabela atual.
 
-- Adicionar prop `hideFinanceiro?: boolean` e repassá-la para `ClienteDetalhesTabs`.
+### 3. Estatísticas (`src/pages/rep/RepEstatisticas.tsx` + `SortableClientesTable`)
 
-### 2. Novos indicadores na Análise de Giro
+A tabela de clientes faz scroll horizontal cortando colunas.
 
-Arquivo: `src/components/clientes/AnaliseGiro.tsx`
+- Envolver a `SortableClientesTable` em um wrapper com `overflow-x-auto` e largura mínima na tabela interna, para que o scroll seja claro e não corte conteúdo.
+- Adicionar `px-3 lg:px-6` nos containers para evitar que a tabela cole nas bordas.
+- Cards de KPI: garantir `grid-cols-1 sm:grid-cols-2` em mobile (já é `md:grid-cols-2 lg:grid-cols-5`, validar que o `sm` também quebra bem).
 
-Adicionar uma nova grade de 3 cards acima da grade existente de métricas de giro, com:
+### 4. Configurações (`src/pages/rep/RepConfiguracoes.tsx`)
 
-- **Última Entrega**: dias desde a última entrega (ex.: "5 dias atrás"). Usa `frequenciaInfo.ultimaEntrega` do hook `useFrequenciaRealEntregas` e calcula `differenceInDays(hoje, ultimaEntrega)`. Se não houver entrega, mostrar "Sem entregas".
-- **Periodicidade Configurada**: `cliente.periodicidadePadrao` em dias, com a label da faixa (ex.: "7 dias - Semanal"). Reutilizar `getFaixaLabel` se existir, ou exibir simples.
-- **Periodicidade Real**: `frequenciaInfo.frequenciaReal` em dias. Aplicar coloração por divergência usando `getCorDivergencia(periodicidadeConfig, frequenciaReal)` já existente em `useFrequenciaRealEntregas.ts`. Mostrar ícone de tendência (TrendingUp/Down/Minus) e valor. Se `null`, exibir "Dados insuficientes".
+O CardHeader empilha mal e a tabela de rotas faz scroll horizontal.
 
-Reutilizar componente existente `GiroMetricCard` para manter consistência visual, ou criar uma pequena variação inline se necessário.
+- Trocar o header do card de "Minhas Rotas de Entrega" para `flex-col sm:flex-row` com botão "Nova Rota" abaixo do título no mobile (full-width) e à direita no desktop.
+- A tabela de rotas: em `< sm` virar cards verticais simples (Nome + Descrição + Status + ações). Em `sm+` manter tabela com `overflow-x-auto`.
 
-Hook a ser chamado:
-```ts
-const { data: frequenciasMap } = useFrequenciaRealEntregas([cliente.id]);
-const freqInfo = frequenciasMap?.get(cliente.id);
-```
+### 5. Modal de Agendamento — seção de Produtos (`src/components/agendamento/ProdutoQuantidadeSelector.tsx`)
+
+A toolbar de ícones quebra o título "Produtos e Quantidades" em duas linhas e estoura a largura.
+
+- Cabeçalho: mudar para `flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2`. No mobile o título fica em cima e a toolbar de ícones embaixo, alinhada à direita, com `flex-wrap`.
+- Linhas de produto: mudar `grid grid-cols-3` para `grid-cols-1 sm:grid-cols-3` para que produto/quantidade/excluir empilhem no mobile.
+
+### 6. Layout geral (`src/layouts/RepLayout.tsx`)
+
+- Reduzir padding do container em mobile: já é `p-4 lg:p-6` (alterado anteriormente). Confirmar que o `max-w-6xl mx-auto` não cria margens excessivas em telas estreitas (está ok com padding).
 
 ## Detalhes técnicos
 
-- O hook `useFrequenciaRealEntregas` já retorna `{ frequenciaReal, numeroEntregas, primeiraEntrega, ultimaEntrega }` por cliente, portanto não há necessidade de novas queries no Supabase.
-- A função `getCorDivergencia` já está exportada do mesmo arquivo do hook e pode ser usada para colorir o card de periodicidade real (verde/amarelo/vermelho conforme divergência ≤20%, ≤40%, >40%).
-- A detecção do representante será via prop explícita `hideFinanceiro` (não via contexto), mantendo o componente reutilizável para o admin.
+- Padrão de card mobile: usar `<div className="rounded-lg border p-4 space-y-2 bg-card cursor-pointer hover:bg-muted/40 transition-colors">` para manter o look-and-feel do app.
+- Breakpoint: usar `lg:` para alternar entre cards (mobile/tablet) e tabela (desktop) — coerente com o sidebar atual que vira hamburger em `< lg`.
+- Sem mudanças no schema do banco ou em hooks; tudo é layout/CSS/markup.
+- Não vou alterar componentes do admin (como `ClienteFormDialog`, `AgendamentoEditModal` em si) — apenas o `ProdutoQuantidadeSelector` que é compartilhado mas a mudança é puramente responsiva e melhora também o admin em telas pequenas.
 
 ## Arquivos editados
 
-- `src/components/clientes/ClienteDetalhesTabs.tsx`
-- `src/components/clientes/ClienteDetailsView.tsx`
 - `src/pages/rep/RepClientes.tsx`
-- `src/components/clientes/AnaliseGiro.tsx`
+- `src/pages/rep/RepAgendamentos.tsx`
+- `src/pages/rep/RepEstatisticas.tsx`
+- `src/pages/rep/RepConfiguracoes.tsx`
+- `src/components/agendamento/ProdutoQuantidadeSelector.tsx`

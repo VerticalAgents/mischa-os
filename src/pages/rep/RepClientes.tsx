@@ -195,7 +195,8 @@ export default function RepClientes() {
             </Select>
           </div>
 
-          <div className="border rounded-md overflow-hidden">
+          {/* Tabela desktop */}
+          <div className="hidden lg:block border rounded-md overflow-hidden">
             <table className="w-full table-fixed text-sm">
               <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
                 <tr>
@@ -248,6 +249,51 @@ export default function RepClientes() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Lista de cards mobile/tablet */}
+          <div className="lg:hidden space-y-2">
+            {loading ? (
+              <div className="p-6 text-center text-muted-foreground text-sm">Carregando…</div>
+            ) : filtrados.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground text-sm border rounded-md">
+                Nenhum cliente encontrado.
+              </div>
+            ) : (
+              filtrados.map((c) => (
+                <div
+                  key={c.id}
+                  className="rounded-lg border p-3 space-y-2 bg-card cursor-pointer hover:bg-muted/40 active:bg-muted/60 transition-colors"
+                  onClick={() => abrirDetalhes(c.id)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-medium truncate flex-1 min-w-0">{c.nome}</div>
+                    <Badge variant={statusVariant(c.status_cliente)} className="shrink-0">
+                      {statusLabel(c.status_cliente)}
+                    </Badge>
+                  </div>
+                  {c.contato_telefone && (
+                    <div className="text-xs text-muted-foreground truncate">
+                      {c.contato_telefone}
+                    </div>
+                  )}
+                  <div
+                    className="flex items-center justify-between gap-2 pt-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="text-xs text-muted-foreground">
+                      Próxima reposição:{" "}
+                      <span className="font-medium text-foreground">
+                        {formatDate(c.proxima_data_reposicao)}
+                      </span>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => handleEditar(c.id)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
