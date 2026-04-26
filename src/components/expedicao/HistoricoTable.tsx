@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { useClienteStore } from "@/hooks/useClienteStore";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 interface HistoricoTableProps {
   registros: any[];
@@ -25,6 +26,8 @@ export const HistoricoTable = ({
 }: HistoricoTableProps) => {
   const navigate = useNavigate();
   const { selecionarCliente } = useClienteStore();
+  const { isRepresentante } = useUserRoles();
+  const podeEditar = !isRepresentante();
 
   if (isLoading) {
     return (
@@ -126,13 +129,15 @@ export const HistoricoTable = ({
                 >
                   <Eye className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onEditarRegistro(registro)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
+                {podeEditar && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onEditarRegistro(registro)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </TableCell>
           </TableRow>
@@ -190,9 +195,11 @@ export const HistoricoTable = ({
                 <Button variant="ghost" size="sm" onClick={() => onVerDetalhes(registro)}>
                   <Eye className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => onEditarRegistro(registro)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
+                {podeEditar && (
+                  <Button variant="ghost" size="sm" onClick={() => onEditarRegistro(registro)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           </div>
