@@ -21,8 +21,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, Plus } from "lucide-react";
+import { Edit, Trash2, Plus, KeyRound, ShieldOff, ShieldCheck } from "lucide-react";
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
+import { useRepresentanteAccounts } from "@/hooks/useRepresentanteAccounts";
+import CriarAcessoRepresentanteDialog from "./CriarAcessoRepresentanteDialog";
 
 interface Representante {
   id: number;
@@ -41,10 +43,12 @@ export default function RepresentantesList() {
     atualizarRepresentante, 
     removerRepresentante 
   } = useSupabaseRepresentantes();
-  
+  const { accounts, carregar: carregarAccounts, revogar, reativar } = useRepresentanteAccounts();
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Representante | null>(null);
+  const [acessoTarget, setAcessoTarget] = useState<Representante | null>(null);
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
@@ -93,6 +97,8 @@ export default function RepresentantesList() {
   if (loading) {
     return <div>Carregando representantes...</div>;
   }
+
+  const accountByRepId = new Map(accounts.map((a) => [a.representante_id, a]));
 
   return (
     <div className="space-y-4">
@@ -169,6 +175,7 @@ export default function RepresentantesList() {
             <TableHead>E-mail</TableHead>
             <TableHead>Telefone</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Acesso</TableHead>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -183,6 +190,52 @@ export default function RepresentantesList() {
                 <Badge variant={representante.ativo ? "default" : "secondary"}>
                   {representante.ativo ? "Ativo" : "Inativo"}
                 </Badge>
+              </TableCell>
+              <TableCell>
+                {(() => {
+                  const acc = accountByRepId.get(representante.id);
+                  if (!acc) {
+                    return (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAcessoTarget(representante)}
+                      >
+                        <KeyRound className="h-3.5 w-3.5 mr-1" />
+                        Criar acesso
+                      </Button>
+                    );
+                  }
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Badge variant={acc.ativo ? "default" : "secondary"}>
+                        {acc.ativo ? "Ativo" : "Revogado"}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground truncate max-w-[160px]">
+                        {acc.login_email}
+                      </span>
+                      {acc.ativo ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => revogar(acc.id)}
+                          title="Revogar acesso"
+                        >
+                          <ShieldOff className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => reativar(acc.id)}
+                          title="Reativar acesso"
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })()}
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
@@ -263,6 +316,20 @@ export default function RepresentantesList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {acessoTarget && (
+        <CriarAcessoRepresentanteDialog
+          open={!!acessoTarget}
+          onOpenChange={(o) => !o && setAcessoTarget(null)}
+          representanteId={acessoTarget.id}
+          representanteNome={acessoTarget.nome}
+          emailSugerido={acessoTarget.email}
+          onSuccess={() => {
+            carregarAccounts();
+            setAcessoTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 }
