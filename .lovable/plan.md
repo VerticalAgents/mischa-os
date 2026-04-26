@@ -1,55 +1,51 @@
 ## Causa raiz
 
-A função `public.get_owner_id(uuid)` (usada nas RLS de `tipos_cobranca`, `formas_pagamento`, `categorias_produto`, etc.) consulta APENAS a tabela `staff_accounts`. Quando o usuário logado é um representante (que está em `representante_accounts`, não em `staff_accounts`), a função devolve o próprio `auth.uid()` do representante. Resultado:
+O componente `CategoriasProdutoSelector` carrega as categorias selecionadas do cliente lendo a tabela `clientes_categorias`. Mas as políticas RLS dessa tabela só permitem leitura para **admin** e **owner/staff** (`is_owner_or_staff()`). O representante não está em nenhum dos dois grupos, então o SELECT volta vazio — e o checkbox aparece desmarcado, mesmo o cliente tendo categorias gravadas (`categorias_habilitadas: [1]` no JSONB do cliente).
 
-- A política `Owner or staff can view ...` resolve para `user_id = auth.uid()` → não bate com nenhuma linha (os registros são do owner).
-- Os hooks também filtram por `scopeUserId` correto no JS, mas a RLS ainda nega — porque depende da mesma função.
-
-Por isso os selects continuam vazios mesmo após as últimas mudanças.
-
-Verificações no banco confirmam:
-- Owner `7618131a…` tem 3 tipos_cobranca, 3 formas_pagamento e 3 categorias_produto ativas.
-- Representante `7d33e0e2…` está vinculado a esse owner em `representante_accounts.ativo = true`.
-- `staff_accounts` para esse uid: 0 registros.
-- `get_owner_id(rep_uid)` retorna o próprio uid do rep (errado).
+Verificado no banco: clientes do representante têm `categorias_habilitadas = [1]` e a tabela espelho `clientes_categorias` também — o que falta é apenas permissão de leitura (e escrita) para o representante.
 
 ## Correção
 
-### 1. Migração — atualizar `get_owner_id`
+### Migração — RLS de `clientes_categorias`
 
-Estender a função para também olhar em `representante_accounts`, mantendo `staff_accounts` como fallback primário (admins/funcionários):
+Adicionar políticas para representantes lerem e gerenciarem (insert/update/delete) as categorias dos seus próprios clientes, no mesmo padrão já usado em `clientes`:
 
 ```sql
-CREATE OR REPLACE FUNCTION public.get_owner_id(_user_id uuid)
-RETURNS uuid
-LANGUAGE sql
-STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT COALESCE(
-    (SELECT owner_id FROM public.staff_accounts
-       WHERE staff_user_id = _user_id AND ativo = true LIMIT 1),
-    (SELECT owner_id FROM public.representante_accounts
-       WHERE auth_user_id = _user_id AND ativo = true LIMIT 1),
-    _user_id
+-- Representante lê categorias dos seus clientes
+CREATE POLICY "Representante reads own clientes_categorias"
+ON public.clientes_categorias FOR SELECT
+USING (
+  is_representante() AND cliente_id IN (
+    SELECT id FROM public.clientes
+    WHERE representante_id = get_my_representante_id()
   )
-$$;
+);
+
+-- Representante insere/atualiza/remove categorias dos seus clientes
+CREATE POLICY "Representante manages own clientes_categorias"
+ON public.clientes_categorias FOR ALL
+USING (
+  is_representante() AND cliente_id IN (
+    SELECT id FROM public.clientes
+    WHERE representante_id = get_my_representante_id()
+  )
+)
+WITH CHECK (
+  is_representante() AND cliente_id IN (
+    SELECT id FROM public.clientes
+    WHERE representante_id = get_my_representante_id()
+  )
+);
 ```
 
-Com isso, todas as RLS que já usam `get_owner_id` (categorias_produto, tipos_cobranca, formas_pagamento, insumos, categorias_insumo, etc.) passam a funcionar para representantes automaticamente, sem precisar criar novas policies em cada tabela.
+### Sem mudanças no frontend
 
-### 2. Sem mudanças nos hooks
-
-`useSupabaseTiposCobranca`, `useSupabaseFormasPagamento` e `useSupabaseCategoriasProduto` já resolvem o `scopeUserId` corretamente no JS (consultando `representante_accounts`). Após corrigir a função no banco, a RLS deixa de bloquear e os SELECTs passam a retornar os dados do owner.
-
-### 3. Sem mudanças no formulário
-
-`ClienteFormDialog` já renderiza Tipo de Cobrança, Forma de Pagamento e Categorias de Produto Habilitadas para o representante. Os selects vão popular automaticamente.
+O `CategoriasProdutoSelector` e o `useClientesCategorias` já fazem as queries certas — só faltava a permissão.
 
 ## Arquivos afetados
 
-- **Novo**: `supabase/migrations/<timestamp>_fix_get_owner_id_representante.sql`
+- **Novo**: `supabase/migrations/<timestamp>_rls_rep_clientes_categorias.sql`
 
-## Efeito colateral positivo
+## Efeito esperado
 
-Qualquer outra tabela que já tenha policy `user_id = get_owner_id(auth.uid())` (insumos, componentes_produto via produtos_finais, etc.) também passa a respeitar o vínculo do representante — o que é o comportamento esperado de multi-tenant.
+Ao abrir um cliente existente como representante, as categorias previamente atribuídas aparecem marcadas; e ao salvar alterações nas categorias, a gravação também passa pela RLS sem erro.
