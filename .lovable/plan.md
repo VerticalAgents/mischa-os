@@ -1,82 +1,71 @@
-## Objetivo
+## Diagnóstico
 
-Criar uma experiência dedicada para representantes comerciais em rotas `/rep/*`, com layout próprio e telas simplificadas focadas no fluxo deles (cadastro de clientes vinculados e gestão de status/data dos próprios agendamentos). Hoje o rep cai no `/home` do dono e vê KPIs do negócio inteiro — não faz sentido.
+No formulário de cliente do portal do representante, três campos não funcionam:
 
-A segurança (RLS, RPC restrito de update, edge function de criação de credenciais) já está pronta da fase anterior. Este plano é puramente de UI/roteamento.
+1. **Categoria do Estabelecimento** — fica em "Carregando…" porque a RLS de `categorias_estabelecimento` só permite `admin` ou `is_owner_or_staff()`. Representante não é nenhum dos dois.
+2. **Tipo de Logística** — vazio porque o hook filtra `user_id = auth.uid()` (e a RLS também). Os tipos pertencem ao admin/owner; o representante (auth user separado) não os vê.
+3. **Rota de Entrega** — vazio pelo mesmo motivo. Mas aqui a regra de negócio é diferente: cada representante deve ter as **suas próprias rotas**.
 
----
+## O que será feito
 
-## Estrutura de rotas
+### 1. Acesso do representante a Categoria e Tipo de Logística (do admin/owner)
 
-```text
-/rep                       → redirect para /rep/home
-/rep/home                  → dashboard do representante
-/rep/clientes              → lista + cadastro/edição de clientes dele
-/rep/agendamentos          → lista de agendamentos com edição limitada (status + data)
-```
+Tanto Categoria de Estabelecimento quanto Tipo de Logística pertencem ao admin/owner e devem ser **lidos** pelo representante (sem permissão de editar).
 
-Tudo dentro de um novo `RepLayout` com sidebar enxuta (3 itens) e header próprio. Sem acesso a outras rotas — qualquer tentativa redireciona para `/rep/home`.
+- Migration SQL adicionando policies de SELECT em `categorias_estabelecimento` e `tipos_logistica` permitindo que o representante leia os registros do seu owner (resolvido via `representante_accounts.owner_id`, comparando com `tipos_logistica.user_id` / sem filtro extra para `categorias_estabelecimento`).
+- Ajustar `useSupabaseTiposLogistica.ts` para, quando o usuário for representante, buscar pelo `owner_id` do representante em vez de `auth.uid()`.
+- `useSupabaseCategoriasEstabelecimento.ts` já não filtra por user — basta a policy permitir leitura ao representante.
 
----
+### 2. Aba "Configurações" no portal do representante
 
-## Comportamento por tela
+Criar nova rota `/rep/configuracoes` no `RepLayout`, com item "Configurações" no `RepSidebar`. Conteúdo inicial: gerenciamento das **Rotas de Entrega do próprio representante** (CRUD). As rotas continuam sendo escopadas por `user_id = auth.uid()` (cada representante vê apenas as suas).
 
-### 1. Login e redirecionamento
-- Após login, se `userRole === 'representante'` → redirecionar para `/rep/home` (em vez de `/home`).
-- Guard global: se usuário é representante e tenta acessar qualquer rota fora de `/rep/*`, redireciona para `/rep/home`.
-- Inversamente, se um admin/staff acessa `/rep/*`, redireciona para `/home`.
+- Nova página `src/pages/rep/RepConfiguracoes.tsx`.
+- Reaproveitar UI no estilo de `RotasEntregaList` (tabela + dialog de adicionar/editar), mas usando o hook existente `useSupabaseRotasEntrega` que já está pronto para escopo `auth.uid()`.
+- Adicionar item de menu "Configurações" em `RepSidebar.tsx`.
+- Registrar rota em `App.tsx`.
 
-### 2. `/rep/home` — Dashboard do representante
-Quatro blocos:
-- **Saudação + total de PDVs ativos**: "Olá, {nome}" + card com contagem de clientes ativos vinculados a ele.
-- **Próximos agendamentos (7 dias)**: lista enxuta dos próximos pedidos previstos dos clientes dele (data, cliente, status). Clicar abre o modal de edição.
-- **Pendentes de confirmação**: agendamentos com status `Previsto` ou `Agendar` que precisam de ação. Mesmo padrão de clique.
-- **Atalhos rápidos**: 3 botões grandes — "Cadastrar cliente", "Ver clientes", "Ver agendamentos".
+### 3. Ajustes no formulário de cliente (visualização para representante)
 
-### 3. `/rep/clientes` — Lista simplificada
-- Tabela com colunas essenciais: Nome, Status, Categoria, Telefone, Próxima reposição, Ações (editar).
-- Botão destacado "Novo cliente" no topo.
-- Busca por nome/CNPJ.
-- Filtro por status (Ativo, Standby, A ativar, Inativo).
-- Reusa o `ClienteFormDialog` existente (já trava o campo Representante automaticamente para usuários rep — feito na fase anterior).
-
-### 4. `/rep/agendamentos` — Lista simplificada
-- Lista (não calendário, mais simples) agrupada por data, com filtro de período (Hoje / 7 dias / 30 dias / Todos).
-- Cada linha: data, cliente, quantidade, status. Clique abre o modal de edição.
-- Modal de edição reusa o `AgendamentoEditModal` existente, que já está restrito para reps via RPC `representante_update_agendamento` (só edita status e data).
-- Filtro por cliente e por status.
-
----
-
-## Arquivos a criar/editar
-
-### Novos
-- `src/layouts/RepLayout.tsx` — shell com sidebar enxuta (3 itens) + header com nome do rep e logout.
-- `src/components/rep/RepSidebar.tsx` — sidebar dedicada.
-- `src/pages/rep/RepHome.tsx` — dashboard do rep.
-- `src/pages/rep/RepClientes.tsx` — lista de clientes simplificada.
-- `src/pages/rep/RepAgendamentos.tsx` — lista de agendamentos simplificada.
-- `src/components/rep/RepGuard.tsx` — bloqueia acesso a `/rep/*` para não-reps.
-- `src/hooks/useRepDashboardData.ts` — busca dados agregados para a Home (total de clientes, próximos agendamentos, pendentes).
-
-### Editar
-- `src/App.tsx` — registrar as novas rotas `/rep/*` envolvidas pelo `RepLayout` + `RepGuard`.
-- `src/contexts/AuthContext.tsx` (ou onde acontece o redirecionamento pós-login) — redirecionar reps para `/rep/home`.
-- Guard global existente (provavelmente em `App.tsx` ou em `MainLayout`) — se `isRepresentante`, redirecionar qualquer rota não-`/rep/*` para `/rep/home`.
-
----
+- Quando `tipoLogistica = 'Retirada'`, o select de Rota de Entrega já é ocultado — manter.
+- Adicionar mensagem amigável quando o representante não tem nenhuma rota cadastrada (com link "Cadastrar rotas em Configurações").
+- Garantir que a lista de Tipo de Logística carrega corretamente para o representante após a correção do hook.
 
 ## Detalhes técnicos
 
-- **Filtros de dados**: como o RLS já filtra por `get_my_representante_id()`, as queries no front são as mesmas usadas hoje (`from('clientes').select(...)` e `from('agendamentos_clientes').select(...)`) — o Postgres devolve só o que o rep pode ver. Sem necessidade de filtros adicionais no client.
-- **Edição de agendamento**: o `AgendamentoEditModal` já detecta `isRepresentante` e roteia o save pela RPC `representante_update_agendamento`. Reusamos sem mudanças.
-- **Cadastro de cliente**: `ClienteFormDialog` já auto-preenche e trava `representante_id` quando o usuário é rep. Reusamos sem mudanças.
-- **Sidebar do dono**: a lógica atual em `useMyPermissions` para representante (`/home`, `/clientes`, `/agendamento`) deixa de ser usada na prática, mas pode ficar como fallback. O guard novo garante que o rep nunca renderiza `MainLayout`.
-- **Estilo**: mantém a identidade Mischa (vermelho #d1193a no header/sidebar) seguindo `mem://brand/identity-and-ui-standards`.
+**Migration (resumo)**
 
----
+```sql
+-- categorias_estabelecimento: representantes podem ler
+CREATE POLICY "Representantes can read categorias_estabelecimento"
+ON public.categorias_estabelecimento FOR SELECT
+USING (public.is_representante());
 
-## Fora de escopo (fase 2, conforme combinado)
-- Funil de leads para o rep.
-- Indicadores de performance (meta vs realizado, conversão).
-- Visão financeira detalhada.
+-- tipos_logistica: representantes podem ler os tipos do seu owner
+CREATE POLICY "Representantes can read owner tipos_logistica"
+ON public.tipos_logistica FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM public.representante_accounts ra
+    WHERE ra.auth_user_id = auth.uid()
+      AND ra.ativo = true
+      AND ra.owner_id = tipos_logistica.user_id
+  )
+);
+```
+
+**Hook `useSupabaseTiposLogistica.ts`**: detectar se é representante (via `representante_accounts`); se sim, buscar `owner_id` e filtrar por esse `user_id`. Caso contrário, manter comportamento atual.
+
+**Arquivos**
+
+- `supabase/migrations/<timestamp>_rep_read_cat_logistica.sql` (novo)
+- `src/hooks/useSupabaseTiposLogistica.ts` (editar)
+- `src/pages/rep/RepConfiguracoes.tsx` (novo)
+- `src/components/rep/RepSidebar.tsx` (editar — novo item de menu)
+- `src/App.tsx` (editar — nova rota `/rep/configuracoes`)
+- `src/components/clientes/ClienteFormDialog.tsx` (editar — mensagem quando rep não tem rotas)
+
+## Fora de escopo
+
+- Edição de Categoria/Tipo de Logística pelo representante (continua exclusivo do admin).
+- Outras seções da aba Configurações (apenas Rotas no MVP).
