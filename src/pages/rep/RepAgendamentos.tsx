@@ -167,7 +167,8 @@ export default function RepAgendamentos() {
             </Select>
           </div>
 
-          <div className="border rounded-md overflow-hidden">
+          {/* Tabela desktop */}
+          <div className="hidden lg:block border rounded-md overflow-hidden">
             <table className="w-full table-fixed text-sm">
               <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
                 <tr>
@@ -215,6 +216,57 @@ export default function RepAgendamentos() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Lista de cards mobile/tablet */}
+          <div className="lg:hidden space-y-2">
+            {loading ? (
+              <div className="p-6 text-center text-muted-foreground text-sm">Carregando…</div>
+            ) : filtrados.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground text-sm border rounded-md">
+                <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                Nenhum agendamento no período.
+              </div>
+            ) : (
+              filtrados.map((a) => (
+                <div
+                  key={a.id ?? a.cliente.id}
+                  className="rounded-lg border p-3 space-y-2 bg-card cursor-pointer hover:bg-muted/40 active:bg-muted/60 transition-colors"
+                  onClick={() => handleEditar(a)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-medium truncate flex-1 min-w-0">{a.cliente.nome}</div>
+                    <Badge variant={statusVariant(a.statusAgendamento)} className="shrink-0">
+                      {a.statusAgendamento === "Agendar" ? "Pendente" : a.statusAgendamento}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {format(a.dataReposicao, "dd/MM/yyyy", { locale: ptBR })}
+                      </span>
+                      <span>
+                        Qtd:{" "}
+                        <span className="font-medium text-foreground">
+                          {a.pedido?.totalPedidoUnidades ?? "-"}
+                        </span>
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditar(a);
+                      }}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
