@@ -2,11 +2,13 @@ import { useState } from "react";
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
-import { ArrowUp, ArrowDown, AlertCircle } from "lucide-react";
+import { ArrowUp, ArrowDown, AlertCircle, Calendar, Repeat, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Cliente } from "@/types";
 import GiroMetricCard from "./GiroMetricCard";
 import { useGiroAnalise } from "@/hooks/useGiroAnalise";
+import { useFrequenciaRealEntregas, getCorDivergencia } from "@/hooks/useFrequenciaRealEntregas";
 import { supabase } from "@/integrations/supabase/client";
+import { differenceInDays } from "date-fns";
 
 interface AnaliseGiroProps {
   cliente: Cliente;
@@ -20,6 +22,64 @@ export default function AnaliseGiro({
     isLoading,
     error
   } = useGiroAnalise(cliente);
+
+  const { data: frequenciasMap } = useFrequenciaRealEntregas([cliente.id]);
+  const freqInfo = frequenciasMap?.get(cliente.id);
+  const periodicidadeConfig = cliente.periodicidadePadrao || 7;
+  const ultimaEntrega = freqInfo?.ultimaEntrega ?? null;
+  const diasDesdeUltima = ultimaEntrega ? differenceInDays(new Date(), ultimaEntrega) : null;
+  const frequenciaReal = freqInfo?.frequenciaReal ?? null;
+  const { classe: classeDivergencia, direcao } = getCorDivergencia(periodicidadeConfig, frequenciaReal);
+  const DirecaoIcon = direcao === 'up' ? TrendingUp : direcao === 'down' ? TrendingDown : Minus;
+
+  const indicadoresPeriodicidade = (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-muted-foreground">Última Entrega</p>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <p className="text-2xl font-bold">
+            {diasDesdeUltima !== null ? `${diasDesdeUltima} dias` : "Sem entregas"}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {ultimaEntrega
+              ? `em ${ultimaEntrega.toLocaleDateString('pt-BR')}`
+              : "Nenhuma entrega registrada"}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-muted-foreground">Periodicidade Configurada</p>
+            <Repeat className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <p className="text-2xl font-bold">{periodicidadeConfig} dias</p>
+          <p className="text-xs text-muted-foreground mt-1">Intervalo entre entregas</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-muted-foreground">Periodicidade Real</p>
+            <DirecaoIcon className={`h-4 w-4 ${classeDivergencia}`} />
+          </div>
+          <p className={`text-2xl font-bold ${classeDivergencia}`}>
+            {frequenciaReal !== null ? `${frequenciaReal} dias` : "—"}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {frequenciaReal !== null
+              ? `Baseado em ${freqInfo?.numeroEntregas ?? 0} entregas (84 dias)`
+              : "Dados insuficientes (mín. 2 entregas)"}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   // Giro semanal médio geral (valor simulado - deve vir do dashboard "Análise de PDV e Giro")
   const giroSemanalMedioGeral = 150; // Valor placeholder
@@ -49,7 +109,9 @@ export default function AnaliseGiro({
       </Card>;
   }
   if (!dadosGiro) {
-    return <Card>
+    return <div className="space-y-6">
+        {indicadoresPeriodicidade}
+        <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-center h-80">
             <div className="text-center space-y-2">
@@ -61,13 +123,16 @@ export default function AnaliseGiro({
             </div>
           </div>
         </CardContent>
-      </Card>;
+      </Card>
+      </div>;
   }
 
   // Verificar se há dados suficientes (pelo menos uma entrega)
   const temDados = dadosGiro.historico.some(item => item.valor > 0);
   if (!temDados) {
-    return <Card>
+    return <div className="space-y-6">
+        {indicadoresPeriodicidade}
+        <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-center h-80">
             <div className="text-center space-y-2">
@@ -79,7 +144,8 @@ export default function AnaliseGiro({
             </div>
           </div>
         </CardContent>
-      </Card>;
+      </Card>
+      </div>;
   }
   const comparativoGiroGeral = giroSemanalMedioGeral > 0 ? Math.round(dadosGiro.mediaHistorica / giroSemanalMedioGeral * 100) : 0;
 
@@ -200,6 +266,7 @@ export default function AnaliseGiro({
   const clienteNovo = dadosGiro.numeroSemanasHistorico < 12;
   
   return <div className="space-y-6">
+      {indicadoresPeriodicidade}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <GiroMetricCard title="Média Histórica" value={dadosGiro.mediaHistorica} suffix="un/sem" description={`Últimas ${dadosGiro.numeroSemanasHistorico} semana${dadosGiro.numeroSemanasHistorico !== 1 ? 's' : ''}`} />
         
