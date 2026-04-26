@@ -1,67 +1,55 @@
-## Objetivo
+## Causa raiz
 
-Permitir que o representante visualize e selecione corretamente os campos de "Configurações Financeiras" (Tipo de Cobrança, Forma de Pagamento, Prazo de Pagamento, Emite Nota Fiscal) e "Categorias de Produtos Habilitadas" no formulário de cliente — usando os parâmetros cadastrados pelo admin (owner). Tal qual feito para categorias de estabelecimento e tipos de logística.
+A função `public.get_owner_id(uuid)` (usada nas RLS de `tipos_cobranca`, `formas_pagamento`, `categorias_produto`, etc.) consulta APENAS a tabela `staff_accounts`. Quando o usuário logado é um representante (que está em `representante_accounts`, não em `staff_accounts`), a função devolve o próprio `auth.uid()` do representante. Resultado:
 
-A edição/criação desses parâmetros continua restrita ao admin (já é o comportamento). O representante apenas seleciona entre as opções já cadastradas.
+- A política `Owner or staff can view ...` resolve para `user_id = auth.uid()` → não bate com nenhuma linha (os registros são do owner).
+- Os hooks também filtram por `scopeUserId` correto no JS, mas a RLS ainda nega — porque depende da mesma função.
 
-## Diagnóstico
+Por isso os selects continuam vazios mesmo após as últimas mudanças.
 
-Os campos não carregam para o representante por dois motivos combinados:
+Verificações no banco confirmam:
+- Owner `7618131a…` tem 3 tipos_cobranca, 3 formas_pagamento e 3 categorias_produto ativas.
+- Representante `7d33e0e2…` está vinculado a esse owner em `representante_accounts.ativo = true`.
+- `staff_accounts` para esse uid: 0 registros.
+- `get_owner_id(rep_uid)` retorna o próprio uid do rep (errado).
 
-1. **RLS** das tabelas `tipos_cobranca` e `formas_pagamento` só permite `SELECT` quando `auth.uid() = user_id`. Como o representante não é o owner, ele não enxerga nada.
-   - `categorias_produto` já tem política via `get_owner_id(auth.uid())`, então o representante já consegue ler — falta só o hook usar o escopo correto.
-2. **Hooks** `useSupabaseTiposCobranca`, `useSupabaseFormasPagamento` e `useSupabaseCategoriasProduto` filtram por `user.id` (do representante) em vez do `owner_id` resolvido a partir de `representante_accounts`.
+## Correção
 
-## Mudanças
+### 1. Migração — atualizar `get_owner_id`
 
-### 1. Migração (RLS)
-
-Adicionar políticas `SELECT` nas tabelas usadas no formulário, espelhando o padrão já usado em `categorias_produto` (via `get_owner_id`):
+Estender a função para também olhar em `representante_accounts`, mantendo `staff_accounts` como fallback primário (admins/funcionários):
 
 ```sql
--- tipos_cobranca: representante lê os do owner
-CREATE POLICY "Owner or staff can view tipos_cobranca"
-ON public.tipos_cobranca FOR SELECT
-USING (user_id = public.get_owner_id(auth.uid()));
-
--- formas_pagamento: representante lê os do owner
-CREATE POLICY "Owner or staff can view formas_pagamento"
-ON public.formas_pagamento FOR SELECT
-USING (user_id = public.get_owner_id(auth.uid()));
+CREATE OR REPLACE FUNCTION public.get_owner_id(_user_id uuid)
+RETURNS uuid
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COALESCE(
+    (SELECT owner_id FROM public.staff_accounts
+       WHERE staff_user_id = _user_id AND ativo = true LIMIT 1),
+    (SELECT owner_id FROM public.representante_accounts
+       WHERE auth_user_id = _user_id AND ativo = true LIMIT 1),
+    _user_id
+  )
+$$;
 ```
 
-(As políticas existentes `Users can read own ...` continuam valendo para o owner; o representante passa a ler via a nova política.)
+Com isso, todas as RLS que já usam `get_owner_id` (categorias_produto, tipos_cobranca, formas_pagamento, insumos, categorias_insumo, etc.) passam a funcionar para representantes automaticamente, sem precisar criar novas policies em cada tabela.
 
-### 2. Hooks — escopo do owner
+### 2. Sem mudanças nos hooks
 
-Atualizar os três hooks para resolver o `owner_id` quando o usuário logado é representante (mesmo padrão já usado em `useSupabaseTiposLogistica.ts`):
+`useSupabaseTiposCobranca`, `useSupabaseFormasPagamento` e `useSupabaseCategoriasProduto` já resolvem o `scopeUserId` corretamente no JS (consultando `representante_accounts`). Após corrigir a função no banco, a RLS deixa de bloquear e os SELECTs passam a retornar os dados do owner.
 
-- `src/hooks/useSupabaseTiposCobranca.ts`
-- `src/hooks/useSupabaseFormasPagamento.ts`
-- `src/hooks/useSupabaseCategoriasProduto.ts` (atualmente nem filtra por user_id; passar a filtrar pelo owner para consistência multi-tenant)
+### 3. Sem mudanças no formulário
 
-Lógica:
-
-```ts
-const { data: repAccount } = await supabase
-  .from('representante_accounts')
-  .select('owner_id')
-  .eq('auth_user_id', user.id)
-  .eq('ativo', true)
-  .maybeSingle();
-
-const scopeUserId = repAccount?.owner_id || user.id;
-// .eq('user_id', scopeUserId)
-```
-
-### 3. UI (sem mudanças funcionais)
-
-- O formulário do cliente (`ClienteFormDialog.tsx`) já renderiza esses campos para o representante; eles vão passar a popular automaticamente após as correções acima.
-- A edição dos parâmetros (criar/alterar tipos de cobrança, formas de pagamento, categorias de produto) permanece exclusiva do admin nas Configurações — não há mudança no menu do representante.
+`ClienteFormDialog` já renderiza Tipo de Cobrança, Forma de Pagamento e Categorias de Produto Habilitadas para o representante. Os selects vão popular automaticamente.
 
 ## Arquivos afetados
 
-- **Novo**: `supabase/migrations/<timestamp>_rls_rep_financeiro_categorias.sql`
-- **Editar**: `src/hooks/useSupabaseTiposCobranca.ts`
-- **Editar**: `src/hooks/useSupabaseFormasPagamento.ts`
-- **Editar**: `src/hooks/useSupabaseCategoriasProduto.ts`
+- **Novo**: `supabase/migrations/<timestamp>_fix_get_owner_id_representante.sql`
+
+## Efeito colateral positivo
+
+Qualquer outra tabela que já tenha policy `user_id = get_owner_id(auth.uid())` (insumos, componentes_produto via produtos_finais, etc.) também passa a respeitar o vínculo do representante — o que é o comportamento esperado de multi-tenant.
