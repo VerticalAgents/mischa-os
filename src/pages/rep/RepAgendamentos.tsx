@@ -260,7 +260,9 @@ export default function RepAgendamentos() {
                   filtrados.map((a) => (
                     <tr key={a.id ?? a.cliente.id} className="border-t hover:bg-muted/30">
                       <td className="p-3 truncate text-muted-foreground">
-                        {format(a.dataReposicao, "dd/MM/yyyy", { locale: ptBR })}
+                        {a.dataReposicao
+                          ? format(a.dataReposicao, "dd/MM/yyyy", { locale: ptBR })
+                          : "—"}
                       </td>
                       <td className="p-3 truncate font-medium">{a.cliente.nome}</td>
                         <td className="p-3">{a.pedido?.totalPedidoUnidades ?? "-"}</td>
@@ -307,7 +309,9 @@ export default function RepAgendamentos() {
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" />
-                        {format(a.dataReposicao, "dd/MM/yyyy", { locale: ptBR })}
+                        {a.dataReposicao
+                          ? format(a.dataReposicao, "dd/MM/yyyy", { locale: ptBR })
+                          : "—"}
                       </span>
                       <span>
                         Qtd:{" "}
