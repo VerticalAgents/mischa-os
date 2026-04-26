@@ -25,11 +25,13 @@ export default function ProdutoSelector({
 }: ProdutoSelectorProps) {
   const { produtos } = useProdutoStore();
 
-  // Filtrar produtos apenas das categorias habilitadas
+  // Filtrar produtos:
+  //  1) somente ativos
+  //  2) pertencentes a uma categoria habilitada para o cliente
+  //     Se o cliente não tem nenhuma categoria habilitada, NENHUM produto é exibido.
   const produtosFiltrados = produtos.filter(produto => {
-    if (!categoriasHabilitadas || categoriasHabilitadas.length === 0) {
-      return true; // Se não há categorias habilitadas, mostrar todos
-    }
+    if (!produto.ativo) return false;
+    if (!categoriasHabilitadas || categoriasHabilitadas.length === 0) return false;
     return categoriasHabilitadas.includes(produto.categoriaId);
   });
 
