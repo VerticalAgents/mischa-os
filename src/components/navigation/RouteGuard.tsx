@@ -31,6 +31,20 @@ export const RouteGuard = ({ children }: RouteGuardProps) => {
 
     const pathname = location.pathname;
 
+    // Representantes vivem dentro de /rep/* — qualquer outra rota redireciona
+    if (userRole === 'representante') {
+      if (!pathname.startsWith('/rep')) {
+        navigate('/rep/home', { replace: true });
+      }
+      return;
+    }
+
+    // Não-representantes não podem acessar /rep/*
+    if (pathname.startsWith('/rep')) {
+      navigate('/home', { replace: true });
+      return;
+    }
+
     // Skip guard for public/common routes
     if (PUBLIC_ROUTES.includes(pathname)) return;
 
