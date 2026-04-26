@@ -2,20 +2,29 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useUserRoles } from '@/hooks/useUserRoles';
 
 export default function Index() {
   const { user, loading } = useAuth();
+  const { userRole, loading: roleLoading } = useUserRoles();
   const navigate = useNavigate();
   const location = useLocation();
   const hasRedirectedRef = useRef(false);
 
   useEffect(() => {
     // Previne múltiplos redirecionamentos
-    if (hasRedirectedRef.current || loading) return;
+    if (hasRedirectedRef.current || loading || roleLoading) return;
 
     const currentPath = location.pathname + location.search + location.hash;
 
     if (user) {
+      // Representante: portal dedicado
+      if (userRole === 'representante') {
+        hasRedirectedRef.current = true;
+        navigate('/rep/home', { replace: true });
+        return;
+      }
+
       // Usuário logado
       if (currentPath === '/') {
         // Só redireciona se estiver na rota raiz
@@ -40,7 +49,7 @@ export default function Index() {
       hasRedirectedRef.current = true;
       navigate('/auth', { replace: true });
     }
-  }, [user, loading, navigate, location.pathname, location.search, location.hash]);
+  }, [user, loading, userRole, roleLoading, navigate, location.pathname, location.search, location.hash]);
 
   // Reset do flag quando a rota muda
   useEffect(() => {
