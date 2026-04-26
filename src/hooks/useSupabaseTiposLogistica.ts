@@ -27,11 +27,24 @@ export const useSupabaseTiposLogistica = () => {
         return;
       }
 
+      // Se for representante, busca os tipos de logística do owner (admin),
+      // pois o representante não cadastra os seus próprios.
+      let scopeUserId = user.id;
+      const { data: repAccount } = await supabase
+        .from('representante_accounts')
+        .select('owner_id')
+        .eq('auth_user_id', user.id)
+        .eq('ativo', true)
+        .maybeSingle();
+      if (repAccount?.owner_id) {
+        scopeUserId = repAccount.owner_id;
+      }
+
       const { data, error } = await supabase
         .from('tipos_logistica')
         .select('*')
         .eq('ativo', true)
-        .eq('user_id', user.id)
+        .eq('user_id', scopeUserId)
         .order('nome');
 
       if (error) {
