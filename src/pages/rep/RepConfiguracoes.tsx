@@ -83,10 +83,10 @@ export default function RepConfiguracoes() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <Map className="h-5 w-5 text-primary" />
-                <div>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div className="flex items-start gap-2 min-w-0">
+                <Map className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <div className="min-w-0">
                   <CardTitle>Minhas Rotas de Entrega</CardTitle>
                   <CardDescription>
                     Cadastre as rotas que você usa para organizar seus clientes.
@@ -97,7 +97,7 @@ export default function RepConfiguracoes() {
               </div>
               <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button className="w-full sm:w-auto shrink-0">
                     <Plus className="h-4 w-4 mr-2" />
                     Nova Rota
                   </Button>
@@ -163,47 +163,95 @@ export default function RepConfiguracoes() {
                 </Button>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                {/* Tabela desktop/tablet */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rotasEntrega.map((rota) => (
+                        <TableRow key={rota.id}>
+                          <TableCell className="font-medium">{rota.nome}</TableCell>
+                          <TableCell>{rota.descricao || "-"}</TableCell>
+                          <TableCell>
+                            <Badge variant={rota.ativo ? "default" : "secondary"}>
+                              {rota.ativo ? "Ativa" : "Inativa"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openEdit(rota)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(rota.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Cards mobile */}
+                <div className="sm:hidden space-y-2">
                   {rotasEntrega.map((rota) => (
-                    <TableRow key={rota.id}>
-                      <TableCell className="font-medium">{rota.nome}</TableCell>
-                      <TableCell>{rota.descricao || "-"}</TableCell>
-                      <TableCell>
-                        <Badge variant={rota.ativo ? "default" : "secondary"}>
+                    <div
+                      key={rota.id}
+                      className="rounded-lg border p-3 space-y-2 bg-card"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-medium truncate flex-1 min-w-0">
+                          {rota.nome}
+                        </div>
+                        <Badge
+                          variant={rota.ativo ? "default" : "secondary"}
+                          className="shrink-0"
+                        >
                           {rota.ativo ? "Ativa" : "Inativa"}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEdit(rota)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(rota.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                      </div>
+                      {rota.descricao && (
+                        <div className="text-xs text-muted-foreground">
+                          {rota.descricao}
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      )}
+                      <div className="flex justify-end gap-2 pt-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEdit(rota)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(rota.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
