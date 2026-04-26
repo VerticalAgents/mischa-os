@@ -11,12 +11,22 @@ const items = [
   { to: "/rep/configuracoes", label: "Configurações", icon: Settings },
 ];
 
-export function RepSidebar() {
+interface RepSidebarProps {
+  variant?: "desktop" | "mobile";
+  onNavClick?: () => void;
+}
+
+export function RepSidebar({ variant = "desktop", onNavClick }: RepSidebarProps = {}) {
   const { logout, user } = useAuth();
   const location = useLocation();
 
+  const containerClass =
+    variant === "mobile"
+      ? "w-60 h-full flex flex-col bg-[#d1193a] text-white overflow-y-auto"
+      : "w-60 sticky top-0 h-screen flex flex-col bg-[#d1193a] text-white shrink-0 overflow-y-auto hidden lg:flex";
+
   return (
-    <aside className="w-60 sticky top-0 h-screen flex flex-col bg-[#d1193a] text-white shrink-0 overflow-y-auto">
+    <aside className={containerClass}>
       <div className="p-5 flex items-center gap-3 border-b border-white/10">
         <img src={logo} alt="Mischa's Bakery" className="w-10 h-10 rounded-full bg-white" />
         <div className="flex flex-col leading-tight">
@@ -35,6 +45,7 @@ export function RepSidebar() {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={() => onNavClick?.()}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
                 active
                   ? "bg-white/15 text-white font-medium"
@@ -53,7 +64,10 @@ export function RepSidebar() {
           <div className="text-[11px] text-white/60 px-2 truncate">{user.email}</div>
         )}
         <button
-          onClick={() => logout()}
+          onClick={() => {
+            onNavClick?.();
+            logout();
+          }}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-white/90 hover:bg-white/10 transition-colors"
         >
           <LogOut className="w-4 h-4" />
