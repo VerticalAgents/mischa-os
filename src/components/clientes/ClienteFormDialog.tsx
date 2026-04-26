@@ -597,6 +597,17 @@ export default function ClienteFormDialog({
                     <Input value="Retirada" disabled className="bg-muted text-muted-foreground cursor-not-allowed" />
                   ) : rotasEntrega.length === 0 && formData.rotaEntregaId ? (
                     <Input value="Carregando..." disabled className="bg-muted" />
+                  ) : isRep && rotasEntrega.length === 0 ? (
+                    <div className="text-xs text-muted-foreground border border-dashed rounded-md p-3">
+                      Você ainda não cadastrou rotas de entrega.{' '}
+                      <a
+                        href="/rep/configuracoes"
+                        className="text-primary underline underline-offset-2"
+                      >
+                        Cadastrar em Configurações
+                      </a>
+                      .
+                    </div>
                   ) : (
                     <Select 
                       key={`rota-${rotasEntrega.length}`}
