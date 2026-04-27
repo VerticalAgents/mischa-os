@@ -25,6 +25,7 @@ import { Edit, Trash2, Plus, KeyRound, ShieldOff, ShieldCheck } from "lucide-rea
 import { useSupabaseRepresentantes } from "@/hooks/useSupabaseRepresentantes";
 import { useRepresentanteAccounts } from "@/hooks/useRepresentanteAccounts";
 import CriarAcessoRepresentanteDialog from "./CriarAcessoRepresentanteDialog";
+import EditarAcessoRepresentanteDialog from "./EditarAcessoRepresentanteDialog";
 
 interface Representante {
   id: number;
@@ -49,6 +50,11 @@ export default function RepresentantesList() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Representante | null>(null);
   const [acessoTarget, setAcessoTarget] = useState<Representante | null>(null);
+  const [editarAcessoTarget, setEditarAcessoTarget] = useState<{
+    accountId: string;
+    representanteNome: string;
+    emailAtual: string;
+  } | null>(null);
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
@@ -214,6 +220,20 @@ export default function RepresentantesList() {
                       <span className="text-xs text-muted-foreground truncate max-w-[160px]">
                         {acc.login_email}
                       </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          setEditarAcessoTarget({
+                            accountId: acc.id,
+                            representanteNome: representante.nome,
+                            emailAtual: acc.login_email,
+                          })
+                        }
+                        title="Editar acesso (email/senha)"
+                      >
+                        <KeyRound className="h-3.5 w-3.5" />
+                      </Button>
                       {acc.ativo ? (
                         <Button
                           variant="ghost"
@@ -327,6 +347,20 @@ export default function RepresentantesList() {
           onSuccess={() => {
             carregarAccounts();
             setAcessoTarget(null);
+          }}
+        />
+      )}
+
+      {editarAcessoTarget && (
+        <EditarAcessoRepresentanteDialog
+          open={!!editarAcessoTarget}
+          onOpenChange={(o) => !o && setEditarAcessoTarget(null)}
+          accountId={editarAcessoTarget.accountId}
+          representanteNome={editarAcessoTarget.representanteNome}
+          emailAtual={editarAcessoTarget.emailAtual}
+          onSuccess={() => {
+            carregarAccounts();
+            setEditarAcessoTarget(null);
           }}
         />
       )}
