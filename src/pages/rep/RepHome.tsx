@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Calendar, Plus, AlertCircle, Clock } from "lucide-react";
+import { Users, Calendar, Plus, AlertCircle, Clock, Cookie } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRepDashboardData, RepAgendamentoLite } from "@/hooks/useRepDashboardData";
 import ClienteFormDialog from "@/components/clientes/ClienteFormDialog";
@@ -14,18 +14,12 @@ function formatDate(s: string | null) {
   return `${d}/${m}/${y}`;
 }
 
-function statusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
-  switch (status) {
-    case "Confirmado":
-      return "default";
-    case "Previsto":
-      return "secondary";
-    case "Agendar":
-      return "outline";
-    default:
-      return "outline";
-  }
-}
+type Tone = "warning" | "danger";
+
+const TONE_BADGE: Record<Tone, string> = {
+  warning: "bg-yellow-100 text-yellow-900 border-yellow-300 hover:bg-yellow-100",
+  danger: "bg-[#d1193a] text-white border-[#d1193a] hover:bg-[#d1193a]",
+};
 
 export default function RepHome() {
   const { user } = useAuth();
@@ -82,36 +76,59 @@ export default function RepHome() {
         </Card>
       </div>
 
-      {/* Próximos 7 dias */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Clock className="w-5 h-5" /> Próximos 7 dias
+      {/* Previstos da semana — AMARELO */}
+      <Card className="border-yellow-400/70 bg-yellow-50/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg text-yellow-900">
+            <Clock className="w-5 h-5" /> Previstos da semana
           </CardTitle>
+          <p className="text-xs text-yellow-900/70">
+            Confirme o quanto antes para garantir a entrega.
+          </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          {/* Mini bloco: total de brownies previstos */}
+          <div className="flex items-center gap-3 rounded-lg border border-yellow-300 bg-yellow-100/70 px-3 py-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-yellow-200 text-yellow-900">
+              <Cookie className="w-5 h-5" />
+            </div>
+            <div className="flex-1">
+              <div className="text-2xl font-bold leading-none text-yellow-900">
+                {loading ? "—" : data.totalBrowniesPrevistosSemana}
+              </div>
+              <div className="text-xs text-yellow-900/80 mt-1">
+                brownies a confirmar nesta semana
+              </div>
+            </div>
+          </div>
+
           <AgendamentoList
-            items={data.proximos7Dias}
-            empty="Nenhum agendamento previsto para os próximos 7 dias."
+            items={data.previstosSemanaAtual}
+            empty="Nenhum agendamento previsto para esta semana."
             loading={loading}
             onItemClick={goToAgendamento}
+            tone="warning"
           />
         </CardContent>
       </Card>
 
-      {/* Pendentes */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <AlertCircle className="w-5 h-5" /> Pendentes de confirmação
+      {/* Pendentes — VERMELHO */}
+      <Card className="border-[#d1193a]/60 bg-[#d1193a]/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg text-[#d1193a]">
+            <AlertCircle className="w-5 h-5" /> Agendamentos pendentes
           </CardTitle>
+          <p className="text-xs text-[#d1193a]/80">
+            Retome esses clientes o quanto antes.
+          </p>
         </CardHeader>
         <CardContent>
           <AgendamentoList
-            items={data.pendentesConfirmacao}
-            empty="Nenhuma pendência."
+            items={data.agendamentosPendentes}
+            empty="Nenhum cliente pendente. 🎉"
             loading={loading}
             onItemClick={goToAgendamento}
+            tone="danger"
           />
         </CardContent>
       </Card>
@@ -133,11 +150,13 @@ function AgendamentoList({
   empty,
   loading,
   onItemClick,
+  tone,
 }: {
   items: RepAgendamentoLite[];
   empty: string;
   loading: boolean;
   onItemClick: (id: string) => void;
+  tone: Tone;
 }) {
   if (loading) {
     return <div className="text-sm text-muted-foreground py-4">Carregando…</div>;
@@ -159,7 +178,7 @@ function AgendamentoList({
               {formatDate(a.data_proxima_reposicao)} • {a.quantidade_total} un.
             </div>
           </div>
-          <Badge variant={statusVariant(a.status_agendamento)}>
+          <Badge variant="outline" className={TONE_BADGE[tone]}>
             {a.status_agendamento === "Agendar" ? "Pendente" : a.status_agendamento}
           </Badge>
         </button>
