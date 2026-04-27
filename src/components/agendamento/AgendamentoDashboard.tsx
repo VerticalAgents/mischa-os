@@ -1368,16 +1368,14 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                         <div key={agendamento.cliente.id} className={`flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
                           {/* Conteúdo principal */}
                           <div className="flex-1 text-left min-w-0">
-                            {/* Linha 1 (mobile): nome + badges de status à direita */}
-                            <div className="flex items-start justify-between gap-2 sm:block">
-                              <div className="font-medium text-left truncate">{agendamento.cliente.nome}</div>
-                              {/* Badges de status — só no mobile aqui (desktop fica no rodapé direito) */}
-                              <div className="flex items-center gap-1.5 flex-wrap justify-end shrink-0 sm:hidden">
-                                <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
-                                <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
-                                  {agendamento.statusAgendamento}
-                                </Badge>
-                              </div>
+                            {/* Nome do cliente — largura cheia no mobile, sem truncar */}
+                            <div className="font-medium text-left break-words">{agendamento.cliente.nome}</div>
+                            {/* Badges de status — linha própria abaixo do nome no mobile */}
+                            <div className="flex items-center gap-1.5 flex-wrap mt-1 sm:hidden">
+                              <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
+                              <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
+                                {agendamento.statusAgendamento}
+                              </Badge>
                             </div>
                             <div className="text-sm text-muted-foreground text-left mt-0.5">
                               Quantidade: {quantidade} unidades
