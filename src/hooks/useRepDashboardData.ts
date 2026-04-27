@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { startOfWeek, endOfWeek } from "date-fns";
 
 export interface RepAgendamentoLite {
   id: string;
@@ -13,8 +14,9 @@ export interface RepAgendamentoLite {
 export interface RepDashboardData {
   totalClientesAtivos: number;
   totalClientes: number;
-  proximos7Dias: RepAgendamentoLite[];
-  pendentesConfirmacao: RepAgendamentoLite[];
+  previstosSemanaAtual: RepAgendamentoLite[];
+  totalBrowniesPrevistosSemana: number;
+  agendamentosPendentes: RepAgendamentoLite[];
 }
 
 /**
@@ -25,8 +27,9 @@ export function useRepDashboardData() {
   const [data, setData] = useState<RepDashboardData>({
     totalClientesAtivos: 0,
     totalClientes: 0,
-    proximos7Dias: [],
-    pendentesConfirmacao: [],
+    previstosSemanaAtual: [],
+    totalBrowniesPrevistosSemana: 0,
+    agendamentosPendentes: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,9 +56,8 @@ export function useRepDashboardData() {
 
       const clienteMap = new Map((clientes || []).map((c) => [c.id, c.nome]));
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const limit = new Date(today);
-      limit.setDate(limit.getDate() + 7);
+      const inicioSemana = startOfWeek(today, { weekStartsOn: 1 });
+      const fimSemana = endOfWeek(today, { weekStartsOn: 1 });
 
       const enriched: RepAgendamentoLite[] = (agendamentos || []).map((a) => ({
         id: a.id,
@@ -66,25 +68,34 @@ export function useRepDashboardData() {
         quantidade_total: a.quantidade_total,
       }));
 
-      const proximos = enriched
+      const previstosSemana = enriched
         .filter((a) => {
+          if (a.status_agendamento !== "Previsto") return false;
           if (!a.data_proxima_reposicao) return false;
           const d = new Date(a.data_proxima_reposicao + "T00:00:00");
-          return d >= today && d <= limit;
+          return d >= inicioSemana && d <= fimSemana;
         })
-        .sort((a, b) => (a.data_proxima_reposicao || "").localeCompare(b.data_proxima_reposicao || ""));
+        .sort((a, b) =>
+          (a.data_proxima_reposicao || "").localeCompare(b.data_proxima_reposicao || "")
+        );
+
+      const totalBrowniesPrevistosSemana = previstosSemana.reduce(
+        (sum, a) => sum + (a.quantidade_total || 0),
+        0
+      );
 
       const pendentes = enriched
-        .filter((a) =>
-          ["Previsto", "Agendar", "Pendente"].includes(a.status_agendamento)
-        )
-        .sort((a, b) => (a.data_proxima_reposicao || "").localeCompare(b.data_proxima_reposicao || ""));
+        .filter((a) => ["Agendar", "Pendente"].includes(a.status_agendamento))
+        .sort((a, b) =>
+          (a.data_proxima_reposicao || "").localeCompare(b.data_proxima_reposicao || "")
+        );
 
       setData({
         totalClientesAtivos: ativos,
         totalClientes: total,
-        proximos7Dias: proximos.slice(0, 10),
-        pendentesConfirmacao: pendentes.slice(0, 10),
+        previstosSemanaAtual: previstosSemana.slice(0, 10),
+        totalBrowniesPrevistosSemana,
+        agendamentosPendentes: pendentes.slice(0, 10),
       });
     } catch (err: any) {
       console.error("Erro ao carregar dashboard do representante:", err);
