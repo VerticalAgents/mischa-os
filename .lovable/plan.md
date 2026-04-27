@@ -1,41 +1,43 @@
 ## Objetivo
 
-Transformar os dois cards da Home do representante (`/rep/home`) em ferramentas de urgência operacional:
+Otimizar o card de agendamento (versão mobile) renderizado dentro do `AgendamentoDashboard` — usado tanto no admin quanto na aba Dashboard do representante (`/rep/agendamentos`). Os botões de **Confirmar** (✓✓ verde) e **Editar** (lápis) ficam pequenos demais no mobile; precisam virar áreas de toque grandes e o conteúdo do card precisa respirar melhor.
 
-1. **Card amarelo** — Agendamentos previstos da **semana atual** (segunda a domingo), com um mini-bloco acima mostrando o **total de brownies** desses agendamentos.
-2. **Card vermelho** — Agendamentos **pendentes** ("Agendar"/"Pendente"), renomeado para "Agendamentos pendentes", para o representante priorizar retomadas.
+## Onde
+
+Arquivo: `src/components/agendamento/AgendamentoDashboard.tsx`
+Função interna: `renderCard` / componente `QuantidadeAtualizada` (linhas ~1331-1410).
 
 ## Mudanças
 
-### 1. `src/hooks/useRepDashboardData.ts`
-- Substituir `proximos7Dias` por **`previstosSemanaAtual`**: filtrar agendamentos com `status_agendamento === "Previsto"` cuja `data_proxima_reposicao` esteja entre segunda e domingo da semana corrente (usar `startOfWeek`/`endOfWeek` do `date-fns`, `weekStartsOn: 1`).
-- Adicionar **`totalBrowniesPrevistosSemana`**: soma de `quantidade_total` dos itens de `previstosSemanaAtual`.
-- Renomear `pendentesConfirmacao` → **`agendamentosPendentes`**: filtrar somente `status_agendamento ∈ {"Agendar", "Pendente"}` (remover "Previsto" daqui, já que agora vai no card amarelo).
-- Atualizar a interface `RepDashboardData` com os novos campos.
+### Layout do card no mobile (`< sm`)
+Reestruturar em 3 blocos verticais com hierarquia clara:
 
-### 2. `src/pages/rep/RepHome.tsx`
+```text
+┌────────────────────────────────────────┐
+│ Nome do cliente          [Padrão][Prev]│  ← linha 1: nome + badges status
+│ Quantidade: 24 unidades                │  ← linha 2: qtd
+│ [21d] [14d] [--d]                      │  ← linha 3: indicadores entrega
+│ [80% — Atenção]                        │  ← linha 4: score
+│ ─────────────────────────────────────  │
+│ [   ✓ Confirmar    ] [  ✏ Editar  ]    │  ← linha 5: botões grandes
+└────────────────────────────────────────┘
+```
 
-**Card 1 — Previstos da semana (amarelo)**
-- Título: `"Previstos da semana"` com ícone `Clock`.
-- Acima da lista, um **bloco compacto** destacando: `"X brownies a confirmar esta semana"` (X = `totalBrowniesPrevistosSemana`).
-- Estilo amarelo: borda + fundo suave usando tokens `border-yellow-400/60 bg-yellow-50` (header com `text-yellow-900`), badges dos itens em variante amarela.
-- Vazio: `"Nenhum agendamento previsto para esta semana."`
+- Container principal: `flex flex-col gap-2 p-3` no mobile; mantém `sm:flex-row sm:items-start sm:gap-3` no desktop (preserva layout atual em telas maiores).
+- Bloco de badges (Padrão/Previsto) sobe para cima, ao lado do nome no mobile (linha 1) — não mais no rodapé do card.
+- Bloco de botões vira uma linha própria no mobile, separada por uma borda sutil superior (`border-t pt-2`), com:
+  - **Confirmar** (visível só se `status === "Previsto"`): `flex-1 h-11`, ícone `CheckCheck` + texto **"Confirmar"** (oculta texto em telas xs muito estreitas via `hidden xs:inline` se necessário, mas geralmente cabe).
+  - **Editar**: `flex-1 h-11`, ícone `Edit` + texto **"Editar"**.
+  - Ícones aumentam para `h-4 w-4`.
+- No desktop (`sm:`): botões voltam ao tamanho compacto atual (`h-8 px-2`, só ícone) usando classes responsivas (`sm:flex-none sm:h-8 sm:px-2` e `sm:hidden` no texto).
 
-**Card 2 — Agendamentos pendentes (vermelho)**
-- Título: `"Agendamentos pendentes"` com ícone `AlertCircle`.
-- Estilo vermelho usando o vermelho da marca (`#d1193a` via tokens existentes — borda `border-destructive/60`, fundo `bg-destructive/5`, badges `destructive`).
-- Subtítulo no header: `"Retome esses clientes o quanto antes"` em texto pequeno.
-- Vazio: `"Nenhum cliente pendente. 🎉"`
-
-**Componente `AgendamentoList`**
-- Aceitar uma prop opcional `tone: "warning" | "danger"` para colorir o badge de status de cada linha (amarelo no card 1, vermelho no card 2), mantendo o restante do layout.
-
-### 3. Layout
-- Manter ordem atual: KPIs → Card amarelo (previstos da semana) → Card vermelho (pendentes).
-- O mini-bloco de "total de brownies" fica **dentro** do card amarelo, no topo do `CardContent`, antes da lista — com destaque visual (número grande, fundo amarelo um pouco mais saturado).
+### Ajustes de espaçamento
+- Padding do card: `p-3 sm:p-3` (mantém).
+- Gap interno mobile: `gap-2`.
+- Score badge mantém `mt-1.5`.
 
 ## Notas técnicas
-- Tokens de cor: usar utilitários Tailwind compatíveis com o tema (`yellow-*` para alertas/avisos, `destructive` para o vermelho de marca já mapeado).
-- Manter ordenação por `data_proxima_reposicao` ascendente nos dois cards.
-- Manter `slice(0, 10)` para limitar a lista exibida (poderá ser revisto depois se necessário).
-- Nenhuma migração de banco necessária — apenas mudança de filtros no hook e UI.
+- Tudo via classes Tailwind responsivas — sem novo componente, sem mudança de lógica.
+- Não altera comportamento dos handlers `handleConfirmarAgendamento` / `handleEditarAgendamento` nem o `disabled` por `canEdit`.
+- Não altera o desktop visualmente.
+- Esse card também aparece para o representante na aba Dashboard de `/rep/agendamentos` (via `AgendamentoDashboard`), então a melhoria atinge ambos os contextos.

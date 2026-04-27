@@ -1365,10 +1365,21 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                       };
 
                       return (
-                        <div key={agendamento.cliente.id} className={`flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
-                          <div className="flex-1 text-left">
-                            <div className="font-medium text-left">{agendamento.cliente.nome}</div>
-                            <div className="text-sm text-muted-foreground text-left">
+                        <div key={agendamento.cliente.id} className={`flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3 p-3 border rounded-lg ${getBackgroundColor()}`}>
+                          {/* Conteúdo principal */}
+                          <div className="flex-1 text-left min-w-0">
+                            {/* Linha 1 (mobile): nome + badges de status à direita */}
+                            <div className="flex items-start justify-between gap-2 sm:block">
+                              <div className="font-medium text-left truncate">{agendamento.cliente.nome}</div>
+                              {/* Badges de status — só no mobile aqui (desktop fica no rodapé direito) */}
+                              <div className="flex items-center gap-1.5 flex-wrap justify-end shrink-0 sm:hidden">
+                                <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
+                                <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
+                                  {agendamento.statusAgendamento}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="text-sm text-muted-foreground text-left mt-0.5">
                               Quantidade: {quantidade} unidades
                             </div>
                             {agendamento.statusAgendamento === "Previsto" && (
@@ -1389,17 +1400,42 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                               </>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-                            <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
-                            <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
-                              {agendamento.statusAgendamento}
-                            </Badge>
-                            <div className="flex gap-1">
-                              {agendamento.statusAgendamento === "Previsto" && <Button variant="default" size="sm" onClick={() => handleConfirmarAgendamento(agendamento)} disabled={!canEdit} title={!canEdit ? "Ação não habilitada pelo administrador" : undefined} className="bg-green-500 hover:bg-green-600 h-8 px-2">
-                                  <CheckCheck className="h-3 w-3" />
-                                </Button>}
-                              <Button variant="secondary" size="sm" onClick={() => handleEditarAgendamento(agendamento)} disabled={!canEdit} title={!canEdit ? "Ação não habilitada pelo administrador" : undefined} className="h-8 px-2">
-                                <Edit className="h-3 w-3" />
+
+                          {/* Bloco de ações — mobile: barra inferior cheia; desktop: lado direito compacto */}
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 sm:flex-shrink-0 sm:flex-wrap">
+                            {/* Badges de status — só no desktop */}
+                            <div className="hidden sm:flex items-center gap-2 flex-wrap">
+                              <TipoPedidoBadge tipo={tipoPedido === 'Alterado' ? 'Alterado' : 'Padrão'} />
+                              <Badge variant={agendamento.statusAgendamento === "Agendado" ? "default" : agendamento.statusAgendamento === "Previsto" ? "outline" : "secondary"}>
+                                {agendamento.statusAgendamento}
+                              </Badge>
+                            </div>
+
+                            {/* Botões — mobile: full width grandes / desktop: ícones compactos */}
+                            <div className="flex gap-2 pt-2 border-t sm:border-t-0 sm:pt-0 sm:gap-1">
+                              {agendamento.statusAgendamento === "Previsto" && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => handleConfirmarAgendamento(agendamento)}
+                                  disabled={!canEdit}
+                                  title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
+                                  className="bg-green-500 hover:bg-green-600 flex-1 h-11 sm:flex-none sm:h-8 sm:px-2"
+                                >
+                                  <CheckCheck className="h-4 w-4 sm:h-3 sm:w-3" />
+                                  <span className="ml-1.5 sm:hidden">Confirmar</span>
+                                </Button>
+                              )}
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleEditarAgendamento(agendamento)}
+                                disabled={!canEdit}
+                                title={!canEdit ? "Ação não habilitada pelo administrador" : undefined}
+                                className="flex-1 h-11 sm:flex-none sm:h-8 sm:px-2"
+                              >
+                                <Edit className="h-4 w-4 sm:h-3 sm:w-3" />
+                                <span className="ml-1.5 sm:hidden">Editar</span>
                               </Button>
                             </div>
                           </div>
