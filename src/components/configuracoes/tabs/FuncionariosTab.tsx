@@ -243,6 +243,45 @@ export default function FuncionariosTab() {
     toast.success('Credenciais copiadas para a área de transferência!');
   };
 
+  const handleResyncPassword = async (s: StaffAccount) => {
+    if (!s.senha_acesso) {
+      toast.error('Sem senha cadastrada para ressincronizar. Edite e defina uma nova senha.');
+      return;
+    }
+    if (!confirm(`Ressincronizar senha de ${s.nome}? A senha de login no Auth será reescrita com o valor atualmente cadastrado.`)) {
+      return;
+    }
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        toast.error('Sessão expirada');
+        return;
+      }
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/update-staff-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            staff_account_id: s.id,
+            new_password: s.senha_acesso,
+          }),
+        }
+      );
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Erro ao ressincronizar senha');
+      toast.success('Senha ressincronizada com sucesso!');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao ressincronizar senha: ' + (err.message ?? 'desconhecido'));
+    }
+  };
+
   const getRoleName = (s: StaffAccount) => {
     if (s.custom_role_id) {
       const cr = customRoles.find(r => r.id === s.custom_role_id);
