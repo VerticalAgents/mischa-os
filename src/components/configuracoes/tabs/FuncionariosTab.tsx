@@ -507,6 +507,15 @@ export default function FuncionariosTab() {
                             variant="ghost"
                             size="sm"
                             className="text-xs h-7 px-2"
+                            title="Ressincronizar senha (sobrescreve a senha do Auth com a salva)"
+                            onClick={() => handleResyncPassword(s)}
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 px-2"
                             onClick={() => handleDeactivate(s.id, s.ativo)}
                           >
                             {s.ativo ? 'Desativar' : 'Reativar'}
