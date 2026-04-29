@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Loader2, AlertCircle } from 'lucide-react';
 import mischasLogo from '@/assets/mischas-logo.png';
+import { supabase } from '@/integrations/supabase/client';
 
 const AuthPage = () => {
   const navigate = useNavigate();
@@ -17,6 +18,9 @@ const AuthPage = () => {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetOpen, setIsResetOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   // Redirecionar automaticamente se já estiver autenticado
   useEffect(() => {
@@ -55,6 +59,29 @@ const AuthPage = () => {
       toast.error('Erro ao fazer login: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail) {
+      toast.error('Informe seu email');
+      return;
+    }
+    setIsResetting(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success('Se o email existir, enviaremos um link de redefinição.');
+      setIsResetOpen(false);
+      setResetEmail('');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao enviar email: ' + (err.message ?? 'desconhecido'));
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -109,7 +136,34 @@ const AuthPage = () => {
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Entrar
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => { setIsResetOpen((v) => !v); setResetEmail(loginEmail); }}
+                  className="text-sm text-muted-foreground hover:text-foreground underline w-full text-center"
+                >
+                  Esqueci minha senha
+                </button>
               </form>
+
+              {isResetOpen && (
+                <form onSubmit={handleForgotPassword} className="space-y-3 border-t pt-4 mt-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-email">Email para redefinição</Label>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      required
+                      disabled={isResetting}
+                    />
+                  </div>
+                  <Button type="submit" variant="secondary" className="w-full" disabled={isResetting}>
+                    {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Enviar link de redefinição
+                  </Button>
+                </form>
+              )}
             </TabsContent>
             
             <TabsContent value="signup" className="space-y-4">

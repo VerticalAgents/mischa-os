@@ -9,7 +9,7 @@ interface RouteGuardProps {
 }
 
 // Routes that don't need permission checks
-const PUBLIC_ROUTES = ['/', '/auth', '/login', '/home'];
+const PUBLIC_ROUTES = ['/', '/auth', '/login', '/home', '/reset-password'];
 
 function pathMatchesRoute(pathname: string, routeKey: string): boolean {
   if (pathname === routeKey) return true;

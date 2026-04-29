@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { UserPlus, Users, RefreshCw, Eye, EyeOff, Shield, Pencil, Copy } from 'lucide-react';
+import { UserPlus, Users, RefreshCw, Eye, EyeOff, Shield, Pencil, Copy, KeyRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
@@ -243,6 +243,45 @@ export default function FuncionariosTab() {
     toast.success('Credenciais copiadas para a área de transferência!');
   };
 
+  const handleResyncPassword = async (s: StaffAccount) => {
+    if (!s.senha_acesso) {
+      toast.error('Sem senha cadastrada para ressincronizar. Edite e defina uma nova senha.');
+      return;
+    }
+    if (!confirm(`Ressincronizar senha de ${s.nome}? A senha de login no Auth será reescrita com o valor atualmente cadastrado.`)) {
+      return;
+    }
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        toast.error('Sessão expirada');
+        return;
+      }
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/update-staff-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            staff_account_id: s.id,
+            new_password: s.senha_acesso,
+          }),
+        }
+      );
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Erro ao ressincronizar senha');
+      toast.success('Senha ressincronizada com sucesso!');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao ressincronizar senha: ' + (err.message ?? 'desconhecido'));
+    }
+  };
+
   const getRoleName = (s: StaffAccount) => {
     if (s.custom_role_id) {
       const cr = customRoles.find(r => r.id === s.custom_role_id);
@@ -463,6 +502,15 @@ export default function FuncionariosTab() {
                             onClick={() => openEditDialog(s)}
                           >
                             <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 px-2"
+                            title="Ressincronizar senha (sobrescreve a senha do Auth com a salva)"
+                            onClick={() => handleResyncPassword(s)}
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             variant="ghost"
