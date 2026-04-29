@@ -1,43 +1,112 @@
-## Objetivo
+## Diagnóstico
 
-Otimizar o card de agendamento (versão mobile) renderizado dentro do `AgendamentoDashboard` — usado tanto no admin quanto na aba Dashboard do representante (`/rep/agendamentos`). Os botões de **Confirmar** (✓✓ verde) e **Editar** (lápis) ficam pequenos demais no mobile; precisam virar áreas de toque grandes e o conteúdo do card precisa respirar melhor.
+O problema agora tem **duas camadas**:
 
-## Onde
+### 1. Bloqueio por muitas tentativas
 
-Arquivo: `src/components/agendamento/AgendamentoDashboard.tsx`
-Função interna: `renderCard` / componente `QuantidadeAtualizada` (linhas ~1331-1410).
+A função `check_rate_limit` está retornando `false` para:
 
-## Mudanças
+- `luccab.milleto@gmail.com`
+- `enzomilleto@mischas.com`
+- `biabuchmann@gmail.com`
 
-### Layout do card no mobile (`< sm`)
-Reestruturar em 3 blocos verticais com hierarquia clara:
+Ou seja: o próprio app está bloqueando o login antes de chegar no Supabase Auth, porque houve várias tentativas falhas nos últimos 15 minutos.
+
+A regra atual é:
 
 ```text
-┌────────────────────────────────────────┐
-│ Nome do cliente          [Padrão][Prev]│  ← linha 1: nome + badges status
-│ Quantidade: 24 unidades                │  ← linha 2: qtd
-│ [21d] [14d] [--d]                      │  ← linha 3: indicadores entrega
-│ [80% — Atenção]                        │  ← linha 4: score
-│ ─────────────────────────────────────  │
-│ [   ✓ Confirmar    ] [  ✏ Editar  ]    │  ← linha 5: botões grandes
-└────────────────────────────────────────┘
+máximo 5 tentativas falhas nos últimos 15 minutos
+por IP OU por email
 ```
 
-- Container principal: `flex flex-col gap-2 p-3` no mobile; mantém `sm:flex-row sm:items-start sm:gap-3` no desktop (preserva layout atual em telas maiores).
-- Bloco de badges (Padrão/Previsto) sobe para cima, ao lado do nome no mobile (linha 1) — não mais no rodapé do card.
-- Bloco de botões vira uma linha própria no mobile, separada por uma borda sutil superior (`border-t pt-2`), com:
-  - **Confirmar** (visível só se `status === "Previsto"`): `flex-1 h-11`, ícone `CheckCheck` + texto **"Confirmar"** (oculta texto em telas xs muito estreitas via `hidden xs:inline` se necessário, mas geralmente cabe).
-  - **Editar**: `flex-1 h-11`, ícone `Edit` + texto **"Editar"**.
-  - Ícones aumentam para `h-4 w-4`.
-- No desktop (`sm:`): botões voltam ao tamanho compacto atual (`h-8 px-2`, só ícone) usando classes responsivas (`sm:flex-none sm:h-8 sm:px-2` e `sm:hidden` no texto).
+Como o app está registrando o IP como `127.0.0.1`, as tentativas de usuários diferentes acabam somando no mesmo IP interno e bloqueando todo mundo mais rápido. Isso explica por que você também parou de conseguir logar depois das tentativas do Enzo/Bia.
 
-### Ajustes de espaçamento
-- Padding do card: `p-3 sm:p-3` (mantém).
-- Gap interno mobile: `gap-2`.
-- Score badge mantém `mt-1.5`.
+### 2. Senhas possivelmente dessincronizadas
 
-## Notas técnicas
-- Tudo via classes Tailwind responsivas — sem novo componente, sem mudança de lógica.
-- Não altera comportamento dos handlers `handleConfirmarAgendamento` / `handleEditarAgendamento` nem o `disabled` por `canEdit`.
-- Não altera o desktop visualmente.
-- Esse card também aparece para o representante na aba Dashboard de `/rep/agendamentos` (via `AgendamentoDashboard`), então a melhoria atinge ambos os contextos.
+No banco:
+
+| Usuário | Email | Status | Role | Último login |
+|---|---|---|---|---|
+| Lucca | `luccab.milleto@gmail.com` | confirmado / não banido | admin | hoje 14:07 |
+| Enzo | `enzomilleto@mischas.com` | confirmado / não banido | producao | nunca logou |
+| Bia | `biabuchmann@gmail.com` | confirmado / não banido | user + producao | 26/abr |
+
+As contas existem e não estão banidas. As falhas registradas no Auth são `invalid_credentials`, então pelo menos algumas tentativas chegaram ao Supabase com senha incorreta.
+
+Para funcionários, existe uma coluna `staff_accounts.senha_acesso`, mas a senha real usada no login fica no Supabase Auth como hash. Se a coluna foi editada ou se houve alguma diferença na criação, a senha visível pode não bater com a senha real.
+
+## Correção proposta
+
+### A. Destravar login imediatamente
+
+1. Limpar ou neutralizar os registros recentes falhos de `auth_attempts` desses três emails/IP para remover o bloqueio atual.
+2. Resetar a senha real no Supabase Auth para os funcionários:
+   - Enzo: usar a senha salva em `staff_accounts.senha_acesso` (`senhaenzo`)
+   - Bia: usar a senha salva em `staff_accounts.senha_acesso` (`senhabia`)
+3. Resetar sua senha admin para uma senha temporária segura combinada no momento da implementação, ou criar uma tela/função de reset administrativo se você preferir não expor a senha no chat.
+
+Observação: como estamos em modo plano, não consigo executar essas alterações agora. Após aprovar, eu faço as operações necessárias com segurança.
+
+### B. Corrigir o rate limit para não bloquear usuários diferentes juntos
+
+Alterar a função `check_rate_limit` para considerar email e IP de forma menos agressiva:
+
+- Bloqueio por email: muitas falhas para o mesmo email continuam bloqueando aquele email.
+- Bloqueio por IP: só bloquear IP em volume maior, para evitar ataque real, não 5 tentativas compartilhadas.
+- Evitar que `127.0.0.1` cause bloqueio global para todos, porque no ambiente do preview ele não representa o IP real do usuário.
+
+Regra sugerida:
+
+```text
+- máximo 5 falhas por email em 15 minutos
+- máximo 30 falhas por IP em 15 minutos
+- se IP for 127.0.0.1, priorizar bloqueio por email, não por IP compartilhado
+```
+
+Isso mantém proteção contra força bruta, mas evita travar todos os usuários quando várias pessoas erram senha no mesmo ambiente.
+
+### C. Melhorar a mensagem de erro no login
+
+Hoje o app pode mostrar erro genérico ou duplicar toast. Vou ajustar para ficar claro:
+
+- Se bloqueou por tentativas: “Muitas tentativas. Aguarde alguns minutos ou fale com o administrador.”
+- Se senha/email incorreto: “Email ou senha incorretos.”
+
+### D. Ferramenta de manutenção para funcionários
+
+Adicionar na tela de funcionários um botão/ação para **ressincronizar senha**:
+
+- Pega a senha salva em `staff_accounts.senha_acesso`
+- Atualiza a senha real no Supabase Auth via edge function existente `update-staff-password`
+- Mostra confirmação de sucesso
+
+Assim, se acontecer de novo, você resolve pela interface sem precisar mexer em banco.
+
+## Arquivos / recursos envolvidos
+
+### Banco
+
+- Atualizar a função `public.check_rate_limit`
+- Limpar/desbloquear tentativas recentes em `auth_attempts` para esses usuários
+
+### Edge function
+
+- Reutilizar `supabase/functions/update-staff-password/index.ts` para funcionários
+- Se necessário, criar uma função administrativa pontual para reset do admin, protegida por service role/admin
+
+### Frontend
+
+- `src/contexts/AuthContext.tsx`
+  - melhorar tratamento de rate limit e mensagens
+- Lista de funcionários em configurações
+  - adicionar botão “Ressincronizar senha” ou ação equivalente
+
+## Resultado esperado
+
+Depois da correção:
+
+1. Você volta a conseguir logar.
+2. Enzo entra com `enzomilleto@mischas.com` + a senha cadastrada para ele.
+3. Bia entra com `biabuchmann@gmail.com` + a senha cadastrada para ela.
+4. Erros de senha de um usuário não travam todos os outros.
+5. Você terá uma ação simples para ressincronizar senha de funcionários no futuro.
