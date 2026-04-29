@@ -48,6 +48,7 @@ const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Custos = lazy(() => import('@/pages/financeiro/Custos'));
 const AuthPage = lazy(() => import('@/pages/auth/AuthPage'));
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
+const ResetPasswordPage = lazy(() => import('@/pages/auth/ResetPasswordPage'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const FichaPreview = lazy(() => import('@/pages/fichas-tecnicas/Preview'));
 const Security = lazy(() => import('@/pages/Security'));
@@ -89,6 +90,7 @@ function App() {
                     <Route path="/" element={<Index />} />
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/login" element={<LoginPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
                     {/* Área dedicada do representante comercial */}
                     <Route path="/rep" element={<Navigate to="/rep/home" replace />} />
                     <Route path="/rep/home" element={
