@@ -328,7 +328,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       const isAllowed = await checkRateLimit(email, clientIP);
       if (!isAllowed) {
-        toast.error("Muitas tentativas de login. Tente novamente em 15 minutos.");
+        toast.error("Muitas tentativas falhas para este email. Aguarde 15 minutos ou peça ao administrador para liberar.");
         await logAuthAttempt(email, 'login', false, clientIP);
         await logSecurityEvent('RATE_LIMIT_EXCEEDED', { email, ip: clientIP });
         return;
