@@ -65,6 +65,7 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
 
   const [alertCount, setAlertCount] = useState(0);
   const [hoveredVariant, setHoveredVariant] = useState<MenuGroup["variant"] | null>(null);
+  const [flyoutTop, setFlyoutTop] = useState<number>(0);
   const closeTimer = useRef<number | null>(null);
 
   const filteredMenuGroups = useMemo(() => {
@@ -142,12 +143,16 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
             <button
               key={group.variant + group.title}
               type="button"
-              onMouseEnter={() => {
+              onMouseEnter={(e) => {
                 cancelClose();
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                setFlyoutTop(rect.top);
                 setHoveredVariant(group.variant);
               }}
-              onFocus={() => {
+              onFocus={(e) => {
                 cancelClose();
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                setFlyoutTop(rect.top);
                 setHoveredVariant(group.variant);
               }}
               className={cn(
@@ -194,7 +199,8 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
       {activeGroup && (
         <motion.div
           key={activeGroup.variant}
-          className="fixed left-[3.05rem] top-0 z-40 hidden h-full lg:block"
+          className="fixed left-[3.05rem] z-40 hidden lg:block"
+          style={{ top: flyoutTop }}
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -8 }}
@@ -202,7 +208,7 @@ export function SessionNavBar({ mobileOpen = false, onMobileClose }: SessionNavB
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}
         >
-          <div className="ml-2 mt-3 w-64 rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-lg">
+          <div className="ml-2 w-64 rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-lg">
             <div className="px-3 pb-2 pt-1">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Área
