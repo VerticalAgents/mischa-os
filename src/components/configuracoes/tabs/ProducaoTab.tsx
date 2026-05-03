@@ -39,7 +39,8 @@ const producaoSchema = z.object({
   percentualPedidosPrevistos: z.number().min(0).max(100).default(15),
   tempoMedioPorFornada: z.number().min(1, "Deve ser pelo menos 1 minuto").default(45),
   unidadesBrowniePorForma: z.number().min(1, "Deve ser pelo menos 1").default(16),
-  formasPorFornada: z.number().min(1, "Deve ser pelo menos 1").default(2)
+  formasPorFornada: z.number().min(1, "Deve ser pelo menos 1").default(2),
+  coberturaAlvoDias: z.number().min(0, "Não pode ser negativo").max(14).default(3)
 });
 
 type ProducaoFormData = z.infer<typeof producaoSchema>;
@@ -71,6 +72,7 @@ export default function ProducaoTab() {
       tempoMedioPorFornada: data.tempoMedioPorFornada,
       unidadesBrowniePorForma: data.unidadesBrowniePorForma,
       formasPorFornada: data.formasPorFornada,
+      coberturaAlvoDias: data.coberturaAlvoDias,
     };
     
     atualizarConfiguracoesProducao(configData);
