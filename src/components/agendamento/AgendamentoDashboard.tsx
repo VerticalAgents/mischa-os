@@ -1271,16 +1271,16 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                     name="Confirmados" 
                   />
                   <Bar 
-                    dataKey={modoGraficos === 'unidades' ? 'previstosUnidades' : 'previstos'} 
-                    stackId="a" 
-                    fill="#F59E0B" 
-                    name="Previstos" 
-                  />
-                  <Bar 
                     dataKey={modoGraficos === 'unidades' ? 'provaveisUnidades' : 'provaveis'} 
                     stackId="a" 
                     fill="#A855F7" 
                     name="Previstos Prováveis" 
+                  />
+                  <Bar 
+                    dataKey={modoGraficos === 'unidades' ? 'previstosUnidades' : 'previstos'} 
+                    stackId="a" 
+                    fill="#F59E0B" 
+                    name="Previstos" 
                   />
                 </BarChart>
               </ResponsiveContainer>
