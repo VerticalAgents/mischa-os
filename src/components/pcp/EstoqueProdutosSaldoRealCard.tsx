@@ -20,7 +20,7 @@ export default function EstoqueProdutosSaldoRealCard() {
   );
 
   return (
-    <Card>
+    <Card className="h-full flex flex-col">
       <CardHeader>
         <div className="space-y-1.5">
           <CardTitle className="flex items-center gap-2">
@@ -32,7 +32,7 @@ export default function EstoqueProdutosSaldoRealCard() {
           </CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
