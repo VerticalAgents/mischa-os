@@ -24,9 +24,9 @@ export default function ProducaoAgendadaCard({ produtos, totalUnidades, totalReg
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   return (
-    <Card>
+    <Card className="h-full flex flex-col">
       <CardHeader>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <div className="space-y-1.5">
             <CardTitle className="flex items-center gap-2">
               <Factory className="h-5 w-5 text-primary" />
@@ -44,7 +44,7 @@ export default function ProducaoAgendadaCard({ produtos, totalUnidades, totalReg
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
