@@ -16,6 +16,9 @@ import { useConfirmationScore } from "@/hooks/useConfirmationScore";
 import EstoqueDisponivel from "./EstoqueDisponivel";
 import SugestaoProducao from "./SugestaoProducao";
 import ProducaoAgendadaCard from "./ProducaoAgendadaCard";
+import EstoqueProdutosSaldoRealCard from "./EstoqueProdutosSaldoRealCard";
+import { HistoricoProducaoModal } from "./HistoricoProducaoModal";
+import { useSupabaseHistoricoProducao } from "@/hooks/useSupabaseHistoricoProducao";
 import { useEstoqueDisponivel } from "@/hooks/useEstoqueDisponivel";
 import { useProducaoAgendada } from "@/hooks/useProducaoAgendada";
 
@@ -144,7 +147,9 @@ export default function ProjecaoProducaoTab() {
   const ordemProdutosNecessarios = useMemo(() => produtosOrdenados.map(p => p.produto_id), [produtosOrdenados]);
 
   const { produtos: produtosEstoque } = useEstoqueDisponivel(quantidadesNecessarias);
-  const { produtosAgrupados, mapaPorProduto, totalUnidades, totalRegistros, loading: loadingProducao } = useProducaoAgendada();
+  const { produtosAgrupados, mapaPorProduto, totalUnidades, totalRegistros, loading: loadingProducao, recarregar: recarregarProducaoAgendada } = useProducaoAgendada();
+  const { adicionarRegistro } = useSupabaseHistoricoProducao();
+  const [modalNovaProducao, setModalNovaProducao] = useState(false);
 
   const [incluirProducaoAgendada, setIncluirProducaoAgendada] = useState(false);
 
@@ -171,6 +176,23 @@ export default function ProjecaoProducaoTab() {
 
   const semanaAtualReal = startOfWeek(new Date(), { weekStartsOn: 1 });
   const isSemanaAtual = inicioSemana.getTime() === semanaAtualReal.getTime();
+
+  const handleSalvarProducao = async (dados: any) => {
+    await adicionarRegistro({
+      data_producao: dados.dataProducao.toISOString().split('T')[0],
+      produto_id: dados.produtoId,
+      produto_nome: dados.produtoNome,
+      formas_producidas: dados.formasProducidas,
+      unidades_calculadas: dados.unidadesCalculadas || dados.unidadesPrevistas,
+      turno: dados.turno || 'Matutino',
+      observacoes: dados.observacoes,
+      origem: dados.origem,
+      rendimento_usado: dados.rendimentoUsado,
+      unidades_previstas: dados.unidadesPrevistas,
+      status: dados.status,
+    } as any);
+    await recarregarProducaoAgendada();
+  };
 
   return (
     <div className="space-y-6">
@@ -204,13 +226,19 @@ export default function ProjecaoProducaoTab() {
         </CardContent>
       </Card>
 
-      <ProducaoAgendadaCard
-        produtos={produtosAgrupados}
-        totalUnidades={totalUnidades}
-        totalRegistros={totalRegistros}
-        loading={loadingProducao}
-      />
+      {/* Linha 1: Estoque atual + Produção agendada */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <EstoqueProdutosSaldoRealCard />
+        <ProducaoAgendadaCard
+          produtos={produtosAgrupados}
+          totalUnidades={totalUnidades}
+          totalRegistros={totalRegistros}
+          loading={loadingProducao}
+          onNovaProducao={() => setModalNovaProducao(true)}
+        />
+      </div>
 
+      {/* Linha 2: Necessários + Estoque disponível final */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className={isProvavelMode ? 'border-purple-300 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20' : ''}>
           <CardHeader>
@@ -334,10 +362,19 @@ export default function ProjecaoProducaoTab() {
         />
       </div>
 
-      <SugestaoProducao
-        produtosNecessarios={produtosOrdenados}
-        estoqueDisponivel={estoqueAjustado}
-        loading={loading}
+      {/* Linha 3: Sugestão de produção (largura reduzida) */}
+      <div className="max-w-3xl mx-auto w-full">
+        <SugestaoProducao
+          produtosNecessarios={produtosOrdenados}
+          estoqueDisponivel={estoqueAjustado}
+          loading={loading}
+        />
+      </div>
+
+      <HistoricoProducaoModal
+        isOpen={modalNovaProducao}
+        onClose={() => setModalNovaProducao(false)}
+        onSuccess={handleSalvarProducao}
       />
     </div>
   );
