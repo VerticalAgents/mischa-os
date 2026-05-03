@@ -165,6 +165,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
   const [filtroNome, setFiltroNome] = useState<string>('');
   const [incluirPrevistos, setIncluirPrevistos] = useState(false);
   const [percentualPrevistos, setPercentualPrevistos] = useState(50);
+  const [modoPrevistos, setModoPrevistos] = useState<'provaveis' | 'percentual'>('provaveis');
 
   useEffect(() => {
     const loadData = async () => {
@@ -469,6 +470,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
     setIncluirPrevistos(checked);
     if (checked) {
       setPercentualPrevistos(probabilidadeSemanal.media || 50);
+      setModoPrevistos('provaveis');
     }
   };
 
@@ -638,21 +640,28 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
     
     // Unidades de previstos (com percentual simulado)
     let unidadesPrevistos = 0;
-    if (incluirPrevistos && percentualPrevistos > 0) {
+    if (incluirPrevistos) {
       const prevSemana = agendamentosFiltrados.filter(agendamento => {
         const dataAgendamento = new Date(agendamento.dataReposicao);
         return dataAgendamento >= inicioSemana && 
                dataAgendamento <= fimSemana &&
                agendamento.statusAgendamento === "Previsto";
       });
-      const totalPrev = prevSemana.reduce((sum, a) => 
-        sum + (a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0), 0
-      );
-      unidadesPrevistos = Math.ceil(totalPrev * percentualPrevistos / 100);
+      if (modoPrevistos === 'provaveis') {
+        const provaveis = prevSemana.filter(a => (scoresSemanais.get(a.cliente.id)?.score ?? 0) > 85);
+        unidadesPrevistos = provaveis.reduce((sum, a) => 
+          sum + (a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0), 0
+        );
+      } else if (percentualPrevistos > 0) {
+        const totalPrev = prevSemana.reduce((sum, a) => 
+          sum + (a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0), 0
+        );
+        unidadesPrevistos = Math.ceil(totalPrev * percentualPrevistos / 100);
+      }
     }
     
     return unidadesAgendadas + unidadesEntregues + unidadesPrevistos;
-  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, incluirPrevistos, percentualPrevistos]);
+  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, incluirPrevistos, percentualPrevistos, modoPrevistos, scoresSemanais]);
 
 
   const ehSemanaAtual = useMemo(() => {
@@ -934,12 +943,12 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
           <CardContent className="hidden md:block">
             <div className="text-2xl font-bold text-purple-600">{totalUnidadesSemana}</div>
             <p className="text-xs text-muted-foreground">
-              {incluirPrevistos ? `Confirmados + ${percentualPrevistos}% previstos + entregues` : 'Unidades agendadas + entregues'}
+              {incluirPrevistos ? (modoPrevistos === 'provaveis' ? 'Confirmados + previstos prováveis + entregues' : `Confirmados + ${percentualPrevistos}% previstos + entregues`) : 'Unidades agendadas + entregues'}
             </p>
           </CardContent>
           <CardContent className="md:hidden pt-0 pb-3">
             <p className="text-xs text-muted-foreground">
-              {incluirPrevistos ? `Confirmados + ${percentualPrevistos}% previstos + entregues` : 'Unidades agendadas + entregues'}
+              {incluirPrevistos ? (modoPrevistos === 'provaveis' ? 'Confirmados + previstos prováveis + entregues' : `Confirmados + ${percentualPrevistos}% previstos + entregues`) : 'Unidades agendadas + entregues'}
             </p>
           </CardContent>
         </Card>
@@ -1026,6 +1035,9 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
           percentualPrevistos={percentualPrevistos}
           onToggleIncluirPrevistos={handleTogglePrevistos}
           onChangePercentualPrevistos={setPercentualPrevistos}
+          modoPrevistos={modoPrevistos}
+          onChangeModoPrevistos={setModoPrevistos}
+          scoresPrevistos={scoresSemanais}
         />
         <EntregasRealizadasSemanal 
           semanaAtual={semanaAtual} 
