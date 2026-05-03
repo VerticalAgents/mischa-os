@@ -1199,6 +1199,24 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                               </div>
                             )}
                             
+                            {(modoGraficos === 'unidades' ? data.provaveisUnidades : data.provaveis) > 0 && (
+                              <div className="mb-2">
+                                <p className="text-xs font-medium text-purple-600">
+                                  Previstos Prováveis: {modoGraficos === 'unidades' ? data.provaveisUnidades : data.provaveis}
+                                </p>
+                                {data.clientesProvaveis?.length > 0 && (
+                                  <ul className="text-xs text-muted-foreground">
+                                    {data.clientesProvaveis.slice(0, 5).map((c: string, i: number) => (
+                                      <li key={i} className="truncate">• {c}</li>
+                                    ))}
+                                    {data.clientesProvaveis.length > 5 && (
+                                      <li className="text-muted-foreground/70">... +{data.clientesProvaveis.length - 5}</li>
+                                    )}
+                                  </ul>
+                                )}
+                              </div>
+                            )}
+                            
                             {(modoGraficos === 'unidades' ? data.confirmadosUnidades : data.confirmados) > 0 && (
                               <div className="mb-2">
                                 <p className="text-xs font-medium text-green-600">
@@ -1257,6 +1275,12 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                     stackId="a" 
                     fill="#F59E0B" 
                     name="Previstos" 
+                  />
+                  <Bar 
+                    dataKey={modoGraficos === 'unidades' ? 'provaveisUnidades' : 'provaveis'} 
+                    stackId="a" 
+                    fill="#A855F7" 
+                    name="Previstos Prováveis" 
                   />
                 </BarChart>
               </ResponsiveContainer>
