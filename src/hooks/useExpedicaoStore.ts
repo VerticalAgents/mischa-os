@@ -1066,13 +1066,23 @@ export const useExpedicaoStore = create<ExpedicaoStore>()(
         const hoje = new Date();
         const proximoDiaUtil = getProximoDiaUtil(hoje);
         const proximoDiaStr = format(proximoDiaUtil, 'yyyy-MM-dd');
+        const hojeStr = format(hoje, 'yyyy-MM-dd');
         
         const resultado = state.pedidos.filter(p => {
           const dataEntrega = parseDataSegura(p.data_prevista_entrega);
           const dataEntregaFormatada = format(dataEntrega, 'yyyy-MM-dd');
           
-          return p.status_agendamento === 'Agendado' &&
-                 dataEntregaFormatada === proximoDiaStr;
+          // Agendamentos para o próximo dia útil (separação antecipada)
+          const isAgendadoProximoDia =
+            p.status_agendamento === 'Agendado' &&
+            dataEntregaFormatada === proximoDiaStr;
+          
+          // Pedidos já despachados com data de entrega futura
+          const isDespachadoFuturo =
+            p.substatus_pedido === 'Despachado' &&
+            dataEntregaFormatada > hojeStr;
+          
+          return isAgendadoProximoDia || isDespachadoFuturo;
         });
         
         set(prevState => ({
