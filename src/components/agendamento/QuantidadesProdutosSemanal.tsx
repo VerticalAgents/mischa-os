@@ -7,6 +7,7 @@ import { Package, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, endOfWeek } from "date-fns";
 
@@ -17,6 +18,9 @@ interface QuantidadesProdutosSemanelProps {
   percentualPrevistos: number;
   onToggleIncluirPrevistos?: (checked: boolean) => void;
   onChangePercentualPrevistos?: (value: number) => void;
+  modoPrevistos?: 'provaveis' | 'percentual';
+  onChangeModoPrevistos?: (modo: 'provaveis' | 'percentual') => void;
+  scoresPrevistos?: Map<string, { score: number }>;
 }
 
 interface ProdutoQuantidade {
@@ -32,9 +36,13 @@ export default function QuantidadesProdutosSemanal({
   percentualPrevistos,
   onToggleIncluirPrevistos,
   onChangePercentualPrevistos,
+  modoPrevistos = 'percentual',
+  onChangeModoPrevistos,
+  scoresPrevistos,
 }: QuantidadesProdutosSemanelProps) {
   const [quantidadesPorProdutoConfirmados, setQuantidadesPorProdutoConfirmados] = useState<Record<string, ProdutoQuantidade>>({});
   const [quantidadesPorProdutoPrevistos, setQuantidadesPorProdutoPrevistos] = useState<Record<string, ProdutoQuantidade>>({});
+  const [quantidadesPorProdutoPrevistosProvaveis, setQuantidadesPorProdutoPrevistosProvaveis] = useState<Record<string, ProdutoQuantidade>>({});
   const [loading, setLoading] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
@@ -55,6 +63,11 @@ export default function QuantidadesProdutosSemanal({
       return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana && agendamento.statusAgendamento === "Previsto";
     });
   }, [agendamentosFiltrados, semanaAtual]);
+
+  const previstosProvaveis = useMemo(() => {
+    if (!scoresPrevistos) return agendamentosPrevistosSemana;
+    return agendamentosPrevistosSemana.filter(a => (scoresPrevistos.get(a.cliente.id)?.score ?? 0) > 85);
+  }, [agendamentosPrevistosSemana, scoresPrevistos]);
 
   // Fetch product quantities from RPC
   const fetchQuantidades = async (agendamentos: any[]) => {
@@ -91,12 +104,14 @@ export default function QuantidadesProdutosSemanal({
     const calcular = async () => {
       setLoading(true);
       try {
-        const [confirmados, previstos] = await Promise.all([
+        const [confirmados, previstos, provaveis] = await Promise.all([
           agendamentosConfirmadosSemana.length > 0 ? fetchQuantidades(agendamentosConfirmadosSemana) : Promise.resolve({}),
-          agendamentosPrevistosSemana.length > 0 ? fetchQuantidades(agendamentosPrevistosSemana) : Promise.resolve({})
+          agendamentosPrevistosSemana.length > 0 ? fetchQuantidades(agendamentosPrevistosSemana) : Promise.resolve({}),
+          previstosProvaveis.length > 0 ? fetchQuantidades(previstosProvaveis) : Promise.resolve({})
         ]);
         setQuantidadesPorProdutoConfirmados(confirmados);
         setQuantidadesPorProdutoPrevistos(previstos);
+        setQuantidadesPorProdutoPrevistosProvaveis(provaveis as Record<string, ProdutoQuantidade>);
       } catch (error) {
         console.error('Erro ao calcular quantidades:', error);
       } finally {
@@ -104,7 +119,7 @@ export default function QuantidadesProdutosSemanal({
       }
     };
     calcular();
-  }, [agendamentosConfirmadosSemana, agendamentosPrevistosSemana]);
+  }, [agendamentosConfirmadosSemana, agendamentosPrevistosSemana, previstosProvaveis]);
 
   // Merge confirmed + simulated predicted quantities
   const produtosOrdenados = useMemo(() => {
@@ -115,26 +130,40 @@ export default function QuantidadesProdutosSemanal({
       merged[id] = { ...prod };
     }
     
-    // Predicted * percentage
-    if (incluirPrevistos && percentualPrevistos > 0) {
-      for (const [id, prod] of Object.entries(quantidadesPorProdutoPrevistos)) {
-        const qtdSimulada = Math.ceil(prod.quantidade * percentualPrevistos / 100);
-        if (merged[id]) {
-          merged[id].quantidade += qtdSimulada;
-        } else {
-          merged[id] = { ...prod, quantidade: qtdSimulada };
+    if (incluirPrevistos) {
+      if (modoPrevistos === 'provaveis') {
+        // 100% das unidades dos previstos prováveis (score > 85)
+        for (const [id, prod] of Object.entries(quantidadesPorProdutoPrevistosProvaveis)) {
+          if (merged[id]) {
+            merged[id].quantidade += prod.quantidade;
+          } else {
+            merged[id] = { ...prod };
+          }
+        }
+      } else if (percentualPrevistos > 0) {
+        for (const [id, prod] of Object.entries(quantidadesPorProdutoPrevistos)) {
+          const qtdSimulada = Math.ceil(prod.quantidade * percentualPrevistos / 100);
+          if (merged[id]) {
+            merged[id].quantidade += qtdSimulada;
+          } else {
+            merged[id] = { ...prod, quantidade: qtdSimulada };
+          }
         }
       }
     }
     
     return Object.values(merged).sort((a, b) => b.quantidade - a.quantidade);
-  }, [quantidadesPorProdutoConfirmados, quantidadesPorProdutoPrevistos, incluirPrevistos, percentualPrevistos]);
+  }, [quantidadesPorProdutoConfirmados, quantidadesPorProdutoPrevistos, quantidadesPorProdutoPrevistosProvaveis, incluirPrevistos, percentualPrevistos, modoPrevistos, agendamentosPrevistosSemana, previstosProvaveis]);
 
   const quantidadeTotal = useMemo(() => {
     return produtosOrdenados.reduce((sum, produto) => sum + produto.quantidade, 0);
   }, [produtosOrdenados]);
 
-  const totalPedidos = agendamentosConfirmadosSemana.length + (incluirPrevistos ? agendamentosPrevistosSemana.length : 0);
+  const totalPedidos = agendamentosConfirmadosSemana.length + (
+    incluirPrevistos
+      ? (modoPrevistos === 'provaveis' ? previstosProvaveis.length : agendamentosPrevistosSemana.length)
+      : 0
+  );
 
   return <Card>
     <CardHeader>
@@ -145,7 +174,11 @@ export default function QuantidadesProdutosSemanal({
             Produtos Necessários
           </CardTitle>
           <CardDescription className="text-left text-xs md:text-sm">
-            Quantidades para pedidos {incluirPrevistos ? `confirmados + ${percentualPrevistos}% previstos` : "confirmados"}
+            Quantidades para pedidos {incluirPrevistos
+              ? (modoPrevistos === 'provaveis'
+                  ? 'confirmados + previstos prováveis'
+                  : `confirmados + ${percentualPrevistos}% previstos`)
+              : "confirmados"}
           </CardDescription>
         </div>
         {onToggleIncluirPrevistos && (
@@ -160,7 +193,27 @@ export default function QuantidadesProdutosSemanal({
                 onCheckedChange={onToggleIncluirPrevistos}
               />
             </div>
-            {incluirPrevistos && onChangePercentualPrevistos && (
+            {incluirPrevistos && onChangeModoPrevistos && (
+              <RadioGroup
+                value={modoPrevistos}
+                onValueChange={(v) => onChangeModoPrevistos(v as 'provaveis' | 'percentual')}
+                className="flex items-center gap-3"
+              >
+                <div className="flex items-center gap-1.5">
+                  <RadioGroupItem value="provaveis" id="modo-provaveis" />
+                  <Label htmlFor="modo-provaveis" className="text-xs cursor-pointer whitespace-nowrap">
+                    Apenas prováveis
+                  </Label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <RadioGroupItem value="percentual" id="modo-percentual" />
+                  <Label htmlFor="modo-percentual" className="text-xs cursor-pointer whitespace-nowrap">
+                    Percentual
+                  </Label>
+                </div>
+              </RadioGroup>
+            )}
+            {incluirPrevistos && modoPrevistos === 'percentual' && onChangePercentualPrevistos && (
               <div className="flex items-center gap-1">
                 <Input
                   type="number"
