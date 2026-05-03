@@ -1,39 +1,54 @@
 ## Objetivo
 
-Nos modos **% da média histórica** e **Cobertura por dias** do Setup PCP, mostrar uma lista com a quantidade-alvo resultante para cada produto ativo, atualizada em tempo real conforme o usuário altera o parâmetro (percentual ou dias).
+Reorganizar a aba **Projeção de Produção** do PCP em 3 linhas, permitindo criar produções agendadas sem sair da aba.
 
-Hoje só aparece o "Alvo total" agregado — falta a quebra por produto, que é o que dá visibilidade real do impacto da configuração.
+## Novo layout
+
+```text
+┌──────────────────────────────────┬──────────────────────────────────┐
+│ Estoque de Produtos (Saldo Real) │ Produção Agendada                │
+│ por produto                      │ + botão "Nova Produção"          │
+├──────────────────────────────────┼──────────────────────────────────┤
+│ Produtos Necessários             │ Estoque Disponível (final)       │
+└──────────────────────────────────┴──────────────────────────────────┘
+┌────────────────────────────────────────┐
+│ Sugestão de Produção (largura reduzida)│  ← centralizada, max-w-3xl
+└────────────────────────────────────────┘
+```
 
 ## Mudanças
 
-Arquivo único: `src/components/pcp/SetupPCPTab.tsx`
+### 1. Novo card `EstoqueProdutosSaldoRealCard.tsx` (`src/components/pcp/`)
 
-1. **Reaproveitar a lista de produtos ativos** já carregada (`produtos` + `mediaVendasPorProduto`) para os três modos — não só para "Fixo por produto".
+- Mostra produtos ativos com `saldoReal`, agrupados/ordenados por nome.
+- Reaproveita `useEstoqueComExpedicao` (mesmo hook usado em `EstoqueProdutosTab`).
+- Header: total real + nº de SKUs ativos.
+- Lista colapsável (Collapsible) seguindo o padrão visual dos outros cards do PCP (`Package` ícone, badges).
+- Sem ações de movimentação — visualização apenas.
 
-2. **Renderizar uma tabela/lista por produto** dentro dos painéis de `percentual` e `cobertura`, com colunas:
-   - Produto
-   - Média semanal (un)
-   - Alvo calculado (un) — destacado
+### 2. `ProducaoAgendadaCard` ganha botão "Nova Produção"
 
-   Cálculo por linha:
-   - Percentual: `round(media_produto × percentual / 100)`
-   - Cobertura: `round(media_produto × dias / 7)`
+- Adicionar prop `onNovaProducao?: () => void` e botão no `CardHeader` (canto direito).
+- Ao clicar, abre o `HistoricoProducaoModal` (já existe em `src/components/pcp/HistoricoProducaoModal.tsx`).
+- Após salvar via modal, chama `adicionarRegistro` do `useSupabaseHistoricoProducao` e dispara `recarregar()` do `useProducaoAgendada` (expor refresh do hook se ainda não exposto — verificar; caso não exposto, adicionar return dele).
 
-3. **Layout**: manter o card de pré-visualização (média total + alvo total) no topo do painel, e abaixo a lista rolável (`max-h-[420px] overflow-y-auto`, mesmo padrão do modo "fixo"), para manter consistência visual entre os três modos.
+### 3. `ProjecaoProducaoTab.tsx` — reordenação
 
-4. **Ordenação**: por nome do produto (igual ao modo fixo). Produtos sem média aparecem com 0.
+- Remover o `ProducaoAgendadaCard` de cima (atualmente full-width).
+- Estrutura nova logo abaixo do seletor de semana:
+  - **Linha 1** `grid lg:grid-cols-2 gap-6`: `<EstoqueProdutosSaldoRealCard />` + `<ProducaoAgendadaCard ... onNovaProducao={...} />`.
+  - **Linha 2** `grid lg:grid-cols-2 gap-6`: `Produtos Necessários` + `<EstoqueDisponivel ... />` (mantém como está, só muda ordem).
+  - **Linha 3**: `<div className="max-w-3xl mx-auto"><SugestaoProducao .../></div>` para reduzir a largura.
+- Estado novo: `const [modalNovaProducao, setModalNovaProducao] = useState(false)` + render condicional do `HistoricoProducaoModal` no final do componente.
+- Handler `handleSalvarProducao` invoca `adicionarRegistro` (importar `useSupabaseHistoricoProducao`) e refresh do `useProducaoAgendada`.
 
-5. Sem mudanças em store, tipos ou na lógica de `SugestaoProducao` — o cálculo já está correto, só estamos expondo o resultado por produto na UI.
+### 4. Sem mudanças em store, tipos ou RLS
 
-## Detalhe técnico
+A criação de produção agendada usa o fluxo já existente (mesmo modal usado na aba Registro), apenas exposto a partir da aba Projeção.
 
-```ts
-const calcAlvoProduto = (produtoId: string) => {
-  const media = mediaVendasPorProduto[produtoId] ?? 0;
-  if (modo === "percentual") return Math.round((media * percentual) / 100);
-  if (modo === "cobertura")  return Math.round((media * coberturaDias) / 7);
-  return 0;
-};
-```
+## Arquivos editados
 
-A lista é re-renderizada automaticamente quando `percentual` ou `coberturaDias` mudam (já estão no state local).
+- **Criado**: `src/components/pcp/EstoqueProdutosSaldoRealCard.tsx`
+- **Editado**: `src/components/pcp/ProjecaoProducaoTab.tsx`
+- **Editado**: `src/components/pcp/ProducaoAgendadaCard.tsx` (botão + prop)
+- **Editado** (se necessário): `src/hooks/useProducaoAgendada.ts` para expor função de refresh
