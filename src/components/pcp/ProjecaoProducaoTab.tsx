@@ -227,7 +227,7 @@ export default function ProjecaoProducaoTab() {
       </Card>
 
       {/* Linha 1: Estoque atual + Produção agendada */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         <EstoqueProdutosSaldoRealCard />
         <ProducaoAgendadaCard
           produtos={produtosAgrupados}
@@ -239,67 +239,65 @@ export default function ProjecaoProducaoTab() {
       </div>
 
       {/* Linha 2: Necessários + Estoque disponível final */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className={isProvavelMode ? 'border-purple-300 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20' : ''}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        <Card className={`h-full flex flex-col ${isProvavelMode ? 'border-purple-300 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20' : ''}`}>
           <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
-              <div className="space-y-1.5">
-                <CardTitle className="flex items-center gap-2">
-                  <Package className={`h-5 w-5 ${isProvavelMode ? 'text-purple-500' : 'text-primary'}`} />
-                  Produtos Necessários
-                </CardTitle>
-                <CardDescription className="text-left">
-                  {incluirPrevistos
-                    ? (modoPrevistos === 'provaveis'
-                        ? "Confirmados + previstos prováveis"
-                        : `Confirmados + ${percentualPrevistos}% dos previstos`)
-                    : "Quantidades para pedidos confirmados"}
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="incluir-previstos" className="text-sm cursor-pointer whitespace-nowrap">
-                    Incluir previstos
-                  </Label>
-                  <Switch id="incluir-previstos" checked={incluirPrevistos} onCheckedChange={setIncluirPrevistos} />
-                </div>
-                {incluirPrevistos && (
-                  <RadioGroup
-                    value={modoPrevistos}
-                    onValueChange={(v) => setModoPrevistos(v as 'provaveis' | 'percentual')}
-                    className="flex items-center gap-3"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <RadioGroupItem value="provaveis" id="pcp-modo-provaveis" />
-                      <Label htmlFor="pcp-modo-provaveis" className="text-xs cursor-pointer whitespace-nowrap">
-                        Apenas prováveis
-                      </Label>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <RadioGroupItem value="percentual" id="pcp-modo-percentual" />
-                      <Label htmlFor="pcp-modo-percentual" className="text-xs cursor-pointer whitespace-nowrap">
-                        Percentual
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                )}
-                {incluirPrevistos && modoPrevistos === 'percentual' && (
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={percentualPrevistos}
-                      onChange={(e) => handlePercentualChange(e.target.value)}
-                      className="w-16 h-8 text-center text-sm px-1"
-                    />
-                    <span className="text-sm text-muted-foreground">%</span>
-                  </div>
-                )}
-              </div>
+            <div className="space-y-1.5">
+              <CardTitle className="flex items-center gap-2">
+                <Package className={`h-5 w-5 ${isProvavelMode ? 'text-purple-500' : 'text-primary'}`} />
+                Produtos Necessários
+              </CardTitle>
+              <CardDescription className="text-left">
+                {incluirPrevistos
+                  ? (modoPrevistos === 'provaveis'
+                      ? "Confirmados + previstos prováveis"
+                      : `Confirmados + ${percentualPrevistos}% dos previstos`)
+                  : "Quantidades para pedidos confirmados"}
+              </CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1">
+            <div className="flex items-center justify-end gap-2 sm:gap-3 flex-wrap pb-3 mb-3 border-b min-h-[2.25rem]">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="incluir-previstos" className="text-sm cursor-pointer whitespace-nowrap">
+                  Incluir previstos
+                </Label>
+                <Switch id="incluir-previstos" checked={incluirPrevistos} onCheckedChange={setIncluirPrevistos} />
+              </div>
+              {incluirPrevistos && (
+                <RadioGroup
+                  value={modoPrevistos}
+                  onValueChange={(v) => setModoPrevistos(v as 'provaveis' | 'percentual')}
+                  className="flex items-center gap-3"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <RadioGroupItem value="provaveis" id="pcp-modo-provaveis" />
+                    <Label htmlFor="pcp-modo-provaveis" className="text-xs cursor-pointer whitespace-nowrap">
+                      Apenas prováveis
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <RadioGroupItem value="percentual" id="pcp-modo-percentual" />
+                    <Label htmlFor="pcp-modo-percentual" className="text-xs cursor-pointer whitespace-nowrap">
+                      Percentual
+                    </Label>
+                  </div>
+                </RadioGroup>
+              )}
+              {incluirPrevistos && modoPrevistos === 'percentual' && (
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={percentualPrevistos}
+                    onChange={(e) => handlePercentualChange(e.target.value)}
+                    className="w-16 h-8 text-center text-sm px-1"
+                  />
+                  <span className="text-sm text-muted-foreground">%</span>
+                </div>
+              )}
+            </div>
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
