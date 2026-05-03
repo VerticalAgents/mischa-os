@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Factory, Loader2, ChevronDown, ChevronUp, Package } from "lucide-react";
+import { Factory, Loader2, ChevronDown, ChevronUp, Package, Plus } from "lucide-react";
 
 interface ProducaoAgendadaItem {
   produto_id: string;
@@ -17,22 +17,31 @@ interface ProducaoAgendadaCardProps {
   totalUnidades: number;
   totalRegistros: number;
   loading: boolean;
+  onNovaProducao?: () => void;
 }
 
-export default function ProducaoAgendadaCard({ produtos, totalUnidades, totalRegistros, loading }: ProducaoAgendadaCardProps) {
+export default function ProducaoAgendadaCard({ produtos, totalUnidades, totalRegistros, loading, onNovaProducao }: ProducaoAgendadaCardProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   return (
     <Card>
       <CardHeader>
-        <div className="space-y-1.5">
-          <CardTitle className="flex items-center gap-2">
-            <Factory className="h-5 w-5 text-primary" />
-            Produção Agendada
-          </CardTitle>
-          <CardDescription className="text-left">
-            Produções registradas aguardando confirmação
-          </CardDescription>
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1.5">
+            <CardTitle className="flex items-center gap-2">
+              <Factory className="h-5 w-5 text-primary" />
+              Produção Agendada
+            </CardTitle>
+            <CardDescription className="text-left">
+              Produções registradas aguardando confirmação
+            </CardDescription>
+          </div>
+          {onNovaProducao && (
+            <Button size="sm" onClick={onNovaProducao} className="gap-1 shrink-0">
+              <Plus className="h-4 w-4" />
+              Nova Produção
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
