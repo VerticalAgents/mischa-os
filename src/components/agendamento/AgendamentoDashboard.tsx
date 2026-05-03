@@ -283,6 +283,18 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
     };
   }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas]);
 
+  // Previstos da semana inteira para calcular probabilidade geral
+  const previstosSemanais = useMemo(() => {
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    return agendamentosFiltrados.filter(a => {
+      const data = new Date(a.dataReposicao);
+      return data >= inicioSemana && data <= fimSemana && a.statusAgendamento === "Previsto";
+    });
+  }, [agendamentosFiltrados, semanaAtual]);
+
+  const { scores: scoresSemanais, loading: scoresSemanaisLoading } = useConfirmationScore(previstosSemanais);
+
   const dadosGraficoStatus = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
     const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
@@ -438,18 +450,6 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
 
   // Hook para buscar scores de confirmação dos agendamentos do dia selecionado
   const { scores: confirmationScores, loading: confirmationLoading } = useConfirmationScore(agendamentosDiaSelecionado);
-
-  // Previstos da semana inteira para calcular probabilidade geral
-  const previstosSemanais = useMemo(() => {
-    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
-    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
-    return agendamentosFiltrados.filter(a => {
-      const data = new Date(a.dataReposicao);
-      return data >= inicioSemana && data <= fimSemana && a.statusAgendamento === "Previsto";
-    });
-  }, [agendamentosFiltrados, semanaAtual]);
-
-  const { scores: scoresSemanais, loading: scoresSemanaisLoading } = useConfirmationScore(previstosSemanais);
 
   // Probabilidade média da semana e breakdown por faixa
   const probabilidadeSemanal = useMemo(() => {
