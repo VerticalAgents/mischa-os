@@ -283,33 +283,52 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
     };
   }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas]);
 
+  // Previstos da semana inteira para calcular probabilidade geral
+  const previstosSemanais = useMemo(() => {
+    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
+    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
+    return agendamentosFiltrados.filter(a => {
+      const data = new Date(a.dataReposicao);
+      return data >= inicioSemana && data <= fimSemana && a.statusAgendamento === "Previsto";
+    });
+  }, [agendamentosFiltrados, semanaAtual]);
+
+  const { scores: scoresSemanais, loading: scoresSemanaisLoading } = useConfirmationScore(previstosSemanais);
+
   const dadosGraficoStatus = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
     const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
     const agendamentosSemana = agendamentosFiltrados.filter(agendamento => {
       const dataAgendamento = new Date(agendamento.dataReposicao);
-      return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana;
+      return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana
+        && (agendamento.statusAgendamento === "Previsto" || agendamento.statusAgendamento === "Agendado");
     });
-    
-    // Calcular contagem, unidades e lista de clientes por status
-    const contadores = agendamentosSemana.reduce((acc, agendamento) => {
-      const status = agendamento.statusAgendamento;
-      const unidades = agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0;
-      if (!acc[status]) {
-        acc[status] = { quantidade: 0, unidades: 0, clientes: [] as string[] };
+
+    // Modo "prováveis": separa Previsto em Provável (roxo) e Previsto (âmbar). Nunca mostra "Agendar" (vermelho).
+    const destacarProvaveis = incluirPrevistos && modoPrevistos === 'provaveis';
+    const buckets: Record<string, { quantidade: number; unidades: number; clientes: string[]; cor: string }> = {};
+    const ensure = (status: string, cor: string) => {
+      if (!buckets[status]) buckets[status] = { quantidade: 0, unidades: 0, clientes: [], cor };
+      return buckets[status];
+    };
+    for (const ag of agendamentosSemana) {
+      const unidades = ag.pedido?.totalPedidoUnidades || ag.cliente.quantidadePadrao || 0;
+      let key: string;
+      let cor: string;
+      if (ag.statusAgendamento === "Agendado") {
+        key = "Agendado"; cor = "#10B981";
+      } else {
+        const ehProvavel = destacarProvaveis && (scoresSemanais.get(ag.cliente.id)?.score ?? 0) > 85;
+        if (ehProvavel) { key = "Previsto Provável"; cor = "#A855F7"; }
+        else { key = "Previsto"; cor = "#F59E0B"; }
       }
-      acc[status].quantidade += 1;
-      acc[status].unidades += unidades;
-      acc[status].clientes.push(agendamento.cliente.nome);
-      return acc;
-    }, {} as Record<string, { quantidade: number; unidades: number; clientes: string[] }>);
-    
-    const data = Object.entries(contadores).map(([status, valores]) => ({
-      status,
-      quantidade: valores.quantidade,
-      unidades: valores.unidades,
-      clientes: valores.clientes,
-      cor: status === "Previsto" ? "#F59E0B" : status === "Agendado" ? "#10B981" : "#EF4444"
+      const b = ensure(key, cor);
+      b.quantidade += 1;
+      b.unidades += unidades;
+      b.clientes.push(ag.cliente.nome);
+    }
+    const data = Object.entries(buckets).map(([status, v]) => ({
+      status, quantidade: v.quantidade, unidades: v.unidades, clientes: v.clientes, cor: v.cor
     }));
     
     // Adicionar entregas realizadas na semana
@@ -335,7 +354,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
     }
     
     return data;
-  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, clientes]);
+  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, clientes, incluirPrevistos, modoPrevistos, scoresSemanais]);
 
   const dadosGraficoSemanal = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
@@ -347,11 +366,22 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
         isSameDay(new Date(agendamento.dataReposicao), dia)
       );
       
-      const agendamentosPrevistos = agendamentosDia.filter(a => a.statusAgendamento === "Previsto");
+      const todosPrevistos = agendamentosDia.filter(a => a.statusAgendamento === "Previsto");
       const agendamentosConfirmados = agendamentosDia.filter(a => a.statusAgendamento === "Agendado");
+
+      const destacarProvaveis = incluirPrevistos && modoPrevistos === 'provaveis';
+      const agendamentosProvaveis = destacarProvaveis
+        ? todosPrevistos.filter(a => (scoresSemanais.get(a.cliente.id)?.score ?? 0) > 85)
+        : [];
+      const agendamentosPrevistos = destacarProvaveis
+        ? todosPrevistos.filter(a => (scoresSemanais.get(a.cliente.id)?.score ?? 0) <= 85)
+        : todosPrevistos;
       
       // Calcular unidades
       const unidadesPrevistos = agendamentosPrevistos.reduce((sum, a) => 
+        sum + (a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0), 0
+      );
+      const unidadesProvaveis = agendamentosProvaveis.reduce((sum, a) => 
         sum + (a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0), 0
       );
       const unidadesConfirmados = agendamentosConfirmados.reduce((sum, a) => 
@@ -366,6 +396,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
       
       // Lista de clientes
       const clientesPrevistos = agendamentosPrevistos.map(a => a.cliente.nome);
+      const clientesProvaveis = agendamentosProvaveis.map(a => a.cliente.nome);
       const clientesConfirmados = agendamentosConfirmados.map(a => a.cliente.nome);
       const clientesRealizadas = entregasRealizadasDia.map(e => {
         const cliente = clientes.find(c => c.id === e.cliente_id);
@@ -376,20 +407,23 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
         dia: format(dia, 'dd/MM', { locale: ptBR }),
         diaSemana: format(dia, 'EEEE', { locale: ptBR }),
         previstos: agendamentosPrevistos.length,
+        provaveis: agendamentosProvaveis.length,
         confirmados: agendamentosConfirmados.length,
         realizadas: entregasRealizadasDia.length,
         previstosUnidades: unidadesPrevistos,
+        provaveisUnidades: unidadesProvaveis,
         confirmadosUnidades: unidadesConfirmados,
         realizadasUnidades: unidadesRealizadas,
         clientesPrevistos,
+        clientesProvaveis,
         clientesConfirmados,
         clientesRealizadas,
-        total: agendamentosPrevistos.length + agendamentosConfirmados.length,
+        total: agendamentosPrevistos.length + agendamentosProvaveis.length + agendamentosConfirmados.length,
         isToday: isToday(dia),
         dataCompleta: dia
       };
     });
-  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, clientes]);
+  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, clientes, incluirPrevistos, modoPrevistos, scoresSemanais]);
 
   const agendamentosDiaSelecionado = useMemo(() => {
     if (!diaSelecionado) return [];
@@ -431,18 +465,6 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
 
   // Hook para buscar scores de confirmação dos agendamentos do dia selecionado
   const { scores: confirmationScores, loading: confirmationLoading } = useConfirmationScore(agendamentosDiaSelecionado);
-
-  // Previstos da semana inteira para calcular probabilidade geral
-  const previstosSemanais = useMemo(() => {
-    const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
-    const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
-    return agendamentosFiltrados.filter(a => {
-      const data = new Date(a.dataReposicao);
-      return data >= inicioSemana && data <= fimSemana && a.statusAgendamento === "Previsto";
-    });
-  }, [agendamentosFiltrados, semanaAtual]);
-
-  const { scores: scoresSemanais, loading: scoresSemanaisLoading } = useConfirmationScore(previstosSemanais);
 
   // Probabilidade média da semana e breakdown por faixa
   const probabilidadeSemanal = useMemo(() => {
@@ -1177,6 +1199,24 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                               </div>
                             )}
                             
+                            {(modoGraficos === 'unidades' ? data.provaveisUnidades : data.provaveis) > 0 && (
+                              <div className="mb-2">
+                                <p className="text-xs font-medium text-purple-600">
+                                  Previstos Prováveis: {modoGraficos === 'unidades' ? data.provaveisUnidades : data.provaveis}
+                                </p>
+                                {data.clientesProvaveis?.length > 0 && (
+                                  <ul className="text-xs text-muted-foreground">
+                                    {data.clientesProvaveis.slice(0, 5).map((c: string, i: number) => (
+                                      <li key={i} className="truncate">• {c}</li>
+                                    ))}
+                                    {data.clientesProvaveis.length > 5 && (
+                                      <li className="text-muted-foreground/70">... +{data.clientesProvaveis.length - 5}</li>
+                                    )}
+                                  </ul>
+                                )}
+                              </div>
+                            )}
+                            
                             {(modoGraficos === 'unidades' ? data.confirmadosUnidades : data.confirmados) > 0 && (
                               <div className="mb-2">
                                 <p className="text-xs font-medium text-green-600">
@@ -1236,6 +1276,12 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                     fill="#F59E0B" 
                     name="Previstos" 
                   />
+                  <Bar 
+                    dataKey={modoGraficos === 'unidades' ? 'provaveisUnidades' : 'provaveis'} 
+                    stackId="a" 
+                    fill="#A855F7" 
+                    name="Previstos Prováveis" 
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1266,6 +1312,9 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                     </Badge>}
                   {dia.previstos > 0 && <Badge variant="outline" className="text-[10px] bg-amber-100 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
                       {dia.previstos} Previstos
+                    </Badge>}
+                  {dia.provaveis > 0 && <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-700 border-purple-200 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
+                      {dia.provaveis} Prováveis
                     </Badge>}
                   {dia.realizadas > 0 && <Badge variant="outline" className="text-[10px] bg-blue-100 text-blue-700 border-blue-200 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
                       {dia.realizadas} Entregues
