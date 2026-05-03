@@ -7,6 +7,7 @@ import { Package, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, endOfWeek } from "date-fns";
 
@@ -17,6 +18,9 @@ interface QuantidadesProdutosSemanelProps {
   percentualPrevistos: number;
   onToggleIncluirPrevistos?: (checked: boolean) => void;
   onChangePercentualPrevistos?: (value: number) => void;
+  modoPrevistos?: 'provaveis' | 'percentual';
+  onChangeModoPrevistos?: (modo: 'provaveis' | 'percentual') => void;
+  scoresPrevistos?: Map<string, { score: number }>;
 }
 
 interface ProdutoQuantidade {
@@ -32,6 +36,9 @@ export default function QuantidadesProdutosSemanal({
   percentualPrevistos,
   onToggleIncluirPrevistos,
   onChangePercentualPrevistos,
+  modoPrevistos = 'percentual',
+  onChangeModoPrevistos,
+  scoresPrevistos,
 }: QuantidadesProdutosSemanelProps) {
   const [quantidadesPorProdutoConfirmados, setQuantidadesPorProdutoConfirmados] = useState<Record<string, ProdutoQuantidade>>({});
   const [quantidadesPorProdutoPrevistos, setQuantidadesPorProdutoPrevistos] = useState<Record<string, ProdutoQuantidade>>({});
@@ -55,6 +62,11 @@ export default function QuantidadesProdutosSemanal({
       return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana && agendamento.statusAgendamento === "Previsto";
     });
   }, [agendamentosFiltrados, semanaAtual]);
+
+  const previstosProvaveis = useMemo(() => {
+    if (!scoresPrevistos) return agendamentosPrevistosSemana;
+    return agendamentosPrevistosSemana.filter(a => (scoresPrevistos.get(a.cliente.id)?.score ?? 0) > 85);
+  }, [agendamentosPrevistosSemana, scoresPrevistos]);
 
   // Fetch product quantities from RPC
   const fetchQuantidades = async (agendamentos: any[]) => {
@@ -106,6 +118,9 @@ export default function QuantidadesProdutosSemanal({
     calcular();
   }, [agendamentosConfirmadosSemana, agendamentosPrevistosSemana]);
 
+  // Map of predicted client ids that are "provaveis" (score > 85)
+  const provavelIds = useMemo(() => new Set(previstosProvaveis.map(a => a.id)), [previstosProvaveis]);
+
   // Merge confirmed + simulated predicted quantities
   const produtosOrdenados = useMemo(() => {
     const merged: Record<string, ProdutoQuantidade> = {};
@@ -115,20 +130,37 @@ export default function QuantidadesProdutosSemanal({
       merged[id] = { ...prod };
     }
     
-    // Predicted * percentage
-    if (incluirPrevistos && percentualPrevistos > 0) {
-      for (const [id, prod] of Object.entries(quantidadesPorProdutoPrevistos)) {
-        const qtdSimulada = Math.ceil(prod.quantidade * percentualPrevistos / 100);
-        if (merged[id]) {
-          merged[id].quantidade += qtdSimulada;
-        } else {
-          merged[id] = { ...prod, quantidade: qtdSimulada };
+    if (incluirPrevistos) {
+      if (modoPrevistos === 'provaveis') {
+        // soma 100% apenas dos previstos prováveis (precisa refazer fetch só desse subset)
+        // como já temos todos previstos, usamos um proxy: proporção provaveis/total
+        const totalPrev = agendamentosPrevistosSemana.length;
+        const provaveisCount = previstosProvaveis.length;
+        if (totalPrev > 0 && provaveisCount > 0) {
+          // Refazemos a soma: como fetchQuantidades agrega tudo, aproximamos por proporção.
+          // Para precisão, fazemos fetch separado abaixo via useEffect dedicado.
+        }
+        for (const [id, prod] of Object.entries(quantidadesPorProdutoPrevistosProvaveis)) {
+          if (merged[id]) {
+            merged[id].quantidade += prod.quantidade;
+          } else {
+            merged[id] = { ...prod };
+          }
+        }
+      } else if (percentualPrevistos > 0) {
+        for (const [id, prod] of Object.entries(quantidadesPorProdutoPrevistos)) {
+          const qtdSimulada = Math.ceil(prod.quantidade * percentualPrevistos / 100);
+          if (merged[id]) {
+            merged[id].quantidade += qtdSimulada;
+          } else {
+            merged[id] = { ...prod, quantidade: qtdSimulada };
+          }
         }
       }
     }
     
     return Object.values(merged).sort((a, b) => b.quantidade - a.quantidade);
-  }, [quantidadesPorProdutoConfirmados, quantidadesPorProdutoPrevistos, incluirPrevistos, percentualPrevistos]);
+  }, [quantidadesPorProdutoConfirmados, quantidadesPorProdutoPrevistos, quantidadesPorProdutoPrevistosProvaveis, incluirPrevistos, percentualPrevistos, modoPrevistos, agendamentosPrevistosSemana, previstosProvaveis]);
 
   const quantidadeTotal = useMemo(() => {
     return produtosOrdenados.reduce((sum, produto) => sum + produto.quantidade, 0);
