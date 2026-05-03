@@ -210,8 +210,13 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
               Sugestão de Produção
             </CardTitle>
             <CardDescription className="text-left">
-              Alvo: cobrir <strong>{coberturaAlvoDias} {coberturaAlvoDias === 1 ? "dia" : "dias"}</strong> de demanda no fechamento da semana ·
-              configure em <em>Setup</em>
+              {modoAlvo === "fixo" && <>Alvo: <strong>fixo por produto</strong> · configure em <em>Setup</em></>}
+              {modoAlvo === "percentual" && (
+                <>Alvo: <strong>{percentualAlvo}%</strong> da média semanal · configure em <em>Setup</em></>
+              )}
+              {modoAlvo === "cobertura" && (
+                <>Alvo: cobrir <strong>{coberturaAlvoDias} {coberturaAlvoDias === 1 ? "dia" : "dias"}</strong> de demanda · configure em <em>Setup</em></>
+              )}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
