@@ -42,6 +42,7 @@ export default function QuantidadesProdutosSemanal({
 }: QuantidadesProdutosSemanelProps) {
   const [quantidadesPorProdutoConfirmados, setQuantidadesPorProdutoConfirmados] = useState<Record<string, ProdutoQuantidade>>({});
   const [quantidadesPorProdutoPrevistos, setQuantidadesPorProdutoPrevistos] = useState<Record<string, ProdutoQuantidade>>({});
+  const [quantidadesPorProdutoPrevistosProvaveis, setQuantidadesPorProdutoPrevistosProvaveis] = useState<Record<string, ProdutoQuantidade>>({});
   const [loading, setLoading] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
@@ -103,12 +104,14 @@ export default function QuantidadesProdutosSemanal({
     const calcular = async () => {
       setLoading(true);
       try {
-        const [confirmados, previstos] = await Promise.all([
+        const [confirmados, previstos, provaveis] = await Promise.all([
           agendamentosConfirmadosSemana.length > 0 ? fetchQuantidades(agendamentosConfirmadosSemana) : Promise.resolve({}),
-          agendamentosPrevistosSemana.length > 0 ? fetchQuantidades(agendamentosPrevistosSemana) : Promise.resolve({})
+          agendamentosPrevistosSemana.length > 0 ? fetchQuantidades(agendamentosPrevistosSemana) : Promise.resolve({}),
+          previstosProvaveis.length > 0 ? fetchQuantidades(previstosProvaveis) : Promise.resolve({})
         ]);
         setQuantidadesPorProdutoConfirmados(confirmados);
         setQuantidadesPorProdutoPrevistos(previstos);
+        setQuantidadesPorProdutoPrevistosProvaveis(provaveis as Record<string, ProdutoQuantidade>);
       } catch (error) {
         console.error('Erro ao calcular quantidades:', error);
       } finally {
@@ -116,7 +119,7 @@ export default function QuantidadesProdutosSemanal({
       }
     };
     calcular();
-  }, [agendamentosConfirmadosSemana, agendamentosPrevistosSemana]);
+  }, [agendamentosConfirmadosSemana, agendamentosPrevistosSemana, previstosProvaveis]);
 
   // Map of predicted client ids that are "provaveis" (score > 85)
   const provavelIds = useMemo(() => new Set(previstosProvaveis.map(a => a.id)), [previstosProvaveis]);
