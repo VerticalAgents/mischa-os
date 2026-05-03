@@ -41,6 +41,14 @@ export default function EstoqueProdutosTab() {
     [produtos, searchTerm, mostrarInativos]
   );
 
+  // Resumo de estoque (somente produtos ativos)
+  const resumoEstoque = useMemo(() => {
+    const ativos = produtos.filter(p => p.ativo);
+    const totalReal = ativos.reduce((s, p) => s + (Number(p.saldoReal) || 0), 0);
+    const totalAtual = ativos.reduce((s, p) => s + (Number(p.saldoAtual) || 0), 0);
+    return { totalReal, totalAtual, qtdProdutos: ativos.length };
+  }, [produtos]);
+
   // Agrupar produtos por categoria
   const produtosPorCategoria = useMemo(() => {
     const grupos: Record<string, typeof produtosFiltrados> = {};
@@ -167,6 +175,35 @@ export default function EstoqueProdutosTab() {
 
   return (
     <div className="space-y-6">
+      {/* Resumo de estoque */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Saldo Real Total</p>
+            <p className="text-2xl font-semibold mt-1 tabular-nums">
+              {resumoEstoque.totalReal.toLocaleString('pt-BR')} <span className="text-sm font-normal text-muted-foreground">un</span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Estoque físico atual (descontada expedição)</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Saldo Atual Total</p>
+            <p className="text-2xl font-semibold mt-1 tabular-nums">
+              {resumoEstoque.totalAtual.toLocaleString('pt-BR')} <span className="text-sm font-normal text-muted-foreground">un</span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Antes do desconto da expedição</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Produtos Ativos</p>
+            <p className="text-2xl font-semibold mt-1 tabular-nums">{resumoEstoque.qtdProdutos}</p>
+            <p className="text-xs text-muted-foreground mt-1">SKUs considerados no resumo</p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Filtros e busca */}
       <div className="flex gap-4 items-center">
         <div className="relative flex-1">
