@@ -187,53 +187,69 @@ export default function SetupPCPTab() {
           )}
 
           {modo === "percentual" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-              <div className="space-y-2">
-                <Label htmlFor="percentual">Percentual da média semanal (%)</Label>
-                <Input
-                  id="percentual"
-                  type="number"
-                  min={0}
-                  max={500}
-                  value={percentual}
-                  onChange={(e) => setPercentual(Math.max(0, Number(e.target.value)))}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Cálculo por produto: <code>média_semanal × {percentual}% </code>
-                </p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div className="space-y-2">
+                  <Label htmlFor="percentual">Percentual da média semanal (%)</Label>
+                  <Input
+                    id="percentual"
+                    type="number"
+                    min={0}
+                    max={500}
+                    value={percentual}
+                    onChange={(e) => setPercentual(Math.max(0, Number(e.target.value)))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Cálculo por produto: <code>média_semanal × {percentual}% </code>
+                  </p>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
+                  <p className="text-muted-foreground">Pré-visualização</p>
+                  <p>Média total semanal: <strong>{Math.round(mediaTotalSemanal)} un</strong></p>
+                  <p>Alvo total: <strong className="text-primary">{previewAlvoTotal} un</strong></p>
+                </div>
               </div>
-              <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
-                <p className="text-muted-foreground">Pré-visualização</p>
-                <p>Média total semanal: <strong>{Math.round(mediaTotalSemanal)} un</strong></p>
-                <p>Alvo total: <strong className="text-primary">{previewAlvoTotal} un</strong></p>
-              </div>
+              <ProdutosAlvoLista
+                produtos={produtos}
+                loading={loadingProdutos}
+                mediaVendasPorProduto={mediaVendasPorProduto}
+                calcAlvo={(media) => Math.round((media * percentual) / 100)}
+              />
             </div>
           )}
 
           {modo === "cobertura" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-              <div className="space-y-2">
-                <Label htmlFor="dias">Cobertura alvo (dias)</Label>
-                <Input
-                  id="dias"
-                  type="number"
-                  min={0}
-                  max={14}
-                  value={coberturaDias}
-                  onChange={(e) => setCoberturaDias(Math.max(0, Number(e.target.value)))}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Estoque com que a fábrica fecha na sexta. Recomendado: 3 dias (cobre seg/ter/qua).
-                </p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div className="space-y-2">
+                  <Label htmlFor="dias">Cobertura alvo (dias)</Label>
+                  <Input
+                    id="dias"
+                    type="number"
+                    min={0}
+                    max={14}
+                    value={coberturaDias}
+                    onChange={(e) => setCoberturaDias(Math.max(0, Number(e.target.value)))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Estoque com que a fábrica fecha na sexta. Recomendado: 3 dias (cobre seg/ter/qua).
+                  </p>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
+                  <p className="text-muted-foreground">Pré-visualização</p>
+                  <p>Média total semanal: <strong>{Math.round(mediaTotalSemanal)} un</strong></p>
+                  <p>
+                    Alvo total para {coberturaDias} {coberturaDias === 1 ? "dia" : "dias"}:{" "}
+                    <strong className="text-primary">{previewAlvoTotal} un</strong>
+                  </p>
+                </div>
               </div>
-              <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
-                <p className="text-muted-foreground">Pré-visualização</p>
-                <p>Média total semanal: <strong>{Math.round(mediaTotalSemanal)} un</strong></p>
-                <p>
-                  Alvo total para {coberturaDias} {coberturaDias === 1 ? "dia" : "dias"}:{" "}
-                  <strong className="text-primary">{previewAlvoTotal} un</strong>
-                </p>
-              </div>
+              <ProdutosAlvoLista
+                produtos={produtos}
+                loading={loadingProdutos}
+                mediaVendasPorProduto={mediaVendasPorProduto}
+                calcAlvo={(media) => Math.round((media * coberturaDias) / 7)}
+              />
             </div>
           )}
         </CardContent>
@@ -244,6 +260,57 @@ export default function SetupPCPTab() {
           <Save className="h-4 w-4" />
           Salvar Setup
         </Button>
+      </div>
+    </div>
+  );
+}
+
+interface ProdutosAlvoListaProps {
+  produtos: ProdutoAtivo[];
+  loading: boolean;
+  mediaVendasPorProduto: Record<string, number>;
+  calcAlvo: (media: number) => number;
+}
+
+function ProdutosAlvoLista({ produtos, loading, mediaVendasPorProduto, calcAlvo }: ProdutosAlvoListaProps) {
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm">Alvo por produto</Label>
+      <div className="border rounded-md max-h-[420px] overflow-y-auto">
+        {loading ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : produtos.length === 0 ? (
+          <p className="p-4 text-sm text-muted-foreground text-center">Nenhum produto ativo.</p>
+        ) : (
+          <table className="table-fixed w-full text-sm">
+            <thead className="bg-muted/40 text-xs text-muted-foreground">
+              <tr>
+                <th className="text-left font-medium px-3 py-2 w-1/2">Produto</th>
+                <th className="text-right font-medium px-3 py-2 w-1/4">Média semanal</th>
+                <th className="text-right font-medium px-3 py-2 w-1/4">Alvo (un)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {produtos.map((p) => {
+                const media = mediaVendasPorProduto[p.id] ?? 0;
+                const alvo = calcAlvo(media);
+                return (
+                  <tr key={p.id}>
+                    <td className="px-3 py-2 truncate">{p.nome}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                      {Math.round(media)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums font-medium text-primary">
+                      {alvo}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
