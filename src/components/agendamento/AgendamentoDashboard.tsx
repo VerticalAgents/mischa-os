@@ -366,11 +366,22 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
         isSameDay(new Date(agendamento.dataReposicao), dia)
       );
       
-      const agendamentosPrevistos = agendamentosDia.filter(a => a.statusAgendamento === "Previsto");
+      const todosPrevistos = agendamentosDia.filter(a => a.statusAgendamento === "Previsto");
       const agendamentosConfirmados = agendamentosDia.filter(a => a.statusAgendamento === "Agendado");
+
+      const destacarProvaveis = incluirPrevistos && modoPrevistos === 'provaveis';
+      const agendamentosProvaveis = destacarProvaveis
+        ? todosPrevistos.filter(a => (scoresSemanais.get(a.cliente.id)?.score ?? 0) > 85)
+        : [];
+      const agendamentosPrevistos = destacarProvaveis
+        ? todosPrevistos.filter(a => (scoresSemanais.get(a.cliente.id)?.score ?? 0) <= 85)
+        : todosPrevistos;
       
       // Calcular unidades
       const unidadesPrevistos = agendamentosPrevistos.reduce((sum, a) => 
+        sum + (a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0), 0
+      );
+      const unidadesProvaveis = agendamentosProvaveis.reduce((sum, a) => 
         sum + (a.pedido?.totalPedidoUnidades || a.cliente.quantidadePadrao || 0), 0
       );
       const unidadesConfirmados = agendamentosConfirmados.reduce((sum, a) => 
@@ -385,6 +396,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
       
       // Lista de clientes
       const clientesPrevistos = agendamentosPrevistos.map(a => a.cliente.nome);
+      const clientesProvaveis = agendamentosProvaveis.map(a => a.cliente.nome);
       const clientesConfirmados = agendamentosConfirmados.map(a => a.cliente.nome);
       const clientesRealizadas = entregasRealizadasDia.map(e => {
         const cliente = clientes.find(c => c.id === e.cliente_id);
@@ -395,20 +407,23 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
         dia: format(dia, 'dd/MM', { locale: ptBR }),
         diaSemana: format(dia, 'EEEE', { locale: ptBR }),
         previstos: agendamentosPrevistos.length,
+        provaveis: agendamentosProvaveis.length,
         confirmados: agendamentosConfirmados.length,
         realizadas: entregasRealizadasDia.length,
         previstosUnidades: unidadesPrevistos,
+        provaveisUnidades: unidadesProvaveis,
         confirmadosUnidades: unidadesConfirmados,
         realizadasUnidades: unidadesRealizadas,
         clientesPrevistos,
+        clientesProvaveis,
         clientesConfirmados,
         clientesRealizadas,
-        total: agendamentosPrevistos.length + agendamentosConfirmados.length,
+        total: agendamentosPrevistos.length + agendamentosProvaveis.length + agendamentosConfirmados.length,
         isToday: isToday(dia),
         dataCompleta: dia
       };
     });
-  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, clientes]);
+  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, clientes, incluirPrevistos, modoPrevistos, scoresSemanais]);
 
   const agendamentosDiaSelecionado = useMemo(() => {
     if (!diaSelecionado) return [];
