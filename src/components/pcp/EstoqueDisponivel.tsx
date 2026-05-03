@@ -132,29 +132,30 @@ export default function EstoqueDisponivel({
         return 'Adequado';
     }
   };
-  return <Card>
+  const hasToolbar = Object.keys(producaoAgendada).length > 0;
+  return <Card className="h-full flex flex-col">
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="space-y-1.5">
-            <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-primary" /> Estoque Disponível</CardTitle>
-            <CardDescription className="text-left">
-              {incluirProducaoAgendada ? "Saldo atual + produção agendada − expedição" : "Saldo atual menos quantidades em expedição"}
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            {Object.keys(producaoAgendada).length > 0 && <div className="flex items-center gap-1.5">
-                <Label htmlFor="incluir-producao" className="text-xs cursor-pointer whitespace-nowrap">
-                  Incluir prod. agendada
-                </Label>
-                <Switch id="incluir-producao" checked={incluirProducaoAgendada} onCheckedChange={setIncluirProducaoAgendada} />
-              </div>}
-            <Button variant="ghost" size="icon" onClick={recarregar} disabled={loading} title="Atualizar">
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-          </div>
+        <div className="space-y-1.5">
+          <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-primary" /> Estoque Disponível</CardTitle>
+          <CardDescription className="text-left">
+            {incluirProducaoAgendada ? "Saldo atual + produção agendada − expedição" : "Saldo atual menos quantidades em expedição"}
+          </CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1">
+        <div className="flex items-center justify-end gap-2 pb-3 mb-3 border-b min-h-[2.25rem]">
+          {hasToolbar && (
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="incluir-producao" className="text-xs cursor-pointer whitespace-nowrap">
+                Incluir prod. agendada
+              </Label>
+              <Switch id="incluir-producao" checked={incluirProducaoAgendada} onCheckedChange={setIncluirProducaoAgendada} />
+            </div>
+          )}
+          <Button variant="ghost" size="icon" onClick={recarregar} disabled={loading} title="Atualizar" className="h-8 w-8">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
         {error ? <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
