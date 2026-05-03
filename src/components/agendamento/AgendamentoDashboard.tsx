@@ -1313,6 +1313,9 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                   {dia.previstos > 0 && <Badge variant="outline" className="text-[10px] bg-amber-100 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
                       {dia.previstos} Previstos
                     </Badge>}
+                  {dia.provaveis > 0 && <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-700 border-purple-200 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
+                      {dia.provaveis} Prováveis
+                    </Badge>}
                   {dia.realizadas > 0 && <Badge variant="outline" className="text-[10px] bg-blue-100 text-blue-700 border-blue-200 rounded-none whitespace-nowrap justify-center flex-1 md:w-full md:flex-none">
                       {dia.realizadas} Entregues
                     </Badge>}
