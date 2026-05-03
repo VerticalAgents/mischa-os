@@ -165,12 +165,13 @@ export default function QuantidadesProdutosSemanal({
       : 0
   );
 
-  return <Card>
+  const isProvavelMode = incluirPrevistos && modoPrevistos === 'provaveis';
+  return <Card className={isProvavelMode ? 'border-purple-300 dark:border-purple-800 bg-purple-50/40 dark:bg-purple-950/20' : ''}>
     <CardHeader>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
         <div className="space-y-1.5">
           <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-            <Package className="h-4 w-4 md:h-5 md:w-5 text-blue-500" />
+            <Package className={`h-4 w-4 md:h-5 md:w-5 ${isProvavelMode ? 'text-purple-500' : 'text-blue-500'}`} />
             Produtos Necessários
           </CardTitle>
           <CardDescription className="text-left text-xs md:text-sm">
@@ -241,10 +242,10 @@ export default function QuantidadesProdutosSemanal({
           </p>
         </div> : <div className="space-y-4">
           {/* Total Geral */}
-          <div className="bg-blue-50 dark:bg-blue-950/20 p-3 md:p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className={`p-3 md:p-4 rounded-lg border ${isProvavelMode ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800' : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'}`}>
             <p className="text-xs md:text-sm text-muted-foreground mb-1">Quantidade Total Necessária</p>
-            <p className="text-2xl md:text-3xl font-bold text-blue-600">{quantidadeTotal}</p>
-            <Badge variant="default" className="mt-2 bg-blue-200">
+            <p className={`text-2xl md:text-3xl font-bold ${isProvavelMode ? 'text-purple-600' : 'text-blue-600'}`}>{quantidadeTotal}</p>
+            <Badge variant="default" className={`mt-2 ${isProvavelMode ? 'bg-purple-200 text-purple-900 hover:bg-purple-200' : 'bg-blue-200'}`}>
               {totalPedidos} {totalPedidos === 1 ? 'pedido' : 'pedidos'}
             </Badge>
           </div>
