@@ -60,5 +60,6 @@ export const configuracoesProducaoMock: ConfiguracoesProducao = {
   percentualPedidosPrevistos: 15,
   tempoMedioPorFornada: 45,
   unidadesBrowniePorForma: 16,
-  formasPorFornada: 2
+  formasPorFornada: 2,
+  coberturaAlvoDias: 3
 };

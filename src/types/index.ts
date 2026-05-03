@@ -108,6 +108,13 @@ export interface ConfiguracoesProducao {
   tempoMedioPorFornada: number; // em minutos
   unidadesBrowniePorForma: number;
   formasPorFornada: number;
+  /**
+   * Cobertura alvo (em dias) para o estoque de fechamento da fábrica.
+   * Representa quantos dias de média de vendas a fábrica quer manter no
+   * estoque ao fechar na sexta — esse é o estoque com que a próxima semana
+   * abre, cobrindo segunda a quarta sem produção. Default: 3.
+   */
+  coberturaAlvoDias: number;
 }
 
 export type StatusPedido = 'Agendado' | 'Em Separação' | 'Despachado' | 'Entregue' | 'Cancelado';

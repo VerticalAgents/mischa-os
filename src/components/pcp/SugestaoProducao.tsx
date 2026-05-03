@@ -2,16 +2,16 @@ import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Factory, Loader2, ChevronDown, ChevronUp, AlertCircle, Info, Target, Package, Filter } from "lucide-react";
+import { Factory, Loader2, ChevronDown, ChevronUp, AlertCircle, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRendimentosReceitaProduto } from "@/hooks/useRendimentosReceitaProduto";
 import { useMediaVendasSemanais } from "@/hooks/useMediaVendasSemanais";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
+import { useConfigStore } from "@/hooks/useConfigStore";
 
 interface ProdutoQuantidade {
   produto_id: string;
@@ -61,6 +61,8 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
   const { obterRendimentoPorProduto, loading: loadingRendimentos } = useRendimentosReceitaProduto();
   const { mediaVendasPorProduto, loading: loadingMediaVendas } = useMediaVendasSemanais();
   const { proporcoes, loading: loadingProporcoes } = useSupabaseProporoesPadrao();
+  const { configuracoesProducao } = useConfigStore();
+  const coberturaAlvoDias = configuracoesProducao?.coberturaAlvoDias ?? 3;
 
   // Buscar todos os produtos finais ativos
   useEffect(() => {
@@ -113,9 +115,11 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
       // Buscar proporção padrão
       const proporcao_padrao = proporcoesMap.get(produto.id) || 0;
       
-      // 1. Calcular estoque alvo (20% da média de vendas das últimas 12 semanas)
+      // 1. Estoque alvo = média semanal × cobertura (dias) / 7
+      //    Representa o estoque com que se quer fechar a fábrica na sexta,
+      //    cobrindo os primeiros dias da próxima semana.
       const media_vendas = mediaVendasPorProduto[produto.id] || 0;
-      const estoque_alvo = Math.round(media_vendas * 0.20);
+      const estoque_alvo = Math.round((media_vendas * coberturaAlvoDias) / 7);
       
       // 2. Calcular quantidade base e quantidade para estoque alvo
       let quantidade_base = 0;
@@ -197,7 +201,8 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
               Sugestão de Produção
             </CardTitle>
             <CardDescription className="text-left">
-              Quantidade de formas a produzir baseada nos rendimentos cadastrados
+              Alvo: cobrir <strong>{coberturaAlvoDias} {coberturaAlvoDias === 1 ? "dia" : "dias"}</strong> de demanda no fechamento da semana ·
+              configure em <em>Setup</em>
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -231,15 +236,6 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Alerta Informativo - Estoque Alvo */}
-            <Alert className="bg-blue-500/10 border-blue-500/20">
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                As sugestões incluem <strong>estoque alvo de 20%</strong> da média das últimas 12 semanas, 
-                garantindo produto disponível para pedidos de última hora.
-              </AlertDescription>
-            </Alert>
-
             {/* Total Geral */}
             <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20 text-center">
               <p className="text-sm text-muted-foreground mb-1">Total de Formas a Produzir</p>
@@ -286,151 +282,41 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
                   </Button>
                 </CollapsibleTrigger>
               </div>
-              <CollapsibleContent className="space-y-2">
+              <CollapsibleContent className="space-y-1.5">
                 {sugestoesFiltradas.map((sugestao) => (
-                  <TooltipProvider key={sugestao.produto_id}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="border rounded-lg hover:bg-muted/50 transition-colors overflow-hidden">
-                          {/* Cabeçalho */}
-                          <div className="flex items-center justify-between p-3 pb-2">
-                            <div className="flex items-center gap-3 text-left flex-1">
-                              <Factory className="h-4 w-4 text-muted-foreground" />
-                              <div className="flex-1">
-                                <span className="font-medium">{sugestao.produto_nome}</span>
-                                <p className="text-xs text-muted-foreground mt-0.5 text-left">
-                                  Necessário: {sugestao.quantidade_necessaria} | Estoque: {sugestao.estoque_disponivel}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-1">
-                              {sugestao.nao_precisa_produzir ? (
-                                <Badge 
-                                  variant="outline"
-                                  className="text-base px-3 py-1 bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
-                                >
-                                  Estoque OK
-                                </Badge>
-                              ) : (
-                                <Badge 
-                                  variant={sugestao.tem_rendimento ? "default" : "destructive"}
-                                  className="text-base px-3 py-1"
-                                >
-                                  {sugestao.tem_rendimento ? `${sugestao.formas_sugeridas} formas` : '—'}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Detalhamento da Produção */}
-                          {!sugestao.nao_precisa_produzir && (
-                            <div className="px-3 pb-3 pt-1 border-t border-dashed space-y-1.5">
-                              {/* Produção Base */}
-                              {sugestao.quantidade_base > 0 && (
-                                <div className="flex items-center gap-2 text-xs">
-                                  <Package className="h-3 w-3 text-red-500" />
-                                  <span className="text-muted-foreground">Produção Base:</span>
-                                  <Badge variant="outline" className="bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20 text-xs px-2 py-0">
-                                    {sugestao.quantidade_base} un
-                                  </Badge>
-                                  <span className="text-muted-foreground text-[10px]">(cobrir déficit)</span>
-                                </div>
-                              )}
-                              
-                              {/* Estoque Alvo */}
-                              {sugestao.estoque_alvo > 0 ? (
-                                <div className="flex items-center gap-2 text-xs">
-                                  <Target className="h-3 w-3 text-green-500" />
-                                  <span className="text-muted-foreground">Estoque Alvo:</span>
-                                  <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20 text-xs px-2 py-0">
-                                    +{sugestao.estoque_alvo} un
-                                  </Badge>
-                                  <span className="text-muted-foreground text-[10px]">
-                                    (20% média: {sugestao.media_vendas_12_semanas} un/sem)
-                                  </span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2 text-xs">
-                                  <Target className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-muted-foreground">Estoque Alvo:</span>
-                                  <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-muted text-xs px-2 py-0">
-                                    0 un
-                                  </Badge>
-                                  <span className="text-muted-foreground text-[10px]">(sem histórico)</span>
-                                </div>
-                              )}
-
-                              {/* Total e Cálculo de Formas */}
-                              <div className="flex items-center gap-2 text-xs pt-1 border-t border-dashed">
-                                <Factory className="h-3 w-3 text-primary" />
-                                <span className="font-medium text-foreground">Total:</span>
-                                <Badge variant="default" className="text-xs px-2 py-0">
-                                  {sugestao.quantidade_a_produzir} un
-                                </Badge>
-                                {sugestao.tem_rendimento ? (
-                                  <span className="text-muted-foreground text-[10px]">
-                                    ÷ {sugestao.rendimento} un/forma = {sugestao.formas_sugeridas} formas
-                                  </span>
-                                ) : (
-                                  <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20 px-2 py-0">
-                                    Sem rendimento
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
+                  <div
+                    key={sugestao.produto_id}
+                    className="flex items-center justify-between gap-3 px-3 py-2 border rounded-md hover:bg-muted/40 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{sugestao.produto_nome}</p>
+                      {sugestao.nao_precisa_produzir ? (
+                        <p className="text-xs text-muted-foreground">
+                          Estoque {sugestao.estoque_disponivel} ≥ alvo {sugestao.estoque_alvo}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Estoque {sugestao.estoque_disponivel} → alvo {sugestao.estoque_alvo}
+                          {" · produzir "}
+                          <strong className="text-foreground">{sugestao.quantidade_a_produzir} un</strong>
+                          {sugestao.tem_rendimento && (
+                            <span> (÷ {sugestao.rendimento} un/forma)</span>
                           )}
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <div className="text-xs space-y-2">
-                          <div className="font-semibold border-b pb-1">Cálculo Detalhado</div>
-                          
-                          {/* Histórico */}
-                          <div className="space-y-0.5">
-                            <p className="font-medium">📊 Histórico (12 semanas):</p>
-                            <p className="pl-4">
-                              • Média semanal: <strong>{sugestao.media_vendas_12_semanas} unidades</strong>
-                            </p>
-                          </div>
-
-                          {/* Estoque Alvo */}
-                          <div className="space-y-0.5">
-                            <p className="font-medium">🎯 Estoque Alvo:</p>
-                            <p className="pl-4">
-                              • 20% da média: <strong>{sugestao.estoque_alvo} unidades</strong>
-                            </p>
-                            <p className="pl-4 text-muted-foreground text-[10px]">
-                              Garante segurança para pedidos extras
-                            </p>
-                          </div>
-
-                          {/* Necessidade de Produção */}
-                          <div className="space-y-0.5">
-                            <p className="font-medium">📦 Necessidade de Produção:</p>
-                            <p className="pl-4">• Déficit atual: <strong>{sugestao.quantidade_base} unidades</strong></p>
-                            <p className="pl-4">• Estoque alvo: <strong>+{sugestao.estoque_alvo} unidades</strong></p>
-                            <p className="pl-4">• Total a produzir: <strong>{sugestao.quantidade_a_produzir} unidades</strong></p>
-                          </div>
-
-                          {/* Formas */}
-                          {sugestao.tem_rendimento ? (
-                            <div className="space-y-0.5">
-                              <p className="font-medium">🏭 Formas Necessárias:</p>
-                              <p className="pl-4">
-                                • {sugestao.quantidade_a_produzir} ÷ {sugestao.rendimento} un/forma = {(sugestao.quantidade_a_produzir / sugestao.rendimento!).toFixed(2)}
-                              </p>
-                              <p className="pl-4">• Arredondado: <strong>{sugestao.formas_sugeridas} formas</strong></p>
-                              <p className="pl-4">
-                                • Produzirá: <strong>{sugestao.formas_sugeridas * sugestao.rendimento!} unidades</strong>
-                              </p>
-                            </div>
-                          ) : (
-                            <p className="text-red-500 font-semibold">⚠️ Configure o rendimento em Precificação {'>'} Rendimentos</p>
-                          )}
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                        </p>
+                      )}
+                    </div>
+                    <div className="shrink-0">
+                      {sugestao.nao_precisa_produzir ? (
+                        <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
+                          Estoque OK
+                        </Badge>
+                      ) : sugestao.tem_rendimento ? (
+                        <Badge variant="default">{sugestao.formas_sugeridas} formas</Badge>
+                      ) : (
+                        <Badge variant="destructive">sem rendimento</Badge>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </CollapsibleContent>
             </Collapsible>

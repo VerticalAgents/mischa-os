@@ -34,6 +34,7 @@ export const useConfigStore = create<ConfigStore>()(
         tempoMedioPorFornada: 45,
         unidadesBrowniePorForma: 16,
         formasPorFornada: 2,
+        coberturaAlvoDias: 3,
       },
       
       atualizarConfiguracoesProducao: (config: ConfiguracoesProducao) => {
