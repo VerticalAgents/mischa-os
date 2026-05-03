@@ -13,6 +13,7 @@ import HistoricoAnalytics from "@/components/pcp/HistoricoAnalytics";
 import ProjecaoProducaoTab from "@/components/pcp/ProjecaoProducaoTab";
 import HistoricoProducao from "@/components/pcp/HistoricoProducao";
 import AuditoriaPCPTab from "@/components/pcp/AuditoriaPCPTab";
+import SetupPCPTab from "@/components/pcp/SetupPCPTab";
 
 export default function PCP() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -63,6 +64,7 @@ export default function PCP() {
           <div className="grid grid-cols-2 gap-2 lg:hidden">
             {[
               { id: "dashboard", label: "Dashboard" },
+              { id: "setup", label: "Setup" },
               { id: "projecao-producao", label: "Projeção de Produção" },
               { id: "registro", label: "Registro" },
               { id: "auditoria-pcp", label: "Auditoria PCP" },
@@ -83,6 +85,7 @@ export default function PCP() {
           {/* Desktop */}
           <TabsList className="hidden lg:inline-flex w-full justify-start">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="setup">Setup</TabsTrigger>
             <TabsTrigger value="projecao-producao">Projeção de Produção</TabsTrigger>
             <TabsTrigger value="registro">Registro</TabsTrigger>
             <TabsTrigger value="auditoria-pcp">Auditoria PCP</TabsTrigger>
@@ -94,6 +97,10 @@ export default function PCP() {
 
           <TabsContent value="dashboard" className="space-y-6 mt-6">
             {activeTab === "dashboard" && <HistoricoAnalytics />}
+          </TabsContent>
+
+          <TabsContent value="setup" className="space-y-6 mt-6">
+            {activeTab === "setup" && <SetupPCPTab />}
           </TabsContent>
 
           <TabsContent value="registro" className="space-y-6 mt-6">
