@@ -288,28 +288,35 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
     const fimSemana = endOfWeek(semanaAtual, { weekStartsOn: 1 });
     const agendamentosSemana = agendamentosFiltrados.filter(agendamento => {
       const dataAgendamento = new Date(agendamento.dataReposicao);
-      return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana;
+      return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana
+        && (agendamento.statusAgendamento === "Previsto" || agendamento.statusAgendamento === "Agendado");
     });
-    
-    // Calcular contagem, unidades e lista de clientes por status
-    const contadores = agendamentosSemana.reduce((acc, agendamento) => {
-      const status = agendamento.statusAgendamento;
-      const unidades = agendamento.pedido?.totalPedidoUnidades || agendamento.cliente.quantidadePadrao || 0;
-      if (!acc[status]) {
-        acc[status] = { quantidade: 0, unidades: 0, clientes: [] as string[] };
+
+    // Modo "prováveis": separa Previsto em Provável (roxo) e Previsto (âmbar). Nunca mostra "Agendar" (vermelho).
+    const destacarProvaveis = incluirPrevistos && modoPrevistos === 'provaveis';
+    const buckets: Record<string, { quantidade: number; unidades: number; clientes: string[]; cor: string }> = {};
+    const ensure = (status: string, cor: string) => {
+      if (!buckets[status]) buckets[status] = { quantidade: 0, unidades: 0, clientes: [], cor };
+      return buckets[status];
+    };
+    for (const ag of agendamentosSemana) {
+      const unidades = ag.pedido?.totalPedidoUnidades || ag.cliente.quantidadePadrao || 0;
+      let key: string;
+      let cor: string;
+      if (ag.statusAgendamento === "Agendado") {
+        key = "Agendado"; cor = "#10B981";
+      } else {
+        const ehProvavel = destacarProvaveis && (scoresSemanais.get(ag.cliente.id)?.score ?? 0) > 85;
+        if (ehProvavel) { key = "Previsto Provável"; cor = "#A855F7"; }
+        else { key = "Previsto"; cor = "#F59E0B"; }
       }
-      acc[status].quantidade += 1;
-      acc[status].unidades += unidades;
-      acc[status].clientes.push(agendamento.cliente.nome);
-      return acc;
-    }, {} as Record<string, { quantidade: number; unidades: number; clientes: string[] }>);
-    
-    const data = Object.entries(contadores).map(([status, valores]) => ({
-      status,
-      quantidade: valores.quantidade,
-      unidades: valores.unidades,
-      clientes: valores.clientes,
-      cor: status === "Previsto" ? "#F59E0B" : status === "Agendado" ? "#10B981" : "#EF4444"
+      const b = ensure(key, cor);
+      b.quantidade += 1;
+      b.unidades += unidades;
+      b.clientes.push(ag.cliente.nome);
+    }
+    const data = Object.entries(buckets).map(([status, v]) => ({
+      status, quantidade: v.quantidade, unidades: v.unidades, clientes: v.clientes, cor: v.cor
     }));
     
     // Adicionar entregas realizadas na semana
@@ -335,7 +342,7 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
     }
     
     return data;
-  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, clientes]);
+  }, [agendamentosFiltrados, semanaAtual, entregasHistoricoFiltradas, clientes, incluirPrevistos, modoPrevistos, scoresSemanais]);
 
   const dadosGraficoSemanal = useMemo(() => {
     const inicioSemana = startOfWeek(semanaAtual, { weekStartsOn: 1 });
