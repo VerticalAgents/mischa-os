@@ -1419,9 +1419,12 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                       const frequenciaReal = frequenciaInfo?.frequenciaReal ?? null;
                       const numeroEntregas = frequenciaInfo?.numeroEntregas ?? 0;
 
+                      const scoreCard = confirmationScores.get(agendamento.cliente.id)?.score ?? -1;
                       const getBackgroundColor = () => {
                         if (agendamento.statusAgendamento === "Agendado") return "bg-green-50";
-                        if (agendamento.statusAgendamento === "Previsto") return "bg-yellow-50";
+                        if (agendamento.statusAgendamento === "Previsto") {
+                          return scoreCard > 85 ? "bg-purple-50 border-purple-200" : "bg-yellow-50";
+                        }
                         return "bg-gray-50";
                       };
 
@@ -1524,9 +1527,10 @@ export default function AgendamentoDashboard({ hideExportPDF = false }: Agendame
                             .sort((a, b) => {
                               const scoreA = confirmationScores.get(a.cliente.id)?.score ?? -1;
                               const scoreB = confirmationScores.get(b.cliente.id)?.score ?? -1;
-                              const faixaA = scoreA >= 85 ? 0 : scoreA >= 50 ? 1 : scoreA >= 0 ? 2 : 3;
-                              const faixaB = scoreB >= 85 ? 0 : scoreB >= 50 ? 1 : scoreB >= 0 ? 2 : 3;
-                              if (faixaA !== faixaB) return faixaA - faixaB;
+                              const provA = scoreA > 85 ? 0 : 1;
+                              const provB = scoreB > 85 ? 0 : 1;
+                              if (provA !== provB) return provA - provB;
+                              if (scoreB !== scoreA) return scoreB - scoreA;
                               return a.cliente.nome.localeCompare(b.cliente.nome);
                             })
                             .map(renderCard)}
