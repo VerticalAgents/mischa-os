@@ -121,9 +121,6 @@ export default function QuantidadesProdutosSemanal({
     calcular();
   }, [agendamentosConfirmadosSemana, agendamentosPrevistosSemana, previstosProvaveis]);
 
-  // Map of predicted client ids that are "provaveis" (score > 85)
-  const provavelIds = useMemo(() => new Set(previstosProvaveis.map(a => a.id)), [previstosProvaveis]);
-
   // Merge confirmed + simulated predicted quantities
   const produtosOrdenados = useMemo(() => {
     const merged: Record<string, ProdutoQuantidade> = {};
@@ -135,14 +132,7 @@ export default function QuantidadesProdutosSemanal({
     
     if (incluirPrevistos) {
       if (modoPrevistos === 'provaveis') {
-        // soma 100% apenas dos previstos prováveis (precisa refazer fetch só desse subset)
-        // como já temos todos previstos, usamos um proxy: proporção provaveis/total
-        const totalPrev = agendamentosPrevistosSemana.length;
-        const provaveisCount = previstosProvaveis.length;
-        if (totalPrev > 0 && provaveisCount > 0) {
-          // Refazemos a soma: como fetchQuantidades agrega tudo, aproximamos por proporção.
-          // Para precisão, fazemos fetch separado abaixo via useEffect dedicado.
-        }
+        // 100% das unidades dos previstos prováveis (score > 85)
         for (const [id, prod] of Object.entries(quantidadesPorProdutoPrevistosProvaveis)) {
           if (merged[id]) {
             merged[id].quantidade += prod.quantidade;
@@ -169,7 +159,11 @@ export default function QuantidadesProdutosSemanal({
     return produtosOrdenados.reduce((sum, produto) => sum + produto.quantidade, 0);
   }, [produtosOrdenados]);
 
-  const totalPedidos = agendamentosConfirmadosSemana.length + (incluirPrevistos ? agendamentosPrevistosSemana.length : 0);
+  const totalPedidos = agendamentosConfirmadosSemana.length + (
+    incluirPrevistos
+      ? (modoPrevistos === 'provaveis' ? previstosProvaveis.length : agendamentosPrevistosSemana.length)
+      : 0
+  );
 
   return <Card>
     <CardHeader>
@@ -180,7 +174,11 @@ export default function QuantidadesProdutosSemanal({
             Produtos Necessários
           </CardTitle>
           <CardDescription className="text-left text-xs md:text-sm">
-            Quantidades para pedidos {incluirPrevistos ? `confirmados + ${percentualPrevistos}% previstos` : "confirmados"}
+            Quantidades para pedidos {incluirPrevistos
+              ? (modoPrevistos === 'provaveis'
+                  ? 'confirmados + previstos prováveis'
+                  : `confirmados + ${percentualPrevistos}% previstos`)
+              : "confirmados"}
           </CardDescription>
         </div>
         {onToggleIncluirPrevistos && (
@@ -195,7 +193,27 @@ export default function QuantidadesProdutosSemanal({
                 onCheckedChange={onToggleIncluirPrevistos}
               />
             </div>
-            {incluirPrevistos && onChangePercentualPrevistos && (
+            {incluirPrevistos && onChangeModoPrevistos && (
+              <RadioGroup
+                value={modoPrevistos}
+                onValueChange={(v) => onChangeModoPrevistos(v as 'provaveis' | 'percentual')}
+                className="flex items-center gap-3"
+              >
+                <div className="flex items-center gap-1.5">
+                  <RadioGroupItem value="provaveis" id="modo-provaveis" />
+                  <Label htmlFor="modo-provaveis" className="text-xs cursor-pointer whitespace-nowrap">
+                    Apenas prováveis
+                  </Label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <RadioGroupItem value="percentual" id="modo-percentual" />
+                  <Label htmlFor="modo-percentual" className="text-xs cursor-pointer whitespace-nowrap">
+                    Percentual
+                  </Label>
+                </div>
+              </RadioGroup>
+            )}
+            {incluirPrevistos && modoPrevistos === 'percentual' && onChangePercentualPrevistos && (
               <div className="flex items-center gap-1">
                 <Input
                   type="number"
