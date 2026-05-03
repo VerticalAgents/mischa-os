@@ -1,245 +1,250 @@
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Settings2, Target } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Target, Info, Loader2, Save } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { useConfigStore } from "@/hooks/useConfigStore";
 import { useMediaVendasSemanais } from "@/hooks/useMediaVendasSemanais";
-import { ConfiguracoesProducao } from "@/types";
+import { cn } from "@/lib/utils";
 
-const setupSchema = z.object({
-  coberturaAlvoDias: z.number().min(0).max(14).default(3),
-  unidadesPorForma: z.number().min(1).default(24),
-  formasPorLote: z.number().min(1).default(4),
-  formasPorFornada: z.number().min(1).default(2),
-  tempoMedioPorFornada: z.number().min(1).default(45),
-  incluirPedidosPrevistos: z.boolean().default(true),
-  percentualPedidosPrevistos: z.number().min(0).max(100).default(15),
-});
+type Modo = "fixo" | "percentual" | "cobertura";
 
-type SetupFormData = z.infer<typeof setupSchema>;
+interface ProdutoAtivo {
+  id: string;
+  nome: string;
+}
+
+const MODOS: { id: Modo; titulo: string; descricao: string }[] = [
+  {
+    id: "fixo",
+    titulo: "Fixo por produto",
+    descricao: "Defino manualmente um alvo em unidades para cada produto.",
+  },
+  {
+    id: "percentual",
+    titulo: "% da média histórica",
+    descricao: "Alvo varia conforme a média de vendas das últimas 12 semanas.",
+  },
+  {
+    id: "cobertura",
+    titulo: "Cobertura por dias",
+    descricao: "Alvo = média semanal × dias / 7. Cobre os primeiros dias da semana.",
+  },
+];
 
 export default function SetupPCPTab() {
   const { configuracoesProducao, atualizarConfiguracoesProducao } = useConfigStore();
   const { mediaVendasPorProduto } = useMediaVendasSemanais();
 
-  const form = useForm<SetupFormData>({
-    resolver: zodResolver(setupSchema),
-    defaultValues: {
-      coberturaAlvoDias: configuracoesProducao?.coberturaAlvoDias ?? 3,
-      unidadesPorForma: configuracoesProducao?.unidadesPorForma ?? 24,
-      formasPorLote: configuracoesProducao?.formasPorLote ?? 4,
-      formasPorFornada: configuracoesProducao?.formasPorFornada ?? 2,
-      tempoMedioPorFornada: configuracoesProducao?.tempoMedioPorFornada ?? 45,
-      incluirPedidosPrevistos: configuracoesProducao?.incluirPedidosPrevistos ?? true,
-      percentualPedidosPrevistos: configuracoesProducao?.percentualPedidosPrevistos ?? 15,
-    },
-  });
+  const [modo, setModo] = useState<Modo>(configuracoesProducao?.estoqueAlvoModo ?? "cobertura");
+  const [percentual, setPercentual] = useState<number>(configuracoesProducao?.estoqueAlvoPercentual ?? 20);
+  const [coberturaDias, setCoberturaDias] = useState<number>(
+    configuracoesProducao?.estoqueAlvoCoberturaDias ?? configuracoesProducao?.coberturaAlvoDias ?? 3
+  );
+  const [fixoPorProduto, setFixoPorProduto] = useState<Record<string, number>>(
+    configuracoesProducao?.estoqueAlvoFixoPorProduto ?? {}
+  );
+
+  const [produtos, setProdutos] = useState<ProdutoAtivo[]>([]);
+  const [loadingProdutos, setLoadingProdutos] = useState(true);
 
   useEffect(() => {
-    if (configuracoesProducao) {
-      form.reset({
-        coberturaAlvoDias: configuracoesProducao.coberturaAlvoDias ?? 3,
-        unidadesPorForma: configuracoesProducao.unidadesPorForma,
-        formasPorLote: configuracoesProducao.formasPorLote,
-        formasPorFornada: configuracoesProducao.formasPorFornada,
-        tempoMedioPorFornada: configuracoesProducao.tempoMedioPorFornada,
-        incluirPedidosPrevistos: configuracoesProducao.incluirPedidosPrevistos,
-        percentualPedidosPrevistos: configuracoesProducao.percentualPedidosPrevistos,
-      });
-    }
-  }, [configuracoesProducao, form]);
-
-  // Preview: média total + alvo total
-  const coberturaWatch = form.watch("coberturaAlvoDias");
-  const totalMediaSemanal = Object.values(mediaVendasPorProduto).reduce((s, v) => s + (v || 0), 0);
-  const previewAlvoTotal = Math.round((totalMediaSemanal * coberturaWatch) / 7);
-
-  const onSubmit = (data: SetupFormData) => {
-    const next: ConfiguracoesProducao = {
-      ...configuracoesProducao,
-      coberturaAlvoDias: data.coberturaAlvoDias,
-      unidadesPorForma: data.unidadesPorForma,
-      formasPorLote: data.formasPorLote,
-      formasPorFornada: data.formasPorFornada,
-      tempoMedioPorFornada: data.tempoMedioPorFornada,
-      incluirPedidosPrevistos: data.incluirPedidosPrevistos,
-      percentualPedidosPrevistos: data.percentualPedidosPrevistos,
-      unidadesBrowniePorForma: configuracoesProducao?.unidadesBrowniePorForma ?? 16,
+    const fetchProdutos = async () => {
+      try {
+        setLoadingProdutos(true);
+        const { data, error } = await supabase
+          .from("produtos_finais")
+          .select("id, nome")
+          .eq("ativo", true)
+          .order("nome");
+        if (error) throw error;
+        setProdutos(data || []);
+      } catch (e) {
+        console.error("Erro ao carregar produtos:", e);
+      } finally {
+        setLoadingProdutos(false);
+      }
     };
-    atualizarConfiguracoesProducao(next);
-    toast({ title: "Setup atualizado", description: "Parâmetros do PCP foram salvos." });
+    fetchProdutos();
+  }, []);
+
+  // Pré-visualização
+  const mediaTotalSemanal = useMemo(
+    () => Object.values(mediaVendasPorProduto).reduce((s, v) => s + (v || 0), 0),
+    [mediaVendasPorProduto]
+  );
+
+  const previewAlvoTotal = useMemo(() => {
+    if (modo === "fixo") {
+      return Object.values(fixoPorProduto).reduce((s, v) => s + (Number(v) || 0), 0);
+    }
+    if (modo === "percentual") {
+      return Math.round((mediaTotalSemanal * percentual) / 100);
+    }
+    return Math.round((mediaTotalSemanal * coberturaDias) / 7);
+  }, [modo, percentual, coberturaDias, fixoPorProduto, mediaTotalSemanal]);
+
+  const handleFixoChange = (produtoId: string, valor: string) => {
+    const num = Math.max(0, parseInt(valor || "0", 10));
+    setFixoPorProduto((prev) => ({ ...prev, [produtoId]: isNaN(num) ? 0 : num }));
+  };
+
+  const handleSalvar = () => {
+    atualizarConfiguracoesProducao({
+      ...(configuracoesProducao as any),
+      estoqueAlvoModo: modo,
+      estoqueAlvoPercentual: percentual,
+      estoqueAlvoCoberturaDias: coberturaDias,
+      estoqueAlvoFixoPorProduto: fixoPorProduto,
+      coberturaAlvoDias: coberturaDias, // compat
+    });
+    toast({
+      title: "Setup salvo",
+      description: "O Estoque Alvo será aplicado na Sugestão de Produção.",
+    });
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Estoque Alvo */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-primary" />
-              <CardTitle>Estoque Alvo</CardTitle>
-            </div>
-            <CardDescription>
-              Estoque com que a fábrica fecha na sexta — é o estoque com que a próxima semana abre,
-              cobrindo segunda a quarta sem produção. Defina quantos dias de demanda média manter como colchão.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-              <FormField
-                control={form.control}
-                name="coberturaAlvoDias"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cobertura alvo (dias)</FormLabel>
-                    <FormControl>
+    <div className="space-y-6">
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          Configure como o <strong>Estoque Alvo</strong> de cada produto é calculado. Esse alvo alimenta diretamente
+          o card <strong>Sugestão de Produção</strong> no Dashboard.
+        </AlertDescription>
+      </Alert>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary" />
+            <CardTitle>Estoque Alvo</CardTitle>
+          </div>
+          <CardDescription>
+            Selecione um dos três modos abaixo. Apenas o modo selecionado é aplicado.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Seletor de modos */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {MODOS.map((m) => {
+              const ativo = modo === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setModo(m.id)}
+                  className={cn(
+                    "text-left rounded-lg border p-4 transition-colors",
+                    ativo
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border hover:bg-muted/40"
+                  )}
+                >
+                  <p className={cn("font-medium", ativo && "text-primary")}>{m.titulo}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{m.descricao}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Painel do modo selecionado */}
+          {modo === "fixo" && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Estoque alvo por produto (un)</Label>
+                <span className="text-xs text-muted-foreground">
+                  Total alvo: <strong className="text-foreground">{previewAlvoTotal} un</strong>
+                </span>
+              </div>
+              <div className="border rounded-md divide-y max-h-[420px] overflow-y-auto">
+                {loadingProdutos ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : produtos.length === 0 ? (
+                  <p className="p-4 text-sm text-muted-foreground text-center">Nenhum produto ativo.</p>
+                ) : (
+                  produtos.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                      <span className="text-sm flex-1 truncate">{p.nome}</span>
                       <Input
                         type="number"
                         min={0}
-                        max={14}
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        className="w-28"
+                        value={fixoPorProduto[p.id] ?? 0}
+                        onChange={(e) => handleFixoChange(p.id, e.target.value)}
                       />
-                    </FormControl>
-                    <FormDescription>
-                      Recomendado: 3 dias (cobre seg/ter/qua até a próxima leva).
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
+                    </div>
+                  ))
                 )}
-              />
+              </div>
+            </div>
+          )}
 
+          {modo === "percentual" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              <div className="space-y-2">
+                <Label htmlFor="percentual">Percentual da média semanal (%)</Label>
+                <Input
+                  id="percentual"
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={percentual}
+                  onChange={(e) => setPercentual(Math.max(0, Number(e.target.value)))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Cálculo por produto: <code>média_semanal × {percentual}% </code>
+                </p>
+              </div>
               <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
                 <p className="text-muted-foreground">Pré-visualização</p>
-                <p>
-                  Média total semanal:{" "}
-                  <strong>{Math.round(totalMediaSemanal)} un</strong>
+                <p>Média total semanal: <strong>{Math.round(mediaTotalSemanal)} un</strong></p>
+                <p>Alvo total: <strong className="text-primary">{previewAlvoTotal} un</strong></p>
+              </div>
+            </div>
+          )}
+
+          {modo === "cobertura" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              <div className="space-y-2">
+                <Label htmlFor="dias">Cobertura alvo (dias)</Label>
+                <Input
+                  id="dias"
+                  type="number"
+                  min={0}
+                  max={14}
+                  value={coberturaDias}
+                  onChange={(e) => setCoberturaDias(Math.max(0, Number(e.target.value)))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Estoque com que a fábrica fecha na sexta. Recomendado: 3 dias (cobre seg/ter/qua).
                 </p>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
+                <p className="text-muted-foreground">Pré-visualização</p>
+                <p>Média total semanal: <strong>{Math.round(mediaTotalSemanal)} un</strong></p>
                 <p>
-                  Alvo total para {coberturaWatch} {coberturaWatch === 1 ? "dia" : "dias"}:{" "}
+                  Alvo total para {coberturaDias} {coberturaDias === 1 ? "dia" : "dias"}:{" "}
                   <strong className="text-primary">{previewAlvoTotal} un</strong>
-                </p>
-                <p className="text-xs text-muted-foreground pt-1">
-                  Cálculo por produto: <code>média_semanal × dias ÷ 7</code>
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Parâmetros gerais */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Settings2 className="h-5 w-5 text-primary" />
-              <CardTitle>Parâmetros de Produção</CardTitle>
-            </div>
-            <CardDescription>
-              Configurações compartilhadas com a tela de Configurações → Produção.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="unidadesPorForma"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unidades por forma</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="formasPorLote"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Formas por lote</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="formasPorFornada"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Formas por fornada</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="tempoMedioPorFornada"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tempo médio por fornada (min)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="incluirPedidosPrevistos"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-md border p-3">
-                  <div>
-                    <FormLabel>Incluir pedidos previstos</FormLabel>
-                    <FormDescription>Considerar pedidos previstos no cálculo de produção.</FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            {form.watch("incluirPedidosPrevistos") && (
-              <FormField
-                control={form.control}
-                name="percentualPedidosPrevistos"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Percentual de pedidos previstos (%)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={0} max={100} {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-end">
-          <Button type="submit">Salvar Setup</Button>
-        </div>
-      </form>
-    </Form>
+      <div className="flex justify-end">
+        <Button onClick={handleSalvar} className="gap-2">
+          <Save className="h-4 w-4" />
+          Salvar Setup
+        </Button>
+      </div>
+    </div>
   );
 }

@@ -1,99 +1,98 @@
 ## Objetivo
 
-1. **Redefinir o conceito de "Estoque Alvo"**: passa a ser o estoque que se quer ter ao **fechar a fábrica na sexta** (= estoque com que a semana abre, cobrindo seg-qua sem produção).
-2. **Limpar o card `SugestaoProducao`** para ficar muito mais legível.
-3. **Criar uma nova aba "Setup" no PCP** para configurar os parâmetros usados pelo próprio PCP, sem precisar ir em Configurações.
+Refazer a aba **Setup** do PCP para virar uma única tela coerente: definir **como o Estoque Alvo é calculado**, com 3 modos exclusivos. Esses parâmetros passam a alimentar o card "Sugestão de Produção".
+
+Os "parâmetros de produção" que estavam na seção (unidades/forma, formas/lote, fornada, tempo, % previstos) **vão ser removidos** da aba Setup — eles realmente são ilhas e nem são usados pelo cálculo de sugestão. Continuam acessíveis em Configurações → Produção, sem mudança.
 
 ---
 
-## Parte 1 — Novo conceito de Estoque Alvo
+## Os 3 modos de Estoque Alvo
 
-Hoje (`SugestaoProducao.tsx` linhas 116-135) o alvo é hardcoded: `20% da média de vendas das últimas 12 semanas`. Vou trocar pela seguinte lógica configurável:
+O usuário escolhe **um** modo via radio/tabs. Cada modo tem seu painel de configuração:
 
-**Estoque Alvo do produto = média semanal × `coberturaAlvoDias` / 7**
+### 1. Fixo por produto
+- Lista de produtos ativos.
+- Para cada produto: input numérico "Estoque alvo (un)".
+- Default = 0 (configurar manualmente).
+- Cálculo: `alvo = valor_configurado_do_produto`.
 
-Onde `coberturaAlvoDias` é um número inteiro de dias que a fábrica quer ter de "colchão" no fechamento da semana (default sugerido: **3 dias**, cobrindo seg/ter/qua). Configurável na nova aba Setup.
+### 2. % da média histórica (variável)
+- Input único: "Percentual da média semanal (%)".
+- Default = 20 (equivalente ao comportamento atual).
+- Cálculo: `alvo = round(média_semanal × percentual / 100)`.
 
-Cálculo de produção fica (sem mudança estrutural):
-- Se estoque atual < 0 → `producao = |deficit| + alvo`
-- Se estoque atual ≥ 0 → `producao = max(0, alvo - estoque_atual)`
+### 3. Cobertura por dias (já existente)
+- Input único: "Cobertura alvo (dias)".
+- Default = 3.
+- Cálculo: `alvo = round(média_semanal × dias / 7)`.
 
 ---
 
-## Parte 2 — Card "Sugestão de Produção" mais limpo
+## UI
 
-Reformular `src/components/pcp/SugestaoProducao.tsx`:
+`SetupPCPTab.tsx` reescrito com um único Card "Estoque Alvo":
+- Header com `RadioGroup` em 3 cards-toggle clicáveis (modo selecionado tem borda primária).
+- Abaixo, painel correspondente ao modo selecionado:
+  - Modo 1 → tabela compacta `produto | input` (lista produtos ativos).
+  - Modo 2 → input + preview "Para um produto com média 70 un/sem → alvo 14 un".
+  - Modo 3 → input + preview equivalente.
+- **Botão "Salvar Setup"** no rodapé, sempre visível (single submit que aplica modo + parâmetros).
+- Pequeno alerta informativo: "O alvo definido aqui é usado pela Sugestão de Produção (Dashboard → Sugestão de Produção)."
 
-### Header
-- Manter título e o switch "Apenas com proporção".
-- **Remover** a descrição genérica e o `Alert` azul de "estoque alvo de 20%". Substituir por um único subtítulo curto com o parâmetro atual: "Alvo: cobrir X dias após fechamento (= Y un médias)".
+Remover as seções "Parâmetros de Produção" (campos de fornada, lote, etc.) e "Cobertura alvo isolada" da aba Setup.
 
-### Bloco principal (totalizador)
-- Manter o card grande com "Total de Formas a Produzir" e os 3 badges (produzir / sem rendimento / estoque OK).
+---
 
-### Linha por produto (collapsible) — simplificar drasticamente
-Hoje tem 4 sub-blocos por produto (Produção Base, Estoque Alvo, Total, com tooltip extra). Reduzir para uma única linha por produto:
+## Persistência
 
+Hoje `useConfigStore` é Zustand **em memória** (perde no refresh). Vou:
+- Adicionar `persist` middleware (localStorage `pcp-setup-v1`) para guardar o setup.
+- Estender `ConfiguracoesProducao` (em `src/types/index.ts`):
+  ```ts
+  estoqueAlvoModo: 'fixo' | 'percentual' | 'cobertura';
+  estoqueAlvoPercentual: number;          // default 20
+  estoqueAlvoCoberturaDias: number;       // default 3 (renomeado de coberturaAlvoDias)
+  estoqueAlvoFixoPorProduto: Record<string, number>;  // produto_id → unidades
+  ```
+- Migrar `coberturaAlvoDias` → `estoqueAlvoCoberturaDias` (manter compat lendo o campo antigo se existir).
+- O store persiste **somente** os campos do setup do PCP (não os mocks legados).
+
+---
+
+## Aplicação no cálculo (`SugestaoProducao.tsx`)
+
+Substituir a fórmula única atual por:
+```ts
+const modo = config.estoqueAlvoModo ?? 'cobertura';
+let estoque_alvo = 0;
+if (modo === 'fixo') {
+  estoque_alvo = config.estoqueAlvoFixoPorProduto?.[produto.id] ?? 0;
+} else if (modo === 'percentual') {
+  estoque_alvo = Math.round(media_vendas * (config.estoqueAlvoPercentual ?? 20) / 100);
+} else {
+  estoque_alvo = Math.round(media_vendas * (config.estoqueAlvoCoberturaDias ?? 3) / 7);
+}
 ```
-[Produto X]                              [N formas]
-Estoque 12 → alvo 30 · produzir 18 un (÷6 un/forma)
-```
 
-- Cabeçalho: nome + badge final de formas (ou "Estoque OK" / "Sem rendimento").
-- Subtítulo única linha em texto cinza pequeno: `Estoque {atual} → alvo {alvo} · produzir {qtd} un (÷ {rendimento} un/forma)`.
-- Remover ícones Package/Target/Factory duplicados; manter apenas o Factory do header e nada mais.
-- Remover o tooltip extra (a info já está visível).
-- Remover legenda "(20% média: ...)" porque vira texto da seção.
-
-### Resultado visual
-Antes: ~6 linhas/badges por produto. Depois: 2 linhas (header + 1 subtítulo).
-
----
-
-## Parte 3 — Nova aba "Setup" no PCP
-
-Adicionar em `src/pages/PCP.tsx` uma nova aba `setup` (label "Setup"), entre "Dashboard" e "Projeção de Produção". Dashboard fica como está (placeholder por enquanto).
-
-Criar `src/components/pcp/SetupPCPTab.tsx` com:
-
-### Seção 1 — Estoque Alvo (foco do request)
-- Input numérico **"Cobertura alvo (dias)"** — quantos dias de estoque ter no fechamento de sexta (default 3).
-- Texto explicativo curto: "Estoque que a fábrica fecha na sexta = estoque que abre na segunda. Cobre seg-qua até a próxima leva."
-- Preview ao lado: "Para um produto com média de 70 un/sem, alvo = 30 un".
-
-### Seção 2 — Parâmetros gerais de produção (espelho do que existe em Configurações → Produção)
-Reutilizar/duplicar de forma leve os campos de `ProducaoTab.tsx`:
-- Unidades por forma
-- Formas por lote
-- Formas por fornada
-- Tempo médio por fornada
-- Switch "Incluir pedidos previstos" + percentual
-
-Persistência: usar o `useConfigStore` já existente (`atualizarConfiguracoesProducao`). Assim a edição no PCP-Setup e na tela de Configurações fica espelhada — sem duplicar storage.
-
-### Seção 3 — Estoque mínimo / ideal por produto
-Tabela rápida (lista de produtos) com 2 inputs por linha:
-- `estoque_minimo` (alerta crítico)
-- `estoque_ideal` (opcional, atualmente não usado em SugestaoProducao mas usado em `useEstoqueDisponivel`)
-
-Persistência: `useProdutoStore.atualizarEstoqueMinimo` (já existe) + adicionar handler análogo para `estoque_ideal` se ainda não houver (verificar e estender hook se necessário).
-
-### Persistência de "Cobertura alvo (dias)"
-Adicionar campo `coberturaAlvoDias: number` em `ConfiguracoesProducao` (`src/types/index.ts`) e no `useConfigStore`. Default = 3. SugestaoProducao lê esse valor em vez do 20% hardcoded.
+Subtítulo do card descreve dinamicamente o modo ativo:
+- "Alvo fixo por produto"
+- "Alvo: 20% da média semanal"
+- "Alvo: cobrir 3 dias de demanda"
 
 ---
 
 ## Arquivos a editar / criar
 
-- `src/types/index.ts` — adicionar `coberturaAlvoDias` em `ConfiguracoesProducao`.
-- `src/hooks/useConfigStore.ts` — incluir default e persistência.
-- `src/components/pcp/SugestaoProducao.tsx` — limpar UI + trocar fórmula do alvo para usar `coberturaAlvoDias` × média/7.
-- `src/components/configuracoes/tabs/ProducaoTab.tsx` — adicionar campo "Cobertura alvo (dias)" para manter paridade.
-- **Novo** `src/components/pcp/SetupPCPTab.tsx` — três seções acima.
-- `src/pages/PCP.tsx` — registrar a aba "Setup" (mobile grid e desktop TabsList + TabsContent).
+- `src/types/index.ts` — adicionar os 4 campos novos em `ConfiguracoesProducao`.
+- `src/data/configData.ts` — incluir defaults nos mocks.
+- `src/hooks/useConfigStore.ts` — adicionar `persist` middleware + defaults novos.
+- `src/components/configuracoes/tabs/ProducaoTab.tsx` — incluir os campos novos no schema/save (manter paridade, sem expor UI nova ali).
+- `src/components/pcp/SetupPCPTab.tsx` — **reescrito** (modo único, 3 opções, botão salvar).
+- `src/components/pcp/SugestaoProducao.tsx` — usar o modo selecionado no cálculo + subtítulo dinâmico.
 
 ## Detalhes técnicos
 
-- A conversão `coberturaAlvoDias → unidades` é `Math.round(media_vendas_semanal * dias / 7)`.
-- Manter retro-compatibilidade: se `coberturaAlvoDias` estiver indefinido na config persistida, usar fallback 3 (~equivalente aos 20% atuais para semana de 5 dias úteis).
-- Não tocar no Dashboard (`HistoricoAnalytics`) conforme pedido.
+- Lista de produtos ativos no modo "fixo" reaproveita a query já feita em `SugestaoProducao` (produtos_finais ativos). Vou extrair para um pequeno hook `useProdutosFinaisAtivos` ou simplesmente refazer o fetch dentro do componente (mesmo padrão do existente).
+- Salvar é uma única ação que grava o objeto completo no `useConfigStore` → persist no localStorage → o `SugestaoProducao` reage por estar lendo do mesmo store.
+- Sem mudanças no Supabase / DB.
+- Não toco no Dashboard nem nas outras abas do PCP.

@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
+import { devtools, persist } from 'zustand/middleware';
 import { ConfiguracoesProducao } from '@/types';
 
 interface ConfigStore {
@@ -24,7 +24,8 @@ interface ConfigStore {
 
 export const useConfigStore = create<ConfigStore>()(
   devtools(
-    (set, get) => ({
+    persist(
+      (set, get) => ({
       // Configurações de produção
       configuracoesProducao: {
         unidadesPorForma: 24,
@@ -35,6 +36,10 @@ export const useConfigStore = create<ConfigStore>()(
         unidadesBrowniePorForma: 16,
         formasPorFornada: 2,
         coberturaAlvoDias: 3,
+        estoqueAlvoModo: 'cobertura',
+        estoqueAlvoPercentual: 20,
+        estoqueAlvoCoberturaDias: 3,
+        estoqueAlvoFixoPorProduto: {},
       },
       
       atualizarConfiguracoesProducao: (config: ConfiguracoesProducao) => {
@@ -118,6 +123,11 @@ export const useConfigStore = create<ConfigStore>()(
         ];
       },
     }),
+      {
+        name: 'pcp-config-store-v1',
+        partialize: (state) => ({ configuracoesProducao: state.configuracoesProducao }),
+      }
+    ),
     { name: 'config-store' }
   )
 );

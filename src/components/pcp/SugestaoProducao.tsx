@@ -62,7 +62,11 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
   const { mediaVendasPorProduto, loading: loadingMediaVendas } = useMediaVendasSemanais();
   const { proporcoes, loading: loadingProporcoes } = useSupabaseProporoesPadrao();
   const { configuracoesProducao } = useConfigStore();
-  const coberturaAlvoDias = configuracoesProducao?.coberturaAlvoDias ?? 3;
+  const modoAlvo = configuracoesProducao?.estoqueAlvoModo ?? "cobertura";
+  const percentualAlvo = configuracoesProducao?.estoqueAlvoPercentual ?? 20;
+  const coberturaAlvoDias =
+    configuracoesProducao?.estoqueAlvoCoberturaDias ?? configuracoesProducao?.coberturaAlvoDias ?? 3;
+  const fixoPorProduto = configuracoesProducao?.estoqueAlvoFixoPorProduto ?? {};
 
   // Buscar todos os produtos finais ativos
   useEffect(() => {
@@ -115,11 +119,16 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
       // Buscar proporção padrão
       const proporcao_padrao = proporcoesMap.get(produto.id) || 0;
       
-      // 1. Estoque alvo = média semanal × cobertura (dias) / 7
-      //    Representa o estoque com que se quer fechar a fábrica na sexta,
-      //    cobrindo os primeiros dias da próxima semana.
+      // 1. Estoque alvo conforme o modo configurado em Setup PCP
       const media_vendas = mediaVendasPorProduto[produto.id] || 0;
-      const estoque_alvo = Math.round((media_vendas * coberturaAlvoDias) / 7);
+      let estoque_alvo = 0;
+      if (modoAlvo === "fixo") {
+        estoque_alvo = Math.max(0, Number(fixoPorProduto[produto.id]) || 0);
+      } else if (modoAlvo === "percentual") {
+        estoque_alvo = Math.round((media_vendas * percentualAlvo) / 100);
+      } else {
+        estoque_alvo = Math.round((media_vendas * coberturaAlvoDias) / 7);
+      }
       
       // 2. Calcular quantidade base e quantidade para estoque alvo
       let quantidade_base = 0;
@@ -162,7 +171,7 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
         proporcao_padrao
       };
     });
-  }, [todosProdutos, produtosNecessarios, estoqueDisponivel, obterRendimentoPorProduto, mediaVendasPorProduto, proporcoes, loadingRendimentos, loading, loadingMediaVendas, loadingProdutos, loadingProporcoes]);
+  }, [todosProdutos, produtosNecessarios, estoqueDisponivel, obterRendimentoPorProduto, mediaVendasPorProduto, proporcoes, loadingRendimentos, loading, loadingMediaVendas, loadingProdutos, loadingProporcoes, modoAlvo, percentualAlvo, coberturaAlvoDias, fixoPorProduto]);
 
   // Filtrar produtos baseado no toggle
   const sugestoesFiltradas = useMemo(() => {
@@ -201,8 +210,13 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
               Sugestão de Produção
             </CardTitle>
             <CardDescription className="text-left">
-              Alvo: cobrir <strong>{coberturaAlvoDias} {coberturaAlvoDias === 1 ? "dia" : "dias"}</strong> de demanda no fechamento da semana ·
-              configure em <em>Setup</em>
+              {modoAlvo === "fixo" && <>Alvo: <strong>fixo por produto</strong> · configure em <em>Setup</em></>}
+              {modoAlvo === "percentual" && (
+                <>Alvo: <strong>{percentualAlvo}%</strong> da média semanal · configure em <em>Setup</em></>
+              )}
+              {modoAlvo === "cobertura" && (
+                <>Alvo: cobrir <strong>{coberturaAlvoDias} {coberturaAlvoDias === 1 ? "dia" : "dias"}</strong> de demanda · configure em <em>Setup</em></>
+              )}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">

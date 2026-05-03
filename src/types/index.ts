@@ -110,11 +110,19 @@ export interface ConfiguracoesProducao {
   formasPorFornada: number;
   /**
    * Cobertura alvo (em dias) para o estoque de fechamento da fábrica.
-   * Representa quantos dias de média de vendas a fábrica quer manter no
-   * estoque ao fechar na sexta — esse é o estoque com que a próxima semana
-   * abre, cobrindo segunda a quarta sem produção. Default: 3.
+   * @deprecated Use `estoqueAlvoCoberturaDias`. Mantido para compat.
    */
-  coberturaAlvoDias: number;
+  coberturaAlvoDias?: number;
+
+  // === Setup do Estoque Alvo (PCP) ===
+  /** Modo de cálculo do estoque alvo usado pela Sugestão de Produção. */
+  estoqueAlvoModo?: 'fixo' | 'percentual' | 'cobertura';
+  /** Percentual da média semanal aplicado quando modo = 'percentual'. Default 20. */
+  estoqueAlvoPercentual?: number;
+  /** Dias de cobertura quando modo = 'cobertura'. Default 3. */
+  estoqueAlvoCoberturaDias?: number;
+  /** Mapa produto_id → unidades fixas quando modo = 'fixo'. */
+  estoqueAlvoFixoPorProduto?: Record<string, number>;
 }
 
 export type StatusPedido = 'Agendado' | 'Em Separação' | 'Despachado' | 'Entregue' | 'Cancelado';

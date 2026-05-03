@@ -61,5 +61,9 @@ export const configuracoesProducaoMock: ConfiguracoesProducao = {
   tempoMedioPorFornada: 45,
   unidadesBrowniePorForma: 16,
   formasPorFornada: 2,
-  coberturaAlvoDias: 3
+  coberturaAlvoDias: 3,
+  estoqueAlvoModo: 'cobertura',
+  estoqueAlvoPercentual: 20,
+  estoqueAlvoCoberturaDias: 3,
+  estoqueAlvoFixoPorProduto: {}
 };
