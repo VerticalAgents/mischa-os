@@ -136,9 +136,7 @@ export default function EstoqueDisponivel({
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="space-y-1.5">
-            <CardTitle className="flex items-center gap-2">Estoque Final <Package className="h-5 w-5 text-primary" />
-              Estoque Disponível
-            </CardTitle>
+            <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-primary" /> Estoque Disponível</CardTitle>
             <CardDescription className="text-left">
               {incluirProducaoAgendada ? "Saldo atual + produção agendada − expedição" : "Saldo atual menos quantidades em expedição"}
             </CardDescription>
