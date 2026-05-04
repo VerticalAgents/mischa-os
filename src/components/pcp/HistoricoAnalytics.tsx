@@ -490,19 +490,20 @@ export default function HistoricoAnalytics() {
       </div>
 
       {/* Gráfico Comparativo - Evolução da Produção */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="space-y-1.5">
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Evolução da Produção por Categoria
-              </CardTitle>
-              <CardDescription className="text-left">
-                Comparativo mensal de unidades produzidas - Últimos {numeroMeses} {numeroMeses === 1 ? 'mês' : 'meses'}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-3 flex-wrap justify-end">
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Card Revenda */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="space-y-1.5">
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Evolução Revenda
+                </CardTitle>
+                <CardDescription className="text-left">
+                  Unidades produzidas - Últimos {numeroMeses} {numeroMeses === 1 ? 'mês' : 'meses'}
+                </CardDescription>
+              </div>
               <Select value={mesesGrafico} onValueChange={setMesesGrafico}>
                 <SelectTrigger className="w-[160px] h-9">
                   <SelectValue />
@@ -515,69 +516,146 @@ export default function HistoricoAnalytics() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {dadosGraficoComparativo.length === 0 ? (
-            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-              <p>Nenhum dado disponível para o período</p>
+          </CardHeader>
+          <CardContent>
+            {dadosGraficoComparativo.length === 0 ? (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                <p>Nenhum dado disponível para o período</p>
+              </div>
+            ) : (
+              <ChartContainer
+                config={{
+                  revenda: { label: "Revenda", color: "hsl(262 83% 58%)" },
+                }}
+                className="h-[300px] w-full"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dadosGraficoComparativo} barSize={32}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="mes" className="text-xs" tick={{ fill: 'hsl(var(--foreground))' }} />
+                    <YAxis
+                      className="text-xs"
+                      tick={{ fill: 'hsl(var(--foreground))' }}
+                      label={{
+                        value: 'Unidades',
+                        angle: -90,
+                        position: 'insideLeft',
+                        style: { fill: 'hsl(var(--foreground))' }
+                      }}
+                    />
+                    <ChartTooltip
+                      content={<ChartTooltipContent
+                        formatter={(value: any) => Number(value).toLocaleString('pt-BR')}
+                      />}
+                    />
+                    <Bar
+                      dataKey="revenda"
+                      fill="var(--color-revenda)"
+                      name="Revenda"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Card Food-Service */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="space-y-1.5">
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Evolução Food-Service
+                </CardTitle>
+                <CardDescription className="text-left">
+                  {foodServiceMetrica === 'peso' ? 'Peso produzido (kg)' : 'Unidades produzidas'} - Últimos {numeroMeses} {numeroMeses === 1 ? 'mês' : 'meses'}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                <Select value={foodServiceMetrica} onValueChange={(v) => setFoodServiceMetrica(v as "unidades" | "peso")}>
+                  <SelectTrigger className="w-[130px] h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unidades">Unidades</SelectItem>
+                    <SelectItem value="peso">Peso (kg)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={mesesGrafico} onValueChange={setMesesGrafico}>
+                  <SelectTrigger className="w-[160px] h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">Últimos 3 meses</SelectItem>
+                    <SelectItem value="6">Últimos 6 meses</SelectItem>
+                    <SelectItem value="12">Últimos 12 meses</SelectItem>
+                    <SelectItem value="24">Últimos 24 meses</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          ) : (
-            <ChartContainer
-            config={{
-              revenda: {
-                label: "Revenda",
-                color: "hsl(262 83% 58%)",
-              },
-              foodService: {
-                label: "Food-Service",
-                color: "hsl(142 76% 36%)",
-              },
-            }}
-            className="h-[300px] w-full"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dadosGraficoComparativo} barSize={40}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis 
-                  dataKey="mes" 
-                  className="text-xs"
-                  tick={{ fill: 'hsl(var(--foreground))' }}
-                />
-                <YAxis 
-                  className="text-xs"
-                  tick={{ fill: 'hsl(var(--foreground))' }}
-                  label={{ 
-                    value: 'Unidades Produzidas', 
-                    angle: -90, 
-                    position: 'insideLeft',
-                    style: { fill: 'hsl(var(--foreground))' }
-                  }}
-                />
-                <ChartTooltip 
-                  content={<ChartTooltipContent 
-                    formatter={(value) => value.toLocaleString('pt-BR')}
-                  />} 
-                />
-                <Legend />
-                <Bar 
-                  dataKey="revenda" 
-                  fill="var(--color-revenda)" 
-                  name="Revenda"
-                  radius={[4, 4, 0, 0]}
-                />
-                <Bar 
-                  dataKey="foodService" 
-                  fill="var(--color-foodService)" 
-                  name="Food-Service"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            {dadosGraficoComparativo.length === 0 ? (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                <p>Nenhum dado disponível para o período</p>
+              </div>
+            ) : (
+              <ChartContainer
+                config={{
+                  foodService: { label: "Food-Service (un)", color: "hsl(142 76% 36%)" },
+                  foodServicePeso: { label: "Food-Service (kg)", color: "hsl(142 76% 36%)" },
+                }}
+                className="h-[300px] w-full"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dadosGraficoComparativo} barSize={32}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="mes" className="text-xs" tick={{ fill: 'hsl(var(--foreground))' }} />
+                    <YAxis
+                      className="text-xs"
+                      tick={{ fill: 'hsl(var(--foreground))' }}
+                      label={{
+                        value: foodServiceMetrica === 'peso' ? 'Peso (kg)' : 'Unidades',
+                        angle: -90,
+                        position: 'insideLeft',
+                        style: { fill: 'hsl(var(--foreground))' }
+                      }}
+                    />
+                    <ChartTooltip
+                      content={<ChartTooltipContent
+                        formatter={(value: any) =>
+                          foodServiceMetrica === 'peso'
+                            ? `${Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg`
+                            : Number(value).toLocaleString('pt-BR')
+                        }
+                      />}
+                    />
+                    {foodServiceMetrica === 'peso' ? (
+                      <Bar
+                        dataKey="foodServicePeso"
+                        fill="var(--color-foodServicePeso)"
+                        name="Food-Service (kg)"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    ) : (
+                      <Bar
+                        dataKey="foodService"
+                        fill="var(--color-foodService)"
+                        name="Food-Service (un)"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    )}
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Card com detalhes adicionais */}
       <Card>
