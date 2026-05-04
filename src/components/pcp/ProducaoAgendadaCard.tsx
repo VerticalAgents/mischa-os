@@ -3,30 +3,113 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Factory, Loader2, ChevronDown, ChevronUp, Package, Plus } from "lucide-react";
-
-interface ProducaoAgendadaItem {
-  produto_id: string;
-  produto_nome: string;
-  unidades: number;
-  registros: number;
-}
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Factory,
+  Loader2,
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  FileDown,
+  CheckCheck,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
+} from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import type { DiaProducaoAgendada } from "@/hooks/useProducaoAgendada";
+import type { ValidacaoDia } from "@/hooks/useValidacaoInsumosProducaoAgendada";
+import { useConfirmacaoProducao } from "@/hooks/useConfirmacaoProducao";
+import { exportProducaoAgendadaPDF } from "@/utils/exportProducaoAgendadaPDF";
 
 interface ProducaoAgendadaCardProps {
-  produtos: ProducaoAgendadaItem[];
+  dias: DiaProducaoAgendada[];
+  validacoes: Map<string, ValidacaoDia>;
   totalUnidades: number;
   totalRegistros: number;
   loading: boolean;
   onNovaProducao?: () => void;
+  onRecarregar?: () => void | Promise<void>;
 }
 
-export default function ProducaoAgendadaCard({ produtos, totalUnidades, totalRegistros, loading, onNovaProducao }: ProducaoAgendadaCardProps) {
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+export default function ProducaoAgendadaCard({
+  dias,
+  validacoes,
+  totalUnidades,
+  totalRegistros,
+  loading,
+  onNovaProducao,
+  onRecarregar,
+}: ProducaoAgendadaCardProps) {
+  const [diasExpandidos, setDiasExpandidos] = useState<Set<string>>(new Set());
+  const [confirmandoLote, setConfirmandoLote] = useState(false);
+  const { confirmarProducao } = useConfirmacaoProducao();
+
+  const toggleDia = (data: string) => {
+    setDiasExpandidos((prev) => {
+      const next = new Set(prev);
+      if (next.has(data)) next.delete(data);
+      else next.add(data);
+      return next;
+    });
+  };
+
+  const diasOk = dias.filter((d) => validacoes.get(d.data)?.status === "ok");
+  const podeConfirmarTudo = diasOk.length > 0;
+
+  const confirmarDia = async (dia: DiaProducaoAgendada) => {
+    setConfirmandoLote(true);
+    try {
+      let ok = 0;
+      let falhas = 0;
+      for (const reg of dia.registros) {
+        const sucesso = await confirmarProducao(reg.id);
+        if (sucesso) ok++;
+        else falhas++;
+      }
+      toast({
+        title: `${ok} produção(ões) confirmada(s)`,
+        description: falhas > 0 ? `${falhas} falha(s).` : undefined,
+        variant: falhas > 0 ? "destructive" : "default",
+      });
+      await onRecarregar?.();
+    } finally {
+      setConfirmandoLote(false);
+    }
+  };
+
+  const confirmarTudo = async () => {
+    setConfirmandoLote(true);
+    try {
+      let ok = 0;
+      let falhas = 0;
+      for (const dia of diasOk) {
+        for (const reg of dia.registros) {
+          const sucesso = await confirmarProducao(reg.id);
+          if (sucesso) ok++;
+          else falhas++;
+        }
+      }
+      toast({
+        title: `${ok} produção(ões) confirmada(s)`,
+        description: falhas > 0 ? `${falhas} falha(s).` : undefined,
+        variant: falhas > 0 ? "destructive" : "default",
+      });
+      await onRecarregar?.();
+    } finally {
+      setConfirmandoLote(false);
+    }
+  };
+
+  const handleExport = () => {
+    if (!dias.length) return;
+    exportProducaoAgendadaPDF(dias, validacoes);
+  };
 
   return (
     <Card className="h-full flex flex-col">
       <CardHeader>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="space-y-1.5">
             <CardTitle className="flex items-center gap-2">
               <Factory className="h-5 w-5 text-primary" />
@@ -50,7 +133,7 @@ export default function ProducaoAgendadaCard({ produtos, totalUnidades, totalReg
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             <span className="ml-2 text-muted-foreground">Carregando produções...</span>
           </div>
-        ) : produtos.length === 0 ? (
+        ) : dias.length === 0 ? (
           <div className="text-center py-8">
             <Factory className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
             <p className="text-muted-foreground">Nenhuma produção agendada</p>
@@ -61,41 +144,198 @@ export default function ProducaoAgendadaCard({ produtos, totalUnidades, totalReg
               <p className="text-sm text-muted-foreground mb-1">Total de Unidades Agendadas</p>
               <p className="text-3xl font-bold text-primary">{totalUnidades}</p>
               <Badge variant="default" className="mt-2">
-                {totalRegistros} {totalRegistros === 1 ? 'registro' : 'registros'}
+                {totalRegistros} {totalRegistros === 1 ? "registro" : "registros"}
               </Badge>
             </div>
 
-            <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-muted-foreground">Detalhes por Produto</p>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
-                    {isDetailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </Button>
-                </CollapsibleTrigger>
+            {/* Ações em massa */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <p className="text-sm font-medium text-muted-foreground">
+                Planejamento por dia
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExport}
+                  className="gap-1"
+                >
+                  <FileDown className="h-4 w-4" />
+                  Exportar PDF
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={confirmarTudo}
+                  disabled={!podeConfirmarTudo || confirmandoLote}
+                  className="gap-1 bg-green-600 hover:bg-green-700"
+                >
+                  {confirmandoLote ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCheck className="h-4 w-4" />
+                  )}
+                  Confirmar tudo ({diasOk.length})
+                </Button>
               </div>
-              <CollapsibleContent className="space-y-2">
-                {produtos.map((produto) => (
-                  <div
-                    key={produto.produto_id || produto.produto_nome}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <span className="font-medium">{produto.produto_nome}</span>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {produto.registros} {produto.registros === 1 ? 'registro' : 'registros'}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant="secondary" className="text-base px-3 py-1">
-                      {produto.unidades}
-                    </Badge>
-                  </div>
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
+            </div>
+
+            {/* Lista de dias */}
+            <div className="space-y-2">
+              {dias.map((dia) => {
+                const validacao = validacoes.get(dia.data);
+                const statusFaltante = validacao?.status === "faltante";
+                const semReceita = validacao?.status === "sem_receita";
+                const expandido = diasExpandidos.has(dia.data);
+                const borderClass = statusFaltante
+                  ? "border-l-4 border-l-red-500"
+                  : semReceita
+                  ? "border-l-4 border-l-amber-500"
+                  : "border-l-4 border-l-green-500";
+
+                return (
+                  <Card key={dia.data} className={`shadow-sm ${borderClass}`}>
+                    <Collapsible open={expandido} onOpenChange={() => toggleDia(dia.data)}>
+                      <CollapsibleTrigger asChild>
+                        <div className="cursor-pointer hover:bg-muted/50 transition-colors px-4 py-3">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {expandido ? (
+                                <ChevronDown className="h-4 w-4 shrink-0" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <p className="font-semibold capitalize truncate">
+                                  {dia.dataFormatada}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {dia.registros.length} registro(s) · {dia.totalFormas} formas · {dia.totalUnidades} un.
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge
+                                      variant="outline"
+                                      className={
+                                        statusFaltante
+                                          ? "border-red-500 text-red-700 bg-red-50 dark:bg-red-950/30"
+                                          : semReceita
+                                          ? "border-amber-500 text-amber-700 bg-amber-50 dark:bg-amber-950/30"
+                                          : "border-green-500 text-green-700 bg-green-50 dark:bg-green-950/30"
+                                      }
+                                    >
+                                      {statusFaltante ? (
+                                        <AlertTriangle className="h-3 w-3 mr-1" />
+                                      ) : semReceita ? (
+                                        <Info className="h-3 w-3 mr-1" />
+                                      ) : (
+                                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                                      )}
+                                      {statusFaltante
+                                        ? `Faltam: ${validacao!.insumosFaltantes
+                                            .slice(0, 2)
+                                            .map((i) => i.nome)
+                                            .join(", ")}${
+                                            validacao!.insumosFaltantes.length > 2
+                                              ? "…"
+                                              : ""
+                                          }`
+                                        : semReceita
+                                        ? "Sem receita"
+                                        : "Insumos OK"}
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    {statusFaltante ? (
+                                      <div className="space-y-1">
+                                        <p className="font-semibold">Insumos insuficientes:</p>
+                                        {validacao!.insumosFaltantes.map((f) => (
+                                          <p key={f.insumo_id} className="text-xs">
+                                            • {f.nome}: falta {f.faltante.toFixed(2)} {f.unidade}{" "}
+                                            (necessário {f.necessario.toFixed(2)}, disponível{" "}
+                                            {f.disponivel.toFixed(2)})
+                                          </p>
+                                        ))}
+                                      </div>
+                                    ) : semReceita ? (
+                                      <p className="text-xs">
+                                        Produtos sem receita:{" "}
+                                        {validacao!.produtosSemReceita.join(", ")}
+                                      </p>
+                                    ) : (
+                                      <p className="text-xs">
+                                        Todos os insumos disponíveis para este dia.
+                                      </p>
+                                    )}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          </div>
+                        </div>
+                      </CollapsibleTrigger>
+
+                      <CollapsibleContent>
+                        <div className="px-4 pb-3 space-y-3">
+                          <div className="overflow-hidden rounded-md border">
+                            <table className="w-full text-sm">
+                              <thead className="bg-muted/50">
+                                <tr className="text-left">
+                                  <th className="px-3 py-2 font-medium">Produto</th>
+                                  <th className="px-3 py-2 font-medium text-center">Formas</th>
+                                  <th className="px-3 py-2 font-medium text-center">Unidades</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {dia.registros.map((r) => (
+                                  <tr key={r.id} className="border-t">
+                                    <td className="px-3 py-2 truncate">{r.produto_nome}</td>
+                                    <td className="px-3 py-2 text-center">{r.formas_producidas}</td>
+                                    <td className="px-3 py-2 text-center">{r.unidades}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {statusFaltante && validacao!.insumosFaltantes.length > 0 && (
+                            <div className="rounded-md border border-red-200 bg-red-50 dark:bg-red-950/20 p-2 text-xs space-y-0.5">
+                              <p className="font-medium text-red-700 dark:text-red-300 mb-1">
+                                Insumos faltantes:
+                              </p>
+                              {validacao!.insumosFaltantes.map((f) => (
+                                <p key={f.insumo_id} className="text-red-700 dark:text-red-300">
+                                  • {f.nome}: falta {f.faltante.toFixed(2)} {f.unidade}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex justify-end">
+                            <Button
+                              size="sm"
+                              disabled={statusFaltante || semReceita || confirmandoLote}
+                              onClick={() => confirmarDia(dia)}
+                              className="gap-1 bg-green-600 hover:bg-green-700"
+                            >
+                              {confirmandoLote ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <CheckCheck className="h-4 w-4" />
+                              )}
+                              Confirmar dia
+                            </Button>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
         )}
       </CardContent>
