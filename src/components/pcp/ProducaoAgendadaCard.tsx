@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Factory,
   Loader2,
@@ -43,7 +44,20 @@ export default function ProducaoAgendadaCard({
 }: ProducaoAgendadaCardProps) {
   const [diasExpandidos, setDiasExpandidos] = useState<Set<string>>(new Set());
   const [confirmandoLote, setConfirmandoLote] = useState(false);
+  const [desmarcados, setDesmarcados] = useState<Set<string>>(new Set());
   const { confirmarProducao } = useConfirmacaoProducao();
+
+  const isSelecionado = (id: string) => !desmarcados.has(id);
+  const toggleRegistro = (id: string) => {
+    setDesmarcados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const registrosSelecionadosDoDia = (dia: DiaProducaoAgendada) =>
+    dia.registros.filter((r) => isSelecionado(r.id));
 
   const toggleDia = (data: string) => {
     setDiasExpandidos((prev) => {
@@ -62,7 +76,8 @@ export default function ProducaoAgendadaCard({
     try {
       let ok = 0;
       let falhas = 0;
-      for (const reg of dia.registros) {
+      const alvo = registrosSelecionadosDoDia(dia);
+      for (const reg of alvo) {
         const sucesso = await confirmarProducao(reg.id);
         if (sucesso) ok++;
         else falhas++;
@@ -84,7 +99,7 @@ export default function ProducaoAgendadaCard({
       let ok = 0;
       let falhas = 0;
       for (const dia of diasOk) {
-        for (const reg of dia.registros) {
+        for (const reg of registrosSelecionadosDoDia(dia)) {
           const sucesso = await confirmarProducao(reg.id);
           if (sucesso) ok++;
           else falhas++;
@@ -284,6 +299,7 @@ export default function ProducaoAgendadaCard({
                             <table className="w-full text-sm">
                               <thead className="bg-muted/50">
                                 <tr className="text-left">
+                                  <th className="px-3 py-2 font-medium w-10"></th>
                                   <th className="px-3 py-2 font-medium">Produto</th>
                                   <th className="px-3 py-2 font-medium text-center">Formas</th>
                                   <th className="px-3 py-2 font-medium text-center">Unidades</th>
@@ -292,6 +308,13 @@ export default function ProducaoAgendadaCard({
                               <tbody>
                                 {dia.registros.map((r) => (
                                   <tr key={r.id} className="border-t">
+                                    <td className="px-3 py-2">
+                                      <Checkbox
+                                        checked={isSelecionado(r.id)}
+                                        onCheckedChange={() => toggleRegistro(r.id)}
+                                        aria-label={`Selecionar ${r.produto_nome}`}
+                                      />
+                                    </td>
                                     <td className="px-3 py-2 truncate">{r.produto_nome}</td>
                                     <td className="px-3 py-2 text-center">{r.formas_producidas}</td>
                                     <td className="px-3 py-2 text-center">{r.unidades}</td>
@@ -314,10 +337,18 @@ export default function ProducaoAgendadaCard({
                             </div>
                           )}
 
-                          <div className="flex justify-end">
+                          <div className="flex justify-between items-center gap-2">
+                            <p className="text-xs text-muted-foreground">
+                              {registrosSelecionadosDoDia(dia).length} de {dia.registros.length} selecionado(s)
+                            </p>
                             <Button
                               size="sm"
-                              disabled={statusFaltante || semReceita || confirmandoLote}
+                              disabled={
+                                statusFaltante ||
+                                semReceita ||
+                                confirmandoLote ||
+                                registrosSelecionadosDoDia(dia).length === 0
+                              }
                               onClick={() => confirmarDia(dia)}
                               className="gap-1 bg-green-600 hover:bg-green-700"
                             >
@@ -326,7 +357,7 @@ export default function ProducaoAgendadaCard({
                               ) : (
                                 <CheckCheck className="h-4 w-4" />
                               )}
-                              Confirmar dia
+                              Confirmar selecionados ({registrosSelecionadosDoDia(dia).length})
                             </Button>
                           </div>
                         </div>
