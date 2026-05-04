@@ -224,8 +224,8 @@ export default function ProducaoAgendadaCard({
                     <Collapsible open={expandido} onOpenChange={() => toggleDia(dia.data)}>
                       <CollapsibleTrigger asChild>
                         <div className="cursor-pointer hover:bg-muted/50 transition-colors px-4 py-3">
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
                               {expandido ? (
                                 <ChevronDown className="h-4 w-4 shrink-0" />
                               ) : (
@@ -240,7 +240,7 @@ export default function ProducaoAgendadaCard({
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 shrink-0">
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
