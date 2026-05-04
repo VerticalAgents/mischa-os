@@ -1,64 +1,58 @@
+# Separar gráfico de Evolução: Revenda x Food-Service
 
-## Objetivo
+## Problema
+Hoje o gráfico **Evolução da Produção por Categoria** mostra Revenda e Food-Service na mesma escala. Como Food-Service usa embalagens muito maiores (mini/nano em volumes pequenos), a barra verde fica praticamente invisível ao lado da Revenda.
 
-Quando o **Estoque Total Disponível** (após considerar produção agendada e expedição) ficar entre **0 e X% do alvo semanal**, o badge do total deve ficar **laranja** com um aviso. O usuário deve poder configurar esse `X%` na aba **Setup** do PCP.
+## Solução
 
-Atualmente o card só pinta:
-- **vermelho** quando < 0
-- **amarelo** quando < alvo (totalIdeal)
-- **azul** quando ≥ alvo
+Dividir em **dois gráficos lado a lado** (em telas largas) ou empilhados (mobile), cada um com sua própria escala Y:
 
-A nova faixa **laranja** (alerta crítico) ficará entre `0` e `alvo × X%`, sobrescrevendo o amarelo nessa faixa.
+1. **Gráfico Revenda** — apenas unidades produzidas (mantém o que já existe).
+2. **Gráfico Food-Service** — com um toggle local **Unidades / Peso (kg)**, já que peso é uma métrica mais fiel para embalagens grandes.
 
-## Mudanças
+Ambos compartilham o mesmo seletor de timeframe (3/6/12/24 meses) que já existe.
 
-### 1. `src/components/pcp/SetupPCPTab.tsx`
-Adicionar novo campo de configuração logo abaixo do seletor de modos (ou em um bloco próprio "Alerta de estoque crítico"):
+## Mudanças em `src/components/pcp/HistoricoAnalytics.tsx`
 
-- Input numérico **"Limite de alerta (% do alvo)"**, default `30`, range `0–100`.
-- Texto explicativo: _"Se o estoque resultante ficar entre 0 e X% do alvo semanal, o card mostrará um aviso laranja."_
-- Persistir no `useConfigStore` via `atualizarConfiguracoesProducao`, novo campo `estoqueAlertaCriticoPercentual`.
-- Estado inicial lê de `configuracoesProducao?.estoqueAlertaCriticoPercentual ?? 30`.
-- Incluir no `handleSalvar`.
+### 1. Cálculo do peso no `useMemo` `dadosGraficoComparativo`
+- Buscar `peso_unitario` dos produtos via `useSupabaseProdutos` (já usado em outros lugares do projeto).
+- Para cada registro de histórico, calcular `pesoKg = (unidades_calculadas × peso_unitario_g) / 1000`.
+- Retornar para cada mês: `{ mes, revendaUnidades, foodServiceUnidades, foodServicePesoKg }`.
+- Se `peso_unitario` não estiver cadastrado para um produto, ele soma 0 no peso (com fallback silencioso) e log de aviso no console.
 
-### 2. `src/components/pcp/EstoqueDisponivel.tsx`
-- Importar `useConfigStore` e ler `estoqueAlertaCriticoPercentual` (fallback 30).
-- Calcular `limiteAlerta = totalIdeal * (percentual/100)`.
-- Nova lógica de cor (ordem de prioridade):
-  1. `< 0` → **vermelho**
-  2. `totalIdeal > 0 && total >= 0 && total < limiteAlerta` → **laranja** (novo)
-  3. `totalIdeal > 0 && total < totalIdeal` → **amarelo**
-  4. caso contrário → **azul**
-- Classes laranja: `bg-orange-500/10 dark:bg-orange-500/20 border-orange-500/30` para `blockClass` e `text-orange-600 dark:text-orange-400` para `totalTextClass`.
-- Quando estiver em estado laranja, exibir um aviso pequeno abaixo do número:
-  - Ícone `AlertTriangle` (lucide) + texto: `"Estoque abaixo de {X}% do alvo ({totalIdeal})"`.
-  - Estilizado em `text-orange-700 dark:text-orange-400 text-xs font-medium`.
-
-### 3. (opcional, se aplicável) Tipos do config store
-Se `useConfigStore`/tipos das configurações de produção forem tipados explicitamente, adicionar `estoqueAlertaCriticoPercentual?: number` ao tipo. Caso já use `as any` no salvar (como no Setup atual), nenhuma mudança de tipo é necessária.
-
-## Detalhes técnicos
-
+### 2. Estado novo
 ```ts
-// EstoqueDisponivel.tsx
-const { configuracoesProducao } = useConfigStore();
-const pctAlerta = Number(configuracoesProducao?.estoqueAlertaCriticoPercentual ?? 30);
-const limiteAlerta = totalIdeal * (pctAlerta / 100);
-
-const emAlerta = totalIdeal > 0 && totalDisponivelAjustado >= 0 && totalDisponivelAjustado < limiteAlerta;
-
-const blockClass =
-  totalDisponivelAjustado < 0
-    ? "bg-red-500/10 dark:bg-red-500/20 border-red-500/30"
-    : emAlerta
-    ? "bg-orange-500/10 dark:bg-orange-500/20 border-orange-500/30"
-    : totalIdeal > 0 && totalDisponivelAjustado < totalIdeal
-    ? "bg-yellow-500/10 dark:bg-yellow-500/20 border-yellow-500/30"
-    : "bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/30";
+const [foodServiceMetrica, setFoodServiceMetrica] = useState<"unidades" | "peso">("unidades");
 ```
 
-## Arquivos afetados
-- `src/components/pcp/SetupPCPTab.tsx` (novo input + persistência)
-- `src/components/pcp/EstoqueDisponivel.tsx` (nova faixa laranja + aviso)
+### 3. Layout — substituir o card único por dois cards em grid
 
-Sem migrações, sem novas rotas, sem mudanças de banco — apenas config local persistida via `useConfigStore`.
+```text
+┌─────────────────────────────┬─────────────────────────────┐
+│ Evolução Revenda            │ Evolução Food-Service       │
+│ Últimos 12 meses ▾          │ [Unidades|Peso] 12 meses ▾  │
+│ ▆ ▆ ▆ ▆ ▆ ▆ ▆ ▆ ▆ ▆ ▆ ▆     │ ▂ ▃ ▂ ▄ ▃ ▂ ▃ ▄ ▅ ▃ ▂ ▄    │
+│ Y: Unidades                 │ Y: Unidades ou kg           │
+└─────────────────────────────┴─────────────────────────────┘
+```
+
+- Wrapper: `grid gap-4 lg:grid-cols-2`.
+- Cada card mantém `<ChartContainer>` + `<BarChart>` próprio com **uma única série**, com YAxis independente (ajusta automaticamente ao range dos dados).
+- Cores mantidas: Revenda roxo `hsl(262 83% 58%)`, Food-Service verde `hsl(142 76% 36%)`.
+- O toggle de métrica do Food-Service usa um pequeno `<Tabs>` ou um `<Select>` compacto no header do card. Vou usar `<Select>` para manter consistência com o seletor de meses já presente.
+- Y-axis label: "Unidades Produzidas" no card Revenda; "Unidades Produzidas" ou "Peso (kg)" no card Food-Service conforme toggle.
+- Tooltip formata números com `pt-BR`; quando peso, sufixo " kg" e 1 casa decimal.
+
+### 4. Seletor de timeframe
+Continua único (mantém `mesesGrafico`) e controla os dois gráficos simultaneamente. Posicionado no header do card da Revenda com label "Período aplicado aos dois gráficos" — ou duplicado em ambos para clareza visual. **Decisão**: duplicar o `<Select>` de meses em cada card (mesmo state controlando), assim cada card é visualmente autocontido.
+
+### 5. Legenda
+Como cada gráfico tem só uma série, remover a `<Legend />` (o título do card já identifica a categoria).
+
+## Arquivos editados
+- `src/components/pcp/HistoricoAnalytics.tsx` (único arquivo)
+
+## Não muda
+- Hook `useSupabaseHistoricoProducao` e tipo `RegistroHistorico` permanecem iguais.
+- Lógica de categorização `mini/nano → foodservice` permanece.
+- Cards de KPI, filtros de período (90 dias) e detalhes por produto não mudam.
