@@ -129,12 +129,33 @@ export function exportProducaoAgendadaPDF(
 
   if (options.print) {
     doc.autoPrint();
-    const blobUrl = doc.output('bloburl');
-    const printWindow = window.open(blobUrl as unknown as string, '_blank');
-    if (!printWindow) {
-      // fallback: salvar caso o popup seja bloqueado
-      doc.save(`producao-agendada-${new Date().toISOString().slice(0, 10)}.pdf`);
-    }
+    const blobUrl = doc.output('bloburl') as unknown as string;
+
+    // Embute o PDF num iframe oculto e dispara o print do navegador.
+    // Evita popup blockers (Brave/Chrome) que barram window.open de blob:.
+    const existing = document.getElementById('__print_iframe__') as HTMLIFrameElement | null;
+    if (existing) existing.remove();
+
+    const iframe = document.createElement('iframe');
+    iframe.id = '__print_iframe__';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.src = blobUrl;
+    document.body.appendChild(iframe);
+
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch {
+        // último fallback: salvar
+        doc.save(`producao-agendada-${new Date().toISOString().slice(0, 10)}.pdf`);
+      }
+    };
   } else {
     doc.save(`producao-agendada-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
