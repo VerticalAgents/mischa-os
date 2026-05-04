@@ -5,7 +5,8 @@ import type { ValidacaoDia } from '@/hooks/useValidacaoInsumosProducaoAgendada';
 
 export function exportProducaoAgendadaPDF(
   dias: DiaProducaoAgendada[],
-  validacoes: Map<string, ValidacaoDia>
+  validacoes: Map<string, ValidacaoDia>,
+  options: { print?: boolean } = {}
 ) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -126,5 +127,15 @@ export function exportProducaoAgendadaPDF(
     y
   );
 
-  doc.save(`producao-agendada-${new Date().toISOString().slice(0, 10)}.pdf`);
+  if (options.print) {
+    doc.autoPrint();
+    const blobUrl = doc.output('bloburl');
+    const printWindow = window.open(blobUrl as unknown as string, '_blank');
+    if (!printWindow) {
+      // fallback: salvar caso o popup seja bloqueado
+      doc.save(`producao-agendada-${new Date().toISOString().slice(0, 10)}.pdf`);
+    }
+  } else {
+    doc.save(`producao-agendada-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
 }
