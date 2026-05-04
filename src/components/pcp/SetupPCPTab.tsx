@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Target, Info, Loader2, Save } from "lucide-react";
+import { Target, Info, Loader2, Save, AlertTriangle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfigStore } from "@/hooks/useConfigStore";
@@ -47,6 +47,9 @@ export default function SetupPCPTab() {
   );
   const [fixoPorProduto, setFixoPorProduto] = useState<Record<string, number>>(
     configuracoesProducao?.estoqueAlvoFixoPorProduto ?? {}
+  );
+  const [alertaPercentual, setAlertaPercentual] = useState<number>(
+    (configuracoesProducao as any)?.estoqueAlertaCriticoPercentual ?? 30
   );
 
   const [produtos, setProdutos] = useState<ProdutoAtivo[]>([]);
@@ -100,6 +103,7 @@ export default function SetupPCPTab() {
       estoqueAlvoPercentual: percentual,
       estoqueAlvoCoberturaDias: coberturaDias,
       estoqueAlvoFixoPorProduto: fixoPorProduto,
+      estoqueAlertaCriticoPercentual: alertaPercentual,
       coberturaAlvoDias: coberturaDias, // compat
     });
     toast({
@@ -252,6 +256,52 @@ export default function SetupPCPTab() {
               />
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-orange-500" />
+            <CardTitle>Alerta de estoque crítico</CardTitle>
+          </div>
+          <CardDescription>
+            Define o limite (% do alvo semanal) abaixo do qual o card{" "}
+            <strong>Estoque Disponível</strong> exibe um aviso laranja.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            <div className="space-y-2">
+              <Label htmlFor="alerta-pct">Limite de alerta (% do alvo)</Label>
+              <Input
+                id="alerta-pct"
+                type="number"
+                min={0}
+                max={100}
+                value={alertaPercentual}
+                onChange={(e) =>
+                  setAlertaPercentual(Math.max(0, Math.min(100, Number(e.target.value))))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Se o estoque resultante ficar entre 0 e {alertaPercentual}% do alvo,
+                o card mostrará um aviso laranja.
+              </p>
+            </div>
+            <div className="rounded-lg border bg-orange-500/5 border-orange-500/30 p-4 text-sm space-y-1">
+              <p className="text-muted-foreground">Pré-visualização</p>
+              <p>
+                Alvo total semanal: <strong>{previewAlvoTotal} un</strong>
+              </p>
+              <p>
+                Limite de alerta:{" "}
+                <strong className="text-orange-600 dark:text-orange-400">
+                  {Math.round((previewAlvoTotal * alertaPercentual) / 100)} un
+                </strong>
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
