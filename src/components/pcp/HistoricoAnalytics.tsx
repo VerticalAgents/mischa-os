@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { useSupabaseHistoricoProducao } from "@/hooks/useSupabaseHistoricoProducao";
+import { useSupabaseProdutos } from "@/hooks/useSupabaseProdutos";
 export default function HistoricoAnalytics() {
   // Estados para controle de UI
   const [filtrarPorProporcao, setFiltrarPorProporcao] = useState(false);
@@ -22,11 +23,22 @@ export default function HistoricoAnalytics() {
   const [isFoodServiceDetailsOpen, setIsFoodServiceDetailsOpen] = useState(false);
   const [periodoSelecionado, setPeriodoSelecionado] = useState("90");
   const [mesesGrafico, setMesesGrafico] = useState("12");
+  const [foodServiceMetrica, setFoodServiceMetrica] = useState<"unidades" | "peso">("unidades");
   
   // Dados do Supabase
   const { proporcoes, loading: loadingProporcoes } = useSupabaseProporoesPadrao();
   const { categorias } = useSupabaseCategoriasProduto();
   const { historico } = useSupabaseHistoricoProducao();
+  const { produtos } = useSupabaseProdutos();
+
+  // Mapa nome -> peso_unitario (g) para cálculo de peso do food-service
+  const pesoUnitarioMap = useMemo(() => {
+    const m = new Map<string, number>();
+    (produtos || []).forEach((p: any) => {
+      if (p?.nome) m.set(p.nome, Number(p.peso_unitario) || 0);
+    });
+    return m;
+  }, [produtos]);
   
   // Função para categorizar produtos baseado no nome
   const categorizarProduto = (nomeProduto: string): 'revenda' | 'foodservice' => {
@@ -158,13 +170,17 @@ export default function HistoricoAnalytics() {
 
       registrosMes.forEach(record => {
         const categoria = categorizarProduto(record.produto_nome);
+        const unidades = record.unidades_calculadas || 0;
+        const pesoUnitG = pesoUnitarioMap.get(record.produto_nome) || 0;
+        const pesoKg = (unidades * pesoUnitG) / 1000;
         if (categoria === 'revenda') {
           formasRevenda += record.formas_producidas;
-          unidadesRevenda += record.unidades_calculadas || 0;
+          unidadesRevenda += unidades;
           totalProdutosRevenda++;
         } else {
           formasFoodService += record.formas_producidas;
-          unidadesFoodService += record.unidades_calculadas || 0;
+          unidadesFoodService += unidades;
+          pesoFoodServiceKg += pesoKg;
           totalProdutosFoodService++;
         }
       });
@@ -172,7 +188,8 @@ export default function HistoricoAnalytics() {
       return {
         mes: mesLabel,
         revenda: unidadesRevenda,
-        foodService: unidadesFoodService
+        foodService: unidadesFoodService,
+        foodServicePeso: Number(pesoFoodServiceKg.toFixed(2))
       };
     });
 
@@ -186,7 +203,7 @@ export default function HistoricoAnalytics() {
     });
 
     return dados;
-  }, [historico, hoje, numeroMeses, periodoSelecionado]);
+  }, [historico, hoje, numeroMeses, periodoSelecionado, pesoUnitarioMap]);
 
 
   // Cálculos de variação
