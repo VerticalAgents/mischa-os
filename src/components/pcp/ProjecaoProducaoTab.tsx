@@ -148,7 +148,7 @@ export default function ProjecaoProducaoTab() {
   const ordemProdutosNecessarios = useMemo(() => produtosOrdenados.map(p => p.produto_id), [produtosOrdenados]);
 
   const { produtos: produtosEstoque } = useEstoqueDisponivel(quantidadesNecessarias);
-  const { produtosAgrupados, mapaPorProduto, totalUnidades, totalRegistros, diasAgendados, loading: loadingProducao, recarregar: recarregarProducaoAgendada } = useProducaoAgendada();
+  const { mapaPorProduto, totalUnidades, totalRegistros, diasAgendados, loading: loadingProducao, recarregar: recarregarProducaoAgendada } = useProducaoAgendada();
   const validacoesInsumos = useValidacaoInsumosProducaoAgendada(diasAgendados);
   const { adicionarRegistro } = useSupabaseHistoricoProducao();
   const [modalNovaProducao, setModalNovaProducao] = useState(false);
