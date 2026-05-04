@@ -264,21 +264,9 @@ export default function ProducaoAgendadaCard({
                                         <CheckCircle2 className="h-3 w-3 mr-1" />
                                       )}
                                       {statusFaltante
-                                        ? `Faltam: ${validacao!.insumosFaltantes
-                                            .slice(0, 2)
-                                            .map((i) => i.nome)
-                                            .join(", ")}${
-                                            validacao!.insumosFaltantes.length > 2
-                                              ? "…"
-                                              : ""
-                                          }`
+                                        ? `Insumos insuficientes (${validacao!.insumosFaltantes.length})`
                                         : statusParcial
-                                        ? `Parcial: faltam ${validacao!.insumosFaltantes
-                                            .slice(0, 2)
-                                            .map((i) => i.nome)
-                                            .join(", ")}${
-                                            validacao!.insumosFaltantes.length > 2 ? "…" : ""
-                                          }`
+                                        ? `Parcial (${validacao!.insumosFaltantes.length} faltando)`
                                         : semReceita
                                         ? "Sem receita"
                                         : "Insumos OK"}
