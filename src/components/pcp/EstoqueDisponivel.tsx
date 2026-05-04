@@ -185,6 +185,7 @@ export default function EstoqueDisponivel({
                               <span className="font-medium">{produto.produto_nome}</span>
                               <p className="text-xs text-muted-foreground mt-0.5 text-left">
                                 Saldo: {produto.saldo_atual} | Separado: {produto.quantidade_separada}
+                                {(producaoAgendada[produto.produto_id] || 0) > 0 && ` | Agendado: ${producaoAgendada[produto.produto_id]}`}
                                 {produto.quantidade_necessaria > 0 && ` | Necessário: ${produto.quantidade_necessaria}`}
                               </p>
                             </div>
@@ -230,6 +231,7 @@ export default function EstoqueDisponivel({
                                       <span className="font-medium">{produto.produto_nome}</span>
                                       <p className="text-xs text-muted-foreground mt-0.5 text-left">
                                         Saldo: {produto.saldo_atual} | Separado: {produto.quantidade_separada}
+                                        {(producaoAgendada[produto.produto_id] || 0) > 0 && ` | Agendado: ${producaoAgendada[produto.produto_id]}`}
                                       </p>
                                     </div>
                                   </div>
