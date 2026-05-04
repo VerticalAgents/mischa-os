@@ -6,7 +6,7 @@ import type { ValidacaoDia } from '@/hooks/useValidacaoInsumosProducaoAgendada';
 export function exportProducaoAgendadaPDF(
   dias: DiaProducaoAgendada[],
   validacoes: Map<string, ValidacaoDia>,
-  options: { print?: boolean } = {}
+  options: { print?: boolean; returnBlobUrl?: boolean } = {}
 ) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -161,6 +161,11 @@ export function exportProducaoAgendadaPDF(
     margin,
     y
   );
+
+  if (options.returnBlobUrl) {
+    const blobUrl = doc.output('bloburl') as unknown as string;
+    return blobUrl;
+  }
 
   if (options.print) {
     doc.autoPrint();

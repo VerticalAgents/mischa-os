@@ -51,6 +51,7 @@ const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
 const ResetPasswordPage = lazy(() => import('@/pages/auth/ResetPasswordPage'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const FichaPreview = lazy(() => import('@/pages/fichas-tecnicas/Preview'));
+const ProducaoAgendadaPreview = lazy(() => import('@/pages/producao-agendada/Preview'));
 const Security = lazy(() => import('@/pages/Security'));
 const ControleTrocas = lazy(() => import('@/pages/ControleTrocas'));
 const Reagendamentos = lazy(() => import('@/pages/Reagendamentos'));
@@ -339,6 +340,11 @@ function App() {
                          <FichaPreview />
                        </ProtectedRoute>
                      } />
+                    <Route path="/producao-agendada/preview" element={
+                      <ProtectedRoute>
+                        <ProducaoAgendadaPreview />
+                      </ProtectedRoute>
+                    } />
                      <Route path="/seguranca" element={
                        <ProtectedRoute>
                          <AppLayout>
