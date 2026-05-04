@@ -11,7 +11,7 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
-  FileDown,
+  Printer,
   CheckCheck,
   CheckCircle2,
   AlertTriangle,
@@ -124,9 +124,9 @@ export default function ProducaoAgendadaCard({
     }
   };
 
-  const handleExport = () => {
+  const handlePrint = () => {
     if (!dias.length) return;
-    exportProducaoAgendadaPDF(dias, validacoes);
+    exportProducaoAgendadaPDF(dias, validacoes, { print: true });
   };
 
   return (
@@ -180,11 +180,11 @@ export default function ProducaoAgendadaCard({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleExport}
+                  onClick={handlePrint}
                   className="gap-1"
                 >
-                  <FileDown className="h-4 w-4" />
-                  Exportar PDF
+                  <Printer className="h-4 w-4" />
+                  Imprimir
                 </Button>
                 <Button
                   size="sm"
