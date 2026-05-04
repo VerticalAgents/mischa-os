@@ -141,11 +141,11 @@ export default function SetupPCPTab() {
                   className={cn(
                     "text-left rounded-lg border p-4 transition-colors",
                     ativo
-                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      ? "border-blue-500 bg-blue-500/5 ring-1 ring-blue-500"
                       : "border-border hover:bg-muted/40"
                   )}
                 >
-                  <p className={cn("font-medium", ativo && "text-primary")}>{m.titulo}</p>
+                  <p className={cn("font-medium", ativo && "text-blue-600 dark:text-blue-400")}>{m.titulo}</p>
                   <p className="text-xs text-muted-foreground mt-1">{m.descricao}</p>
                 </button>
               );
@@ -206,7 +206,7 @@ export default function SetupPCPTab() {
                 <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
                   <p className="text-muted-foreground">Pré-visualização</p>
                   <p>Média total semanal: <strong>{Math.round(mediaTotalSemanal)} un</strong></p>
-                  <p>Alvo total: <strong className="text-primary">{previewAlvoTotal} un</strong></p>
+                  <p>Alvo total: <strong className="text-blue-600 dark:text-blue-400">{previewAlvoTotal} un</strong></p>
                 </div>
               </div>
               <ProdutosAlvoLista
@@ -240,7 +240,7 @@ export default function SetupPCPTab() {
                   <p>Média total semanal: <strong>{Math.round(mediaTotalSemanal)} un</strong></p>
                   <p>
                     Alvo total para {coberturaDias} {coberturaDias === 1 ? "dia" : "dias"}:{" "}
-                    <strong className="text-primary">{previewAlvoTotal} un</strong>
+                    <strong className="text-blue-600 dark:text-blue-400">{previewAlvoTotal} un</strong>
                   </p>
                 </div>
               </div>
@@ -302,7 +302,7 @@ function ProdutosAlvoLista({ produtos, loading, mediaVendasPorProduto, calcAlvo 
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                       {Math.round(media)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-medium text-primary">
+                    <td className="px-3 py-2 text-right tabular-nums font-medium text-blue-600 dark:text-blue-400">
                       {alvo}
                     </td>
                   </tr>
