@@ -167,6 +167,7 @@ export default function HistoricoAnalytics() {
       let formasFoodService = 0;
       let unidadesRevenda = 0;
       let unidadesFoodService = 0;
+      let pesoFoodServiceKg = 0;
 
       registrosMes.forEach(record => {
         const categoria = categorizarProduto(record.produto_nome);
