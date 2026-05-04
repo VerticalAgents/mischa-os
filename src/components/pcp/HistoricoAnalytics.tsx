@@ -21,7 +21,6 @@ export default function HistoricoAnalytics() {
   const [isRevendaDetailsOpen, setIsRevendaDetailsOpen] = useState(false);
   const [isFoodServiceDetailsOpen, setIsFoodServiceDetailsOpen] = useState(false);
   const [periodoSelecionado, setPeriodoSelecionado] = useState("90");
-  const [mostrarUnidades, setMostrarUnidades] = useState(false);
   const [mesesGrafico, setMesesGrafico] = useState("12");
   
   // Dados do Supabase
@@ -172,8 +171,8 @@ export default function HistoricoAnalytics() {
 
       return {
         mes: mesLabel,
-        revenda: mostrarUnidades ? unidadesRevenda : formasRevenda,
-        foodService: mostrarUnidades ? unidadesFoodService : formasFoodService
+        revenda: unidadesRevenda,
+        foodService: unidadesFoodService
       };
     });
 
@@ -187,7 +186,7 @@ export default function HistoricoAnalytics() {
     });
 
     return dados;
-  }, [historico, hoje, mostrarUnidades, numeroMeses, periodoSelecionado]);
+  }, [historico, hoje, numeroMeses, periodoSelecionado]);
 
 
   // Cálculos de variação
@@ -482,7 +481,7 @@ export default function HistoricoAnalytics() {
                 Evolução da Produção por Categoria
               </CardTitle>
               <CardDescription className="text-left">
-                Comparativo mensal de {mostrarUnidades ? 'unidades produzidas' : 'formas produzidas'} - Últimos {numeroMeses} {numeroMeses === 1 ? 'mês' : 'meses'}
+                Comparativo mensal de unidades produzidas - Últimos {numeroMeses} {numeroMeses === 1 ? 'mês' : 'meses'}
               </CardDescription>
             </div>
             <div className="flex items-center gap-3 flex-wrap justify-end">
@@ -497,16 +496,6 @@ export default function HistoricoAnalytics() {
                   <SelectItem value="24">Últimos 24 meses</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="toggle-unidades" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
-                  {mostrarUnidades ? 'Unidades' : 'Formas'}
-                </Label>
-                <Switch 
-                  id="toggle-unidades"
-                  checked={mostrarUnidades}
-                  onCheckedChange={setMostrarUnidades}
-                />
-              </div>
             </div>
           </div>
         </CardHeader>
@@ -541,7 +530,7 @@ export default function HistoricoAnalytics() {
                   className="text-xs"
                   tick={{ fill: 'hsl(var(--foreground))' }}
                   label={{ 
-                    value: mostrarUnidades ? 'Unidades Produzidas' : 'Formas Produzidas', 
+                    value: 'Unidades Produzidas', 
                     angle: -90, 
                     position: 'insideLeft',
                     style: { fill: 'hsl(var(--foreground))' }
