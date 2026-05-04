@@ -496,8 +496,8 @@ export default function HistoricoAnalytics() {
           <CardHeader>
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1.5 min-w-0">
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 whitespace-nowrap">
+                  <BarChart3 className="h-5 w-5 shrink-0" />
                   Evolução Revenda
                 </CardTitle>
                 <CardDescription className="text-left">
@@ -570,8 +570,8 @@ export default function HistoricoAnalytics() {
           <CardHeader>
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1.5 min-w-0">
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 whitespace-nowrap">
+                  <BarChart3 className="h-5 w-5 shrink-0" />
                   Evolução Food-Service
                 </CardTitle>
                 <CardDescription className="text-left">
