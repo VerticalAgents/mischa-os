@@ -69,14 +69,18 @@ export default function ProducaoAgendadaCard({
   };
 
   const diasOk = dias.filter((d) => validacoes.get(d.data)?.status === "ok");
-  const podeConfirmarTudo = diasOk.length > 0;
+  const diasParciais = dias.filter((d) => validacoes.get(d.data)?.status === "parcial");
+  // Para "Confirmar tudo": OK + selecionáveis nos parciais (excluindo afetados)
+  const podeConfirmarTudo = diasOk.length > 0 || diasParciais.length > 0;
 
   const confirmarDia = async (dia: DiaProducaoAgendada) => {
     setConfirmandoLote(true);
     try {
       let ok = 0;
       let falhas = 0;
-      const alvo = registrosSelecionadosDoDia(dia);
+      const v = validacoes.get(dia.data);
+      const afetados = new Set(v?.produtosFaltantes || []);
+      const alvo = registrosSelecionadosDoDia(dia).filter((r) => !afetados.has(r.id));
       for (const reg of alvo) {
         const sucesso = await confirmarProducao(reg.id);
         if (sucesso) ok++;
@@ -98,8 +102,12 @@ export default function ProducaoAgendadaCard({
     try {
       let ok = 0;
       let falhas = 0;
-      for (const dia of diasOk) {
+      const diasAlvo = [...diasOk, ...diasParciais];
+      for (const dia of diasAlvo) {
+        const v = validacoes.get(dia.data);
+        const afetados = new Set(v?.produtosFaltantes || []);
         for (const reg of registrosSelecionadosDoDia(dia)) {
+          if (afetados.has(reg.id)) continue; // pula produtos com falta
           const sucesso = await confirmarProducao(reg.id);
           if (sucesso) ok++;
           else falhas++;
@@ -199,13 +207,17 @@ export default function ProducaoAgendadaCard({
               {dias.map((dia) => {
                 const validacao = validacoes.get(dia.data);
                 const statusFaltante = validacao?.status === "faltante";
+                const statusParcial = validacao?.status === "parcial";
                 const semReceita = validacao?.status === "sem_receita";
                 const expandido = diasExpandidos.has(dia.data);
                 const borderClass = statusFaltante
                   ? "border-l-4 border-l-red-500"
+                  : statusParcial
+                  ? "border-l-4 border-l-orange-500"
                   : semReceita
                   ? "border-l-4 border-l-amber-500"
                   : "border-l-4 border-l-green-500";
+                const afetados = new Set(validacao?.produtosFaltantes || []);
 
                 return (
                   <Card key={dia.data} className={`shadow-sm ${borderClass}`}>
@@ -237,12 +249,14 @@ export default function ProducaoAgendadaCard({
                                       className={
                                         statusFaltante
                                           ? "border-red-500 text-red-700 bg-red-50 dark:bg-red-950/30"
+                                          : statusParcial
+                                          ? "border-orange-500 text-orange-700 bg-orange-50 dark:bg-orange-950/30"
                                           : semReceita
                                           ? "border-amber-500 text-amber-700 bg-amber-50 dark:bg-amber-950/30"
                                           : "border-green-500 text-green-700 bg-green-50 dark:bg-green-950/30"
                                       }
                                     >
-                                      {statusFaltante ? (
+                                      {statusFaltante || statusParcial ? (
                                         <AlertTriangle className="h-3 w-3 mr-1" />
                                       ) : semReceita ? (
                                         <Info className="h-3 w-3 mr-1" />
@@ -258,15 +272,26 @@ export default function ProducaoAgendadaCard({
                                               ? "…"
                                               : ""
                                           }`
+                                        : statusParcial
+                                        ? `Parcial: faltam ${validacao!.insumosFaltantes
+                                            .slice(0, 2)
+                                            .map((i) => i.nome)
+                                            .join(", ")}${
+                                            validacao!.insumosFaltantes.length > 2 ? "…" : ""
+                                          }`
                                         : semReceita
                                         ? "Sem receita"
                                         : "Insumos OK"}
                                     </Badge>
                                   </TooltipTrigger>
                                   <TooltipContent className="max-w-xs">
-                                    {statusFaltante ? (
+                                    {statusFaltante || statusParcial ? (
                                       <div className="space-y-1">
-                                        <p className="font-semibold">Insumos insuficientes:</p>
+                                        <p className="font-semibold">
+                                          {statusParcial
+                                            ? "Alguns produtos sem insumos suficientes:"
+                                            : "Insumos insuficientes:"}
+                                        </p>
                                         {validacao!.insumosFaltantes.map((f) => (
                                           <p key={f.insumo_id} className="text-xs">
                                             • {f.nome}: falta {f.faltante.toFixed(2)} {f.unidade}{" "}
@@ -307,15 +332,41 @@ export default function ProducaoAgendadaCard({
                               </thead>
                               <tbody>
                                 {dia.registros.map((r) => (
-                                  <tr key={r.id} className="border-t">
+                                  <tr
+                                    key={r.id}
+                                    className={`border-t ${
+                                      afetados.has(r.id)
+                                        ? "bg-red-50/50 dark:bg-red-950/10"
+                                        : ""
+                                    }`}
+                                  >
                                     <td className="px-3 py-2">
                                       <Checkbox
                                         checked={isSelecionado(r.id)}
                                         onCheckedChange={() => toggleRegistro(r.id)}
                                         aria-label={`Selecionar ${r.produto_nome}`}
+                                        disabled={afetados.has(r.id)}
                                       />
                                     </td>
-                                    <td className="px-3 py-2 truncate">{r.produto_nome}</td>
+                                    <td className="px-3 py-2 truncate">
+                                      <div className="flex items-center gap-1.5">
+                                        {afetados.has(r.id) && (
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <AlertTriangle className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <p className="text-xs">
+                                                  Insumos insuficientes para este produto
+                                                </p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        )}
+                                        <span className="truncate">{r.produto_nome}</span>
+                                      </div>
+                                    </td>
                                     <td className="px-3 py-2 text-center">{r.formas_producidas}</td>
                                     <td className="px-3 py-2 text-center">{r.unidades}</td>
                                   </tr>
@@ -324,13 +375,32 @@ export default function ProducaoAgendadaCard({
                             </table>
                           </div>
 
-                          {statusFaltante && validacao!.insumosFaltantes.length > 0 && (
-                            <div className="rounded-md border border-red-200 bg-red-50 dark:bg-red-950/20 p-2 text-xs space-y-0.5">
-                              <p className="font-medium text-red-700 dark:text-red-300 mb-1">
+                          {(statusFaltante || statusParcial) && validacao!.insumosFaltantes.length > 0 && (
+                            <div
+                              className={`rounded-md border p-2 text-xs space-y-0.5 ${
+                                statusParcial
+                                  ? "border-orange-200 bg-orange-50 dark:bg-orange-950/20"
+                                  : "border-red-200 bg-red-50 dark:bg-red-950/20"
+                              }`}
+                            >
+                              <p
+                                className={`font-medium mb-1 ${
+                                  statusParcial
+                                    ? "text-orange-700 dark:text-orange-300"
+                                    : "text-red-700 dark:text-red-300"
+                                }`}
+                              >
                                 Insumos faltantes:
                               </p>
                               {validacao!.insumosFaltantes.map((f) => (
-                                <p key={f.insumo_id} className="text-red-700 dark:text-red-300">
+                                <p
+                                  key={f.insumo_id}
+                                  className={
+                                    statusParcial
+                                      ? "text-orange-700 dark:text-orange-300"
+                                      : "text-red-700 dark:text-red-300"
+                                  }
+                                >
                                   • {f.nome}: falta {f.faltante.toFixed(2)} {f.unidade}
                                 </p>
                               ))}
@@ -347,7 +417,8 @@ export default function ProducaoAgendadaCard({
                                 statusFaltante ||
                                 semReceita ||
                                 confirmandoLote ||
-                                registrosSelecionadosDoDia(dia).length === 0
+                                registrosSelecionadosDoDia(dia).filter((r) => !afetados.has(r.id))
+                                  .length === 0
                               }
                               onClick={() => confirmarDia(dia)}
                               className="gap-1 bg-green-600 hover:bg-green-700"
@@ -357,7 +428,9 @@ export default function ProducaoAgendadaCard({
                               ) : (
                                 <CheckCheck className="h-4 w-4" />
                               )}
-                              Confirmar selecionados ({registrosSelecionadosDoDia(dia).length})
+                              Confirmar selecionados (
+                              {registrosSelecionadosDoDia(dia).filter((r) => !afetados.has(r.id)).length}
+                              )
                             </Button>
                           </div>
                         </div>
