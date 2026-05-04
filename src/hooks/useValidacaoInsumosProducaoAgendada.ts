@@ -15,9 +15,11 @@ export interface InsumoFaltanteDia {
 
 export interface ValidacaoDia {
   data: string;
-  status: 'ok' | 'faltante' | 'sem_receita';
+  status: 'ok' | 'faltante' | 'parcial' | 'sem_receita';
   insumosFaltantes: InsumoFaltanteDia[];
   produtosSemReceita: string[];
+  // IDs dos registros de produção do dia que possuem ao menos um insumo faltante
+  produtosFaltantes: string[];
 }
 
 /**
@@ -54,6 +56,8 @@ export const useValidacaoInsumosProducaoAgendada = (
       // Necessidade de insumos do dia
       const necessidade: Record<string, { nome: string; unidade: string; quantidade: number }> = {};
       const produtosSemReceita: string[] = [];
+      // Mapa: insumo_id -> lista de registro_ids que dependem dele
+      const insumoToRegistros: Record<string, Set<string>> = {};
 
       for (const reg of dia.registros) {
         const formas = reg.formas_producidas || 0;
@@ -84,10 +88,15 @@ export const useValidacaoInsumosProducaoAgendada = (
             };
           }
           necessidade[item.insumo_id].quantidade += consumo;
+          if (!insumoToRegistros[item.insumo_id]) {
+            insumoToRegistros[item.insumo_id] = new Set();
+          }
+          insumoToRegistros[item.insumo_id].add(reg.id);
         }
       }
 
       const insumosFaltantes: InsumoFaltanteDia[] = [];
+      const produtosFaltantesSet = new Set<string>();
       for (const [insumoId, n] of Object.entries(necessidade)) {
         const disponivel = estoqueRestante[insumoId] ?? 0;
         if (n.quantidade > disponivel + 1e-6) {
@@ -99,6 +108,8 @@ export const useValidacaoInsumosProducaoAgendada = (
             disponivel,
             faltante: n.quantidade - disponivel,
           });
+          // Marca todos os registros (produtos) que dependem desse insumo
+          insumoToRegistros[insumoId]?.forEach((rid) => produtosFaltantesSet.add(rid));
         }
         // Subtrai do estoque restante (até zerar) — apenas para dias futuros
         if (isFuture) {
@@ -107,14 +118,32 @@ export const useValidacaoInsumosProducaoAgendada = (
       }
 
       let status: ValidacaoDia['status'] = 'ok';
-      if (insumosFaltantes.length > 0) status = 'faltante';
-      else if (produtosSemReceita.length > 0 && Object.keys(necessidade).length === 0) status = 'sem_receita';
+      if (insumosFaltantes.length > 0) {
+        // Quantos registros (com receita) foram afetados?
+        const registrosComReceita = dia.registros.filter((r) => {
+          const rendCfg = rendimentos.find((rc) => rc.produto_id === r.produto_id);
+          const rec = rendCfg
+            ? receitas.find((rec) => rec.id === rendCfg.receita_id)
+            : receitas.find((rec) => rec.nome === r.produto_nome);
+          return !!rec && (r.formas_producidas || 0) > 0;
+        });
+        const todosAfetados =
+          registrosComReceita.length > 0 &&
+          registrosComReceita.every((r) => produtosFaltantesSet.has(r.id));
+        status = todosAfetados ? 'faltante' : 'parcial';
+      } else if (
+        produtosSemReceita.length > 0 &&
+        Object.keys(necessidade).length === 0
+      ) {
+        status = 'sem_receita';
+      }
 
       validacoes.set(dia.data, {
         data: dia.data,
         status,
         insumosFaltantes,
         produtosSemReceita,
+        produtosFaltantes: Array.from(produtosFaltantesSet),
       });
     }
 
