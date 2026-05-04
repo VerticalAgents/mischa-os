@@ -18,6 +18,24 @@ export default function EstoqueProdutosSaldoRealCard() {
     () => ativos.reduce((s, p) => s + (Number(p.saldoReal) || 0), 0),
     [ativos]
   );
+  const totalIdeal = useMemo(
+    () => ativos.reduce((s, p) => s + (Number(p.estoqueIdeal) || 0), 0),
+    [ativos]
+  );
+
+  // Cor condicional: vermelho < 0, amarelo abaixo do alvo (ideal), azul ≥ alvo
+  const blockClass =
+    totalReal < 0
+      ? "bg-red-500/10 dark:bg-red-500/20 border-red-500/30"
+      : totalIdeal > 0 && totalReal < totalIdeal
+      ? "bg-yellow-500/10 dark:bg-yellow-500/20 border-yellow-500/30"
+      : "bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/30";
+  const totalTextClass =
+    totalReal < 0
+      ? "text-red-600 dark:text-red-400"
+      : totalIdeal > 0 && totalReal < totalIdeal
+      ? "text-yellow-700 dark:text-yellow-400"
+      : "text-blue-600 dark:text-blue-400";
 
   return (
     <Card className="h-full flex flex-col">
@@ -45,9 +63,9 @@ export default function EstoqueProdutosSaldoRealCard() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20">
+            <div className={`p-4 rounded-lg border ${blockClass}`}>
               <p className="text-sm text-muted-foreground mb-1">Saldo Real Total</p>
-              <p className="text-3xl font-bold text-primary">
+              <p className={`text-3xl font-bold ${totalTextClass}`}>
                 {totalReal.toLocaleString("pt-BR")}
               </p>
               <Badge variant="default" className="mt-2">

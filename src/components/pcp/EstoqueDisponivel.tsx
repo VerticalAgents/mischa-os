@@ -52,6 +52,23 @@ export default function EstoqueDisponivel({
   const totalDisponivelAjustado = useMemo(() => {
     return produtosAjustados.reduce((sum, p) => sum + p.estoque_disponivel, 0);
   }, [produtosAjustados]);
+  const totalIdeal = useMemo(() => {
+    return produtosAjustados.reduce((sum, p) => sum + (Number(p.estoque_ideal) || 0), 0);
+  }, [produtosAjustados]);
+
+  // Cor condicional: vermelho < 0, amarelo abaixo do alvo (ideal), azul ≥ alvo
+  const blockClass =
+    totalDisponivelAjustado < 0
+      ? "bg-red-500/10 dark:bg-red-500/20 border-red-500/30"
+      : totalIdeal > 0 && totalDisponivelAjustado < totalIdeal
+      ? "bg-yellow-500/10 dark:bg-yellow-500/20 border-yellow-500/30"
+      : "bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/30";
+  const totalTextClass =
+    totalDisponivelAjustado < 0
+      ? "text-red-600 dark:text-red-400"
+      : totalIdeal > 0 && totalDisponivelAjustado < totalIdeal
+      ? "text-yellow-700 dark:text-yellow-400"
+      : "text-blue-600 dark:text-blue-400";
   const produtosComPrevisao = useMemo(() => {
     const comPrevisao = produtosAjustados.filter(p => p.quantidade_necessaria > 0);
     return comPrevisao.sort((a, b) => {
@@ -145,9 +162,9 @@ export default function EstoqueDisponivel({
             <p className="text-muted-foreground">Nenhum produto cadastrado</p>
           </div> : <div className="space-y-4">
             {/* Total Geral */}
-            <div className="bg-primary/10 dark:bg-primary/20 p-4 rounded-lg border border-primary/20 text-center">
+            <div className={`p-4 rounded-lg border text-center ${blockClass}`}>
               <p className="text-sm text-muted-foreground mb-1">Estoque Total Disponível</p>
-              <p className={`text-3xl font-bold ${totalDisponivelAjustado < 0 ? 'text-destructive' : 'text-primary'}`}>
+              <p className={`text-3xl font-bold ${totalTextClass}`}>
                 {totalDisponivelAjustado}
               </p>
               <div className="flex items-center justify-center gap-2 mt-2">
