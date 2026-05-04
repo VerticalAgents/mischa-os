@@ -37,9 +37,12 @@ export function exportProducaoAgendadaPDF(
       y = margin;
     }
     const validacao = validacoes.get(dia.data);
+    const afetadosIds = new Set(validacao?.produtosFaltantes || []);
     const statusLabel =
       validacao?.status === 'faltante'
         ? 'INSUMOS INSUFICIENTES'
+        : validacao?.status === 'parcial'
+        ? 'PARCIAL — INSUMOS INSUFICIENTES'
         : validacao?.status === 'sem_receita'
         ? 'SEM RECEITA CADASTRADA'
         : 'INSUMOS OK';
@@ -50,6 +53,7 @@ export function exportProducaoAgendadaPDF(
 
     // status badge color
     if (validacao?.status === 'faltante') doc.setTextColor(200, 30, 30);
+    else if (validacao?.status === 'parcial') doc.setTextColor(220, 120, 30);
     else if (validacao?.status === 'sem_receita') doc.setTextColor(180, 120, 0);
     else doc.setTextColor(20, 140, 60);
     doc.setFontSize(9);
@@ -71,16 +75,31 @@ export function exportProducaoAgendadaPDF(
     autoTable(doc, {
       startY: y,
       margin: { left: margin, right: margin },
-      head: [['Produto', 'Formas', 'Rend.', 'Unidades']],
-      body: dia.registros.map((r) => [
-        r.produto_nome,
-        String(r.formas_producidas),
-        r.rendimento_usado ? `${r.rendimento_usado}/forma` : '—',
-        String(r.unidades),
-      ]),
+      head: [['', 'Produto', 'Formas', 'Rend.', 'Unidades']],
+      body: dia.registros.map((r) => {
+        const afetado = afetadosIds.has(r.id);
+        return [
+          afetado ? '!' : '',
+          r.produto_nome,
+          String(r.formas_producidas),
+          r.rendimento_usado ? `${r.rendimento_usado}/forma` : '—',
+          String(r.unidades),
+        ];
+      }),
       styles: { fontSize: 9, cellPadding: 4 },
       headStyles: { fillColor: [234, 179, 8], textColor: [0, 0, 0] },
       theme: 'striped',
+      columnStyles: {
+        0: { cellWidth: 16, halign: 'center', fontStyle: 'bold' },
+      },
+      didParseCell: (data) => {
+        if (data.section !== 'body') return;
+        const reg = dia.registros[data.row.index];
+        if (reg && afetadosIds.has(reg.id)) {
+          data.cell.styles.textColor = [200, 30, 30];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      },
     });
     // @ts-ignore
     y = (doc as any).lastAutoTable.finalY + 6;
@@ -98,13 +117,29 @@ export function exportProducaoAgendadaPDF(
           doc.addPage();
           y = margin;
         }
+        doc.setTextColor(200, 30, 30);
         doc.text(
           `• ${f.nome}: necessário ${f.necessario.toFixed(2)} ${f.unidade}, disponível ${f.disponivel.toFixed(2)} ${f.unidade} (falta ${f.faltante.toFixed(2)} ${f.unidade})`,
           margin + 8,
           y
         );
         y += 11;
+        if (f.produtosAfetados?.length) {
+          if (y > 800) {
+            doc.addPage();
+            y = margin;
+          }
+          doc.setTextColor(80);
+          doc.setFont('helvetica', 'italic');
+          const linha = `↳ Afeta: ${f.produtosAfetados.join(', ')}`;
+          const wrapped = doc.splitTextToSize(linha, pageWidth - margin * 2 - 16);
+          doc.text(wrapped, margin + 16, y);
+          y += 11 * wrapped.length;
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0);
+        }
       });
+      doc.setTextColor(0);
     }
 
     y += 14;

@@ -11,6 +11,8 @@ export interface InsumoFaltanteDia {
   necessario: number;
   disponivel: number;
   faltante: number;
+  // Nomes dos produtos do dia que dependem deste insumo
+  produtosAfetados: string[];
 }
 
 export interface ValidacaoDia {
@@ -100,6 +102,10 @@ export const useValidacaoInsumosProducaoAgendada = (
       for (const [insumoId, n] of Object.entries(necessidade)) {
         const disponivel = estoqueRestante[insumoId] ?? 0;
         if (n.quantidade > disponivel + 1e-6) {
+          const regIds = Array.from(insumoToRegistros[insumoId] || []);
+          const produtosAfetados = regIds
+            .map((rid) => dia.registros.find((r) => r.id === rid)?.produto_nome)
+            .filter((s): s is string => !!s);
           insumosFaltantes.push({
             insumo_id: insumoId,
             nome: n.nome,
@@ -107,6 +113,7 @@ export const useValidacaoInsumosProducaoAgendada = (
             necessario: n.quantidade,
             disponivel,
             faltante: n.quantidade - disponivel,
+            produtosAfetados,
           });
           // Marca todos os registros (produtos) que dependem desse insumo
           insumoToRegistros[insumoId]?.forEach((rid) => produtosFaltantesSet.add(rid));
