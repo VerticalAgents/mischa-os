@@ -78,7 +78,9 @@ export default function ProducaoAgendadaCard({
     try {
       let ok = 0;
       let falhas = 0;
-      const alvo = registrosSelecionadosDoDia(dia);
+      const v = validacoes.get(dia.data);
+      const afetados = new Set(v?.produtosFaltantes || []);
+      const alvo = registrosSelecionadosDoDia(dia).filter((r) => !afetados.has(r.id));
       for (const reg of alvo) {
         const sucesso = await confirmarProducao(reg.id);
         if (sucesso) ok++;
