@@ -490,12 +490,12 @@ export default function HistoricoAnalytics() {
       </div>
 
       {/* Gráfico Comparativo - Evolução da Produção */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 items-stretch">
         {/* Card Revenda */}
-        <Card>
+        <Card className="flex flex-col h-full">
           <CardHeader>
-            <div className="flex items-start justify-between gap-3 flex-wrap">
-              <div className="space-y-1.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1.5 min-w-0">
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5" />
                   Evolução Revenda
@@ -504,17 +504,21 @@ export default function HistoricoAnalytics() {
                   Unidades produzidas - Últimos {numeroMeses} {numeroMeses === 1 ? 'mês' : 'meses'}
                 </CardDescription>
               </div>
-              <Select value={mesesGrafico} onValueChange={setMesesGrafico}>
-                <SelectTrigger className="w-[160px] h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3">Últimos 3 meses</SelectItem>
-                  <SelectItem value="6">Últimos 6 meses</SelectItem>
-                  <SelectItem value="12">Últimos 12 meses</SelectItem>
-                  <SelectItem value="24">Últimos 24 meses</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2 shrink-0 h-9">
+                {/* placeholder invisível para alinhar com o toggle do card ao lado */}
+                <div className="w-[130px] h-9" aria-hidden="true" />
+                <Select value={mesesGrafico} onValueChange={setMesesGrafico}>
+                  <SelectTrigger className="w-[160px] h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">Últimos 3 meses</SelectItem>
+                    <SelectItem value="6">Últimos 6 meses</SelectItem>
+                    <SelectItem value="12">Últimos 12 meses</SelectItem>
+                    <SelectItem value="24">Últimos 24 meses</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -562,10 +566,10 @@ export default function HistoricoAnalytics() {
         </Card>
 
         {/* Card Food-Service */}
-        <Card>
+        <Card className="flex flex-col h-full">
           <CardHeader>
-            <div className="flex items-start justify-between gap-3 flex-wrap">
-              <div className="space-y-1.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1.5 min-w-0">
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5" />
                   Evolução Food-Service
@@ -574,7 +578,7 @@ export default function HistoricoAnalytics() {
                   {foodServiceMetrica === 'peso' ? 'Peso produzido (kg)' : 'Unidades produzidas'} - Últimos {numeroMeses} {numeroMeses === 1 ? 'mês' : 'meses'}
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2 flex-wrap justify-end">
+              <div className="flex items-center gap-2 shrink-0 h-9">
                 <Select value={foodServiceMetrica} onValueChange={(v) => setFoodServiceMetrica(v as "unidades" | "peso")}>
                   <SelectTrigger className="w-[130px] h-9">
                     <SelectValue />
