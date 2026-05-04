@@ -21,6 +21,7 @@ import { HistoricoProducaoModal } from "./HistoricoProducaoModal";
 import { useSupabaseHistoricoProducao } from "@/hooks/useSupabaseHistoricoProducao";
 import { useEstoqueDisponivel } from "@/hooks/useEstoqueDisponivel";
 import { useProducaoAgendada } from "@/hooks/useProducaoAgendada";
+import { useValidacaoInsumosProducaoAgendada } from "@/hooks/useValidacaoInsumosProducaoAgendada";
 
 interface ProdutoQuantidade {
   produto_id: string;
@@ -147,7 +148,8 @@ export default function ProjecaoProducaoTab() {
   const ordemProdutosNecessarios = useMemo(() => produtosOrdenados.map(p => p.produto_id), [produtosOrdenados]);
 
   const { produtos: produtosEstoque } = useEstoqueDisponivel(quantidadesNecessarias);
-  const { produtosAgrupados, mapaPorProduto, totalUnidades, totalRegistros, loading: loadingProducao, recarregar: recarregarProducaoAgendada } = useProducaoAgendada();
+  const { produtosAgrupados, mapaPorProduto, totalUnidades, totalRegistros, diasAgendados, loading: loadingProducao, recarregar: recarregarProducaoAgendada } = useProducaoAgendada();
+  const validacoesInsumos = useValidacaoInsumosProducaoAgendada(diasAgendados);
   const { adicionarRegistro } = useSupabaseHistoricoProducao();
   const [modalNovaProducao, setModalNovaProducao] = useState(false);
 
@@ -228,11 +230,13 @@ export default function ProjecaoProducaoTab() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         <EstoqueProdutosSaldoRealCard />
         <ProducaoAgendadaCard
-          produtos={produtosAgrupados}
+          dias={diasAgendados}
+          validacoes={validacoesInsumos}
           totalUnidades={totalUnidades}
           totalRegistros={totalRegistros}
           loading={loadingProducao}
           onNovaProducao={() => setModalNovaProducao(true)}
+          onRecarregar={recarregarProducaoAgendada}
         />
       </div>
 
