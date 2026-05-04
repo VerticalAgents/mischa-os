@@ -13,6 +13,8 @@ export interface ProdutoComEstoqueDetalhado {
   quantidadeDespachada: number;
   saldoReal: number;
   ativo: boolean;
+  estoqueMinimo: number;
+  estoqueIdeal: number;
 }
 
 export const useEstoqueComExpedicao = () => {
@@ -165,7 +167,9 @@ export const useEstoqueComExpedicao = () => {
       quantidadeSeparada,
       quantidadeDespachada,
       saldoReal,
-      ativo: produto.ativo
+      ativo: produto.ativo,
+      estoqueMinimo: Number(produto.estoque_minimo || 0),
+      estoqueIdeal: Number(produto.estoque_ideal || 0)
     };
   });
 
