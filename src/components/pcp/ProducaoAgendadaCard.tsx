@@ -11,7 +11,7 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
-  Printer,
+  Download,
   CheckCheck,
   CheckCircle2,
   AlertTriangle,
@@ -124,9 +124,25 @@ export default function ProducaoAgendadaCard({
     }
   };
 
-  const handlePrint = () => {
+  const handleExport = () => {
     if (!dias.length) return;
-    exportProducaoAgendadaPDF(dias, validacoes, { print: true });
+    const key = `producao_agendada_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const payload = {
+      dias,
+      validacoes: Array.from(validacoes.entries()),
+      timestamp: Date.now(),
+    };
+    try {
+      sessionStorage.setItem(key, JSON.stringify(payload));
+    } catch (e) {
+      toast({
+        title: "Erro ao preparar pré-visualização",
+        description: e instanceof Error ? e.message : "Falha ao salvar dados temporários.",
+        variant: "destructive",
+      });
+      return;
+    }
+    window.open(`/producao-agendada/preview?key=${encodeURIComponent(key)}`, "_blank");
   };
 
   return (
@@ -180,11 +196,11 @@ export default function ProducaoAgendadaCard({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handlePrint}
+                  onClick={handleExport}
                   className="gap-1"
                 >
-                  <Printer className="h-4 w-4" />
-                  Imprimir
+                  <Download className="h-4 w-4" />
+                  Exportar
                 </Button>
                 <Button
                   size="sm"
