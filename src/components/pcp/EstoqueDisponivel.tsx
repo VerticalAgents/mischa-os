@@ -2,8 +2,6 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Package, Loader2, ChevronDown, ChevronUp, RefreshCw, AlertCircle, TrendingDown, TrendingUp } from "lucide-react";
 import { useEstoqueDisponivel } from "@/hooks/useEstoqueDisponivel";
@@ -14,33 +12,15 @@ interface EstoqueDisponivelProps {
   ordemProdutosNecessarios?: string[];
   loadingNecessarios?: boolean;
   producaoAgendada?: Record<string, number>;
-  incluirProducaoAgendada?: boolean;
-  onIncluirProducaoAgendadaChange?: (value: boolean) => void;
 }
 export default function EstoqueDisponivel({
   quantidadesNecessarias = {},
   ordemProdutosNecessarios = [],
   loadingNecessarios = false,
   producaoAgendada = {},
-  incluirProducaoAgendada: incluirProducaoAgendadaProp,
-  onIncluirProducaoAgendadaChange
 }: EstoqueDisponivelProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [showSemPrevisao, setShowSemPrevisao] = useState(false);
-  const [incluirProducaoAgendadaInterno, setIncluirProducaoAgendadaInterno] = useState(false);
-
-  // Usar estado externo (controlado) quando prop for fornecida, caso contrário usar estado interno
-  const incluirProducaoAgendada = incluirProducaoAgendadaProp !== undefined
-    ? incluirProducaoAgendadaProp
-    : incluirProducaoAgendadaInterno;
-
-  const setIncluirProducaoAgendada = (value: boolean) => {
-    if (onIncluirProducaoAgendadaChange) {
-      onIncluirProducaoAgendadaChange(value);
-    } else {
-      setIncluirProducaoAgendadaInterno(value);
-    }
-  };
   const {
     produtos,
     loading,
@@ -51,9 +31,9 @@ export default function EstoqueDisponivel({
     recarregar
   } = useEstoqueDisponivel(quantidadesNecessarias);
 
-  // Aplicar produção agendada ao estoque disponível quando toggle ativo
+  // Sempre aplicar produção agendada ao estoque disponível
   const produtosAjustados = useMemo(() => {
-    if (!incluirProducaoAgendada || Object.keys(producaoAgendada).length === 0) {
+    if (Object.keys(producaoAgendada).length === 0) {
       return produtos;
     }
     return produtos.map(p => {
@@ -68,7 +48,7 @@ export default function EstoqueDisponivel({
         status
       };
     });
-  }, [produtos, producaoAgendada, incluirProducaoAgendada]);
+  }, [produtos, producaoAgendada]);
   const totalDisponivelAjustado = useMemo(() => {
     return produtosAjustados.reduce((sum, p) => sum + p.estoque_disponivel, 0);
   }, [produtosAjustados]);
@@ -132,26 +112,17 @@ export default function EstoqueDisponivel({
         return 'Adequado';
     }
   };
-  const hasToolbar = Object.keys(producaoAgendada).length > 0;
   return <Card className="h-full flex flex-col">
       <CardHeader>
         <div className="space-y-1.5">
           <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-primary" /> Estoque Disponível</CardTitle>
           <CardDescription className="text-left">
-            {incluirProducaoAgendada ? "Saldo atual + produção agendada − expedição" : "Saldo atual menos quantidades em expedição"}
+            Saldo atual + produção agendada − expedição
           </CardDescription>
         </div>
       </CardHeader>
       <CardContent className="flex-1">
         <div className="flex items-center justify-end gap-2 pb-3 mb-3 border-b min-h-[2.25rem]">
-          {hasToolbar && (
-            <div className="flex items-center gap-1.5">
-              <Label htmlFor="incluir-producao" className="text-xs cursor-pointer whitespace-nowrap">
-                Incluir prod. agendada
-              </Label>
-              <Switch id="incluir-producao" checked={incluirProducaoAgendada} onCheckedChange={setIncluirProducaoAgendada} />
-            </div>
-          )}
           <Button variant="ghost" size="icon" onClick={recarregar} disabled={loading} title="Atualizar" className="h-8 w-8">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
