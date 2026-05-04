@@ -496,8 +496,8 @@ export default function HistoricoAnalytics() {
           <CardHeader>
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1.5 min-w-0">
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 whitespace-nowrap">
+                  <BarChart3 className="h-5 w-5 shrink-0" />
                   Evolução Revenda
                 </CardTitle>
                 <CardDescription className="text-left">
@@ -506,9 +506,9 @@ export default function HistoricoAnalytics() {
               </div>
               <div className="flex items-center gap-2 shrink-0 h-9">
                 {/* placeholder invisível para alinhar com o toggle do card ao lado */}
-                <div className="w-[130px] h-9" aria-hidden="true" />
+                <div className="w-[110px] h-9" aria-hidden="true" />
                 <Select value={mesesGrafico} onValueChange={setMesesGrafico}>
-                  <SelectTrigger className="w-[160px] h-9">
+                  <SelectTrigger className="w-[140px] h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -570,8 +570,8 @@ export default function HistoricoAnalytics() {
           <CardHeader>
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1.5 min-w-0">
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 whitespace-nowrap">
+                  <BarChart3 className="h-5 w-5 shrink-0" />
                   Evolução Food-Service
                 </CardTitle>
                 <CardDescription className="text-left">
@@ -580,7 +580,7 @@ export default function HistoricoAnalytics() {
               </div>
               <div className="flex items-center gap-2 shrink-0 h-9">
                 <Select value={foodServiceMetrica} onValueChange={(v) => setFoodServiceMetrica(v as "unidades" | "peso")}>
-                  <SelectTrigger className="w-[130px] h-9">
+                  <SelectTrigger className="w-[110px] h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -589,7 +589,7 @@ export default function HistoricoAnalytics() {
                   </SelectContent>
                 </Select>
                 <Select value={mesesGrafico} onValueChange={setMesesGrafico}>
-                  <SelectTrigger className="w-[160px] h-9">
+                  <SelectTrigger className="w-[140px] h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
