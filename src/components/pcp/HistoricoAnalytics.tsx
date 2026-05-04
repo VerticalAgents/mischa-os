@@ -506,9 +506,9 @@ export default function HistoricoAnalytics() {
               </div>
               <div className="flex items-center gap-2 shrink-0 h-9">
                 {/* placeholder invisível para alinhar com o toggle do card ao lado */}
-                <div className="w-[130px] h-9" aria-hidden="true" />
+                <div className="w-[110px] h-9" aria-hidden="true" />
                 <Select value={mesesGrafico} onValueChange={setMesesGrafico}>
-                  <SelectTrigger className="w-[160px] h-9">
+                  <SelectTrigger className="w-[140px] h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -580,7 +580,7 @@ export default function HistoricoAnalytics() {
               </div>
               <div className="flex items-center gap-2 shrink-0 h-9">
                 <Select value={foodServiceMetrica} onValueChange={(v) => setFoodServiceMetrica(v as "unidades" | "peso")}>
-                  <SelectTrigger className="w-[130px] h-9">
+                  <SelectTrigger className="w-[110px] h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -589,7 +589,7 @@ export default function HistoricoAnalytics() {
                   </SelectContent>
                 </Select>
                 <Select value={mesesGrafico} onValueChange={setMesesGrafico}>
-                  <SelectTrigger className="w-[160px] h-9">
+                  <SelectTrigger className="w-[140px] h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
