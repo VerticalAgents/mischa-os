@@ -22,6 +22,7 @@ export default function HistoricoAnalytics() {
   const [isFoodServiceDetailsOpen, setIsFoodServiceDetailsOpen] = useState(false);
   const [periodoSelecionado, setPeriodoSelecionado] = useState("90");
   const [mostrarUnidades, setMostrarUnidades] = useState(false);
+  const [mesesGrafico, setMesesGrafico] = useState("12");
   
   // Dados do Supabase
   const { proporcoes, loading: loadingProporcoes } = useSupabaseProporoesPadrao();
@@ -123,15 +124,11 @@ export default function HistoricoAnalytics() {
     return `Últimos ${diasPeriodo} dias`;
   }, [diasPeriodo]);
 
-  // Calcular quantos meses mostrar baseado no período selecionado
+  // Quantidade de meses exibidos no gráfico de evolução (independente do filtro de período acima)
   const numeroMeses = useMemo(() => {
-    const dias = parseInt(periodoSelecionado);
-    if (dias <= 30) return 1;
-    if (dias <= 60) return 2;
-    if (dias <= 90) return 3;
-    if (dias <= 180) return 6;
-    return 12; // 365 dias = 1 ano
-  }, [periodoSelecionado]);
+    const n = parseInt(mesesGrafico);
+    return Number.isFinite(n) && n > 0 ? n : 12;
+  }, [mesesGrafico]);
   
   const dadosGraficoComparativo = useMemo(() => {
     // Gerar array com os meses baseado no período selecionado
@@ -475,7 +472,7 @@ export default function HistoricoAnalytics() {
 
       </div>
 
-      {/* Gráfico Comparativo - Últimos 6 Meses */}
+      {/* Gráfico Comparativo - Evolução da Produção */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -485,18 +482,31 @@ export default function HistoricoAnalytics() {
                 Evolução da Produção por Categoria
               </CardTitle>
               <CardDescription className="text-left">
-                Comparativo mensal de {mostrarUnidades ? 'unidades produzidas' : 'formas produzidas'} - Últimos 6 meses
+                Comparativo mensal de {mostrarUnidades ? 'unidades produzidas' : 'formas produzidas'} - Últimos {numeroMeses} {numeroMeses === 1 ? 'mês' : 'meses'}
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="toggle-unidades" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
-                {mostrarUnidades ? 'Unidades' : 'Formas'}
-              </Label>
-              <Switch 
-                id="toggle-unidades"
-                checked={mostrarUnidades}
-                onCheckedChange={setMostrarUnidades}
-              />
+            <div className="flex items-center gap-3 flex-wrap justify-end">
+              <Select value={mesesGrafico} onValueChange={setMesesGrafico}>
+                <SelectTrigger className="w-[160px] h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3">Últimos 3 meses</SelectItem>
+                  <SelectItem value="6">Últimos 6 meses</SelectItem>
+                  <SelectItem value="12">Últimos 12 meses</SelectItem>
+                  <SelectItem value="24">Últimos 24 meses</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="toggle-unidades" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
+                  {mostrarUnidades ? 'Unidades' : 'Formas'}
+                </Label>
+                <Switch 
+                  id="toggle-unidades"
+                  checked={mostrarUnidades}
+                  onCheckedChange={setMostrarUnidades}
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
