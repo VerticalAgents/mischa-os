@@ -366,6 +366,7 @@ export default function ProjecaoProducaoTab() {
           produtosNecessarios={produtosOrdenados}
           estoqueDisponivel={estoqueAjustado}
           loading={loading}
+          onAgendamentoCriado={recarregarProducaoAgendada}
         />
       </div>
 

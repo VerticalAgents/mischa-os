@@ -1,64 +1,57 @@
-## Problema
+## Objetivo
 
-Na aba **Projeção de Produção**, os cards das linhas 1 e 2 ficam desalinhados porque:
+Adicionar um botão "Agendar todas" no card **Sugestão de Produção** que abre um modal de ação em massa, permitindo agendar várias sugestões de uma vez (criando registros de produção com status "Pendente"), seguindo o mesmo padrão do `useAcaoEmMassaDialog` usado em reagendamentos.
 
-1. O `CardHeader` do **Produtos Necessários** carrega controles extras (switch "Incluir previstos", radio "Apenas prováveis / Percentual", input %), o que faz o header crescer e empurrar todo o conteúdo para baixo. O **Estoque Disponível** ao lado tem header curto, então o bloco de "Estoque Total" e "Detalhes por Produto" ficam em alturas diferentes.
-2. Na linha 1, **Estoque de Produtos** e **Produção Agendada** têm headers com alturas levemente diferentes (descrição com 1 vs 2 linhas em alguns viewports e botão "Nova Produção"), o que desalinha o destaque do total e o "Detalhes por Produto".
-3. Os `<Card>` não têm `h-full`, então no grid `lg:grid-cols-2` cada card pega só sua altura natural.
+## Comportamento
 
-## Solução
+1. **Botão "Agendar em massa"** no header do card `SugestaoProducao` (ao lado do toggle "Apenas com proporção"):
+   - Aparece apenas quando há ao menos uma sugestão com `tem_rendimento` e `formas_sugeridas > 0`.
+   - Mostra um badge com o total elegível.
 
-Padronizar a estrutura dos 4 cards pareados para que tenham:
-- Mesma altura no grid (`h-full flex flex-col`, com `CardContent` em `flex-1`).
-- Header com altura consistente (apenas título + descrição); controles vão para uma toolbar dentro do `CardContent`.
-- Bloco de destaque (total) sempre com a mesma estrutura: label, número grande, linha de badges.
+2. **Modal `AgendarSugestoesEmMassaDialog`**:
+   - Lista todas as sugestões elegíveis (com rendimento + quantidade > 0).
+   - Cada linha tem: checkbox, nome do produto, formas sugeridas (editável), unidades equivalentes (calculado), status (estoque atual → alvo).
+   - Cabeçalho com checkbox "selecionar todos" + contador.
+   - Campo único: **Data da Produção** (date picker, default = hoje), aplicado a todos os itens selecionados.
+   - Campo **Turno** (select) com default "Matutino".
+   - Campo **Observações** opcional, aplicado a todos.
+   - Itens sem rendimento ficam em uma seção separada "Não disponíveis para agendamento" (somente leitura).
+   - Botões: "Cancelar" e "Agendar X produções".
 
-### Mudanças
-
-**`src/components/pcp/ProjecaoProducaoTab.tsx`** — cartão "Produtos Necessários":
-- Manter no `CardHeader` apenas `CardTitle` + `CardDescription`.
-- Mover o bloco de controles (Switch "Incluir previstos", RadioGroup, Input %) para uma toolbar no topo do `CardContent`, dentro de uma `div` com borda inferior leve (`pb-3 mb-3 border-b`), garantindo alinhamento horizontal com o ícone de "Atualizar" do card vizinho.
-- Adicionar `className="h-full flex flex-col"` ao `Card` e `flex-1` ao `CardContent`.
-
-**`src/components/pcp/EstoqueDisponivel.tsx`**:
-- Adicionar `h-full flex flex-col` ao `Card` e `flex-1` ao `CardContent`.
-- Header só com título + descrição. O switch "Incluir prod. agendada" e o botão Atualizar podem permanecer no header (são compactos) — mas, para casar 100% com o card da esquerda, mover esses controles para a mesma toolbar dentro do `CardContent` (mantendo o botão refresh visível).
-
-**`src/components/pcp/EstoqueProdutosSaldoRealCard.tsx`** e **`src/components/pcp/ProducaoAgendadaCard.tsx`**:
-- Adicionar `h-full flex flex-col` ao `Card` e `flex-1` ao `CardContent`.
-- Padronizar `CardDescription` para 1 linha (texto curto).
-- Padronizar o bloco de destaque (Total) para a mesma altura: label + número 3xl + badges em linha (já é o padrão; só conferir paddings iguais — `p-4`).
-- No `ProducaoAgendadaCard`, manter o botão "Nova Produção" no header alinhado à direita; alinhar verticalmente com `items-center` (ao invés de `items-start`) para evitar deslocamento.
-
-**`ProjecaoProducaoTab.tsx`** — grids:
-- Trocar `grid grid-cols-1 lg:grid-cols-2 gap-6` por `grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch` (explícito) nas duas linhas.
-
-## Resultado esperado
-
-```text
-Linha 1
-┌─────────────────────────┬─────────────────────────┐
-│ Header (título+desc)    │ Header (título+desc) [+]│
-├─────────────────────────┼─────────────────────────┤
-│ [Total destacado]       │ [Total destacado]       │
-│ Detalhes por Produto ▾  │ Detalhes por Produto ▾  │
-└─────────────────────────┴─────────────────────────┘
-
-Linha 2  (Produtos Necessários × Estoque Disponível)
-┌─────────────────────────┬─────────────────────────┐
-│ Header (título+desc)    │ Header (título+desc)    │
-│ [toolbar de controles]  │ [toolbar de controles]🔄│
-├─────────────────────────┼─────────────────────────┤
-│ [Total destacado]       │ [Total destacado]       │
-│ Detalhes por Produto ▾  │ Detalhes por Produto ▾  │
-└─────────────────────────┴─────────────────────────┘
-```
-
-Cards passam a ter altura igual e os blocos de destaque + "Detalhes por Produto" ficam na mesma linha horizontal entre vizinhos.
+3. **Ação ao confirmar**:
+   - Para cada item selecionado, chama `adicionarRegistro` com:
+     - `data_producao`, `produto_id`, `produto_nome`
+     - `formas_producidas` = quantidade ajustada pelo usuário
+     - `rendimento_usado` = rendimento atual
+     - `unidades_calculadas`/`unidades_previstas` = `floor(formas × rendimento)`
+     - `turno`, `observacoes`, `origem: 'Sugestao'`, `status: 'Registrado'`.
+   - Executa em sequência com tratamento de erro por item.
+   - Ao final exibe toast com sucesso/falhas e chama `recarregarProducaoAgendada` para atualizar o card "Produção Agendada".
+   - Fecha o modal.
 
 ## Arquivos
 
-- `src/components/pcp/ProjecaoProducaoTab.tsx`
-- `src/components/pcp/EstoqueDisponivel.tsx`
-- `src/components/pcp/EstoqueProdutosSaldoRealCard.tsx`
-- `src/components/pcp/ProducaoAgendadaCard.tsx`
+**Criar**
+- `src/components/pcp/AgendarSugestoesEmMassaDialog.tsx` — novo modal de ação em massa, baseado no padrão `useAcaoEmMassaDialog`.
+
+**Modificar**
+- `src/components/pcp/SugestaoProducao.tsx`:
+  - Aceitar nova prop opcional `onAgendarEmMassa?: (itens) => void` OU integrar o dialog internamente recebendo apenas o callback de refresh.
+  - Adicionar botão "Agendar em massa" no header com ícone `CalendarPlus`.
+  - Renderizar `AgendarSugestoesEmMassaDialog` controlado por estado local.
+- `src/components/pcp/ProjecaoProducaoTab.tsx`:
+  - Passar callback `onSuccess`/`recarregarProducaoAgendada` para `SugestaoProducao` (via prop), permitindo refresh dos cards relacionados após agendamento em lote.
+
+## Detalhes técnicos
+
+- Reutilizar `useAcaoEmMassaDialog` com tipo `{ id: produto_id, ... }` e `isItemEligible: s => s.tem_rendimento && s.formas_sugeridas > 0`.
+- Para edição de quantidade por linha, manter um `Map<produto_id, formasAjustadas>` controlado, inicializado com `formas_sugeridas`.
+- Validações: data obrigatória, ao menos 1 item selecionado, formas > 0 por item.
+- Estilo do dialog seguindo o padrão existente (`Dialog`, `Calendar` em popover com `z-[100]`, mesmo do `HistoricoProducaoModal`).
+- Toast final: `"X produções agendadas com sucesso"` (e quantos falharam, se houver).
+
+## Fora de escopo
+
+- Edição em massa de turno/observação por linha (será sempre o valor único do form).
+- Persistência da seleção entre aberturas.
+- Integração com PlanejamentoProducaoStore (continua usando `historico_producao`).

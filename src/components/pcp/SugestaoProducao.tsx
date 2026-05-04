@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Factory, Loader2, ChevronDown, ChevronUp, AlertCircle, Filter } from "lucide-react";
+import { Factory, Loader2, ChevronDown, ChevronUp, AlertCircle, Filter, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRendimentosReceitaProduto } from "@/hooks/useRendimentosReceitaProduto";
 import { useMediaVendasSemanais } from "@/hooks/useMediaVendasSemanais";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseProporoesPadrao } from "@/hooks/useSupabaseProporoesPadrao";
 import { useConfigStore } from "@/hooks/useConfigStore";
+import AgendarSugestoesEmMassaDialog, { SugestaoElegivel } from "./AgendarSugestoesEmMassaDialog";
 
 interface ProdutoQuantidade {
   produto_id: string;
@@ -28,6 +29,7 @@ interface SugestaoProducaoProps {
   produtosNecessarios: ProdutoQuantidade[];
   estoqueDisponivel: EstoqueDisponivel[];
   loading?: boolean;
+  onAgendamentoCriado?: () => void | Promise<void>;
 }
 
 interface SugestaoProducaoProduto {
@@ -52,11 +54,12 @@ interface ProdutoFinal {
   nome: string;
 }
 
-export default function SugestaoProducao({ produtosNecessarios, estoqueDisponivel, loading = false }: SugestaoProducaoProps) {
+export default function SugestaoProducao({ produtosNecessarios, estoqueDisponivel, loading = false, onAgendamentoCriado }: SugestaoProducaoProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [filtrarPorProporcao, setFiltrarPorProporcao] = useState(false);
   const [todosProdutos, setTodosProdutos] = useState<ProdutoFinal[]>([]);
   const [loadingProdutos, setLoadingProdutos] = useState(true);
+  const [agendarOpen, setAgendarOpen] = useState(false);
   
   const { obterRendimentoPorProduto, loading: loadingRendimentos } = useRendimentosReceitaProduto();
   const { mediaVendasPorProduto, loading: loadingMediaVendas } = useMediaVendasSemanais();
@@ -200,6 +203,20 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
 
   const isLoading = loading || loadingRendimentos || loadingMediaVendas || loadingProdutos || loadingProporcoes;
 
+  const sugestoesElegiveis: SugestaoElegivel[] = useMemo(() => {
+    return sugestoesFiltradas
+      .filter(s => s.tem_rendimento && s.formas_sugeridas > 0 && s.rendimento)
+      .map(s => ({
+        produto_id: s.produto_id,
+        produto_nome: s.produto_nome,
+        formas_sugeridas: s.formas_sugeridas,
+        rendimento: s.rendimento as number,
+        estoque_disponivel: s.estoque_disponivel,
+        estoque_alvo: s.estoque_alvo,
+        quantidade_a_produzir: s.quantidade_a_produzir,
+      }));
+  }, [sugestoesFiltradas]);
+
   return (
     <Card>
       <CardHeader>
@@ -219,7 +236,7 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
               )}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
             <Label htmlFor="filtro-proporcao" className="text-sm text-muted-foreground cursor-pointer">
               <Filter className="h-4 w-4 inline mr-1" />
               Apenas com proporção
@@ -229,6 +246,20 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
               checked={filtrarPorProporcao}
               onCheckedChange={setFiltrarPorProporcao}
             />
+            <Button
+              size="sm"
+              onClick={() => setAgendarOpen(true)}
+              disabled={sugestoesElegiveis.length === 0 || isLoading}
+              className="gap-1"
+            >
+              <CalendarPlus className="h-4 w-4" />
+              Agendar em massa
+              {sugestoesElegiveis.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                  {sugestoesElegiveis.length}
+                </Badge>
+              )}
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -337,6 +368,12 @@ export default function SugestaoProducao({ produtosNecessarios, estoqueDisponive
           </div>
         )}
       </CardContent>
+      <AgendarSugestoesEmMassaDialog
+        isOpen={agendarOpen}
+        onClose={() => setAgendarOpen(false)}
+        sugestoes={sugestoesElegiveis}
+        onSuccess={onAgendamentoCriado}
+      />
     </Card>
   );
 }
