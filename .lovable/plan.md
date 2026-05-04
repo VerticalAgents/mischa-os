@@ -1,68 +1,64 @@
+
 ## Objetivo
 
-Transformar o card **Produção Agendada** numa visão diária com validação de insumos sequencial, confirmação em massa e exportação PDF, sem sair do bloco existente.
+Quando o **Estoque Total Disponível** (após considerar produção agendada e expedição) ficar entre **0 e X% do alvo semanal**, o badge do total deve ficar **laranja** com um aviso. O usuário deve poder configurar esse `X%` na aba **Setup** do PCP.
 
-## Mudanças por arquivo
+Atualmente o card só pinta:
+- **vermelho** quando < 0
+- **amarelo** quando < alvo (totalIdeal)
+- **azul** quando ≥ alvo
 
-### 1. `src/hooks/useProducaoAgendada.ts`
-- Além de `produtosAgrupados`, expor também `registros` brutos (com `data_producao`, `turno`, `produto_id`, `produto_nome`, `formas_producidas`, `unidades_previstas`).
-- Adicionar `diasAgendados`: agrupamento por `data_producao` ordenado **da data mais próxima de hoje em diante** (hoje → futuro; passado fica no fim ou é omitido — por padrão exibimos hoje+futuro).
-  Cada item: `{ data, dataFormatada, registros[], totalFormas, totalUnidades, registroIds[] }`.
+A nova faixa **laranja** (alerta crítico) ficará entre `0` e `alvo × X%`, sobrescrevendo o amarelo nessa faixa.
 
-### 2. Novo hook: `src/hooks/useValidacaoInsumosProducaoAgendada.ts`
-Responsável por calcular, para cada dia agendado, se há insumos suficientes considerando o **consumo acumulado dos dias anteriores** (lógica sequencial).
+## Mudanças
 
-Algoritmo:
-1. Recebe `diasAgendados` (ordenados do mais próximo ao mais distante).
-2. Para cada dia, percorre seus registros e, usando `useSupabaseReceitas` + `useRendimentosReceitaProduto`, calcula a necessidade de insumos por `formas_producidas` (`receita.itens` × formas, ou via rendimento).
-3. Mantém um mapa `estoqueRestantePorInsumo` inicializado com `insumo.estoque_atual` de `useSupabaseInsumos`.
-4. Para cada dia em ordem cronológica:
-   - Soma a necessidade de cada insumo do dia.
-   - Para cada insumo: se `necessidadeDia > estoqueRestante[insumo]`, marca o insumo como **faltante para esse dia** (registra `faltante` e `quantidadeFaltante`).
-   - Se houver pelo menos um insumo faltante → status do dia = `vermelho`; senão `verde`.
-   - Subtrai a necessidade do estoque restante (mesmo se faltou, subtrai até zerar) antes de processar o próximo dia — assim um insumo escasso compartilhado naturalmente vai gerar vermelho nos dias seguintes.
-5. Retorna `Map<data, { status: 'ok'|'faltante', insumosFaltantes: [{nome, unidade, necessario, disponivel, faltante}] }>`.
+### 1. `src/components/pcp/SetupPCPTab.tsx`
+Adicionar novo campo de configuração logo abaixo do seletor de modos (ou em um bloco próprio "Alerta de estoque crítico"):
 
-### 3. `src/components/pcp/ProducaoAgendadaCard.tsx` (refatorar)
-Layout dentro do collapsible expandido (substituindo a lista plana por produto):
+- Input numérico **"Limite de alerta (% do alvo)"**, default `30`, range `0–100`.
+- Texto explicativo: _"Se o estoque resultante ficar entre 0 e X% do alvo semanal, o card mostrará um aviso laranja."_
+- Persistir no `useConfigStore` via `atualizarConfiguracoesProducao`, novo campo `estoqueAlertaCriticoPercentual`.
+- Estado inicial lê de `configuracoesProducao?.estoqueAlertaCriticoPercentual ?? 30`.
+- Incluir no `handleSalvar`.
 
-- **Header de ações** (apenas visível quando há produções):
-  - `Confirmar tudo` (verde) — só habilita dias com badge verde.
-  - `Exportar PDF`.
-- **Cards diários** estilo enxuto (referência da imagem 2):
-  ```
-  ▶ Quinta-Feira, 07/05/2026         [✓ Insumos OK]   22 Formas | 48 Unid.
-    2 registro(s)
-  ```
-  - Borda esquerda colorida: verde (`border-l-green-500`) ou vermelho (`border-l-red-500`).
-  - Badge ao lado do título: `Insumos OK` (verde) ou `Faltam: Nutella, Chocolate…` (vermelho, com tooltip listando quantidades faltantes).
-  - Header clicável colapsa/expande.
-- **Conteúdo expandido (compacto)**: tabela enxuta — Produto | Formas | Unidades | Status, sem ações de editar/deletar (mantém o card pequeno; edição continua na aba Histórico).
-- Botão de **confirmar em massa por dia** dentro do header expandido (verde) — desabilitado se o dia estiver vermelho. Confirma todos os `registros` daquele dia chamando `confirmarProducao(id)` em loop (reutiliza `useConfirmacaoProducao`).
-- Manter o bloco de Total de Unidades Agendadas no topo do card.
-- Manter o botão **Nova Produção** já existente.
+### 2. `src/components/pcp/EstoqueDisponivel.tsx`
+- Importar `useConfigStore` e ler `estoqueAlertaCriticoPercentual` (fallback 30).
+- Calcular `limiteAlerta = totalIdeal * (percentual/100)`.
+- Nova lógica de cor (ordem de prioridade):
+  1. `< 0` → **vermelho**
+  2. `totalIdeal > 0 && total >= 0 && total < limiteAlerta` → **laranja** (novo)
+  3. `totalIdeal > 0 && total < totalIdeal` → **amarelo**
+  4. caso contrário → **azul**
+- Classes laranja: `bg-orange-500/10 dark:bg-orange-500/20 border-orange-500/30` para `blockClass` e `text-orange-600 dark:text-orange-400` para `totalTextClass`.
+- Quando estiver em estado laranja, exibir um aviso pequeno abaixo do número:
+  - Ícone `AlertTriangle` (lucide) + texto: `"Estoque abaixo de {X}% do alvo ({totalIdeal})"`.
+  - Estilizado em `text-orange-700 dark:text-orange-400 text-xs font-medium`.
 
-### 4. Exportação PDF
-Criar util `src/utils/exportProducaoAgendadaPDF.ts` usando `jspdf` + `jspdf-autotable` (já disponíveis no projeto, ou instalar se necessário). Conteúdo:
-- Cabeçalho: "Planejamento de Produção Agendada — gerado em DD/MM/AAAA".
-- Para cada dia: título com data, total Formas/Unidades, status de insumos (e lista de faltantes se houver).
-- Tabela: Produto | Formas | Unidades.
-- Ao final, resumo: total geral de formas/unidades e lista consolidada de insumos faltantes.
+### 3. (opcional, se aplicável) Tipos do config store
+Se `useConfigStore`/tipos das configurações de produção forem tipados explicitamente, adicionar `estoqueAlertaCriticoPercentual?: number` ao tipo. Caso já use `as any` no salvar (como no Setup atual), nenhuma mudança de tipo é necessária.
 
-### 5. `ProjecaoProducaoTab.tsx`
-- Passar `diasAgendados` e o resultado de `useValidacaoInsumosProducaoAgendada` para `ProducaoAgendadaCard`.
-- Após confirmar em massa, chamar `recarregarProducaoAgendada()`.
+## Detalhes técnicos
 
-## Comportamento esperado (exemplos)
+```ts
+// EstoqueDisponivel.tsx
+const { configuracoesProducao } = useConfigStore();
+const pctAlerta = Number(configuracoesProducao?.estoqueAlertaCriticoPercentual ?? 30);
+const limiteAlerta = totalIdeal * (pctAlerta / 100);
 
-- Produção hoje (Nutella 5kg necessária, estoque 5kg) + amanhã (Nutella 3kg necessária):
-  - Hoje: verde (OK). Estoque restante de Nutella = 0.
-  - Amanhã: vermelho — falta 3kg de Nutella.
-- Insumo comum (Chocolate) insuficiente para os dois dias:
-  - Hoje: consome o que tem; se ainda assim faltar para hoje → vermelho hoje.
-  - Amanhã: vermelho (faltando o restante).
-- Se hoje cabe inteiro mas amanhã não cabe pelo restante → hoje verde, amanhã vermelho. (Conforme exemplo do usuário.)
+const emAlerta = totalIdeal > 0 && totalDisponivelAjustado >= 0 && totalDisponivelAjustado < limiteAlerta;
 
-## Pontos não cobertos (manter como estão)
-- Edição/exclusão de registros continua via aba Histórico de Produção.
-- Validação de insumos individual ao confirmar (já existe em `confirmarProducao`) é mantida — a validação visual nova é apenas preventiva/planejamento.
+const blockClass =
+  totalDisponivelAjustado < 0
+    ? "bg-red-500/10 dark:bg-red-500/20 border-red-500/30"
+    : emAlerta
+    ? "bg-orange-500/10 dark:bg-orange-500/20 border-orange-500/30"
+    : totalIdeal > 0 && totalDisponivelAjustado < totalIdeal
+    ? "bg-yellow-500/10 dark:bg-yellow-500/20 border-yellow-500/30"
+    : "bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/30";
+```
+
+## Arquivos afetados
+- `src/components/pcp/SetupPCPTab.tsx` (novo input + persistência)
+- `src/components/pcp/EstoqueDisponivel.tsx` (nova faixa laranja + aviso)
+
+Sem migrações, sem novas rotas, sem mudanças de banco — apenas config local persistida via `useConfigStore`.

@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Package, Loader2, ChevronDown, ChevronUp, RefreshCw, AlertCircle, TrendingDown, TrendingUp } from "lucide-react";
+import { Package, Loader2, ChevronDown, ChevronUp, RefreshCw, AlertCircle, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
 import { useEstoqueDisponivel } from "@/hooks/useEstoqueDisponivel";
+import { useConfigStore } from "@/hooks/useConfigStore";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 interface EstoqueDisponivelProps {
@@ -21,6 +22,8 @@ export default function EstoqueDisponivel({
 }: EstoqueDisponivelProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [showSemPrevisao, setShowSemPrevisao] = useState(false);
+  const { configuracoesProducao } = useConfigStore();
+  const pctAlerta = Number((configuracoesProducao as any)?.estoqueAlertaCriticoPercentual ?? 30);
   const {
     produtos,
     loading,
@@ -56,16 +59,25 @@ export default function EstoqueDisponivel({
     return produtosAjustados.reduce((sum, p) => sum + (Number(p.estoque_ideal) || 0), 0);
   }, [produtosAjustados]);
 
-  // Cor condicional: vermelho < 0, amarelo abaixo do alvo (ideal), azul ≥ alvo
+  // Cor condicional: vermelho < 0, laranja entre 0 e X% do alvo, amarelo abaixo do alvo, azul ≥ alvo
+  const limiteAlerta = totalIdeal * (pctAlerta / 100);
+  const emAlerta =
+    totalIdeal > 0 &&
+    totalDisponivelAjustado >= 0 &&
+    totalDisponivelAjustado < limiteAlerta;
   const blockClass =
     totalDisponivelAjustado < 0
       ? "bg-red-500/10 dark:bg-red-500/20 border-red-500/30"
+      : emAlerta
+      ? "bg-orange-500/10 dark:bg-orange-500/20 border-orange-500/30"
       : totalIdeal > 0 && totalDisponivelAjustado < totalIdeal
       ? "bg-yellow-500/10 dark:bg-yellow-500/20 border-yellow-500/30"
       : "bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/30";
   const totalTextClass =
     totalDisponivelAjustado < 0
       ? "text-red-600 dark:text-red-400"
+      : emAlerta
+      ? "text-orange-600 dark:text-orange-400"
       : totalIdeal > 0 && totalDisponivelAjustado < totalIdeal
       ? "text-yellow-700 dark:text-yellow-400"
       : "text-blue-600 dark:text-blue-400";
@@ -167,6 +179,14 @@ export default function EstoqueDisponivel({
               <p className={`text-3xl font-bold ${totalTextClass}`}>
                 {totalDisponivelAjustado}
               </p>
+              {emAlerta && (
+                <div className="flex items-center justify-center gap-1.5 mt-2 text-orange-700 dark:text-orange-400 text-xs font-medium">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  <span>
+                    Estoque abaixo de {pctAlerta}% do alvo ({totalIdeal})
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-center gap-2 mt-2">
                 <Badge variant="default">
                   {produtos.length} {produtos.length === 1 ? 'produto' : 'produtos'}
