@@ -151,14 +151,12 @@ export default function ProjecaoProducaoTab() {
   const { adicionarRegistro } = useSupabaseHistoricoProducao();
   const [modalNovaProducao, setModalNovaProducao] = useState(false);
 
-  const [incluirProducaoAgendada, setIncluirProducaoAgendada] = useState(false);
-
   const estoqueAjustado = useMemo(() => {
     return produtosEstoque.map(p => {
-      const extra = incluirProducaoAgendada ? (mapaPorProduto[p.produto_id] || 0) : 0;
+      const extra = mapaPorProduto[p.produto_id] || 0;
       return { produto_id: p.produto_id, estoque_disponivel: p.estoque_disponivel + extra };
     });
-  }, [produtosEstoque, mapaPorProduto, incluirProducaoAgendada]);
+  }, [produtosEstoque, mapaPorProduto]);
 
   const handlePercentualChange = (value: string) => {
     const num = parseInt(value, 10);
@@ -355,8 +353,6 @@ export default function ProjecaoProducaoTab() {
           ordemProdutosNecessarios={ordemProdutosNecessarios}
           loadingNecessarios={loading}
           producaoAgendada={mapaPorProduto}
-          incluirProducaoAgendada={incluirProducaoAgendada}
-          onIncluirProducaoAgendadaChange={setIncluirProducaoAgendada}
         />
       </div>
 
